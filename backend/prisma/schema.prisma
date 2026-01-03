@@ -1,0 +1,308 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PlatformRole {
+  ADMIN
+  HOST
+  PLAYER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  email        String       @unique
+  displayName  String
+  passwordHash String
+  platformRole PlatformRole @default(PLAYER)
+  status       UserStatus   @default(ACTIVE)
+
+  createdAtUtc DateTime     @default(now())
+  updatedAtUtc DateTime     @updatedAt
+  predictions  Prediction[]
+
+  poolsCreated          Pool[]
+  poolMemberships       PoolMember[]
+  poolInvitesCreated    PoolInvite[]
+  resultVersionsCreated PoolMatchResultVersion[]
+}
+
+model AuditEvent {
+  id           String   @id @default(uuid())
+  createdAtUtc DateTime @default(now())
+
+  actorUserId String?
+  action      String
+  entityType  String?
+  entityId    String?
+  poolId      String?
+
+  dataJson  Json?
+  ip        String?
+  userAgent String?
+}
+
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+}
+
+enum TemplateVersionStatus {
+  DRAFT
+  PUBLISHED
+  DEPRECATED
+}
+
+model TournamentTemplate {
+  id          String  @id @default(uuid())
+  key         String  @unique // ej: "worldcup_2026"
+  name        String
+  description String?
+
+  status TemplateStatus @default(DRAFT)
+
+  // Comentario en español: referencia rápida a la versión publicada actual (si existe)
+  currentPublishedVersionId String?                    @unique
+  currentPublishedVersion   TournamentTemplateVersion? @relation("CurrentPublishedVersion", fields: [currentPublishedVersionId], references: [id])
+
+  versions TournamentTemplateVersion[]
+
+  // Comentario en español: instancias creadas desde este template
+  instances TournamentInstance[]
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+}
+
+model TournamentTemplateVersion {
+  id         String             @id @default(uuid())
+  templateId String
+  template   TournamentTemplate @relation(fields: [templateId], references: [id])
+
+  // Comentario en español: relación inversa opcional para currentPublishedVersion
+  currentForTemplate TournamentTemplate? @relation("CurrentPublishedVersion")
+
+  // Comentario en español: instancias creadas a partir de esta versión publicada
+  instances TournamentInstance[] @relation("InstanceSourceVersion")
+
+  versionNumber Int
+  status        TemplateVersionStatus @default(DRAFT)
+
+  dataJson       Json
+  publishedAtUtc DateTime?
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([templateId, versionNumber])
+}
+
+enum TournamentInstanceStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model TournamentInstance {
+  id String @id @default(uuid())
+
+  templateId String
+  template   TournamentTemplate @relation(fields: [templateId], references: [id])
+
+  templateVersionId String
+  templateVersion   TournamentTemplateVersion @relation("InstanceSourceVersion", fields: [templateVersionId], references: [id])
+
+  name   String
+  status TournamentInstanceStatus @default(DRAFT)
+
+  // Comentario en español: snapshot congelado del torneo “real” (copiado desde la versión publicada)
+  dataJson Json
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+  pools        Pool[]
+
+  @@index([templateId])
+  @@index([templateVersionId])
+}
+
+enum PoolVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum PoolMemberRole {
+  HOST
+  PLAYER
+}
+
+enum PoolMemberStatus {
+  ACTIVE
+  LEFT
+  BANNED
+}
+
+enum ResultVersionStatus {
+  PUBLISHED
+}
+
+model Pool {
+  id String @id @default(uuid())
+
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id])
+
+  name        String
+  description String?
+
+  visibility PoolVisibility @default(PRIVATE)
+
+  // Comentario en español: zona horaria del pool (IANA), ej: "America/Bogota"
+  timeZone String @default("UTC")
+
+  // Comentario en español: cierre de pronósticos X minutos antes del kickoff
+  deadlineMinutesBeforeKickoff Int    @default(10)
+  scoringPresetKey             String @default("CLASSIC")
+
+  createdByUserId String
+  createdByUser   User   @relation(fields: [createdByUserId], references: [id])
+
+  members PoolMember[]
+  invites PoolInvite[]
+
+  createdAtUtc DateTime          @default(now())
+  updatedAtUtc DateTime          @updatedAt
+  predictions  Prediction[]
+  matchResults PoolMatchResult[]
+
+  @@index([tournamentInstanceId])
+  @@index([createdByUserId])
+}
+
+model PoolMember {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  role   PoolMemberRole   @default(PLAYER)
+  status PoolMemberStatus @default(ACTIVE)
+
+  joinedAtUtc DateTime  @default(now())
+  leftAtUtc   DateTime?
+
+  @@unique([poolId, userId])
+  @@index([userId])
+}
+
+model PoolInvite {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  code String @unique
+
+  createdByUserId String
+  createdByUser   User   @relation(fields: [createdByUserId], references: [id])
+
+  maxUses Int?
+  uses    Int  @default(0)
+
+  expiresAtUtc DateTime?
+
+  createdAtUtc DateTime @default(now())
+
+  @@index([poolId])
+}
+
+model Prediction {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Comentario en español: matchId corresponde a TemplateData.matches[].id dentro del TournamentInstance snapshot
+  matchId String
+
+  // Comentario en español: estructura flexible para MVP (luego la versionamos por schema)
+  pickJson Json
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, userId, matchId])
+  @@index([userId])
+  @@index([poolId])
+}
+
+model PoolMatchResult {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  // Comentario en español: matchId corresponde al snapshot TournamentInstance.dataJson.matches[].id
+  matchId String
+
+  // Comentario en español: relación 1:N a todas las versiones publicadas (incluye erratas)
+  versions PoolMatchResultVersion[] @relation("PoolMatchResultVersions")
+
+  // Comentario en español: puntero a la versión vigente del resultado
+  currentVersionId String?                 @unique
+  currentVersion   PoolMatchResultVersion? @relation("CurrentPoolMatchResult", fields: [currentVersionId], references: [id])
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, matchId])
+  @@index([poolId])
+}
+
+model PoolMatchResultVersion {
+  id String @id @default(uuid())
+
+  resultId String
+  // Comentario en español: relación inversa (muchas versiones -> un result header)
+  result   PoolMatchResult @relation("PoolMatchResultVersions", fields: [resultId], references: [id])
+
+  // Comentario en español: relación inversa opcional para currentVersion
+  currentForResult PoolMatchResult? @relation("CurrentPoolMatchResult")
+
+  versionNumber Int
+  status        ResultVersionStatus @default(PUBLISHED)
+
+  homeGoals Int
+  awayGoals Int
+
+  // Comentario en español: motivo opcional cuando esto es una corrección (errata)
+  reason String?
+
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+
+  publishedAtUtc DateTime @default(now())
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([resultId, versionNumber])
+  @@index([resultId])
+}

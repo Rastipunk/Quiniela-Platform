@@ -1,0 +1,20 @@
+Listado de rutas de carpetas para el volumen SSD 1
+El número de serie del volumen es 36B8-B915
+C:\USERS\JUANK\DESKTOP\QUINEL WEB\QUINIELA-PLATFORM\FRONTEND\SRC
+|   App.css
+|   App.tsx
+|   index.css
+|   main.tsx
+|   
++---assets
+|       react.svg
+|       
++---lib
+|       api.ts
+|       auth.ts
+|       
+\---pages
+        DashboardPage.tsx
+        LoginPage.tsx
+        PoolPage.tsx
+        

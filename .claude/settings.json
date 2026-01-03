@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(npx:*)"
+    ],
+    "ask": [
+      "Bash(docker:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(rm:*)",
+      "Bash(del:*)",
+      "Bash(rmdir:*)"
+    ],
+    "deny": [
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(./**/secrets/**)",
+      "Read(./backend/dev/**)",
+      "Read(./backend/prisma/*.db)"
+    ]
+  }
+}

@@ -1,0 +1,159 @@
+/* ===========================
+   Quiniela Platform — Light UI
+   Forzado a tema claro (no depende del SO/navegador)
+   =========================== */
+
+:root {
+  /* Fuerza controles nativos en claro (inputs/scrollbars) */
+  color-scheme: light;
+
+  /* Tipografía base */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Paleta (limpia, blanca/grises) */
+  --bg: #f4f5f7;          /* fondo general */
+  --surface: #ffffff;     /* tarjetas/superficies */
+  --surface-2: #fafbfc;   /* variación suave */
+  --text: #111827;        /* texto principal */
+  --muted: #6b7280;       /* texto secundario */
+  --border: #e5e7eb;      /* bordes */
+  --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+
+  /* Marca/acciones */
+  --primary: #111827;
+  --primary-hover: #0b1220;
+
+  /* Estados */
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #991b1b;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reset suave */
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* #root debe ocupar el ancho completo para layouts responsive */
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+/* Links */
+a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Tipos */
+h1, h2, h3 {
+  margin: 0 0 10px 0;
+  letter-spacing: -0.02em;
+}
+p {
+  margin: 0 0 10px 0;
+  color: var(--muted);
+}
+
+/* Inputs (look moderno y limpio) */
+input, select, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9ca3af;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+/* Botones (base; tus botones inline pueden sobreescribirlo) */
+button {
+  font: inherit;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+button:hover {
+  background: var(--primary-hover);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Pequeños “chips” tipo OPEN/LOCKED */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Tarjetas */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* Alertas (para errores 401, etc.) */
+.alert-error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+/* Quita el comportamiento de Vite que cambia colores con el tema.
+   IMPORTANTE: no usamos prefers-color-scheme. */
+
