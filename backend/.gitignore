@@ -3,3 +3,16 @@ node_modules
 .env
 
 /src/generated/prisma
+
+# Compiled TypeScript files (do not version control compiled output)
+*.d.ts
+*.d.ts.map
+*.js
+*.js.map
+!jest.config.js
+!*.test.js
+
+# Temporary files
+*.bak
+*.old
+nul

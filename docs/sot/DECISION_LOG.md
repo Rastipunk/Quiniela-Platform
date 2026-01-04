@@ -5,7 +5,7 @@
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-01-02
+> **Last Updated:** 2026-01-04
 
 ---
 
@@ -83,6 +83,12 @@ How to implement this decision (if applicable)
 | [015](#adr-015-resend-as-email-provider) | Resend as Email Provider | Accepted | 2026-01-02 |
 | [016](#adr-016-react-without-state-management-library) | React Without State Management Library | Accepted | 2024-12-28 |
 | [017](#adr-017-light-theme-only-for-mvp) | Light Theme Only for MVP | Accepted | 2024-12-28 |
+| [018](#adr-018-read-vs-edit-mode-for-picks-and-results) | Read vs Edit Mode for Picks/Results | Accepted | 2026-01-03 |
+| [019](#adr-019-penalty-shootouts-in-knockout-phases) | Penalty Shootouts in Knockout Phases | Accepted | 2026-01-04 |
+| [020](#adr-020-auto-advance-for-tournament-phases) | Auto-Advance for Tournament Phases | Accepted | 2026-01-04 |
+| [021](#adr-021-phase-locking-mechanism) | Phase Locking Mechanism | Accepted | 2026-01-04 |
+| [022](#adr-022-placeholder-system-for-knockout-matches) | Placeholder System for Knockout Matches | Accepted | 2026-01-04 |
+| [023](#adr-023-tournament-advancement-service-architecture) | Tournament Advancement Service Architecture | Accepted | 2026-01-04 |
 
 ---
 
@@ -1260,12 +1266,729 @@ Should we support dark mode in MVP? Considerations:
 
 ---
 
+## ADR-018: Read/Edit Mode UI Pattern for Picks & Results
+
+**Date:** 2026-01-03
+**Status:** Accepted
+**Deciders:** User + Claude Code
+**Tags:** #ux #frontend #pattern
+
+### Context
+
+Initial implementation showed picks and results always in edit mode (inputs always visible), making the UI cluttered and confusing after saving. Users couldn't easily see their saved picks or published results in a clean, readable format.
+
+**User feedback:**
+> "Tanto en la selección de pick como en la publicación del resultado, una vez guardo o publico, deberían desaparecer las cajas de modificaciones, y el marcador mostrarse de forma bonita."
+
+### Decision
+
+Implement a **Read/Edit Mode Pattern** for both Picks and Results with the following behavior:
+
+**Picks (Players):**
+1. **Default Mode (Saved Pick):** Display pick visually (🏠 3 - 1 🚪)
+2. **Edit Mode:** Show inputs + "Guardar" + "Cancelar"
+3. **Edit Button:** "✏️ Modificar elección" only visible if `!isLocked`
+4. **Locked State:** "🔒 No hiciste pick (deadline pasado)" if no pick saved
+5. **Transitions:** Clicking "Modificar" → Edit mode, "Guardar" → Read mode, "Cancelar" → Read mode
+
+**Results (Host):**
+1. **Default Mode (Published):** Display result visually (⚽ 2 - 1 ⚽ Resultado oficial)
+2. **Edit Mode:** Show inputs + reason field (if correction) + "Publicar" + "Cancelar"
+3. **Edit Button:** "✏️ Corregir resultado" only visible to HOST
+4. **Correction Badge:** Yellow alert if `result.reason` exists (errata)
+5. **States:** "Sin resultado (publicar cuando termine)" (host) vs "Pendiente de resultado oficial" (player)
+
+### Rationale
+
+**User Experience:**
+- Clear visual distinction between "viewing" and "editing" states
+- Reduces cognitive load - users see clean data by default
+- Edit mode is intentional (requires button click)
+- Matches familiar patterns (Gmail, Notion, Linear)
+
+**Technical Benefits:**
+- State management is simple (local `editMode` boolean)
+- No accidental edits from UI interactions
+- "Cancelar" button allows escape hatch without saving
+- Icons (✏️, 🔒, ⚽, 🏠, 🚪) provide visual cues
+
+### Consequences
+
+**Positive:**
+- ✅ Much cleaner UI after saving picks/results
+- ✅ Clear affordance for "when can I edit" (button visibility)
+- ✅ Visual display shows picks/results at larger font size (28px vs 16px input)
+- ✅ Users can easily scan multiple matches to see their picks
+- ✅ Host can see published results without clutter
+- ✅ Correction reason is mandatory and visible in yellow badge
+
+**Negative:**
+- ⚠️ One extra click to edit (but this is intentional friction)
+- ⚠️ Slightly more complex component logic (read vs edit state)
+
+### Alternatives Considered
+
+1. **Always Edit Mode:** Rejected - too cluttered, confusing after save
+2. **Inline Edit (double-click):** Rejected - not discoverable enough for MVP
+3. **Modal for Edit:** Rejected - too heavy for small edits
+4. **Separate Pages:** Rejected - breaks flow, requires navigation
+
+### Implementation
+
+**Components Created:**
+- `PickSection` - Container with mode toggle logic
+- `PickDisplay` - Visual read-only display (🏠 2 - 1 🚪)
+- `PickEditor` - Input fields for editing
+- `ResultSection` - Container with mode toggle logic
+- `ResultDisplay` - Visual read-only display (⚽ 2 - 1 ⚽) + correction badge
+- `ResultEditor` - Input fields + reason field
+
+**File Modified:**
+- `frontend/src/pages/PoolPage.tsx` (~807 lines)
+
+**Key UX Patterns:**
+```tsx
+// Pick Section Logic
+{!editMode && hasPick && (
+  <>
+    <PickDisplay pick={pick} />
+    {!isLocked && <button onClick={() => setEditMode(true)}>✏️ Modificar</button>}
+  </>
+)}
+
+{(editMode || !hasPick) && !isLocked && (
+  <PickEditor onSave={() => setEditMode(false)} onCancel={() => setEditMode(false)} />
+)}
+```
+
+### Related Decisions
+
+- ADR-016: React Without State Management (local state sufficient for edit mode)
+- ADR-017: Light Theme Only (visual design focused on clarity)
+
+---
+
+## ADR-019: Penalty Shootouts in Knockout Phases
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #business-rules #database #api
+
+### Context
+
+FIFA World Cup 2026 includes knockout phases (Round of 32, Round of 16, QF, SF, Final) where matches cannot end in a draw. When teams are tied after regular time, a penalty shootout determines the winner.
+
+The system needs to:
+1. Store penalty shootout scores separately from regular time
+2. Determine match winners for tournament advancement
+3. Support manual result entry by Hosts (penalties optional for group stage, required for knockout draws)
+
+### Decision
+
+Add optional `homePenalties` and `awayPenalties` fields to `PoolMatchResultVersion` table.
+
+**Database Migration:**
+```sql
+ALTER TABLE "PoolMatchResultVersion"
+  ADD COLUMN "homePenalties" INTEGER,
+  ADD COLUMN "awayPenalties" INTEGER;
+```
+
+**API Contract (PUT /pools/:poolId/results/:matchId):**
+```json
+{
+  "homeGoals": 2,
+  "awayGoals": 2,
+  "homePenalties": 4,  // Optional
+  "awayPenalties": 3,  // Optional
+  "reason": "..."      // Required if version > 1
+}
+```
+
+**Business Rules:**
+- Penalties are nullable (not required for group stage matches)
+- For knockout phases with draws, penalties must be provided
+- Winner determination logic:
+  1. If `homeGoals > awayGoals` → Home wins
+  2. Else if `awayGoals > homeGoals` → Away wins
+  3. Else if draw in regular time:
+     - If penalties exist: higher penalty score wins
+     - Else: error (knockout requires tiebreaker)
+
+### Rationale
+
+**Why Optional Fields?**
+- Group stage matches can end in draws (penalties not needed)
+- Knockout matches require penalties only when tied
+- Nullable fields are simpler than separate tables
+
+**Why Store Separately?**
+- Penalties are conceptually different from regular time goals
+- Some scoring systems may weight penalties differently
+- Historical data should distinguish regular time vs penalties
+
+**Why Not Separate Table?**
+- MVP complexity - single table is simpler
+- Penalties always belong to a specific result version
+- Query performance - no JOIN needed
+
+### Consequences
+
+**Positive:**
+- ✅ Simple schema (2 new columns)
+- ✅ Backward compatible (nullable)
+- ✅ Auto-advance can determine knockout winners correctly
+- ✅ Frontend can display penalties separately ("2-2 (4-3 on pens)")
+
+**Negative:**
+- ⚠️ Validation logic must check knockout phase + draw → require penalties
+- ⚠️ Frontend must handle nullable values
+
+**Risks:**
+- ⚠️ Host might forget to enter penalties for knockout draw (mitigated by backend validation)
+
+### Alternatives Considered
+
+1. **Separate `PenaltyShootout` table:** Rejected - over-engineering for MVP
+2. **Store in JSON field:** Rejected - loses type safety and query ability
+3. **Combine into single "goals" field (e.g., "2+4"):** Rejected - parsing complexity
+
+### Implementation
+
+**Files Modified:**
+- `backend/prisma/schema.prisma` - Added fields
+- `backend/src/routes/results.ts` - Accept penalties in request body
+- `backend/src/services/instanceAdvancement.ts` - Use penalties for winner determination
+- `frontend/src/pages/PoolPage.tsx` - Penalty input UI for draws
+
+**Migration:**
+- `20260104161019_add_penalties_and_locked_phases`
+
+### Related Decisions
+
+- ADR-020: Auto-Advance (uses penalties for winner determination)
+- ADR-007: Result Versioning (penalties included in versions)
+
+---
+
+## ADR-020: Auto-Advance for Tournament Phases
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #feature #business-rules #automation
+
+### Context
+
+FIFA World Cup 2026 has 6 phases: Group Stage → R32 → R16 → QF → SF → Final.
+
+After each phase completes (all matches have results), the system must:
+1. Determine qualified teams (group stage: winners, runners-up, best 3rd place)
+2. Resolve placeholder matches in next phase (e.g., "Winner Group A" → actual team)
+3. Optionally trigger this automatically when last result is published
+
+**Manual vs Automatic:**
+- **Manual:** Host clicks "Avanzar Fase" button (full control)
+- **Automatic:** System advances immediately after last result published (convenience)
+
+### Decision
+
+Implement **opt-in auto-advance** with manual override capability.
+
+**Database Schema:**
+```sql
+ALTER TABLE "Pool" ADD COLUMN "autoAdvanceEnabled" BOOLEAN NOT NULL DEFAULT true;
+```
+
+**Behavior:**
+- When last match of a phase gets a result published:
+  1. Check if `pool.autoAdvanceEnabled == true`
+  2. Check if phase is NOT in `pool.lockedPhases` (ADR-021)
+  3. If both true → automatically resolve next phase placeholders
+  4. Log audit event with `triggeredBy: "RESULT_PUBLISH"`
+
+- Host can always manually advance via `POST /pools/:poolId/advance-phase`
+
+**API Endpoints:**
+- `PATCH /pools/:poolId/settings` - Toggle autoAdvanceEnabled
+- `POST /pools/:poolId/advance-phase` - Manual advance (always works)
+
+### Rationale
+
+**Why Opt-In Instead of Forced?**
+- Some Hosts want full control (e.g., verify all results before advancing)
+- Erratas might require rolling back advancement
+- Phase locking (ADR-021) allows blocking auto-advance for corrections
+
+**Why Default to TRUE?**
+- Most users expect automatic progression (convenience)
+- Can be disabled if needed
+- Reduces Host workload for large tournaments
+
+**Why NOT Always Automatic?**
+- Hosts need ability to review/correct before advancing
+- Complex tiebreakers might need manual resolution
+- Erratas published after advancement would break bracket
+
+### Consequences
+
+**Positive:**
+- ✅ Convenience - tournament progresses automatically for 95% of cases
+- ✅ Host can disable if they want full control
+- ✅ Manual advance always available as fallback
+- ✅ Audit log tracks whether advancement was auto or manual
+
+**Negative:**
+- ⚠️ Auto-advance might surprise users if they don't know it's enabled
+- ⚠️ Erratas after auto-advance require phase locking + manual fix
+
+**Risks:**
+- ⚠️ Bug in advancement logic could corrupt bracket (mitigated by extensive testing)
+- ⚠️ Performance spike if many pools advance simultaneously (acceptable for MVP scale)
+
+### Alternatives Considered
+
+1. **Always Manual:** Rejected - too much Host work for large tournaments
+2. **Always Automatic:** Rejected - no escape hatch for corrections
+3. **Delayed Auto-Advance (e.g., 5 min):** Rejected - adds complexity, doesn't solve errata problem
+
+### Implementation
+
+**Services Created:**
+- `backend/src/services/tournamentAdvancement.ts` - Pure algorithms (group standings, rankings, placeholders)
+- `backend/src/services/instanceAdvancement.ts` - DB integration (validation, advancement execution)
+
+**Logic Flow:**
+1. Host publishes result via `PUT /pools/:poolId/results/:matchId`
+2. After saving result, backend checks if phase is complete
+3. If complete + autoAdvanceEnabled + not locked → call `advanceToRoundOf32()` or `advanceKnockoutPhase()`
+4. Update instance dataJson with resolved team IDs
+5. Log audit event
+
+**Files Modified:**
+- `backend/src/routes/results.ts` - Auto-advance after result publish
+- `backend/src/routes/pools.ts` - Manual advance endpoint + settings toggle
+- `frontend/src/pages/PoolPage.tsx` - Toggle UI in admin panel
+
+### Related Decisions
+
+- ADR-021: Phase Locking (blocks auto-advance)
+- ADR-019: Penalties (required for knockout winner determination)
+- ADR-022: Placeholder System (what gets resolved)
+- ADR-023: Service Architecture (separation of concerns)
+
+---
+
+## ADR-021: Phase Locking Mechanism
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #feature #business-rules #host-tools
+
+### Context
+
+Auto-advance (ADR-020) can cause problems when:
+1. Host discovers an error in published results AFTER phase advanced
+2. Correcting the result would invalidate the entire next phase bracket
+3. Host needs time to review/verify results before allowing advancement
+
+**Example Scenario:**
+- Round of 32 completes, auto-advances to R16
+- Host discovers wrong score in R32 Match #5
+- Correcting it would change which team advanced → R16 bracket is now invalid
+
+### Decision
+
+Add per-phase locking mechanism that blocks auto-advance.
+
+**Database Schema:**
+```sql
+ALTER TABLE "Pool" ADD COLUMN "lockedPhases" JSONB NOT NULL DEFAULT '[]';
+```
+
+**Data Format:**
+```json
+{
+  "lockedPhases": ["group_stage", "round_of_32"]
+}
+```
+
+**Behavior:**
+- If a phase is in `lockedPhases`, auto-advance is blocked (even if `autoAdvanceEnabled = true`)
+- Manual advance via `POST /pools/:poolId/advance-phase` is also blocked
+- Host must first unlock the phase to allow advancement
+- Allows Host to publish corrections (erratas) without triggering advancement
+
+**API Endpoint:**
+```
+POST /pools/:poolId/lock-phase
+{
+  "phaseId": "round_of_32",
+  "locked": true  // or false to unlock
+}
+```
+
+**UI:**
+- Admin panel shows phase status: INCOMPLETE | COMPLETE | LOCKED
+- Lock/Unlock button appears when phase is complete
+- Visual indicator (🔒) shows locked phases
+
+### Rationale
+
+**Why JSON Array Instead of Boolean Per Phase?**
+- Flexible - supports any phase ID without schema changes
+- Simple - empty array = no locks
+- Extensible - could add lock metadata (reason, lockedBy, lockedAt) later
+
+**Why Not Just Disable Auto-Advance?**
+- Locking is phase-specific (might want to lock R32 but advance R16)
+- Provides clearer intent ("I'm fixing this phase, don't touch it")
+- Can lock even with auto-advance disabled (prevents accidental manual advance)
+
+**Why Allow Manual Advance Block?**
+- Consistency - locked means locked (auto OR manual)
+- Safety - prevents Host from accidentally advancing while fixing errors
+- If Host wants to advance, they unlock first (explicit action)
+
+### Consequences
+
+**Positive:**
+- ✅ Host can safely publish corrections without breaking brackets
+- ✅ Fine-grained control (per-phase, not all-or-nothing)
+- ✅ Clear UI affordance (lock button) prevents confusion
+- ✅ Audit log tracks lock/unlock actions
+
+**Negative:**
+- ⚠️ One more concept for Hosts to learn
+- ⚠️ Locked phases stay locked until manually unlocked (could be forgotten)
+
+**Risks:**
+- ⚠️ Host forgets to unlock → tournament stuck (mitigated by clear UI)
+
+### Alternatives Considered
+
+1. **Boolean `locked` field:** Rejected - not granular enough (all-or-nothing)
+2. **Separate `PhaseOverride` table:** Rejected - over-engineering for MVP
+3. **Time-based lock (e.g., 24h cooldown):** Rejected - too opinionated, removes control
+4. **Auto-unlock after corrections:** Rejected - dangerous (could auto-advance mid-fix)
+
+### Implementation
+
+**Files Modified:**
+- `backend/prisma/schema.prisma` - Added `lockedPhases` JSONB column
+- `backend/src/routes/pools.ts` - Lock/unlock endpoint
+- `backend/src/services/instanceAdvancement.ts` - Check locks before advancing
+- `frontend/src/pages/PoolPage.tsx` - Lock/unlock buttons in admin panel
+
+**UI Components:**
+```tsx
+{phaseStatus === "COMPLETE" && (
+  <button onClick={isLocked ? unlockPhase : lockPhase}>
+    {isLocked ? "🔓 Desbloquear" : "🔒 Bloquear"}
+  </button>
+)}
+```
+
+### Related Decisions
+
+- ADR-020: Auto-Advance (what this blocks)
+- ADR-007: Result Versioning (used for corrections)
+
+---
+
+## ADR-022: Placeholder System for Knockout Matches
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #architecture #tournament-structure
+
+### Context
+
+Tournament knockout brackets are defined BEFORE teams are known.
+
+**Example:**
+- Round of 32 Match #1: "Winner Group A" vs "3rd Place Pool 1"
+- We don't know which teams until group stage completes
+
+**Requirements:**
+1. Define full tournament structure upfront (104 matches for WC2026)
+2. Matches reference teams that don't exist yet
+3. After each phase, "resolve" placeholders to actual team IDs
+4. Display placeholders in UI ("Ganador Grupo A" before resolution, "Mexico" after)
+
+### Decision
+
+Use **string-based placeholder IDs** in match `homeTeamId` and `awayTeamId` fields.
+
+**Placeholder Formats:**
+
+**Group Stage → R32:**
+- Winners: `W_A`, `W_B`, ..., `W_L` (12 teams)
+- Runners-up: `RU_A`, `RU_B`, ..., `RU_L` (12 teams)
+- Best 3rd place: `3rd_POOL_1`, `3rd_POOL_2`, ..., `3rd_POOL_8` (8 teams)
+
+**Knockout Progression:**
+- Match winners: `W_R32_1`, `W_R32_2`, ..., `W_R32_16`
+- Match losers (for 3rd place): `L_SF_1`, `L_SF_2`
+
+**Example Match Definition:**
+```json
+{
+  "id": "m_R32_1",
+  "phaseId": "round_of_32",
+  "homeTeamId": "W_A",        // Placeholder
+  "awayTeamId": "3rd_POOL_1", // Placeholder
+  "kickoffUtc": "2026-06-20T18:00:00Z"
+}
+```
+
+**After Group Stage Completes:**
+```json
+{
+  "id": "m_R32_1",
+  "homeTeamId": "t_MEX",  // Resolved to Mexico
+  "awayTeamId": "t_URU",  // Resolved to Uruguay
+  ...
+}
+```
+
+**Resolution Logic:**
+- Stored in `backend/src/services/tournamentAdvancement.ts`
+- `resolvePlaceholders()` function maps placeholders to actual team IDs
+- Updates `TournamentInstance.dataJson` in place
+
+### Rationale
+
+**Why String IDs Instead of Separate Table?**
+- Simpler - no JOINs needed
+- Matches are stored in JSON anyway (not relational)
+- Easy to check if resolved: `teamId.startsWith("W_")` → placeholder
+
+**Why Not NULL Until Resolved?**
+- NULL doesn't convey semantic meaning (which winner?)
+- Placeholders allow UI to show "Ganador Grupo A" before resolution
+- Easier to validate tournament structure (all matches defined upfront)
+
+**Why In-Place Update Instead of Immutable?**
+- Instance `dataJson` is already a snapshot (version controlled via Instance creation)
+- Simpler than managing multiple versions of match definitions
+- Pools reference instance, so all pools see updated brackets
+
+### Consequences
+
+**Positive:**
+- ✅ Full tournament defined upfront (good for testing/validation)
+- ✅ UI can show placeholders before resolution ("TBD" with context)
+- ✅ Simple resolution logic (string replacement)
+- ✅ No schema changes needed (uses existing `dataJson`)
+
+**Negative:**
+- ⚠️ Placeholder format is hard-coded (changing it requires migration)
+- ⚠️ Type safety lost (string could be placeholder OR team ID)
+
+**Risks:**
+- ⚠️ Typo in placeholder ID would break resolution (mitigated by tests)
+- ⚠️ Multiple pools on same instance share resolved state (by design, but could confuse)
+
+### Alternatives Considered
+
+1. **Create matches dynamically:** Rejected - harder to test, no upfront validation
+2. **Separate `PlaceholderMatch` and `ResolvedMatch` tables:** Rejected - over-engineering
+3. **Store resolution mapping separately:** Rejected - harder to query current state
+4. **Use numeric IDs (e.g., -1 for winner A):** Rejected - less readable, harder to debug
+
+### Implementation
+
+**Services:**
+- `tournamentAdvancement.ts`:
+  - `resolvePlaceholders()` - Group stage → R32
+  - `resolveKnockoutPlaceholders()` - Knockout progression
+
+**Logic Example:**
+```typescript
+function resolvePlaceholders(matches, winners, runnersUp, bestThirds) {
+  return matches.map(match => ({
+    ...match,
+    homeTeamId: resolveTeamId(match.homeTeamId, winners, runnersUp, bestThirds),
+    awayTeamId: resolveTeamId(match.awayTeamId, winners, runnersUp, bestThirds),
+  }));
+}
+
+function resolveTeamId(placeholder, winners, runnersUp, bestThirds) {
+  if (placeholder.startsWith("W_")) return winners.get(placeholder.slice(2));
+  if (placeholder.startsWith("RU_")) return runnersUp.get(placeholder.slice(3));
+  if (placeholder.startsWith("3rd_POOL_")) return bestThirds[parseInt(placeholder.slice(9)) - 1];
+  return placeholder; // Already resolved
+}
+```
+
+**Frontend:**
+```tsx
+function getTeamDisplay(teamId: string) {
+  if (teamId.startsWith("W_")) return `Ganador Grupo ${teamId.slice(2)}`;
+  if (teamId.startsWith("RU_")) return `2° Grupo ${teamId.slice(3)}`;
+  if (teamId.startsWith("3rd_POOL_")) return `${teamId.slice(9)}° Mejor 3ro`;
+  return getTeamName(teamId); // Actual team
+}
+```
+
+### Related Decisions
+
+- ADR-020: Auto-Advance (triggers resolution)
+- ADR-023: Service Architecture (where resolution logic lives)
+- ADR-006: Template/Version/Instance (where matches are stored)
+
+---
+
+## ADR-023: Tournament Advancement Service Architecture
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Engineering Team
+**Tags:** #architecture #separation-of-concerns #testing
+
+### Context
+
+Tournament advancement logic is complex:
+1. Calculate group standings (points, goal difference, fair play)
+2. Rank third-place teams across all groups
+3. Determine qualifiers (winners, runners-up, best 3rds)
+4. Resolve placeholder matches
+5. Validate all results exist before advancing
+6. Handle errors (ties, incomplete results)
+7. Integrate with database (read results, update instance)
+
+**Concerns:**
+- Business logic mixed with DB queries is hard to test
+- Route handlers become bloated with algorithm code
+- FIFA ranking rules are complex and need unit testing
+
+### Decision
+
+Split advancement logic into **two services** with clear separation:
+
+**1. `tournamentAdvancement.ts` - Pure Algorithms (no DB)**
+- Exported pure functions (no side effects)
+- Inputs: simple data structures (arrays, objects)
+- Outputs: calculated results (standings, qualifiers, resolved matches)
+- Fully testable without database
+
+**Functions:**
+- `calculateGroupStandings(teamIds, results)` → `TeamStanding[]`
+- `rankThirdPlaceTeams(allStandings)` → `ThirdPlaceRanking[]`
+- `determineQualifiers(standings, bestThirds)` → `QualifiedTeams`
+- `resolvePlaceholders(matches, winners, runnersUp, bestThirds)` → `ResolvedMatches[]`
+- `resolveKnockoutPlaceholders(matches, currentPhase, results)` → `ResolvedMatches[]`
+
+**2. `instanceAdvancement.ts` - DB Integration**
+- Fetches data from Prisma
+- Calls pure functions from `tournamentAdvancement.ts`
+- Saves results back to database
+- Handles errors and validation
+
+**Functions:**
+- `validateGroupStageComplete(instanceId, poolId)` → validation result
+- `advanceToRoundOf32(instanceId, poolId)` → advancement result
+- `advanceKnockoutPhase(instanceId, currentPhase, nextPhase, poolId)` → advancement result
+- `validateCanAutoAdvance(instanceId, phaseId, poolId)` → can advance?
+
+### Rationale
+
+**Why Separate Pure vs Impure?**
+- **Testability:** Pure functions easy to unit test (no mocks needed)
+- **Reusability:** Same algorithms work for previews, simulations, testing
+- **Clarity:** Business logic isolated from DB queries
+- **Performance:** Pure functions can be memoized/cached
+
+**Why Not Single Service?**
+- Mixed concerns are harder to test (need DB mocks for every test)
+- Algorithm changes shouldn't require DB changes
+- Pure functions are more maintainable
+
+**Why Not Models/Repositories Pattern?**
+- Overkill for MVP (Prisma already provides good abstraction)
+- Two services sufficient for current complexity
+- Can refactor later if needed
+
+### Consequences
+
+**Positive:**
+- ✅ Pure functions easily unit tested (no DB setup)
+- ✅ Business logic (FIFA rules) isolated and clear
+- ✅ Can preview/simulate advancement without DB writes
+- ✅ Route handlers stay thin (delegate to services)
+- ✅ Easier to debug (inspect intermediate data structures)
+
+**Negative:**
+- ⚠️ Two files instead of one (more to navigate)
+- ⚠️ Data mapping between DB models and algorithm inputs
+
+**Risks:**
+- ⚠️ Temptation to add DB queries to pure service (mitigated by code review)
+
+### Alternatives Considered
+
+1. **All Logic in Route Handlers:** Rejected - untestable, bloated files
+2. **Single Unified Service:** Rejected - mixing concerns, hard to test
+3. **Hexagonal Architecture (Ports/Adapters):** Rejected - over-engineering for MVP
+4. **Domain-Driven Design:** Rejected - too much ceremony for current scale
+
+### Implementation
+
+**File Structure:**
+```
+backend/src/services/
+  ├── tournamentAdvancement.ts  (pure algorithms)
+  ├── instanceAdvancement.ts    (DB integration)
+```
+
+**Example Usage in Route:**
+```typescript
+// routes/results.ts
+import { validateCanAutoAdvance, advanceToRoundOf32 } from "../services/instanceAdvancement";
+
+// After publishing result
+const validation = await validateCanAutoAdvance(instanceId, phaseId, poolId);
+if (validation.canAdvance) {
+  await advanceToRoundOf32(instanceId, poolId);
+}
+```
+
+**Example Test (Pure Function):**
+```typescript
+// tournamentAdvancement.test.ts
+import { calculateGroupStandings } from "./tournamentAdvancement";
+
+test("calculates standings with correct tiebreakers", () => {
+  const results = [
+    { homeTeamId: "t_A1", awayTeamId: "t_A2", homeGoals: 2, awayGoals: 1 },
+    // ...
+  ];
+
+  const standings = calculateGroupStandings("A", ["t_A1", "t_A2", "t_A3", "t_A4"], results);
+
+  expect(standings[0].teamId).toBe("t_A1");
+  expect(standings[0].points).toBe(3);
+});
+```
+
+### Related Decisions
+
+- ADR-020: Auto-Advance (uses these services)
+- ADR-022: Placeholder System (resolved by `tournamentAdvancement.ts`)
+- ADR-019: Penalties (used in winner determination)
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.2-beta:**
-- [ ] ADR-018: Username uniqueness enforcement strategy
-- [ ] ADR-019: Join approval notification system
-- [ ] ADR-020: Pool state transition automation (manual vs auto)
+- [ ] ADR-019: Username uniqueness enforcement strategy
+- [ ] ADR-020: Join approval notification system
+- [ ] ADR-021: Pool state transition automation (manual vs auto)
 
 **v1.0:**
 - [ ] ADR-021: Forgot password flow (email link vs code)

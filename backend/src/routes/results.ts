@@ -3,6 +3,11 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
+import {
+  validateCanAutoAdvance,
+  advanceToRoundOf32,
+  advanceKnockoutPhase,
+} from "../services/instanceAdvancement";
 
 export const resultsRouter = Router();
 resultsRouter.use(requireAuth);
@@ -10,6 +15,9 @@ resultsRouter.use(requireAuth);
 const upsertResultSchema = z.object({
   homeGoals: z.number().int().min(0).max(99),
   awayGoals: z.number().int().min(0).max(99),
+  // Comentario en español: penalties opcionales (solo fases eliminatorias con empate)
+  homePenalties: z.number().int().min(0).max(99).optional(),
+  awayPenalties: z.number().int().min(0).max(99).optional(),
   // Comentario en español: requerido solo cuando ya existía un resultado (errata)
   reason: z.string().min(1).max(500).optional(),
 });
@@ -80,7 +88,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   const match = matches.find((m) => m.id === matchId);
   if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
 
-  const { homeGoals, awayGoals, reason } = parsed.data;
+  const { homeGoals, awayGoals, homePenalties, awayPenalties, reason } = parsed.data;
 
   try {
     const saved = await prisma.$transaction(async (tx) => {
@@ -109,6 +117,8 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           status: "PUBLISHED",
           homeGoals,
           awayGoals,
+          homePenalties: homePenalties ?? null,
+          awayPenalties: awayPenalties ?? null,
           reason: reason ?? null,
           createdByUserId: req.auth!.userId,
         },
@@ -133,6 +143,111 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
       ip: req.ip,
       userAgent: req.get("user-agent") ?? null,
     });
+
+    // ========== AUTO-ADVANCE LOGIC ==========
+    // Después de publicar un resultado, verificar si se completó alguna fase
+    // y si es posible avanzar automáticamente a la siguiente
+
+    try {
+      const dataJson = pool.tournamentInstance.dataJson as any;
+      if (!dataJson?.phases || !dataJson?.matches) {
+        // No hay fases definidas, skip auto-advance
+        return res.json(saved);
+      }
+
+      // Encontrar la fase del partido que acabamos de actualizar
+      const updatedMatch = dataJson.matches.find((m: any) => m.id === matchId);
+      if (!updatedMatch) {
+        return res.json(saved);
+      }
+
+      const phaseId = updatedMatch.phaseId;
+      if (!phaseId) {
+        return res.json(saved);
+      }
+
+      // Validar si podemos hacer auto-advance para esta fase
+      const validation = await validateCanAutoAdvance(
+        pool.tournamentInstance.id,
+        phaseId,
+        poolId
+      );
+
+      if (!validation.canAdvance) {
+        // No se puede avanzar automáticamente
+        console.log(`[AUTO-ADVANCE BLOCKED] Phase: ${phaseId}, Reason: ${validation.reason}`);
+        return res.json(saved);
+      }
+
+      // ¡Fase completa y sin bloqueos! Proceder con auto-advance
+      console.log(`[AUTO-ADVANCE] Phase ${phaseId} complete. Advancing...`);
+
+      if (phaseId === "group_stage") {
+        // Avanzar de Grupos a Round of 32
+        const result = await advanceToRoundOf32(pool.tournamentInstance.id, poolId);
+
+        await writeAuditEvent({
+          actorUserId: req.auth!.userId,
+          action: "TOURNAMENT_AUTO_ADVANCED_TO_R32",
+          entityType: "TournamentInstance",
+          entityId: pool.tournamentInstance.id,
+          dataJson: {
+            triggeredBy: "RESULT_PUBLISH",
+            matchId,
+            winnersCount: result.winners.size,
+            runnersUpCount: result.runnersUp.size,
+            bestThirdsCount: result.bestThirds.length,
+          },
+          ip: req.ip,
+          userAgent: req.get("user-agent") ?? null,
+        });
+
+        console.log(`[AUTO-ADVANCE SUCCESS] Advanced to Round of 32`);
+      } else if (phaseId.startsWith("round_of_") || phaseId.includes("finals") || phaseId === "quarter_finals" || phaseId === "semi_finals") {
+        // Avanzar fases knockout
+        const phaseOrder: Record<string, string | null> = {
+          round_of_32: "round_of_16",
+          round_of_16: "quarter_finals",
+          quarter_finals: "semi_finals",
+          semi_finals: "finals",
+          finals: null, // Torneo terminado
+        };
+
+        const nextPhaseId = phaseOrder[phaseId];
+        if (nextPhaseId) {
+          const result = await advanceKnockoutPhase(
+            pool.tournamentInstance.id,
+            phaseId,
+            nextPhaseId,
+            poolId
+          );
+
+          await writeAuditEvent({
+            actorUserId: req.auth!.userId,
+            action: "TOURNAMENT_AUTO_ADVANCED_KNOCKOUT",
+            entityType: "TournamentInstance",
+            entityId: pool.tournamentInstance.id,
+            dataJson: {
+              triggeredBy: "RESULT_PUBLISH",
+              matchId,
+              from: phaseId,
+              to: nextPhaseId,
+              resolvedMatchesCount: result.resolvedMatches.length,
+            },
+            ip: req.ip,
+            userAgent: req.get("user-agent") ?? null,
+          });
+
+          console.log(`[AUTO-ADVANCE SUCCESS] Advanced from ${phaseId} to ${nextPhaseId}`);
+        } else {
+          console.log(`[AUTO-ADVANCE] Tournament complete!`);
+        }
+      }
+    } catch (autoAdvanceError: any) {
+      // Si falla el auto-advance, loguear pero NO fallar la request original
+      console.error("[AUTO-ADVANCE ERROR]", autoAdvanceError.message);
+      // El resultado ya se guardó exitosamente, solo falló el avance automático
+    }
 
     return res.json(saved);
   } catch (e: any) {

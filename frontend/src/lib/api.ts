@@ -1,6 +1,6 @@
 // frontend/src/lib/api.ts
 // Cliente HTTP simple para hablar con el backend
-import { clearToken, markSessionExpired } from "./auth";
+import { clearToken, getToken, markSessionExpired } from "./auth";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL ??
@@ -38,7 +38,11 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
 
     if (res.status === 401) {
       // ✅ hardening: token inválido/expirado → logout automático
-      markSessionExpired();
+      // Solo marcar como expirado si había un token (no en login fallido)
+      const hadToken = !!getToken();
+      if (hadToken) {
+        markSessionExpired();
+      }
       clearToken();
     }
     const err: any = new Error(msg);
@@ -158,5 +162,50 @@ export async function upsertResult(token: string, poolId: string, matchId: strin
   );
 }
 
+/* =========================
+   ADMIN / HOST ACTIONS
+   ========================= */
 
+export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean }): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/settings`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(settings),
+    },
+    token
+  );
+}
+
+export async function manualAdvancePhase(
+  token: string,
+  poolId: string,
+  currentPhaseId: string,
+  nextPhaseId?: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/advance-phase`,
+    {
+      method: "POST",
+      body: JSON.stringify({ currentPhaseId, nextPhaseId }),
+    },
+    token
+  );
+}
+
+export async function lockPhase(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  locked: boolean
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/lock-phase`,
+    {
+      method: "POST",
+      body: JSON.stringify({ phaseId, locked }),
+    },
+    token
+  );
+}
 

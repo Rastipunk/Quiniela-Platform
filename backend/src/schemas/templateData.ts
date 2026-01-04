@@ -86,6 +86,14 @@ export function validateTemplateDataConsistency(data: TemplateData): TemplateDat
     phaseOrder.add(p.order);
   }
 
+  // Helper: check if teamId is a placeholder (for knockout phases)
+  const isPlaceholder = (teamId: string) => {
+    return teamId.startsWith("W_") ||
+           teamId.startsWith("RU_") ||
+           teamId.startsWith("L_") ||
+           teamId.startsWith("3rd_");
+  };
+
   const matchIds = new Set<string>();
   for (const m of data.matches) {
     if (matchIds.has(m.id)) issues.push({ path: `matches.${m.id}`, message: `Match id duplicado: ${m.id}` });
@@ -94,12 +102,15 @@ export function validateTemplateDataConsistency(data: TemplateData): TemplateDat
     if (!phaseIds.has(m.phaseId)) {
       issues.push({ path: `matches.${m.id}.phaseId`, message: `phaseId no existe: ${m.phaseId}` });
     }
-    if (!teamIds.has(m.homeTeamId)) {
+
+    // Only validate team existence if it's NOT a placeholder
+    if (!isPlaceholder(m.homeTeamId) && !teamIds.has(m.homeTeamId)) {
       issues.push({ path: `matches.${m.id}.homeTeamId`, message: `homeTeamId no existe: ${m.homeTeamId}` });
     }
-    if (!teamIds.has(m.awayTeamId)) {
+    if (!isPlaceholder(m.awayTeamId) && !teamIds.has(m.awayTeamId)) {
       issues.push({ path: `matches.${m.id}.awayTeamId`, message: `awayTeamId no existe: ${m.awayTeamId}` });
     }
+
     if (m.homeTeamId === m.awayTeamId) {
       issues.push({ path: `matches.${m.id}`, message: `homeTeamId y awayTeamId no pueden ser iguales (${m.homeTeamId})` });
     }

@@ -4,6 +4,11 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { writeAuditEvent } from "../lib/audit";
+import {
+  advanceToRoundOf32,
+  advanceKnockoutPhase,
+  validateGroupStageComplete,
+} from "../services/instanceAdvancement";
 
 export const adminInstancesRouter = Router();
 
@@ -196,5 +201,120 @@ adminInstancesRouter.get("/instances/:instanceId", async (req, res) => {
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
   if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
   return res.json(instance);
+});
+
+// ========== TOURNAMENT ADVANCEMENT ENDPOINTS ==========
+
+// POST /admin/instances/:instanceId/advance-to-r32
+// Avanza el torneo de la fase de grupos al Round of 32
+adminInstancesRouter.post("/instances/:instanceId/advance-to-r32", async (req, res) => {
+  const { instanceId } = req.params;
+
+  try {
+    const result = await advanceToRoundOf32(instanceId);
+
+    await writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "TOURNAMENT_ADVANCED_TO_R32",
+      entityType: "TournamentInstance",
+      entityId: instanceId,
+      dataJson: {
+        winnersCount: result.winners.size,
+        runnersUpCount: result.runnersUp.size,
+        bestThirdsCount: result.bestThirds.length,
+        resolvedMatchesCount: result.resolvedMatches.length,
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent") ?? null,
+    });
+
+    return res.json({
+      success: true,
+      message: "Avance a Round of 32 completado",
+      data: {
+        standings: Object.fromEntries(result.standings),
+        winners: Object.fromEntries(result.winners),
+        runnersUp: Object.fromEntries(result.runnersUp),
+        bestThirds: result.bestThirds,
+        resolvedMatches: result.resolvedMatches,
+      },
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      error: "ADVANCEMENT_FAILED",
+      message: error.message,
+    });
+  }
+});
+
+// POST /admin/instances/:instanceId/advance-knockout
+// Avanza una fase eliminatoria a la siguiente
+// Body: { currentPhaseId: "round_of_32", nextPhaseId: "round_of_16" }
+const advanceKnockoutSchema = z.object({
+  currentPhaseId: z.string(),
+  nextPhaseId: z.string(),
+});
+
+adminInstancesRouter.post("/instances/:instanceId/advance-knockout", async (req, res) => {
+  const { instanceId } = req.params;
+
+  const bodyParsed = advanceKnockoutSchema.safeParse(req.body);
+  if (!bodyParsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+  }
+
+  const { currentPhaseId, nextPhaseId } = bodyParsed.data;
+
+  try {
+    const result = await advanceKnockoutPhase(instanceId, currentPhaseId, nextPhaseId);
+
+    await writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "TOURNAMENT_ADVANCED_KNOCKOUT",
+      entityType: "TournamentInstance",
+      entityId: instanceId,
+      dataJson: {
+        from: currentPhaseId,
+        to: nextPhaseId,
+        resolvedMatchesCount: result.resolvedMatches.length,
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent") ?? null,
+    });
+
+    return res.json({
+      success: true,
+      message: `Avance de ${currentPhaseId} a ${nextPhaseId} completado`,
+      data: {
+        resolvedMatches: result.resolvedMatches,
+      },
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      error: "ADVANCEMENT_FAILED",
+      message: error.message,
+    });
+  }
+});
+
+// GET /admin/instances/:instanceId/group-stage-status
+// Verifica si la fase de grupos está completa
+adminInstancesRouter.get("/instances/:instanceId/group-stage-status", async (req, res) => {
+  const { instanceId } = req.params;
+
+  try {
+    const validation = await validateGroupStageComplete(instanceId);
+
+    return res.json({
+      isComplete: validation.isComplete,
+      missingMatches: validation.missingMatches,
+      missingCount: validation.missingMatches.length,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      error: "VALIDATION_FAILED",
+      message: error.message,
+    });
+  }
 });
 

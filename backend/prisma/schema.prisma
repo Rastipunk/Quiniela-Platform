@@ -175,6 +175,13 @@ model Pool {
   deadlineMinutesBeforeKickoff Int    @default(10)
   scoringPresetKey             String @default("CLASSIC")
 
+  // Comentario en español: habilita avance automático de fases cuando se completan resultados
+  autoAdvanceEnabled Boolean @default(true)
+
+  // Comentario en español: fases bloqueadas manualmente por el host (array de phaseIds)
+  // Ejemplo: ["round_of_16", "quarter_finals"] impide avanzar y permite correcciones
+  lockedPhases Json @default("[]")
+
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
@@ -291,6 +298,10 @@ model PoolMatchResultVersion {
 
   homeGoals Int
   awayGoals Int
+
+  // Comentario en español: goles de penalties (solo para fases eliminatorias)
+  homePenalties Int?
+  awayPenalties Int?
 
   // Comentario en español: motivo opcional cuando esto es una corrección (errata)
   reason String?

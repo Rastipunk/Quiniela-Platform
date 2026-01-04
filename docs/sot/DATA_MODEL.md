@@ -1,9 +1,9 @@
 # Data Model Specification
 # Quiniela Platform
 
-> **Version:** 1.0
-> **Last Updated:** 2026-01-02
-> **Status:** Production Schema (v0.1-alpha)
+> **Version:** 1.1
+> **Last Updated:** 2026-01-04
+> **Status:** Production Schema (v0.1-alpha + Tournament Advancement)
 > **Database:** PostgreSQL 14+
 > **ORM:** Prisma 6.19.1
 
@@ -445,6 +445,10 @@ model Pool {
   deadlineMinutesBeforeKickoff Int    @default(10)
   scoringPresetKey             String @default("CLASSIC")
 
+  // Tournament progression settings (v0.1-alpha, added 2026-01-04)
+  autoAdvanceEnabled Boolean @default(true)  // Enable automatic phase advancement
+  lockedPhases       Json    @default("[]")  // Array of phaseIds blocked from advancing
+
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
@@ -482,6 +486,10 @@ enum PoolVisibility {
 - Pool cannot be hard-deleted (only archived via status field, future)
 - `timeZone` used for display purposes (all DB times in UTC)
 - Once 2nd player joins, scoring rules become immutable (enforced in API)
+- `autoAdvanceEnabled`: Controls automatic tournament phase progression when all matches complete
+- `lockedPhases`: JSON array of phaseIds (e.g., `["group_stage", "round_of_32"]`) that block auto/manual advancement
+  - Empty array `[]` = no locks
+  - Locked phases prevent both automatic and manual advancement until unlocked
 
 **Future Fields (v0.2-beta):**
 ```prisma
@@ -758,6 +766,10 @@ model PoolMatchResultVersion {
   homeGoals Int
   awayGoals Int
 
+  // Penalty shootout scores (v0.1-alpha, added 2026-01-04)
+  homePenalties Int?  // Optional: for knockout phases that end in draw
+  awayPenalties Int?  // Optional: determines winner when regular time tied
+
   reason String?  // Required for version > 1 (errata reason)
 
   createdByUserId String
@@ -797,6 +809,10 @@ enum ResultVersionStatus {
 - Version 2+: `reason` mandatory (errata explanation)
 - `publishedAtUtc` always set to creation time
 - Audit event created for each version
+- `homePenalties`/`awayPenalties`: Nullable, used for knockout phases
+  - Group stage: penalties usually NULL (draws allowed)
+  - Knockout: if `homeGoals == awayGoals`, penalties required to determine winner
+  - Winner determination: regular time first, then penalties if tied
 
 **Example Version History:**
 ```
@@ -986,8 +1002,10 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 | `m4_predictions` | 2024-12-29 | Prediction |
 | `m5_results_leaderboard` | 2024-12-29 | PoolMatchResult, PoolMatchResultVersion |
 | `pool_preset_and_deadline10` | 2024-12-29 | Add scoringPresetKey, deadlineMinutesBeforeKickoff defaults |
+| `add_auto_advance_enabled_to_pool` | 2026-01-04 | Add autoAdvanceEnabled boolean to Pool (default: true) |
+| `add_penalties_and_locked_phases` | 2026-01-04 | Add homePenalties/awayPenalties to PoolMatchResultVersion, lockedPhases to Pool |
 
-**Total Migrations:** 7
+**Total Migrations:** 9
 
 ### 10.2 Pending Migrations (v0.2-beta)
 

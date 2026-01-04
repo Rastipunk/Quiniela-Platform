@@ -1,7 +1,30 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(dir:*)",
+      "Bash(curl:*)",
+      "Bash(findstr:*)",
+      "Bash(ls:*)",
+      "Bash(timeout 60 npm run test:tournament-advancement)",
+      "Bash(timeout 90 npm run test:tournament-advancement:*)",
+      "Bash(timeout 5 echo:*)",
+      "Bash(timeout 5 npm run build:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 2 echo:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(timeout 3 echo:*)",
+      "Bash(powershell -Command \"\\(Get-Content pools.ts | Measure-Object -Line\\).Lines\")",
+      "Bash(if exist .ts-node rmdir /s /q .ts-node)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(timeout 8 echo:*)",
+      "Bash(powershell -Command \"Get-Content pools.ts | Select-Object -Last 10\")",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -Filter pools.js | Select-Object -First 1 | ForEach-Object { $_FullName; Get-Content $_FullName | Select-Object -Last 20 }\")",
+      "Bash(powershell:*)",
+      "Bash(if exist node_modules/.cache rmdir /s /q node_modules/.cache)",
+      "Bash(timeout 10 echo:*)",
+      "Bash(git reset -- \"C︰\"* \"c︰\"* \"backend\"test_overview.json)"
     ]
   }
 }

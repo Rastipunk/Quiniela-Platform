@@ -9,10 +9,14 @@
     "start": "node dist/server.js",
     "seed:admin": "ts-node-dev --transpile-only src/scripts/seedAdmin.ts",
     "seed:test-accounts": "ts-node-dev --transpile-only src/scripts/seedTestAccounts.ts",
-    "seed:wc2026-sandbox": "ts-node-dev --transpile-only src/scripts/seedWc2026Sandbox.ts"
-
-
-
+    "seed:wc2026-sandbox": "ts-node-dev --transpile-only src/scripts/seedWc2026Sandbox.ts",
+    "seed:test-scenario": "ts-node-dev --transpile-only src/scripts/seedTestScenario.ts",
+    "seed:auto-advance-test": "ts-node-dev --transpile-only src/scripts/seedAutoAdvanceTest.ts",
+    "test:tournament-advancement": "ts-node-dev --transpile-only src/scripts/testTournamentAdvancement.ts",
+    "clean:instance": "ts-node-dev --transpile-only src/scripts/cleanInstance.ts",
+    "debug:auto-advance": "ts-node-dev --transpile-only src/scripts/debugAutoAdvance.ts",
+    "check:instance-state": "ts-node-dev --transpile-only src/scripts/checkInstanceState.ts",
+    "test:all-fixes": "ts-node-dev --transpile-only src/scripts/testAllFixes.ts"
   },
   "keywords": [],
   "author": "",

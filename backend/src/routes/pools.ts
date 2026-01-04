@@ -5,6 +5,11 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { getScoringPreset } from "../lib/scoringPresets";
+import {
+  advanceToRoundOf32,
+  advanceKnockoutPhase,
+  validateGroupStageComplete,
+} from "../services/instanceAdvancement";
 
 
 type SnapshotMatch = {
@@ -171,10 +176,24 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     include: { currentVersion: true },
   });
 
-  const resultByMatchId = new Map<string, { homeGoals: number; awayGoals: number }>();
+  const resultByMatchId = new Map<string, {
+    homeGoals: number;
+    awayGoals: number;
+    homePenalties?: number | null;
+    awayPenalties?: number | null;
+    version: number;
+    reason?: string | null;
+  }>();
   for (const r of results) {
     if (r.currentVersion) {
-      resultByMatchId.set(r.matchId, { homeGoals: r.currentVersion.homeGoals, awayGoals: r.currentVersion.awayGoals });
+      resultByMatchId.set(r.matchId, {
+        homeGoals: r.currentVersion.homeGoals,
+        awayGoals: r.currentVersion.awayGoals,
+        homePenalties: r.currentVersion.homePenalties,
+        awayPenalties: r.currentVersion.awayPenalties,
+        version: r.currentVersion.versionNumber,
+        reason: r.currentVersion.reason,
+      });
     }
   }
 
@@ -358,6 +377,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       createdAtUtc: pool.createdAtUtc,
       updatedAtUtc: pool.updatedAtUtc,
       scoringPresetKey: pool.scoringPresetKey ?? "CLASSIC",
+      autoAdvanceEnabled: pool.autoAdvanceEnabled,
+      lockedPhases: pool.lockedPhases as string[],
     },
     myMembership: {
       role: myMembership.role,
@@ -371,6 +392,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       status: pool.tournamentInstance.status,
       templateId: pool.tournamentInstance.templateId,
       templateVersionId: pool.tournamentInstance.templateVersionId,
+      dataJson: pool.tournamentInstance.dataJson,
     },
     permissions: {
       canManageResults: myMembership.role === "HOST",
@@ -675,6 +697,242 @@ poolsRouter.get("/:poolId", async (req, res) => {
       // Comentario en español: útil para habilitar/ocultar botones en UI
       canManageResults: myMembership.role === "HOST",
       canInvite: myMembership.role === "HOST",
+    },
+  });
+});
+
+// POST /pools/:poolId/advance-phase (solo HOST)
+// Endpoint manual para que el Host pueda forzar el avance de fase
+// cuando el auto-advance esté bloqueado (por erratas o configuración)
+const advancePhaseSchema = z.object({
+  currentPhaseId: z.string(),
+  nextPhaseId: z.string().optional(),
+});
+
+poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
+  const { poolId } = req.params;
+
+  const myMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
+  });
+
+  if (!myMembership || myMembership.role !== "HOST") {
+    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede avanzar fases manualmente" });
+  }
+
+  const parsed = advancePhaseSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const { currentPhaseId, nextPhaseId } = parsed.data;
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    include: { tournamentInstance: true },
+  });
+
+  if (!pool) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Pool no encontrada" });
+  }
+
+  try {
+    let result: any;
+    let actualNextPhaseId: string;
+
+    if (currentPhaseId === "group_stage") {
+      const validation = await validateGroupStageComplete(pool.tournamentInstance.id, poolId);
+      if (!validation.isComplete) {
+        return res.status(400).json({
+          error: "PHASE_INCOMPLETE",
+          message: `Fase de grupos incompleta. Faltan ${validation.missingMatches.length} partido(s)`,
+          details: { missingMatches: validation.missingMatches },
+        });
+      }
+
+      result = await advanceToRoundOf32(pool.tournamentInstance.id, poolId);
+      actualNextPhaseId = "round_of_32";
+
+      await writeAuditEvent({
+        actorUserId: req.auth!.userId,
+        action: "TOURNAMENT_MANUAL_ADVANCED_TO_R32",
+        entityType: "TournamentInstance",
+        entityId: pool.tournamentInstance.id,
+        dataJson: {
+          triggeredBy: "MANUAL_HOST_ACTION",
+          poolId,
+          winnersCount: result.winners.size,
+          runnersUpCount: result.runnersUp.size,
+          bestThirdsCount: result.bestThirds.length,
+        },
+        ip: req.ip,
+        userAgent: req.get("user-agent") ?? null,
+      });
+    } else {
+      const phaseOrder: Record<string, string> = {
+        round_of_32: "round_of_16",
+        round_of_16: "quarter_finals",
+        quarter_finals: "semi_finals",
+        semi_finals: "finals",
+      };
+
+      actualNextPhaseId = nextPhaseId || phaseOrder[currentPhaseId];
+      if (!actualNextPhaseId) {
+        return res.status(400).json({
+          error: "INVALID_PHASE",
+          message: `No se puede determinar la siguiente fase después de ${currentPhaseId}`,
+        });
+      }
+
+      result = await advanceKnockoutPhase(
+        pool.tournamentInstance.id,
+        currentPhaseId,
+        actualNextPhaseId,
+        poolId
+      );
+
+      await writeAuditEvent({
+        actorUserId: req.auth!.userId,
+        action: "TOURNAMENT_MANUAL_ADVANCED_KNOCKOUT",
+        entityType: "TournamentInstance",
+        entityId: pool.tournamentInstance.id,
+        dataJson: {
+          triggeredBy: "MANUAL_HOST_ACTION",
+          poolId,
+          from: currentPhaseId,
+          to: actualNextPhaseId,
+          resolvedMatchesCount: result.resolvedMatches.length,
+        },
+        ip: req.ip,
+        userAgent: req.get("user-agent") ?? null,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `Avance manual exitoso: ${currentPhaseId} → ${actualNextPhaseId}`,
+      data: {
+        currentPhaseId,
+        nextPhaseId: actualNextPhaseId,
+        ...result,
+      },
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      error: "ADVANCEMENT_FAILED",
+      message: error.message,
+    });
+  }
+});
+
+// PATCH /pools/:poolId/settings (solo HOST) - Update pool settings
+const updatePoolSettingsSchema = z.object({
+  autoAdvanceEnabled: z.boolean().optional(),
+});
+
+poolsRouter.patch("/:poolId/settings", async (req, res) => {
+  const { poolId } = req.params;
+  const parsed = updatePoolSettingsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues });
+  }
+
+  const myMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
+  });
+
+  if (!myMembership || myMembership.role !== "HOST") {
+    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede modificar configuraciones de la pool" });
+  }
+
+  const { autoAdvanceEnabled } = parsed.data;
+
+  // Update pool settings
+  const updatedPool = await prisma.pool.update({
+    where: { id: poolId },
+    data: {
+      ...(autoAdvanceEnabled !== undefined ? { autoAdvanceEnabled } : {}),
+    },
+  });
+
+  await writeAuditEvent({
+    action: "POOL_SETTINGS_UPDATED",
+    actorUserId: req.auth!.userId,
+    poolId,
+    dataJson: { changes: parsed.data },
+  });
+
+  return res.json({
+    success: true,
+    pool: {
+      id: updatedPool.id,
+      autoAdvanceEnabled: updatedPool.autoAdvanceEnabled,
+    },
+  });
+});
+
+// POST /pools/:poolId/lock-phase (solo HOST) - Lock a phase to prevent auto-advance
+const lockPhaseSchema = z.object({
+  phaseId: z.string().min(1),
+  locked: z.boolean(),
+});
+
+poolsRouter.post("/:poolId/lock-phase", async (req, res) => {
+  const { poolId } = req.params;
+  const parsed = lockPhaseSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues });
+  }
+
+  const myMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
+  });
+
+  if (!myMembership || myMembership.role !== "HOST") {
+    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede bloquear/desbloquear fases" });
+  }
+
+  const { phaseId, locked } = parsed.data;
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: { lockedPhases: true },
+  });
+
+  if (!pool) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  const currentLocked = (pool.lockedPhases as string[]) || [];
+
+  let updatedLocked: string[];
+  if (locked) {
+    // Add to locked phases if not already there
+    updatedLocked = currentLocked.includes(phaseId) ? currentLocked : [...currentLocked, phaseId];
+  } else {
+    // Remove from locked phases
+    updatedLocked = currentLocked.filter((id) => id !== phaseId);
+  }
+
+  const updatedPool = await prisma.pool.update({
+    where: { id: poolId },
+    data: {
+      lockedPhases: updatedLocked,
+    },
+  });
+
+  await writeAuditEvent({
+    action: locked ? "PHASE_LOCKED" : "PHASE_UNLOCKED",
+    actorUserId: req.auth!.userId,
+    poolId,
+    dataJson: { phaseId },
+  });
+
+  return res.json({
+    success: true,
+    pool: {
+      id: updatedPool.id,
+      lockedPhases: updatedPool.lockedPhases,
     },
   });
 });
