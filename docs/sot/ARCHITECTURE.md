@@ -110,6 +110,8 @@
 | **Validation** | Zod | 4.2.1 | Runtime schema validation |
 | **Authentication** | jsonwebtoken | 9.0.3 | JWT signing & verification |
 | **Password** | bcrypt | 6.0.0 | Password hashing (salt rounds = 10) |
+| **OAuth** | google-auth-library | 9.x | Google OAuth token verification |
+| **Email** | resend | 6.6.0 | Transactional email delivery |
 | **CORS** | cors | 2.8.5 | Cross-origin resource sharing |
 | **Config** | dotenv | 17.2.3 | Environment variable management |
 

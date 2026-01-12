@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
+import { canMakePicks } from "../services/poolStateMachine";
 
 export const picksRouter = Router();
 
@@ -122,6 +123,14 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
     include: { tournamentInstance: true },
   });
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+
+  // Validar que el pool permita hacer picks según su estado
+  if (!canMakePicks(pool.status as any)) {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Cannot make picks in this pool status"
+    });
+  }
 
   // Comentario en español: no permitimos picks en instancias archivadas (guardrail)
   if (pool.tournamentInstance.status === "ARCHIVED") {

@@ -12,11 +12,16 @@
     "seed:wc2026-sandbox": "ts-node-dev --transpile-only src/scripts/seedWc2026Sandbox.ts",
     "seed:test-scenario": "ts-node-dev --transpile-only src/scripts/seedTestScenario.ts",
     "seed:auto-advance-test": "ts-node-dev --transpile-only src/scripts/seedAutoAdvanceTest.ts",
+    "seed:test-review": "ts-node-dev --transpile-only src/scripts/seedTestReview.ts",
+    "migrate:add-usernames": "ts-node-dev --transpile-only src/scripts/migrateAddUsername.ts",
     "test:tournament-advancement": "ts-node-dev --transpile-only src/scripts/testTournamentAdvancement.ts",
     "clean:instance": "ts-node-dev --transpile-only src/scripts/cleanInstance.ts",
     "debug:auto-advance": "ts-node-dev --transpile-only src/scripts/debugAutoAdvance.ts",
     "check:instance-state": "ts-node-dev --transpile-only src/scripts/checkInstanceState.ts",
-    "test:all-fixes": "ts-node-dev --transpile-only src/scripts/testAllFixes.ts"
+    "test:all-fixes": "ts-node-dev --transpile-only src/scripts/testAllFixes.ts",
+    "script:force-completed": "ts-node-dev --transpile-only src/scripts/forcePoolCompleted.ts",
+    "script:prepare-completion": "ts-node-dev --transpile-only src/scripts/preparePoolForCompletion.ts",
+    "script:list-pools": "ts-node-dev --transpile-only src/scripts/listPools.ts"
   },
   "keywords": [],
   "author": "",
@@ -28,7 +33,9 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
+    "resend": "^6.6.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {

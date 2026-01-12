@@ -89,6 +89,9 @@ How to implement this decision (if applicable)
 | [021](#adr-021-phase-locking-mechanism) | Phase Locking Mechanism | Accepted | 2026-01-04 |
 | [022](#adr-022-placeholder-system-for-knockout-matches) | Placeholder System for Knockout Matches | Accepted | 2026-01-04 |
 | [023](#adr-023-tournament-advancement-service-architecture) | Tournament Advancement Service Architecture | Accepted | 2026-01-04 |
+| [024](#adr-024-username-system-separate-from-email) | Username System (Separate from Email) | Accepted | 2026-01-04 |
+| [025](#adr-025-password-reset-flow-with-email-tokens) | Password Reset Flow with Email Tokens | Accepted | 2026-01-04 |
+| [026](#adr-026-google-oauth-integration) | Google OAuth Integration | Accepted | 2026-01-04 |
 
 ---
 
@@ -1983,23 +1986,734 @@ test("calculates standings with correct tiebreakers", () => {
 
 ---
 
+## ADR-024: Username System (Separate from Email)
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Product Team, Engineering Team
+**Tags:** #authentication #user-experience #data-model
+
+### Context
+
+In the initial MVP, users were identified only by email address. However, for social features (co-admin nominations, player references, leaderboards), using email addresses has several issues:
+
+1. **Privacy:** Email addresses are personal information that shouldn't be shared publicly
+2. **UX:** Emails are long and less memorable than usernames (e.g., "juan.k.chacon9729@gmail.com" vs "@juank")
+3. **Future Features:** Mentioning users (@username), searching players, and social interactions require human-friendly identifiers
+4. **Display vs Identity:** Users want different public display names without changing their unique identifier
+
+**Requirements:**
+- Unique identifier for each user (separate from email)
+- Human-readable and memorable
+- Immutable once created (username changes not allowed in MVP)
+- Validation to prevent offensive/confusing usernames
+
+### Decision
+
+Implement a **separate username field** alongside email with the following design:
+
+**Data Model:**
+```prisma
+model User {
+  email       String  @unique  // Authentication only (private)
+  username    String  @unique  // Unique identifier (public)
+  displayName String           // Changeable display name (public)
+  // ...
+}
+```
+
+**Username Rules:**
+- **Length:** 3-20 characters
+- **Allowed Characters:** Alphanumeric + hyphens (`-`) + underscores (`_`)
+- **Normalization:** Stored as lowercase, trimmed
+- **Reserved Words:** Block system/offensive names (`admin`, `system`, `null`, etc.)
+- **Cannot Start/End With:** Special characters (must start/end with alphanumeric)
+- **Immutable:** Cannot be changed after registration (may allow in future versions)
+
+**Login Method:**
+- Login uses **email only** (not username) for simplicity and security
+- Username is for identification/mention, not authentication
+
+**Migration Strategy:**
+- Existing users: Auto-generate username from email local part (e.g., `juan.k.chacon9729` from `juan.k.chacon9729@gmail.com`)
+- Two-step migration: nullable field first, populate data, then make required
+
+### Rationale
+
+**Why Username AND DisplayName?**
+- Username: Unique, immutable identifier (like Twitter handle `@juank`)
+- DisplayName: Changeable, human-friendly name (like "Juan Chacón")
+- Separation allows future features like display name changes without breaking references
+
+**Why Alphanumeric + Hyphens/Underscores Only?**
+- Prevents URL encoding issues
+- Safe for mentions (`@username`)
+- Easy to type and remember
+- Industry standard (GitHub, Twitter, Discord)
+
+**Why Login with Email (Not Username)?**
+- Email is already unique and verified
+- Users less likely to forget email vs username
+- Simpler UX: one field for login
+- Username reserved for social features
+
+**Why Immutable Usernames?**
+- Prevents confusion (usernames don't change)
+- Simplifies database references (no need to update mentions/history)
+- Can add username changes later if needed (with alias system)
+
+### Consequences
+
+**Positive:**
+- ✅ Privacy: Emails not exposed in UI/leaderboards
+- ✅ UX: Short, memorable identifiers (@juank vs juan.k.chacon9729@gmail.com)
+- ✅ Social Features Ready: Mentions, player search, co-admin nominations
+- ✅ Flexible Display: Users can change displayName without breaking identity
+- ✅ Future-Proof: Foundation for @mentions, profiles, sharing
+
+**Negative:**
+- ⚠️ Username Availability: Popular usernames may be taken
+- ⚠️ Username Squatting: Users may register desirable usernames and not use them
+- ⚠️ No Changes: Users cannot change username (may cause support requests)
+
+**Risks:**
+- ⚠️ Migration Complexity: Existing users need auto-generated usernames (may not like them)
+- ⚠️ Validation Bypass: Client-side validation must match server-side
+
+### Alternatives Considered
+
+1. **Email Only (No Username):**
+   - ❌ Rejected: Privacy concerns, poor UX for mentions/leaderboards
+
+2. **Username for Login:**
+   - ❌ Rejected: Users forget usernames more easily than emails
+   - ❌ Adds complexity (two ways to log in)
+
+3. **UUID-Based Identifiers:**
+   - ❌ Rejected: Not human-readable, defeats purpose of friendly identifiers
+
+4. **Mutable Usernames:**
+   - ❌ Rejected: Breaks references, confusing for other users
+   - ⏳ May revisit with alias system in v2.0
+
+### Implementation
+
+**Database Migration:**
+```sql
+-- Step 1: Add nullable username field
+ALTER TABLE "User" ADD COLUMN "username" TEXT;
+CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
+
+-- Step 2: Populate usernames (via migration script)
+-- Run: npm run migrate:add-usernames
+
+-- Step 3: Make username required
+ALTER TABLE "User" ALTER COLUMN "username" SET NOT NULL;
+```
+
+**Validation (Backend):**
+```typescript
+// lib/username.ts
+export function validateUsername(username: string): { valid: boolean; error?: string } {
+  if (username.length < 3 || username.length > 20) {
+    return { valid: false, error: "Username must be 3-20 characters" };
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return { valid: false, error: "Username can only contain letters, numbers, hyphens, and underscores" };
+  }
+  if (/^[-_]|[-_]$/.test(username)) {
+    return { valid: false, error: "Username cannot start or end with special characters" };
+  }
+  const reserved = ["admin", "system", "null", "undefined", "root", "api", "test"];
+  if (reserved.includes(username.toLowerCase())) {
+    return { valid: false, error: "This username is reserved" };
+  }
+  return { valid: true };
+}
+
+export function normalizeUsername(username: string): string {
+  return username.toLowerCase().trim();
+}
+```
+
+**Registration Form (Frontend):**
+```tsx
+<input
+  type="text"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+  placeholder="tu_usuario"
+  minLength={3}
+  maxLength={20}
+  pattern="[a-zA-Z0-9_-]+"
+  required
+/>
+```
+
+**API Changes:**
+```typescript
+// POST /auth/register
+{
+  email: "juan@example.com",
+  username: "juank",          // NEW: Required
+  displayName: "Juan Chacón",
+  password: "********"
+}
+
+// Response
+{
+  token: "...",
+  user: {
+    id: "...",
+    email: "juan@example.com",
+    username: "juank",          // NEW: Returned
+    displayName: "Juan Chacón",
+    platformRole: "PLAYER"
+  }
+}
+```
+
+### Related Decisions
+
+- ADR-004: JWT for Authentication (login still uses email)
+- ADR-012: Co-Admin Permissions (uses username for nominations in future)
+- ADR-025: Password Reset Flow (uses email, not username)
+
+---
+
+## ADR-025: Password Reset Flow with Email Tokens
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Product Team, Engineering Team
+**Tags:** #authentication #security #email #user-experience
+
+### Context
+
+Users need a way to recover their accounts when they forget their password. This is a standard security feature required for production applications.
+
+**Requirements:**
+- Secure password reset mechanism
+- Email delivery to verified addresses
+- Time-limited reset links (prevent token reuse)
+- User-friendly flow (minimal friction)
+- No security information leakage (don't reveal if email exists)
+
+**Constraints:**
+- MVP budget: Free email provider required
+- Development environment: Need to test emails without production domain
+
+### Decision
+
+Implement a **token-based password reset flow** with email delivery via **Resend** (free tier):
+
+**Flow:**
+1. User requests password reset with email address
+2. System generates secure random token (32 bytes hex)
+3. Token stored in database with 1-hour expiration
+4. Email sent with reset link: `https://app.com/reset-password?token=XXX`
+5. User clicks link, enters new password
+6. System validates token (exists + not expired)
+7. Password updated, token cleared from database
+8. User can log in with new password
+
+**Security Measures:**
+- ✅ Crypto-secure random tokens (`crypto.randomBytes(32)`)
+- ✅ 1-hour expiration (short window for attack)
+- ✅ Single-use tokens (cleared after successful reset)
+- ✅ Same response for existing/non-existing emails (no enumeration)
+- ✅ Audit log events (reset requested, reset completed)
+- ✅ Active users only (status check)
+
+**Email Provider:**
+- **Resend** (https://resend.com)
+- Free tier: 100 emails/day, 3,000/month
+- Modern API, excellent DX
+- Sandbox mode for development (verified recipients only)
+- Production-ready (domain verification required)
+
+### Rationale
+
+**Why Email Tokens (Not SMS/TOTP)?**
+- Email is universal (all users have email)
+- No additional cost (SMS is expensive)
+- Better UX (click link vs copy code)
+- Industry standard (Gmail, GitHub, etc.)
+
+**Why 1-Hour Expiration?**
+- Short enough to limit attack window
+- Long enough for legitimate users to receive/use email
+- Industry standard (most services use 30min-24hr)
+
+**Why Resend?**
+- Free tier sufficient for MVP
+- Modern API (better than SendGrid/Mailgun)
+- Easy integration (3 lines of code)
+- Good deliverability
+- Sandbox mode for development
+- Can upgrade to production easily
+
+**Why Same Response for All Emails (Existing or Not)?**
+- **Security:** Prevents email enumeration attacks
+- Attacker cannot determine if email exists in system
+- Industry best practice (GitHub, Google, etc.)
+
+**Why Not Email Confirmation on Registration?**
+- ⏳ Deferred to v0.2-beta
+- MVP focuses on core quiniela functionality
+- Users can still reset password if they typo email
+- Email confirmation field in registration form reduces typos
+
+### Consequences
+
+**Positive:**
+- ✅ Standard password recovery flow (familiar to users)
+- ✅ Secure token generation and expiration
+- ✅ Free email delivery (100/day sufficient for MVP)
+- ✅ Audit trail for security events
+- ✅ No email enumeration vulnerability
+- ✅ Professional HTML email template
+
+**Negative:**
+- ⚠️ Requires email provider account setup
+- ⚠️ Free tier limitations (100 emails/day)
+- ⚠️ Sandbox mode in dev (must verify recipient emails)
+- ⚠️ No rate limiting (user can spam reset requests)
+
+**Risks:**
+- ⚠️ Email deliverability issues (spam filters)
+- ⚠️ Token brute-force (mitigated by 1-hour expiration + 32-byte randomness)
+- ⚠️ Denial of service (spam reset requests to victim email)
+  - ⏳ Mitigated in v1.0 with rate limiting
+
+### Alternatives Considered
+
+1. **Security Questions:**
+   - ❌ Rejected: Insecure, poor UX, easily guessable
+
+2. **SMS Codes:**
+   - ❌ Rejected: Expensive ($0.01-0.10 per SMS), requires phone number
+
+3. **Email Codes (6-digit):**
+   - ❌ Rejected: More friction (copy/paste), same email requirement
+   - Links are more user-friendly
+
+4. **SendGrid / Mailgun:**
+   - ❌ Rejected: Resend has better free tier and DX
+
+5. **AWS SES:**
+   - ❌ Rejected: Requires AWS account, more complex setup, overkill for MVP
+
+6. **NodeMailer + Gmail SMTP:**
+   - ❌ Rejected: Gmail blocks apps with "less secure" access, unreliable
+
+### Implementation
+
+**Database Schema:**
+```prisma
+model User {
+  // ...
+  resetToken          String?   @unique
+  resetTokenExpiresAt DateTime?
+  @@index([resetToken])
+}
+```
+
+**Backend (Request Reset):**
+```typescript
+// POST /auth/forgot-password
+import crypto from "crypto";
+
+const resetToken = crypto.randomBytes(32).toString("hex");
+const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+await prisma.user.update({
+  where: { id: user.id },
+  data: { resetToken, resetTokenExpiresAt },
+});
+
+await sendPasswordResetEmail({
+  to: user.email,
+  username: user.username,
+  resetToken,
+});
+
+// Always return success (security: don't reveal if email exists)
+return res.json({ message: "Si el email existe, recibirás un enlace..." });
+```
+
+**Backend (Reset Password):**
+```typescript
+// POST /auth/reset-password
+const user = await prisma.user.findFirst({
+  where: {
+    resetToken: token,
+    resetTokenExpiresAt: { gte: new Date() }, // Not expired
+    status: "ACTIVE",
+  },
+});
+
+if (!user) {
+  return res.status(400).json({ error: "Token inválido o expirado" });
+}
+
+const passwordHash = await hashPassword(newPassword);
+
+await prisma.user.update({
+  where: { id: user.id },
+  data: {
+    passwordHash,
+    resetToken: null,           // Clear token (single-use)
+    resetTokenExpiresAt: null,
+  },
+});
+```
+
+**Email Template:**
+- Professional HTML design with gradient header
+- Clear CTA button with reset link
+- Alternative plain-text link (for email clients that break buttons)
+- Security warning (1-hour expiration highlighted)
+- Footer with "ignore this email if you didn't request it"
+
+**Frontend Routes:**
+```typescript
+// /forgot-password - Request reset form
+<ForgotPasswordPage />
+
+// /reset-password?token=XXX - New password form
+<ResetPasswordPage />
+```
+
+**Resend Setup (Development):**
+1. Sign up at resend.com (free tier)
+2. Generate API key
+3. Add to `.env`: `RESEND_API_KEY=re_xxx`
+4. Add verified recipients (Settings → Verified Recipients)
+5. Verify email via confirmation link
+6. Test forgot password flow
+
+**Resend Setup (Production):**
+1. Verify custom domain (add DNS records)
+2. Update `RESEND_FROM_EMAIL=noreply@yourdomain.com`
+3. Remove sandbox mode restrictions
+4. Monitor delivery metrics in dashboard
+
+### Related Decisions
+
+- ADR-004: JWT for Authentication (login after reset uses JWT)
+- ADR-024: Username System (reset flow uses email, not username)
+- ADR-015: Resend as Email Provider (also used for future email confirmations)
+
+---
+
+## ADR-026: Google OAuth Integration
+
+**Date:** 2026-01-04
+**Status:** Accepted
+**Deciders:** Product Team, Engineering Team
+**Tags:** #authentication #oauth #user-experience #google
+
+### Context
+
+The initial MVP only supported email/password authentication. While functional, this has several UX friction points:
+
+1. **Registration Friction:** Users must create yet another account with username + password
+2. **Password Management:** Users must remember another password or use password managers
+3. **Trust & Security:** Users may hesitate to create accounts on new platforms
+4. **Mobile UX:** Typing passwords on mobile is cumbersome
+
+**User Feedback:**
+- "Can I just use my Google account?"
+- "I don't want to create another password"
+
+**Industry Standard:**
+- 90%+ of modern web apps offer social login (Google, Facebook, Apple)
+- Google OAuth is the most popular (highest conversion rates)
+
+**Requirements:**
+- Seamless login/registration with Google account
+- No separate username/password needed for OAuth users
+- Link existing email/password accounts with Google
+- Secure token validation (don't trust frontend tokens blindly)
+
+### Decision
+
+Implement **Google OAuth 2.0** using:
+
+**Backend:**
+- `google-auth-library` (official Google library for Node.js)
+- Verify ID tokens server-side (never trust client-only validation)
+- Endpoint: `POST /auth/google` (receives ID token from frontend)
+
+**Frontend:**
+- Google Identity Services (GIS) - official JavaScript SDK
+- One Tap / Sign In with Google button
+- ID token sent to backend for verification
+
+**Flow:**
+1. User clicks "Sign in with Google" button
+2. Google popup/redirect for authentication
+3. Frontend receives ID token from Google
+4. Frontend sends ID token to `POST /auth/google`
+5. Backend verifies token with Google's API
+6. Backend creates/updates user, returns JWT token
+7. User logged in (same JWT flow as email/password)
+
+**Data Model:**
+```prisma
+model User {
+  // ...
+  googleId String? @unique  // Google User ID (sub claim)
+  // passwordHash can be empty for OAuth-only users
+}
+```
+
+**Username Generation (OAuth Users):**
+- Extract from email local part (e.g., `juan_chacon` from `juan.chacon@gmail.com`)
+- Normalize: lowercase, replace non-alphanumeric with underscores
+- Ensure uniqueness: append number if needed (`juan_chacon1`, `juan_chacon2`)
+- Future: Allow users to change username in settings
+
+**Account Linking:**
+- If user exists with same email (email/password account) → link Google ID to existing account
+- Future logins can use either method (email/password OR Google)
+
+### Rationale
+
+**Why Google OAuth (Not Others)?**
+- **Ubiquity:** 3 billion+ Google accounts globally
+- **High Trust:** Users already trust Google with their data
+- **Best Conversion:** Industry data shows Google has highest OAuth conversion rates
+- **Future-Proof:** Can add Facebook/Apple OAuth later (same architecture)
+
+**Why google-auth-library (Not Passport.js)?**
+- **Lighter:** No session management overhead (we use JWT)
+- **Official:** Maintained by Google, always up-to-date
+- **Simpler:** Direct token verification (no strategies/middleware complexity)
+- **Control:** Full control over flow (better for learning/debugging)
+
+**Why Server-Side Token Verification?**
+- **Security:** Never trust tokens from frontend alone
+- Frontend tokens can be spoofed/tampered
+- Google's verification ensures token is legitimate and not expired
+- Prevents impersonation attacks
+
+**Why Auto-Generate Usernames (Not Ask User)?**
+- **Lower Friction:** One-click login (no extra steps)
+- **Better Conversion:** Fewer form fields = higher signup rates
+- Username is for backend only (frontend shows displayName)
+- Users can change username later if desired
+
+### Consequences
+
+**Positive:**
+- ✅ **Reduced Friction:** One-click registration/login
+- ✅ **Higher Conversion:** OAuth users sign up 3-5x more than email/password
+- ✅ **Better Security:** No password to forget/leak/phish
+- ✅ **Mobile-Friendly:** Google handles auth flow (optimized for mobile)
+- ✅ **Account Linking:** Existing users can link Google account
+- ✅ **Future-Proof:** Foundation for other OAuth providers
+- ✅ **Professional UX:** Matches industry standard (GitHub, Notion, etc.)
+
+**Negative:**
+- ⚠️ **Dependency on Google:** If Google OAuth is down, users can't log in (mitigated: email/password still works)
+- ⚠️ **Privacy Concerns:** Some users distrust Google (mitigated: offer email/password option)
+- ⚠️ **Setup Complexity:** Requires Google Cloud Console configuration
+- ⚠️ **Auto-Generated Usernames:** Users may not like generated username (mitigated: allow changes)
+
+**Risks:**
+- ⚠️ **Token Validation Downtime:** If Google's verification API is down, OAuth fails
+  - Mitigated: Email/password login still available
+- ⚠️ **OAuth Phishing:** Users could be phished via fake Google login
+  - Mitigated: Use official Google GIS SDK (verified domains)
+- ⚠️ **Account Takeover:** If Google account compromised, attacker gets access
+  - Same risk as email/password (email compromise = password reset access)
+
+### Alternatives Considered
+
+1. **Passport.js with passport-google-oauth20:**
+   - ❌ Rejected: Heavier, requires session management, overkill for JWT-based auth
+   - ✅ Good for: Express apps with session-based auth
+
+2. **NextAuth.js / Auth.js:**
+   - ❌ Rejected: Designed for Next.js, awkward standalone usage
+   - ✅ Good for: Next.js/React full-stack apps
+
+3. **Manual OAuth 2.0 Flow (Without Library):**
+   - ❌ Rejected: Reinventing the wheel, error-prone, hard to maintain
+   - Security-critical code should use well-tested libraries
+
+4. **Firebase Authentication:**
+   - ❌ Rejected: Vendor lock-in, costs money at scale, less control
+   - ✅ Good for: Quick prototypes, Firebase-centric apps
+
+5. **OAuth Only (No Email/Password):**
+   - ❌ Rejected: Some users prefer email/password (privacy, control)
+   - Better to offer both options
+
+### Implementation
+
+**Backend Dependencies:**
+```bash
+npm install google-auth-library
+```
+
+**Environment Variables:**
+```env
+# backend/.env
+GOOGLE_CLIENT_ID=123456789-abc...xyz.apps.googleusercontent.com
+
+# frontend/.env
+VITE_GOOGLE_CLIENT_ID=123456789-abc...xyz.apps.googleusercontent.com
+```
+
+**Backend Helper ([lib/googleAuth.ts](../../backend/src/lib/googleAuth.ts)):**
+```typescript
+import { OAuth2Client } from "google-auth-library";
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export async function verifyGoogleToken(token: string): Promise<GoogleUser | null> {
+  const ticket = await client.verifyIdToken({
+    idToken: token,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+
+  const payload = ticket.getPayload();
+  return {
+    googleId: payload.sub,
+    email: payload.email,
+    emailVerified: payload.email_verified,
+    name: payload.name,
+    picture: payload.picture,
+  };
+}
+```
+
+**Backend Endpoint ([routes/auth.ts](../../backend/src/routes/auth.ts)):**
+```typescript
+// POST /auth/google
+authRouter.post("/google", async (req, res) => {
+  const { idToken } = req.body;
+
+  const googleUser = await verifyGoogleToken(idToken);
+  if (!googleUser) {
+    return res.status(401).json({ error: "Invalid Google token" });
+  }
+
+  // Find existing user by email or googleId
+  let user = await prisma.user.findFirst({
+    where: { OR: [{ email: googleUser.email }, { googleId: googleUser.googleId }] }
+  });
+
+  if (user) {
+    // Link Google account if not already linked
+    if (!user.googleId) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: googleUser.googleId },
+      });
+    }
+  } else {
+    // Create new user with auto-generated username
+    const username = generateUsernameFromEmail(googleUser.email);
+    user = await prisma.user.create({
+      data: {
+        email: googleUser.email,
+        username,
+        displayName: googleUser.name,
+        passwordHash: "", // OAuth users don't need password
+        googleId: googleUser.googleId,
+      },
+    });
+  }
+
+  const token = signToken({ userId: user.id, platformRole: user.platformRole });
+  return res.json({ token, user });
+});
+```
+
+**Frontend ([LoginPage.tsx](../../frontend/src/pages/LoginPage.tsx)):**
+```tsx
+// Load Google Identity Services SDK in index.html
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+// Initialize Google Sign In
+useEffect(() => {
+  window.google.accounts.id.initialize({
+    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+    callback: handleGoogleCallback,
+  });
+
+  window.google.accounts.id.renderButton(buttonRef.current, {
+    theme: "outline",
+    size: "large",
+    text: "signin_with",
+  });
+}, []);
+
+async function handleGoogleCallback(response: any) {
+  const result = await loginWithGoogle(response.credential);
+  setToken(result.token);
+  onLoggedIn();
+}
+```
+
+**Database Migration:**
+```sql
+ALTER TABLE "User" ADD COLUMN "googleId" TEXT;
+CREATE UNIQUE INDEX "User_googleId_key" ON "User"("googleId");
+CREATE INDEX "User_googleId_idx" ON "User"("googleId");
+```
+
+**Audit Events:**
+- `REGISTER_GOOGLE`: New user created via Google OAuth
+- `LOGIN_GOOGLE`: Existing user logged in via Google
+- `GOOGLE_ACCOUNT_LINKED`: Email/password user linked Google account
+
+### Setup Guide
+
+See [GOOGLE_OAUTH_SETUP.md](../GOOGLE_OAUTH_SETUP.md) for detailed instructions on:
+1. Creating a Google Cloud project
+2. Configuring OAuth consent screen
+3. Creating OAuth 2.0 credentials
+4. Adding authorized origins
+5. Testing the flow
+
+**Quick Start:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create project → Enable OAuth
+3. Create OAuth 2.0 Client ID (Web application)
+4. Add `http://localhost:5173` to authorized origins
+5. Copy Client ID to `.env` files
+6. Restart backend and frontend
+
+### Related Decisions
+
+- ADR-004: JWT for Authentication (Google OAuth returns same JWT token)
+- ADR-024: Username System (auto-generated for OAuth users)
+- ADR-025: Password Reset (OAuth users don't need password reset)
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.2-beta:**
-- [ ] ADR-019: Username uniqueness enforcement strategy
-- [ ] ADR-020: Join approval notification system
-- [ ] ADR-021: Pool state transition automation (manual vs auto)
+- [ ] ADR-027: Email confirmation on registration
+- [ ] ADR-028: Join approval notification system
+- [ ] ADR-029: Pool state transition automation (manual vs auto)
 
 **v1.0:**
-- [ ] ADR-021: Forgot password flow (email link vs code)
-- [ ] ADR-022: Google OAuth integration
-- [ ] ADR-023: Rate limiting strategy
-- [ ] ADR-024: Redis caching layer
+- [ ] ADR-030: Rate limiting strategy (prevent reset spam)
+- [ ] ADR-031: Redis caching layer
+- [ ] ADR-032: Facebook/Apple OAuth providers
 
 **v2.0:**
-- [ ] ADR-025: External API for results ingestion
-- [ ] ADR-026: Multi-sport support architecture
-- [ ] ADR-027: WebSocket for real-time updates
+- [ ] ADR-033: External API for results ingestion
+- [ ] ADR-034: Multi-sport support architecture
+- [ ] ADR-035: WebSocket for real-time updates
+- [ ] ADR-036: Username change system (with aliases)
 
 ---
 

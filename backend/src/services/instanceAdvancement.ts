@@ -53,15 +53,31 @@ export async function validateGroupStageComplete(instanceId: string, poolId?: st
   isComplete: boolean;
   missingMatches: string[];
 }> {
-  const instance = await prisma.tournamentInstance.findUnique({
-    where: { id: instanceId },
-  });
+  // Si poolId está presente, usar fixtureSnapshot del pool; sino usar instance.dataJson
+  let data: TemplateData;
 
-  if (!instance) {
-    throw new Error(`Instance ${instanceId} no encontrada`);
+  if (poolId) {
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: { tournamentInstance: true },
+    });
+
+    if (!pool) {
+      throw new Error(`Pool ${poolId} no encontrado`);
+    }
+
+    data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as TemplateData;
+  } else {
+    const instance = await prisma.tournamentInstance.findUnique({
+      where: { id: instanceId },
+    });
+
+    if (!instance) {
+      throw new Error(`Instance ${instanceId} no encontrada`);
+    }
+
+    data = instance.dataJson as TemplateData;
   }
-
-  const data = instance.dataJson as TemplateData;
 
   // Obtener todos los partidos de grupos
   const groupMatches = data.matches.filter((m) => m.phaseId === "group_stage");
@@ -121,15 +137,31 @@ export async function calculateAllGroupStandings(
   instanceId: string,
   poolId?: string
 ): Promise<Map<string, TeamStanding[]>> {
-  const instance = await prisma.tournamentInstance.findUnique({
-    where: { id: instanceId },
-  });
+  // Si poolId está presente, usar fixtureSnapshot del pool; sino usar instance.dataJson
+  let data: TemplateData;
 
-  if (!instance) {
-    throw new Error(`Instance ${instanceId} no encontrada`);
+  if (poolId) {
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: { tournamentInstance: true },
+    });
+
+    if (!pool) {
+      throw new Error(`Pool ${poolId} no encontrado`);
+    }
+
+    data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as TemplateData;
+  } else {
+    const instance = await prisma.tournamentInstance.findUnique({
+      where: { id: instanceId },
+    });
+
+    if (!instance) {
+      throw new Error(`Instance ${instanceId} no encontrada`);
+    }
+
+    data = instance.dataJson as TemplateData;
   }
-
-  const data = instance.dataJson as TemplateData;
 
   // Obtener todos los grupos únicos
   const groups = [...new Set(data.teams.map((t) => t.groupId).filter(Boolean))];
@@ -241,16 +273,22 @@ export async function advanceToRoundOf32(instanceId: string, poolId?: string): P
   // 3. Determinar clasificados
   const { winners, runnersUp, bestThirds } = determineQualifiers(allStandings);
 
-  // 4. Obtener la instancia y sus matches del R32
-  const instance = await prisma.tournamentInstance.findUnique({
-    where: { id: instanceId },
-  });
-
-  if (!instance) {
-    throw new Error(`Instance ${instanceId} no encontrada`);
+  // 4. Obtener el POOL (no la instancia) y su fixtureSnapshot
+  if (!poolId) {
+    throw new Error("poolId es requerido para avanzar fases");
   }
 
-  const data = instance.dataJson as TemplateData;
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    include: { tournamentInstance: true },
+  });
+
+  if (!pool) {
+    throw new Error(`Pool ${poolId} no encontrado`);
+  }
+
+  // Usar pool.fixtureSnapshot (copia independiente) o fallback a instance.dataJson
+  const data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as TemplateData;
   const r32Matches = data.matches.filter((m) => m.phaseId === "round_of_32");
 
   // 5. Resolver placeholders
@@ -274,11 +312,11 @@ export async function advanceToRoundOf32(instanceId: string, poolId?: string): P
     matches: updatedMatches,
   };
 
-  // 7. Persistir cambios en base de datos
-  await prisma.tournamentInstance.update({
-    where: { id: instanceId },
+  // 7. Persistir cambios SOLO en el fixtureSnapshot del pool (NO en la instance)
+  await prisma.pool.update({
+    where: { id: poolId },
     data: {
-      dataJson: updatedData,
+      fixtureSnapshot: updatedData as any,
     },
   });
 
@@ -308,33 +346,28 @@ export async function advanceKnockoutPhase(
 ): Promise<{
   resolvedMatches: Array<{ matchId: string; homeTeamId: string; awayTeamId: string }>;
 }> {
-  const instance = await prisma.tournamentInstance.findUnique({
-    where: { id: instanceId },
-  });
-
-  if (!instance) {
-    throw new Error(`Instance ${instanceId} no encontrada`);
+  // CRÍTICO: poolId ahora es requerido
+  if (!poolId) {
+    throw new Error("poolId es requerido para avanzar fases");
   }
 
-  const data = instance.dataJson as TemplateData;
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    include: { tournamentInstance: true },
+  });
+
+  if (!pool) {
+    throw new Error(`Pool ${poolId} no encontrado`);
+  }
+
+  // Usar pool.fixtureSnapshot (copia independiente) o fallback a instance.dataJson
+  const data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as TemplateData;
 
   // 1. Obtener partidos de la fase actual
   const currentPhaseMatches = data.matches.filter((m) => m.phaseId === currentPhaseId);
 
-  // 2. Si no se especifica poolId, obtener la primera pool de la instancia
-  let targetPoolId = poolId;
-  if (!targetPoolId) {
-    const pools = await prisma.pool.findMany({
-      where: { tournamentInstanceId: instanceId },
-      select: { id: true },
-    });
-
-    if (pools.length === 0) {
-      throw new Error(`No hay pools asociadas a la instancia ${instanceId}`);
-    }
-
-    targetPoolId = pools[0]!.id;
-  }
+  // 2. targetPoolId es el poolId recibido
+  const targetPoolId = poolId;
 
   // 3. Obtener resultados de la fase actual
   const allResults = await prisma.poolMatchResult.findMany({
@@ -433,11 +466,11 @@ export async function advanceKnockoutPhase(
     matches: updatedMatches,
   };
 
-  // 9. Persistir cambios
-  await prisma.tournamentInstance.update({
-    where: { id: instanceId },
+  // 9. Persistir cambios SOLO en el fixtureSnapshot del pool (NO en la instance)
+  await prisma.pool.update({
+    where: { id: poolId },
     data: {
-      dataJson: updatedData,
+      fixtureSnapshot: updatedData as any,
     },
   });
 

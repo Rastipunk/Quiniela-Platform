@@ -18,22 +18,57 @@ enum UserStatus {
   DISABLED
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
 model User {
   id           String       @id @default(uuid())
   email        String       @unique
+  username     String       @unique
   displayName  String
   passwordHash String
   platformRole PlatformRole @default(PLAYER)
   status       UserStatus   @default(ACTIVE)
 
+  // Comentario en español: campos de perfil del usuario
+  firstName   String?
+  lastName    String?
+  dateOfBirth DateTime?
+  gender      Gender?
+  bio         String?   @db.VarChar(200)
+  country     String?   @db.VarChar(2) // ISO 3166-1 alpha-2 (MX, CO, ES, etc.)
+  timezone    String? // IANA timezone (ej: "America/Mexico_City", "Europe/Madrid")
+
+  // Comentario en español: tracking de cambio de username (máximo 1 cada 30 días)
+  lastUsernameChangeAt DateTime?
+
+  // Comentario en español: token de reset de password (válido 1 hora)
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+
+  // Comentario en español: Google OAuth ID (único por usuario de Google)
+  googleId String? @unique
+
   createdAtUtc DateTime     @default(now())
   updatedAtUtc DateTime     @updatedAt
   predictions  Prediction[]
 
-  poolsCreated          Pool[]
-  poolMemberships       PoolMember[]
-  poolInvitesCreated    PoolInvite[]
-  resultVersionsCreated PoolMatchResultVersion[]
+  poolsCreated              Pool[]
+  poolMemberships           PoolMember[]
+  poolInvitesCreated        PoolInvite[]
+  resultVersionsCreated     PoolMatchResultVersion[]
+  structuralPredictions     StructuralPrediction[]
+  structuralPhaseResults    StructuralPhaseResult[]
+  groupStandingsPredictions GroupStandingsPrediction[]
+  groupStandingsResults     GroupStandingsResult[]
+
+  @@index([username])
+  @@index([resetToken])
+  @@index([googleId])
 }
 
 model AuditEvent {
@@ -142,12 +177,21 @@ enum PoolVisibility {
   PUBLIC
 }
 
+enum PoolStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
 enum PoolMemberRole {
   HOST
+  CO_ADMIN
   PLAYER
 }
 
 enum PoolMemberStatus {
+  PENDING_APPROVAL
   ACTIVE
   LEFT
   BANNED
@@ -167,6 +211,7 @@ model Pool {
   description String?
 
   visibility PoolVisibility @default(PRIVATE)
+  status     PoolStatus     @default(DRAFT)
 
   // Comentario en español: zona horaria del pool (IANA), ej: "America/Bogota"
   timeZone String @default("UTC")
@@ -182,16 +227,33 @@ model Pool {
   // Ejemplo: ["round_of_16", "quarter_finals"] impide avanzar y permite correcciones
   lockedPhases Json @default("[]")
 
+  // Comentario en español: si true, nuevos miembros requieren aprobación del host/co-admin
+  requireApproval Boolean @default(false)
+
+  // Comentario en español: configuración avanzada de tipos de picks por fase (PhasePickConfig[])
+  // Define qué tipos de predicciones están permitidos y sus puntos en cada fase
+  // null = usa scoring preset clásico (retrocompatibilidad)
+  pickTypesConfig Json?
+
+  // Comentario en español: snapshot PROPIO del fixture del torneo (copiado al crear la pool)
+  // Cuando se avanza una fase, se modifica SOLO este campo, NO la TournamentInstance
+  // Esto permite que cada pool tenga su propio estado de avance independiente
+  fixtureSnapshot Json?
+
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
   members PoolMember[]
   invites PoolInvite[]
 
-  createdAtUtc DateTime          @default(now())
-  updatedAtUtc DateTime          @updatedAt
-  predictions  Prediction[]
-  matchResults PoolMatchResult[]
+  createdAtUtc           DateTime                @default(now())
+  updatedAtUtc           DateTime                @updatedAt
+  predictions            Prediction[]
+  matchResults           PoolMatchResult[]
+  structuralPredictions     StructuralPrediction[]
+  structuralPhaseResults    StructuralPhaseResult[]
+  groupStandingsPredictions GroupStandingsPrediction[]
+  groupStandingsResults     GroupStandingsResult[]
 
   @@index([tournamentInstanceId])
   @@index([createdByUserId])
@@ -212,8 +274,20 @@ model PoolMember {
   joinedAtUtc DateTime  @default(now())
   leftAtUtc   DateTime?
 
+  // Comentario en español: campos para join approval workflow
+  approvedByUserId String? // Quién aprobó o rechazó
+  approvedAtUtc    DateTime? // Cuándo se aprobó o rechazó
+  rejectionReason  String? // Razón del rechazo (opcional)
+
+  // Comentario en español: campos para sistema de expulsión/ban
+  bannedAt       DateTime? // Cuándo fue expulsado
+  bannedByUserId String? // Quién lo expulsó (HOST o CO_ADMIN)
+  banReason      String? // Razón de la expulsión (obligatoria)
+  banExpiresAt   DateTime? // null = permanente, fecha = temporal
+
   @@unique([poolId, userId])
   @@index([userId])
+  @@index([status])
 }
 
 model PoolInvite {
@@ -256,6 +330,32 @@ model Prediction {
   updatedAtUtc DateTime @updatedAt
 
   @@unique([poolId, userId, matchId])
+  @@index([userId])
+  @@index([poolId])
+}
+
+// Sprint 2 - Advanced Pick Types: Picks estructurales (por fase completa, no por match)
+model StructuralPrediction {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // phaseId corresponde a TemplateData.phases[].id del TournamentInstance
+  phaseId String
+
+  // Datos del pick estructural (formato según tipo de fase)
+  // Ej: { groups: [{groupId, teamIds: [...]}] } para GROUP_STANDINGS
+  // Ej: { matches: [{matchId, winnerId}] } para KNOCKOUT_WINNER
+  pickJson Json
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, userId, phaseId], name: "poolId_userId_phaseId")
   @@index([userId])
   @@index([poolId])
 }
@@ -316,4 +416,84 @@ model PoolMatchResultVersion {
 
   @@unique([resultId, versionNumber])
   @@index([resultId])
+}
+
+// Sprint 2 - Advanced Pick Types: Resultados estructurales (publicados por HOST)
+model StructuralPhaseResult {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  // phaseId corresponde a TemplateData.phases[].id del TournamentInstance
+  phaseId String
+
+  // Datos del resultado estructural (mismo formato que StructuralPrediction.pickJson)
+  // Ej: { groups: [{groupId, teamIds: [...]}] } para GROUP_STANDINGS
+  // Ej: { matches: [{matchId, winnerId}] } para KNOCKOUT_WINNER
+  resultJson Json
+
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+
+  publishedAtUtc DateTime @default(now())
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, phaseId])
+  @@index([poolId])
+}
+
+// Sprint 2 - Guardado Granular: Predicciones de posiciones de grupo (una por grupo)
+model GroupStandingsPrediction {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  phaseId String // Fase del torneo
+  groupId String // ID del grupo (A, B, C, etc.)
+
+  // Array de teamIds en orden del 1° al 4° lugar
+  // Ej: ["t_A1", "t_A3", "t_A2", "t_A4"]
+  teamIds String[]
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, userId, phaseId, groupId], name: "poolId_userId_phaseId_groupId")
+  @@index([poolId])
+  @@index([userId])
+}
+
+// Sprint 2 - Guardado Granular: Resultados oficiales de posiciones de grupo
+model GroupStandingsResult {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  phaseId String // Fase del torneo
+  groupId String // ID del grupo (A, B, C, etc.)
+
+  // Array de teamIds en orden oficial del 1° al 4° lugar
+  teamIds String[]
+
+  // Versión para erratas
+  version Int    @default(1)
+  reason  String? // Razón de la errata (obligatorio si version > 1)
+
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+
+  publishedAtUtc DateTime @default(now())
+  createdAtUtc   DateTime @default(now())
+  updatedAtUtc   DateTime @updatedAt
+
+  @@unique([poolId, phaseId, groupId], name: "poolId_phaseId_groupId")
+  @@index([poolId])
 }

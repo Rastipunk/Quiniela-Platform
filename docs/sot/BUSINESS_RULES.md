@@ -2,7 +2,7 @@
 # Quiniela Platform
 
 > **Version:** 1.0 (v0.1-alpha implementation + v0.2-beta planned)
-> **Last Updated:** 2026-01-02
+> **Last Updated:** 2026-01-05
 > **Status:** Living Document (updated as rules evolve)
 
 ---
@@ -576,6 +576,191 @@ if (nextVersion > 1 && !reason) {
 - Materialized view (pre-computed leaderboard)
 - Refresh on result change
 - Reduces query time from O(n×m) to O(1)
+
+---
+
+### 6.4 Penalty Shootout Rules
+
+**Context:**
+- Penalty shootouts are used to determine winners in knockout phase matches that end in a tie after regulation time
+- Only relevant for tournaments with elimination phases (World Cup, Champions League, etc.)
+
+**Validation Rules:**
+
+| Field | Rule | Error Code |
+|-------|------|------------|
+| `homePenalties` | 0-99, integer, optional | `VALIDATION_ERROR` |
+| `awayPenalties` | 0-99, integer, optional | `VALIDATION_ERROR` |
+| **Consistency** | If one penalty field is provided, both must be provided | `VALIDATION_ERROR` |
+| **Applicability** | Penalties only valid for knockout phase matches | `VALIDATION_ERROR` |
+
+**Business Rules:**
+
+1. **Penalties are OPTIONAL:**
+   - Only required for knockout matches that end in a tie
+   - Group stage matches never use penalties (ties are valid outcomes)
+
+2. **Storage:**
+   - Stored in `PoolMatchResultVersion.homePenalties` and `awayPenalties`
+   - Default value: `null` (not applicable)
+
+3. **Winner Determination:**
+   ```javascript
+   function determineWinner(result) {
+     // Step 1: Check regulation time
+     if (result.homeGoals > result.awayGoals) return 'HOME';
+     if (result.awayGoals > result.homeGoals) return 'AWAY';
+
+     // Step 2: Tie in regulation - check penalties (knockout only)
+     if (result.homePenalties !== null && result.awayPenalties !== null) {
+       if (result.homePenalties > result.awayPenalties) return 'HOME';
+       if (result.awayPenalties > result.homePenalties) return 'AWAY';
+     }
+
+     // Step 3: Still tied (or group stage) - it's a draw
+     return 'DRAW';
+   }
+   ```
+
+4. **Tournament Advancement:**
+   - Penalties determine which team advances to next round
+   - Placeholder team IDs in next round are replaced with winner
+   - Example: "Winner of QF1" → `t_brazil` (if Brazil won on penalties)
+
+5. **Scoring Impact:**
+   - Penalties do NOT affect leaderboard scoring (v0.1-alpha)
+   - Players predict regulation time score only
+   - Future (v1.0): Optional pick type for penalty outcome
+
+**Auto-Advance Integration:**
+
+When a knockout match with tied regulation time gets penalties published:
+- System recognizes a winner exists (via penalties)
+- Auto-advance can proceed if all other matches are complete
+- Teams advance based on penalty winner, not regulation score
+
+---
+
+### 6.5 Auto-Advance & Phase Locking Rules
+
+**Context:**
+- Tournaments progress through phases (e.g., Group Stage → Round of 32 → Round of 16)
+- Auto-advance automates this transition when all matches in a phase are complete
+
+**Pool Configuration:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `autoAdvanceEnabled` | boolean | `true` | Enable/disable automatic phase advancement |
+| `lockedPhases` | JSON array | `[]` | List of phaseIds that are manually locked |
+
+**Auto-Advance Trigger Conditions:**
+
+```javascript
+async function shouldAutoAdvance(poolId, phaseId) {
+  const pool = await getPool(poolId);
+
+  // Condition 1: Auto-advance must be enabled
+  if (!pool.autoAdvanceEnabled) return false;
+
+  // Condition 2: Phase must not be locked
+  if (pool.lockedPhases.includes(phaseId)) return false;
+
+  // Condition 3: All matches in phase must have results
+  const allMatchesComplete = await checkAllMatchesHaveResults(phaseId);
+  if (!allMatchesComplete) return false;
+
+  // Condition 4: No recent errata (last 24 hours) - prevents premature advancement
+  const recentErrata = await hasRecentErrata(poolId, phaseId, 24);
+  if (recentErrata) return false;
+
+  return true; // Safe to auto-advance
+}
+```
+
+**Phase Locking Rules:**
+
+1. **Lock Purpose:**
+   - Prevents auto-advance while host reviews results
+   - Allows time to correct errors before advancing
+
+2. **Lock/Unlock Permissions:**
+   - Only HOST can lock/unlock phases
+   - CO_ADMIN cannot lock/unlock (v0.2-beta)
+
+3. **Lock Behavior:**
+   - Locked phases are skipped by auto-advance
+   - Manual advance is also blocked for locked phases
+   - Unlocking allows auto-advance to proceed
+
+4. **Lock Storage:**
+   - Stored as JSON array in `Pool.lockedPhases`
+   - Example: `["group_stage", "round_of_32"]`
+
+**Manual Advance Rules:**
+
+1. **Permissions:** Only HOST can manually trigger advancement
+2. **Validation:**
+   - Phase must exist in tournament
+   - All matches in phase must have published results
+   - Phase must not be locked
+   - Next phase must exist (cannot advance from finals)
+
+3. **Advancement Logic:**
+
+   **Group Stage → Round of 32:**
+   ```javascript
+   async function advanceGroupStage() {
+     // 1. Calculate standings for all 12 groups
+     const standings = calculateGroupStandings(matches);
+
+     // 2. Extract winners and runners-up (24 teams)
+     const winners = standings.map(g => g[0]);
+     const runnersUp = standings.map(g => g[1]);
+
+     // 3. Extract all third-place teams (12 teams)
+     const thirdPlace = standings.map(g => g[2]);
+
+     // 4. Rank third-place teams (FIFA tiebreaker rules)
+     const rankedThirds = rankThirdPlaceTeams(thirdPlace);
+
+     // 5. Select best 8 third-place teams
+     const bestThirds = rankedThirds.slice(0, 8);
+
+     // 6. Total qualifiers: 12 + 12 + 8 = 32 teams
+     const qualifiers = [...winners, ...runnersUp, ...bestThirds];
+
+     // 7. Update Round of 32 matches with actual team IDs
+     await resolvePlaceholders(qualifiers);
+   }
+   ```
+
+   **Knockout Phases:**
+   ```javascript
+   async function advanceKnockoutPhase(phaseId) {
+     const matches = getMatchesInPhase(phaseId);
+     const winners = [];
+
+     for (const match of matches) {
+       const result = getResult(match.id);
+       const winner = determineWinner(result); // Uses penalties if needed
+       winners.push(winner);
+     }
+
+     // Update next round with winners
+     await updateNextRoundPlaceholders(winners);
+   }
+   ```
+
+4. **Audit Trail:**
+   - Manual advance: `PHASE_ADVANCED` event with `actorUserId`
+   - Auto-advance: `PHASE_ADVANCED` event with `actorUserId = SYSTEM`
+
+**Errata Protection:**
+
+- If errata was published in last 24 hours, auto-advance is suppressed
+- Prevents advancing with potentially incorrect results
+- Host must manually review and unlock to proceed
 
 ---
 

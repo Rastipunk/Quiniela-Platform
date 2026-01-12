@@ -2,7 +2,7 @@
 # Quiniela Platform
 
 > **Version:** 1.0 (v0.1-alpha implementation)
-> **Last Updated:** 2026-01-02
+> **Last Updated:** 2026-01-05
 > **Base URL:** `http://localhost:3000` (development)
 > **Protocol:** REST over HTTP/HTTPS
 > **Authentication:** JWT Bearer Token
@@ -138,6 +138,7 @@ Tokens are obtained via:
 ```json
 {
   "email": "user@example.com",
+  "username": "juank",
   "displayName": "Juan Carlos",
   "password": "SecurePass123!"
 }
@@ -145,8 +146,9 @@ Tokens are obtained via:
 
 **Validation Rules:**
 - `email`: Valid email format, unique
-- `displayName`: 3-50 characters
-- `password`: 8-100 characters, must contain uppercase, number, special char
+- `username`: 3-20 characters, alphanumeric + hyphens/underscores only, unique, lowercase normalized
+- `displayName`: 2-50 characters
+- `password`: 8-200 characters minimum
 
 **Success Response (201):**
 
@@ -156,6 +158,7 @@ Tokens are obtained via:
   "user": {
     "id": "a1b2c3d4-...",
     "email": "user@example.com",
+    "username": "juank",
     "displayName": "Juan Carlos",
     "platformRole": "PLAYER",
     "status": "ACTIVE",
@@ -178,15 +181,23 @@ Tokens are obtained via:
   }
 }
 
-// 400 - Duplicate Email
+// 409 - Duplicate Email
 {
-  "error": "VALIDATION_ERROR",
+  "error": "CONFLICT",
   "message": "Email already exists"
+}
+
+// 409 - Duplicate Username
+{
+  "error": "CONFLICT",
+  "message": "Username already exists"
 }
 ```
 
 **Notes:**
 - Password is hashed with bcrypt (salt rounds = 10) before storage
+- Username is normalized to lowercase and trimmed
+- Reserved usernames are blocked (admin, system, null, undefined, root, api, test)
 - Audit event `USER_REGISTERED` is logged
 
 ---
@@ -245,6 +256,160 @@ Tokens are obtained via:
 - Email is case-insensitive (normalized to lowercase)
 - Audit event `USER_LOGGED_IN` is logged (with IP, user-agent)
 - Rate limiting recommended (future: 5 attempts / 15 min)
+
+---
+
+### 3.3 Forgot Password
+
+**Request password reset email.**
+
+**Endpoint:** `POST /auth/forgot-password`
+
+**Authentication:** None (public)
+
+**Request Body:**
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Si el email existe, recibirás un enlace para restablecer tu contraseña"
+}
+```
+
+**Notes:**
+- Returns same message whether email exists or not (security: prevents email enumeration)
+- If email exists and user is ACTIVE, generates secure reset token (32 bytes)
+- Token expires in 1 hour
+- Sends email via Resend with reset link
+- Audit event `PASSWORD_RESET_REQUESTED` is logged
+
+---
+
+### 3.4 Reset Password
+
+**Reset password using valid token.**
+
+**Endpoint:** `POST /auth/reset-password`
+
+**Authentication:** None (public)
+
+**Request Body:**
+
+```json
+{
+  "token": "6cfa02b4ec5f7d9f79fb1d153acfbfd8d5c5546bbd46f6d4a08e8d44411ea1fe",
+  "newPassword": "NewSecurePass123!"
+}
+```
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Contraseña actualizada exitosamente"
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 - Invalid or Expired Token
+{
+  "error": "INVALID_TOKEN",
+  "message": "Token inválido o expirado"
+}
+
+// 400 - Validation Error
+{
+  "error": "VALIDATION_ERROR",
+  "details": { ... }
+}
+```
+
+**Notes:**
+- Token must be valid and not expired (< 1 hour old)
+- User must have status `ACTIVE`
+- Password must meet validation requirements (min 8 chars)
+- Token is cleared after successful reset (single-use)
+- Audit event `PASSWORD_RESET_COMPLETED` is logged
+
+---
+
+### 3.5 Google OAuth
+
+**Authenticate or register user via Google OAuth.**
+
+**Endpoint:** `POST /auth/google`
+
+**Authentication:** None (public)
+
+**Request Body:**
+
+```json
+{
+  "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6..."
+}
+```
+
+**Success Response (200):**
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "a1b2c3d4-...",
+    "email": "user@gmail.com",
+    "username": "user_gmail",
+    "displayName": "John Doe",
+    "platformRole": "PLAYER",
+    "status": "ACTIVE"
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+// 401 - Invalid Google Token
+{
+  "error": "INVALID_TOKEN",
+  "message": "Token de Google inválido"
+}
+
+// 403 - User Not Active
+{
+  "error": "FORBIDDEN",
+  "message": "User account is not active"
+}
+```
+
+**Flow:**
+1. Frontend receives ID token from Google Sign In
+2. Backend verifies token with Google's API (`google-auth-library`)
+3. Extracts user info (googleId, email, name, picture)
+4. **If user exists by email or googleId:**
+   - Login existing user
+   - If email exists but no googleId → link Google account
+   - Audit event: `LOGIN_GOOGLE` or `GOOGLE_ACCOUNT_LINKED`
+5. **If user doesn't exist:**
+   - Create new user with auto-generated username (from email)
+   - Set `passwordHash` to empty string (OAuth users don't need password)
+   - Audit event: `REGISTER_GOOGLE`
+6. Return JWT token (same as email/password login)
+
+**Notes:**
+- Google ID token is verified server-side (never trust frontend-only validation)
+- Username auto-generated from email local part (e.g., `juan_chacon` from `juan.chacon@gmail.com`)
+- If username collision, append number (`juan_chacon1`, `juan_chacon2`)
+- OAuth users can still use forgot password to set a password
+- Account linking is automatic if emails match
 
 ---
 
@@ -867,6 +1032,206 @@ Adds `breakdown` array to each leaderboard row:
 
 ---
 
+### 6.6 Update Pool Settings
+
+**Update pool configuration (auto-advance toggle).**
+
+**Endpoint:** `PATCH /pools/:poolId/settings`
+
+**Authentication:** Required (HOST only)
+
+**Path Parameters:**
+- `poolId` (UUID): Pool ID
+
+**Request Body:**
+
+```json
+{
+  "autoAdvanceEnabled": true
+}
+```
+
+**Field Details:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `autoAdvanceEnabled` | boolean | ✅ | Enable/disable automatic phase advancement |
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Pool settings updated",
+  "pool": {
+    "id": "pool-uuid",
+    "autoAdvanceEnabled": true,
+    "updatedAtUtc": "2026-01-05T10:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+// 403 - Not Host
+{
+  "error": "FORBIDDEN",
+  "message": "Only HOST can update pool settings"
+}
+
+// 404 - Pool Not Found
+{
+  "error": "NOT_FOUND",
+  "message": "Pool not found"
+}
+```
+
+**Notes:**
+- Only pool creator (HOST) can update settings
+- `autoAdvanceEnabled` controls whether tournament phases auto-advance when all matches are complete
+- Default value is `true` (auto-advance enabled)
+- Audit event `POOL_SETTINGS_UPDATED` logged
+
+---
+
+### 6.7 Manual Advance Phase
+
+**Manually trigger tournament phase advancement.**
+
+**Endpoint:** `POST /pools/:poolId/advance-phase`
+
+**Authentication:** Required (HOST only)
+
+**Path Parameters:**
+- `poolId` (UUID): Pool ID
+
+**Request Body:**
+
+```json
+{
+  "phaseId": "group_stage"
+}
+```
+
+**Field Details:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `phaseId` | string | ✅ | Phase to advance from (e.g., "group_stage", "round_of_32") |
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Phase advanced successfully",
+  "advancedFrom": "group_stage",
+  "advancedTo": "round_of_32",
+  "teamsAdvanced": 32
+}
+```
+
+**Error Responses:**
+
+```json
+// 403 - Not Host
+{
+  "error": "FORBIDDEN",
+  "message": "Only HOST can manually advance phases"
+}
+
+// 400 - Phase Locked
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Cannot advance: phase is locked"
+}
+
+// 400 - Incomplete Phase
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Cannot advance: phase has incomplete matches"
+}
+
+// 404 - Phase Not Found
+{
+  "error": "NOT_FOUND",
+  "message": "Phase not found in tournament"
+}
+```
+
+**Notes:**
+- Validates all matches in phase have published results
+- Respects phase locking (if phase is locked, advancement is blocked)
+- Group stage → Round of 32: Calculates standings, ranks third-place teams, advances 32 qualifiers
+- Knockout phases: Advances winners to next round
+- Updates placeholder matches with actual team IDs
+- Audit event `PHASE_ADVANCED` logged with details
+
+---
+
+### 6.8 Lock/Unlock Phase
+
+**Lock or unlock a tournament phase to prevent/allow auto-advancement.**
+
+**Endpoint:** `POST /pools/:poolId/lock-phase`
+
+**Authentication:** Required (HOST only)
+
+**Path Parameters:**
+- `poolId` (UUID): Pool ID
+
+**Request Body:**
+
+```json
+{
+  "phaseId": "group_stage",
+  "locked": true
+}
+```
+
+**Field Details:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `phaseId` | string | ✅ | Phase to lock/unlock (e.g., "group_stage", "round_of_32") |
+| `locked` | boolean | ✅ | `true` to lock, `false` to unlock |
+
+**Success Response (200):**
+
+```json
+{
+  "message": "Phase locked successfully",
+  "phaseId": "group_stage",
+  "locked": true,
+  "lockedPhases": ["group_stage"]
+}
+```
+
+**Error Responses:**
+
+```json
+// 403 - Not Host
+{
+  "error": "FORBIDDEN",
+  "message": "Only HOST can lock/unlock phases"
+}
+
+// 404 - Phase Not Found
+{
+  "error": "NOT_FOUND",
+  "message": "Phase not found in tournament"
+}
+```
+
+**Notes:**
+- Locking a phase prevents automatic advancement even if all matches are complete
+- Useful for reviewing results or correcting errors before advancing
+- Locked phases are stored in `Pool.lockedPhases` JSON array
+- Unlocking removes phase from `lockedPhases` array
+- Auto-advance respects locked phases: if phase is locked, it won't advance automatically
+- Audit event `PHASE_LOCKED` or `PHASE_UNLOCKED` logged
+
+---
+
 ## 7. Pick Endpoints
 
 ### 7.1 List Matches with Deadlines
@@ -1067,6 +1432,8 @@ Adds `breakdown` array to each leaderboard row:
 {
   "homeGoals": 2,
   "awayGoals": 1,
+  "homePenalties": 4,
+  "awayPenalties": 3,
   "reason": "VAR anulled away goal"
 }
 ```
@@ -1077,6 +1444,8 @@ Adds `breakdown` array to each leaderboard row:
 |-------|------|----------|------------|
 | `homeGoals` | number | ✅ | 0-99, integer |
 | `awayGoals` | number | ✅ | 0-99, integer |
+| `homePenalties` | number | ❌ | 0-99, integer, **only for knockout phase ties** |
+| `awayPenalties` | number | ❌ | 0-99, integer, **only for knockout phase ties** |
 | `reason` | string | ⚠️ Conditional | 1-500 chars, **required if version > 1** |
 
 **Success Response (200):**
@@ -1096,6 +1465,8 @@ Adds `breakdown` array to each leaderboard row:
     "status": "PUBLISHED",
     "homeGoals": 2,
     "awayGoals": 1,
+    "homePenalties": null,
+    "awayPenalties": null,
     "reason": null,
     "createdByUserId": "host-uuid",
     "publishedAtUtc": "2026-06-11T22:00:00.000Z",
@@ -1159,6 +1530,8 @@ Adds `breakdown` array to each leaderboard row:
 - Correction (version 2+): `reason` **required** (enforced in transaction)
 - All versions retained (immutable audit trail)
 - Leaderboard recalculates automatically
+- **Penalty Shootouts:** `homePenalties` and `awayPenalties` are optional fields used only for knockout phase matches that end in a tie (e.g., `homeGoals == awayGoals`). These determine the winner for tournament advancement purposes.
+- **Auto-Advance Trigger:** After publishing a result, if auto-advance is enabled and all matches in a phase are complete, the tournament automatically advances to the next phase (unless the phase is locked).
 - Audit event `RESULT_PUBLISHED` logged
 
 ---

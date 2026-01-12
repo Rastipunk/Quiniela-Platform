@@ -4,12 +4,30 @@ import { getToken, onAuthChange } from "./lib/auth";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PoolPage } from "./pages/PoolPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { Layout } from "./components/Layout";
 
 function AuthedApp() {
   return (
+    <Layout>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/pools/:poolId" element={<PoolPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Layout>
+  );
+}
+
+function PublicApp({ onLoggedIn }: { onLoggedIn: () => void }) {
+  return (
     <Routes>
-      <Route path="/" element={<DashboardPage />} />
-      <Route path="/pools/:poolId" element={<PoolPage />} />
+      <Route path="/" element={<LoginPage onLoggedIn={onLoggedIn} />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -24,13 +42,9 @@ export default function App() {
     return onAuthChange(() => setIsAuthed(!!getToken()));
   }, []);
 
-  if (!isAuthed) {
-    return <LoginPage onLoggedIn={() => setIsAuthed(true)} />;
-  }
-
   return (
     <BrowserRouter>
-      <AuthedApp />
+      {isAuthed ? <AuthedApp /> : <PublicApp onLoggedIn={() => setIsAuthed(true)} />}
     </BrowserRouter>
   );
 }

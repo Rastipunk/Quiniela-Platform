@@ -77,10 +77,18 @@ AuditEvent (global, no FK constraints)
 model User {
   id           String       @id @default(uuid())
   email        String       @unique
+  username     String       @unique           // NEW: Unique identifier (3-20 chars, alphanumeric+hyphens/underscores)
   displayName  String
-  passwordHash String
+  passwordHash String                         // Can be empty for OAuth-only users
   platformRole PlatformRole @default(PLAYER)
   status       UserStatus   @default(ACTIVE)
+
+  // Password reset fields (NEW: 2026-01-04)
+  resetToken          String?   @unique      // Secure random token (32 bytes hex)
+  resetTokenExpiresAt DateTime?              // Token expiration (1 hour from generation)
+
+  // OAuth integration (NEW: 2026-01-04)
+  googleId String? @unique                    // Google User ID (from OAuth sub claim)
 
   createdAtUtc DateTime @default(now())
   updatedAtUtc DateTime @updatedAt
@@ -91,6 +99,11 @@ model User {
   poolInvitesCreated    PoolInvite[]
   predictions           Prediction[]
   resultVersionsCreated PoolMatchResultVersion[]
+
+  // Indexes
+  @@index([username])
+  @@index([resetToken])
+  @@index([googleId])
 }
 
 enum PlatformRole {

@@ -8,11 +8,16 @@ import { adminTemplatesRouter } from "./routes/adminTemplates";
 import { requireAuth } from "./middleware/requireAuth";
 import { adminInstancesRouter } from "./routes/adminInstances";
 import { poolsRouter } from "./routes/pools";
-import { poolsLockRouter } from "./routes/poolsLock";
+// import { poolsLockRouter } from "./routes/poolsLock"; // TODO: implementar
 import { picksRouter } from "./routes/picks";
+import { structuralPicksRouter } from "./routes/structuralPicks";
 import { resultsRouter } from "./routes/results";
+import { structuralResultsRouter } from "./routes/structuralResults";
+import { groupStandingsRouter } from "./routes/groupStandings";
 import { meRouter } from "./routes/me";
 import { catalogRouter } from "./routes/catalog";
+import { userProfileRouter } from "./routes/userProfile";
+import { pickPresetsRouter } from "./routes/pickPresets";
 
 
 
@@ -40,11 +45,16 @@ app.use("/admin", adminRouter);
 app.use("/admin", adminTemplatesRouter);
 app.use("/admin", adminInstancesRouter);
 app.use("/pools", poolsRouter);
-app.use("/pools", poolsLockRouter);
+// app.use("/pools", poolsLockRouter); // TODO: implementar
 app.use("/pools", picksRouter);
+app.use("/pools", structuralPicksRouter);
 app.use("/pools", resultsRouter);
+app.use("/pools", structuralResultsRouter);
+app.use("/pools", groupStandingsRouter);
 app.use("/me", meRouter);
+app.use("/users", userProfileRouter);
 app.use("/catalog", catalogRouter);
+app.use("/pick-presets", pickPresetsRouter);
 
 
 

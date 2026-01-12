@@ -5,11 +5,27 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { getScoringPreset } from "../lib/scoringPresets";
+import { verifyUserPassword } from "../lib/passwordVerification";
 import {
   advanceToRoundOf32,
   advanceKnockoutPhase,
   validateGroupStageComplete,
 } from "../services/instanceAdvancement";
+import {
+  transitionToActive,
+  transitionToArchived,
+  canJoinPool,
+  canMakePicks,
+  canPublishResults,
+  canEditPoolSettings,
+  canCreateInvites
+} from "../services/poolStateMachine";
+import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
+import { validatePoolPickTypesConfig } from "../validation/pickConfig";
+import { getPresetByKey } from "../lib/pickPresets";
+import { scoreMatchPick } from "../lib/scoringAdvanced";
+import { scoreUserStructuralPicks } from "../services/structuralScoring";
+import type { PhasePickConfig } from "../types/pickConfig";
 
 
 type SnapshotMatch = {
@@ -57,7 +73,14 @@ const createPoolSchema = z.object({
   timeZone: z.string().min(3).max(64).optional(), // Comentario en español: IANA TZ
   deadlineMinutesBeforeKickoff: z.number().int().min(0).max(1440).optional(),
   scoringPresetKey: z.enum(["CLASSIC", "OUTCOME_ONLY", "EXACT_HEAVY"]).optional(),
+  requireApproval: z.boolean().optional(),
 
+  // Comentario en español: configuración avanzada de tipos de picks
+  // Puede ser: preset key ("BASIC", "ADVANCED", "SIMPLE") o configuración custom
+  pickTypesConfig: z.union([
+    z.enum(["BASIC", "ADVANCED", "SIMPLE"]), // Preset key
+    PoolPickTypesConfigSchema, // Configuración custom
+  ]).optional(),
 });
 
 function makeInviteCode() {
@@ -65,11 +88,12 @@ function makeInviteCode() {
   return crypto.randomBytes(6).toString("hex"); // 12 chars
 }
 
-async function requirePoolHost(userId: string, poolId: string) {
+// Comentario en español: valida que el usuario sea HOST o CO_ADMIN del pool
+async function requirePoolHostOrCoAdmin(userId: string, poolId: string) {
   const m = await prisma.poolMember.findFirst({
     where: { poolId, userId, status: "ACTIVE" },
   });
-  return m?.role === "HOST";
+  return m?.role === "HOST" || m?.role === "CO_ADMIN";
 }
 
 // POST /pools  (crea pool y agrega al creador como HOST)
@@ -79,8 +103,16 @@ poolsRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
   }
 
-const { tournamentInstanceId, name, description, timeZone, deadlineMinutesBeforeKickoff, scoringPresetKey } = parsed.data;
-
+  const {
+    tournamentInstanceId,
+    name,
+    description,
+    timeZone,
+    deadlineMinutesBeforeKickoff,
+    scoringPresetKey,
+    requireApproval,
+    pickTypesConfig
+  } = parsed.data;
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: tournamentInstanceId } });
   if (!instance) return res.status(404).json({ error: "NOT_FOUND", message: "TournamentInstance not found" });
@@ -88,6 +120,51 @@ const { tournamentInstanceId, name, description, timeZone, deadlineMinutesBefore
   // Comentario en español: no permitimos pools sobre instancias archivadas
   if (instance.status === "ARCHIVED") {
     return res.status(409).json({ error: "CONFLICT", message: "Cannot create pool on ARCHIVED instance" });
+  }
+
+  // Comentario en español: procesar pickTypesConfig
+  let finalPickTypesConfig: any = null;
+
+  if (pickTypesConfig) {
+    // Si es un string, es un preset key
+    if (typeof pickTypesConfig === "string") {
+      const preset = getPresetByKey(pickTypesConfig);
+      if (!preset) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: `Invalid preset key: ${pickTypesConfig}`
+        });
+      }
+      finalPickTypesConfig = preset.config;
+    } else {
+      // Es una configuración custom, validar
+      const validation = validatePoolPickTypesConfig(pickTypesConfig);
+
+      if (!validation.valid) {
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          message: "Invalid pick types configuration",
+          errors: validation.errors,
+        });
+      }
+
+      // Si hay warnings, incluirlos en la respuesta pero no bloquear
+      if (validation.warnings.length > 0) {
+        // Los warnings se retornan al frontend para que el usuario decida
+        // Por ahora, los guardamos en audit log
+        await writeAuditEvent({
+          actorUserId: req.auth!.userId,
+          action: "POOL_CONFIG_WARNINGS",
+          entityType: "Pool",
+          entityId: "pending",
+          dataJson: { warnings: validation.warnings },
+          ip: req.ip ?? null,
+          userAgent: req.get("user-agent") ?? null,
+        });
+      }
+
+      finalPickTypesConfig = pickTypesConfig;
+    }
   }
 
   const created = await prisma.$transaction(async (tx) => {
@@ -101,6 +178,10 @@ const { tournamentInstanceId, name, description, timeZone, deadlineMinutesBefore
         deadlineMinutesBeforeKickoff: deadlineMinutesBeforeKickoff ?? 10,
         createdByUserId: req.auth!.userId,
         scoringPresetKey: scoringPresetKey ?? "CLASSIC",
+        requireApproval: requireApproval ?? false,
+        pickTypesConfig: finalPickTypesConfig,
+        // CRÍTICO: Copiar el fixture del torneo para que cada pool tenga su propia copia
+        fixtureSnapshot: instance.dataJson,
       },
     });
 
@@ -121,8 +202,11 @@ const { tournamentInstanceId, name, description, timeZone, deadlineMinutesBefore
     action: "POOL_CREATED",
     entityType: "Pool",
     entityId: created.id,
-    dataJson: { tournamentInstanceId },
-    ip: req.ip,
+    dataJson: {
+      tournamentInstanceId,
+      hasPickTypesConfig: !!finalPickTypesConfig,
+    },
+    ip: req.ip ?? null,
     userAgent: req.get("user-agent") ?? null,
   });
 
@@ -154,8 +238,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
 
   const membersActive = await prisma.poolMember.count({ where: { poolId, status: "ACTIVE" } });
 
-  // 3) Snapshot
-  const snapshot = pool.tournamentInstance.dataJson;
+  // 3) Snapshot - USAR pool.fixtureSnapshot (copia independiente) en lugar de tournamentInstance.dataJson
+  const snapshot = pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson;
   const matches = extractMatches(snapshot);
   const teams = extractTeams(snapshot);
 
@@ -244,6 +328,143 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     predsByUserMatch.set(p.userId, byMatch);
   }
 
+  // ✅ Cargar picks y resultados estructurales (Sprint 2 - Preset SIMPLE)
+  const allStructuralPicks = await prisma.structuralPrediction.findMany({
+    where: { poolId },
+  });
+
+  const structuralPicksByUser = new Map<string, Array<{ phaseId: string; pickJson: any }>>();
+  for (const sp of allStructuralPicks) {
+    const userPicks = structuralPicksByUser.get(sp.userId) ?? [];
+    userPicks.push({ phaseId: sp.phaseId, pickJson: sp.pickJson as any });
+    structuralPicksByUser.set(sp.userId, userPicks);
+  }
+
+  // ✅ Cargar picks granulares de grupos (GroupStandingsPrediction)
+  const allGroupStandingsPicks = await prisma.groupStandingsPrediction.findMany({
+    where: { poolId },
+  });
+
+  // Agrupar por usuario y fase, convertir al formato esperado por scoreUserStructuralPicks
+  for (const gsp of allGroupStandingsPicks) {
+    const userPicks = structuralPicksByUser.get(gsp.userId) ?? [];
+
+    // Buscar si ya existe un pick para esta fase
+    let existingPhasePick = userPicks.find((p) => p.phaseId === gsp.phaseId);
+    if (!existingPhasePick) {
+      existingPhasePick = { phaseId: gsp.phaseId, pickJson: { groups: [] } };
+      userPicks.push(existingPhasePick);
+      structuralPicksByUser.set(gsp.userId, userPicks);
+    }
+
+    // Agregar el grupo al pick de la fase
+    if (!existingPhasePick.pickJson.groups) {
+      existingPhasePick.pickJson.groups = [];
+    }
+    existingPhasePick.pickJson.groups.push({
+      groupId: gsp.groupId,
+      teamIds: gsp.teamIds,
+    });
+  }
+
+  const allStructuralResults = await prisma.structuralPhaseResult.findMany({
+    where: { poolId },
+  });
+
+  const structuralResults = allStructuralResults.map((sr) => ({
+    phaseId: sr.phaseId,
+    resultJson: sr.resultJson as any,
+  }));
+
+  // ✅ Cargar resultados granulares de grupos (GroupStandingsResult)
+  const allGroupStandingsResults = await prisma.groupStandingsResult.findMany({
+    where: { poolId },
+  });
+
+  // Agrupar por fase y convertir al formato esperado por el scoring
+  const groupResultsByPhase = new Map<string, any[]>();
+  for (const gsr of allGroupStandingsResults) {
+    const groups = groupResultsByPhase.get(gsr.phaseId) ?? [];
+    groups.push({
+      groupId: gsr.groupId,
+      teamIds: gsr.teamIds,
+    });
+    groupResultsByPhase.set(gsr.phaseId, groups);
+  }
+
+  // Agregar resultados de grupos al array de structural results
+  groupResultsByPhase.forEach((groups, phaseId) => {
+    // Verificar si ya existe un resultado para esta fase
+    const existing = structuralResults.find((sr) => sr.phaseId === phaseId);
+    if (!existing) {
+      structuralResults.push({
+        phaseId,
+        resultJson: { groups },
+      });
+    }
+  });
+
+  // ✅ Convertir PoolMatchResult de fases knockout a formato estructural con winnerId
+  // Esto es necesario porque el scoring de KNOCKOUT_WINNER espera { matches: [{ matchId, winnerId }] }
+  const knockoutPhases = ["round_of_32", "round_of_16", "quarter_finals", "semi_finals", "finals"];
+  const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
+
+  if (pickTypesConfig) {
+    for (const phaseId of knockoutPhases) {
+      const phaseConfig = pickTypesConfig.find((p) => p.phaseId === phaseId);
+      if (!phaseConfig?.structuralPicks || phaseConfig.structuralPicks.type !== "KNOCKOUT_WINNER") {
+        continue;
+      }
+
+      // Verificar si ya existe un resultado estructural para esta fase
+      const existingResult = structuralResults.find((sr) => sr.phaseId === phaseId);
+      if (existingResult) continue;
+
+      // Obtener partidos de esta fase
+      const phaseMatches = matches.filter((m) => m.phaseId === phaseId);
+      if (phaseMatches.length === 0) continue;
+
+      // Convertir resultados de partidos a formato winnerId
+      const knockoutMatches: Array<{ matchId: string; winnerId: string }> = [];
+
+      for (const match of phaseMatches) {
+        const result = resultByMatchId.get(match.id);
+        if (!result) continue;
+
+        // Determinar ganador basado en goles y penales
+        let winnerId: string | null = null;
+
+        if (result.homeGoals > result.awayGoals) {
+          winnerId = match.homeTeamId;
+        } else if (result.awayGoals > result.homeGoals) {
+          winnerId = match.awayTeamId;
+        } else {
+          // Empate en tiempo regular - verificar penales
+          const homePens = result.homePenalties ?? 0;
+          const awayPens = result.awayPenalties ?? 0;
+          if (homePens > 0 || awayPens > 0) {
+            if (homePens > awayPens) {
+              winnerId = match.homeTeamId;
+            } else if (awayPens > homePens) {
+              winnerId = match.awayTeamId;
+            }
+          }
+        }
+
+        if (winnerId) {
+          knockoutMatches.push({ matchId: match.id, winnerId });
+        }
+      }
+
+      if (knockoutMatches.length > 0) {
+        structuralResults.push({
+          phaseId,
+          resultJson: { matches: knockoutMatches },
+        });
+      }
+    }
+  }
+
   function scorePick(pick: any, actualHome: number, actualAway: number) {
     const actualOutcome = outcomeFromScore(actualHome, actualAway);
 
@@ -328,6 +549,44 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
         continue;
       }
 
+      // ✅ SCORING AVANZADO: Si el pool tiene pickTypesConfig, usar scoreMatchPick
+      if (pool.pickTypesConfig && Array.isArray(pool.pickTypesConfig)) {
+        const phaseConfigs = pool.pickTypesConfig as PhasePickConfig[];
+        const phaseConfig = phaseConfigs.find((p) => p.phaseId === match.phaseId);
+
+        if (phaseConfig && phaseConfig.requiresScore && phaseConfig.matchPicks) {
+          // Validar que el pick tiene la estructura correcta para scoring avanzado
+          if (pick.type === "SCORE" && typeof pick.homeGoals === "number" && typeof pick.awayGoals === "number") {
+            try {
+              const advancedResult = scoreMatchPick(
+                { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
+                { homeGoals: r.homeGoals, awayGoals: r.awayGoals },
+                phaseConfig
+              );
+
+              points += advancedResult.totalPoints;
+              scoredMatches += 1;
+
+              if (leaderboardVerbose) {
+                breakdown.push({
+                  matchId: match.id,
+                  pick,
+                  result: r,
+                  points: { totalPoints: advancedResult.totalPoints },
+                  evaluations: advancedResult.evaluations,
+                  status: "SCORED_ADVANCED",
+                });
+              }
+              continue;
+            } catch (err) {
+              // Si falla scoring avanzado, caer al legacy
+              console.error(`Advanced scoring failed for match ${match.id}, falling back to legacy:`, err);
+            }
+          }
+        }
+      }
+
+      // ✅ SCORING LEGACY: Si no hay pickTypesConfig o falló el avanzado
       const scored = scorePick(pick, r.homeGoals, r.awayGoals);
       points += scored.totalPoints;
       scoredMatches += 1;
@@ -344,11 +603,33 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       }
     }
 
+    // ✅ AGREGAR PUNTOS ESTRUCTURALES (Sprint 2 - Preset SIMPLE)
+    let structuralPoints = 0;
+
+    if (pool.pickTypesConfig && Array.isArray(pool.pickTypesConfig) && structuralResults.length > 0) {
+      const userStructuralPicks = structuralPicksByUser.get(m.userId) || [];
+
+      if (userStructuralPicks.length > 0) {
+        try {
+          structuralPoints = scoreUserStructuralPicks(
+            userStructuralPicks,
+            structuralResults,
+            pool.pickTypesConfig as any[]
+          );
+        } catch (err) {
+          console.error(`Error calculating structural points for user ${m.userId}:`, err);
+        }
+      }
+    }
+
     return {
       userId: m.userId,
+      memberId: m.id,
       displayName: m.user.displayName,
       role: m.role,
-      points,
+      points: points + structuralPoints, // Total: match picks + structural picks
+      matchPickPoints: points, // Desglose para debugging
+      structuralPickPoints: structuralPoints,
       scoredMatches,
       joinedAtUtc: m.joinedAtUtc,
       breakdown: leaderboardVerbose ? breakdown : undefined,
@@ -362,7 +643,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     return aTime - bTime;
   });
 
-  // 8) Respuesta final “1-call”
+  // 8) Respuesta final "1-call"
   return res.json({
     nowUtc: now.toISOString(),
     pool: {
@@ -370,6 +651,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       name: pool.name,
       description: pool.description,
       visibility: pool.visibility,
+      status: pool.status,
       timeZone: pool.timeZone,
       deadlineMinutesBeforeKickoff: pool.deadlineMinutesBeforeKickoff,
       tournamentInstanceId: pool.tournamentInstanceId,
@@ -377,7 +659,9 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       createdAtUtc: pool.createdAtUtc,
       updatedAtUtc: pool.updatedAtUtc,
       scoringPresetKey: pool.scoringPresetKey ?? "CLASSIC",
+      pickTypesConfig: pool.pickTypesConfig, // Configuración avanzada de tipos de picks
       autoAdvanceEnabled: pool.autoAdvanceEnabled,
+      requireApproval: pool.requireApproval,
       lockedPhases: pool.lockedPhases as string[],
     },
     myMembership: {
@@ -392,11 +676,13 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       status: pool.tournamentInstance.status,
       templateId: pool.tournamentInstance.templateId,
       templateVersionId: pool.tournamentInstance.templateVersionId,
-      dataJson: pool.tournamentInstance.dataJson,
+      // Usar fixtureSnapshot si existe (tiene equipos resueltos para knockout)
+      // Fallback a dataJson original si no hay snapshot
+      dataJson: pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson,
     },
     permissions: {
-      canManageResults: myMembership.role === "HOST",
-      canInvite: myMembership.role === "HOST",
+      canManageResults: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN",
+      canInvite: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN",
     },
     matches: matchCards,
     leaderboard: {
@@ -411,6 +697,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       rows: leaderboardRows.map((r, idx) => ({
       rank: idx + 1,
       userId: r.userId,
+      memberId: r.memberId,
       displayName: r.displayName,
       role: r.role,
       points: r.points,
@@ -458,12 +745,16 @@ poolsRouter.get("/:poolId", async (req, res) => {
       name: pool.name,
       description: pool.description,
       visibility: pool.visibility,
+      status: pool.status,
       timeZone: pool.timeZone,
       deadlineMinutesBeforeKickoff: pool.deadlineMinutesBeforeKickoff,
       tournamentInstanceId: pool.tournamentInstanceId,
       createdByUserId: pool.createdByUserId,
       createdAtUtc: pool.createdAtUtc,
       updatedAtUtc: pool.updatedAtUtc,
+      scoringPresetKey: pool.scoringPresetKey,
+      autoAdvanceEnabled: pool.autoAdvanceEnabled,
+      requireApproval: pool.requireApproval,
     },
     myMembership: {
       role: myMembership.role,
@@ -516,6 +807,353 @@ poolsRouter.get("/:poolId/members", async (req, res) => {
   })));
 });
 
+// GET /pools/:poolId/pending-members  (solo HOST/CO_ADMIN)
+poolsRouter.get("/:poolId/pending-members", async (req, res) => {
+  const { poolId } = req.params;
+
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const pendingMembers = await prisma.poolMember.findMany({
+    where: {
+      poolId,
+      status: "PENDING_APPROVAL" as any // TypeScript no ha recargado tipos, pero Prisma sí lo soporta
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          email: true
+        }
+      }
+    },
+    orderBy: { joinedAtUtc: "asc" },
+  });
+
+  return res.json({
+    ok: true,
+    pendingMembers: pendingMembers.map((m: any) => ({
+      id: m.id,
+      userId: m.userId,
+      username: m.user.username,
+      displayName: m.user.displayName,
+      email: m.user.email,
+      requestedAt: m.joinedAtUtc,
+    }))
+  });
+});
+
+// POST /pools/:poolId/members/:memberId/approve  (solo HOST/CO_ADMIN)
+poolsRouter.post("/:poolId/members/:memberId/approve", async (req, res) => {
+  const { poolId, memberId } = req.params;
+
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const member = await prisma.poolMember.findUnique({
+    where: { id: memberId },
+    include: { user: true }
+  });
+
+  if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
+  if (member.poolId !== poolId) return res.status(403).json({ error: "FORBIDDEN" });
+
+  if (member.status !== ("PENDING_APPROVAL" as any)) {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Member is not pending approval"
+    });
+  }
+
+  await prisma.poolMember.update({
+    where: { id: memberId },
+    data: {
+      status: "ACTIVE" as any,
+      approvedByUserId: req.auth!.userId,
+      approvedAtUtc: new Date(),
+    },
+  });
+
+  await writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "JOIN_REQUEST_APPROVED",
+    entityType: "Pool",
+    entityId: poolId,
+    dataJson: {
+      approvedUserId: member.userId,
+      approvedUsername: member.user.username,
+      approvedDisplayName: member.user.displayName,
+    },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  // Trigger transición DRAFT → ACTIVE si es el primer jugador activo
+  await transitionToActive(poolId, member.userId);
+
+  return res.json({
+    ok: true,
+    message: "Member approved successfully"
+  });
+});
+
+// POST /pools/:poolId/members/:memberId/reject  (solo HOST/CO_ADMIN)
+const rejectMemberSchema = z.object({
+  reason: z.string().min(1).max(500).optional(),
+});
+
+poolsRouter.post("/:poolId/members/:memberId/reject", async (req, res) => {
+  const { poolId, memberId } = req.params;
+
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const parsed = rejectMemberSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const member = await prisma.poolMember.findUnique({
+    where: { id: memberId },
+    include: { user: true }
+  });
+
+  if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
+  if (member.poolId !== poolId) return res.status(403).json({ error: "FORBIDDEN" });
+
+  if (member.status !== ("PENDING_APPROVAL" as any)) {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Member is not pending approval"
+    });
+  }
+
+  // Rechazar = eliminar el registro (el usuario puede intentar unirse de nuevo)
+  await prisma.poolMember.delete({
+    where: { id: memberId },
+  });
+
+  await writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "JOIN_REQUEST_REJECTED",
+    entityType: "Pool",
+    entityId: poolId,
+    dataJson: {
+      rejectedUserId: member.userId,
+      rejectedUsername: member.user.username,
+      rejectedDisplayName: member.user.displayName,
+      reason: parsed.data.reason ?? null,
+    },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({
+    ok: true,
+    message: "Member rejected successfully"
+  });
+});
+
+const kickMemberSchema = z.object({
+  reason: z.string().optional(), // Razón opcional para KICK
+});
+
+// POST /pools/:poolId/members/:memberId/kick  (solo HOST/CO_ADMIN)
+// Comentario: Expulsa al jugador (LEFT), puede volver a solicitar acceso
+poolsRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
+  const { poolId, memberId } = req.params;
+  const actorUserId = req.auth!.userId;
+
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(actorUserId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const parsed = kickMemberSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const { reason } = parsed.data;
+
+  // Verificar que el miembro existe y está activo
+  const member = await prisma.poolMember.findUnique({
+    where: { id: memberId },
+    include: { user: { select: { username: true } } }
+  });
+
+  if (!member || member.poolId !== poolId) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
+  }
+
+  if (member.status !== "ACTIVE") {
+    return res.status(400).json({
+      error: "INVALID_STATUS",
+      message: "Can only kick active members"
+    });
+  }
+
+  // No permitir que el host se expulse a sí mismo
+  if (member.userId === actorUserId) {
+    return res.status(400).json({
+      error: "CANNOT_KICK_SELF",
+      message: "You cannot kick yourself"
+    });
+  }
+
+  // No permitir expulsar al creador del pool
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: { createdByUserId: true }
+  });
+
+  if (member.userId === pool?.createdByUserId) {
+    return res.status(400).json({
+      error: "CANNOT_KICK_HOST",
+      message: "Cannot kick the pool creator"
+    });
+  }
+
+  // Actualizar el miembro a LEFT
+  await prisma.poolMember.update({
+    where: { id: memberId },
+    data: {
+      status: "LEFT",
+      leftAtUtc: new Date(),
+    },
+  });
+
+  // Auditoría
+  await writeAuditEvent({
+    actorUserId,
+    action: "MEMBER_KICKED",
+    entityType: "PoolMember",
+    entityId: memberId,
+    poolId,
+    dataJson: {
+      kickedUserId: member.userId,
+      kickedUsername: member.user.username,
+      reason: reason || "No reason provided",
+    },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({
+    ok: true,
+    message: "Member kicked successfully"
+  });
+});
+
+const banMemberSchema = z.object({
+  reason: z.string().min(1, "Reason is required"), // Razón OBLIGATORIA para BAN
+  deletePicks: z.boolean().optional(), // Si true, elimina los picks del jugador
+});
+
+// POST /pools/:poolId/members/:memberId/ban  (solo HOST/CO_ADMIN)
+// Comentario: Expulsa PERMANENTEMENTE (BANNED), NO puede volver, opcionalmente borra picks
+poolsRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
+  const { poolId, memberId } = req.params;
+  const actorUserId = req.auth!.userId;
+
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(actorUserId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const parsed = banMemberSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const { reason, deletePicks } = parsed.data;
+
+  // Verificar que el miembro existe y está activo
+  const member = await prisma.poolMember.findUnique({
+    where: { id: memberId },
+    include: { user: { select: { username: true } } }
+  });
+
+  if (!member || member.poolId !== poolId) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
+  }
+
+  if (member.status !== "ACTIVE") {
+    return res.status(400).json({
+      error: "INVALID_STATUS",
+      message: "Can only ban active members"
+    });
+  }
+
+  // No permitir que el host se expulse a sí mismo
+  if (member.userId === actorUserId) {
+    return res.status(400).json({
+      error: "CANNOT_BAN_SELF",
+      message: "You cannot ban yourself"
+    });
+  }
+
+  // No permitir expulsar al creador del pool
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: { createdByUserId: true }
+  });
+
+  if (member.userId === pool?.createdByUserId) {
+    return res.status(400).json({
+      error: "CANNOT_BAN_HOST",
+      message: "Cannot ban the pool creator"
+    });
+  }
+
+  // Si deletePicks = true, eliminar los picks del usuario en este pool
+  let picksDeleted = 0;
+  if (deletePicks) {
+    const deleteResult = await prisma.prediction.deleteMany({
+      where: {
+        poolId,
+        userId: member.userId,
+      },
+    });
+    picksDeleted = deleteResult.count;
+  }
+
+  // Actualizar el miembro a BANNED
+  await prisma.poolMember.update({
+    where: { id: memberId },
+    data: {
+      status: "BANNED",
+      bannedAt: new Date(),
+      bannedByUserId: actorUserId,
+      banReason: reason,
+      banExpiresAt: null, // Siempre permanente
+    },
+  });
+
+  // Auditoría
+  await writeAuditEvent({
+    actorUserId,
+    action: "MEMBER_BANNED",
+    entityType: "PoolMember",
+    entityId: memberId,
+    poolId,
+    dataJson: {
+      bannedUserId: member.userId,
+      bannedUsername: member.user.username,
+      reason,
+      deletePicks,
+      picksDeleted,
+    },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({
+    ok: true,
+    message: deletePicks
+      ? `Member permanently banned and ${picksDeleted} picks deleted`
+      : "Member permanently banned"
+  });
+});
+
 const createInviteSchema = z.object({
   maxUses: z.number().int().min(1).max(500).optional(),
   expiresAtUtc: z.string().datetime().optional(),
@@ -525,8 +1163,8 @@ const createInviteSchema = z.object({
 poolsRouter.post("/:poolId/invites", async (req, res) => {
   const { poolId } = req.params;
 
-  const isHost = await requirePoolHost(req.auth!.userId, poolId);
-  if (!isHost) return res.status(403).json({ error: "FORBIDDEN" });
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = createInviteSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
@@ -535,6 +1173,14 @@ poolsRouter.post("/:poolId/invites", async (req, res) => {
 
   const pool = await prisma.pool.findUnique({ where: { id: poolId } });
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+
+  // Validar que el pool permita crear invites según su estado
+  if (!canCreateInvites(pool.status as any)) {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Cannot create invites in this pool status"
+    });
+  }
 
   // Comentario en español: generamos code y reintentamos si colisiona (muy raro)
   let code = makeInviteCode();
@@ -585,6 +1231,14 @@ poolsRouter.post("/join", async (req, res) => {
 
   if (!invite) return res.status(404).json({ error: "NOT_FOUND", message: "Invite not found" });
 
+  // Validar que el pool acepte nuevos miembros según su estado
+  if (!canJoinPool(invite.pool.status as any)) {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Pool is not accepting new members"
+    });
+  }
+
   if (invite.expiresAtUtc && invite.expiresAtUtc.getTime() < Date.now()) {
     return res.status(409).json({ error: "CONFLICT", message: "Invite expired" });
   }
@@ -593,11 +1247,21 @@ poolsRouter.post("/join", async (req, res) => {
     return res.status(409).json({ error: "CONFLICT", message: "Invite maxUses reached" });
   }
 
-  const joined = await prisma.$transaction(async (tx) => {
-    // Comentario en español: si ya es miembro, no duplicamos
-    const existing = await tx.poolMember.findFirst({
-      where: { poolId: invite.poolId, userId: req.auth!.userId },
-    });
+  // Determinar el status inicial según si requireApproval está activado
+  const initialStatus = invite.pool.requireApproval ? ("PENDING_APPROVAL" as const) : ("ACTIVE" as const);
+
+  let joined;
+  try {
+    joined = await prisma.$transaction(async (tx) => {
+      // Comentario en español: si ya es miembro, no duplicamos
+      const existing = await tx.poolMember.findFirst({
+        where: { poolId: invite.poolId, userId: req.auth!.userId },
+      });
+
+      // CRITICAL: Si el usuario está BANNED, rechazar el join inmediatamente
+      if (existing && existing.status === "BANNED") {
+        throw new Error("BANNED_FROM_POOL");
+      }
 
     if (!existing) {
       await tx.poolMember.create({
@@ -605,14 +1269,27 @@ poolsRouter.post("/join", async (req, res) => {
           poolId: invite.poolId,
           userId: req.auth!.userId,
           role: "PLAYER",
-          status: "ACTIVE",
+          status: initialStatus,
         },
       });
-    } else if (existing.status !== "ACTIVE") {
+    } else if (existing.status === "LEFT") {
+      // Si el usuario había dejado el pool, lo reactivamos
       await tx.poolMember.update({
         where: { id: existing.id },
-        data: { status: "ACTIVE", leftAtUtc: null },
+        data: {
+          status: initialStatus,
+          leftAtUtc: null,
+          rejectionReason: null,
+          approvedByUserId: null,
+          approvedAtUtc: null
+        },
       });
+    } else if (existing.status === "PENDING_APPROVAL") {
+      // Ya tiene una solicitud pendiente
+      return { poolId: invite.poolId, status: "PENDING_APPROVAL" };
+    } else {
+      // Ya es miembro activo o baneado
+      return { poolId: invite.poolId, status: existing.status };
     }
 
     await tx.poolInvite.update({
@@ -620,20 +1297,52 @@ poolsRouter.post("/join", async (req, res) => {
       data: { uses: { increment: 1 } },
     });
 
-    return { poolId: invite.poolId };
+    return { poolId: invite.poolId, status: initialStatus };
   });
+  } catch (err: any) {
+    if (err.message === "BANNED_FROM_POOL") {
+      return res.status(403).json({
+        error: "BANNED_FROM_POOL",
+        message: "Has sido expulsado permanentemente de este pool y no puedes volver a unirte."
+      });
+    }
+    throw err; // Re-throw if it's another error
+  }
 
-  await writeAuditEvent({
-    actorUserId: req.auth!.userId,
-    action: "POOL_JOINED",
-    entityType: "Pool",
-    entityId: joined.poolId,
-    dataJson: { code: parsed.data.code },
-    ip: req.ip,
-    userAgent: req.get("user-agent") ?? null,
+  // Auditoría según el status inicial
+  if (joined.status === "PENDING_APPROVAL") {
+    await writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "JOIN_REQUEST_SUBMITTED",
+      entityType: "Pool",
+      entityId: joined.poolId,
+      dataJson: { code: parsed.data.code },
+      ip: req.ip,
+      userAgent: req.get("user-agent") ?? null,
+    });
+  } else if (joined.status === "ACTIVE") {
+    await writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "POOL_JOINED",
+      entityType: "Pool",
+      entityId: joined.poolId,
+      dataJson: { code: parsed.data.code },
+      ip: req.ip,
+      userAgent: req.get("user-agent") ?? null,
+    });
+
+    // Trigger transición DRAFT → ACTIVE solo si el join fue directo
+    await transitionToActive(joined.poolId, req.auth!.userId);
+  }
+
+  return res.json({
+    ok: true,
+    poolId: joined.poolId,
+    status: joined.status,
+    message: joined.status === "PENDING_APPROVAL"
+      ? "Join request submitted. Awaiting approval from pool administrator."
+      : "Successfully joined the pool."
   });
-
-  return res.json({ ok: true, poolId: joined.poolId });
 });
 
 // GET /pools/:poolId
@@ -669,12 +1378,16 @@ poolsRouter.get("/:poolId", async (req, res) => {
       name: pool.name,
       description: pool.description,
       visibility: pool.visibility,
+      status: pool.status,
       timeZone: pool.timeZone,
       deadlineMinutesBeforeKickoff: pool.deadlineMinutesBeforeKickoff,
       tournamentInstanceId: pool.tournamentInstanceId,
       createdByUserId: pool.createdByUserId,
       createdAtUtc: pool.createdAtUtc,
       updatedAtUtc: pool.updatedAtUtc,
+      scoringPresetKey: pool.scoringPresetKey,
+      autoAdvanceEnabled: pool.autoAdvanceEnabled,
+      requireApproval: pool.requireApproval,
     },
     myMembership: {
       role: myMembership.role,
@@ -828,6 +1541,7 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
 // PATCH /pools/:poolId/settings (solo HOST) - Update pool settings
 const updatePoolSettingsSchema = z.object({
   autoAdvanceEnabled: z.boolean().optional(),
+  requireApproval: z.boolean().optional(),
 });
 
 poolsRouter.patch("/:poolId/settings", async (req, res) => {
@@ -845,13 +1559,14 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
     return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede modificar configuraciones de la pool" });
   }
 
-  const { autoAdvanceEnabled } = parsed.data;
+  const { autoAdvanceEnabled, requireApproval } = parsed.data;
 
   // Update pool settings
   const updatedPool = await prisma.pool.update({
     where: { id: poolId },
     data: {
       ...(autoAdvanceEnabled !== undefined ? { autoAdvanceEnabled } : {}),
+      ...(requireApproval !== undefined ? { requireApproval } : {}),
     },
   });
 
@@ -867,6 +1582,7 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
     pool: {
       id: updatedPool.id,
       autoAdvanceEnabled: updatedPool.autoAdvanceEnabled,
+      requireApproval: updatedPool.requireApproval,
     },
   });
 });
@@ -933,6 +1649,191 @@ poolsRouter.post("/:poolId/lock-phase", async (req, res) => {
     pool: {
       id: updatedPool.id,
       lockedPhases: updatedPool.lockedPhases,
+    },
+  });
+});
+
+// POST /pools/:poolId/archive (solo HOST)
+// Comentario en español: Archivar pool (COMPLETED → ARCHIVED)
+poolsRouter.post("/:poolId/archive", async (req, res) => {
+  const { poolId } = req.params;
+
+  const myMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
+  });
+
+  if (!myMembership || myMembership.role !== "HOST") {
+    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede archivar el pool" });
+  }
+
+  try {
+    await transitionToArchived(poolId, req.auth!.userId);
+    return res.json({ success: true });
+  } catch (e: any) {
+    if (e.message === "Pool not found") {
+      return res.status(404).json({ error: "NOT_FOUND" });
+    }
+    if (e.message === "Pool must be COMPLETED to archive") {
+      return res.status(409).json({ error: "CONFLICT", message: e.message });
+    }
+    throw e;
+  }
+});
+
+// POST /pools/:poolId/members/:memberId/promote (solo HOST)
+// Comentario en español: Promover un PLAYER a CO_ADMIN
+const promoteMemberSchema = z.object({
+  memberId: z.string().uuid(),
+});
+
+poolsRouter.post("/:poolId/members/:memberId/promote", async (req, res) => {
+  const { poolId, memberId } = req.params;
+
+  // Verificar que el actor es HOST
+  const actorMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
+  });
+
+  if (!actorMembership || actorMembership.role !== "HOST") {
+    return res.status(403).json({
+      error: "FORBIDDEN",
+      message: "Solo el HOST puede promover miembros a Co-Admin"
+    });
+  }
+
+  // Buscar el miembro a promover
+  const targetMember = await prisma.poolMember.findUnique({
+    where: { id: memberId },
+    include: { user: true, pool: true },
+  });
+
+  if (!targetMember || targetMember.poolId !== poolId) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Miembro no encontrado" });
+  }
+
+  if (targetMember.status !== "ACTIVE") {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Solo se pueden promover miembros activos"
+    });
+  }
+
+  if (targetMember.role !== "PLAYER") {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Solo se pueden promover PLAYERs a Co-Admin"
+    });
+  }
+
+  // Promover a CO_ADMIN
+  const updated = await prisma.poolMember.update({
+    where: { id: memberId },
+    data: { role: "CO_ADMIN" },
+    include: { user: true },
+  });
+
+  // Auditoría
+  await writeAuditEvent({
+    action: "MEMBER_PROMOTED_TO_CO_ADMIN",
+    actorUserId: req.auth!.userId,
+    poolId,
+    entityType: "PoolMember",
+    entityId: memberId,
+    dataJson: {
+      targetUserId: targetMember.userId,
+      targetUserEmail: targetMember.user.email,
+      fromRole: "PLAYER",
+      toRole: "CO_ADMIN",
+    },
+  });
+
+  return res.json({
+    success: true,
+    member: {
+      id: updated.id,
+      role: updated.role,
+      user: {
+        id: updated.user.id,
+        email: updated.user.email,
+        displayName: updated.user.displayName,
+      },
+    },
+  });
+});
+
+// POST /pools/:poolId/members/:memberId/demote (solo HOST)
+// Comentario en español: Degradar un CO_ADMIN a PLAYER
+poolsRouter.post("/:poolId/members/:memberId/demote", async (req, res) => {
+  const { poolId, memberId } = req.params;
+
+  // Verificar que el actor es HOST
+  const actorMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
+  });
+
+  if (!actorMembership || actorMembership.role !== "HOST") {
+    return res.status(403).json({
+      error: "FORBIDDEN",
+      message: "Solo el HOST puede degradar Co-Admins"
+    });
+  }
+
+  // Buscar el miembro a degradar
+  const targetMember = await prisma.poolMember.findUnique({
+    where: { id: memberId },
+    include: { user: true, pool: true },
+  });
+
+  if (!targetMember || targetMember.poolId !== poolId) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Miembro no encontrado" });
+  }
+
+  if (targetMember.status !== "ACTIVE") {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Solo se pueden degradar miembros activos"
+    });
+  }
+
+  if (targetMember.role !== "CO_ADMIN") {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Solo se pueden degradar Co-Admins"
+    });
+  }
+
+  // Degradar a PLAYER
+  const updated = await prisma.poolMember.update({
+    where: { id: memberId },
+    data: { role: "PLAYER" },
+    include: { user: true },
+  });
+
+  // Auditoría
+  await writeAuditEvent({
+    action: "MEMBER_DEMOTED_FROM_CO_ADMIN",
+    actorUserId: req.auth!.userId,
+    poolId,
+    entityType: "PoolMember",
+    entityId: memberId,
+    dataJson: {
+      targetUserId: targetMember.userId,
+      targetUserEmail: targetMember.user.email,
+      fromRole: "CO_ADMIN",
+      toRole: "PLAYER",
+    },
+  });
+
+  return res.json({
+    success: true,
+    member: {
+      id: updated.id,
+      role: updated.role,
+      user: {
+        id: updated.user.id,
+        email: updated.user.email,
+        displayName: updated.user.displayName,
+      },
     },
   });
 });

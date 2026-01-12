@@ -8,12 +8,15 @@ export const meRouter = Router();
 meRouter.use(requireAuth);
 
 // GET /me/pools
-// Comentario en español: lista pools donde el usuario es miembro ACTIVO (para dashboard)
+// Comentario en español: lista pools donde el usuario es miembro ACTIVO o PENDING_APPROVAL (para dashboard)
 meRouter.get("/pools", async (req, res) => {
   const userId = req.auth!.userId;
 
   const memberships = await prisma.poolMember.findMany({
-    where: { userId, status: "ACTIVE" },
+    where: {
+      userId,
+      status: { in: ["ACTIVE", "PENDING_APPROVAL"] as any }
+    },
     orderBy: { joinedAtUtc: "desc" },
     include: {
       pool: {
@@ -35,13 +38,14 @@ meRouter.get("/pools", async (req, res) => {
         name: m.pool.name,
         description: m.pool.description,
         visibility: m.pool.visibility,
+        status: m.pool.status,
         timeZone: m.pool.timeZone,
         deadlineMinutesBeforeKickoff: m.pool.deadlineMinutesBeforeKickoff,
         tournamentInstanceId: m.pool.tournamentInstanceId,
         createdAtUtc: m.pool.createdAtUtc,
         updatedAtUtc: m.pool.updatedAtUtc,
         scoringPresetKey: m.pool.scoringPresetKey ?? "CLASSIC",
-        
+
       },
       tournamentInstance: m.pool.tournamentInstance
         ? {

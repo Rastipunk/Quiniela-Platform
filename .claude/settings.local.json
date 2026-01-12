@@ -24,7 +24,22 @@
       "Bash(powershell:*)",
       "Bash(if exist node_modules/.cache rmdir /s /q node_modules/.cache)",
       "Bash(timeout 10 echo:*)",
-      "Bash(git reset -- \"C︰\"* \"c︰\"* \"backend\"test_overview.json)"
+      "Bash(git reset -- \"C︰\"* \"c︰\"* \"backend\"test_overview.json)",
+      "Bash(git reset:*)",
+      "Bash(while read file)",
+      "Bash(do git reset HEAD \"$file\")",
+      "Bash(done)",
+      "Bash(docker-compose up:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(psql:*)",
+      "Bash(cat:*)",
+      "Bash(timeout 30 npx prisma:*)",
+      "Bash(timeout:*)",
+      "Bash(if not exist \"frontend\\\\src\\\\components\" mkdir \"frontend\\\\src\\\\components\")",
+      "Bash(netstat:*)",
+      "Bash(pkill:*)",
+      "Bash(cd:*)",
+      "Bash(ping:*)"
     ]
   }
 }

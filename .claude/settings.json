@@ -21,11 +21,7 @@
       "Bash(rmdir:*)"
     ],
     "deny": [
-      "Read(./**/.env)",
-      "Read(./**/.env.*)",
-      "Read(./**/secrets/**)",
-      "Read(./backend/dev/**)",
-      "Read(./backend/prisma/*.db)"
+
     ]
   }
 }

@@ -7,21 +7,31 @@ import {
   listCatalogInstances,
   type CatalogInstance,
   type MePoolRow,
-  type ScoringPresetKey,
 } from "../lib/api";
 import { clearToken, getToken } from "../lib/auth";
-
-const PRESETS: Array<{ key: ScoringPresetKey; label: string; help: string }> = [
-  { key: "CLASSIC", label: "Clásico (3 + 2)", help: "3 por outcome + 2 por exacto" },
-  { key: "OUTCOME_ONLY", label: "Solo outcome (3 + 0)", help: "Solo ganador/empate" },
-  { key: "EXACT_HEAVY", label: "Exacto pesado (2 + 3)", help: "Outcome vale menos, exacto vale más" },
-];
+import { PoolConfigWizard } from "../components/PoolConfigWizard";
+import type { PoolPickTypesConfig } from "../types/pickConfig";
 
 function detectTz() {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Bogota";
   } catch {
     return "America/Bogota";
+  }
+}
+
+function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
+  switch (status) {
+    case "DRAFT":
+      return { label: "Borrador", color: "#f59e0b", emoji: "📝" };
+    case "ACTIVE":
+      return { label: "En curso", color: "#10b981", emoji: "⚽" };
+    case "COMPLETED":
+      return { label: "Finalizada", color: "#3b82f6", emoji: "🏆" };
+    case "ARCHIVED":
+      return { label: "Archivada", color: "#6b7280", emoji: "📦" };
+    default:
+      return { label: "Desconocido", color: "#9ca3af", emoji: "❓" };
   }
 }
 
@@ -35,14 +45,16 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [panel, setPanel] = useState<"NONE" | "CREATE" | "JOIN">("NONE");
+  const [showWizard, setShowWizard] = useState(false);
 
   // Create form
   const [instanceId, setInstanceId] = useState<string>("");
   const [poolName, setPoolName] = useState("");
   const [poolDesc, setPoolDesc] = useState("");
-  const [preset, setPreset] = useState<ScoringPresetKey>("CLASSIC");
   const [deadline, setDeadline] = useState<number>(10);
   const [timeZone, setTimeZone] = useState<string>(detectTz());
+  const [requireApproval, setRequireApproval] = useState<boolean>(false);
+  const [pickTypesConfig, setPickTypesConfig] = useState<PoolPickTypesConfig | string | null>(null);
 
   // Join form
   const [inviteCode, setInviteCode] = useState("");
@@ -73,6 +85,7 @@ export function DashboardPage() {
     if (!token) return;
     if (!instanceId) return setError("Selecciona un torneo/instancia.");
     if (poolName.trim().length < 3) return setError("Nombre de pool: mínimo 3 caracteres.");
+    if (!pickTypesConfig) return setError("Debes configurar las reglas de puntuación usando el Asistente de Configuración.");
 
     setBusy(true);
     setError(null);
@@ -84,10 +97,13 @@ export function DashboardPage() {
         description: poolDesc.trim() ? poolDesc.trim() : undefined,
         timeZone,
         deadlineMinutesBeforeKickoff: deadline,
-        scoringPresetKey: preset,
+        pickTypesConfig: pickTypesConfig,
+        requireApproval,
       });
 
       setPanel("NONE");
+      setShowWizard(false);
+      setPickTypesConfig(null);
       await loadAll();
       navigate(`/pools/${created.id}`);
     } catch (e: any) {
@@ -108,7 +124,15 @@ export function DashboardPage() {
       const res = await joinPool(token, inviteCode.trim());
       setPanel("NONE");
       await loadAll();
-      navigate(`/pools/${res.poolId}`);
+
+      // Si el join requiere aprobación, mostrar mensaje y NO navegar al pool
+      if (res.status === "PENDING_APPROVAL") {
+        alert("✅ Solicitud enviada exitosamente\n\n" + res.message + "\n\nTu solicitud aparecerá en el Dashboard con estado 'Pendiente de aprobación'.");
+        // No navegar, solo recargar para mostrar el pool pendiente
+      } else {
+        // Join directo aprobado, navegar al pool
+        navigate(`/pools/${res.poolId}`);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Error");
     } finally {
@@ -171,6 +195,39 @@ export function DashboardPage() {
                     >
                       {r.role}
                     </span>
+                    {r.status === "PENDING_APPROVAL" && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          border: "1px solid #ffc107",
+                          background: "#fff3cd",
+                          color: "#856404",
+                          fontWeight: 600,
+                        }}
+                      >
+                        ⏳ Pendiente de aprobación
+                      </span>
+                    )}
+                    {r.pool.status && (() => {
+                      const badge = getPoolStatusBadge(r.pool.status);
+                      return (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            borderRadius: 999,
+                            border: `1px solid ${badge.color}`,
+                            background: `${badge.color}20`,
+                            color: badge.color,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {badge.emoji} {badge.label}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
@@ -185,9 +242,15 @@ export function DashboardPage() {
                   )}
                 </div>
 
-                <Link to={`/pools/${r.poolId}`} style={{ textDecoration: "none" }}>
-                  Abrir →
-                </Link>
+                {r.status === "PENDING_APPROVAL" ? (
+                  <span style={{ color: "#999", fontSize: 14, fontStyle: "italic" }}>
+                    Esperando aprobación
+                  </span>
+                ) : (
+                  <Link to={`/pools/${r.poolId}`} style={{ textDecoration: "none" }}>
+                    Abrir →
+                  </Link>
+                )}
               </div>
             </div>
           ))}
@@ -225,7 +288,7 @@ export function DashboardPage() {
               </button>
             </div>
 
-            {panel === "CREATE" && (
+            {panel === "CREATE" && !showWizard && (
               <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 12, color: "#444" }}>Torneo / Instancia</span>
@@ -264,24 +327,6 @@ export function DashboardPage() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 12, color: "#444" }}>Preset de puntuación</span>
-                    <select
-                      value={preset}
-                      onChange={(e) => setPreset(e.target.value as any)}
-                      style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
-                    >
-                      {PRESETS.map((p) => (
-                        <option key={p.key} value={p.key}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span style={{ fontSize: 12, color: "#666" }}>
-                      {PRESETS.find((p) => p.key === preset)?.help}
-                    </span>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
                     <span style={{ fontSize: 12, color: "#444" }}>Deadline (min antes del kickoff)</span>
                     <input
                       type="number"
@@ -304,6 +349,51 @@ export function DashboardPage() {
                   />
                 </label>
 
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={requireApproval}
+                    onChange={(e) => setRequireApproval(e.target.checked)}
+                    style={{ width: 18, height: 18, cursor: "pointer" }}
+                  />
+                  <span style={{ fontSize: 13, color: "#444" }}>
+                    Requiere aprobación del host para unirse
+                  </span>
+                </label>
+                <div style={{ fontSize: 12, color: "#666", marginTop: -4, marginLeft: 26 }}>
+                  Si está activado, los jugadores que intenten unirse deberán esperar aprobación del host o co-admins.
+                </div>
+
+                {/* Scoring Configuration - MANDATORY via Wizard */}
+                <div style={{ marginTop: 12, padding: 16, border: "2px solid #007bff", borderRadius: 12, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white" }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
+                    📊 ¿Cómo puntuarán los jugadores?
+                  </div>
+                  <div style={{ fontSize: 13, marginBottom: 12, opacity: 0.95 }}>
+                    Define las reglas de puntuación para cada fase del torneo. Cada pool debe tener su configuración personalizada.
+                  </div>
+                  <button
+                    onClick={() => setShowWizard(true)}
+                    style={{
+                      padding: "10px 16px",
+                      borderRadius: 8,
+                      border: "2px solid white",
+                      background: "white",
+                      color: "#667eea",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 700,
+                    }}
+                  >
+                    🧙‍♂️ Asistente de Configuración
+                  </button>
+                  {pickTypesConfig && (
+                    <div style={{ marginTop: 12, padding: 8, background: "rgba(255,255,255,0.2)", borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
+                      ✅ Configuración personalizada lista ({(pickTypesConfig as any[]).length} fases configuradas)
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={onCreate}
                   disabled={busy}
@@ -319,6 +409,21 @@ export function DashboardPage() {
                 >
                   {busy ? "Creando..." : "Crear pool"}
                 </button>
+              </div>
+            )}
+
+            {/* Advanced Configuration Wizard */}
+            {panel === "CREATE" && showWizard && instanceId && token && (
+              <div style={{ marginTop: 14 }}>
+                <PoolConfigWizard
+                  instanceId={instanceId}
+                  token={token}
+                  onComplete={(config) => {
+                    setPickTypesConfig(config);
+                    setShowWizard(false);
+                  }}
+                  onCancel={() => setShowWizard(false)}
+                />
               </div>
             )}
 

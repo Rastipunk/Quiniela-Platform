@@ -70,28 +70,151 @@ export async function login(email: string, password: string): Promise<LoginRespo
   });
 }
 
-export async function register(email: string, displayName: string, password: string): Promise<LoginResponse> {
+export async function register(
+  email: string,
+  username: string,
+  displayName: string,
+  password: string,
+  timezone?: string
+): Promise<LoginResponse> {
   return requestJson<LoginResponse>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, displayName, password }),
+    body: JSON.stringify({ email, username, displayName, password, timezone }),
   });
+}
+
+export async function forgotPassword(email: string): Promise<{ message: string }> {
+  return requestJson<{ message: string }>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  return requestJson<{ message: string }>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+
+export async function loginWithGoogle(idToken: string, timezone?: string): Promise<LoginResponse> {
+  return requestJson<LoginResponse>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken, timezone }),
+  });
+}
+
+/* =========================
+   USER PROFILE
+   ========================= */
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  platformRole: string;
+  status: string;
+  firstName: string | null;
+  lastName: string | null;
+  dateOfBirth: string | null;
+  gender: "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY" | null;
+  bio: string | null;
+  country: string | null;
+  timezone: string | null;
+  lastUsernameChangeAt: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+};
+
+export type UpdateProfileInput = {
+  displayName?: string;
+  username?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  dateOfBirth?: string | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY" | null;
+  bio?: string | null;
+  country?: string | null;
+  timezone?: string | null;
+};
+
+export async function getUserProfile(token: string): Promise<{ user: UserProfile }> {
+  return requestJson<{ user: UserProfile }>("/users/me/profile", { method: "GET" }, token);
+}
+
+export async function updateUserProfile(
+  token: string,
+  input: UpdateProfileInput
+): Promise<{ user: UserProfile }> {
+  return requestJson<{ user: UserProfile }>(
+    "/users/me/profile",
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
+    token
+  );
 }
 
 /* =========================
    DASHBOARD / CATALOG
    ========================= */
 
-export async function getMePools(token: string): Promise<any[]> {
-  return requestJson<any[]>("/me/pools", { method: "GET" }, token);
+export type ScoringPresetKey = "CLASSIC" | "OUTCOME_ONLY" | "EXACT_HEAVY";
+
+export type CatalogInstance = {
+  id: string;
+  name: string;
+  status: string;
+  [key: string]: any;
+};
+
+export type MePoolRow = {
+  poolId: string;
+  role: string;
+  status: string;
+  pool: {
+    id: string;
+    name: string;
+    description?: string;
+    timeZone: string;
+    deadlineMinutesBeforeKickoff: number;
+    scoringPresetKey?: string;
+    status?: string;
+    [key: string]: any;
+  };
+  tournamentInstance?: {
+    id: string;
+    name: string;
+    status: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+};
+
+export async function getMePools(token: string): Promise<MePoolRow[]> {
+  return requestJson<MePoolRow[]>("/me/pools", { method: "GET" }, token);
 }
 
 // Alias por si algún archivo usaba otro nombre
 export const listMyPools = getMePools;
 
-export async function listInstances(token: string): Promise<any[]> {
-  return requestJson<any[]>("/catalog/instances", { method: "GET" }, token);
+export async function listInstances(token: string): Promise<CatalogInstance[]> {
+  return requestJson<CatalogInstance[]>("/catalog/instances", { method: "GET" }, token);
 }
 export const listCatalogInstances = listInstances;
+
+export type InstancePhase = {
+  id: string;
+  name: string;
+  type: string;
+  order: number;
+};
+
+export async function getInstancePhases(token: string, instanceId: string): Promise<{ phases: InstancePhase[] }> {
+  return requestJson<{ phases: InstancePhase[] }>(`/catalog/instances/${instanceId}/phases`, { method: "GET" }, token);
+}
 
 
 export type CreatePoolInput = {
@@ -101,7 +224,9 @@ export type CreatePoolInput = {
   visibility?: "PRIVATE" | "PUBLIC";
   timeZone?: string;
   deadlineMinutesBeforeKickoff?: number;
-  scoringPresetKey?: string; // "CLASSIC" | "OUTCOME_ONLY" | "EXACT_HEAVY" ...
+  scoringPresetKey?: string; // "CLASSIC" | "OUTCOME_ONLY" | "EXACT_HEAVY" ... (legacy)
+  pickTypesConfig?: any; // PhasePickConfig[] | "BASIC" | "ADVANCED" | "SIMPLE"
+  requireApproval?: boolean;
 };
 
 export async function createPool(token: string, input: CreatePoolInput): Promise<any> {
@@ -166,7 +291,7 @@ export async function upsertResult(token: string, poolId: string, matchId: strin
    ADMIN / HOST ACTIONS
    ========================= */
 
-export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean }): Promise<any> {
+export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean; requireApproval?: boolean }): Promise<any> {
   return requestJson<any>(
     `/pools/${poolId}/settings`,
     {
@@ -209,3 +334,316 @@ export async function lockPhase(
   );
 }
 
+export async function archivePool(token: string, poolId: string): Promise<{ success: boolean }> {
+  return requestJson<{ success: boolean }>(
+    `/pools/${poolId}/archive`,
+    {
+      method: "POST",
+    },
+    token
+  );
+}
+
+export async function promoteMemberToCoAdmin(
+  token: string,
+  poolId: string,
+  memberId: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/promote`,
+    {
+      method: "POST",
+    },
+    token
+  );
+}
+
+export async function demoteMemberFromCoAdmin(
+  token: string,
+  poolId: string,
+  memberId: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/demote`,
+    {
+      method: "POST",
+    },
+    token
+  );
+}
+
+// Join Approval Workflow
+export async function getPendingMembers(token: string, poolId: string): Promise<any> {
+  return requestJson<any>(`/pools/${poolId}/pending-members`, {}, token);
+}
+
+export async function approveMember(
+  token: string,
+  poolId: string,
+  memberId: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/approve`,
+    {
+      method: "POST",
+    },
+    token
+  );
+}
+
+export async function rejectMember(
+  token: string,
+  poolId: string,
+  memberId: string,
+  reason?: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/reject`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+    token
+  );
+}
+
+export async function kickMember(
+  token: string,
+  poolId: string,
+  memberId: string,
+  reason?: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/kick`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    },
+    token
+  );
+}
+
+export async function banMember(
+  token: string,
+  poolId: string,
+  memberId: string,
+  reason: string,
+  deletePicks: boolean
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/ban`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason, deletePicks }),
+    },
+    token
+  );
+}
+
+/* =========================
+   STRUCTURAL PICKS (Sprint 2)
+   ========================= */
+
+// Guardar/actualizar picks estructurales para una fase completa
+export async function upsertStructuralPick(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  pickData: any
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/structural-picks/${phaseId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(pickData),
+    },
+    token
+  );
+}
+
+// Obtener pick estructural del usuario para una fase
+export async function getStructuralPick(
+  token: string,
+  poolId: string,
+  phaseId: string
+): Promise<{ pick: any | null }> {
+  return requestJson<{ pick: any | null }>(
+    `/pools/${poolId}/structural-picks/${phaseId}`,
+    { method: "GET" },
+    token
+  );
+}
+
+// Listar todos los picks estructurales del usuario en la pool
+export async function listStructuralPicks(
+  token: string,
+  poolId: string
+): Promise<{ picks: any[] }> {
+  return requestJson<{ picks: any[] }>(
+    `/pools/${poolId}/structural-picks`,
+    { method: "GET" },
+    token
+  );
+}
+
+/* =========================
+   STRUCTURAL RESULTS (Sprint 2)
+   ========================= */
+
+// HOST/CO-ADMIN: Publicar resultados estructurales de una fase
+export async function publishStructuralResult(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  resultData: any
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/structural-results/${phaseId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(resultData),
+    },
+    token
+  );
+}
+
+// Obtener resultado estructural oficial de una fase
+export async function getStructuralResult(
+  token: string,
+  poolId: string,
+  phaseId: string
+): Promise<{ result: any | null }> {
+  return requestJson<{ result: any | null }>(
+    `/pools/${poolId}/structural-results/${phaseId}`,
+    { method: "GET" },
+    token
+  );
+}
+
+// Listar todos los resultados estructurales de la pool
+export async function listStructuralResults(
+  token: string,
+  poolId: string
+): Promise<{ results: any[] }> {
+  return requestJson<{ results: any[] }>(
+    `/pools/${poolId}/structural-results`,
+    { method: "GET" },
+    token
+  );
+}
+
+
+
+// ==================== GRANULAR GROUP STANDINGS ====================
+
+// Player: Guardar pick de un grupo específico
+export async function saveGroupStandingsPick(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  groupId: string,
+  teamIds: string[]
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/group-standings/${phaseId}/${groupId}`,
+    { method: "PUT", body: JSON.stringify({ teamIds }) },
+    token
+  );
+}
+
+// Player: Obtener pick de un grupo específico
+export async function getGroupStandingsPick(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  groupId: string
+): Promise<{ prediction: any | null }> {
+  return requestJson<{ prediction: any | null }>(
+    `/pools/${poolId}/group-standings/${phaseId}/${groupId}`,
+    { method: "GET" },
+    token
+  );
+}
+
+// Player: Obtener todos los picks de grupos de una fase
+export async function getAllGroupStandingsPicks(
+  token: string,
+  poolId: string,
+  phaseId: string
+): Promise<{ predictions: any[] }> {
+  return requestJson<{ predictions: any[] }>(
+    `/pools/${poolId}/group-standings/${phaseId}`,
+    { method: "GET" },
+    token
+  );
+}
+
+// Host: Publicar resultado oficial de un grupo específico
+export async function publishGroupStandingsResult(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  groupId: string,
+  teamIds: string[],
+  reason?: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/group-standings-results/${phaseId}/${groupId}`,
+    { method: "PUT", body: JSON.stringify({ teamIds, reason }) },
+    token
+  );
+}
+
+// Obtener resultado oficial de un grupo específico
+export async function getGroupStandingsResult(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  groupId: string
+): Promise<{ result: any | null }> {
+  return requestJson<{ result: any | null }>(
+    `/pools/${poolId}/group-standings-results/${phaseId}/${groupId}`,
+    { method: "GET" },
+    token
+  );
+}
+
+// Obtener todos los resultados oficiales de grupos de una fase
+export async function getAllGroupStandingsResults(
+  token: string,
+  poolId: string,
+  phaseId: string
+): Promise<{ results: any[] }> {
+  return requestJson<{ results: any[] }>(
+    `/pools/${poolId}/group-standings-results/${phaseId}`,
+    { method: "GET" },
+    token
+  );
+}
+
+// Generar posiciones desde resultados de partidos
+export async function generateGroupStandings(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  groupId: string
+): Promise<{ result: any; standings: any[] }> {
+  return requestJson<{ result: any; standings: any[] }>(
+    `/pools/${poolId}/group-standings-generate/${phaseId}/${groupId}`,
+    { method: "POST" },
+    token
+  );
+}
+
+// Obtener resultados de partidos de un grupo
+export async function getGroupMatchResults(
+  token: string,
+  poolId: string,
+  groupId: string
+): Promise<{ matches: any[]; results: Record<string, any>; completedCount: number; totalCount: number }> {
+  return requestJson<{ matches: any[]; results: Record<string, any>; completedCount: number; totalCount: number }>(
+    `/pools/${poolId}/group-match-results/${groupId}`,
+    { method: "GET" },
+    token
+  );
+}

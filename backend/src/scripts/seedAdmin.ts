@@ -5,6 +5,7 @@ import { hashPassword } from "../lib/password";
 // Comentario en español: crea un usuario ADMIN para desarrollo (idempotente)
 async function main() {
   const email = "admin@example.com";
+  const username = "platform_admin";
   const displayName = "Platform Admin";
   const password = "Admin123!";
 
@@ -18,6 +19,7 @@ async function main() {
     });
     console.log("✅ Admin already existed; role/status ensured.");
     console.log("   email:", email);
+    console.log("   username:", existing.username);
     console.log("   password:", password);
     return;
   }
@@ -27,6 +29,7 @@ async function main() {
   await prisma.user.create({
     data: {
       email,
+      username,
       displayName,
       passwordHash,
       platformRole: "ADMIN",
@@ -36,6 +39,7 @@ async function main() {
 
   console.log("✅ Admin created:");
   console.log("   email:", email);
+  console.log("   username:", username);
   console.log("   password:", password);
 }
 

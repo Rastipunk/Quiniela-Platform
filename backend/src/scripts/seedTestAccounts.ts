@@ -6,6 +6,7 @@ type Role = "ADMIN" | "PLAYER" | "HOST";
 
 async function upsertUser(params: {
   email: string;
+  username: string;
   displayName: string;
   password: string;
   platformRole: Role;
@@ -16,6 +17,7 @@ async function upsertUser(params: {
     where: { email: params.email },
     create: {
       email: params.email,
+      username: params.username,
       displayName: params.displayName,
       passwordHash,
       platformRole: params.platformRole,
@@ -23,11 +25,11 @@ async function upsertUser(params: {
     },
     update: {
       displayName: params.displayName,
-      passwordHash, // importante: si corres seed de nuevo, “resetea” el password a este valor
+      passwordHash, // importante: si corres seed de nuevo, "resetea" el password a este valor
       platformRole: params.platformRole,
       status: "ACTIVE",
     },
-    select: { id: true, email: true, displayName: true, platformRole: true },
+    select: { id: true, email: true, username: true, displayName: true, platformRole: true },
   });
 }
 
@@ -49,6 +51,7 @@ async function main() {
 
   const admin = await upsertUser({
     email: adminEmail,
+    username: "qa_admin",
     displayName: "QA Admin",
     password: adminPassword,
     platformRole: "ADMIN",
@@ -56,6 +59,7 @@ async function main() {
 
   const host = await upsertUser({
     email: hostEmail,
+    username: "qa_host",
     displayName: "QA Host",
     password: hostPassword,
     platformRole: "PLAYER", // el rol HOST real ocurre dentro del Pool (PoolMember.role)
@@ -63,6 +67,7 @@ async function main() {
 
   const player = await upsertUser({
     email: playerEmail,
+    username: "qa_player",
     displayName: "QA Player",
     password: playerPassword,
     platformRole: "PLAYER",

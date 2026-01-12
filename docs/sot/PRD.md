@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # Quiniela Platform
 
-> **Version:** 0.1-alpha (in development)
-> **Last Updated:** 2026-01-02
-> **Status:** Internal Development
+> **Version:** 0.1-alpha (Sprint 1 Complete)
+> **Last Updated:** 2026-01-05
+> **Status:** Internal Development - Ready for Sprint 2
 > **Document Owner:** Product Team
 
 ---
@@ -66,29 +66,44 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 ### 2.1 Current State (v0.1-alpha)
 
 **Implemented Features:**
-- ✅ User authentication (email/password, JWT-based)
+- ✅ User authentication (email/password + **Google OAuth**, JWT-based)
+- ✅ **Username system** (unique identifier, separate from email and displayName)
+- ✅ **Password recovery** (forgot password flow with email tokens via Resend)
 - ✅ Pool creation and join (via invite code)
 - ✅ Basic pick system (OUTCOME and SCORE picks)
 - ✅ Result publishing with errata support (versioned)
+- ✅ **Penalty shootouts in knockout phases** (penaltiesHome/penaltiesAway)
+- ✅ **Auto-advance tournament phases** (group stage → round of 32 → knockout)
+- ✅ **Phase locking mechanism** (prevents advancing incomplete phases)
+- ✅ **Placeholder system for knockout matches** (e.g., "Winner of Group A")
 - ✅ Leaderboard with scoring presets (CLASSIC, OUTCOME_ONLY, EXACT_HEAVY)
 - ✅ Deadline enforcement (configurable minutes before kickoff)
-- ✅ Basic audit logging
+- ✅ **Enhanced audit logging** (OAuth events, password resets, phase transitions)
 - ✅ Tournament template/version/instance architecture
-- ✅ WC2026 sandbox (72 matches, 12 groups, 48 teams)
+- ✅ WC2026 sandbox (72 matches, 12 groups, 48 teams + knockout phases)
 - ✅ Single-call overview endpoint (optimized UX)
 - ✅ Frontend: Dashboard, Pool Page, Leaderboard
+- ✅ **Professional email templates** (gradient design, mobile-responsive)
+
+**Recent Additions (2026-01-04):**
+- 🆕 **Google Sign In** - One-click registration/login with Google accounts
+- 🆕 **Account Linking** - Link existing email/password accounts with Google
+- 🆕 **Username Auto-Generation** - For OAuth users (from email address)
+- 🆕 **Forgot Password Flow** - Secure token-based password reset via email
+- 🆕 **Email Confirmation Field** - Reduce typos during registration
+- 🆕 **Tournament Advancement System** - Automatic phase transitions with validation
+- 🆕 **Penalty Shootout Support** - Track penalty results in knockout matches
 
 **Limitations:**
-- ⚠️ No co-admin support
-- ⚠️ No username system (only displayName)
-- ⚠️ No approval workflow for join requests
-- ⚠️ Limited pick types (only 2)
-- ⚠️ No timezone personalization per user
-- ⚠️ No player expulsion/ban system
-- ⚠️ Rules can be changed even after players join (insecure)
-- ⚠️ No Google/Facebook login
-- ⚠️ No password recovery
+- ⚠️ No co-admin support (planned for v0.2-beta)
+- ⚠️ No approval workflow for join requests (planned for v0.2-beta)
+- ⚠️ Limited pick types (only 2, expanding to 7 in v1.0)
+- ⚠️ No timezone personalization per user (planned for v0.2-beta)
+- ⚠️ No player expulsion/ban system (planned for v0.2-beta)
+- ⚠️ Rules can be changed even after players join (planned for v0.2-beta)
+- ⚠️ No Facebook/Apple login (Google only for now)
 - ⚠️ Mobile UX needs polish
+- ⚠️ Email confirmation not required (only double-entry field)
 
 ---
 

@@ -1,27 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { createInvite, getPoolOverview, upsertPick, upsertResult, updatePoolSettings, manualAdvancePhase, lockPhase, type PoolOverview } from "../lib/api";
+import { createInvite, getPoolOverview, upsertPick, upsertResult, updatePoolSettings, manualAdvancePhase, lockPhase, archivePool, promoteMemberToCoAdmin, demoteMemberFromCoAdmin, getPendingMembers, approveMember, rejectMember, kickMember, banMember, getUserProfile, type PoolOverview } from "../lib/api";
 import { getToken } from "../lib/auth";
 import { TeamFlag } from "../components/TeamFlag";
 import { getTeamFlag, getCountryName } from "../data/teamFlags";
+import { formatMatchDateTime } from "../lib/timezone";
+import { PickRulesDisplay } from "../components/PickRulesDisplay";
+import type { PoolPickTypesConfig } from "../types/pickConfig";
+import { StructuralPicksManager } from "../components/StructuralPicksManager";
 
-function fmtUtc(iso: string) {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString("es-ES", {
-    year: "numeric",
-    month: "short",
-    day: "numeric"
-  });
-  const time = d.toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
-  return `${date} ${time}`;
+function fmtUtc(iso: string, userTimezone: string | null = null) {
+  return formatMatchDateTime(iso, userTimezone);
 }
 
 function norm(s: string) {
   return (s ?? "").toLowerCase().trim();
+}
+
+function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
+  switch (status) {
+    case "DRAFT":
+      return { label: "Borrador", color: "#f59e0b", emoji: "📝" };
+    case "ACTIVE":
+      return { label: "En curso", color: "#10b981", emoji: "⚽" };
+    case "COMPLETED":
+      return { label: "Finalizada", color: "#3b82f6", emoji: "🏆" };
+    case "ARCHIVED":
+      return { label: "Archivada", color: "#6b7280", emoji: "📦" };
+    default:
+      return { label: "Desconocido", color: "#9ca3af", emoji: "❓" };
+  }
 }
 
 export function PoolPage() {
@@ -32,6 +40,7 @@ export function PoolPage() {
   const [error, setError] = useState<string | null>(null);
   const [verbose, setVerbose] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [userTimezone, setUserTimezone] = useState<string | null>(null);
 
   // Tabs
   const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "reglas" | "admin">("partidos");
@@ -41,6 +50,12 @@ export function PoolPage() {
 
   // Group filter (for group stage)
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+
+  // Pending members (for join approval)
+  const [pendingMembers, setPendingMembers] = useState<any[]>([]);
+
+  // Expulsion modal state (KICK or BAN)
+  const [expulsionModalData, setExpulsionModalData] = useState<{ memberId: string; memberName: string; type: "KICK" | "BAN" } | null>(null);
 
   // UX filtros (volumen)
   const [onlyOpen, setOnlyOpen] = useState(false);
@@ -57,8 +72,27 @@ export function PoolPage() {
     try {
       const data = await getPoolOverview(token, poolId, v);
       setOverview(data);
+
+      // Cargar timezone del usuario
+      const profileData = await getUserProfile(token);
+      setUserTimezone(profileData.user.timezone);
+
+      // Si es HOST o CO_ADMIN, cargar pending members
+      if (data.permissions.canManageResults) {
+        loadPendingMembers();
+      }
     } catch (e: any) {
       setError(e?.message ?? "Error");
+    }
+  }
+
+  async function loadPendingMembers() {
+    if (!token || !poolId) return;
+    try {
+      const data = await getPendingMembers(token, poolId);
+      setPendingMembers(data.pendingMembers || []);
+    } catch (e: any) {
+      console.error("Error loading pending members:", e);
     }
   }
 
@@ -136,11 +170,30 @@ export function PoolPage() {
     return overview.pool.scoringPresetKey !== "OUTCOME_ONLY";
   }, [overview]);
 
+  // Detect if active phase requires structural picks (SIMPLE preset)
+  const activePhaseConfig = useMemo(() => {
+    if (!overview || !activePhase || !overview.pool.pickTypesConfig) return null;
+    const config = overview.pool.pickTypesConfig as PoolPickTypesConfig;
+    if (!Array.isArray(config)) return null;
+    return config.find((pc: any) => pc.phaseId === activePhase) || null;
+  }, [overview, activePhase]);
+
+  const requiresStructuralPicks = useMemo(() => {
+    if (!activePhaseConfig) return false;
+    // Si requiresScore es false, significa que esta fase usa structural picks
+    return activePhaseConfig.requiresScore === false && activePhaseConfig.structuralPicks;
+  }, [activePhaseConfig]);
+
+  const activePhaseData = useMemo(() => {
+    if (!activePhase) return null;
+    return phases.find((p: any) => p.id === activePhase) || null;
+  }, [phases, activePhase]);
+
   const nextOpenGroup = useMemo(() => {
     if (!overview) return "A";
     const next = overview.matches
-      .filter((m) => !m.isLocked)
-      .sort((a, b) => new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime())[0];
+      .filter((m: any) => !m.isLocked)
+      .sort((a: any, b: any) => new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime())[0];
     return next?.groupId ?? "A";
   }, [overview]);
 
@@ -149,7 +202,7 @@ export function PoolPage() {
 
     const q = norm(search);
 
-    return overview.matches.filter((m) => {
+    return overview.matches.filter((m: any) => {
       // Filter by active phase
       if (activePhase && (m as any).phaseId !== activePhase) return false;
 
@@ -177,7 +230,7 @@ export function PoolPage() {
     }
 
     for (const g of Object.keys(by)) {
-      by[g].sort((a, b) => {
+      by[g].sort((a: any, b: any) => {
         const ta = new Date(a.kickoffUtc).getTime();
         const tb = new Date(b.kickoffUtc).getTime();
         if (ta !== tb) return ta - tb;
@@ -202,6 +255,23 @@ export function PoolPage() {
     if (set.has("SIN_GRUPO")) ordered.push("SIN_GRUPO");
     return ordered;
   }, [matchesByGroup]);
+
+  // Map de resultados de partidos por matchId (para knockout phases)
+  const phaseMatchResults = useMemo(() => {
+    if (!overview || !activePhase) return new Map();
+    const resultsMap = new Map<string, { homeGoals: number; awayGoals: number; homePenalties?: number | null; awayPenalties?: number | null }>();
+    for (const m of overview.matches) {
+      if ((m as any).phaseId === activePhase && m.result) {
+        resultsMap.set(m.id, {
+          homeGoals: m.result.homeGoals,
+          awayGoals: m.result.awayGoals,
+          homePenalties: m.result.homePenalties,
+          awayPenalties: m.result.awayPenalties,
+        });
+      }
+    }
+    return resultsMap;
+  }, [overview, activePhase]);
 
   async function onCreateInvite() {
     if (!token || !poolId) return;
@@ -285,7 +355,27 @@ export function PoolPage() {
 
       {overview && (
         <>
-          <h2 style={{ marginTop: 12, marginBottom: 6 }}>{overview.pool.name}</h2>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
+            <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
+            {overview.pool.status && (() => {
+              const badge = getPoolStatusBadge(overview.pool.status);
+              return (
+                <span
+                  style={{
+                    fontSize: 13,
+                    padding: "4px 12px",
+                    borderRadius: 999,
+                    border: `1px solid ${badge.color}`,
+                    background: `${badge.color}20`,
+                    color: badge.color,
+                    fontWeight: 600,
+                  }}
+                >
+                  {badge.emoji} {badge.label}
+                </span>
+              );
+            })()}
+          </div>
 
           <div style={{ color: "#666", fontSize: 12 }}>
             {overview.tournamentInstance.name} • {overview.counts.membersActive} miembros • Tu rol: <b>{overview.myMembership.role}</b>
@@ -390,6 +480,69 @@ export function PoolPage() {
                       {overview.pool.autoAdvanceEnabled
                         ? "Las fases avanzarán automáticamente cuando se completen todos los resultados"
                         : "Deberás avanzar las fases manualmente usando los botones de abajo"}
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Require Approval Configuration */}
+              <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
+                <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>
+                  🔐 Aprobación de Solicitudes de Ingreso
+                </h4>
+                <div style={{ fontSize: 14, lineHeight: 1.8, color: "#666", marginBottom: 12 }}>
+                  Cuando está habilitado, los jugadores que intenten unirse deberán esperar aprobación del host o co-admins.
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: 12, background: "#fff", borderRadius: 8, border: "1px solid #dee2e6" }}>
+                  {/* Toggle Switch Component (iOS style) */}
+                  <div
+                    onClick={async () => {
+                      if (busyKey === "require-approval-toggle" || !token || !poolId) return;
+                      setBusyKey("require-approval-toggle");
+                      setError(null);
+                      try {
+                        const newValue = !overview.pool.requireApproval;
+                        await updatePoolSettings(token, poolId, { requireApproval: newValue });
+                        await load(verbose);
+                      } catch (err: any) {
+                        setError(err?.message ?? "Error al actualizar configuración");
+                      } finally {
+                        setBusyKey(null);
+                      }
+                    }}
+                    style={{
+                      position: "relative",
+                      width: 48,
+                      height: 24,
+                      borderRadius: 12,
+                      background: overview.pool.requireApproval ? "#28a745" : "#ccc",
+                      cursor: busyKey === "require-approval-toggle" ? "wait" : "pointer",
+                      transition: "background 0.3s ease",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        left: overview.pool.requireApproval ? 26 : 2,
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                        transition: "left 0.3s ease",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: "#333" }}>
+                      {overview.pool.requireApproval ? "✅ Aprobación REQUERIDA" : "❌ Ingreso DIRECTO"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+                      {overview.pool.requireApproval
+                        ? "Los jugadores deberán esperar tu aprobación para unirse"
+                        : "Los jugadores pueden unirse directamente con el código de invitación"}
                     </div>
                   </div>
                 </label>
@@ -537,6 +690,392 @@ export function PoolPage() {
                 </div>
               </div>
 
+              {/* Pending Join Requests Section (HOST/CO_ADMIN) */}
+              {overview.permissions.canManageResults && pendingMembers.length > 0 && (
+                <div style={{ marginBottom: 24, padding: 16, background: "#fff3cd", borderRadius: 12, border: "1px solid #ffc107" }}>
+                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#856404" }}>
+                    🔔 Solicitudes Pendientes ({pendingMembers.length})
+                  </h4>
+                  <div style={{ fontSize: 14, lineHeight: 1.8, color: "#856404", marginBottom: 12 }}>
+                    Los siguientes usuarios han solicitado unirse al pool y están esperando tu aprobación.
+                  </div>
+
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {pendingMembers.map((member: any) => (
+                      <div
+                        key={member.id}
+                        style={{
+                          padding: 12,
+                          background: "#fff",
+                          borderRadius: 8,
+                          border: "1px solid #ffc107",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: 12
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                            {member.displayName}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#666" }}>
+                            @{member.username} • {member.email}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>
+                            Solicitó unirse: {fmtUtc(member.requestedAt, userTimezone)}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            onClick={async () => {
+                              if (busyKey === `approve-${member.id}` || !token || !poolId) return;
+                              if (!window.confirm(`¿Aprobar a ${member.displayName}?`)) return;
+
+                              setBusyKey(`approve-${member.id}`);
+                              setError(null);
+                              try {
+                                await approveMember(token, poolId, member.id);
+                                await loadPendingMembers();
+                                await load(verbose);
+                              } catch (err: any) {
+                                setError(err?.message ?? "Error al aprobar");
+                              } finally {
+                                setBusyKey(null);
+                              }
+                            }}
+                            disabled={busyKey === `approve-${member.id}`}
+                            style={{
+                              padding: "8px 16px",
+                              background: "#28a745",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: busyKey === `approve-${member.id}` ? "wait" : "pointer",
+                              fontWeight: 600,
+                              fontSize: 13,
+                              opacity: busyKey === `approve-${member.id}` ? 0.6 : 1
+                            }}
+                          >
+                            ✅ Aprobar
+                          </button>
+
+                          <button
+                            onClick={async () => {
+                              if (busyKey === `reject-${member.id}` || !token || !poolId) return;
+                              const reason = window.prompt(`¿Rechazar a ${member.displayName}?\n\nRazón (opcional):`);
+                              if (reason === null) return; // User cancelled
+
+                              setBusyKey(`reject-${member.id}`);
+                              setError(null);
+                              try {
+                                await rejectMember(token, poolId, member.id, reason || undefined);
+                                await loadPendingMembers();
+                              } catch (err: any) {
+                                setError(err?.message ?? "Error al rechazar");
+                              } finally {
+                                setBusyKey(null);
+                              }
+                            }}
+                            disabled={busyKey === `reject-${member.id}`}
+                            style={{
+                              padding: "8px 16px",
+                              background: "#dc3545",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: busyKey === `reject-${member.id}` ? "wait" : "pointer",
+                              fontWeight: 600,
+                              fontSize: 13,
+                              opacity: busyKey === `reject-${member.id}` ? 0.6 : 1
+                            }}
+                          >
+                            ❌ Rechazar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Member Management Section (only for HOST) */}
+              {overview.myMembership.role === "HOST" && (
+                <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
+                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>
+                    👥 Gestión de Miembros
+                  </h4>
+                  <div style={{ fontSize: 14, lineHeight: 1.8, color: "#666", marginBottom: 12 }}>
+                    Puedes promover jugadores a Co-Admins para que te ayuden a gestionar resultados y crear invitaciones.
+                  </div>
+
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {overview.leaderboard.rows.map((member: any) => {
+                      const isHost = member.role === "HOST";
+                      const isCoAdmin = member.role === "CO_ADMIN";
+                      const isPlayer = member.role === "PLAYER";
+
+                      return (
+                        <div
+                          key={member.userId}
+                          style={{
+                            padding: 12,
+                            background: "#fff",
+                            borderRadius: 8,
+                            border: "1px solid #dee2e6",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: 12
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                              {member.displayName}
+                            </div>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                              {isHost && (
+                                <span style={{
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 4,
+                                  background: "#007bff20",
+                                  border: "1px solid #007bff",
+                                  color: "#007bff",
+                                  fontWeight: 600
+                                }}>
+                                  👑 HOST
+                                </span>
+                              )}
+                              {isCoAdmin && (
+                                <span style={{
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 4,
+                                  background: "#28a74520",
+                                  border: "1px solid #28a745",
+                                  color: "#28a745",
+                                  fontWeight: 600
+                                }}>
+                                  ⭐ CO-ADMIN
+                                </span>
+                              )}
+                              {isPlayer && (
+                                <span style={{
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 4,
+                                  background: "#6c757d20",
+                                  border: "1px solid #6c757d",
+                                  color: "#6c757d",
+                                  fontWeight: 600
+                                }}>
+                                  PLAYER
+                                </span>
+                              )}
+                              <span style={{ fontSize: 12, color: "#999" }}>
+                                {member.points} pts
+                              </span>
+                            </div>
+                          </div>
+
+                          {!isHost && (
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              {isPlayer && (
+                                <button
+                                  disabled={busyKey === `promote:${member.userId}`}
+                                  onClick={async () => {
+                                    if (!token || !poolId || busyKey) return;
+
+                                    const confirmed = window.confirm(
+                                      `¿Promover a ${member.displayName} a Co-Admin?\n\n` +
+                                      `Los Co-Admins pueden:\n` +
+                                      `• Publicar y corregir resultados\n` +
+                                      `• Crear códigos de invitación\n` +
+                                      `• Ver el panel de administración`
+                                    );
+
+                                    if (!confirmed) return;
+
+                                    setBusyKey(`promote:${member.userId}`);
+                                    setError(null);
+
+                                    try {
+                                      await promoteMemberToCoAdmin(token, poolId, member.memberId);
+                                      await load(verbose);
+                                      alert(`✅ ${member.displayName} promovido a Co-Admin`);
+                                    } catch (err: any) {
+                                      setError(err?.message ?? "Error al promover miembro");
+                                    } finally {
+                                      setBusyKey(null);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: "6px 12px",
+                                    borderRadius: 6,
+                                    border: "1px solid #28a745",
+                                    background: busyKey === `promote:${member.userId}` ? "#ccc" : "#28a745",
+                                    color: "#fff",
+                                    cursor: busyKey === `promote:${member.userId}` ? "wait" : "pointer",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap"
+                                  }}
+                                >
+                                  {busyKey === `promote:${member.userId}` ? "⏳" : "⬆️ Promover"}
+                                </button>
+                              )}
+
+                              {isCoAdmin && (
+                                <button
+                                  disabled={busyKey === `demote:${member.userId}`}
+                                  onClick={async () => {
+                                    if (!token || !poolId || busyKey) return;
+
+                                    const confirmed = window.confirm(
+                                      `¿Degradar a ${member.displayName} a jugador normal?\n\n` +
+                                      `Perderá los permisos de Co-Admin.`
+                                    );
+
+                                    if (!confirmed) return;
+
+                                    setBusyKey(`demote:${member.userId}`);
+                                    setError(null);
+
+                                    try {
+                                      await demoteMemberFromCoAdmin(token, poolId, member.memberId);
+                                      await load(verbose);
+                                      alert(`✅ ${member.displayName} degradado a Player`);
+                                    } catch (err: any) {
+                                      setError(err?.message ?? "Error al degradar miembro");
+                                    } finally {
+                                      setBusyKey(null);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: "6px 12px",
+                                    borderRadius: 6,
+                                    border: "1px solid #dc3545",
+                                    background: busyKey === `demote:${member.userId}` ? "#ccc" : "#dc3545",
+                                    color: "#fff",
+                                    cursor: busyKey === `demote:${member.userId}` ? "wait" : "pointer",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    whiteSpace: "nowrap"
+                                  }}
+                                >
+                                  {busyKey === `demote:${member.userId}` ? "⏳" : "⬇️ Degradar"}
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setExpulsionModalData({
+                                    memberId: member.memberId,
+                                    memberName: member.displayName,
+                                    type: "KICK"
+                                  });
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: 6,
+                                  border: "1px solid #ffc107",
+                                  background: "#fff",
+                                  color: "#ffc107",
+                                  cursor: "pointer",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                👋 Expulsar
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setExpulsionModalData({
+                                    memberId: member.memberId,
+                                    memberName: member.displayName,
+                                    type: "BAN"
+                                  });
+                                }}
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: 6,
+                                  border: "1px solid #dc3545",
+                                  background: "#fff",
+                                  color: "#dc3545",
+                                  cursor: "pointer",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                🚫 Banear
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Archive Pool Section (only if COMPLETED) */}
+              {overview.pool.status === "COMPLETED" && (
+                <div style={{ marginBottom: 24, padding: 16, background: "#fff3cd", borderRadius: 12, border: "1px solid #ffc107" }}>
+                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#856404" }}>
+                    📦 Archivar Pool
+                  </h4>
+                  <div style={{ fontSize: 14, lineHeight: 1.8, color: "#856404", marginBottom: 12 }}>
+                    El torneo ha finalizado. Puedes archivar este pool para moverlo fuera de la vista principal.
+                    Los pools archivados permanecen accesibles pero se marcan como históricos.
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!token || !poolId || busyKey === "archive") return;
+
+                      const confirmed = window.confirm(
+                        "¿Estás seguro de que deseas archivar este pool?\n\n" +
+                        "Esta acción marcará el pool como archivado. " +
+                        "Los miembros aún podrán ver el leaderboard y resultados finales, " +
+                        "pero no se permitirán más cambios."
+                      );
+
+                      if (!confirmed) return;
+
+                      setBusyKey("archive");
+                      setError(null);
+
+                      try {
+                        await archivePool(token, poolId);
+                        await load(verbose);
+                        alert("✅ Pool archivado exitosamente");
+                      } catch (err: any) {
+                        setError(err?.message ?? "Error al archivar pool");
+                      } finally {
+                        setBusyKey(null);
+                      }
+                    }}
+                    disabled={busyKey === "archive"}
+                    style={{
+                      padding: "10px 20px",
+                      borderRadius: 8,
+                      border: "1px solid #856404",
+                      background: busyKey === "archive" ? "#ccc" : "#ffc107",
+                      color: "#856404",
+                      cursor: busyKey === "archive" ? "wait" : "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {busyKey === "archive" ? "⏳ Archivando..." : "📦 Archivar Pool"}
+                  </button>
+                </div>
+              )}
+
               {/* Instructions */}
               <div style={{ padding: 16, background: "#e7f3ff", border: "1px solid #b3d7ff", borderRadius: 12 }}>
                 <div style={{ fontSize: 14, color: "#004085", lineHeight: 1.6 }}>
@@ -557,6 +1096,15 @@ export function PoolPage() {
           {/* Tab Content: Reglas */}
           {activeTab === "reglas" && (
             <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+              {/* Check if pool has advanced pick types configuration */}
+              {overview.pool.pickTypesConfig ? (
+                <PickRulesDisplay
+                  pickTypesConfig={overview.pool.pickTypesConfig as PoolPickTypesConfig}
+                  poolDeadlineMinutes={overview.pool.deadlineMinutesBeforeKickoff}
+                  poolTimeZone={overview.pool.timeZone}
+                />
+              ) : (
+                <>
               <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, marginBottom: 16 }}>Reglas de la Pool</h3>
 
               {/* Scoring System */}
@@ -674,6 +1222,8 @@ export function PoolPage() {
                   )}
                 </div>
               </div>
+              </>
+            )}
             </div>
           )}
 
@@ -774,7 +1324,7 @@ export function PoolPage() {
           )}
 
           {/* Tab Content: Partidos - UX toolbar */}
-          {activeTab === "partidos" && (
+          {activeTab === "partidos" && !requiresStructuralPicks && (
             <div style={{ marginTop: 14, padding: 12, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                 <input
@@ -804,8 +1354,27 @@ export function PoolPage() {
             </div>
           )}
 
+          {/* Tab Content: Partidos - Structural Picks Manager (SIMPLE preset) */}
+          {activeTab === "partidos" && requiresStructuralPicks && activePhaseData && activePhaseConfig && (
+            <div style={{ marginTop: 14 }}>
+              <StructuralPicksManager
+                poolId={poolId!}
+                phaseId={activePhase!}
+                phaseName={activePhaseData.name}
+                phaseType={activePhaseData.type}
+                phaseConfig={activePhaseConfig}
+                tournamentData={(overview.tournamentInstance as any).dataJson}
+                token={token!}
+                isHost={overview.permissions.canManageResults}
+                isLocked={getPhaseStatus(activePhase!) === "COMPLETED"}
+                matchResults={phaseMatchResults}
+                onDataChanged={() => load(verbose)}
+              />
+            </div>
+          )}
+
           {/* Tab Content: Partidos - Group Tabs */}
-          {activeTab === "partidos" && (
+          {activeTab === "partidos" && !requiresStructuralPicks && (
             <div style={{
               marginTop: 14,
               display: "flex",
@@ -861,7 +1430,7 @@ export function PoolPage() {
           )}
 
           {/* Tab Content: Partidos - Matches by group */}
-          {activeTab === "partidos" && (
+          {activeTab === "partidos" && !requiresStructuralPicks && (
             <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
               {groupOrder.filter(g => !selectedGroup || g === selectedGroup).map((g) => (
                 <details
@@ -874,7 +1443,7 @@ export function PoolPage() {
                   </summary>
 
                   <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-                    {matchesByGroup[g].map((m) => {
+                    {matchesByGroup[g].map((m: any) => {
                       const busyPick = busyKey === `pick:${m.id}`;
                       const busyRes = busyKey === `res:${m.id}`;
                       const isHost = overview.permissions.canManageResults;
@@ -983,7 +1552,7 @@ export function PoolPage() {
 
                           {/* Match Info */}
                           <div style={{ color: "#666", fontSize: 12, marginBottom: 12, paddingLeft: 4 }}>
-                            {m.roundLabel ?? m.id} • kickoff: {fmtUtc(m.kickoffUtc)} • deadline: {fmtUtc(m.deadlineUtc)}
+                            {m.roundLabel ?? m.id} • kickoff: {fmtUtc(m.kickoffUtc, userTimezone)} • deadline: {fmtUtc(m.deadlineUtc, userTimezone)}
                           </div>
 
                           {/* Content: Picks and Results OR Placeholder Message */}
@@ -1095,8 +1664,48 @@ export function PoolPage() {
                             {r.rank}
                           </td>
                           <td style={{ padding: "14px 8px" }}>
-                            <div style={{ fontWeight: 600 }}>{r.displayName}</div>
-                            <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>{r.role}</div>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{r.displayName}</div>
+                            <div style={{ display: "flex", gap: 4 }}>
+                              {r.role === "HOST" && (
+                                <span style={{
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 3,
+                                  background: "#007bff20",
+                                  border: "1px solid #007bff",
+                                  color: "#007bff",
+                                  fontWeight: 600
+                                }}>
+                                  👑 HOST
+                                </span>
+                              )}
+                              {r.role === "CO_ADMIN" && (
+                                <span style={{
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 3,
+                                  background: "#28a74520",
+                                  border: "1px solid #28a745",
+                                  color: "#28a745",
+                                  fontWeight: 600
+                                }}>
+                                  ⭐ CO-ADMIN
+                                </span>
+                              )}
+                              {r.role === "PLAYER" && (
+                                <span style={{
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 3,
+                                  background: "#6c757d20",
+                                  border: "1px solid #6c757d",
+                                  color: "#6c757d",
+                                  fontWeight: 600
+                                }}>
+                                  PLAYER
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: "14px 8px", textAlign: "center", fontWeight: 900, fontSize: 18, color: "#007bff" }}>
                             {r.points}
@@ -1162,6 +1771,248 @@ export function PoolPage() {
                   </div>
                 </details>
               )}
+            </div>
+          )}
+
+          {/* Expulsion Modal (KICK or BAN) */}
+          {expulsionModalData && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 9999,
+                padding: 20
+              }}
+              onClick={() => setExpulsionModalData(null)}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 12,
+                  padding: 24,
+                  maxWidth: 550,
+                  width: "100%",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.3)"
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {expulsionModalData.type === "KICK" ? (
+                  <>
+                    <h3 style={{ margin: 0, marginBottom: 12, fontSize: 18, fontWeight: 700, color: "#ffc107" }}>
+                      👋 Expulsar a {expulsionModalData.memberName}
+                    </h3>
+                    <div style={{ marginBottom: 16, padding: 12, background: "#fff3cd", border: "1px solid #ffc107", borderRadius: 8, fontSize: 13, lineHeight: 1.6 }}>
+                      <strong>Expulsión simple:</strong> El jugador será removido del pool pero <strong>podrá volver a solicitar acceso</strong> más adelante usando un código de invitación.
+                    </div>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!token || !poolId || busyKey) return;
+
+                        const reason = (new FormData(e.currentTarget).get("reason") as string) || undefined;
+
+                        setBusyKey(`kick:${expulsionModalData.memberId}`);
+                        setError(null);
+
+                        try {
+                          await kickMember(token, poolId, expulsionModalData.memberId, reason);
+                          await load(verbose);
+                          setExpulsionModalData(null);
+                          alert(`✅ ${expulsionModalData.memberName} ha sido expulsado del pool`);
+                        } catch (err: any) {
+                          setError(err?.message ?? "Error al expulsar miembro");
+                        } finally {
+                          setBusyKey(null);
+                        }
+                      }}
+                      style={{ display: "grid", gap: 12 }}
+                    >
+                      <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#333" }}>
+                          Razón (opcional)
+                        </label>
+                        <textarea
+                          name="reason"
+                          rows={2}
+                          placeholder="Ej: Solicitó salir del pool"
+                          style={{
+                            width: "100%",
+                            padding: 10,
+                            border: "1px solid #ddd",
+                            borderRadius: 6,
+                            fontSize: 14,
+                            fontFamily: "inherit",
+                            resize: "vertical"
+                          }}
+                        />
+                      </div>
+
+                      <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setExpulsionModalData(null)}
+                          disabled={busyKey !== null}
+                          style={{
+                            flex: 1,
+                            padding: 12,
+                            borderRadius: 6,
+                            border: "1px solid #ddd",
+                            background: "#fff",
+                            color: "#333",
+                            cursor: busyKey ? "wait" : "pointer",
+                            fontSize: 14,
+                            fontWeight: 600
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={busyKey !== null}
+                          style={{
+                            flex: 1,
+                            padding: 12,
+                            borderRadius: 6,
+                            border: "none",
+                            background: busyKey ? "#ccc" : "#ffc107",
+                            color: "#fff",
+                            cursor: busyKey ? "wait" : "pointer",
+                            fontSize: 14,
+                            fontWeight: 600
+                          }}
+                        >
+                          {busyKey ? "⏳ Expulsando..." : "👋 Expulsar"}
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <h3 style={{ margin: 0, marginBottom: 12, fontSize: 18, fontWeight: 700, color: "#dc3545" }}>
+                      🚫 Banear a {expulsionModalData.memberName}
+                    </h3>
+                    <div style={{ marginBottom: 16, padding: 14, background: "#f8d7da", border: "2px solid #dc3545", borderRadius: 8, fontSize: 13, lineHeight: 1.7 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, color: "#721c24" }}>
+                        ⚠️ ADVERTENCIA: Esta acción es PERMANENTE e IRREVERSIBLE
+                      </div>
+                      <ul style={{ margin: "8px 0", paddingLeft: 20, color: "#721c24" }}>
+                        <li><strong>El jugador NO podrá volver a unirse</strong> a este pool nunca más</li>
+                        <li>Opcionalmente puedes <strong>eliminar todas sus selecciones</strong></li>
+                        <li>Esta acción queda registrada en el historial de auditoría</li>
+                      </ul>
+                    </div>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!token || !poolId || busyKey) return;
+
+                        const formData = new FormData(e.currentTarget);
+                        const reason = formData.get("reason") as string;
+                        const deletePicks = (formData.get("deletePicks") as string) === "true";
+
+                        if (!reason || reason.trim().length === 0) {
+                          alert("❌ Debes proporcionar una razón para el baneo");
+                          return;
+                        }
+
+                        setBusyKey(`ban:${expulsionModalData.memberId}`);
+                        setError(null);
+
+                        try {
+                          await banMember(token, poolId, expulsionModalData.memberId, reason, deletePicks);
+                          await load(verbose);
+                          setExpulsionModalData(null);
+                          alert(`✅ ${expulsionModalData.memberName} ha sido baneado permanentemente`);
+                        } catch (err: any) {
+                          setError(err?.message ?? "Error al banear miembro");
+                        } finally {
+                          setBusyKey(null);
+                        }
+                      }}
+                      style={{ display: "grid", gap: 12 }}
+                    >
+                      <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#333" }}>
+                          Razón del baneo *
+                        </label>
+                        <textarea
+                          name="reason"
+                          required
+                          rows={3}
+                          placeholder="Ej: Comportamiento inapropiado, trampas, lenguaje ofensivo, etc."
+                          style={{
+                            width: "100%",
+                            padding: 10,
+                            border: "1px solid #ddd",
+                            borderRadius: 6,
+                            fontSize: 14,
+                            fontFamily: "inherit",
+                            resize: "vertical"
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            name="deletePicks"
+                            value="true"
+                          />
+                          <span>
+                            <strong>Eliminar todas sus selecciones</strong> (afectará el leaderboard)
+                          </span>
+                        </label>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setExpulsionModalData(null)}
+                          disabled={busyKey !== null}
+                          style={{
+                            flex: 1,
+                            padding: 12,
+                            borderRadius: 6,
+                            border: "1px solid #ddd",
+                            background: "#fff",
+                            color: "#333",
+                            cursor: busyKey ? "wait" : "pointer",
+                            fontSize: 14,
+                            fontWeight: 600
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={busyKey !== null}
+                          style={{
+                            flex: 1,
+                            padding: 12,
+                            borderRadius: 6,
+                            border: "none",
+                            background: busyKey ? "#ccc" : "#dc3545",
+                            color: "#fff",
+                            cursor: busyKey ? "wait" : "pointer",
+                            fontSize: 14,
+                            fontWeight: 600
+                          }}
+                        >
+                          {busyKey ? "⏳ Baneando..." : "🚫 Banear Permanentemente"}
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </>

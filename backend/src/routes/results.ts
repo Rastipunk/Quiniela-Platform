@@ -8,6 +8,7 @@ import {
   advanceToRoundOf32,
   advanceKnockoutPhase,
 } from "../services/instanceAdvancement";
+import { transitionToCompleted, canPublishResults } from "../services/poolStateMachine";
 
 export const resultsRouter = Router();
 resultsRouter.use(requireAuth);
@@ -51,9 +52,10 @@ async function requireActivePoolMember(userId: string, poolId: string) {
   return m != null;
 }
 
-async function requirePoolHost(userId: string, poolId: string) {
+// Comentario en español: valida que el usuario sea HOST o CO_ADMIN del pool
+async function requirePoolHostOrCoAdmin(userId: string, poolId: string) {
   const m = await prisma.poolMember.findFirst({ where: { poolId, userId, status: "ACTIVE" } });
-  return m?.role === "HOST";
+  return m?.role === "HOST" || m?.role === "CO_ADMIN";
 }
 
 function outcomeFromScore(homeGoals: number, awayGoals: number): "HOME" | "DRAW" | "AWAY" {
@@ -62,12 +64,12 @@ function outcomeFromScore(homeGoals: number, awayGoals: number): "HOME" | "DRAW"
   return "DRAW";
 }
 
-// PUT /pools/:poolId/results/:matchId  (solo HOST)
+// PUT /pools/:poolId/results/:matchId  (HOST o CO_ADMIN)
 resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   const { poolId, matchId } = req.params;
 
-  const isHost = await requirePoolHost(req.auth!.userId, poolId);
-  if (!isHost) return res.status(403).json({ error: "FORBIDDEN" });
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = upsertResultSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -79,6 +81,14 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
     include: { tournamentInstance: true },
   });
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+
+  // Validar que el pool permita publicar resultados según su estado
+  if (!canPublishResults(pool.status as any)) {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Cannot publish results in this pool status"
+    });
+  }
 
   if (pool.tournamentInstance.status === "ARCHIVED") {
     return res.status(409).json({ error: "CONFLICT", message: "TournamentInstance is ARCHIVED" });
@@ -247,6 +257,14 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
       // Si falla el auto-advance, loguear pero NO fallar la request original
       console.error("[AUTO-ADVANCE ERROR]", autoAdvanceError.message);
       // El resultado ya se guardó exitosamente, solo falló el avance automático
+    }
+
+    // Verificar si todos los partidos tienen resultado → Pool COMPLETED
+    try {
+      await transitionToCompleted(poolId, req.auth!.userId);
+    } catch (completedError: any) {
+      // Si falla la transición, loguear pero no fallar la request
+      console.error("[POOL COMPLETED ERROR]", completedError.message);
     }
 
     return res.json(saved);
