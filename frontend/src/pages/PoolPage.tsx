@@ -8,6 +8,7 @@ import { formatMatchDateTime } from "../lib/timezone";
 import { PickRulesDisplay } from "../components/PickRulesDisplay";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
 import { StructuralPicksManager } from "../components/StructuralPicksManager";
+import { ScoringBreakdownModal } from "../components/ScoringBreakdownModal";
 
 function fmtUtc(iso: string, userTimezone: string | null = null) {
   return formatMatchDateTime(iso, userTimezone);
@@ -56,6 +57,14 @@ export function PoolPage() {
 
   // Expulsion modal state (KICK or BAN)
   const [expulsionModalData, setExpulsionModalData] = useState<{ memberId: string; memberName: string; type: "KICK" | "BAN" } | null>(null);
+
+  // Scoring breakdown modal state
+  const [breakdownModalData, setBreakdownModalData] = useState<{
+    matchId?: string;
+    matchTitle?: string;
+    phaseId?: string;
+    phaseTitle?: string;
+  } | null>(null);
 
   // UX filtros (volumen)
   const [onlyOpen, setOnlyOpen] = useState(false);
@@ -1369,6 +1378,10 @@ export function PoolPage() {
                 isLocked={getPhaseStatus(activePhase!) === "COMPLETED"}
                 matchResults={phaseMatchResults}
                 onDataChanged={() => load(verbose)}
+                onShowBreakdown={() => setBreakdownModalData({
+                  phaseId: activePhase!,
+                  phaseTitle: `Desglose - ${activePhaseData.name}`,
+                })}
               />
             </div>
           )}
@@ -1605,6 +1618,39 @@ export function PoolPage() {
                                 tournamentKey={overview.tournamentInstance.templateKey ?? "wc_2026_sandbox"}
                                 phaseId={m.phaseId}
                               />
+                            </div>
+                          )}
+
+                          {/* Boton Ver Desglose - solo si:
+                              1. Hay resultado publicado
+                              2. El pool usa pickTypesConfig
+                              3. La fase del partido usa requiresScore (match picks, no estructural)
+                          */}
+                          {m.result && overview.pool.pickTypesConfig && (() => {
+                            const phaseConfig = (overview.pool.pickTypesConfig as any[])?.find(
+                              (p: any) => p.phaseId === m.phaseId
+                            );
+                            return phaseConfig?.requiresScore === true;
+                          })() && (
+                            <div style={{ marginTop: 12, textAlign: "center" }}>
+                              <button
+                                onClick={() => setBreakdownModalData({
+                                  matchId: m.id,
+                                  matchTitle: `${getCountryName(m.homeTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")} vs ${getCountryName(m.awayTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")}`,
+                                })}
+                                style={{
+                                  padding: "8px 16px",
+                                  borderRadius: 8,
+                                  border: "1px solid #667eea",
+                                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                  color: "white",
+                                  cursor: "pointer",
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Ver desglose de puntos
+                              </button>
                             </div>
                           )}
 
@@ -2014,6 +2060,19 @@ export function PoolPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Scoring Breakdown Modal */}
+          {poolId && (
+            <ScoringBreakdownModal
+              isOpen={!!breakdownModalData}
+              onClose={() => setBreakdownModalData(null)}
+              poolId={poolId}
+              matchId={breakdownModalData?.matchId}
+              matchTitle={breakdownModalData?.matchTitle}
+              phaseId={breakdownModalData?.phaseId}
+              phaseTitle={breakdownModalData?.phaseTitle}
+            />
           )}
         </>
       )}

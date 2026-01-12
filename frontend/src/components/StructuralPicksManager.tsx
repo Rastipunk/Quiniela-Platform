@@ -64,6 +64,8 @@ type StructuralPicksManagerProps = {
   matchResults?: Map<string, MatchResult>;
   // Callback para refrescar datos después de cambios
   onDataChanged?: () => void;
+  // Callback para mostrar desglose de puntuación
+  onShowBreakdown?: () => void;
 };
 
 export function StructuralPicksManager({
@@ -78,6 +80,7 @@ export function StructuralPicksManager({
   isLocked,
   matchResults,
   onDataChanged,
+  onShowBreakdown,
 }: StructuralPicksManagerProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -350,10 +353,32 @@ export function StructuralPicksManager({
             borderRadius: 12,
             textAlign: "center",
             color: "#004085",
-            fontWeight: 600,
           }}
         >
-          🔒 {isHost ? "Todos los resultados oficiales han sido publicados" : "Fase bloqueada - Los resultados oficiales ya fueron publicados"}
+          <div style={{ fontWeight: 600, marginBottom: onShowBreakdown ? "1rem" : 0 }}>
+            {isHost ? "Todos los resultados oficiales han sido publicados" : "Fase bloqueada - Los resultados oficiales ya fueron publicados"}
+          </div>
+          {onShowBreakdown && (
+            <button
+              onClick={onShowBreakdown}
+              style={{
+                padding: "10px 20px",
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>📊</span>
+              Ver desglose de puntos
+            </button>
+          )}
         </div>
       )}
 

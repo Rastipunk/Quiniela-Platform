@@ -24,6 +24,11 @@ import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import { getPresetByKey } from "../lib/pickPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
 import { scoreUserStructuralPicks } from "../services/structuralScoring";
+import {
+  generateMatchPickBreakdown,
+  generateGroupStandingsBreakdown,
+  generateKnockoutWinnerBreakdown,
+} from "../lib/scoringBreakdown";
 import type { PhasePickConfig } from "../types/pickConfig";
 
 
@@ -1835,4 +1840,530 @@ poolsRouter.post("/:poolId/members/:memberId/demote", async (req, res) => {
       },
     },
   });
+});
+
+// ==================== SCORING BREAKDOWN ====================
+
+/**
+ * GET /pools/:poolId/breakdown/match/:matchId
+ * Obtiene el desglose de puntuacion para un pick de partido especifico
+ */
+poolsRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
+  const userId = (req as any).auth.userId;
+  const { poolId, matchId } = req.params;
+
+  try {
+    // Obtener pool con datos necesarios
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: {
+        tournamentInstance: true,
+        members: {
+          where: { userId, status: "ACTIVE" },
+        },
+      },
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: "Pool no encontrada" });
+    }
+
+    // Verificar que el usuario es miembro
+    if (pool.members.length === 0) {
+      return res.status(403).json({ error: "No eres miembro de esta pool" });
+    }
+
+    // Obtener datos del fixture
+    const fixtureData = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
+    const matches = fixtureData?.matches || [];
+    const match = matches.find((m: any) => m.id === matchId);
+
+    if (!match) {
+      return res.status(404).json({ error: "Partido no encontrado" });
+    }
+
+    // Obtener configuracion de la fase
+    const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
+    if (!pickTypesConfig) {
+      return res.status(400).json({ error: "Pool sin configuracion de picks" });
+    }
+
+    const phaseConfig = pickTypesConfig.find(p => p.phaseId === match.phaseId);
+    if (!phaseConfig) {
+      return res.status(400).json({ error: "Fase no configurada" });
+    }
+
+    // Verificar que la fase requiere score (match picks)
+    if (!phaseConfig.requiresScore || !phaseConfig.matchPicks) {
+      return res.status(400).json({
+        error: "Esta fase no usa picks de marcador",
+        suggestion: "Usa el endpoint de breakdown estructural",
+      });
+    }
+
+    // Obtener pick del usuario (modelo Prediction)
+    const userPick = await prisma.prediction.findUnique({
+      where: {
+        poolId_userId_matchId: {
+          poolId,
+          matchId,
+          userId,
+        },
+      },
+    });
+
+    // Obtener resultado oficial (con la versión actual que tiene los goles)
+    const result = await prisma.poolMatchResult.findUnique({
+      where: {
+        poolId_matchId: {
+          poolId,
+          matchId,
+        },
+      },
+      include: {
+        currentVersion: true,
+      },
+    });
+
+    // Generar breakdown
+    // pickJson tiene formato: { type: "SCORE", homeGoals: X, awayGoals: Y }
+    const pickJson = userPick?.pickJson as { type?: string; homeGoals?: number; awayGoals?: number } | null;
+    const pickData = pickJson && typeof pickJson.homeGoals === "number" && typeof pickJson.awayGoals === "number"
+      ? { homeGoals: pickJson.homeGoals, awayGoals: pickJson.awayGoals }
+      : null;
+
+    const resultData = result?.currentVersion
+      ? { homeGoals: result.currentVersion.homeGoals, awayGoals: result.currentVersion.awayGoals }
+      : null;
+
+    const breakdown = generateMatchPickBreakdown(pickData, resultData, phaseConfig, matchId);
+
+    // Agregar informacion del partido
+    const teams = fixtureData?.teams || [];
+    const homeTeam = teams.find((t: any) => t.id === match.homeTeamId);
+    const awayTeam = teams.find((t: any) => t.id === match.awayTeamId);
+
+    return res.json({
+      breakdown,
+      match: {
+        id: matchId,
+        phaseId: match.phaseId,
+        homeTeam: {
+          id: match.homeTeamId,
+          name: homeTeam?.name || match.homeTeamId,
+        },
+        awayTeam: {
+          id: match.awayTeamId,
+          name: awayTeam?.name || match.awayTeamId,
+        },
+        kickoffUtc: match.kickoffUtc,
+      },
+    });
+  } catch (error) {
+    console.error("Error generando breakdown de partido:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+/**
+ * GET /pools/:poolId/breakdown/phase/:phaseId
+ * Obtiene el desglose de puntuacion para picks estructurales de una fase
+ */
+poolsRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
+  const userId = (req as any).auth.userId;
+  const { poolId, phaseId } = req.params;
+
+  try {
+    // Obtener pool con datos necesarios
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: {
+        tournamentInstance: true,
+        members: {
+          where: { userId, status: "ACTIVE" },
+        },
+      },
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: "Pool no encontrada" });
+    }
+
+    // Verificar que el usuario es miembro
+    if (pool.members.length === 0) {
+      return res.status(403).json({ error: "No eres miembro de esta pool" });
+    }
+
+    // Obtener configuracion de la fase
+    const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
+    if (!pickTypesConfig) {
+      return res.status(400).json({ error: "Pool sin configuracion de picks" });
+    }
+
+    const phaseConfig = pickTypesConfig.find(p => p.phaseId === phaseId);
+    if (!phaseConfig) {
+      return res.status(400).json({ error: "Fase no configurada" });
+    }
+
+    // Verificar que la fase es estructural
+    if (phaseConfig.requiresScore || !phaseConfig.structuralPicks) {
+      return res.status(400).json({
+        error: "Esta fase no usa picks estructurales",
+        suggestion: "Usa el endpoint de breakdown de partido",
+      });
+    }
+
+    // Obtener datos del fixture
+    const fixtureData = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
+    const matches = fixtureData?.matches || [];
+    const teams = fixtureData?.teams || [];
+    const groups = fixtureData?.groups || [];
+
+    // Crear mapa de equipos
+    const teamsMap = new Map<string, { id: string; name: string }>();
+    teams.forEach((t: any) => {
+      teamsMap.set(t.id, { id: t.id, name: t.name || t.code || t.id });
+    });
+
+    // Obtener pick estructural del usuario
+    const userPick = await prisma.structuralPrediction.findUnique({
+      where: {
+        poolId_userId_phaseId: {
+          poolId,
+          phaseId,
+          userId,
+        },
+      },
+    });
+
+    // Obtener resultado estructural oficial (el más reciente)
+    const result = await prisma.structuralPhaseResult.findFirst({
+      where: { poolId, phaseId },
+      orderBy: { createdAtUtc: "desc" },
+    });
+
+    const structuralType = phaseConfig.structuralPicks.type;
+
+    if (structuralType === "GROUP_STANDINGS") {
+      // Obtener info de grupos - primero intentar desde fixtureData.groups
+      let groupsInfo: Array<{ id: string; name: string; teamCount: number }> = [];
+
+      if (groups && groups.length > 0) {
+        groupsInfo = groups.map((g: any) => ({
+          id: g.id,
+          name: g.name || `Grupo ${g.id}`,
+          teamCount: g.teamIds?.length || 4,
+        }));
+      }
+
+      // Si no hay grupos explícitos, extraerlos de los equipos por groupId
+      if (groupsInfo.length === 0) {
+        const groupsMap = new Map<string, Set<string>>();
+        teams.forEach((t: any) => {
+          if (t.groupId) {
+            if (!groupsMap.has(t.groupId)) {
+              groupsMap.set(t.groupId, new Set());
+            }
+            groupsMap.get(t.groupId)!.add(t.id);
+          }
+        });
+
+        groupsMap.forEach((teamIds, groupId) => {
+          groupsInfo.push({
+            id: groupId,
+            name: `Grupo ${groupId}`,
+            teamCount: teamIds.size,
+          });
+        });
+
+        // Ordenar alfabéticamente
+        groupsInfo.sort((a, b) => a.id.localeCompare(b.id));
+      }
+
+      // Como último recurso, extraerlos de los partidos
+      if (groupsInfo.length === 0) {
+        const groupIds = new Set<string>();
+        matches.filter((m: any) => m.groupId).forEach((m: any) => {
+          groupIds.add(m.groupId);
+        });
+        groupIds.forEach(gId => {
+          groupsInfo.push({ id: gId, name: `Grupo ${gId}`, teamCount: 4 });
+        });
+      }
+
+      console.log(`[Breakdown] GROUP_STANDINGS - Found ${groupsInfo.length} groups`);
+      console.log(`[Breakdown] User pick:`, userPick?.pickJson);
+      console.log(`[Breakdown] Result:`, result?.resultJson);
+
+      const breakdown = generateGroupStandingsBreakdown(
+        userPick?.pickJson as any,
+        result?.resultJson as any,
+        phaseConfig,
+        groupsInfo,
+        teamsMap
+      );
+
+      return res.json({ breakdown });
+    } else if (structuralType === "KNOCKOUT_WINNER") {
+      // Obtener partidos de la fase
+      const phaseMatches = matches
+        .filter((m: any) => m.phaseId === phaseId)
+        .map((m: any) => ({
+          id: m.id,
+          homeTeamId: m.homeTeamId,
+          awayTeamId: m.awayTeamId,
+        }));
+
+      // Para KNOCKOUT_WINNER, los resultados vienen de los partidos individuales (PoolMatchResult)
+      // No del resultado estructural (StructuralPhaseResult)
+      const matchResults = await prisma.poolMatchResult.findMany({
+        where: {
+          poolId,
+          matchId: { in: phaseMatches.map((m: any) => m.id) },
+        },
+        include: { currentVersion: true },
+      });
+
+      // Construir el resultData a partir de los resultados de partidos
+      // El ganador es quien tenga más goles (considerando penales si es empate)
+      const knockoutResultData: { matches: Array<{ matchId: string; winnerId: string }> } = { matches: [] };
+
+      for (const matchResult of matchResults) {
+        if (matchResult.currentVersion) {
+          const cv = matchResult.currentVersion;
+          const matchInfo = phaseMatches.find((m: any) => m.id === matchResult.matchId);
+          if (matchInfo) {
+            let winnerId: string;
+            if (cv.homeGoals > cv.awayGoals) {
+              winnerId = matchInfo.homeTeamId;
+            } else if (cv.awayGoals > cv.homeGoals) {
+              winnerId = matchInfo.awayTeamId;
+            } else {
+              // Empate en 90min - ver penales
+              if (cv.homePenalties !== null && cv.awayPenalties !== null) {
+                winnerId = cv.homePenalties > cv.awayPenalties ? matchInfo.homeTeamId : matchInfo.awayTeamId;
+              } else {
+                // Sin penales registrados - no hay ganador definido
+                continue;
+              }
+            }
+            knockoutResultData.matches.push({ matchId: matchResult.matchId, winnerId });
+          }
+        }
+      }
+
+      console.log(`[Breakdown] KNOCKOUT_WINNER - Found ${phaseMatches.length} matches, ${knockoutResultData.matches.length} with results`);
+      console.log(`[Breakdown] User pick:`, userPick?.pickJson);
+
+      const breakdown = generateKnockoutWinnerBreakdown(
+        userPick?.pickJson as any,
+        knockoutResultData.matches.length > 0 ? knockoutResultData : null,
+        phaseConfig,
+        phaseMatches,
+        teamsMap
+      );
+
+      return res.json({ breakdown });
+    } else {
+      return res.status(400).json({ error: `Tipo estructural no soportado: ${structuralType}` });
+    }
+  } catch (error) {
+    console.error("Error generando breakdown estructural:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+/**
+ * GET /pools/:poolId/breakdown/group/:groupId
+ * Obtiene el desglose de puntuacion para un grupo específico (GROUP_STANDINGS)
+ */
+poolsRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
+  const userId = (req as any).auth.userId;
+  const { poolId, groupId } = req.params;
+
+  try {
+    // Obtener pool con datos necesarios
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: {
+        tournamentInstance: true,
+        members: {
+          where: { userId, status: "ACTIVE" },
+        },
+      },
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: "Pool no encontrada" });
+    }
+
+    // Verificar que el usuario es miembro
+    if (pool.members.length === 0) {
+      return res.status(403).json({ error: "No eres miembro de esta pool" });
+    }
+
+    // Buscar la fase de grupos en pickTypesConfig
+    const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
+    if (!pickTypesConfig) {
+      return res.status(400).json({ error: "Pool sin configuracion de picks" });
+    }
+
+    // Encontrar la fase que tiene GROUP_STANDINGS
+    const phaseConfig = pickTypesConfig.find(
+      p => !p.requiresScore && p.structuralPicks?.type === "GROUP_STANDINGS"
+    );
+
+    if (!phaseConfig) {
+      return res.status(400).json({ error: "No hay fase de grupos configurada" });
+    }
+
+    const config = phaseConfig.structuralPicks!.config as {
+      pointsPerExactPosition: number;
+      bonusPerfectGroup?: number;
+    };
+
+    // Obtener datos del fixture
+    const fixtureData = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
+    const teams = fixtureData?.teams || [];
+
+    // Crear mapa de equipos
+    const teamsMap = new Map<string, { id: string; name: string }>();
+    teams.forEach((t: any) => {
+      teamsMap.set(t.id, { id: t.id, name: t.name || t.code || t.id });
+    });
+
+    // Obtener equipos del grupo específico
+    const groupTeams = teams.filter((t: any) => t.groupId === groupId);
+    if (groupTeams.length === 0) {
+      return res.status(404).json({ error: "Grupo no encontrado" });
+    }
+
+    // Obtener pick del usuario para este grupo específico
+    const userPick = await prisma.groupStandingsPrediction.findUnique({
+      where: {
+        poolId_userId_phaseId_groupId: {
+          poolId,
+          userId,
+          phaseId: phaseConfig.phaseId,
+          groupId,
+        },
+      },
+    });
+
+    // Obtener resultado oficial para este grupo
+    const result = await prisma.groupStandingsResult.findFirst({
+      where: { poolId, phaseId: phaseConfig.phaseId, groupId },
+      orderBy: { createdAtUtc: "desc" },
+    });
+
+    // Calcular máximo teórico para este grupo
+    const teamCount = groupTeams.length;
+    const maxPositionPoints = teamCount * config.pointsPerExactPosition;
+    const maxBonusPoints = config.bonusPerfectGroup || 0;
+    const totalMax = maxPositionPoints + maxBonusPoints;
+
+    // Si no hay pick
+    if (!userPick || !userPick.teamIds || userPick.teamIds.length === 0) {
+      return res.json({
+        breakdown: {
+          type: "GROUP_SINGLE",
+          groupId,
+          groupName: `Grupo ${groupId}`,
+          hasPick: false,
+          hasResult: !!result,
+          totalPointsEarned: 0,
+          totalPointsMax: totalMax,
+          config,
+          positions: [],
+          bonusPerfectGroup: {
+            enabled: !!config.bonusPerfectGroup,
+            achieved: false,
+            pointsEarned: 0,
+            pointsMax: maxBonusPoints,
+          },
+        },
+      });
+    }
+
+    // Si no hay resultado
+    if (!result || !result.teamIds || result.teamIds.length === 0) {
+      return res.json({
+        breakdown: {
+          type: "GROUP_SINGLE",
+          groupId,
+          groupName: `Grupo ${groupId}`,
+          hasPick: true,
+          hasResult: false,
+          totalPointsEarned: 0,
+          totalPointsMax: totalMax,
+          config,
+          positions: [],
+          bonusPerfectGroup: {
+            enabled: !!config.bonusPerfectGroup,
+            achieved: false,
+            pointsEarned: 0,
+            pointsMax: maxBonusPoints,
+          },
+        },
+      });
+    }
+
+    // Evaluar posiciones
+    const pickTeams = userPick.teamIds as string[];
+    const resultTeams = result.teamIds as string[];
+
+    let totalEarned = 0;
+    let perfectGroup = true;
+
+    const positions = resultTeams.map((teamId, index) => {
+      const position = index + 1;
+      const predictedIndex = pickTeams.indexOf(teamId);
+      const predictedPosition = predictedIndex >= 0 ? predictedIndex + 1 : null;
+      const matched = predictedPosition === position;
+
+      if (!matched) perfectGroup = false;
+      const pointsEarned = matched ? config.pointsPerExactPosition : 0;
+      totalEarned += pointsEarned;
+
+      const team = teamsMap.get(teamId);
+
+      return {
+        position,
+        teamId,
+        teamName: team?.name || teamId,
+        predictedPosition,
+        actualPosition: position,
+        matched,
+        pointsEarned,
+      };
+    });
+
+    // Bonus por grupo perfecto
+    const bonusAchieved = perfectGroup && config.bonusPerfectGroup;
+    const bonusPoints = bonusAchieved ? config.bonusPerfectGroup! : 0;
+    totalEarned += bonusPoints;
+
+    return res.json({
+      breakdown: {
+        type: "GROUP_SINGLE",
+        groupId,
+        groupName: `Grupo ${groupId}`,
+        hasPick: true,
+        hasResult: true,
+        totalPointsEarned: totalEarned,
+        totalPointsMax: totalMax,
+        config,
+        positions,
+        bonusPerfectGroup: {
+          enabled: !!config.bonusPerfectGroup,
+          achieved: !!bonusAchieved,
+          pointsEarned: bonusPoints,
+          pointsMax: maxBonusPoints,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error generando breakdown de grupo:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
 });
