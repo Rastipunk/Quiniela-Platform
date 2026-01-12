@@ -97,15 +97,31 @@ La documentación oficial y completa está en:
 - **Toda nueva decisión (arquitectura, producto, contrato) → Registrar en `DECISION_LOG.md`.**
 - **Si falta información → Proponer opciones, pedir decisión, documentar la elegida.**
 
-### 📂 Documentación Legacy (anterior a SoT):
+### 📂 Estructura de Documentación:
 
-Estos documentos aún existen pero están siendo reemplazados por `/docs/sot/`:
+```
+docs/
+├── sot/                    # Source of Truth (documentación oficial)
+│   ├── PRD.md              # Product Requirements
+│   ├── DATA_MODEL.md       # Schema completo
+│   ├── API_SPEC.md         # Contratos de API
+│   ├── ARCHITECTURE.md     # Arquitectura técnica
+│   ├── BUSINESS_RULES.md   # Reglas de negocio
+│   ├── DECISION_LOG.md     # ADRs
+│   ├── GLOSSARY.md         # Glosario
+│   └── CURRENT_STATE.md    # Estado actual del sistema
+├── guides/                 # Guías operativas
+│   ├── GOOGLE_OAUTH_SETUP.md
+│   ├── TOURNAMENT_ADVANCEMENT_GUIDE.md
+│   ├── WC2026_TOURNAMENT_STRUCTURE.md
+│   └── TESTING_GUIDE_SPRINT2.md
+└── sprints/                # Reportes históricos
+    ├── SPRINT_1_CLOSURE.md
+    ├── SPRINT_2_PLAN.md
+    └── SPRINT2_COMPLETION_REPORT.md
+```
 
-* `/docs/SPRINT_1.md` (estado operativo del MVP actual) → Ver PRD.md
-* `/docs/BACKLOG.md` (épicas → historias) → Ver PRD.md
-* `/docs/DECISION_LOG.md` → **DEPRECADO**, usar `/docs/sot/DECISION_LOG.md`
-* `/docs/API.md` → **DEPRECADO**, usar `/docs/sot/API_SPEC.md`
-* `/docs/DATA_MODEL.md` → **DEPRECADO**, usar `/docs/sot/DATA_MODEL.md`
+* **CHANGELOG.md** en la raíz del proyecto contiene el historial de cambios
 * Prisma schema en `backend/prisma/schema.prisma` → Implementación técnica (sigue vigente)
 
 ### ✅ Reglas de trabajo (obligatorias):

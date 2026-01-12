@@ -39,7 +39,10 @@
       "Bash(netstat:*)",
       "Bash(pkill:*)",
       "Bash(cd:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(find:*)",
+      "Bash(xargs basename:*)",
+      "Bash(grep:*)"
     ]
   }
 }

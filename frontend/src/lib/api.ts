@@ -197,12 +197,11 @@ export async function getMePools(token: string): Promise<MePoolRow[]> {
   return requestJson<MePoolRow[]>("/me/pools", { method: "GET" }, token);
 }
 
-// Alias por si algún archivo usaba otro nombre
-export const listMyPools = getMePools;
-
 export async function listInstances(token: string): Promise<CatalogInstance[]> {
   return requestJson<CatalogInstance[]>("/catalog/instances", { method: "GET" }, token);
 }
+
+// Alias para compatibilidad
 export const listCatalogInstances = listInstances;
 
 export type InstancePhase = {

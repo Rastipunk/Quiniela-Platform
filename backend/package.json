@@ -16,7 +16,6 @@
     "migrate:add-usernames": "ts-node-dev --transpile-only src/scripts/migrateAddUsername.ts",
     "test:tournament-advancement": "ts-node-dev --transpile-only src/scripts/testTournamentAdvancement.ts",
     "clean:instance": "ts-node-dev --transpile-only src/scripts/cleanInstance.ts",
-    "debug:auto-advance": "ts-node-dev --transpile-only src/scripts/debugAutoAdvance.ts",
     "check:instance-state": "ts-node-dev --transpile-only src/scripts/checkInstanceState.ts",
     "test:all-fixes": "ts-node-dev --transpile-only src/scripts/testAllFixes.ts",
     "script:force-completed": "ts-node-dev --transpile-only src/scripts/forcePoolCompleted.ts",

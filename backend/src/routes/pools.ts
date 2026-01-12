@@ -17,7 +17,6 @@ import {
   canJoinPool,
   canMakePicks,
   canPublishResults,
-  canEditPoolSettings,
   canCreateInvites
 } from "../services/poolStateMachine";
 import { PoolPickTypesConfigSchema } from "../validation/pickConfig";

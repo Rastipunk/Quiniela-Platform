@@ -510,10 +510,3 @@ export function getPresetByKey(key: string): PickConfigPreset | null {
   const presets = getAllPresets();
   return presets.find((p) => p.key === key) || null;
 }
-
-/**
- * Verifica si un key es un preset válido
- */
-export function isValidPresetKey(key: string): boolean {
-  return ["BASIC", "ADVANCED", "SIMPLE", "CUSTOM"].includes(key);
-}
