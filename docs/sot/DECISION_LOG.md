@@ -5,7 +5,7 @@
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-01-04
+> **Last Updated:** 2026-01-18
 
 ---
 
@@ -92,6 +92,7 @@ How to implement this decision (if applicable)
 | [024](#adr-024-username-system-separate-from-email) | Username System (Separate from Email) | Accepted | 2026-01-04 |
 | [025](#adr-025-password-reset-flow-with-email-tokens) | Password Reset Flow with Email Tokens | Accepted | 2026-01-04 |
 | [026](#adr-026-google-oauth-integration) | Google OAuth Integration | Accepted | 2026-01-04 |
+| [027](#adr-027-cumulative-scoring-system) | Cumulative Scoring System | Accepted | 2026-01-18 |
 
 ---
 
@@ -2697,12 +2698,154 @@ See [GOOGLE_OAUTH_SETUP.md](../GOOGLE_OAUTH_SETUP.md) for detailed instructions 
 
 ---
 
+## ADR-027: Cumulative Scoring System
+
+**Date:** 2026-01-18
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #scoring #business-rules #ux
+
+### Context
+
+El sistema de scoring original funcionaba de forma "exclusiva" - si acertabas el marcador exacto (EXACT_SCORE), obtenías esos puntos y la evaluación terminaba. Esto era simple pero limitado:
+
+**Problemas del sistema legacy:**
+1. **Falta de recompensa parcial:** Si aciertas 2-1 y el resultado es 2-0, obtienes 0 puntos (no reconoce que acertaste los goles del local)
+2. **Baja motivación:** Sin puntos parciales, los jugadores sienten que "casi acertar" no vale nada
+3. **Poca diferenciación:** Todos los picks incorrectos valen 0, no hay gradiente de precisión
+
+**Requisitos del usuario:**
+> "Quiero que si acierto los goles del local pero no del visitante, me den puntos por el local. Y si acierto el resultado (ganó/empató/perdió) también me den puntos adicionales."
+
+### Decision
+
+Implementar un **Sistema de Scoring Acumulativo** donde los puntos se SUMAN por cada criterio independiente que el jugador acierte.
+
+**Criterios evaluados (todos acumulan):**
+1. **MATCH_OUTCOME_90MIN** - ¿Acertó quién ganó/empató? (5 pts grupos, 10 pts knockouts)
+2. **HOME_GOALS** - ¿Acertó goles del local? (2 pts grupos, 4 pts knockouts)
+3. **AWAY_GOALS** - ¿Acertó goles del visitante? (2 pts grupos, 4 pts knockouts)
+4. **GOAL_DIFFERENCE** - ¿Acertó la diferencia de goles? (1 pt grupos, 2 pts knockouts)
+
+**Ejemplo de cálculo:**
+```
+Pick: 2-1 | Resultado: 2-1
+- MATCH_OUTCOME_90MIN: HOME gana = HOME gana ✅ → 5 pts
+- HOME_GOALS: 2 = 2 ✅ → 2 pts
+- AWAY_GOALS: 1 = 1 ✅ → 2 pts
+- GOAL_DIFFERENCE: +1 = +1 ✅ → 1 pt
+- TOTAL: 10 pts (máximo posible en grupos)
+
+Pick: 2-1 | Resultado: 2-0
+- MATCH_OUTCOME_90MIN: HOME gana = HOME gana ✅ → 5 pts
+- HOME_GOALS: 2 = 2 ✅ → 2 pts
+- AWAY_GOALS: 1 ≠ 0 ❌ → 0 pts
+- GOAL_DIFFERENCE: +1 ≠ +2 ❌ → 0 pts
+- TOTAL: 7 pts (recompensa parcial)
+```
+
+**Detección automática:**
+```typescript
+function isCumulativeScoring(config: PhasePickConfig): boolean {
+  return config.matchPickTypes.HOME_GOALS?.enabled ||
+         config.matchPickTypes.AWAY_GOALS?.enabled;
+}
+```
+
+**Presets implementados:**
+1. **CUMULATIVE (Recomendado):** Scoring acumulativo completo
+2. **BASIC:** Solo EXACT_SCORE + MATCH_OUTCOME (legacy)
+3. **ADVANCED:** Todos los criterios con puntos más altos
+4. **SIMPLE:** Sin marcador en grupos, solo knockouts
+
+### Rationale
+
+**¿Por qué acumulativo vs exclusivo?**
+- **Más justo:** Recompensa precisión parcial
+- **Más motivante:** "Casi acertar" vale algo
+- **Más estratégico:** Jugadores pueden apuntar a resultados conservadores vs arriesgados
+- **Estándar de industria:** Quinielas profesionales usan sistemas similares
+
+**¿Por qué HOME_GOALS y AWAY_GOALS como criterios separados?**
+- Permite premiar cuando aciertas uno pero no el otro
+- Hace el scoring más granular
+- Compatible con resultados de empate (donde diferencia=0 pero goles individuales importan)
+
+**¿Por qué puntos más altos en knockouts?**
+- Knockouts son más difíciles de predecir (menos historial)
+- Mayor emoción en fases finales
+- Recompensa a quienes llegan bien posicionados
+
+### Consequences
+
+**Positive:**
+- ✅ Jugadores reciben puntos por aciertos parciales
+- ✅ Más engagement (cada criterio acertado se celebra)
+- ✅ Diferenciación clara entre picks "casi correctos" vs "completamente errados"
+- ✅ Compatible con sistema legacy (detección automática)
+- ✅ UI muestra breakdown de cada criterio
+
+**Negative:**
+- ⚠️ Mayor complejidad de cálculo (4 evaluaciones por partido)
+- ⚠️ Usuarios deben entender el nuevo sistema (requiere explicación clara)
+- ⚠️ Puntajes totales más altos (puede confundir vs pools legacy)
+
+**Risks:**
+- ⚠️ Posible confusión si mezclas presets en misma liga (mitigado: no permitido)
+
+### Alternatives Considered
+
+1. **Mantener sistema exclusivo:** Rechazado - feedback de usuarios pedía recompensa parcial
+2. **Bonus multiplicador por exacto:** Rechazado - matemáticamente confuso
+3. **Puntos negativos por errores:** Rechazado - desmotivante, anti-fun
+
+### Implementation
+
+**Backend Files:**
+- `backend/src/types/pickConfig.ts` - Tipos HOME_GOALS, AWAY_GOALS
+- `backend/src/lib/pickPresets.ts` - 4 presets con configs por fase
+- `backend/src/lib/scoringAdvanced.ts` - `isCumulativeScoring()` + evaluación
+- `backend/src/lib/scoringBreakdown.ts` - Generación de breakdown
+
+**Frontend Files:**
+- `frontend/src/components/PoolConfigWizard.tsx` - Preset cards
+- `frontend/src/components/PickRulesDisplay.tsx` - Explicación por modo
+- `frontend/src/components/PlayerSummary.tsx` - Breakdown visual
+
+**Key Algorithm:**
+```typescript
+function scoreMatchPickCumulative(pick, result, config): ScoringResult {
+  const evaluations: PickEvaluation[] = [];
+  let totalPoints = 0;
+
+  // Evaluate ALL enabled criteria
+  for (const [type, typeConfig] of Object.entries(config.matchPickTypes)) {
+    if (!typeConfig?.enabled) continue;
+
+    const matched = evaluateCriterion(type, pick, result);
+    const points = matched ? typeConfig.points : 0;
+
+    evaluations.push({ type, matched, points, maxPoints: typeConfig.points });
+    totalPoints += points;
+  }
+
+  return { totalPoints, evaluations };
+}
+```
+
+### Related Decisions
+
+- ADR-011: Multi-Type Pick System (foundation for pick types)
+- ADR-013: Leaderboard Tiebreaker Rules (uses totalPoints from this system)
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.2-beta:**
-- [ ] ADR-027: Email confirmation on registration
-- [ ] ADR-028: Join approval notification system
-- [ ] ADR-029: Pool state transition automation (manual vs auto)
+- [x] ADR-027: Cumulative Scoring System ✅ (2026-01-18)
+- [ ] ADR-028: Email confirmation on registration
+- [ ] ADR-029: Join approval notification system
 
 **v1.0:**
 - [ ] ADR-030: Rate limiting strategy (prevent reset spam)

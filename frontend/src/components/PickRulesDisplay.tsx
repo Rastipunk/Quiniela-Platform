@@ -14,6 +14,15 @@ export function PickRulesDisplay({
   poolDeadlineMinutes,
   poolTimeZone,
 }: PickRulesDisplayProps) {
+  // Guard: verificar que pickTypesConfig es un array válido
+  if (!pickTypesConfig || !Array.isArray(pickTypesConfig)) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center", color: "#666" }}>
+        No hay configuración de reglas disponible para este pool.
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: "1rem 0" }}>
       <div style={{
@@ -66,7 +75,7 @@ export function PickRulesDisplay({
               {index + 1}
             </span>
             <h4 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#007bff" }}>
-              {phase.phaseName.toUpperCase()}
+              {(phase.phaseName || formatPhaseId(phase.phaseId) || `Fase ${index + 1}`).toUpperCase()}
             </h4>
           </div>
 
@@ -275,7 +284,11 @@ export function PickRulesDisplay({
             <li>Cada fase del torneo puede tener diferentes tipos de picks y puntuaciones.</li>
             <li>Lee atentamente las reglas de CADA FASE antes de hacer tus predicciones.</li>
             <li>Los puntos suelen aumentar en fases más avanzadas del torneo (octavos, cuartos, semifinales, final).</li>
-            <li>Si aciertas el marcador exacto, también aciertas automáticamente otros tipos (pero solo ganas los puntos del exacto).</li>
+            {isCumulativeScoringFromConfig(pickTypesConfig) ? (
+              <li><strong>Sistema acumulativo:</strong> Los puntos se SUMAN por cada criterio que aciertes. Si aciertas el marcador exacto, ganas la suma de todos los criterios.</li>
+            ) : (
+              <li>Si aciertas el marcador exacto, también aciertas automáticamente otros tipos (pero solo ganas los puntos del exacto).</li>
+            )}
             <li>Los picks se cierran según el deadline configurado para este pool: <strong>{poolDeadlineMinutes} minutos antes del inicio de cada partido</strong>.</li>
           </ul>
         </div>
@@ -286,13 +299,28 @@ export function PickRulesDisplay({
 
 // ==================== HELPER FUNCTIONS ====================
 
+function formatPhaseId(phaseId: string): string {
+  const phaseNames: Record<string, string> = {
+    group_stage: "Fase de Grupos",
+    round_of_32: "Dieciseisavos de Final",
+    round_of_16: "Octavos de Final",
+    quarterfinals: "Cuartos de Final",
+    semifinals: "Semifinales",
+    third_place: "Tercer Lugar",
+    final: "Final",
+  };
+  return phaseNames[phaseId] || phaseId.replace(/_/g, " ");
+}
+
 function getPickTypeName(key: MatchPickTypeKey): string {
   const names: Record<MatchPickTypeKey, string> = {
     EXACT_SCORE: "Marcador exacto",
     GOAL_DIFFERENCE: "Diferencia de goles",
     PARTIAL_SCORE: "Marcador parcial",
     TOTAL_GOALS: "Goles totales",
-    MATCH_OUTCOME_90MIN: "Resultado en 90min",
+    MATCH_OUTCOME_90MIN: "Resultado (ganador/empate)",
+    HOME_GOALS: "Goles del local",
+    AWAY_GOALS: "Goles del visitante",
   };
   return names[key] || key;
 }
@@ -303,7 +331,27 @@ function getPickTypeExample(key: MatchPickTypeKey): string {
     GOAL_DIFFERENCE: "Predices 2-0 (+2), sale 3-1 (+2) → GANAS LOS PUNTOS | Sale 2-1 (+1) → 0 pts",
     PARTIAL_SCORE: "Predices 2-1, sale 2-3 → GANAS LOS PUNTOS (los 2 del local) | Sale 3-3 → 0 pts",
     TOTAL_GOALS: "Predices 2-1 (3 goles), sale 3-0 (3 goles) → GANAS LOS PUNTOS | Sale 2-0 → 0 pts",
-    MATCH_OUTCOME_90MIN: "Victoria Local, Empate, o Victoria Visitante (sin marcador)",
+    MATCH_OUTCOME_90MIN: "Predices victoria local (2-1), sale 3-0 (victoria local) → GANAS LOS PUNTOS",
+    HOME_GOALS: "Predices 2-1, sale 2-3 → GANAS LOS PUNTOS (acertaste los 2 del local)",
+    AWAY_GOALS: "Predices 2-1, sale 3-1 → GANAS LOS PUNTOS (acertaste el 1 del visitante)",
   };
   return examples[key] || "";
+}
+
+/**
+ * Detecta si la configuración usa el sistema acumulativo
+ */
+function isCumulativeScoring(types: { key: string; enabled: boolean }[]): boolean {
+  return types.some((t) => t.enabled && (t.key === "HOME_GOALS" || t.key === "AWAY_GOALS"));
+}
+
+/**
+ * Detecta si el pool completo usa el sistema acumulativo (revisa todas las fases)
+ */
+function isCumulativeScoringFromConfig(config: PoolPickTypesConfig): boolean {
+  return config.some((phase) =>
+    phase.requiresScore &&
+    phase.matchPicks?.types &&
+    isCumulativeScoring(phase.matchPicks.types)
+  );
 }

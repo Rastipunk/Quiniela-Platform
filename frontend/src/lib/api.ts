@@ -845,3 +845,86 @@ export async function getGroupBreakdown(
     token
   );
 }
+
+/* =========================
+   PLAYER SUMMARY
+   ========================= */
+
+export type PlayerSummaryMatch = {
+  matchId: string;
+  homeTeam: { id: string; name: string; code?: string } | null;
+  awayTeam: { id: string; name: string; code?: string } | null;
+  kickoffUtc: string;
+  groupId: string | null;
+  pick: { homeGoals: number; awayGoals: number; type: string } | null;
+  result: { homeGoals: number; awayGoals: number } | null;
+  pointsEarned: number;
+  pointsMax: number;
+  status: "SCORED" | "NO_PICK" | "PENDING_RESULT" | "LOCKED";
+  breakdown: Array<{ type: string; matched: boolean; points: number }>;
+};
+
+export type PlayerSummaryPhase = {
+  phaseId: string;
+  phaseName: string;
+  phaseOrder: number;
+  totalPoints: number;
+  maxPossiblePoints: number;
+  matchCount: number;
+  scoredCount: number;
+  matches: PlayerSummaryMatch[];
+};
+
+export type PlayerSummaryResponse = {
+  player: {
+    userId: string;
+    displayName: string;
+    role: string;
+    rank: number;
+    totalPoints: number;
+    joinedAtUtc: string;
+  };
+  isViewingSelf: boolean;
+  phases: PlayerSummaryPhase[];
+};
+
+// Obtener resumen detallado de un jugador (puntos por fase/partido)
+export async function getPlayerSummary(
+  token: string,
+  poolId: string,
+  userId: string
+): Promise<PlayerSummaryResponse> {
+  return requestJson(
+    `/pools/${poolId}/players/${userId}/summary`,
+    { method: "GET" },
+    token
+  );
+}
+
+// ========== MATCH PICKS (ver picks de otros después del deadline) ==========
+
+export type MatchPicksResponse = {
+  matchId: string;
+  deadlineUtc: string;
+  isUnlocked: boolean;
+  message?: string;
+  picks: Array<{
+    userId: string;
+    displayName: string;
+    pick: { type: string; homeGoals?: number; awayGoals?: number; outcome?: string } | null;
+    isCurrentUser: boolean;
+  }>;
+};
+
+// Obtener picks de todos los usuarios para un partido (solo si deadline pasó)
+export async function getMatchPicks(
+  token: string,
+  poolId: string,
+  matchId: string
+): Promise<MatchPicksResponse> {
+  return requestJson(
+    `/pools/${poolId}/matches/${matchId}/picks`,
+    { method: "GET" },
+    token
+  );
+}

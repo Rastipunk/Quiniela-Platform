@@ -20,7 +20,9 @@
     "test:all-fixes": "ts-node-dev --transpile-only src/scripts/testAllFixes.ts",
     "script:force-completed": "ts-node-dev --transpile-only src/scripts/forcePoolCompleted.ts",
     "script:prepare-completion": "ts-node-dev --transpile-only src/scripts/preparePoolForCompletion.ts",
-    "script:list-pools": "ts-node-dev --transpile-only src/scripts/listPools.ts"
+    "script:list-pools": "ts-node-dev --transpile-only src/scripts/listPools.ts",
+    "test:scoring": "ts-node-dev --transpile-only src/scripts/testScoring.ts",
+    "seed:full-test": "ts-node-dev --transpile-only src/scripts/seedFullTestScenario.ts"
   },
   "keywords": [],
   "author": "",

@@ -112,7 +112,28 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
   // Generar configuración de preset basada en las fases dinámicas
   function getPresetConfig(presetKey: PickConfigPresetKey): PhasePickConfig[] {
     // Configuraciones básicas usando las fases reales de la instancia
-    if (presetKey === "BASIC") {
+    if (presetKey === "CUMULATIVE") {
+      // Sistema acumulativo: los puntos se suman por cada criterio
+      return instancePhases.map((phase) => {
+        const isKnockout = phase.type !== "GROUP";
+        return {
+          phaseId: phase.id,
+          phaseName: phase.name,
+          requiresScore: true,
+          matchPicks: {
+            types: [
+              { key: "EXACT_SCORE", enabled: false, points: 0 },
+              { key: "GOAL_DIFFERENCE", enabled: true, points: isKnockout ? 2 : 1 },
+              { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+              { key: "TOTAL_GOALS", enabled: false, points: 0 },
+              { key: "MATCH_OUTCOME_90MIN", enabled: true, points: isKnockout ? 10 : 5 },
+              { key: "HOME_GOALS", enabled: true, points: isKnockout ? 4 : 2 },
+              { key: "AWAY_GOALS", enabled: true, points: isKnockout ? 4 : 2 },
+            ],
+          },
+        };
+      });
+    } else if (presetKey === "BASIC") {
       // Solo marcador exacto, puntos crecientes por fase
       return instancePhases.map((phase, index) => ({
         phaseId: phase.id,
@@ -407,9 +428,15 @@ function PresetSelectionStep({ onSelect }: PresetSelectionStepProps) {
       {/* Preset Cards */}
       <div style={{ display: "grid", gap: "1rem" }}>
         <PresetCard
+          title="🏆 ACUMULATIVO"
+          description="Los puntos se SUMAN: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias."
+          recommended
+          onSelect={() => onSelect("CUMULATIVE" as PickConfigPresetKey)}
+        />
+
+        <PresetCard
           title="🎯 BÁSICO"
           description="Solo marcador exacto en todos los partidos. Los puntos aumentan automáticamente en rondas eliminatorias (grupos: 20 pts, octavos: 30 pts, final: 60 pts)."
-          recommended
           onSelect={() => onSelect("BASIC")}
         />
 
@@ -499,6 +526,7 @@ type SummaryStepProps = {
 function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: SummaryStepProps) {
   void _onComplete; // Used by parent component
   const presetNames: Record<PickConfigPresetKey, string> = {
+    CUMULATIVE: "Acumulativo",
     BASIC: "Básico",
     ADVANCED: "Avanzado",
     SIMPLE: "Simple",
@@ -578,6 +606,8 @@ type PresetSummaryProps = {
 
 function PresetSummary({ presetKey }: PresetSummaryProps) {
   const presetDescriptions: Record<string, string> = {
+    CUMULATIVE:
+      "Los puntos se SUMAN por cada criterio: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
     BASIC:
       "Solo marcador exacto en todos los partidos con auto-scaling (20 pts en grupos → 60 pts en final).",
     ADVANCED:
@@ -728,7 +758,9 @@ function getPickTypeName(key: string): string {
     GOAL_DIFFERENCE: "Diferencia de goles",
     PARTIAL_SCORE: "Marcador parcial",
     TOTAL_GOALS: "Goles totales",
-    MATCH_OUTCOME_90MIN: "Resultado en 90min",
+    MATCH_OUTCOME_90MIN: "Resultado (ganador/empate)",
+    HOME_GOALS: "Goles del local",
+    AWAY_GOALS: "Goles del visitante",
   };
   return names[key] || key;
 }
@@ -736,10 +768,12 @@ function getPickTypeName(key: string): string {
 function getPickTypeExample(key: string): string {
   const examples: Record<string, string> = {
     EXACT_SCORE: "Si vale 20 pts: Predices 2-1, sale 2-1 → GANAS 20 PTS | Sale 3-1 → 0 pts (no acertaste exacto)",
-    GOAL_DIFFERENCE: "Si vale 10 pts: Predices 2-0 (+2), sale 3-1 (+2) → GANAS 10 PTS | Sale 2-1 (+1) → 0 pts",
-    PARTIAL_SCORE: "Si vale 8 pts: Predices 2-1, sale 2-3 → GANAS 8 PTS (acertaste los 2 del local) | Sale 3-3 → 0 pts",
-    TOTAL_GOALS: "Si vale 5 pts: Predices 2-1 (3 goles), sale 3-0 (3 goles) → GANAS 5 PTS | Sale 2-0 (2 goles) → 0 pts",
-    MATCH_OUTCOME_90MIN: "Solo sin marcadores: Victoria Local, Empate, o Victoria Visitante",
+    GOAL_DIFFERENCE: "Predices 2-0 (+2), sale 3-1 (+2) → GANAS | Sale 2-1 (+1) → 0 pts",
+    PARTIAL_SCORE: "Predices 2-1, sale 2-3 → GANAS (acertaste los 2 del local) | Sale 3-3 → 0 pts",
+    TOTAL_GOALS: "Predices 2-1 (3 goles), sale 3-0 (3 goles) → GANAS | Sale 2-0 (2 goles) → 0 pts",
+    MATCH_OUTCOME_90MIN: "Predices victoria local (2-1), sale 3-0 (victoria local) → GANAS",
+    HOME_GOALS: "Predices 2-1, sale 2-3 → GANAS (acertaste los 2 del local)",
+    AWAY_GOALS: "Predices 2-1, sale 3-1 → GANAS (acertaste el 1 del visitante)",
   };
   return examples[key] || "";
 }

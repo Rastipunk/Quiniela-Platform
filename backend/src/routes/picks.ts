@@ -187,6 +187,97 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
   return res.json(prediction);
 });
 
+// GET /pools/:poolId/matches/:matchId/picks
+// Comentario en español: retorna picks de TODOS los usuarios para un partido específico
+// SOLO si el deadline del partido ya pasó
+picksRouter.get("/:poolId/matches/:matchId/picks", async (req, res) => {
+  const { poolId, matchId } = req.params;
+
+  const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
+  if (!isMember) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    include: { tournamentInstance: true },
+  });
+  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+
+  // Usar fixtureSnapshot si existe (tiene kickoffs personalizados), sino usar dataJson de la instancia
+  const fixtureData = pool.fixtureSnapshot || pool.tournamentInstance.dataJson;
+  const matches = extractMatchesFromInstanceData(fixtureData);
+  const match = matches.find((m) => m.id === matchId);
+  if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found" });
+
+  const deadlineUtc = computeDeadlineUtc(match.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
+  if (!deadlineUtc) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Invalid kickoffUtc" });
+  }
+
+  const now = new Date();
+  const isUnlocked = now.getTime() > deadlineUtc.getTime();
+
+  // Si el deadline no ha pasado, solo retornar el pick del usuario actual
+  if (!isUnlocked) {
+    const myPick = await prisma.prediction.findFirst({
+      where: { poolId, matchId, userId: req.auth!.userId },
+    });
+
+    const me = await prisma.user.findUnique({
+      where: { id: req.auth!.userId },
+      select: { id: true, displayName: true },
+    });
+
+    return res.json({
+      matchId,
+      deadlineUtc: deadlineUtc.toISOString(),
+      isUnlocked: false,
+      message: "Deadline not passed yet. Only your pick is visible.",
+      picks: myPick && me ? [{
+        userId: me.id,
+        displayName: me.displayName,
+        pick: myPick.pickJson,
+        isCurrentUser: true,
+      }] : [],
+    });
+  }
+
+  // Deadline pasó: retornar picks de todos los miembros activos
+  const members = await prisma.poolMember.findMany({
+    where: { poolId, status: "ACTIVE" },
+    include: { user: { select: { id: true, displayName: true } } },
+  });
+
+  const allPicks = await prisma.prediction.findMany({
+    where: { poolId, matchId },
+  });
+
+  const picksByUser = new Map<string, any>();
+  for (const p of allPicks) {
+    picksByUser.set(p.userId, p.pickJson);
+  }
+
+  const picks = members.map((m) => ({
+    userId: m.user.id,
+    displayName: m.user.displayName,
+    pick: picksByUser.get(m.user.id) ?? null,
+    isCurrentUser: m.user.id === req.auth!.userId,
+  }));
+
+  // Ordenar: primero el usuario actual, luego por displayName
+  picks.sort((a, b) => {
+    if (a.isCurrentUser) return -1;
+    if (b.isCurrentUser) return 1;
+    return a.displayName.localeCompare(b.displayName);
+  });
+
+  return res.json({
+    matchId,
+    deadlineUtc: deadlineUtc.toISOString(),
+    isUnlocked: true,
+    picks,
+  });
+});
+
 // GET /pools/:poolId/picks  (solo mis picks)
 // Comentario en español: útil para UI futura
 picksRouter.get("/:poolId/picks", async (req, res) => {

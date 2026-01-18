@@ -16,6 +16,45 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.2.1] - 2026-01-18
+
+### Sprint 2 (Completion) - Cumulative Scoring System
+
+#### Added
+- **Cumulative Scoring System** (ADR-027)
+  - Nuevo modo de puntuación donde los puntos ACUMULAN por cada criterio
+  - 4 criterios evaluados: Resultado, Goles Local, Goles Visitante, Diferencia
+  - Grupos: máx 10 pts (5+2+2+1 por partido)
+  - Knockouts: máx 20 pts (10+4+4+2 por partido)
+  - Detección automática via `isCumulativeScoring()`
+
+- **4 Presets de Scoring**
+  - CUMULATIVE (Recomendado): Puntos acumulativos por criterio
+  - BASIC: Solo marcador exacto o resultado
+  - ADVANCED: Todos los criterios con puntos altos
+  - SIMPLE: Configuración automática por fase
+
+- **Player Summary Component**
+  - Nueva pestaña "Mi Resumen" en PoolPage
+  - Breakdown de puntos por partido y fase
+  - Visualización de cada criterio acertado
+
+- **Pick Visibility Post-Deadline**
+  - Picks de otros jugadores visibles después del deadline
+  - Leaderboard con detalle de picks por jugador
+
+#### Changed
+- PoolConfigWizard muestra ACUMULATIVO como preset recomendado
+- PickRulesDisplay detecta modo cumulative vs legacy automáticamente
+- scoringAdvanced.ts refactorizado para soportar ambos modos
+
+#### Technical
+- Nuevos tipos: HOME_GOALS, AWAY_GOALS en MatchPickTypeKey
+- pickPresets.ts con configuración completa de 4 presets
+- scoringBreakdown.ts genera maxPoints correcto por modo
+
+---
+
 ## [0.2.0] - 2026-01-12
 
 ### Sprint 2 - Advanced Features

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { createInvite, getPoolOverview, upsertPick, upsertResult, updatePoolSettings, manualAdvancePhase, lockPhase, archivePool, promoteMemberToCoAdmin, demoteMemberFromCoAdmin, getPendingMembers, approveMember, rejectMember, kickMember, banMember, getUserProfile, type PoolOverview } from "../lib/api";
+import { createInvite, getPoolOverview, upsertPick, upsertResult, updatePoolSettings, manualAdvancePhase, lockPhase, archivePool, promoteMemberToCoAdmin, demoteMemberFromCoAdmin, getPendingMembers, approveMember, rejectMember, kickMember, banMember, getUserProfile, getMatchPicks, type PoolOverview, type MatchPicksResponse } from "../lib/api";
 import { getToken } from "../lib/auth";
 import { TeamFlag } from "../components/TeamFlag";
 import { getTeamFlag, getCountryName } from "../data/teamFlags";
@@ -9,6 +9,7 @@ import { PickRulesDisplay } from "../components/PickRulesDisplay";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
 import { StructuralPicksManager } from "../components/StructuralPicksManager";
 import { ScoringBreakdownModal } from "../components/ScoringBreakdownModal";
+import { PlayerSummary } from "../components/PlayerSummary";
 
 function fmtUtc(iso: string, userTimezone: string | null = null) {
   return formatMatchDateTime(iso, userTimezone);
@@ -16,6 +17,40 @@ function fmtUtc(iso: string, userTimezone: string | null = null) {
 
 function norm(s: string) {
   return (s ?? "").toLowerCase().trim();
+}
+
+// Helper para formatear nombres de fases para mostrar en columnas del leaderboard
+function formatPhaseName(phaseId: string): string {
+  const phaseNames: Record<string, string> = {
+    group_stage: "Grupos",
+    round_of_32: "R32",
+    round_of_16: "R16",
+    quarter_finals: "QF",
+    quarterfinals: "QF",
+    semi_finals: "SF",
+    semifinals: "SF",
+    third_place: "3er",
+    finals: "Final",
+    final: "Final",
+  };
+  return phaseNames[phaseId] || phaseId.replace(/_/g, " ").slice(0, 6);
+}
+
+// Helper para nombre completo de fase (para tooltips)
+function formatPhaseFullName(phaseId: string): string {
+  const phaseNames: Record<string, string> = {
+    group_stage: "Fase de Grupos",
+    round_of_32: "Dieciseisavos de Final",
+    round_of_16: "Octavos de Final",
+    quarter_finals: "Cuartos de Final",
+    quarterfinals: "Cuartos de Final",
+    semi_finals: "Semifinales",
+    semifinals: "Semifinales",
+    third_place: "Tercer Lugar",
+    finals: "Final",
+    final: "Final",
+  };
+  return phaseNames[phaseId] || phaseId.replace(/_/g, " ");
 }
 
 function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
@@ -44,7 +79,7 @@ export function PoolPage() {
   const [userTimezone, setUserTimezone] = useState<string | null>(null);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "reglas" | "admin">("partidos");
+  const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "admin">("partidos");
 
   // Phase navigation (new for WC2026)
   const [activePhase, setActivePhase] = useState<string | null>(null);
@@ -64,6 +99,22 @@ export function PoolPage() {
     matchTitle?: string;
     phaseId?: string;
     phaseTitle?: string;
+  } | null>(null);
+
+  // Player summary modal state (for clicking on leaderboard)
+  const [playerSummaryModal, setPlayerSummaryModal] = useState<{
+    userId: string;
+    displayName: string;
+    initialPhase?: string; // Para abrir el resumen expandido en una fase específica
+  } | null>(null);
+
+  // Match picks modal state (for viewing other players' picks)
+  const [matchPicksModal, setMatchPicksModal] = useState<{
+    matchId: string;
+    matchTitle: string;
+    picks: MatchPicksResponse | null;
+    loading: boolean;
+    error: string | null;
   } | null>(null);
 
   // UX filtros (volumen)
@@ -102,6 +153,17 @@ export function PoolPage() {
       setPendingMembers(data.pendingMembers || []);
     } catch (e: any) {
       console.error("Error loading pending members:", e);
+    }
+  }
+
+  async function loadMatchPicks(matchId: string, matchTitle: string) {
+    if (!token || !poolId) return;
+    setMatchPicksModal({ matchId, matchTitle, picks: null, loading: true, error: null });
+    try {
+      const data = await getMatchPicks(token, poolId, matchId);
+      setMatchPicksModal({ matchId, matchTitle, picks: data, loading: false, error: null });
+    } catch (e: any) {
+      setMatchPicksModal({ matchId, matchTitle, picks: null, loading: false, error: e?.message ?? "Error" });
     }
   }
 
@@ -397,7 +459,7 @@ export function PoolPage() {
             display: "flex",
             gap: 8
           }}>
-            {(["partidos", "leaderboard", "reglas", ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => (
+            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -415,6 +477,7 @@ export function PoolPage() {
               >
                 {tab === "partidos" && "⚽ Partidos"}
                 {tab === "leaderboard" && "📊 Leaderboard"}
+                {tab === "resumen" && "📈 Mi Resumen"}
                 {tab === "reglas" && "📋 Reglas"}
                 {tab === "admin" && "⚙️ Administración"}
               </button>
@@ -1102,6 +1165,17 @@ export function PoolPage() {
             </div>
           )}
 
+          {/* Tab Content: Mi Resumen */}
+          {activeTab === "resumen" && (
+            <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+              <PlayerSummary
+                poolId={poolId!}
+                userId={overview.myMembership.userId ?? ""}
+                tournamentKey="wc_2026_sandbox"
+              />
+            </div>
+          )}
+
           {/* Tab Content: Reglas */}
           {activeTab === "reglas" && (
             <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
@@ -1621,35 +1695,54 @@ export function PoolPage() {
                             </div>
                           )}
 
-                          {/* Boton Ver Desglose - solo si:
-                              1. Hay resultado publicado
-                              2. El pool usa pickTypesConfig
-                              3. La fase del partido usa requiresScore (match picks, no estructural)
-                          */}
-                          {m.result && overview.pool.pickTypesConfig && (() => {
-                            const phaseConfig = (overview.pool.pickTypesConfig as any[])?.find(
-                              (p: any) => p.phaseId === m.phaseId
-                            );
-                            return phaseConfig?.requiresScore === true;
-                          })() && (
-                            <div style={{ marginTop: 12, textAlign: "center" }}>
+                          {/* Botones de acción - en una sola línea */}
+                          {(m.isLocked && !isPlaceholder(m.homeTeamId ?? "") && !isPlaceholder(m.awayTeamId ?? "")) && (
+                            <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                              {/* Botón Ver Desglose - solo si hay resultado y la fase usa requiresScore */}
+                              {m.result && overview.pool.pickTypesConfig && (() => {
+                                const phaseConfig = (overview.pool.pickTypesConfig as any[])?.find(
+                                  (p: any) => p.phaseId === m.phaseId
+                                );
+                                return phaseConfig?.requiresScore === true;
+                              })() && (
+                                <button
+                                  onClick={() => setBreakdownModalData({
+                                    matchId: m.id,
+                                    matchTitle: `${getCountryName(m.homeTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")} vs ${getCountryName(m.awayTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")}`,
+                                  })}
+                                  style={{
+                                    padding: "6px 12px",
+                                    borderRadius: 6,
+                                    border: "none",
+                                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                    color: "white",
+                                    cursor: "pointer",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  Ver desglose
+                                </button>
+                              )}
+
+                              {/* Botón Ver picks de otros */}
                               <button
-                                onClick={() => setBreakdownModalData({
-                                  matchId: m.id,
-                                  matchTitle: `${getCountryName(m.homeTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")} vs ${getCountryName(m.awayTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")}`,
-                                })}
+                                onClick={() => loadMatchPicks(
+                                  m.id,
+                                  `${getCountryName(m.homeTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")} vs ${getCountryName(m.awayTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")}`
+                                )}
                                 style={{
-                                  padding: "8px 16px",
-                                  borderRadius: 8,
-                                  border: "1px solid #667eea",
-                                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                  color: "white",
+                                  padding: "6px 12px",
+                                  borderRadius: 6,
+                                  border: "1px solid #17a2b8",
+                                  background: "#e7f6f8",
+                                  color: "#17a2b8",
                                   cursor: "pointer",
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   fontWeight: 600,
                                 }}
                               >
-                                Ver desglose de puntos
+                                Ver picks de otros
                               </button>
                             </div>
                           )}
@@ -1685,10 +1778,25 @@ export function PoolPage() {
                     <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
                       <th style={{ padding: "12px 8px", textAlign: "left", fontWeight: 700, color: "#444" }}>Pos</th>
                       <th style={{ padding: "12px 8px", textAlign: "left", fontWeight: 700, color: "#444" }}>Jugador</th>
-                      <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: "#444" }}>Puntos</th>
-                      <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: "#444" }}>Pronósticos</th>
-                      <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: "#444" }}>Aciertos</th>
-                      <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: "#444" }}>Diferencia</th>
+                      <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: "#007bff", background: "#e7f3ff", borderRadius: "8px 8px 0 0" }}>Total</th>
+                      {/* Columnas por fase */}
+                      {(overview.leaderboard.phases || []).map((phaseId: string) => (
+                        <th
+                          key={phaseId}
+                          title={formatPhaseFullName(phaseId)}
+                          style={{
+                            padding: "12px 6px",
+                            textAlign: "center",
+                            fontWeight: 600,
+                            color: "#666",
+                            fontSize: 12,
+                            minWidth: 50,
+                          }}
+                        >
+                          {formatPhaseName(phaseId)}
+                        </th>
+                      ))}
+                      <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: "#444" }}>Dif</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1696,20 +1804,26 @@ export function PoolPage() {
                       const leaderPoints = overview.leaderboard.rows[0]?.points ?? 0;
                       const diff = leaderPoints - r.points;
                       const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
+                      const phases = overview.leaderboard.phases || [];
 
                       return (
                         <tr
                           key={r.userId}
                           style={{
                             borderBottom: "1px solid #f0f0f0",
-                            background: idx < 3 ? (idx === 0 ? "#fff9e6" : idx === 1 ? "#f5f5f5" : "#fafafa") : "transparent"
+                            background: idx < 3 ? (idx === 0 ? "#fff9e6" : idx === 1 ? "#f5f5f5" : "#fafafa") : "transparent",
                           }}
                         >
                           <td style={{ padding: "14px 8px", fontWeight: 700, fontSize: 16 }}>
                             {medal ? <span style={{ marginRight: 4 }}>{medal}</span> : null}
                             {r.rank}
                           </td>
-                          <td style={{ padding: "14px 8px" }}>
+                          <td
+                            onClick={() => setPlayerSummaryModal({ userId: r.userId, displayName: r.displayName })}
+                            style={{ padding: "14px 8px", cursor: "pointer" }}
+                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
+                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
+                          >
                             <div style={{ fontWeight: 600, marginBottom: 4 }}>{r.displayName}</div>
                             <div style={{ display: "flex", gap: 4 }}>
                               {r.role === "HOST" && (
@@ -1753,33 +1867,42 @@ export function PoolPage() {
                               )}
                             </div>
                           </td>
-                          <td style={{ padding: "14px 8px", textAlign: "center", fontWeight: 900, fontSize: 18, color: "#007bff" }}>
+                          <td style={{ padding: "14px 8px", textAlign: "center", fontWeight: 900, fontSize: 18, color: "#007bff", background: "#f8fbff" }}>
                             {r.points}
                           </td>
-                          <td style={{ padding: "14px 8px", textAlign: "center", color: "#666" }}>
-                            {r.scoredMatches}
-                          </td>
-                          <td style={{ padding: "14px 8px", textAlign: "center" }}>
-                            <div style={{
-                              display: "inline-block",
-                              padding: "4px 10px",
-                              background: r.scoredMatches > 0 ? "#e8f5e9" : "#f5f5f5",
-                              borderRadius: 12,
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: r.scoredMatches > 0 ? "#2e7d32" : "#999"
-                            }}>
-                              {(() => {
-                                const breakdown = (r as any).breakdown;
-                                if (verbose && breakdown) {
-                                  const exact = breakdown.filter((b: any) => b.type === "EXACT_SCORE").length;
-                                  const outcome = breakdown.filter((b: any) => b.type === "OUTCOME").length;
-                                  return `${exact + outcome} (${exact}E + ${outcome}O)`;
-                                }
-                                return r.scoredMatches > 0 ? `${r.scoredMatches}` : "-";
-                              })()}
-                            </div>
-                          </td>
+                          {/* Celdas de puntos por fase - clickeables para abrir resumen en esa fase */}
+                          {phases.map((phaseId: string) => {
+                            const phasePoints = r.pointsByPhase?.[phaseId] ?? 0;
+                            const hasPoints = phasePoints > 0;
+                            return (
+                              <td
+                                key={phaseId}
+                                onClick={() => {
+                                  if (hasPoints) {
+                                    setPlayerSummaryModal({ userId: r.userId, displayName: r.displayName, initialPhase: phaseId });
+                                  }
+                                }}
+                                style={{
+                                  padding: "10px 6px",
+                                  textAlign: "center",
+                                  fontSize: 13,
+                                  fontWeight: hasPoints ? 600 : 400,
+                                  color: hasPoints ? "#333" : "#ccc",
+                                  cursor: hasPoints ? "pointer" : "default",
+                                  transition: "background 0.15s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (hasPoints) e.currentTarget.style.background = "#e7f3ff";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "transparent";
+                                }}
+                                title={hasPoints ? `Ver detalle de ${formatPhaseFullName(phaseId)}` : "Sin puntos aún"}
+                              >
+                                {hasPoints ? phasePoints : "-"}
+                              </td>
+                            );
+                          })}
                           <td style={{ padding: "14px 8px", textAlign: "center", fontSize: 13, color: "#666" }}>
                             {idx === 0 ? (
                               <span style={{ fontWeight: 700, color: "#2e7d32" }}>Líder</span>
@@ -2074,6 +2197,213 @@ export function PoolPage() {
               phaseTitle={breakdownModalData?.phaseTitle}
             />
           )}
+
+          {/* Player Summary Modal (from leaderboard click) */}
+          {playerSummaryModal && poolId && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: 20
+              }}
+              onClick={() => setPlayerSummaryModal(null)}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  maxWidth: 950,
+                  width: "100%",
+                  maxHeight: "90vh",
+                  overflow: "auto",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{
+                  position: "sticky",
+                  top: 0,
+                  background: "#fff",
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #eee",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  zIndex: 10
+                }}>
+                  <h2 style={{ margin: 0, fontSize: 20 }}>
+                    Resumen de {playerSummaryModal.displayName}
+                  </h2>
+                  <button
+                    onClick={() => setPlayerSummaryModal(null)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      fontSize: 24,
+                      cursor: "pointer",
+                      color: "#666",
+                      padding: "4px 8px"
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={{ padding: 20 }}>
+                  <PlayerSummary
+                    poolId={poolId}
+                    userId={playerSummaryModal.userId}
+                    tournamentKey="wc_2026_sandbox"
+                    initialPhase={playerSummaryModal.initialPhase}
+                    onClose={() => setPlayerSummaryModal(null)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Match Picks Modal (ver picks de otros jugadores) */}
+          {matchPicksModal && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: 20
+              }}
+              onClick={() => setMatchPicksModal(null)}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  maxWidth: 500,
+                  width: "100%",
+                  maxHeight: "80vh",
+                  overflow: "auto",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{
+                  position: "sticky",
+                  top: 0,
+                  background: "#fff",
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #eee",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  zIndex: 10
+                }}>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>
+                    Picks: {matchPicksModal.matchTitle}
+                  </h3>
+                  <button
+                    onClick={() => setMatchPicksModal(null)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      fontSize: 24,
+                      cursor: "pointer",
+                      color: "#666",
+                      padding: "4px 8px"
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={{ padding: 20 }}>
+                  {matchPicksModal.loading && (
+                    <div style={{ textAlign: "center", padding: 20, color: "#666" }}>
+                      Cargando picks...
+                    </div>
+                  )}
+                  {matchPicksModal.error && (
+                    <div style={{ textAlign: "center", padding: 20, color: "#dc3545" }}>
+                      Error: {matchPicksModal.error}
+                    </div>
+                  )}
+                  {matchPicksModal.picks && !matchPicksModal.picks.isUnlocked && (
+                    <div style={{ textAlign: "center", padding: 20, color: "#856404", background: "#fff3cd", borderRadius: 8 }}>
+                      El deadline aún no ha pasado. Solo puedes ver tu propio pick.
+                    </div>
+                  )}
+                  {matchPicksModal.picks && matchPicksModal.picks.picks.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {matchPicksModal.picks.picks.map((p) => (
+                        <div
+                          key={p.userId}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "12px 16px",
+                            borderRadius: 8,
+                            background: p.isCurrentUser ? "#e7f3ff" : "#f8f9fa",
+                            border: p.isCurrentUser ? "2px solid #007bff" : "1px solid #eee"
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontWeight: p.isCurrentUser ? 700 : 500 }}>
+                              {p.displayName}
+                            </span>
+                            {p.isCurrentUser && (
+                              <span style={{
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                background: "#007bff",
+                                color: "#fff"
+                              }}>
+                                Tú
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: 16 }}>
+                            {p.pick ? (
+                              p.pick.type === "SCORE" ? (
+                                <span style={{ color: "#28a745" }}>
+                                  {p.pick.homeGoals} - {p.pick.awayGoals}
+                                </span>
+                              ) : p.pick.type === "OUTCOME" ? (
+                                <span style={{ color: "#007bff" }}>
+                                  {p.pick.outcome === "HOME" ? "Local" : p.pick.outcome === "DRAW" ? "Empate" : "Visitante"}
+                                </span>
+                              ) : (
+                                <span style={{ color: "#666" }}>{JSON.stringify(p.pick)}</span>
+                              )
+                            ) : (
+                              <span style={{ color: "#dc3545", fontWeight: 500 }}>Sin pick</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {matchPicksModal.picks && matchPicksModal.picks.picks.length === 0 && !matchPicksModal.loading && (
+                    <div style={{ textAlign: "center", padding: 20, color: "#666" }}>
+                      No hay picks para este partido
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -2102,8 +2432,8 @@ function PickSection(props: {
   void _canEdit; // Used implicitly through !props.isLocked checks
 
   return (
-    <div style={{ border: "1px solid #f2f2f2", borderRadius: 12, padding: 12 }}>
-      <div style={{ fontWeight: 800, marginBottom: 8 }}>Mi Pick</div>
+    <div style={{ border: "1px solid #f2f2f2", borderRadius: 10, padding: "8px 10px" }}>
+      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6, color: "#555" }}>Mi Pick</div>
 
       {props.isLocked && !hasPick && (
         <div style={{ color: "#999", fontSize: 13, fontStyle: "italic" }}>🔒 No hiciste pick (deadline pasado)</div>
@@ -2176,44 +2506,41 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
 
   if (pick.type === "SCORE") {
     return (
-      <div>
-        {/* Score display with team flags */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-          {/* Home team */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            {homeFlag?.flagUrl ? (
-              <img
-                src={homeFlag.flagUrl}
-                alt={homeName}
-                style={{ width: 24, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
-              />
-            ) : (
-              <div style={{ width: 24, height: 18, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
-                <span style={{ fontSize: 14 }}>⚽</span>
-              </div>
-            )}
-            <span style={{ fontSize: 11, color: "#666", textAlign: "center", maxWidth: 80 }}>{homeName}</span>
-            <span style={{ fontSize: 32, fontWeight: 900, color: "#111" }}>{pick.homeGoals}</span>
-          </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        {/* Home team flag + score */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {homeFlag?.flagUrl ? (
+            <img
+              src={homeFlag.flagUrl}
+              alt={homeName}
+              title={homeName}
+              style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
+            />
+          ) : (
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+              <span style={{ fontSize: 18 }}>⚽</span>
+            </div>
+          )}
+          <span style={{ fontSize: 36, fontWeight: 900, color: "#111" }}>{pick.homeGoals}</span>
+        </div>
 
-          <span style={{ fontSize: 24, fontWeight: 900, color: "#666", margin: "0 8px" }}>-</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#999", margin: "0 4px" }}>-</span>
 
-          {/* Away team */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-            {awayFlag?.flagUrl ? (
-              <img
-                src={awayFlag.flagUrl}
-                alt={awayName}
-                style={{ width: 24, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
-              />
-            ) : (
-              <div style={{ width: 24, height: 18, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
-                <span style={{ fontSize: 14 }}>⚽</span>
-              </div>
-            )}
-            <span style={{ fontSize: 11, color: "#666", textAlign: "center", maxWidth: 80 }}>{awayName}</span>
-            <span style={{ fontSize: 32, fontWeight: 900, color: "#111" }}>{pick.awayGoals}</span>
-          </div>
+        {/* Away team score + flag */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 36, fontWeight: 900, color: "#111" }}>{pick.awayGoals}</span>
+          {awayFlag?.flagUrl ? (
+            <img
+              src={awayFlag.flagUrl}
+              alt={awayName}
+              title={awayName}
+              style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
+            />
+          ) : (
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+              <span style={{ fontSize: 18 }}>⚽</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -2404,8 +2731,8 @@ function ResultSection(props: {
   const hasResult = !!props.result;
 
   return (
-    <div style={{ border: "1px solid #f2f2f2", borderRadius: 12, padding: 12 }}>
-      <div style={{ fontWeight: 800, marginBottom: 8 }}>Resultado</div>
+    <div style={{ border: "1px solid #f2f2f2", borderRadius: 10, padding: "8px 10px" }}>
+      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6, color: "#555" }}>Resultado</div>
 
       {!hasResult && !editMode && (
         <div style={{ color: "#999", fontSize: 13, fontStyle: "italic" }}>
@@ -2472,42 +2799,42 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
 
   return (
     <div>
-      {/* Score display with team flags */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, background: "#f0f8ff", borderRadius: 8, padding: "12px 0" }}>
-        {/* Home team */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      {/* Score display with team flags - compact horizontal layout */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(135deg, #e8f4fd 0%, #f0f8ff 100%)", borderRadius: 8, padding: "10px 12px" }}>
+        {/* Home team flag + score */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {homeFlag?.flagUrl ? (
             <img
               src={homeFlag.flagUrl}
               alt={homeName}
-              style={{ width: 24, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
+              title={homeName}
+              style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #b3d9ff", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
-            <div style={{ width: 24, height: 18, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", borderRadius: 2, border: "1px solid #ddd" }}>
-              <span style={{ fontSize: 14 }}>⚽</span>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", borderRadius: 3, border: "1px solid #b3d9ff" }}>
+              <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 11, color: "#666", textAlign: "center", maxWidth: 80 }}>{homeName}</span>
-          <span style={{ fontSize: 32, fontWeight: 900, color: "#111" }}>{result.homeGoals}</span>
+          <span style={{ fontSize: 36, fontWeight: 900, color: "#007bff" }}>{result.homeGoals}</span>
         </div>
 
-        <span style={{ fontSize: 24, fontWeight: 900, color: "#666", margin: "0 8px" }}>-</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#99c2e8", margin: "0 4px" }}>-</span>
 
-        {/* Away team */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        {/* Away team score + flag */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 36, fontWeight: 900, color: "#007bff" }}>{result.awayGoals}</span>
           {awayFlag?.flagUrl ? (
             <img
               src={awayFlag.flagUrl}
               alt={awayName}
-              style={{ width: 24, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
+              title={awayName}
+              style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #b3d9ff", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
-            <div style={{ width: 24, height: 18, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", borderRadius: 2, border: "1px solid #ddd" }}>
-              <span style={{ fontSize: 14 }}>⚽</span>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", borderRadius: 3, border: "1px solid #b3d9ff" }}>
+              <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 11, color: "#666", textAlign: "center", maxWidth: 80 }}>{awayName}</span>
-          <span style={{ fontSize: 32, fontWeight: 900, color: "#111" }}>{result.awayGoals}</span>
         </div>
       </div>
 
@@ -2534,8 +2861,8 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
         </div>
       )}
 
-      <div style={{ marginTop: 8, fontSize: 11, color: "#666", textAlign: "center" }}>
-        Resultado oficial {result.version > 1 && `(v${result.version})`}
+      <div style={{ marginTop: 6, fontSize: 10, color: "#999", textAlign: "center" }}>
+        Resultado oficial{result.version > 1 ? ` (v${result.version})` : ""}
       </div>
       {result.reason && (
         <div

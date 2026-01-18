@@ -155,13 +155,26 @@ const MATCH_PICK_TYPE_NAMES: Record<MatchPickTypeKey, string> = {
   GOAL_DIFFERENCE: "Diferencia de goles",
   PARTIAL_SCORE: "Marcador parcial",
   TOTAL_GOALS: "Total de goles",
-  MATCH_OUTCOME_90MIN: "Resultado en 90min",
+  MATCH_OUTCOME_90MIN: "Resultado",
+  HOME_GOALS: "Goles local",
+  AWAY_GOALS: "Goles visitante",
 };
 
 // ==================== BREAKDOWN PARA MATCH PICKS ====================
 
 /**
+ * Detecta si la configuración usa el sistema acumulativo (nuevos tipos HOME_GOALS, AWAY_GOALS)
+ */
+function isCumulativeScoring(enabledTypes: { key: string }[]): boolean {
+  return enabledTypes.some((t) => t.key === "HOME_GOALS" || t.key === "AWAY_GOALS");
+}
+
+/**
  * Genera breakdown detallado para un pick de partido
+ *
+ * SOPORTA DOS SISTEMAS:
+ * 1. ACUMULATIVO: Máximo = suma de todos los tipos habilitados
+ * 2. LEGACY: Máximo = el tipo con más puntos (EXACT_SCORE)
  */
 export function generateMatchPickBreakdown(
   pick: { homeGoals: number; awayGoals: number } | null,
@@ -175,9 +188,12 @@ export function generateMatchPickBreakdown(
   }
 
   const enabledTypes = phaseConfig.matchPicks.types.filter(t => t.enabled);
+  const isCumulative = isCumulativeScoring(enabledTypes);
 
-  // Calcular maximo teorico (el tipo con mas puntos, ya que EXACT_SCORE es excluyente)
-  const maxPoints = Math.max(...enabledTypes.map(t => t.points), 0);
+  // Calcular maximo teorico según el sistema
+  const maxPoints = isCumulative
+    ? enabledTypes.reduce((sum, t) => sum + t.points, 0)  // ACUMULATIVO: suma de todos
+    : Math.max(...enabledTypes.map(t => t.points), 0);   // LEGACY: el máximo
 
   // Caso: No hay pick
   if (!pick) {
@@ -218,13 +234,144 @@ export function generateMatchPickBreakdown(
   // Caso: Hay pick y resultado - evaluar cada regla
   const rules: RuleEvaluation[] = [];
   let totalEarned = 0;
-  let exactScoreMatched = false;
+
+  // ==================== SISTEMA ACUMULATIVO ====================
+  if (isCumulative) {
+    // En sistema acumulativo, evaluamos TODOS los criterios y sumamos
+
+    // 1. MATCH_OUTCOME_90MIN (Resultado: ganador/empate)
+    const outcomeType = enabledTypes.find(t => t.key === "MATCH_OUTCOME_90MIN");
+    if (outcomeType) {
+      const pickOutcome = pick.homeGoals > pick.awayGoals ? "HOME" : pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
+      const resultOutcome = result.homeGoals > result.awayGoals ? "HOME" : result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
+      const matched = pickOutcome === resultOutcome;
+
+      const outcomeNames: Record<string, string> = {
+        HOME: "Victoria Local",
+        AWAY: "Victoria Visitante",
+        DRAW: "Empate",
+      };
+
+      rules.push({
+        ruleKey: "MATCH_OUTCOME_90MIN",
+        ruleName: MATCH_PICK_TYPE_NAMES.MATCH_OUTCOME_90MIN,
+        enabled: true,
+        matched,
+        pointsEarned: matched ? outcomeType.points : 0,
+        pointsMax: outcomeType.points,
+        details: matched
+          ? `Resultado correcto: ${outcomeNames[pickOutcome]}`
+          : `Predijiste ${outcomeNames[pickOutcome]}, fue ${outcomeNames[resultOutcome]}`,
+      });
+
+      if (matched) totalEarned += outcomeType.points;
+    }
+
+    // 2. HOME_GOALS (Goles del local exactos)
+    const homeGoalsType = enabledTypes.find(t => t.key === "HOME_GOALS");
+    if (homeGoalsType) {
+      const matched = pick.homeGoals === result.homeGoals;
+
+      rules.push({
+        ruleKey: "HOME_GOALS",
+        ruleName: MATCH_PICK_TYPE_NAMES.HOME_GOALS,
+        enabled: true,
+        matched,
+        pointsEarned: matched ? homeGoalsType.points : 0,
+        pointsMax: homeGoalsType.points,
+        details: matched
+          ? `Acertaste: ${pick.homeGoals} goles`
+          : `Predijiste ${pick.homeGoals}, fueron ${result.homeGoals}`,
+      });
+
+      if (matched) totalEarned += homeGoalsType.points;
+    }
+
+    // 3. AWAY_GOALS (Goles del visitante exactos)
+    const awayGoalsType = enabledTypes.find(t => t.key === "AWAY_GOALS");
+    if (awayGoalsType) {
+      const matched = pick.awayGoals === result.awayGoals;
+
+      rules.push({
+        ruleKey: "AWAY_GOALS",
+        ruleName: MATCH_PICK_TYPE_NAMES.AWAY_GOALS,
+        enabled: true,
+        matched,
+        pointsEarned: matched ? awayGoalsType.points : 0,
+        pointsMax: awayGoalsType.points,
+        details: matched
+          ? `Acertaste: ${pick.awayGoals} goles`
+          : `Predijiste ${pick.awayGoals}, fueron ${result.awayGoals}`,
+      });
+
+      if (matched) totalEarned += awayGoalsType.points;
+    }
+
+    // 4. GOAL_DIFFERENCE (Diferencia de goles exacta)
+    const goalDiffType = enabledTypes.find(t => t.key === "GOAL_DIFFERENCE");
+    if (goalDiffType) {
+      const pickDiff = pick.homeGoals - pick.awayGoals;
+      const resultDiff = result.homeGoals - result.awayGoals;
+      const matched = pickDiff === resultDiff;
+
+      rules.push({
+        ruleKey: "GOAL_DIFFERENCE",
+        ruleName: MATCH_PICK_TYPE_NAMES.GOAL_DIFFERENCE,
+        enabled: true,
+        matched,
+        pointsEarned: matched ? goalDiffType.points : 0,
+        pointsMax: goalDiffType.points,
+        details: matched
+          ? `Diferencia correcta: ${pickDiff >= 0 ? "+" : ""}${pickDiff}`
+          : `Predijiste ${pickDiff >= 0 ? "+" : ""}${pickDiff}, fue ${resultDiff >= 0 ? "+" : ""}${resultDiff}`,
+      });
+
+      if (matched) totalEarned += goalDiffType.points;
+    }
+
+    // 5. TOTAL_GOALS (si está habilitado)
+    const totalGoalsType = enabledTypes.find(t => t.key === "TOTAL_GOALS");
+    if (totalGoalsType) {
+      const pickTotal = pick.homeGoals + pick.awayGoals;
+      const resultTotal = result.homeGoals + result.awayGoals;
+      const matched = pickTotal === resultTotal;
+
+      rules.push({
+        ruleKey: "TOTAL_GOALS",
+        ruleName: MATCH_PICK_TYPE_NAMES.TOTAL_GOALS,
+        enabled: true,
+        matched,
+        pointsEarned: matched ? totalGoalsType.points : 0,
+        pointsMax: totalGoalsType.points,
+        details: matched
+          ? `Total correcto: ${pickTotal} goles`
+          : `Predijiste ${pickTotal} goles, fueron ${resultTotal}`,
+      });
+
+      if (matched) totalEarned += totalGoalsType.points;
+    }
+
+    return {
+      type: "MATCH",
+      matchId,
+      hasPick: true,
+      hasResult: true,
+      pick,
+      result,
+      totalPointsEarned: totalEarned,
+      totalPointsMax: maxPoints,
+      rules,
+      summary: `${totalEarned} / ${maxPoints} pts`,
+    };
+  }
+
+  // ==================== SISTEMA LEGACY ====================
+  // EXACT_SCORE termina la evaluación si acierta
 
   // Evaluar EXACT_SCORE primero (si esta habilitado)
   const exactScoreType = enabledTypes.find(t => t.key === "EXACT_SCORE");
   if (exactScoreType) {
     const matched = pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals;
-    exactScoreMatched = matched;
 
     rules.push({
       ruleKey: "EXACT_SCORE",

@@ -494,13 +494,148 @@ export const SIMPLE_PRESET: PickConfigPreset = {
   config: SIMPLE_CONFIG,
 };
 
+// ==================== PRESET: ACUMULATIVO ====================
+
+/**
+ * ACUMULATIVO: Los puntos se suman por cada criterio que aciertes
+ * - Resultado (ganador/empate): 5 pts en grupos, 10 pts en eliminatorias
+ * - Goles local exactos: 2 pts en grupos, 4 pts en eliminatorias
+ * - Goles visitante exactos: 2 pts en grupos, 4 pts en eliminatorias
+ * - Diferencia de goles: 1 pt en grupos, 2 pts en eliminatorias
+ *
+ * Marcador exacto = suma de todos = 10 pts en grupos, 20 pts en eliminatorias
+ */
+const CUMULATIVE_CONFIG: PoolPickTypesConfig = [
+  {
+    phaseId: "group_stage",
+    phaseName: "Fase de Grupos",
+    requiresScore: true,
+    matchPicks: {
+      types: [
+        { key: "EXACT_SCORE", enabled: false, points: 0 },
+        { key: "GOAL_DIFFERENCE", enabled: true, points: 1 },
+        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 5 },
+        { key: "HOME_GOALS", enabled: true, points: 2 },
+        { key: "AWAY_GOALS", enabled: true, points: 2 },
+      ],
+    },
+  },
+  {
+    phaseId: "round_of_32",
+    phaseName: "Dieciseisavos de Final",
+    requiresScore: true,
+    matchPicks: {
+      types: [
+        { key: "EXACT_SCORE", enabled: false, points: 0 },
+        { key: "GOAL_DIFFERENCE", enabled: true, points: 2 },
+        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 10 },
+        { key: "HOME_GOALS", enabled: true, points: 4 },
+        { key: "AWAY_GOALS", enabled: true, points: 4 },
+      ],
+    },
+  },
+  {
+    phaseId: "round_of_16",
+    phaseName: "Octavos de Final",
+    requiresScore: true,
+    matchPicks: {
+      types: [
+        { key: "EXACT_SCORE", enabled: false, points: 0 },
+        { key: "GOAL_DIFFERENCE", enabled: true, points: 2 },
+        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 10 },
+        { key: "HOME_GOALS", enabled: true, points: 4 },
+        { key: "AWAY_GOALS", enabled: true, points: 4 },
+      ],
+    },
+  },
+  {
+    phaseId: "quarter_finals",
+    phaseName: "Cuartos de Final",
+    requiresScore: true,
+    matchPicks: {
+      types: [
+        { key: "EXACT_SCORE", enabled: false, points: 0 },
+        { key: "GOAL_DIFFERENCE", enabled: true, points: 2 },
+        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 10 },
+        { key: "HOME_GOALS", enabled: true, points: 4 },
+        { key: "AWAY_GOALS", enabled: true, points: 4 },
+      ],
+    },
+  },
+  {
+    phaseId: "semi_finals",
+    phaseName: "Semifinales",
+    requiresScore: true,
+    matchPicks: {
+      types: [
+        { key: "EXACT_SCORE", enabled: false, points: 0 },
+        { key: "GOAL_DIFFERENCE", enabled: true, points: 2 },
+        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 10 },
+        { key: "HOME_GOALS", enabled: true, points: 4 },
+        { key: "AWAY_GOALS", enabled: true, points: 4 },
+      ],
+    },
+  },
+  {
+    phaseId: "third_place",
+    phaseName: "Tercer Lugar",
+    requiresScore: true,
+    matchPicks: {
+      types: [
+        { key: "EXACT_SCORE", enabled: false, points: 0 },
+        { key: "GOAL_DIFFERENCE", enabled: true, points: 2 },
+        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 10 },
+        { key: "HOME_GOALS", enabled: true, points: 4 },
+        { key: "AWAY_GOALS", enabled: true, points: 4 },
+      ],
+    },
+  },
+  {
+    phaseId: "finals",
+    phaseName: "Final",
+    requiresScore: true,
+    matchPicks: {
+      types: [
+        { key: "EXACT_SCORE", enabled: false, points: 0 },
+        { key: "GOAL_DIFFERENCE", enabled: true, points: 2 },
+        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 10 },
+        { key: "HOME_GOALS", enabled: true, points: 4 },
+        { key: "AWAY_GOALS", enabled: true, points: 4 },
+      ],
+    },
+  },
+];
+
+export const CUMULATIVE_PRESET: PickConfigPreset = {
+  key: "CUSTOM", // Usamos CUSTOM porque es el enum existente
+  name: "Acumulativo",
+  description:
+    "Los puntos se ACUMULAN: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + " +
+    "Diferencia (1/2 pts). Marcador exacto = suma de todos = 10 pts en grupos, 20 pts en eliminatorias.",
+  config: CUMULATIVE_CONFIG,
+};
+
 // ==================== HELPER FUNCTIONS ====================
 
 /**
  * Obtiene todos los presets disponibles
  */
 export function getAllPresets(): PickConfigPreset[] {
-  return [BASIC_PRESET, ADVANCED_PRESET, SIMPLE_PRESET];
+  return [BASIC_PRESET, ADVANCED_PRESET, SIMPLE_PRESET, CUMULATIVE_PRESET];
 }
 
 /**

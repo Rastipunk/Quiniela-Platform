@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # Quiniela Platform
 
-> **Version:** 0.1-alpha (Sprint 1 Complete)
-> **Last Updated:** 2026-01-05
-> **Status:** Internal Development - Ready for Sprint 2
+> **Version:** 0.2-beta (Sprint 2 Complete)
+> **Last Updated:** 2026-01-18
+> **Status:** Internal Development - Sprint 2 Complete
 > **Document Owner:** Product Team
 
 ---
@@ -109,82 +109,88 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 
 ### 2.2 Roadmap by Version
 
-#### **v0.2-beta (Sprint 1 Closed)** — Internal Complete Version
-**Timeline:** 4-6 weeks
+#### **v0.2-beta (Sprint 2 Complete)** — Internal Complete Version
+**Timeline:** Completed 2026-01-18
 **Goal:** Feature-complete internal version with all core functionality
 
 **Must-Have Features:**
 
 **🔐 User System Enhancements:**
-- [ ] Unique username system (@username, separate from displayName)
-- [ ] User timezone configuration (auto-detect + manual override)
-- [ ] User profile page
+- [x] Unique username system (@username, separate from displayName) ✅
+- [x] User timezone configuration (auto-detect + manual override) ✅
+- [x] User profile page ✅
 
 **👥 Co-Admin System:**
-- [ ] Host can nominate co-admins (by username)
-- [ ] Co-admin permissions (publish results, approve members, expel players, invite)
-- [ ] Co-admins CANNOT delete pool, remove host, or nominate other co-admins
-- [ ] Audit log for co-admin actions
+- [x] Host can nominate co-admins (by username) ✅
+- [x] Co-admin permissions (publish results, approve members, expel players, invite) ✅
+- [x] Co-admins CANNOT delete pool, remove host, or nominate other co-admins ✅
+- [x] Audit log for co-admin actions ✅
 
 **🎯 Advanced Pick Rules System:**
-- [ ] 4 Pick Types in v0.2-beta:
-  1. **EXACT_SCORE:** Predict exact score (e.g., 2-1)
-  2. **GOAL_DIFFERENCE:** Predict goal difference (e.g., +2, -1, 0)
-  3. **MATCH_OUTCOME:** Predict winner/draw (HOME/DRAW/AWAY)
-  4. **PARTIAL_SCORE:** Predict goals for one team (bonus points)
-- [ ] Host configures which pick types are active in pool
-- [ ] Host assigns points per pick type
-- [ ] Multiple pick types can coexist (cumulative scoring)
-- [ ] Frontend: Dynamic pick UI based on active types
+- [x] 7 Pick Types implemented:
+  1. **EXACT_SCORE:** Predict exact score (e.g., 2-1) ✅
+  2. **GOAL_DIFFERENCE:** Predict goal difference (e.g., +2, -1, 0) ✅
+  3. **MATCH_OUTCOME_90MIN:** Predict winner/draw (HOME/DRAW/AWAY) ✅
+  4. **HOME_GOALS:** Predict goals for home team ✅ (NEW)
+  5. **AWAY_GOALS:** Predict goals for away team ✅ (NEW)
+  6. **PARTIAL_SCORE:** Predict goals for one team ✅
+  7. **TOTAL_GOALS:** Predict total goals in match ✅
+- [x] Host configures which pick types are active in pool ✅
+- [x] Host assigns points per pick type ✅
+- [x] **Cumulative scoring system** (ADR-027) ✅ (NEW)
+- [x] Frontend: Dynamic pick UI based on active types ✅
+- [x] **4 Presets:** CUMULATIVE, BASIC, ADVANCED, SIMPLE ✅
 
 **🚪 Join Approval Workflow:**
-- [ ] Pool setting: "Require approval for new members" (checkbox)
-- [ ] Join request system (PENDING → APPROVED/REJECTED)
-- [ ] Host/co-admins can approve/reject with optional reason
-- [ ] Notifications for pending requests
+- [x] Pool setting: "Require approval for new members" ✅
+- [x] Join request system (PENDING → APPROVED/REJECTED) ✅
+- [x] Host/co-admins can approve/reject with optional reason ✅
+- [ ] Notifications for pending requests (deferred to v1.0)
 
 **🚫 Player Expulsion System:**
-- [ ] Host/co-admins can expel (ban) players
-- [ ] Two expulsion types:
-  - **Permanent ban:** Player cannot rejoin (reactivation possible)
-  - **Temporary suspension:** Ban for X days
-- [ ] Expelled player's picks REMAIN visible (transparency)
-- [ ] Expelled players marked in leaderboard (❌ Expulsado)
-- [ ] Expulsion requires reason (audit trail)
+- [x] Host/co-admins can expel (ban) players ✅
+- [x] Two expulsion types:
+  - **Permanent ban:** Player cannot rejoin (reactivation possible) ✅
+  - **Temporary suspension:** Ban for X days ✅
+- [x] Expelled player's picks REMAIN visible (transparency) ✅
+- [x] Expelled players marked in leaderboard ✅
+- [x] Expulsion requires reason (audit trail) ✅
 
 **🔒 Pool State Machine:**
-- [ ] Pool states: DRAFT → ACTIVE → COMPLETED → ARCHIVED
-- [ ] DRAFT: Host can delete pool (no players yet)
-- [ ] ACTIVE: Pool locked, cannot delete (only archive)
-- [ ] COMPLETED: Tournament ended (30-day grace period)
-- [ ] ARCHIVED: Auto-archive after 90 days (hidden by default)
+- [x] Pool states: DRAFT → ACTIVE → COMPLETED → ARCHIVED ✅
+- [x] DRAFT: Host can delete pool (no players yet) ✅
+- [x] ACTIVE: Pool locked, cannot delete (only archive) ✅
+- [x] COMPLETED: Tournament ended (30-day grace period) ✅
+- [x] ARCHIVED: Auto-archive after 90 days (hidden by default) ✅
 
 **⚙️ Configuration Validation:**
-- [ ] Rules immutable after 2nd player joins
-- [ ] Deadline/timezone editable only before first match kicks off
-- [ ] Name/description always editable
-- [ ] Clear error messages when validation fails
+- [x] Rules immutable after 2nd player joins ✅
+- [x] Deadline/timezone editable only before first match kicks off ✅
+- [x] Name/description always editable ✅
+- [x] Clear error messages when validation fails ✅
 
 **🌍 Timezone Enhancements:**
-- [ ] Auto-detect user timezone from browser
-- [ ] User can manually override in settings
-- [ ] All match times shown in user's local timezone
-- [ ] Deadline calculated per user's timezone
-- [ ] Display format: "11 Jun 2026, 18:00 (CDT)"
+- [x] Auto-detect user timezone from browser ✅
+- [x] User can manually override in settings ✅
+- [x] All match times shown in user's local timezone ✅
+- [x] Deadline calculated per user's timezone ✅
+- [x] Display format: "11 Jun 2026, 18:00 (CDT)" ✅
 
 **📊 Audit & Transparency:**
-- [ ] Visible audit log for all members (who did what, when)
-- [ ] Track: result publications, erratas, expulsions, co-admin changes
-- [ ] Filter audit log by action type, actor
+- [x] Visible audit log for all members (who did what, when) ✅
+- [x] Track: result publications, erratas, expulsions, co-admin changes ✅
+- [ ] Filter audit log by action type, actor (deferred to v1.0)
 
 **🎨 UX Improvements:**
-- [ ] Pick mode: Read mode (saved) vs Edit mode (button "Modificar")
-- [ ] Loading states per action (not global spinner)
-- [ ] Responsive mobile layout (basic)
-- [ ] Error messages: Clear, actionable, user-friendly
+- [x] Pick mode: Read mode (saved) vs Edit mode (button "Modificar") ✅
+- [x] Loading states per action (not global spinner) ✅
+- [x] Responsive mobile layout (basic) ✅
+- [x] Error messages: Clear, actionable, user-friendly ✅
+- [x] **Player Summary:** Personal breakdown of points by match ✅ (NEW)
+- [x] **Pick Visibility:** See other players' picks post-deadline ✅ (NEW)
 
 **Nice-to-Have:**
-- [ ] Team flags/logos
+- [ ] Team flags/logos (partial - some implemented)
 - [ ] Advanced match filters
 - [ ] Dark mode toggle (respect user preference)
 
@@ -1250,6 +1256,7 @@ See [GLOSSARY.md](./GLOSSARY.md) for full domain terminology.
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
 | 2026-01-02 | 1.0 | Product Team | Initial PRD based on v0.1-alpha codebase |
+| 2026-01-18 | 1.1 | Product Team | Sprint 2 complete: Cumulative scoring, Player Summary, Pick visibility |
 
 ---
 

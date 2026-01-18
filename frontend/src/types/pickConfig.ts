@@ -8,7 +8,9 @@ export type MatchPickTypeKey =
   | "GOAL_DIFFERENCE"
   | "PARTIAL_SCORE"
   | "TOTAL_GOALS"
-  | "MATCH_OUTCOME_90MIN";
+  | "MATCH_OUTCOME_90MIN"
+  | "HOME_GOALS"
+  | "AWAY_GOALS";
 
 export type MatchPickType = {
   key: MatchPickTypeKey;
@@ -87,7 +89,7 @@ export type PoolPickTypesConfig = PhasePickConfig[];
 
 // ==================== PRESETS ====================
 
-export type PickConfigPresetKey = "BASIC" | "ADVANCED" | "SIMPLE" | "CUSTOM";
+export type PickConfigPresetKey = "BASIC" | "ADVANCED" | "SIMPLE" | "CUMULATIVE" | "CUSTOM";
 
 export type PickConfigPreset = {
   key: PickConfigPresetKey;

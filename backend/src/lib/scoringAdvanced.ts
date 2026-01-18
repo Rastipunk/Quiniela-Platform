@@ -24,8 +24,23 @@ type MatchPick = {
 // ==================== SCORING ENGINE ====================
 
 /**
+ * Detecta si la configuración usa el sistema acumulativo (nuevos tipos HOME_GOALS, AWAY_GOALS)
+ * o el sistema legacy (EXACT_SCORE que termina la evaluación)
+ */
+function isCumulativeScoring(enabledTypes: { key: string }[]): boolean {
+  // Si tiene HOME_GOALS o AWAY_GOALS habilitados, es sistema acumulativo
+  return enabledTypes.some((t) => t.key === "HOME_GOALS" || t.key === "AWAY_GOALS");
+}
+
+/**
  * Evalúa un pick de partido contra el resultado oficial
  * y calcula puntos según la configuración de la fase
+ *
+ * SOPORTA DOS SISTEMAS:
+ * 1. ACUMULATIVO (nuevo): Los puntos se suman por cada criterio cumplido
+ *    - Usa HOME_GOALS, AWAY_GOALS, GOAL_DIFFERENCE, MATCH_OUTCOME_90MIN
+ *    - El marcador exacto = suma de todos los criterios
+ * 2. LEGACY: EXACT_SCORE termina la evaluación inmediatamente
  *
  * @param pick - Predicción del usuario
  * @param result - Resultado oficial del partido
@@ -47,9 +62,80 @@ export function scoreMatchPick(
   const matchConfig = config.matchPicks;
   const enabledTypes = matchConfig.types.filter((t) => t.enabled);
 
-  // ORDEN DE EVALUACIÓN (del más específico al menos)
-  // Si acierta EXACT_SCORE, termina inmediatamente
-  // De lo contrario, evalúa los demás tipos
+  // Detectar qué sistema usar
+  if (isCumulativeScoring(enabledTypes)) {
+    // ==================== SISTEMA ACUMULATIVO ====================
+    // Evalúa TODOS los criterios y suma puntos de cada uno que cumpla
+
+    // 1. MATCH_OUTCOME_90MIN (Resultado: ganador/empate)
+    const outcomeType = enabledTypes.find((t) => t.key === "MATCH_OUTCOME_90MIN");
+    if (outcomeType) {
+      const matched = evaluateMatchOutcome(pick, result);
+      evaluations.push({
+        matchPickType: "MATCH_OUTCOME_90MIN",
+        points: matched ? outcomeType.points : 0,
+        matched,
+      });
+      if (matched) totalPoints += outcomeType.points;
+    }
+
+    // 2. HOME_GOALS (Goles del local exactos)
+    const homeGoalsType = enabledTypes.find((t) => t.key === "HOME_GOALS");
+    if (homeGoalsType) {
+      const matched = pick.homeGoals === result.homeGoals;
+      evaluations.push({
+        matchPickType: "HOME_GOALS",
+        points: matched ? homeGoalsType.points : 0,
+        matched,
+      });
+      if (matched) totalPoints += homeGoalsType.points;
+    }
+
+    // 3. AWAY_GOALS (Goles del visitante exactos)
+    const awayGoalsType = enabledTypes.find((t) => t.key === "AWAY_GOALS");
+    if (awayGoalsType) {
+      const matched = pick.awayGoals === result.awayGoals;
+      evaluations.push({
+        matchPickType: "AWAY_GOALS",
+        points: matched ? awayGoalsType.points : 0,
+        matched,
+      });
+      if (matched) totalPoints += awayGoalsType.points;
+    }
+
+    // 4. GOAL_DIFFERENCE (Diferencia de goles exacta)
+    const goalDiffType = enabledTypes.find((t) => t.key === "GOAL_DIFFERENCE");
+    if (goalDiffType) {
+      const matched = evaluateGoalDifference(pick, result);
+      evaluations.push({
+        matchPickType: "GOAL_DIFFERENCE",
+        points: matched ? goalDiffType.points : 0,
+        matched,
+      });
+      if (matched) totalPoints += goalDiffType.points;
+    }
+
+    // 5. TOTAL_GOALS (si está habilitado en modo acumulativo)
+    const totalGoalsType = enabledTypes.find((t) => t.key === "TOTAL_GOALS");
+    if (totalGoalsType) {
+      const matched = evaluateTotalGoals(pick, result);
+      evaluations.push({
+        matchPickType: "TOTAL_GOALS",
+        points: matched ? totalGoalsType.points : 0,
+        matched,
+      });
+      if (matched) totalPoints += totalGoalsType.points;
+    }
+
+    return {
+      matchId: "", // Se llena desde el llamador
+      totalPoints,
+      evaluations,
+    };
+  }
+
+  // ==================== SISTEMA LEGACY ====================
+  // EXACT_SCORE termina la evaluación si acierta
 
   // 1. EXACT_SCORE (termina si acierta)
   const exactScoreType = enabledTypes.find((t) => t.key === "EXACT_SCORE");
@@ -138,6 +224,26 @@ export function scoreMatchPick(
     }
   }
 
+  // 5. MATCH_OUTCOME_90MIN (sistema legacy también puede tenerlo)
+  const outcomeType = enabledTypes.find((t) => t.key === "MATCH_OUTCOME_90MIN");
+  if (outcomeType) {
+    const matched = evaluateMatchOutcome(pick, result);
+    if (matched) {
+      evaluations.push({
+        matchPickType: "MATCH_OUTCOME_90MIN",
+        points: outcomeType.points,
+        matched: true,
+      });
+      totalPoints += outcomeType.points;
+    } else {
+      evaluations.push({
+        matchPickType: "MATCH_OUTCOME_90MIN",
+        points: 0,
+        matched: false,
+      });
+    }
+  }
+
   return {
     matchId: "", // Se llena desde el llamador
     totalPoints,
@@ -184,6 +290,16 @@ function evaluateTotalGoals(pick: MatchPick, result: MatchScore): boolean {
   const pickTotal = pick.homeGoals + pick.awayGoals;
   const resultTotal = result.homeGoals + result.awayGoals;
   return pickTotal === resultTotal;
+}
+
+/**
+ * Evalúa MATCH_OUTCOME_90MIN: el resultado (ganador o empate) debe ser igual
+ * Ejemplo: Predicción 2-1 (HOME wins), Resultado 3-0 (HOME wins) = acierto
+ */
+function evaluateMatchOutcome(pick: MatchPick, result: MatchScore): boolean {
+  const pickOutcome = pick.homeGoals > pick.awayGoals ? "HOME" : pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
+  const resultOutcome = result.homeGoals > result.awayGoals ? "HOME" : result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
+  return pickOutcome === resultOutcome;
 }
 
 // ==================== AUTO-SCALING ====================
@@ -252,6 +368,10 @@ export function applyAutoScalingToConfig(
 /**
  * Calcula puntos máximos teóricos para una fase con match picks
  *
+ * SOPORTA DOS SISTEMAS:
+ * 1. ACUMULATIVO: Máximo = suma de todos los tipos habilitados
+ * 2. LEGACY: Máximo = el tipo con más puntos (EXACT_SCORE)
+ *
  * @param config - Configuración de la fase
  * @param matchCount - Número de partidos en la fase
  * @param phaseId - ID de la fase (para auto-scaling)
@@ -274,12 +394,19 @@ export function calculateMaxPointsForPhase(
     ? applyAutoScalingToConfig(config, phaseId)
     : config;
 
-  // Máximo por partido = el tipo con más puntos
-  const maxPerMatch = Math.max(
-    ...scaledConfig.matchPicks!.types
-      .filter((t) => t.enabled)
-      .map((t) => t.points)
-  );
+  const enabledTypes = scaledConfig.matchPicks!.types.filter((t) => t.enabled);
+
+  // Detectar si es sistema acumulativo
+  const isCumulative = enabledTypes.some((t) => t.key === "HOME_GOALS" || t.key === "AWAY_GOALS");
+
+  let maxPerMatch: number;
+  if (isCumulative) {
+    // ACUMULATIVO: Máximo = suma de todos los tipos habilitados
+    maxPerMatch = enabledTypes.reduce((sum, t) => sum + t.points, 0);
+  } else {
+    // LEGACY: Máximo = el tipo con más puntos
+    maxPerMatch = Math.max(...enabledTypes.map((t) => t.points), 0);
+  }
 
   return maxPerMatch * matchCount;
 }

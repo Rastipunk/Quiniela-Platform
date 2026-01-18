@@ -246,10 +246,10 @@ model Pool {
   members PoolMember[]
   invites PoolInvite[]
 
-  createdAtUtc           DateTime                @default(now())
-  updatedAtUtc           DateTime                @updatedAt
-  predictions            Prediction[]
-  matchResults           PoolMatchResult[]
+  createdAtUtc              DateTime                   @default(now())
+  updatedAtUtc              DateTime                   @updatedAt
+  predictions               Prediction[]
+  matchResults              PoolMatchResult[]
   structuralPredictions     StructuralPrediction[]
   structuralPhaseResults    StructuralPhaseResult[]
   groupStandingsPredictions GroupStandingsPrediction[]
@@ -484,7 +484,7 @@ model GroupStandingsResult {
   teamIds String[]
 
   // Versión para erratas
-  version Int    @default(1)
+  version Int     @default(1)
   reason  String? // Razón de la errata (obligatorio si version > 1)
 
   createdByUserId String

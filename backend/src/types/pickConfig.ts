@@ -5,13 +5,24 @@
 
 /**
  * Tipos de picks basados en marcadores de partidos individuales
+ *
+ * SISTEMA ACUMULATIVO (nuevo):
+ * - Los puntos se ACUMULAN por cada criterio cumplido
+ * - El marcador exacto = sumar todos los criterios (no es un tipo separado)
+ * - Tipos independientes: HOME_GOALS, AWAY_GOALS, GOAL_DIFFERENCE, MATCH_OUTCOME_90MIN
+ *
+ * SISTEMA LEGACY (anterior):
+ * - EXACT_SCORE terminaba la evaluación
+ * - PARTIAL_SCORE era XOR (solo uno de los dos)
  */
 export type MatchPickTypeKey =
-  | "EXACT_SCORE"           // Marcador exacto (ej: 2-1)
+  | "EXACT_SCORE"           // [LEGACY] Marcador exacto (ej: 2-1) - termina evaluación
   | "GOAL_DIFFERENCE"       // Diferencia exacta de goles (ej: +2)
-  | "PARTIAL_SCORE"         // Acierta goles local O visitante (no ambos)
+  | "PARTIAL_SCORE"         // [LEGACY] Acierta goles local O visitante (XOR)
   | "TOTAL_GOALS"           // Total exacto de goles (ej: 3)
-  | "MATCH_OUTCOME_90MIN";  // Resultado (HOME/DRAW/AWAY) en 90min
+  | "MATCH_OUTCOME_90MIN"   // Resultado (HOME/DRAW/AWAY) en 90min
+  | "HOME_GOALS"            // [CUMULATIVE] Acierta goles del local exactamente
+  | "AWAY_GOALS";           // [CUMULATIVE] Acierta goles del visitante exactamente
 
 /**
  * Configuración de un tipo de pick para partidos
@@ -132,10 +143,11 @@ export type PoolPickTypesConfig = PhasePickConfig[];
  * Presets predefinidos para configuración rápida
  */
 export type PickConfigPresetKey =
-  | "BASIC"      // Solo marcador exacto, auto-scaling
-  | "ADVANCED"   // Múltiples tipos de picks con marcador
-  | "SIMPLE"     // Sin marcadores, solo posiciones/avances
-  | "CUSTOM";    // Personalizado
+  | "BASIC"       // Solo marcador exacto, auto-scaling
+  | "ADVANCED"    // Múltiples tipos de picks con marcador
+  | "SIMPLE"      // Sin marcadores, solo posiciones/avances
+  | "CUMULATIVE"  // Sistema acumulativo (HOME_GOALS + AWAY_GOALS + OUTCOME + DIFF)
+  | "CUSTOM";     // Personalizado
 
 /**
  * Metadata de un preset

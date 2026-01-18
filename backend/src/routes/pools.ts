@@ -81,9 +81,9 @@ const createPoolSchema = z.object({
   requireApproval: z.boolean().optional(),
 
   // Comentario en español: configuración avanzada de tipos de picks
-  // Puede ser: preset key ("BASIC", "ADVANCED", "SIMPLE") o configuración custom
+  // Puede ser: preset key ("BASIC", "ADVANCED", "SIMPLE", "CUMULATIVE") o configuración custom
   pickTypesConfig: z.union([
-    z.enum(["BASIC", "ADVANCED", "SIMPLE"]), // Preset key
+    z.enum(["BASIC", "ADVANCED", "SIMPLE", "CUMULATIVE"]), // Preset key
     PoolPickTypesConfigSchema, // Configuración custom
   ]).optional(),
 });
@@ -524,9 +524,23 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
   }
 
 
+  // Calcular lista única de fases ordenadas por el orden en que aparecen en matches
+  const phaseOrder: string[] = [];
+  for (const m of matches) {
+    if (!phaseOrder.includes(m.phaseId)) {
+      phaseOrder.push(m.phaseId);
+    }
+  }
+
   const leaderboardRows = members.map((m) => {
     let points = 0;
     let scoredMatches = 0;
+    const pointsByPhase: Record<string, number> = {};
+
+    // Inicializar todas las fases en 0
+    for (const ph of phaseOrder) {
+      pointsByPhase[ph] = 0;
+    }
 
     const byMatch = predsByUserMatch.get(m.userId) ?? new Map<string, any>();
     const breakdown: any[] = [];
@@ -570,6 +584,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
               );
 
               points += advancedResult.totalPoints;
+              pointsByPhase[match.phaseId] = (pointsByPhase[match.phaseId] ?? 0) + advancedResult.totalPoints;
               scoredMatches += 1;
 
               if (leaderboardVerbose) {
@@ -594,6 +609,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       // ✅ SCORING LEGACY: Si no hay pickTypesConfig o falló el avanzado
       const scored = scorePick(pick, r.homeGoals, r.awayGoals);
       points += scored.totalPoints;
+      pointsByPhase[match.phaseId] = (pointsByPhase[match.phaseId] ?? 0) + scored.totalPoints;
       scoredMatches += 1;
 
       if (leaderboardVerbose) {
@@ -635,6 +651,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       points: points + structuralPoints, // Total: match picks + structural picks
       matchPickPoints: points, // Desglose para debugging
       structuralPickPoints: structuralPoints,
+      pointsByPhase, // Puntos desglosados por fase
       scoredMatches,
       joinedAtUtc: m.joinedAtUtc,
       breakdown: leaderboardVerbose ? breakdown : undefined,
@@ -670,6 +687,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       lockedPhases: pool.lockedPhases as string[],
     },
     myMembership: {
+      id: myMembership.id,
+      userId: myMembership.userId,
       role: myMembership.role,
       status: myMembership.status,
       joinedAtUtc: myMembership.joinedAtUtc,
@@ -699,18 +718,19 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
         allowScorePick: preset.allowScorePick,
       },
       verbose: leaderboardVerbose,
+      phases: phaseOrder, // Lista ordenada de fases para mostrar columnas
       rows: leaderboardRows.map((r, idx) => ({
-      rank: idx + 1,
-      userId: r.userId,
-      memberId: r.memberId,
-      displayName: r.displayName,
-      role: r.role,
-      points: r.points,
-      scoredMatches: r.scoredMatches,
-      joinedAtUtc: r.joinedAtUtc,
-      ...(leaderboardVerbose ? { breakdown: r.breakdown } : {}),
-})),
-
+        rank: idx + 1,
+        userId: r.userId,
+        memberId: r.memberId,
+        displayName: r.displayName,
+        role: r.role,
+        points: r.points,
+        pointsByPhase: r.pointsByPhase, // Puntos por cada fase
+        scoredMatches: r.scoredMatches,
+        joinedAtUtc: r.joinedAtUtc,
+        ...(leaderboardVerbose ? { breakdown: r.breakdown } : {}),
+      })),
     },
   });
 });
@@ -2366,6 +2386,313 @@ poolsRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     });
   } catch (error) {
     console.error("Error generando breakdown de grupo:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// ============================================================================
+// GET /pools/:poolId/players/:userId/summary
+// Resumen detallado de un jugador: puntos por fase, picks, resultados, breakdown
+// Si userId != usuario actual, solo muestra picks de partidos con deadline pasado
+// ============================================================================
+poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
+  try {
+    const { poolId, userId: targetUserId } = req.params;
+    const requestingUserId = req.auth!.userId;
+    const now = new Date();
+
+    // 1) Verificar que el usuario solicitante es miembro activo del pool
+    const myMembership = await prisma.poolMember.findFirst({
+      where: { poolId, userId: requestingUserId, status: "ACTIVE" },
+    });
+    if (!myMembership) {
+      return res.status(403).json({ error: "FORBIDDEN", message: "No eres miembro de esta pool" });
+    }
+
+    // 2) Verificar que el usuario objetivo es miembro activo del pool
+    const targetMembership = await prisma.poolMember.findFirst({
+      where: { poolId, userId: targetUserId, status: "ACTIVE" },
+      include: { user: true },
+    });
+    if (!targetMembership) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "Usuario no encontrado en esta pool" });
+    }
+
+    // 3) Cargar pool con instancia
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: { tournamentInstance: true },
+    });
+    if (!pool || !pool.tournamentInstance) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "Pool no encontrada" });
+    }
+
+    const isViewingSelf = targetUserId === requestingUserId;
+    const deadlineMinutes = pool.deadlineMinutesBeforeKickoff;
+
+    // 4) Extraer matches y teams del snapshot
+    const dataJson = pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson;
+    const matches = extractMatches(dataJson);
+    const teams = extractTeams(dataJson);
+    const teamById = new Map(teams.map((t) => [t.id, t]));
+
+    // 5) Cargar picks del usuario objetivo
+    const predictions = await prisma.prediction.findMany({
+      where: { poolId, userId: targetUserId },
+    });
+    const pickByMatchId = new Map(predictions.map((p) => [p.matchId, p.pickJson as any]));
+
+    // 6) Cargar resultados
+    const resultsRaw = await prisma.poolMatchResult.findMany({
+      where: { poolId },
+      include: { currentVersion: true },
+    });
+    const resultByMatchId = new Map(
+      resultsRaw
+        .filter((r) => r.currentVersion)
+        .map((r) => [
+          r.matchId,
+          {
+            homeGoals: r.currentVersion!.homeGoals,
+            awayGoals: r.currentVersion!.awayGoals,
+          },
+        ])
+    );
+
+    // 7) Obtener configuración de picks por fase
+    const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
+
+    // 8) Agrupar matches por fase
+    const phaseGroups = new Map<string, SnapshotMatch[]>();
+    for (const match of matches) {
+      const group = phaseGroups.get(match.phaseId) ?? [];
+      group.push(match);
+      phaseGroups.set(match.phaseId, group);
+    }
+
+    // 9) Calcular resumen por fase
+    const phases: any[] = [];
+
+    // Obtener orden de fases del dataJson
+    const phasesFromData = (dataJson as any)?.phases ?? [];
+    const phaseOrder = new Map<string, number>(
+      phasesFromData.map((p: any, idx: number) => [p.id, idx])
+    );
+
+    for (const [phaseId, phaseMatches] of phaseGroups) {
+      // Obtener config de fase
+      const phaseConfig = pickTypesConfig?.find((p) => p.phaseId === phaseId);
+      const phaseData = phasesFromData.find((p: any) => p.id === phaseId);
+      const phaseName = phaseData?.name ?? phaseId;
+
+      // Ordenar partidos por kickoff
+      const sortedMatches = [...phaseMatches].sort(
+        (a, b) => new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime()
+      );
+
+      let phaseTotalPoints = 0;
+      let phaseMaxPoints = 0;
+      let matchCount = 0;
+      let scoredCount = 0;
+
+      const matchDetails: any[] = [];
+
+      for (const match of sortedMatches) {
+        const kickoff = new Date(match.kickoffUtc);
+        const deadlineUtc = new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000);
+        const isLocked = now >= deadlineUtc;
+
+        // Si es otro usuario, solo mostrar si deadline pasó
+        if (!isViewingSelf && !isLocked) {
+          continue;
+        }
+
+        const pick = pickByMatchId.get(match.id);
+        const result = resultByMatchId.get(match.id);
+
+        const homeTeam = teamById.get(match.homeTeamId);
+        const awayTeam = teamById.get(match.awayTeamId);
+
+        let pointsEarned = 0;
+        let pointsMax = 0;
+        let status: "SCORED" | "NO_PICK" | "PENDING_RESULT" | "LOCKED" = "LOCKED";
+        let breakdown: any[] = [];
+
+        matchCount += 1;
+
+        if (result) {
+          // Hay resultado oficial
+          if (pick && pick.type === "SCORE" && phaseConfig?.requiresScore && phaseConfig.matchPicks) {
+            // Scoring avanzado
+            try {
+              const scoring = scoreMatchPick(
+                { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
+                { homeGoals: result.homeGoals, awayGoals: result.awayGoals },
+                phaseConfig
+              );
+              pointsEarned = scoring.totalPoints;
+              breakdown = scoring.evaluations.map((e: any) => ({
+                type: e.matchPickType,
+                matched: e.matched,
+                points: e.points,
+              }));
+              status = "SCORED";
+              scoredCount += 1;
+
+              // Calcular máximo posible
+              const maxType = phaseConfig.matchPicks.types.find((t) => t.enabled);
+              pointsMax = maxType?.points ?? 0;
+            } catch (err) {
+              console.error(`Error scoring match ${match.id}:`, err);
+            }
+          } else if (pick) {
+            // Scoring legacy
+            const preset = getScoringPreset(pool.scoringPresetKey ?? "CLASSIC");
+            const actualOutcome = outcomeFromScore(result.homeGoals, result.awayGoals);
+            const pickOutcome = pick.type === "SCORE"
+              ? outcomeFromScore(pick.homeGoals, pick.awayGoals)
+              : pick.outcome;
+            const outcomeCorrect = pickOutcome === actualOutcome;
+            const exact = pick.type === "SCORE" &&
+              pick.homeGoals === result.homeGoals &&
+              pick.awayGoals === result.awayGoals;
+
+            pointsEarned = (outcomeCorrect ? preset.outcomePoints : 0) +
+              (exact && preset.allowScorePick ? preset.exactScoreBonus : 0);
+            pointsMax = preset.outcomePoints + (preset.allowScorePick ? preset.exactScoreBonus : 0);
+            status = "SCORED";
+            scoredCount += 1;
+
+            breakdown = [
+              { type: "OUTCOME", matched: outcomeCorrect, points: outcomeCorrect ? preset.outcomePoints : 0 },
+              ...(preset.allowScorePick ? [{ type: "EXACT_SCORE", matched: exact, points: exact ? preset.exactScoreBonus : 0 }] : []),
+            ];
+          } else {
+            status = "NO_PICK";
+          }
+        } else if (!isLocked) {
+          status = "LOCKED"; // Aún no ha pasado deadline
+        } else {
+          status = pick ? "PENDING_RESULT" : "NO_PICK";
+        }
+
+        phaseTotalPoints += pointsEarned;
+        phaseMaxPoints += pointsMax;
+
+        matchDetails.push({
+          matchId: match.id,
+          homeTeam: homeTeam ? { id: homeTeam.id, name: homeTeam.name ?? homeTeam.id, code: homeTeam.code } : null,
+          awayTeam: awayTeam ? { id: awayTeam.id, name: awayTeam.name ?? awayTeam.id, code: awayTeam.code } : null,
+          kickoffUtc: match.kickoffUtc,
+          groupId: match.groupId ?? null,
+          pick: pick ? { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals, type: pick.type } : null,
+          result: result ?? null,
+          pointsEarned,
+          pointsMax,
+          status,
+          breakdown,
+        });
+      }
+
+      // Solo agregar fase si tiene partidos visibles
+      if (matchDetails.length > 0) {
+        phases.push({
+          phaseId,
+          phaseName,
+          phaseOrder: phaseOrder.get(phaseId) ?? 999,
+          totalPoints: phaseTotalPoints,
+          maxPossiblePoints: phaseMaxPoints,
+          matchCount,
+          scoredCount,
+          matches: matchDetails,
+        });
+      }
+    }
+
+    // Ordenar fases por order
+    phases.sort((a, b) => a.phaseOrder - b.phaseOrder);
+
+    // 10) Calcular totales y rank
+    const allMembers = await prisma.poolMember.findMany({
+      where: { poolId, status: "ACTIVE" },
+      include: { user: true },
+    });
+
+    // Calcular puntos de todos para determinar rank
+    const memberPoints: Array<{ userId: string; points: number; joinedAt: Date }> = [];
+    for (const member of allMembers) {
+      let totalPoints = 0;
+
+      const memberPicks = await prisma.prediction.findMany({
+        where: { poolId, userId: member.userId },
+      });
+      const memberPickByMatch = new Map(memberPicks.map((p) => [p.matchId, p.pickJson as any]));
+
+      for (const match of matches) {
+        const pick = memberPickByMatch.get(match.id);
+        const result = resultByMatchId.get(match.id);
+
+        if (!pick || !result) continue;
+
+        const phaseConfig = pickTypesConfig?.find((p) => p.phaseId === match.phaseId);
+
+        if (pick.type === "SCORE" && phaseConfig?.requiresScore && phaseConfig.matchPicks) {
+          try {
+            const scoring = scoreMatchPick(
+              { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
+              { homeGoals: result.homeGoals, awayGoals: result.awayGoals },
+              phaseConfig
+            );
+            totalPoints += scoring.totalPoints;
+          } catch {}
+        } else {
+          const preset = getScoringPreset(pool.scoringPresetKey ?? "CLASSIC");
+          const actualOutcome = outcomeFromScore(result.homeGoals, result.awayGoals);
+          const pickOutcome = pick.type === "SCORE"
+            ? outcomeFromScore(pick.homeGoals, pick.awayGoals)
+            : pick.outcome;
+          const outcomeCorrect = pickOutcome === actualOutcome;
+          const exact = pick.type === "SCORE" &&
+            pick.homeGoals === result.homeGoals &&
+            pick.awayGoals === result.awayGoals;
+
+          totalPoints += (outcomeCorrect ? preset.outcomePoints : 0) +
+            (exact && preset.allowScorePick ? preset.exactScoreBonus : 0);
+        }
+      }
+
+      memberPoints.push({
+        userId: member.userId,
+        points: totalPoints,
+        joinedAt: member.joinedAtUtc,
+      });
+    }
+
+    // Ordenar para determinar rank
+    memberPoints.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      return a.joinedAt.getTime() - b.joinedAt.getTime();
+    });
+
+    const targetRank = memberPoints.findIndex((m) => m.userId === targetUserId) + 1;
+    const targetPoints = memberPoints.find((m) => m.userId === targetUserId)?.points ?? 0;
+
+    // 11) Respuesta
+    return res.json({
+      player: {
+        userId: targetUserId,
+        displayName: targetMembership.user.displayName,
+        role: targetMembership.role,
+        rank: targetRank,
+        totalPoints: targetPoints,
+        joinedAtUtc: targetMembership.joinedAtUtc,
+      },
+      isViewingSelf,
+      phases,
+      // TODO: Agregar structuralPicks si aplica
+    });
+  } catch (error) {
+    console.error("Error en resumen de jugador:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 });
