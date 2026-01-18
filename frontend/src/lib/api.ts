@@ -2,10 +2,23 @@
 // Cliente HTTP simple para hablar con el backend
 import { clearToken, getToken, markSessionExpired } from "./auth";
 
-const API_BASE =
-  (import.meta as any).env?.VITE_API_BASE_URL ??
-  (import.meta as any).env?.VITE_API_URL ??
-  "http://localhost:3000";
+// Detectar API base URL:
+// 1. Si hay variable de entorno VITE_API_BASE_URL, usarla
+// 2. Si estamos en producción (railway), usar el backend de producción
+// 3. Fallback a localhost para desarrollo
+function getApiBase(): string {
+  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL ?? (import.meta as any).env?.VITE_API_URL;
+  if (envUrl) return envUrl;
+
+  // Auto-detect production: si el frontend está en railway, asumir backend en railway
+  if (typeof window !== "undefined" && window.location.hostname.includes("railway.app")) {
+    return "https://quiniela-platform-production.up.railway.app";
+  }
+
+  return "http://localhost:3000";
+}
+
+const API_BASE = getApiBase();
 
 async function requestJson<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(init.headers);
