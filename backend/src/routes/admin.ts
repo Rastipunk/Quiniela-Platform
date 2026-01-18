@@ -18,14 +18,14 @@ adminRouter.post("/bootstrap-admin", async (req, res) => {
   try {
     // Check if any admin exists
     const existingAdmin = await prisma.user.findFirst({
-      where: { role: "ADMIN" },
+      where: { platformRole: "ADMIN" },
     });
 
     if (existingAdmin) {
       return res.status(400).json({ ok: false, error: "Ya existe un admin. Este endpoint está deshabilitado." });
     }
 
-    const { email, password, displayName } = req.body;
+    const { email, password, displayName, username } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ ok: false, error: "Email y password son requeridos" });
@@ -35,13 +35,16 @@ adminRouter.post("/bootstrap-admin", async (req, res) => {
     const { hash } = await import("bcrypt");
     const passwordHash = await hash(password, 10);
 
+    // Generate username from email if not provided
+    const adminUsername = username || email.split("@")[0] + "_admin";
+
     const admin = await prisma.user.create({
       data: {
         email,
+        username: adminUsername,
         displayName: displayName || "Admin",
         passwordHash,
-        role: "ADMIN",
-        emailVerified: true,
+        platformRole: "ADMIN",
       },
     });
 
