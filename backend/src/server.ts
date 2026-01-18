@@ -33,7 +33,7 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, version: "2026-01-18-v2" });
 });
 
 app.use("/auth", authRouter);
