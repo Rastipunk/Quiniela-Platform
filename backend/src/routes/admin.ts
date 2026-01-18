@@ -100,7 +100,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
         versionNumber: nextVersionNumber,
         status: "PUBLISHED",
         publishedAtUtc: now,
-        dataJson: parsed,
+        dataJson: parsed as any,
       },
     });
 
@@ -116,7 +116,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
         status: "ACTIVE",
         templateId: template.id,
         templateVersionId: version.id,
-        dataJson: parsed,
+        dataJson: parsed as any,
       },
     });
 
@@ -169,7 +169,7 @@ function buildWc2026SandboxData() {
     for (let i = 1; i <= teamsPerGroup; i++) {
       teams.push({
         id: `t_${g}${i}`,
-        name: groupTeams[i - 1],
+        name: groupTeams[i - 1]!,
         code: `${g}${i}`,
         groupId: g,
       });
@@ -201,7 +201,7 @@ function buildWc2026SandboxData() {
   for (const g of groups) {
     const t = (n: number) => `t_${g}${n}`;
     for (let k = 0; k < pairings.length; k++) {
-      const p = pairings[k];
+      const p = pairings[k]!;
       matches.push({
         id: `m_${g}_${p.round}_${k + 1}`,
         phaseId: "group_stage",
