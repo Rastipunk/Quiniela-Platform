@@ -1,7 +1,7 @@
 // Componente para mostrar las reglas de picks en PoolPage
 // Sprint 2 - Advanced Pick Types System
 
-import type { PoolPickTypesConfig, MatchPickTypeKey, StructuralPickType } from "../types/pickConfig";
+import type { PoolPickTypesConfig, MatchPickTypeKey } from "../types/pickConfig";
 
 type PickRulesDisplayProps = {
   pickTypesConfig: PoolPickTypesConfig;

@@ -84,7 +84,6 @@ export function StructuralPicksManager({
 }: StructuralPicksManagerProps) {
   void _phaseName; // Used for display in child components
   void _phaseConfig; // Config passed to child components
-  void _onShowBreakdown; // Callback for breakdown display
   const [loading, setLoading] = useState(true);
   const [_saving, _setSaving] = useState(false);
   void _saving; // For future use with batch save
@@ -362,12 +361,12 @@ export function StructuralPicksManager({
             color: "#004085",
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: onShowBreakdown ? "1rem" : 0 }}>
+          <div style={{ fontWeight: 600, marginBottom: _onShowBreakdown ? "1rem" : 0 }}>
             {isHost ? "Todos los resultados oficiales han sido publicados" : "Fase bloqueada - Los resultados oficiales ya fueron publicados"}
           </div>
-          {onShowBreakdown && (
+          {_onShowBreakdown && (
             <button
-              onClick={onShowBreakdown}
+              onClick={_onShowBreakdown}
               style={{
                 padding: "10px 20px",
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -413,7 +412,7 @@ export function StructuralPicksManager({
 
 // ==================== HELPER FUNCTIONS ====================
 
-function extractGroups(tournamentData: any, phaseId: string): Group[] {
+function extractGroups(tournamentData: any, _phaseId: string): Group[] {
   // En WC2026 sandbox, los grupos no están dentro de las fases
   // Los equipos tienen groupId, así que agrupamos por ese campo
   const allTeams = tournamentData?.teams || [];

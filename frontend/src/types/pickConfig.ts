@@ -38,8 +38,17 @@ export type StructuralPickType =
   | "KNOCKOUT_WINNER";
 
 export type GroupStandingsConfig = {
-  pointsPerExactPosition: number;
+  // Legacy format
+  pointsPerExactPosition?: number;
+  // New format: points per position
+  pointsPosition1?: number;
+  pointsPosition2?: number;
+  pointsPosition3?: number;
+  pointsPosition4?: number;
+  // Bonus for perfect group
   bonusPerfectGroup?: number;
+  bonusPerfectGroupEnabled?: boolean;
+  // Global qualifiers (optional)
   includeGlobalQualifiers?: boolean;
   globalQualifiersPoints?: number;
 };

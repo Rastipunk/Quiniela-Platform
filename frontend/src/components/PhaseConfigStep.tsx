@@ -395,7 +395,6 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
   const bonusPerfectGroup = config.bonusPerfectGroup ?? 20;
 
   // Calcular ejemplo dinámico
-  const exampleCorrect3 = pointsPosition1 + pointsPosition2 + pointsPosition3; // Si acierta 1°, 2°, 3°
   const examplePerfect = pointsPosition1 + pointsPosition2 + pointsPosition3 + pointsPosition4 + (bonusPerfectGroupEnabled ? bonusPerfectGroup : 0);
 
   const inputStyle = {

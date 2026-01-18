@@ -6,7 +6,6 @@
 import { useState, useEffect } from "react";
 import {
   upsertResult,
-  getStructuralPick,
   upsertStructuralPick,
 } from "../lib/api";
 
@@ -46,7 +45,7 @@ export function KnockoutMatchCard({
   matchId,
   homeTeam,
   awayTeam,
-  kickoffUtc,
+  kickoffUtc: _kickoffUtc,
   token,
   isHost,
   isLocked,
@@ -55,6 +54,7 @@ export function KnockoutMatchCard({
   onResultSaved,
   onPickSaved,
 }: KnockoutMatchCardProps) {
+  void _kickoffUtc; // Reserved for future deadline display
   // Player pick state
   const [selectedWinner, setSelectedWinner] = useState<string | null>(existingPick || null);
   const [pickSaved, setPickSaved] = useState(!!existingPick);

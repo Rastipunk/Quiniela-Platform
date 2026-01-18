@@ -6,7 +6,6 @@ import { PhaseConfigStep } from "./PhaseConfigStep";
 import { getInstancePhases, type InstancePhase } from "../lib/api";
 import type {
   WizardState,
-  WizardStep,
   PoolPickTypesConfig,
   PickConfigPresetKey,
   PhasePickConfig,
