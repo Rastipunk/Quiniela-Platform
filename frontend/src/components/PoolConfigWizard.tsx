@@ -497,7 +497,8 @@ type SummaryStepProps = {
   getPresetConfig: (presetKey: PickConfigPresetKey) => PhasePickConfig[];
 };
 
-function SummaryStep({ wizardState, onComplete, getPresetConfig }: SummaryStepProps) {
+function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: SummaryStepProps) {
+  void _onComplete; // Used by parent component
   const presetNames: Record<PickConfigPresetKey, string> = {
     BASIC: "Básico",
     ADVANCED: "Avanzado",

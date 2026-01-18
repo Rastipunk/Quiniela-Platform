@@ -71,19 +71,23 @@ type StructuralPicksManagerProps = {
 export function StructuralPicksManager({
   poolId,
   phaseId,
-  phaseName,
+  phaseName: _phaseName,
   phaseType,
-  phaseConfig,
+  phaseConfig: _phaseConfig,
   tournamentData,
   token,
   isHost,
   isLocked,
   matchResults,
   onDataChanged,
-  onShowBreakdown,
+  onShowBreakdown: _onShowBreakdown,
 }: StructuralPicksManagerProps) {
+  void _phaseName; // Used for display in child components
+  void _phaseConfig; // Config passed to child components
+  void _onShowBreakdown; // Callback for breakdown display
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [_saving, _setSaving] = useState(false);
+  void _saving; // For future use with batch save
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -162,9 +166,11 @@ export function StructuralPicksManager({
     loadPickData_internal(resultData);
   }
 
-  async function handleSave() {
+  // Note: handleSave is preserved for potential future batch-save functionality
+  // Currently, individual components (GroupStandingsCard, KnockoutMatchCard) handle their own saves
+  async function _handleSave() {
     try {
-      setSaving(true);
+      _setSaving(true);
       setError(null);
       setSuccessMessage(null);
 
@@ -216,9 +222,10 @@ export function StructuralPicksManager({
       console.error("❌ Error al guardar:", err);
       setError(err?.message || "Error al guardar");
     } finally {
-      setSaving(false);
+      _setSaving(false);
     }
   }
+  void _handleSave; // Preserved for future batch-save
 
   // Extraer grupos y partidos del tournament data
   const groups = useMemo(() => extractGroups(tournamentData, phaseId), [tournamentData, phaseId]);

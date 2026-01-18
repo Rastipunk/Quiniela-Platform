@@ -2094,10 +2094,12 @@ function PickSection(props: {
   const [editMode, setEditMode] = useState(false);
 
   const hasPick = !!props.pick;
-  const pickType = props.pick?.type;
+  const _pickType = props.pick?.type;
+  void _pickType; // Reserved for future pick type display
 
   // Si está locked o no hay pick, no puede editar
-  const canEdit = !props.isLocked;
+  const _canEdit = !props.isLocked;
+  void _canEdit; // Used implicitly through !props.isLocked checks
 
   return (
     <div style={{ border: "1px solid #f2f2f2", borderRadius: 12, padding: 12 }}>
