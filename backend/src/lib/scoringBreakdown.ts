@@ -392,6 +392,63 @@ export function generateMatchPickBreakdown(
 // ==================== BREAKDOWN PARA GROUP_STANDINGS ====================
 
 /**
+ * Configuración de GROUP_STANDINGS (soporta nuevo formato y legacy)
+ */
+type GroupStandingsConfigBreakdown = {
+  // Nuevo formato: puntos por posición
+  pointsPosition1?: number;
+  pointsPosition2?: number;
+  pointsPosition3?: number;
+  pointsPosition4?: number;
+  // Legacy: mismo para todas
+  pointsPerExactPosition?: number;
+  // Bonus
+  bonusPerfectGroupEnabled?: boolean;
+  bonusPerfectGroup?: number;
+};
+
+/**
+ * Helper para obtener puntos por posición (soporta ambos formatos)
+ */
+function getPointsForPosition(config: GroupStandingsConfigBreakdown, position: number): number {
+  // Nuevo formato: puntos individuales por posición
+  if (config.pointsPosition1 !== undefined) {
+    switch (position) {
+      case 0: return config.pointsPosition1 ?? 10;
+      case 1: return config.pointsPosition2 ?? 10;
+      case 2: return config.pointsPosition3 ?? 10;
+      case 3: return config.pointsPosition4 ?? 10;
+      default: return 10;
+    }
+  }
+  // Legacy: mismo valor para todas
+  return config.pointsPerExactPosition ?? 10;
+}
+
+/**
+ * Helper para calcular máximo de puntos por posición en un grupo
+ */
+function getMaxPositionPointsForGroup(config: GroupStandingsConfigBreakdown, teamCount: number): number {
+  if (config.pointsPosition1 !== undefined) {
+    // Nuevo formato: sumar todos los puntos posibles
+    let sum = 0;
+    for (let i = 0; i < teamCount; i++) {
+      sum += getPointsForPosition(config, i);
+    }
+    return sum;
+  }
+  // Legacy
+  return teamCount * (config.pointsPerExactPosition ?? 10);
+}
+
+/**
+ * Helper para verificar si bonus está habilitado
+ */
+function isBonusEnabled(config: GroupStandingsConfigBreakdown): boolean {
+  return config.bonusPerfectGroupEnabled ?? (config.bonusPerfectGroup !== undefined && config.bonusPerfectGroup > 0);
+}
+
+/**
  * Genera breakdown detallado para GROUP_STANDINGS
  */
 export function generateGroupStandingsBreakdown(
@@ -405,16 +462,30 @@ export function generateGroupStandingsBreakdown(
     throw new Error("generateGroupStandingsBreakdown solo aplica para fases GROUP_STANDINGS");
   }
 
-  const config = phaseConfig.structuralPicks.config as {
-    pointsPerExactPosition: number;
-    bonusPerfectGroup?: number;
-  };
+  const config = phaseConfig.structuralPicks.config as GroupStandingsConfigBreakdown;
+  const bonusEnabled = isBonusEnabled(config);
 
-  // Calcular maximo teorico
-  const totalTeams = groupsInfo.reduce((sum, g) => sum + g.teamCount, 0);
-  const maxPositionPoints = totalTeams * config.pointsPerExactPosition;
-  const maxBonusPoints = config.bonusPerfectGroup ? groupsInfo.length * config.bonusPerfectGroup : 0;
+  // Calcular máximo teórico
+  let maxPositionPoints = 0;
+  groupsInfo.forEach(g => {
+    maxPositionPoints += getMaxPositionPointsForGroup(config, g.teamCount);
+  });
+  const maxBonusPoints = bonusEnabled && config.bonusPerfectGroup ? groupsInfo.length * config.bonusPerfectGroup : 0;
   const totalMax = maxPositionPoints + maxBonusPoints;
+
+  // Normalizar config para el response (agregar pointsPerExactPosition para compatibilidad)
+  const normalizedConfig = {
+    pointsPerExactPosition: config.pointsPerExactPosition ?? config.pointsPosition1 ?? 10,
+    bonusPerfectGroup: bonusEnabled ? config.bonusPerfectGroup : undefined,
+    // Incluir nuevo formato si está presente
+    ...(config.pointsPosition1 !== undefined && {
+      pointsPosition1: config.pointsPosition1,
+      pointsPosition2: config.pointsPosition2,
+      pointsPosition3: config.pointsPosition3,
+      pointsPosition4: config.pointsPosition4,
+      bonusPerfectGroupEnabled: config.bonusPerfectGroupEnabled,
+    }),
+  };
 
   // Caso: No hay pick
   if (!pickData || !pickData.groups || pickData.groups.length === 0) {
@@ -431,6 +502,8 @@ export function generateGroupStandingsBreakdown(
   if (!resultData || !resultData.groups || resultData.groups.length === 0) {
     const groups: GroupEvaluation[] = groupsInfo.map(g => {
       const pickGroup = pickData.groups.find(pg => pg.groupId === g.id);
+      const groupMaxPositionPts = getMaxPositionPointsForGroup(config, g.teamCount);
+      const groupMaxBonus = bonusEnabled && config.bonusPerfectGroup ? config.bonusPerfectGroup : 0;
       return {
         groupId: g.id,
         groupName: g.name,
@@ -438,13 +511,13 @@ export function generateGroupStandingsBreakdown(
         hasResult: false,
         positions: [],
         bonusPerfectGroup: {
-          enabled: !!config.bonusPerfectGroup,
+          enabled: bonusEnabled,
           achieved: false,
           pointsEarned: 0,
-          pointsMax: config.bonusPerfectGroup || 0,
+          pointsMax: groupMaxBonus,
         },
         totalPointsEarned: 0,
-        totalPointsMax: g.teamCount * config.pointsPerExactPosition + (config.bonusPerfectGroup || 0),
+        totalPointsMax: groupMaxPositionPts + groupMaxBonus,
       };
     });
 
@@ -456,7 +529,7 @@ export function generateGroupStandingsBreakdown(
       groups,
       totalPointsEarned: 0,
       totalPointsMax: totalMax,
-      config,
+      config: normalizedConfig,
       summary: "Pendiente de resultados",
     };
   }
@@ -475,6 +548,9 @@ export function generateGroupStandingsBreakdown(
     const hasPick = pickTeams.length > 0;
     const hasResult = resultTeams.length > 0;
 
+    const groupMaxPositionPts = getMaxPositionPointsForGroup(config, g.teamCount);
+    const groupMaxBonus = bonusEnabled && config.bonusPerfectGroup ? config.bonusPerfectGroup : 0;
+
     if (!hasPick) {
       return {
         groupId: g.id,
@@ -483,17 +559,17 @@ export function generateGroupStandingsBreakdown(
         hasResult,
         positions: [],
         bonusPerfectGroup: {
-          enabled: !!config.bonusPerfectGroup,
+          enabled: bonusEnabled,
           achieved: false,
           pointsEarned: 0,
-          pointsMax: config.bonusPerfectGroup || 0,
+          pointsMax: groupMaxBonus,
         },
         totalPointsEarned: 0,
-        totalPointsMax: g.teamCount * config.pointsPerExactPosition + (config.bonusPerfectGroup || 0),
+        totalPointsMax: groupMaxPositionPts + groupMaxBonus,
       };
     }
 
-    // Evaluar cada posicion
+    // Evaluar cada posición
     let groupPoints = 0;
     let perfectGroup = true;
     const positions = resultTeams.map((teamId, index) => {
@@ -503,7 +579,8 @@ export function generateGroupStandingsBreakdown(
       const matched = predictedPosition === position;
 
       if (!matched) perfectGroup = false;
-      const pointsEarned = matched ? config.pointsPerExactPosition : 0;
+      const pointsForThisPosition = getPointsForPosition(config, index);
+      const pointsEarned = matched ? pointsForThisPosition : 0;
       groupPoints += pointsEarned;
 
       const team = teamsMap.get(teamId);
@@ -520,7 +597,7 @@ export function generateGroupStandingsBreakdown(
     });
 
     // Bonus por grupo perfecto
-    const bonusAchieved = perfectGroup && config.bonusPerfectGroup;
+    const bonusAchieved = perfectGroup && bonusEnabled && config.bonusPerfectGroup;
     const bonusPoints = bonusAchieved ? config.bonusPerfectGroup! : 0;
     groupPoints += bonusPoints;
     totalEarned += groupPoints;
@@ -532,13 +609,13 @@ export function generateGroupStandingsBreakdown(
       hasResult: true,
       positions,
       bonusPerfectGroup: {
-        enabled: !!config.bonusPerfectGroup,
+        enabled: bonusEnabled,
         achieved: !!bonusAchieved,
         pointsEarned: bonusPoints,
-        pointsMax: config.bonusPerfectGroup || 0,
+        pointsMax: groupMaxBonus,
       },
       totalPointsEarned: groupPoints,
-      totalPointsMax: g.teamCount * config.pointsPerExactPosition + (config.bonusPerfectGroup || 0),
+      totalPointsMax: groupMaxPositionPts + groupMaxBonus,
     };
   });
 
@@ -550,7 +627,7 @@ export function generateGroupStandingsBreakdown(
     groups,
     totalPointsEarned: totalEarned,
     totalPointsMax: totalMax,
-    config,
+    config: normalizedConfig,
     summary: `${totalEarned} / ${totalMax} pts`,
   };
 }

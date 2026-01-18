@@ -38,7 +38,13 @@ export function PhaseConfigStep({
       ? {
           type: "GROUP_STANDINGS" as const,
           config: {
-            pointsPerExactPosition: 10,
+            // Puntos por posición (por defecto todos iguales a 10)
+            pointsPosition1: 10,
+            pointsPosition2: 10,
+            pointsPosition3: 10,
+            pointsPosition4: 10,
+            // Bonus por grupo perfecto (opcional)
+            bonusPerfectGroupEnabled: true,
             bonusPerfectGroup: 20,
           },
         }
@@ -94,6 +100,23 @@ export function PhaseConfigStep({
     }
   }
 
+  function handleStructuralConfigChange(newConfig: Record<string, number | boolean>) {
+    if (!currentPhase.structuralPicks) return;
+
+    const updated = [...phases];
+    updated[currentPhaseIndex] = {
+      ...currentPhase,
+      structuralPicks: {
+        ...currentPhase.structuralPicks,
+        config: {
+          ...currentPhase.structuralPicks.config,
+          ...newConfig,
+        },
+      },
+    };
+    onPhasesChange(updated);
+  }
+
   function handleNext() {
     if (currentPhaseIndex < phases.length - 1) {
       setCurrentPhaseIndex(currentPhaseIndex + 1);
@@ -109,9 +132,22 @@ export function PhaseConfigStep({
   }
 
   return (
-    <div style={{ display: "grid", gap: "2rem" }}>
-      {/* Phase Progress */}
-      <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* Phase Progress - Sticky Header */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          background: "white",
+          padding: "1rem 0",
+          marginLeft: "-2rem",
+          marginRight: "-2rem",
+          paddingLeft: "2rem",
+          paddingRight: "2rem",
+          borderBottom: "1px solid #eee",
+          zIndex: 10,
+        }}
+      >
         <div
           style={{
             display: "flex",
@@ -193,6 +229,7 @@ export function PhaseConfigStep({
         <StructuralPicksConfiguration
           structuralPicks={currentPhase.structuralPicks}
           phaseType={currentPhaseType}
+          onConfigChange={handleStructuralConfigChange}
         />
       )}
 
@@ -203,10 +240,12 @@ export function PhaseConfigStep({
           disabled={currentPhaseIndex === 0}
           style={{
             padding: "0.75rem 1.5rem",
-            background: currentPhaseIndex === 0 ? "#eee" : "white",
-            border: "1px solid #ccc",
+            background: currentPhaseIndex === 0 ? "#f5f5f5" : "white",
+            border: currentPhaseIndex === 0 ? "1px solid #ddd" : "1px solid #007bff",
             borderRadius: "6px",
             cursor: currentPhaseIndex === 0 ? "not-allowed" : "pointer",
+            color: currentPhaseIndex === 0 ? "#999" : "#007bff",
+            fontWeight: currentPhaseIndex === 0 ? "normal" : "500",
           }}
         >
           ← Fase Anterior
@@ -340,10 +379,54 @@ function MatchPicksConfiguration({
 type StructuralPicksConfigurationProps = {
   structuralPicks: any;
   phaseType: string;
+  onConfigChange: (config: Record<string, number | boolean>) => void;
 };
 
-function StructuralPicksConfiguration({ structuralPicks, phaseType }: StructuralPicksConfigurationProps) {
+function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChange }: StructuralPicksConfigurationProps) {
   const isGroupPhase = phaseType === "GROUP";
+  const config = structuralPicks?.config || {};
+
+  // Valores por defecto para GROUP_STANDINGS
+  const pointsPosition1 = config.pointsPosition1 ?? 10;
+  const pointsPosition2 = config.pointsPosition2 ?? 10;
+  const pointsPosition3 = config.pointsPosition3 ?? 10;
+  const pointsPosition4 = config.pointsPosition4 ?? 10;
+  const bonusPerfectGroupEnabled = config.bonusPerfectGroupEnabled ?? true;
+  const bonusPerfectGroup = config.bonusPerfectGroup ?? 20;
+
+  // Calcular ejemplo dinámico
+  const exampleCorrect3 = pointsPosition1 + pointsPosition2 + pointsPosition3; // Si acierta 1°, 2°, 3°
+  const examplePerfect = pointsPosition1 + pointsPosition2 + pointsPosition3 + pointsPosition4 + (bonusPerfectGroupEnabled ? bonusPerfectGroup : 0);
+
+  const inputStyle = {
+    width: "60px",
+    padding: "0.4rem",
+    border: "1px solid #ccc",
+    borderRadius: "4px",
+    fontSize: "0.95rem",
+    textAlign: "center" as const,
+    background: "white",
+  };
+
+  const positionRowStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.5rem 0.75rem",
+    background: "white",
+    borderRadius: "6px",
+    border: "1px solid #e0e0e0",
+  };
+
+  const labelStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    padding: "0.75rem",
+    background: "white",
+    borderRadius: "6px",
+    border: "1px solid #e0e0e0",
+  };
 
   return (
     <div>
@@ -363,18 +446,110 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType }: Structural
               <span style={{ fontSize: "1.5rem" }}>📊</span>
               <strong style={{ fontSize: "1.125rem" }}>Ordenar Posiciones de Grupo</strong>
             </div>
-            <p style={{ margin: "0 0 1rem 0", color: "#666", fontSize: "0.875rem" }}>
+            <p style={{ margin: "0 0 1.25rem 0", color: "#666", fontSize: "0.875rem" }}>
               Los jugadores ordenan los equipos del 1° al 4° lugar en cada grupo.
-              No predicen marcadores de partidos individuales.
+              Configura cuántos puntos vale acertar cada posición.
             </p>
-            <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem" }}>
-              <div>
-                ✅ <strong>{structuralPicks?.config?.pointsPerExactPosition || 10} pts</strong> por cada equipo en su posición exacta
+
+            {/* Puntos por posición */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <div style={{ fontSize: "0.85rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#333" }}>
+                Puntos por acertar posición:
               </div>
-              {structuralPicks?.config?.bonusPerfectGroup && (
-                <div>
-                  🎯 <strong>+{structuralPicks.config.bonusPerfectGroup} pts</strong> de bonus por acertar un grupo completo
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
+                <div style={positionRowStyle}>
+                  <span style={{ fontSize: "1rem" }}>🥇</span>
+                  <span style={{ fontSize: "0.8rem", color: "#666" }}>1°</span>
+                  <input
+                    type="number"
+                    value={pointsPosition1}
+                    onChange={(e) => onConfigChange({ pointsPosition1: Number(e.target.value) })}
+                    min={0}
+                    max={100}
+                    style={inputStyle}
+                  />
                 </div>
+                <div style={positionRowStyle}>
+                  <span style={{ fontSize: "1rem" }}>🥈</span>
+                  <span style={{ fontSize: "0.8rem", color: "#666" }}>2°</span>
+                  <input
+                    type="number"
+                    value={pointsPosition2}
+                    onChange={(e) => onConfigChange({ pointsPosition2: Number(e.target.value) })}
+                    min={0}
+                    max={100}
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={positionRowStyle}>
+                  <span style={{ fontSize: "1rem" }}>🥉</span>
+                  <span style={{ fontSize: "0.8rem", color: "#666" }}>3°</span>
+                  <input
+                    type="number"
+                    value={pointsPosition3}
+                    onChange={(e) => onConfigChange({ pointsPosition3: Number(e.target.value) })}
+                    min={0}
+                    max={100}
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={positionRowStyle}>
+                  <span style={{ fontSize: "1rem" }}>4️⃣</span>
+                  <span style={{ fontSize: "0.8rem", color: "#666" }}>4°</span>
+                  <input
+                    type="number"
+                    value={pointsPosition4}
+                    onChange={(e) => onConfigChange({ pointsPosition4: Number(e.target.value) })}
+                    min={0}
+                    max={100}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Toggle bonus grupo perfecto */}
+            <div style={{ marginBottom: "1rem" }}>
+              <div
+                style={{
+                  ...labelStyle,
+                  background: bonusPerfectGroupEnabled ? "#fff" : "#f5f5f5",
+                  border: bonusPerfectGroupEnabled ? "1px solid #007bff" : "1px solid #e0e0e0",
+                }}
+              >
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", flex: 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={bonusPerfectGroupEnabled}
+                    onChange={(e) => onConfigChange({ bonusPerfectGroupEnabled: e.target.checked })}
+                    style={{ width: "18px", height: "18px" }}
+                  />
+                  <span style={{ fontSize: "1.25rem" }}>🎯</span>
+                  <span style={{ fontSize: "0.9rem", color: "#333" }}>
+                    Bonus por acertar grupo completo
+                  </span>
+                </label>
+                {bonusPerfectGroupEnabled && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <input
+                      type="number"
+                      value={bonusPerfectGroup}
+                      onChange={(e) => onConfigChange({ bonusPerfectGroup: Number(e.target.value) })}
+                      min={0}
+                      max={100}
+                      style={inputStyle}
+                    />
+                    <span style={{ fontSize: "0.85rem", color: "#666" }}>pts</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ejemplo dinámico */}
+            <div style={{ padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: "#555" }}>
+              <strong>Ejemplo:</strong> Si un jugador acierta las 4 posiciones de un grupo, gana {pointsPosition1} + {pointsPosition2} + {pointsPosition3} + {pointsPosition4} = {pointsPosition1 + pointsPosition2 + pointsPosition3 + pointsPosition4} pts.
+              {bonusPerfectGroupEnabled && (
+                <> Además recibe <strong>+{bonusPerfectGroup} pts de bonus</strong>, para un total de <strong>{examplePerfect} pts</strong> por grupo perfecto.</>
               )}
             </div>
           </>
@@ -384,12 +559,26 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType }: Structural
               <span style={{ fontSize: "1.5rem" }}>🏆</span>
               <strong style={{ fontSize: "1.125rem" }}>Predecir Quién Avanza</strong>
             </div>
-            <p style={{ margin: "0 0 1rem 0", color: "#666", fontSize: "0.875rem" }}>
+            <p style={{ margin: "0 0 1.25rem 0", color: "#666", fontSize: "0.875rem" }}>
               Los jugadores seleccionan qué equipo avanza a la siguiente ronda en cada partido.
               No importa el marcador ni cómo avancen (tiempo regular, prórroga o penales).
             </p>
-            <div style={{ fontSize: "0.875rem" }}>
-              ✅ <strong>{structuralPicks?.config?.pointsPerCorrectAdvance || 15} pts</strong> por cada equipo que aciertes que avanza
+            <div style={labelStyle}>
+              <span style={{ fontSize: "1.25rem" }}>✅</span>
+              <input
+                type="number"
+                value={config.pointsPerCorrectAdvance ?? 15}
+                onChange={(e) => onConfigChange({ pointsPerCorrectAdvance: Number(e.target.value) })}
+                min={0}
+                max={100}
+                style={{ ...inputStyle, width: "70px" }}
+              />
+              <span style={{ fontSize: "0.9rem", color: "#333" }}>
+                <strong>pts</strong> por cada equipo que aciertes que avanza
+              </span>
+            </div>
+            <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: "#555" }}>
+              <strong>Ejemplo:</strong> En Round of 32 hay 16 partidos. Si aciertas 10 de 16, ganas {(config.pointsPerCorrectAdvance ?? 15) * 10} pts.
             </div>
           </>
         )}

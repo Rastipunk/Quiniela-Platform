@@ -169,12 +169,31 @@ export function PickRulesDisplay({
                   <div style={{ marginBottom: 6 }}>
                     📋 <strong>Ordenar posiciones de cada grupo</strong>
                   </div>
-                  <div style={{ color: "#666", fontSize: 13 }}>
-                    • {(phase.structuralPicks.config as any).pointsPerExactPosition} pts por cada equipo en su posición exacta
-                  </div>
-                  {(phase.structuralPicks.config as any).bonusPerfectGroup && (
+                  {/* Soportar nuevo formato (pointsPosition1-4) y legacy (pointsPerExactPosition) */}
+                  {(phase.structuralPicks.config as any).pointsPosition1 !== undefined ? (
+                    <>
+                      <div style={{ color: "#666", fontSize: 13 }}>
+                        • 🥇 {(phase.structuralPicks.config as any).pointsPosition1} pts por acertar el 1° lugar
+                      </div>
+                      <div style={{ color: "#666", fontSize: 13 }}>
+                        • 🥈 {(phase.structuralPicks.config as any).pointsPosition2} pts por acertar el 2° lugar
+                      </div>
+                      <div style={{ color: "#666", fontSize: 13 }}>
+                        • 🥉 {(phase.structuralPicks.config as any).pointsPosition3} pts por acertar el 3° lugar
+                      </div>
+                      <div style={{ color: "#666", fontSize: 13 }}>
+                        • 4️⃣ {(phase.structuralPicks.config as any).pointsPosition4} pts por acertar el 4° lugar
+                      </div>
+                    </>
+                  ) : (
                     <div style={{ color: "#666", fontSize: 13 }}>
-                      • +{(phase.structuralPicks.config as any).bonusPerfectGroup} pts de bonus por acertar un grupo completo
+                      • {(phase.structuralPicks.config as any).pointsPerExactPosition} pts por cada equipo en su posición exacta
+                    </div>
+                  )}
+                  {/* Bonus por grupo perfecto - soporta nuevo formato (bonusPerfectGroupEnabled) y legacy */}
+                  {((phase.structuralPicks.config as any).bonusPerfectGroupEnabled ?? (phase.structuralPicks.config as any).bonusPerfectGroup) && (phase.structuralPicks.config as any).bonusPerfectGroup && (
+                    <div style={{ color: "#666", fontSize: 13 }}>
+                      • 🎯 +{(phase.structuralPicks.config as any).bonusPerfectGroup} pts de bonus por acertar un grupo completo
                     </div>
                   )}
                   {(phase.structuralPicks.config as any).includeGlobalQualifiers && (

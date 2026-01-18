@@ -2,6 +2,25 @@
 // Sprint 2 - Advanced Pick Types System - Preset SIMPLE
 
 /**
+ * Configuración de puntuación para GROUP_STANDINGS
+ * Soporta dos formatos:
+ * 1. Nuevo formato con puntos por posición: pointsPosition1, pointsPosition2, etc.
+ * 2. Formato legacy: pointsPerExactPosition (mismo valor para todas las posiciones)
+ */
+type GroupStandingsConfig = {
+  // Nuevo formato: puntos por posición individual
+  pointsPosition1?: number;
+  pointsPosition2?: number;
+  pointsPosition3?: number;
+  pointsPosition4?: number;
+  // Legacy: mismo valor para todas las posiciones
+  pointsPerExactPosition?: number;
+  // Bonus por grupo perfecto
+  bonusPerfectGroupEnabled?: boolean;
+  bonusPerfectGroup?: number;
+};
+
+/**
  * Calcula puntos para GROUP_STANDINGS (ordenamiento de equipos en grupos)
  *
  * @param pick - Array de team IDs en orden predicho (1° a 4°)
@@ -12,10 +31,7 @@
 export function scoreGroupStandings(
   pick: { teamIds: string[] },
   result: { teamIds: string[] },
-  config: {
-    pointsPerExactPosition: number;
-    bonusPerfectGroup?: number;
-  }
+  config: GroupStandingsConfig
 ): number {
   if (!pick || !result || !pick.teamIds || !result.teamIds) {
     return 0;
@@ -23,15 +39,34 @@ export function scoreGroupStandings(
 
   let points = 0;
 
+  // Obtener puntos por posición (soporta nuevo formato y legacy)
+  const getPointsForPosition = (position: number): number => {
+    // Nuevo formato: puntos individuales por posición
+    if (config.pointsPosition1 !== undefined) {
+      switch (position) {
+        case 0: return config.pointsPosition1 ?? 10;
+        case 1: return config.pointsPosition2 ?? 10;
+        case 2: return config.pointsPosition3 ?? 10;
+        case 3: return config.pointsPosition4 ?? 10;
+        default: return 10;
+      }
+    }
+    // Legacy: mismo valor para todas
+    return config.pointsPerExactPosition ?? 10;
+  };
+
   // Puntos por cada equipo en su posición exacta
   for (let i = 0; i < Math.min(pick.teamIds.length, result.teamIds.length); i++) {
     if (pick.teamIds[i] === result.teamIds[i]) {
-      points += config.pointsPerExactPosition;
+      points += getPointsForPosition(i);
     }
   }
 
   // Bonus si acertó el grupo completo (todas las posiciones exactas)
-  if (config.bonusPerfectGroup) {
+  // Soporta nuevo formato (bonusPerfectGroupEnabled) y legacy (solo bonusPerfectGroup)
+  const bonusEnabled = config.bonusPerfectGroupEnabled ?? (config.bonusPerfectGroup !== undefined && config.bonusPerfectGroup > 0);
+
+  if (bonusEnabled && config.bonusPerfectGroup) {
     const isPerfectGroup =
       pick.teamIds.length === result.teamIds.length &&
       pick.teamIds.every((teamId, index) => teamId === result.teamIds[index]);

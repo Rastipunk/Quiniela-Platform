@@ -159,7 +159,12 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           config:
             phase.type === "GROUP"
               ? {
-                  pointsPerExactPosition: 10,
+                  // Nuevo formato: puntos por posición
+                  pointsPosition1: 10,
+                  pointsPosition2: 10,
+                  pointsPosition3: 10,
+                  pointsPosition4: 10,
+                  bonusPerfectGroupEnabled: true,
                   bonusPerfectGroup: 20,
                 }
               : {
@@ -272,15 +277,17 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           maxWidth: "800px",
           width: "90%",
           maxHeight: "90vh",
-          overflow: "auto",
+          display: "flex",
+          flexDirection: "column",
           boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
         }}
       >
-        {/* Header */}
+        {/* Header - Fixed at top */}
         <div
           style={{
             padding: "1.5rem 2rem",
             borderBottom: "1px solid #eee",
+            flexShrink: 0,
           }}
         >
           <h2 style={{ margin: 0, fontSize: "1.5rem" }}>
@@ -293,8 +300,8 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           </p>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: "2rem" }}>
+        {/* Body - Scrollable */}
+        <div style={{ padding: wizardState.currentStep === "PHASE_CONFIG" ? "0 2rem 2rem 2rem" : "2rem", overflow: "auto", flex: 1 }}>
           {wizardState.currentStep === "PRESET_SELECTION" && (
             <PresetSelectionStep onSelect={handlePresetSelected} />
           )}
@@ -321,13 +328,14 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer - Fixed at bottom */}
         <div
           style={{
             padding: "1.5rem 2rem",
             borderTop: "1px solid #eee",
             display: "flex",
             justifyContent: "space-between",
+            flexShrink: 0,
           }}
         >
           <button
