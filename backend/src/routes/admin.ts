@@ -12,7 +12,9 @@ adminRouter.get("/ping", requireAuth, requireAdmin, (_req, res) => {
 });
 
 // Endpoint público para crear admin inicial (solo funciona si no hay admins)
+// NOTA: Este endpoint NO tiene requireAuth - es público intencionalmente
 adminRouter.post("/bootstrap-admin", async (req, res) => {
+  console.log("[bootstrap-admin] Request received");
   try {
     // Check if any admin exists
     const existingAdmin = await prisma.user.findFirst({
