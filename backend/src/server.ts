@@ -1,5 +1,4 @@
 import "dotenv/config";
-import "./types/express"; // Extend Express Request type with auth
 import express from "express";
 import cors from "cors";
 
