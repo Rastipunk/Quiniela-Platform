@@ -11,6 +11,8 @@ node_modules
 *.js.map
 !jest.config.js
 !*.test.js
+# Keep custom type definitions (not generated)
+!src/types/*.d.ts
 
 # Temporary files
 *.bak
