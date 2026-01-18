@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "../db";
@@ -185,7 +186,7 @@ poolsRouter.post("/", async (req, res) => {
         requireApproval: requireApproval ?? false,
         pickTypesConfig: finalPickTypesConfig,
         // CRÍTICO: Copiar el fixture del torneo para que cada pool tenga su propia copia
-        fixtureSnapshot: instance.dataJson,
+        fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
       },
     });
 
@@ -1493,7 +1494,8 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
         semi_finals: "finals",
       };
 
-      actualNextPhaseId = nextPhaseId || phaseOrder[currentPhaseId];
+      const derivedNextPhase = phaseOrder[currentPhaseId];
+      actualNextPhaseId = nextPhaseId || derivedNextPhase || "";
       if (!actualNextPhaseId) {
         return res.status(400).json({
           error: "INVALID_PHASE",

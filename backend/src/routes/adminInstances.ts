@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
@@ -73,7 +74,7 @@ adminInstancesRouter.post("/templates/:templateId/instances", async (req, res) =
       templateVersionId: version.id,
       name,
       status: "DRAFT",
-      dataJson: version.dataJson,
+      dataJson: version.dataJson as Prisma.InputJsonValue,
     },
   });
 

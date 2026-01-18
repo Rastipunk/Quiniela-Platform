@@ -18,13 +18,13 @@ export const MatchPickTypeSchema = z.object({
   key: MatchPickTypeKeySchema,
   enabled: z.boolean(),
   points: z.number().int().min(0).max(1000),
-  config: z.record(z.any()).optional(),
+  config: z.record(z.string(), z.any()).optional(),
 });
 
 export const AutoScalingConfigSchema = z.object({
   enabled: z.boolean(),
   basePhase: z.string().min(1),
-  multipliers: z.record(z.number().min(1).max(10)),
+  multipliers: z.record(z.string(), z.number().min(1).max(10)),
 });
 
 export const MatchPicksConfigSchema = z.object({
@@ -157,7 +157,7 @@ export function validatePhasePickConfig(config: unknown): ValidationResult {
     if (err instanceof z.ZodError) {
       return {
         valid: false,
-        errors: err.errors.map((e) => ({
+        errors: err.issues.map((e: z.ZodIssue) => ({
           field: e.path.join("."),
           message: e.message,
         })),
@@ -299,7 +299,7 @@ export function validatePoolPickTypesConfig(config: unknown): ValidationResult {
     if (err instanceof z.ZodError) {
       return {
         valid: false,
-        errors: err.errors.map((e) => ({
+        errors: err.issues.map((e: z.ZodIssue) => ({
           field: e.path.join("."),
           message: e.message,
         })),

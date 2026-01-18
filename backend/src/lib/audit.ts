@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 
 // Comentario en español: registra eventos críticos para trazabilidad
@@ -18,7 +19,9 @@ export async function writeAuditEvent(params: {
       entityType: params.entityType ?? null,
       entityId: params.entityId ?? null,
       poolId: params.poolId ?? null,
-      dataJson: params.dataJson ?? null,
+      dataJson: params.dataJson !== undefined && params.dataJson !== null
+        ? (params.dataJson as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
       ip: params.ip ?? null,
       userAgent: params.userAgent ?? null,
     },

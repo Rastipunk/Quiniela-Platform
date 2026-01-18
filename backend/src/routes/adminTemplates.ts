@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
@@ -102,7 +103,7 @@ adminTemplatesRouter.post("/templates/:templateId/versions", async (req, res) =>
       templateId,
       versionNumber: nextVersionNumber,
       status: "DRAFT",
-      dataJson: validated.data,
+      dataJson: validated.data as unknown as Prisma.InputJsonValue,
     },
   });
 
@@ -147,7 +148,7 @@ adminTemplatesRouter.put("/templates/:templateId/versions/:versionId", async (re
 
   const updated = await prisma.tournamentTemplateVersion.update({
     where: { id: versionId },
-    data: { dataJson: validated.data },
+    data: { dataJson: validated.data as unknown as Prisma.InputJsonValue },
   });
 
   await writeAuditEvent({

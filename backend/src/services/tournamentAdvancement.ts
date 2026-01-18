@@ -4,7 +4,7 @@
  * Específicamente diseñado para FIFA World Cup 2026 con 48 equipos.
  */
 
-type TeamStanding = {
+export type TeamStanding = {
   teamId: string;
   groupId: string;
   position: number; // 1, 2, 3, 4

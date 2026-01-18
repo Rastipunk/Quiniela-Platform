@@ -343,7 +343,7 @@ authRouter.post("/google", async (req, res) => {
 
   // Usuario nuevo: crear cuenta
   // Auto-generar username desde email
-  const emailLocalPart = googleUser.email.split("@")[0];
+  const emailLocalPart = googleUser.email.split("@")[0] ?? "user";
   let baseUsername = emailLocalPart.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
 
   // Asegurar longitud válida

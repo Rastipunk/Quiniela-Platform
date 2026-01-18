@@ -1,5 +1,5 @@
-// backend/src/data/wc2026Sandbox.ts
-import type { TemplateData } from "../schemas/templateData";
+// backend/src/wc2026Sandbox.ts
+import type { TemplateData } from "./schemas/templateData";
 
 export function buildWc2026Sandbox(): TemplateData {
   const groups = "ABCDEFGHIJKL".split("");
@@ -20,7 +20,7 @@ export function buildWc2026Sandbox(): TemplateData {
   });
 
   const phases = [
-    { id: "group_stage", name: "Fase de grupos", type: "GROUP" as const },
+    { id: "group_stage", name: "Fase de grupos", type: "GROUP" as const, order: 1 },
   ];
 
   // 6 partidos por grupo (round-robin 4 equipos)
