@@ -3,10 +3,27 @@
    Forzado a tema claro (no depende del SO/navegador)
    =========================== */
 
-:root {
-  /* Fuerza controles nativos en claro (inputs/scrollbars) */
-  color-scheme: light;
+/* Forzar tema claro en TODO el documento */
+:root,
+html,
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
 
+/* Deshabilitar dark mode del sistema */
+@media (prefers-color-scheme: dark) {
+  :root,
+  html,
+  body {
+    color-scheme: light only;
+    -webkit-color-scheme: light only;
+    background-color: #f4f5f7 !important;
+    color: #111827 !important;
+  }
+}
+
+:root {
   /* Tipografía base */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
