@@ -1,7 +1,7 @@
 // Componente de Leaderboard optimizado para móvil
 // Sprint 3 - Mobile UX Improvements
 
-import { TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { mobileInteractiveStyles } from "../hooks/useIsMobile";
 
 type LeaderboardRow = {
   userId: string;

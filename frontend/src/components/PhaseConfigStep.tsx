@@ -345,6 +345,16 @@ function MatchPicksConfiguration({
       description: "Predice solo el ganador o empate en tiempo reglamentario (Victoria Local, Empate, Victoria Visitante). No disponible cuando se requieren marcadores.",
       example: "Solo para picks sin marcador. No combinable con predicciones de goles.",
     },
+    HOME_GOALS: {
+      title: "Goles del Local",
+      description: "Acierta únicamente los goles marcados por el equipo local.",
+      example: "Ejemplo con 4 pts: Predices 2-?, sale 2-3 → GANAS 4 PTS | Sale 3-0 → 0 pts",
+    },
+    AWAY_GOALS: {
+      title: "Goles del Visitante",
+      description: "Acierta únicamente los goles marcados por el equipo visitante.",
+      example: "Ejemplo con 4 pts: Predices ?-1, sale 2-1 → GANAS 4 PTS | Sale 2-2 → 0 pts",
+    },
   };
 
   return (

@@ -31,6 +31,7 @@ type MobileMatchCardProps = {
     groupId?: string;
     phaseId?: string;
   };
+  tournamentKey: string;
   myPick: Pick | null;
   result: Result | null;
   isLocked: boolean;
@@ -48,10 +49,11 @@ type MobileMatchCardProps = {
 
 export function MobileMatchCard({
   match,
+  tournamentKey,
   myPick,
   result,
   isLocked,
-  deadlineStatus,
+  deadlineStatus: _deadlineStatus,
   formattedDateTime,
   pointsEarned,
   allowScorePick = true,
@@ -154,7 +156,7 @@ export function MobileMatchCard({
           {/* Home Team Row */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {!homeIsPlaceholder && (
-              <TeamFlag teamId={match.homeTeam.id} size={36} />
+              <TeamFlag teamId={match.homeTeam.id} tournamentKey={tournamentKey} size="md" showName={false} />
             )}
             {homeIsPlaceholder && (
               <div
@@ -196,7 +198,7 @@ export function MobileMatchCard({
           {/* Away Team Row */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {!awayIsPlaceholder && (
-              <TeamFlag teamId={match.awayTeam.id} size={36} />
+              <TeamFlag teamId={match.awayTeam.id} tournamentKey={tournamentKey} size="md" showName={false} />
             )}
             {awayIsPlaceholder && (
               <div

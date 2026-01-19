@@ -310,7 +310,6 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
   }
 
   // Calcular estadísticas totales
-  const totalMatches = data.phases.reduce((sum, p) => sum + p.matchCount, 0);
   const totalScored = data.phases.reduce((sum, p) => sum + p.scoredCount, 0);
   const totalMaxPoints = data.phases.reduce((sum, p) => sum + p.maxPossiblePoints, 0);
 
