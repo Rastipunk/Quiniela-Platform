@@ -1,0 +1,50 @@
+=====================================
+  QUINIELA PLATFORM - TEST ACCOUNTS
+=====================================
+
+=====================================
+  10 USUARIOS DE PRUEBA
+=====================================
+
+ #  | Rol    | Email                      | Password   | Nombre
+----|--------|----------------------------|------------|------------------
+ 1  | HOST   | host@quiniela.test         | Test1234!  | Carlos (Host)
+ 2  | PLAYER | player1@quiniela.test      | Test1234!  | María García
+ 3  | PLAYER | player2@quiniela.test      | Test1234!  | Juan Pérez
+ 4  | PLAYER | player3@quiniela.test      | Test1234!  | Ana Rodríguez
+ 5  | PLAYER | player4@quiniela.test      | Test1234!  | Luis Martínez
+ 6  | PLAYER | player5@quiniela.test      | Test1234!  | Sofía López
+ 7  | PLAYER | player6@quiniela.test      | Test1234!  | Diego Hernández
+ 8  | PLAYER | player7@quiniela.test      | Test1234!  | Laura Sánchez
+ 9  | PLAYER | player8@quiniela.test      | Test1234!  | Pablo Torres
+10  | PLAYER | player9@quiniela.test      | Test1234!  | Carmen Ruiz
+
+=====================================
+  CUENTAS QA/ADMIN
+=====================================
+
+Rol            | Email            | Password
+---------------|------------------|------------
+PLATFORM_ADMIN | admin@test.com   | admin123
+HOST (QA)      | host@test.com    | host123
+PLAYER (QA)    | player@test.com  | player123
+
+=====================================
+  URLs
+=====================================
+Frontend: http://localhost:5173
+Backend:  http://localhost:3000
+
+=====================================
+  SEEDS
+=====================================
+
+Para crear las 10 cuentas + pool completo:
+  cd backend
+  npx ts-node src/scripts/seedFullTestScenario.ts
+
+Para crear solo las 3 cuentas QA:
+  npm run seed:test-accounts
+
+Para crear sandbox WC2026 (requerido primero):
+  npm run seed:wc2026-sandbox

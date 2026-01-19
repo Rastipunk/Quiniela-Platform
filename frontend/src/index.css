@@ -157,3 +157,176 @@ button:disabled {
 /* Quita el comportamiento de Vite que cambia colores con el tema.
    IMPORTANTE: no usamos prefers-color-scheme. */
 
+/* ===========================
+   Notification Badge Animations
+   Sprint 3 - Sistema de Notificaciones
+   =========================== */
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+
+/* Ocultar scrollbar en tabs pero mantener scroll funcional */
+.tabs-scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===========================
+   Mobile-First Responsive Styles
+   Sprint 3 - Mobile UX Improvements
+   =========================== */
+
+/* Eliminar delay de 300ms en dispositivos táctiles */
+* {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Touch targets accesibles (WCAG 2.1) */
+@media (max-width: 640px) {
+  /* Inputs y selects más grandes para móvil */
+  input, select, textarea {
+    min-height: 44px;
+    font-size: 16px; /* Evita zoom automático en iOS */
+    padding: 12px 14px;
+  }
+
+  /* Botones con tamaño mínimo táctil */
+  button {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Enlaces con área táctil suficiente */
+  a {
+    display: inline-block;
+    padding: 4px 0;
+  }
+
+  /* Tipografía más legible en móvil */
+  body {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+
+  /* Cards con menos padding en móvil */
+  .card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+}
+
+/* Mejoras de scroll para iOS */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Indicadores de scroll horizontal */
+.scroll-horizontal {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroll-horizontal::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-horizontal > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Gradient fade para indicar scroll (opcional con pseudo-elementos) */
+.scroll-fade-right {
+  position: relative;
+}
+
+.scroll-fade-right::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--bg));
+  pointer-events: none;
+}
+
+/* Touch feedback visual */
+.touch-feedback {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.touch-feedback:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* Animaciones suaves para elementos móviles */
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modales móviles (bottom sheet style) */
+@media (max-width: 640px) {
+  .modal-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 90vh;
+    border-radius: 16px 16px 0 0;
+    animation: slideInUp 0.25s ease;
+  }
+}
+
+/* Safe area para notch/home indicator en iOS */
+@supports (padding: max(0px)) {
+  .safe-area-bottom {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .safe-area-top {
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+}
+

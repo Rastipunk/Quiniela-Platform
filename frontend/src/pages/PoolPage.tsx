@@ -10,6 +10,11 @@ import type { PoolPickTypesConfig } from "../types/pickConfig";
 import { StructuralPicksManager } from "../components/StructuralPicksManager";
 import { ScoringBreakdownModal } from "../components/ScoringBreakdownModal";
 import { PlayerSummary } from "../components/PlayerSummary";
+import { NotificationBadge } from "../components/NotificationBadge";
+import { NotificationBanner } from "../components/NotificationBanner";
+import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "../hooks/usePoolNotifications";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { MobileLeaderboard } from "../components/MobileLeaderboard";
 
 function fmtUtc(iso: string, userTimezone: string | null = null) {
   return formatMatchDateTime(iso, userTimezone);
@@ -71,6 +76,7 @@ function getPoolStatusBadge(status: string): { label: string; color: string; emo
 export function PoolPage() {
   const { poolId } = useParams();
   const token = useMemo(() => getToken(), []);
+  const isMobile = useIsMobile();
 
   const [overview, setOverview] = useState<PoolOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +131,14 @@ export function PoolPage() {
 
   // Invite
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  // Notificaciones internas (badges)
+  const { notifications, refetch: refetchNotifications } = usePoolNotifications(poolId, {
+    pollingInterval: 60000, // 60 segundos
+    enabled: !!poolId,
+  });
+  const tabBadges = calculateTabBadges(notifications);
+  const hasUrgent = hasUrgentDeadlines(notifications);
 
   async function load(v: boolean) {
     if (!token || !poolId) return;
@@ -232,6 +246,35 @@ export function PoolPage() {
 
     const hasAllResults = phaseMatches.every((m: any) => m.result);
     return hasAllResults ? "COMPLETED" : "ACTIVE";
+  };
+
+  // Mapa de siguiente fase para cada fase
+  const nextPhaseMap: Record<string, string | null> = {
+    group_stage: "round_of_32",
+    round_of_32: "round_of_16",
+    round_of_16: "quarter_finals",
+    quarter_finals: "semi_finals",
+    semi_finals: "finals",
+    third_place: null,
+    finals: null,
+  };
+
+  // Verificar si una fase ya avanzó (la siguiente fase ya NO tiene placeholders)
+  const hasPhaseAdvanced = (phaseId: string): boolean => {
+    if (!overview) return false;
+
+    const nextPhaseId = nextPhaseMap[phaseId];
+    if (!nextPhaseId) return false; // Finals/third_place no tienen siguiente fase
+
+    const nextPhaseMatches = overview.matches.filter((m: any) => m.phaseId === nextPhaseId);
+    if (nextPhaseMatches.length === 0) return false; // Si no hay partidos, no avanzó
+
+    // Si la siguiente fase NO tiene placeholders, significa que ya avanzó
+    const hasPlaceholdersInNext = nextPhaseMatches.some((m: any) =>
+      isPlaceholder(m.homeTeam?.id || "") || isPlaceholder(m.awayTeam?.id || "")
+    );
+
+    return !hasPlaceholdersInNext;
   };
 
   const allowScorePick = useMemo(() => {
@@ -382,6 +425,7 @@ export function PoolPage() {
 
       await upsertPick(token, poolId, matchId, { pick: normalizedPick });
       await load(verbose);
+      refetchNotifications();
     } catch (e: any) {
       setError(e?.message ?? "Error");
     } finally {
@@ -396,6 +440,7 @@ export function PoolPage() {
     try {
       await upsertResult(token, poolId, matchId, input);
       await load(verbose);
+      refetchNotifications();
     } catch (e: any) {
       setError(e?.message ?? "Error");
     } finally {
@@ -452,42 +497,112 @@ export function PoolPage() {
             {overview.tournamentInstance.name} • {overview.counts.membersActive} miembros • Tu rol: <b>{overview.myMembership.role}</b>
           </div>
 
-          {/* Tabs Navigation */}
+          {/* Tabs Navigation con Notification Badges */}
           <div style={{
-            marginTop: 16,
+            marginTop: isMobile ? 12 : 16,
+            paddingTop: 8,
             borderBottom: "2px solid #e0e0e0",
             display: "flex",
-            gap: 8
+            gap: isMobile ? 4 : 8,
+            overflowX: "auto",
+            overflowY: "visible",
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            ...mobileInteractiveStyles.tapHighlight,
           }}>
-            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: "12px 24px",
-                  border: "none",
-                  borderBottom: activeTab === tab ? "3px solid #007bff" : "3px solid transparent",
-                  background: "transparent",
-                  color: activeTab === tab ? "#007bff" : "#666",
-                  fontWeight: activeTab === tab ? 600 : 400,
-                  fontSize: 16,
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-              >
-                {tab === "partidos" && "⚽ Partidos"}
-                {tab === "leaderboard" && "📊 Leaderboard"}
-                {tab === "resumen" && "📈 Mi Resumen"}
-                {tab === "reglas" && "📋 Reglas"}
-                {tab === "admin" && "⚙️ Administración"}
-              </button>
-            ))}
+            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {
+              const badgeCount = tabBadges[tab] || 0;
+              const isUrgent = tab === "partidos" && hasUrgent;
+
+              // Nombres cortos para móvil
+              const tabLabels = {
+                partidos: isMobile ? "⚽" : "⚽ Partidos",
+                leaderboard: isMobile ? "📊" : "📊 Leaderboard",
+                resumen: isMobile ? "📈" : "📈 Mi Resumen",
+                reglas: isMobile ? "📋" : "📋 Reglas",
+                admin: isMobile ? "⚙️" : "⚙️ Administración",
+              };
+
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    position: "relative",
+                    padding: isMobile ? "12px 16px" : "12px 24px",
+                    border: "none",
+                    borderBottom: activeTab === tab ? "3px solid #007bff" : "3px solid transparent",
+                    background: "transparent",
+                    color: activeTab === tab ? "#007bff" : "#666",
+                    fontWeight: activeTab === tab ? 600 : 400,
+                    fontSize: isMobile ? 18 : 16,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    flexShrink: 0,
+                    minHeight: TOUCH_TARGET.minimum,
+                    ...mobileInteractiveStyles.tapHighlight,
+                  }}
+                  title={tab.charAt(0).toUpperCase() + tab.slice(1)}
+                >
+                  {tabLabels[tab]}
+                  {badgeCount > 0 && (
+                    <NotificationBadge
+                      count={badgeCount}
+                      pulse={isUrgent}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Tab name indicator for mobile */}
+          {isMobile && (
+            <div style={{
+              marginTop: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#007bff",
+              textAlign: "center",
+            }}>
+              {activeTab === "partidos" && "Partidos"}
+              {activeTab === "leaderboard" && "Leaderboard"}
+              {activeTab === "resumen" && "Mi Resumen"}
+              {activeTab === "reglas" && "Reglas"}
+              {activeTab === "admin" && "Administración"}
+            </div>
+          )}
 
           {/* Tab Content: Administración (solo HOST) */}
           {activeTab === "admin" && overview.permissions.canManageResults && (
             <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
               <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, marginBottom: 16 }}>⚙️ Panel de Administración del Host</h3>
+
+              {/* Notification Banner for Admin tab */}
+              {notifications && (tabBadges.admin > 0) && (() => {
+                const bannerItems: { icon: string; message: string }[] = [];
+
+                if (notifications.pendingJoins > 0) {
+                  bannerItems.push({
+                    icon: "👤",
+                    message: `${notifications.pendingJoins} solicitud${notifications.pendingJoins > 1 ? "es" : ""} de ingreso pendiente${notifications.pendingJoins > 1 ? "s" : ""}.`
+                  });
+                }
+
+                if (notifications.phasesReadyToAdvance.length > 0) {
+                  bannerItems.push({
+                    icon: "🚀",
+                    message: `${notifications.phasesReadyToAdvance.length} fase${notifications.phasesReadyToAdvance.length > 1 ? "s lista" : " lista"}s para avanzar.`
+                  });
+                }
+
+                return bannerItems.length > 0 ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <NotificationBanner items={bannerItems} />
+                  </div>
+                ) : null;
+              })()}
 
               {/* Auto-Advance Configuration */}
               <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
@@ -688,37 +803,55 @@ export function PoolPage() {
                           )}
                         </div>
                         {status === "COMPLETED" && (
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button
-                              disabled={busyKey === `advance:${phase.id}`}
-                              onClick={async () => {
-                                if (!token || !poolId) return;
-                                setBusyKey(`advance:${phase.id}`);
-                                setError(null);
-                                try {
-                                  const result = await manualAdvancePhase(token, poolId, phase.id);
-                                  await load(verbose);
-                                  alert(`✅ Fase avanzada exitosamente: ${result.message || 'Avance completado'}`);
-                                } catch (err: any) {
-                                  setError(err?.message ?? "Error al avanzar fase");
-                                } finally {
-                                  setBusyKey(null);
-                                }
-                              }}
-                              style={{
-                                padding: "8px 16px",
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            {/* Mostrar botón "Avanzar" solo si la fase no ha avanzado todavía */}
+                            {!hasPhaseAdvanced(phase.id) && nextPhaseMap[phase.id] && (
+                              <button
+                                disabled={busyKey === `advance:${phase.id}`}
+                                onClick={async () => {
+                                  if (!token || !poolId) return;
+                                  setBusyKey(`advance:${phase.id}`);
+                                  setError(null);
+                                  try {
+                                    const result = await manualAdvancePhase(token, poolId, phase.id);
+                                    await load(verbose);
+                                    alert(`✅ Fase avanzada exitosamente: ${result.message || 'Avance completado'}`);
+                                  } catch (err: any) {
+                                    setError(err?.message ?? "Error al avanzar fase");
+                                  } finally {
+                                    setBusyKey(null);
+                                  }
+                                }}
+                                style={{
+                                  padding: "8px 16px",
+                                  borderRadius: 8,
+                                  border: "1px solid #007bff",
+                                  background: busyKey === `advance:${phase.id}` ? "#ccc" : "#007bff",
+                                  color: "#fff",
+                                  cursor: busyKey === `advance:${phase.id}` ? "wait" : "pointer",
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                {busyKey === `advance:${phase.id}` ? "⏳ Avanzando..." : "🚀 Avanzar Fase"}
+                              </button>
+                            )}
+                            {/* Mostrar indicador de "Ya avanzó" si la fase ya avanzó */}
+                            {hasPhaseAdvanced(phase.id) && (
+                              <span style={{
+                                padding: "6px 12px",
                                 borderRadius: 8,
-                                border: "1px solid #007bff",
-                                background: busyKey === `advance:${phase.id}` ? "#ccc" : "#007bff",
-                                color: "#fff",
-                                cursor: busyKey === `advance:${phase.id}` ? "wait" : "pointer",
+                                background: "#d4edda",
+                                border: "1px solid #28a745",
+                                color: "#155724",
                                 fontSize: 13,
                                 fontWeight: 600,
                                 whiteSpace: "nowrap"
-                              }}
-                            >
-                              {busyKey === `advance:${phase.id}` ? "⏳ Avanzando..." : "🚀 Avanzar Fase"}
-                            </button>
+                              }}>
+                                ✓ Ya avanzó
+                              </span>
+                            )}
                             <button
                               disabled={busyKey === `lock:${phase.id}`}
                               onClick={async () => {
@@ -811,6 +944,7 @@ export function PoolPage() {
                                 await approveMember(token, poolId, member.id);
                                 await loadPendingMembers();
                                 await load(verbose);
+                                refetchNotifications();
                               } catch (err: any) {
                                 setError(err?.message ?? "Error al aprobar");
                               } finally {
@@ -844,6 +978,7 @@ export function PoolPage() {
                               try {
                                 await rejectMember(token, poolId, member.id, reason || undefined);
                                 await loadPendingMembers();
+                                refetchNotifications();
                               } catch (err: any) {
                                 setError(err?.message ?? "Error al rechazar");
                               } finally {
@@ -1351,6 +1486,52 @@ export function PoolPage() {
             </div>
           )}
 
+          {/* Notification Banner for Partidos tab */}
+          {activeTab === "partidos" && notifications && (tabBadges.partidos > 0) && (() => {
+            const bannerItems: { icon: string; message: string }[] = [];
+
+            // Agrupar partidos urgentes por fase
+            if (notifications.urgentDeadlines.length > 0) {
+              const byPhase: Record<string, number> = {};
+              for (const d of notifications.urgentDeadlines) {
+                byPhase[d.phaseId] = (byPhase[d.phaseId] || 0) + 1;
+              }
+
+              // Formatear nombres de fases
+              const phaseNames: Record<string, string> = {
+                group_stage: "Fase de Grupos",
+                round_of_32: "Dieciseisavos",
+                round_of_16: "Octavos de Final",
+                quarter_finals: "Cuartos de Final",
+                semi_finals: "Semifinales",
+                third_place: "Tercer Lugar",
+                finals: "Final",
+              };
+
+              const phaseDetails = Object.entries(byPhase)
+                .map(([phaseId, count]) => `${count} en ${phaseNames[phaseId] || phaseId}`)
+                .join(", ");
+
+              bannerItems.push({
+                icon: "⏰",
+                message: `Tienes ${notifications.pendingPicks} partido${notifications.pendingPicks > 1 ? "s" : ""} sin pick que cierra${notifications.pendingPicks > 1 ? "n" : ""} en las próximas horas (${phaseDetails}).`
+              });
+            }
+
+            if (notifications.isHostOrCoAdmin && notifications.pendingResults > 0) {
+              bannerItems.push({
+                icon: "📝",
+                message: `${notifications.pendingResults} partido${notifications.pendingResults > 1 ? "s" : ""} jugado${notifications.pendingResults > 1 ? "s" : ""} sin resultado publicado.`
+              });
+            }
+
+            return bannerItems.length > 0 ? (
+              <div style={{ marginTop: 14 }}>
+                <NotificationBanner items={bannerItems} />
+              </div>
+            ) : null;
+          })()}
+
           {/* Phase Status Banner (for pending phases) */}
           {activeTab === "partidos" && activePhase && getPhaseStatus(activePhase) === "PENDING" && (
             <div style={{
@@ -1764,14 +1945,28 @@ export function PoolPage() {
 
           {/* Tab Content: Leaderboard */}
           {activeTab === "leaderboard" && (
-            <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Clasificación General</h3>
-                <div style={{ color: "#666", fontSize: 12, textAlign: "right" }}>
-                  <div><b>Sistema de puntos:</b> {overview.leaderboard.scoring.outcomePoints}pts resultado + {overview.leaderboard.scoring.exactScoreBonus}pts exacto</div>
+            <div style={{ marginTop: 14, padding: isMobile ? 12 : 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", marginBottom: 16, gap: isMobile ? 8 : 0 }}>
+                <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20, fontWeight: 900 }}>Clasificación General</h3>
+                <div style={{ color: "#666", fontSize: 12, textAlign: isMobile ? "left" : "right" }}>
+                  <div><b>Sistema:</b> {overview.leaderboard.scoring.outcomePoints}pts resultado + {overview.leaderboard.scoring.exactScoreBonus}pts exacto</div>
                 </div>
               </div>
 
+              {/* Mobile Leaderboard (cards) */}
+              {isMobile ? (
+                <MobileLeaderboard
+                  rows={overview.leaderboard.rows}
+                  phases={overview.leaderboard.phases || []}
+                  onPlayerClick={(userId, displayName, initialPhase) => {
+                    setPlayerSummaryModal({ userId, displayName, initialPhase });
+                  }}
+                  formatPhaseName={formatPhaseName}
+                  formatPhaseFullName={formatPhaseFullName}
+                />
+              ) : (
+                /* Desktop Leaderboard (table) */
+                <>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                   <thead>
@@ -1939,6 +2134,8 @@ export function PoolPage() {
                     ))}
                   </div>
                 </details>
+              )}
+                </>
               )}
             </div>
           )}

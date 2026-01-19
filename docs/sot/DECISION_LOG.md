@@ -2840,23 +2840,167 @@ function scoreMatchPickCumulative(pick, result, config): ScoringResult {
 
 ---
 
+## ADR-028: Rate Limiting Strategy
+
+**Date:** 2026-01-18
+**Status:** Accepted
+**Deciders:** Development Team
+**Tags:** #security #api #performance
+
+### Context
+
+La plataforma necesita protección contra:
+1. Ataques de fuerza bruta en login/registro
+2. Abuso de API (scraping, spam)
+3. Agotamiento de recursos (DoS involuntario)
+4. Spam en password reset (costo de emails)
+
+### Decision
+
+Implementar rate limiting en capas usando `express-rate-limit`:
+
+| Endpoint | Límite | Ventana | Razón |
+|----------|--------|---------|-------|
+| API General | 100 req | 1 min | Uso normal generoso |
+| Login/Register | 10 intentos | 15 min | Anti brute-force |
+| Password Reset | 5 solicitudes | 1 hora | Previene spam de emails |
+
+### Rationale
+
+1. **Simple:** `express-rate-limit` es maduro, bien mantenido, sin dependencias externas
+2. **In-memory:** Suficiente para MVP (no requiere Redis)
+3. **Estándar:** Usa headers `RateLimit-*` (IETF draft standard)
+4. **Flexible:** Fácil de ajustar límites sin cambiar código
+
+### Consequences
+
+**Positive:**
+- ✅ Protección inmediata contra ataques básicos
+- ✅ Cero costo adicional de infraestructura
+- ✅ Headers informan al cliente sobre límites restantes
+- ✅ Health check excluido del rate limit
+
+**Negative:**
+- ⚠️ Rate limit se resetea al reiniciar servidor
+- ⚠️ No distribuido: cada instancia tiene su propio contador
+- ⚠️ IP-based: usuarios detrás de NAT comparten límite
+
+**Risks:**
+- ⚠️ En producción multi-instancia, necesitará Redis store
+
+### Alternatives Considered
+
+1. **Redis-based rate limiting:** Rechazado - overengineering para MVP
+2. **Cloudflare/WAF:** Rechazado - dependencia externa, costo
+3. **Token bucket algorithm:** Rechazado - `express-rate-limit` ya lo implementa
+
+### Implementation
+
+**Files:**
+- `backend/src/middleware/rateLimit.ts` - 4 limiters configurados
+- `backend/src/server.ts` - Aplicación de middleware
+
+```typescript
+// Configuración principal
+export const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,  // 1 minuto
+  max: 100,             // 100 requests
+  standardHeaders: true,
+  skip: (req) => req.path === "/health",
+});
+```
+
+### Related Decisions
+
+- ADR-025: Password Recovery (usa passwordResetLimiter)
+
+---
+
+## ADR-029: Internal Notification System (Badges)
+
+**Date:** 2026-01-18
+**Status:** Accepted
+**Deciders:** Development Team
+**Tags:** #ux #frontend #api
+
+### Context
+
+Los usuarios (especialmente hosts) necesitan indicadores visuales de:
+1. Acciones pendientes (aprobar solicitudes, publicar resultados)
+2. Deadlines cercanos (picks por hacer)
+3. Estado del pool (fases listas para avanzar)
+
+Sin notificaciones push (todavía no hay PWA), necesitamos un sistema interno que alerte visualmente.
+
+### Decision
+
+Implementar sistema de badges en tabs con polling:
+
+| Badge | Color | Tab | Condición |
+|-------|-------|-----|-----------|
+| Picks pendientes | 🔴 Rojo | Partidos | Deadline no pasado, sin pick |
+| Deadline urgente | 🔴 Rojo (pulse) | Partidos | < 24h sin pick |
+| Resultados pendientes | 🔴 Rojo | Partidos | (Host) Partido jugado sin resultado |
+| Solicitudes | 🟠 Naranja | Admin | PENDING_APPROVAL members |
+| Fases listas | 🟠 Naranja | Admin | Fase completa sin avanzar |
+
+**Polling:** 60 segundos (balance entre responsividad y carga)
+
+### Rationale
+
+1. **Visual claro:** Badges son patrón conocido (apps móviles, Gmail, etc.)
+2. **Bajo costo:** Polling es simple, endpoint ligero
+3. **Escalable:** Fácil migrar a WebSocket en v2.0
+4. **No invasivo:** No interrumpe al usuario, solo informa
+
+### Consequences
+
+**Positive:**
+- ✅ Host nunca pierde solicitudes pendientes
+- ✅ Jugadores ven picks urgentes inmediatamente
+- ✅ Animación pulse llama atención en deadlines críticos
+- ✅ Badges se actualizan tras cada acción
+
+**Negative:**
+- ⚠️ Polling genera requests cada 60s por usuario activo
+- ⚠️ No es tiempo real (hasta 60s de delay)
+
+**Risks:**
+- ⚠️ Si hay muchos usuarios simultáneos, considerar cache
+
+### Implementation
+
+**Backend:**
+- `GET /pools/:poolId/notifications` - Retorna contadores
+
+**Frontend:**
+- `usePoolNotifications(poolId)` - Hook con polling
+- `NotificationBadge` - Componente visual
+- `calculateTabBadges()` - Lógica de agregación
+
+### Related Decisions
+
+- ADR-028: Rate Limiting (protege el endpoint de notifications)
+
+---
+
 ## Future Decisions (To Be Documented)
 
-**v0.2-beta:**
+**v0.3.0:**
 - [x] ADR-027: Cumulative Scoring System ✅ (2026-01-18)
-- [ ] ADR-028: Email confirmation on registration
-- [ ] ADR-029: Join approval notification system
+- [x] ADR-028: Rate Limiting Strategy ✅ (2026-01-18)
+- [x] ADR-029: Internal Notification System ✅ (2026-01-18)
 
 **v1.0:**
-- [ ] ADR-030: Rate limiting strategy (prevent reset spam)
-- [ ] ADR-031: Redis caching layer
-- [ ] ADR-032: Facebook/Apple OAuth providers
+- [ ] ADR-030: Email confirmation on registration
+- [ ] ADR-031: PWA + Service Worker
+- [ ] ADR-032: Redis caching layer
 
 **v2.0:**
 - [ ] ADR-033: External API for results ingestion
 - [ ] ADR-034: Multi-sport support architecture
 - [ ] ADR-035: WebSocket for real-time updates
-- [ ] ADR-036: Username change system (with aliases)
+- [ ] ADR-036: Facebook/Apple OAuth providers
 
 ---
 

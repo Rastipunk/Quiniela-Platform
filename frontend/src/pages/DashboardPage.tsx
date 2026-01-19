@@ -11,6 +11,7 @@ import {
 import { clearToken, getToken } from "../lib/auth";
 import { PoolConfigWizard } from "../components/PoolConfigWizard";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 
 function detectTz() {
   try {
@@ -37,6 +38,7 @@ function getPoolStatusBadge(status: string): { label: string; color: string; emo
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const token = useMemo(() => getToken(), []);
 
@@ -140,35 +142,85 @@ export function DashboardPage() {
     }
   }
 
+  // Estilos responsivos
+  const inputStyle = {
+    padding: isMobile ? 14 : 10,
+    fontSize: isMobile ? 16 : 14,
+    minHeight: TOUCH_TARGET.minimum,
+    borderRadius: 10,
+    border: "1px solid #ddd",
+    width: "100%",
+    boxSizing: "border-box" as const,
+    ...mobileInteractiveStyles.tapHighlight,
+  };
+
+  const buttonStyle = {
+    padding: isMobile ? "14px 16px" : "10px 12px",
+    borderRadius: 10,
+    fontSize: isMobile ? 15 : 14,
+    fontWeight: 500,
+    minHeight: TOUCH_TARGET.minimum,
+    cursor: "pointer",
+    ...mobileInteractiveStyles.tapHighlight,
+  };
+
   return (
-    <div style={{ maxWidth: 980, margin: "24px auto", padding: 16 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+    <div style={{ maxWidth: 980, margin: isMobile ? "0 auto" : "24px auto", padding: isMobile ? 16 : 16 }}>
+      <header
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          justifyContent: "space-between",
+          alignItems: isMobile ? "stretch" : "center",
+          gap: 12,
+        }}
+      >
         <div>
-          <h2 style={{ margin: 0 }}>Mis Pools</h2>
-          <div style={{ color: "#666", fontSize: 12 }}>Crear / Unirse / Entrar a una pool</div>
+          <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 24 }}>Mis Pools</h2>
+          <div style={{ color: "#666", fontSize: isMobile ? 13 : 12 }}>
+            Crear / Unirse / Entrar a una pool
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setPanel("CREATE")} style={{ padding: "10px 12px", borderRadius: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginTop: isMobile ? 12 : 0,
+            flexDirection: isMobile ? "column" : "row",
+          }}
+        >
+          <button onClick={() => setPanel("CREATE")} style={buttonStyle}>
             + Crear pool
           </button>
-          <button onClick={() => setPanel("JOIN")} style={{ padding: "10px 12px", borderRadius: 10 }}>
+          <button onClick={() => setPanel("JOIN")} style={buttonStyle}>
             Unirme con código
           </button>
-          <button
-            onClick={() => {
-              clearToken();
-              window.location.href = "/";
-            }}
-            style={{ padding: "10px 12px", borderRadius: 10 }}
-          >
-            Logout
-          </button>
+          {!isMobile && (
+            <button
+              onClick={() => {
+                clearToken();
+                window.location.href = "/";
+              }}
+              style={buttonStyle}
+            >
+              Logout
+            </button>
+          )}
         </div>
       </header>
 
       {error && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "#fee", border: "1px solid #fbb" }}>
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            borderRadius: 12,
+            background: "#fee",
+            border: "1px solid #fbb",
+            fontSize: isMobile ? 14 : 13,
+          }}
+        >
           {error}
         </div>
       )}
@@ -176,13 +228,38 @@ export function DashboardPage() {
       {!rows && !error && <p style={{ marginTop: 18 }}>Cargando...</p>}
 
       {rows && (
-        <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+        <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
           {rows.map((r) => (
-            <div key={r.poolId} style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <div style={{ fontWeight: 800 }}>{r.pool.name}</div>
+            <div
+              key={r.poolId}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 14,
+                padding: isMobile ? 16 : 14,
+                background: "#fff",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  alignItems: isMobile ? "stretch" : "flex-start",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  {/* Pool Name + Badges */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: isMobile ? 17 : 16 }}>{r.pool.name}</div>
                     <span
                       style={{
                         fontSize: 11,
@@ -207,7 +284,7 @@ export function DashboardPage() {
                           fontWeight: 600,
                         }}
                       >
-                        ⏳ Pendiente de aprobación
+                        ⏳ Pendiente
                       </span>
                     )}
                     {r.pool.status && (() => {
@@ -230,24 +307,49 @@ export function DashboardPage() {
                     })()}
                   </div>
 
-                  <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
-                    TZ: {r.pool.timeZone} • Deadline: {r.pool.deadlineMinutesBeforeKickoff}m • Preset:{" "}
-                    {r.pool.scoringPresetKey ?? "CLASSIC"}
+                  {/* Meta info */}
+                  <div style={{ color: "#666", fontSize: isMobile ? 13 : 12, marginTop: 4 }}>
+                    TZ: {r.pool.timeZone} • Deadline: {r.pool.deadlineMinutesBeforeKickoff}m
                   </div>
 
                   {r.tournamentInstance && (
-                    <div style={{ marginTop: 6, color: "#666", fontSize: 12 }}>
-                      Torneo: {r.tournamentInstance.name} ({r.tournamentInstance.status})
+                    <div style={{ marginTop: 6, color: "#666", fontSize: isMobile ? 13 : 12 }}>
+                      Torneo: {r.tournamentInstance.name}
                     </div>
                   )}
                 </div>
 
+                {/* Action */}
                 {r.status === "PENDING_APPROVAL" ? (
-                  <span style={{ color: "#999", fontSize: 14, fontStyle: "italic" }}>
+                  <span
+                    style={{
+                      color: "#999",
+                      fontSize: 14,
+                      fontStyle: "italic",
+                      padding: isMobile ? "12px 0" : 0,
+                      textAlign: isMobile ? "center" : "left",
+                    }}
+                  >
                     Esperando aprobación
                   </span>
                 ) : (
-                  <Link to={`/pools/${r.poolId}`} style={{ textDecoration: "none" }}>
+                  <Link
+                    to={`/pools/${r.poolId}`}
+                    style={{
+                      textDecoration: "none",
+                      padding: isMobile ? 14 : 8,
+                      background: "#007bff",
+                      color: "#fff",
+                      borderRadius: 8,
+                      fontWeight: 600,
+                      textAlign: "center",
+                      minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      ...mobileInteractiveStyles.tapHighlight,
+                    }}
+                  >
                     Abrir →
                   </Link>
                 )}
@@ -256,14 +358,23 @@ export function DashboardPage() {
           ))}
 
           {rows.length === 0 && (
-            <div style={{ padding: 14, border: "1px dashed #ccc", borderRadius: 14, color: "#666" }}>
+            <div
+              style={{
+                padding: isMobile ? 24 : 14,
+                border: "1px dashed #ccc",
+                borderRadius: 14,
+                color: "#666",
+                textAlign: "center",
+                fontSize: isMobile ? 15 : 14,
+              }}
+            >
               Aún no estás en ninguna pool. Crea una o únete con un código.
             </div>
           )}
         </div>
       )}
 
-      {/* Panel */}
+      {/* Panel Modal */}
       {panel !== "NONE" && (
         <div
           style={{
@@ -271,31 +382,68 @@ export function DashboardPage() {
             inset: 0,
             background: "rgba(0,0,0,0.45)",
             display: "flex",
-            alignItems: "center",
+            alignItems: isMobile ? "flex-end" : "center",
             justifyContent: "center",
-            padding: 16,
+            padding: isMobile ? 0 : 16,
+            zIndex: 1000,
           }}
           onClick={() => setPanel("NONE")}
         >
           <div
-            style={{ width: "min(720px, 100%)", background: "#fff", borderRadius: 16, padding: 16 }}
+            style={{
+              width: isMobile ? "100%" : "min(720px, 100%)",
+              maxHeight: isMobile ? "90vh" : "85vh",
+              background: "#fff",
+              borderRadius: isMobile ? "16px 16px 0 0" : 16,
+              padding: isMobile ? 20 : 16,
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-              <div style={{ fontWeight: 900 }}>{panel === "CREATE" ? "Crear pool" : "Unirme a una pool"}</div>
-              <button onClick={() => setPanel("NONE")} style={{ borderRadius: 10 }}>
-                Cerrar
+            {/* Modal Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 16,
+                paddingBottom: 12,
+                borderBottom: "1px solid #eee",
+              }}
+            >
+              <div style={{ fontWeight: 900, fontSize: isMobile ? 20 : 18 }}>
+                {panel === "CREATE" ? "Crear pool" : "Unirme a una pool"}
+              </div>
+              <button
+                onClick={() => setPanel("NONE")}
+                style={{
+                  width: TOUCH_TARGET.minimum,
+                  height: TOUCH_TARGET.minimum,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#f5f5f5",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 18,
+                  cursor: "pointer",
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                ✕
               </button>
             </div>
 
             {panel === "CREATE" && !showWizard && (
-              <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 14 }}>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 12, color: "#444" }}>Torneo / Instancia</span>
+                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>Torneo / Instancia</span>
                   <select
                     value={instanceId}
                     onChange={(e) => setInstanceId(e.target.value)}
-                    style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
+                    style={inputStyle}
                   >
                     {(instances ?? []).map((i) => (
                       <option key={i.id} value={i.id}>
@@ -306,76 +454,100 @@ export function DashboardPage() {
                 </label>
 
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 12, color: "#444" }}>Nombre de la pool</span>
+                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>Nombre de la pool</span>
                   <input
                     value={poolName}
                     onChange={(e) => setPoolName(e.target.value)}
                     placeholder="Ej: Quiniela con amigos"
-                    style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
+                    style={inputStyle}
                   />
                 </label>
 
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 12, color: "#444" }}>Descripción (opcional)</span>
+                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>Descripción (opcional)</span>
                   <input
                     value={poolDesc}
                     onChange={(e) => setPoolDesc(e.target.value)}
                     placeholder="Reglas rápidas o contexto"
-                    style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
+                    style={inputStyle}
                   />
                 </label>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 12, color: "#444" }}>Deadline (min antes del kickoff)</span>
+                    <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>
+                      Deadline (min antes del kickoff)
+                    </span>
                     <input
                       type="number"
                       value={deadline}
                       min={0}
                       max={1440}
                       onChange={(e) => setDeadline(Number(e.target.value))}
-                      style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>Time Zone</span>
+                    <input
+                      value={timeZone}
+                      onChange={(e) => setTimeZone(e.target.value)}
+                      placeholder="America/Bogota"
+                      style={inputStyle}
                     />
                   </label>
                 </div>
 
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 12, color: "#444" }}>Time Zone</span>
-                  <input
-                    value={timeZone}
-                    onChange={(e) => setTimeZone(e.target.value)}
-                    placeholder="America/Bogota"
-                    style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
-                  />
-                </label>
-
-                <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginTop: 6,
+                    padding: 12,
+                    background: "#f8f9fa",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={requireApproval}
                     onChange={(e) => setRequireApproval(e.target.checked)}
-                    style={{ width: 18, height: 18, cursor: "pointer" }}
+                    style={{ width: 20, height: 20, cursor: "pointer" }}
                   />
-                  <span style={{ fontSize: 13, color: "#444" }}>
-                    Requiere aprobación del host para unirse
-                  </span>
+                  <div>
+                    <div style={{ fontSize: 14, color: "#333", fontWeight: 500 }}>
+                      Requiere aprobación del host
+                    </div>
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+                      Los jugadores deberán esperar aprobación para unirse
+                    </div>
+                  </div>
                 </label>
-                <div style={{ fontSize: 12, color: "#666", marginTop: -4, marginLeft: 26 }}>
-                  Si está activado, los jugadores que intenten unirse deberán esperar aprobación del host o co-admins.
-                </div>
 
-                {/* Scoring Configuration - MANDATORY via Wizard */}
-                <div style={{ marginTop: 12, padding: 16, border: "2px solid #007bff", borderRadius: 12, background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white" }}>
+                {/* Scoring Configuration */}
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: 16,
+                    border: "2px solid #007bff",
+                    borderRadius: 12,
+                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    color: "white",
+                  }}
+                >
                   <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
                     📊 ¿Cómo puntuarán los jugadores?
                   </div>
                   <div style={{ fontSize: 13, marginBottom: 12, opacity: 0.95 }}>
-                    Define las reglas de puntuación para cada fase del torneo. Cada pool debe tener su configuración personalizada.
+                    Define las reglas de puntuación para cada fase del torneo.
                   </div>
                   <button
                     onClick={() => setShowWizard(true)}
                     style={{
-                      padding: "10px 16px",
+                      padding: "12px 16px",
                       borderRadius: 8,
                       border: "2px solid white",
                       background: "white",
@@ -383,13 +555,24 @@ export function DashboardPage() {
                       cursor: "pointer",
                       fontSize: 14,
                       fontWeight: 700,
+                      minHeight: TOUCH_TARGET.minimum,
+                      ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
                     🧙‍♂️ Asistente de Configuración
                   </button>
                   {pickTypesConfig && (
-                    <div style={{ marginTop: 12, padding: 8, background: "rgba(255,255,255,0.2)", borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
-                      ✅ Configuración personalizada lista ({(pickTypesConfig as any[]).length} fases configuradas)
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 10,
+                        background: "rgba(255,255,255,0.2)",
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✅ Configuración lista ({(pickTypesConfig as any[]).length} fases)
                     </div>
                   )}
                 </div>
@@ -398,13 +581,17 @@ export function DashboardPage() {
                   onClick={onCreate}
                   disabled={busy}
                   style={{
-                    marginTop: 6,
-                    padding: 12,
+                    marginTop: 8,
+                    padding: isMobile ? 16 : 12,
                     borderRadius: 12,
-                    border: "1px solid #111",
+                    border: "none",
                     background: "#111",
                     color: "#fff",
                     cursor: "pointer",
+                    fontSize: isMobile ? 16 : 14,
+                    fontWeight: 600,
+                    minHeight: TOUCH_TARGET.comfortable,
+                    ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
                   {busy ? "Creando..." : "Crear pool"}
@@ -414,7 +601,7 @@ export function DashboardPage() {
 
             {/* Advanced Configuration Wizard */}
             {panel === "CREATE" && showWizard && instanceId && token && (
-              <div style={{ marginTop: 14 }}>
+              <div>
                 <PoolConfigWizard
                   instanceId={instanceId}
                   token={token}
@@ -428,14 +615,14 @@ export function DashboardPage() {
             )}
 
             {panel === "JOIN" && (
-              <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 14 }}>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 12, color: "#444" }}>Código de invitación</span>
+                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>Código de invitación</span>
                   <input
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
                     placeholder="Ej: ABC123"
-                    style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd" }}
+                    style={inputStyle}
                   />
                 </label>
 
@@ -444,12 +631,16 @@ export function DashboardPage() {
                   disabled={busy}
                   style={{
                     marginTop: 6,
-                    padding: 12,
+                    padding: isMobile ? 16 : 12,
                     borderRadius: 12,
-                    border: "1px solid #111",
+                    border: "none",
                     background: "#111",
                     color: "#fff",
                     cursor: "pointer",
+                    fontSize: isMobile ? 16 : 14,
+                    fontWeight: 600,
+                    minHeight: TOUCH_TARGET.comfortable,
+                    ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
                   {busy ? "Uniéndome..." : "Unirme"}

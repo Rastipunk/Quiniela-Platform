@@ -9,10 +9,45 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 ## [Unreleased]
 
 ### Pendiente
-- Rate Limiting y protección contra brute-force
-- Mobile UX improvements
+- PWA completo (offline mode, push notifications)
 - Email confirmation en registro
 - Chat del pool
+
+---
+
+## [0.3.0] - 2026-01-18
+
+### Sprint 3 - Notificaciones Internas + Mobile UX + Rate Limiting
+
+#### Added
+- **Sistema de Notificaciones Internas (Badges)**
+  - Endpoint `GET /pools/:poolId/notifications` para contadores
+  - Componente `NotificationBadge` con colores y animación pulse
+  - Hook `usePoolNotifications` con polling cada 60s
+  - Badges en tabs de PoolPage:
+    - 🔴 Rojo en Partidos: picks pendientes + deadlines urgentes
+    - 🟠 Naranja en Admin: solicitudes pendientes + fases listas
+
+- **Rate Limiting (ADR-028)**
+  - Middleware `express-rate-limit` configurado
+  - API general: 100 req/min por IP
+  - Auth (login/register): 10 intentos/15min
+  - Password reset: 5 solicitudes/hora
+  - Headers estándar `RateLimit-*`
+
+- **Mobile UX Improvements**
+  - Tabs scrollables horizontalmente
+  - Touch targets mínimo 44px
+  - Scroll suave en iOS (WebkitOverflowScrolling)
+  - Scrollbar oculto en tabs
+
+#### Fixed
+- Contraste de color mejorado en sección "Notas importantes" de PickRulesDisplay
+
+#### Technical
+- Nuevo directorio `frontend/src/hooks/`
+- Animación CSS `@keyframes pulse` para badges urgentes
+- Refetch de notificaciones tras acciones (pick, resultado, aprobación)
 
 ---
 

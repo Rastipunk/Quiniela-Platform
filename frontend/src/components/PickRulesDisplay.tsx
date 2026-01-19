@@ -271,25 +271,27 @@ export function PickRulesDisplay({
         style={{
           marginTop: 24,
           padding: "1.5rem",
-          background: "#e7f3ff",
+          background: "#f8f9fa",
           borderRadius: 12,
-          border: "2px solid #b3d9ff",
+          border: "2px solid #dee2e6",
         }}
       >
-        <div style={{ fontSize: 15, color: "#004085", lineHeight: 1.8, fontWeight: 500 }}>
-          <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 15, color: "#333", lineHeight: 1.8, fontWeight: 500 }}>
+          <div style={{ marginBottom: 12, color: "#1a1a2e" }}>
             💡 <strong>Notas importantes:</strong>
           </div>
-          <ul style={{ margin: 0, paddingLeft: 24 }}>
+          <ul style={{ margin: 0, paddingLeft: 24, color: "#444" }}>
             <li>Cada fase del torneo puede tener diferentes tipos de picks y puntuaciones.</li>
             <li>Lee atentamente las reglas de CADA FASE antes de hacer tus predicciones.</li>
             <li>Los puntos suelen aumentar en fases más avanzadas del torneo (octavos, cuartos, semifinales, final).</li>
             {isCumulativeScoringFromConfig(pickTypesConfig) ? (
-              <li><strong>Sistema acumulativo:</strong> Los puntos se SUMAN por cada criterio que aciertes. Si aciertas el marcador exacto, ganas la suma de todos los criterios.</li>
+              <li style={{ color: "#155724", background: "#d4edda", padding: "8px 12px", borderRadius: 6, marginTop: 8, marginBottom: 8, listStyle: "none", marginLeft: -24 }}>
+                <strong>🎯 Sistema acumulativo:</strong> Los puntos se SUMAN por cada criterio que aciertes. Si aciertas el marcador exacto, ganas la suma de todos los criterios (máx 10 pts en grupos, 20 pts en eliminatorias).
+              </li>
             ) : (
               <li>Si aciertas el marcador exacto, también aciertas automáticamente otros tipos (pero solo ganas los puntos del exacto).</li>
             )}
-            <li>Los picks se cierran según el deadline configurado para este pool: <strong>{poolDeadlineMinutes} minutos antes del inicio de cada partido</strong>.</li>
+            <li>Los picks se cierran según el deadline configurado para este pool: <strong style={{ color: "#c92a2a" }}>{poolDeadlineMinutes} minutos antes del inicio de cada partido</strong>.</li>
           </ul>
         </div>
       </div>

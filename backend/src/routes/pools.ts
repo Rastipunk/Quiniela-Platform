@@ -2696,3 +2696,217 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 });
+
+// ==================== NOTIFICACIONES INTERNAS ====================
+// GET /pools/:poolId/notifications
+// Retorna contadores de acciones pendientes para badges en UI
+poolsRouter.get("/:poolId/notifications", async (req, res) => {
+  const { poolId } = req.params;
+  const userId = req.auth!.userId;
+
+  try {
+    // Verificar membresía activa
+    const membership = await prisma.poolMember.findFirst({
+      where: { poolId, userId, status: "ACTIVE" },
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: "FORBIDDEN", message: "No eres miembro activo de esta pool" });
+    }
+
+    const isHostOrCoAdmin = membership.role === "HOST" || membership.role === "CO_ADMIN";
+
+    // Obtener pool con fixture
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: {
+        tournamentInstance: true,
+      },
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: "NOT_FOUND" });
+    }
+
+    // Obtener matches del snapshot
+    const snapshotData = pool.fixtureSnapshot || pool.tournamentInstance.dataJson;
+    const matches = extractMatches(snapshotData);
+    const now = new Date();
+
+    // Obtener picks del usuario actual
+    const userPicks = await prisma.prediction.findMany({
+      where: { poolId, userId },
+      select: { matchId: true },
+    });
+    const pickedMatchIds = new Set(userPicks.map((p) => p.matchId));
+
+    // Obtener resultados publicados
+    const publishedResults = await prisma.poolMatchResult.findMany({
+      where: { poolId },
+      select: { matchId: true },
+    });
+    const resultsMap = new Set(publishedResults.map((r) => r.matchId));
+
+    // Calcular deadline para cada partido
+    const deadlineMinutes = pool.deadlineMinutesBeforeKickoff;
+
+    // Helper: detectar si un teamId es placeholder (equipos aún no resueltos)
+    const isPlaceholder = (teamId: string) => {
+      return teamId.startsWith("W_") ||
+             teamId.startsWith("RU_") ||
+             teamId.startsWith("L_") ||
+             teamId.startsWith("3rd_");
+    };
+
+    // === Cálculos para TODOS los usuarios ===
+
+    // Picks pendientes URGENTES (deadline < 24h, sin pick, equipos definidos)
+    const urgentDeadlines: Array<{
+      matchId: string;
+      phaseId: string;
+      deadlineUtc: string;
+      homeTeamId: string;
+      awayTeamId: string;
+      kickoffUtc: string;
+    }> = [];
+
+    for (const match of matches) {
+      // Ignorar partidos con placeholders (equipos aún no resueltos)
+      if (isPlaceholder(match.homeTeamId) || isPlaceholder(match.awayTeamId)) {
+        continue;
+      }
+
+      const kickoff = new Date(match.kickoffUtc);
+      const deadline = new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000);
+
+      // Solo contar partidos donde el deadline NO ha pasado Y es urgente (< 24h)
+      if (deadline > now) {
+        const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+        // Solo notificar si deadline es en las próximas 24 horas
+        if (hoursUntilDeadline < 24 && !pickedMatchIds.has(match.id)) {
+          urgentDeadlines.push({
+            matchId: match.id,
+            phaseId: match.phaseId,
+            deadlineUtc: deadline.toISOString(),
+            homeTeamId: match.homeTeamId,
+            awayTeamId: match.awayTeamId,
+            kickoffUtc: match.kickoffUtc,
+          });
+        }
+      }
+    }
+
+    // Ordenar urgentes por deadline más cercano
+    urgentDeadlines.sort((a, b) =>
+      new Date(a.deadlineUtc).getTime() - new Date(b.deadlineUtc).getTime()
+    );
+
+    // pendingPicks ahora es solo el conteo de urgentes
+    const pendingPicks = urgentDeadlines.length;
+
+    // === Cálculos solo para HOST/CO_ADMIN ===
+
+    let pendingJoins = 0;
+    let pendingResults = 0;
+    let phasesReadyToAdvance: string[] = [];
+
+    if (isHostOrCoAdmin) {
+      // Solicitudes de join pendientes
+      const pendingMembers = await prisma.poolMember.count({
+        where: { poolId, status: "PENDING_APPROVAL" as any },
+      });
+      pendingJoins = pendingMembers;
+
+      // Partidos ya jugados sin resultado publicado
+      for (const match of matches) {
+        const kickoff = new Date(match.kickoffUtc);
+        // Partido ya empezó y no tiene resultado
+        if (kickoff < now && !resultsMap.has(match.id)) {
+          pendingResults++;
+        }
+      }
+
+      // Fases completas listas para avanzar
+      // Agrupar partidos por fase
+      const phaseMatches: Record<string, SnapshotMatch[]> = {};
+      for (const match of matches) {
+        if (!phaseMatches[match.phaseId]) {
+          phaseMatches[match.phaseId] = [];
+        }
+        phaseMatches[match.phaseId]!.push(match);
+      }
+
+      // Mapa de siguiente fase para cada fase
+      const nextPhaseMap: Record<string, string | null> = {
+        group_stage: "round_of_32",
+        round_of_32: "round_of_16",
+        round_of_16: "quarter_finals",
+        quarter_finals: "semi_finals",
+        semi_finals: "finals",
+        third_place: null, // No tiene siguiente
+        finals: null, // Torneo terminado
+      };
+
+      // Helper para detectar si un teamId es placeholder
+      const isPlaceholder = (teamId: string) => {
+        return teamId.startsWith("W_") ||
+               teamId.startsWith("RU_") ||
+               teamId.startsWith("L_") ||
+               teamId.startsWith("3rd_");
+      };
+
+      // Verificar cada fase
+      const lockedPhases = Array.isArray(pool.lockedPhases) ? pool.lockedPhases as string[] : [];
+
+      for (const [phaseId, phaseMatchList] of Object.entries(phaseMatches)) {
+        // Saltar fases bloqueadas manualmente
+        if (lockedPhases.includes(phaseId)) continue;
+
+        // Una fase está "completa" si todos sus partidos tienen resultado
+        const allHaveResults = phaseMatchList.every((m) => resultsMap.has(m.id));
+
+        if (allHaveResults && phaseMatchList.length > 0) {
+          const nextPhaseId = nextPhaseMap[phaseId];
+
+          // Si no hay siguiente fase (final, third_place), no notificar
+          if (!nextPhaseId) continue;
+
+          // Verificar si la siguiente fase tiene placeholders (no ha avanzado)
+          const nextPhaseMatches = phaseMatches[nextPhaseId] || [];
+
+          if (nextPhaseMatches.length > 0) {
+            // Si algún partido de la siguiente fase tiene placeholders, la fase actual necesita avanzar
+            const hasPlaceholders = nextPhaseMatches.some(
+              (m) => isPlaceholder(m.homeTeamId) || isPlaceholder(m.awayTeamId)
+            );
+
+            if (hasPlaceholders) {
+              phasesReadyToAdvance.push(phaseId);
+            }
+            // Si no tiene placeholders, ya avanzó - no notificar
+          }
+        }
+      }
+    }
+
+    // Respuesta
+    return res.json({
+      // Común a todos
+      pendingPicks,
+      urgentDeadlines: urgentDeadlines.slice(0, 5), // Máximo 5 urgentes
+
+      // Solo para HOST/CO_ADMIN (0 para players)
+      pendingJoins: isHostOrCoAdmin ? pendingJoins : 0,
+      pendingResults: isHostOrCoAdmin ? pendingResults : 0,
+      phasesReadyToAdvance: isHostOrCoAdmin ? phasesReadyToAdvance : [],
+
+      // Metadatos
+      isHostOrCoAdmin,
+      updatedAt: now.toISOString(),
+    });
+  } catch (error) {
+    console.error("Error obteniendo notificaciones:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+});

@@ -1,12 +1,12 @@
 # Current State - Quiniela Platform
 
-> **Ultima actualizacion:** 2026-01-18 | **Version:** v0.2-beta (Sprint 2 Complete)
+> **Ultima actualizacion:** 2026-01-18 | **Version:** v0.3.0 (Sprint 3 Complete)
 
 ---
 
 ## Estado General
 
-**Resumen ejecutivo:** La plataforma está en estado v0.2-beta con todas las funcionalidades del Sprint 2 completas. Sprint 2 implementó el **Sistema de Scoring Acumulativo** que permite puntos por múltiples criterios (resultado, goles local, goles visitante, diferencia). También incluye visibilidad de picks post-deadline, resumen personal de puntos, y leaderboard mejorado.
+**Resumen ejecutivo:** La plataforma está en estado v0.3.0 con todas las funcionalidades del Sprint 3 completas. Sprint 3 implementó el **Sistema de Notificaciones Internas** (badges visuales en tabs), **Rate Limiting** para protección contra abuso, y mejoras de **Mobile UX** (tabs scrollables, touch targets 44px).
 
 ---
 
@@ -38,6 +38,13 @@
 | **Cumulative Scoring** | ✅ COMPLETO | Puntos acumulan por criterio |
 | **Player Summary** | ✅ COMPLETO | Resumen personal de puntos por partido |
 | **Pick Visibility** | ✅ COMPLETO | Picks visibles post-deadline |
+
+### Sprint 3 - Notificaciones + Mobile UX + Rate Limiting
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| **Notification Badges** | ✅ COMPLETO | Badges en tabs con polling 60s |
+| **Rate Limiting** | ✅ COMPLETO | 100 req/min API, 10/15min auth |
+| **Mobile UX** | ✅ COMPLETO | Tabs scrollables, touch 44px |
 
 ### Advanced Pick Types System
 

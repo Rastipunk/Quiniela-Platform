@@ -18,6 +18,7 @@ import { meRouter } from "./routes/me";
 import { catalogRouter } from "./routes/catalog";
 import { userProfileRouter } from "./routes/userProfile";
 import { pickPresetsRouter } from "./routes/pickPresets";
+import { apiLimiter, authLimiter, passwordResetLimiter } from "./middleware/rateLimit";
 
 
 
@@ -32,9 +33,18 @@ app.use(cors());
 // Comentario en español: MUY IMPORTANTE para que req.body no sea undefined
 app.use(express.json({ limit: "1mb" }));
 
+// Rate limiting global para toda la API (excepto health check)
+app.use(apiLimiter);
+
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, version: "2026-01-18-v2" });
+  res.json({ ok: true, version: "2026-01-18-v3" });
 });
+
+// Rate limiting específico para auth (más estricto)
+app.use("/auth/login", authLimiter);
+app.use("/auth/register", authLimiter);
+app.use("/auth/forgot-password", passwordResetLimiter);
+app.use("/auth/reset-password", passwordResetLimiter);
 
 app.use("/auth", authRouter);
 

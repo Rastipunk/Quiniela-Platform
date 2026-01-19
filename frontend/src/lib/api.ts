@@ -928,3 +928,33 @@ export async function getMatchPicks(
     token
   );
 }
+
+// ========== NOTIFICACIONES INTERNAS (badges) ==========
+
+export type PoolNotifications = {
+  pendingPicks: number;
+  urgentDeadlines: Array<{
+    matchId: string;
+    phaseId: string;
+    deadlineUtc: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    kickoffUtc: string;
+  }>;
+  pendingJoins: number;
+  pendingResults: number;
+  phasesReadyToAdvance: string[];
+  isHostOrCoAdmin: boolean;
+  updatedAt: string;
+};
+
+export async function getPoolNotifications(
+  token: string,
+  poolId: string
+): Promise<PoolNotifications> {
+  return requestJson(
+    `/pools/${poolId}/notifications`,
+    { method: "GET" },
+    token
+  );
+}
