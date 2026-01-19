@@ -1,9 +1,11 @@
 // Wizard para configuración de tipos de picks
 // Sprint 2 - Advanced Pick Types System
+// Sprint 3 - Mobile UX Improvements
 
 import { useState, useEffect } from "react";
 import { PhaseConfigStep } from "./PhaseConfigStep";
 import { getInstancePhases, type InstancePhase } from "../lib/api";
+import { useIsMobile } from "../hooks/useIsMobile";
 import type {
   WizardState,
   PoolPickTypesConfig,
@@ -19,6 +21,7 @@ type PoolConfigWizardProps = {
 };
 
 export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: PoolConfigWizardProps) {
+  const isMobile = useIsMobile();
   const [wizardState, setWizardState] = useState<WizardState>({
     currentStep: "PRESET_SELECTION",
     selectedPreset: null,
@@ -285,7 +288,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
         bottom: 0,
         background: "rgba(0,0,0,0.5)",
         display: "flex",
-        alignItems: "center",
+        alignItems: isMobile ? "flex-end" : "center",
         justifyContent: "center",
         zIndex: 1000,
       }}
@@ -293,10 +296,10 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
       <div
         style={{
           background: "white",
-          borderRadius: "12px",
-          maxWidth: "800px",
-          width: "90%",
-          maxHeight: "90vh",
+          borderRadius: isMobile ? "16px 16px 0 0" : "12px",
+          maxWidth: isMobile ? "100%" : "800px",
+          width: isMobile ? "100%" : "90%",
+          maxHeight: isMobile ? "95vh" : "90vh",
           display: "flex",
           flexDirection: "column",
           boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
@@ -305,15 +308,15 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
         {/* Header - Fixed at top */}
         <div
           style={{
-            padding: "1.5rem 2rem",
+            padding: isMobile ? "1rem 1rem" : "1.5rem 2rem",
             borderBottom: "1px solid #eee",
             flexShrink: 0,
           }}
         >
-          <h2 style={{ margin: 0, fontSize: "1.5rem" }}>
+          <h2 style={{ margin: 0, fontSize: isMobile ? "1.2rem" : "1.5rem" }}>
             Configura las Reglas de Puntuación
           </h2>
-          <p style={{ margin: "0.5rem 0 0 0", color: "#666", fontSize: "0.875rem" }}>
+          <p style={{ margin: "0.25rem 0 0 0", color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
             {wizardState.currentStep === "PRESET_SELECTION" && "Paso 1 de 2: Elige un preset"}
             {wizardState.currentStep === "PHASE_CONFIG" && "Paso 2 de 2: Configura cada fase"}
             {wizardState.currentStep === "SUMMARY" && "Resumen de configuración"}
@@ -321,9 +324,15 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
         </div>
 
         {/* Body - Scrollable */}
-        <div style={{ padding: wizardState.currentStep === "PHASE_CONFIG" ? "0 2rem 2rem 2rem" : "2rem", overflow: "auto", flex: 1 }}>
+        <div style={{
+          padding: wizardState.currentStep === "PHASE_CONFIG"
+            ? (isMobile ? "0 1rem 1rem 1rem" : "0 2rem 2rem 2rem")
+            : (isMobile ? "1rem" : "2rem"),
+          overflow: "auto",
+          flex: 1
+        }}>
           {wizardState.currentStep === "PRESET_SELECTION" && (
-            <PresetSelectionStep onSelect={handlePresetSelected} />
+            <PresetSelectionStep onSelect={handlePresetSelected} isMobile={isMobile} />
           )}
 
           {wizardState.currentStep === "PHASE_CONFIG" && (
@@ -336,6 +345,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
               onNext={() =>
                 setWizardState({ ...wizardState, currentStep: "SUMMARY" })
               }
+              isMobile={isMobile}
             />
           )}
 
@@ -344,6 +354,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
               wizardState={wizardState}
               onComplete={handleComplete}
               getPresetConfig={getPresetConfig}
+              isMobile={isMobile}
             />
           )}
         </div>
@@ -351,61 +362,68 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
         {/* Footer - Fixed at bottom */}
         <div
           style={{
-            padding: "1.5rem 2rem",
+            padding: isMobile ? "0.75rem 1rem" : "1.5rem 2rem",
             borderTop: "1px solid #eee",
             display: "flex",
-            justifyContent: "space-between",
+            gap: isMobile ? "0.5rem" : "1rem",
             flexShrink: 0,
           }}
         >
           <button
             onClick={onCancel}
             style={{
-              padding: "0.75rem 1.5rem",
+              flex: isMobile ? 1 : "none",
+              padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
               background: "white",
               border: "1px solid #ccc",
               borderRadius: "6px",
               cursor: "pointer",
               color: "#333",
+              fontSize: isMobile ? "0.85rem" : "1rem",
+              minHeight: isMobile ? "40px" : "auto",
             }}
           >
             Cancelar
           </button>
 
-          <div style={{ display: "flex", gap: "1rem" }}>
-            {wizardState.currentStep !== "PRESET_SELECTION" && (
-              <button
-                onClick={handleBack}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  background: "white",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  color: "#333",
-                }}
-              >
-                Atrás
-              </button>
-            )}
+          {wizardState.currentStep !== "PRESET_SELECTION" && (
+            <button
+              onClick={handleBack}
+              style={{
+                flex: isMobile ? 1 : "none",
+                padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
+                background: "white",
+                border: "1px solid #ccc",
+                borderRadius: "6px",
+                cursor: "pointer",
+                color: "#333",
+                fontSize: isMobile ? "0.85rem" : "1rem",
+                minHeight: isMobile ? "40px" : "auto",
+              }}
+            >
+              Atrás
+            </button>
+          )}
 
-            {wizardState.currentStep === "SUMMARY" && (
-              <button
-                onClick={handleComplete}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  background: "#007bff",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "white",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                }}
-              >
-                Confirmar y Crear Pool
-              </button>
-            )}
-          </div>
+          {wizardState.currentStep === "SUMMARY" && (
+            <button
+              onClick={handleComplete}
+              style={{
+                flex: isMobile ? 1.5 : "none",
+                padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
+                background: "#007bff",
+                border: "none",
+                borderRadius: "6px",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: isMobile ? "0.85rem" : "1rem",
+                minHeight: isMobile ? "40px" : "auto",
+              }}
+            >
+              {isMobile ? "Crear Pool" : "Confirmar y Crear Pool"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -416,47 +434,63 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
 
 type PresetSelectionStepProps = {
   onSelect: (preset: PickConfigPresetKey) => void;
+  isMobile?: boolean;
 };
 
-function PresetSelectionStep({ onSelect }: PresetSelectionStepProps) {
+function PresetSelectionStep({ onSelect, isMobile }: PresetSelectionStepProps) {
+  // Descripciones cortas para móvil
+  const presets = [
+    {
+      key: "CUMULATIVE" as PickConfigPresetKey,
+      title: "🏆 ACUMULATIVO",
+      description: "Los puntos se SUMAN: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
+      shortDesc: "Puntos acumulables: resultado + goles + diferencia",
+      recommended: true,
+    },
+    {
+      key: "BASIC" as PickConfigPresetKey,
+      title: "🎯 BÁSICO",
+      description: "Solo marcador exacto en todos los partidos. Los puntos aumentan automáticamente en rondas eliminatorias (grupos: 20 pts, octavos: 30 pts, final: 60 pts).",
+      shortDesc: "Solo marcador exacto con puntos crecientes",
+    },
+    {
+      key: "ADVANCED" as PickConfigPresetKey,
+      title: "⚡ AVANZADO",
+      description: "Múltiples formas de ganar puntos: marcador exacto (20 pts), diferencia de goles (10 pts), marcador parcial (8 pts) y goles totales (5 pts) en fase de grupos. En eliminatorias solo exacto y diferencia con auto-scaling.",
+      shortDesc: "Múltiples tipos: exacto, diferencia, parcial, totales",
+    },
+    {
+      key: "SIMPLE" as PickConfigPresetKey,
+      title: "🎲 SIMPLE",
+      description: "Sin marcadores de partidos. En fase de grupos ordenas los equipos de cada grupo (10 pts por posición correcta, +20 pts si el grupo completo es perfecto). En eliminatorias solo eliges quién avanza.",
+      shortDesc: "Sin marcadores: ordena grupos, elige quién avanza",
+    },
+    {
+      key: "CUSTOM" as PickConfigPresetKey,
+      title: "🛠️ PERSONALIZADO",
+      description: "Configura cada fase manualmente según tus necesidades específicas. Elige si quieres marcadores o no, qué tipos de picks activar y cuántos puntos asignar a cada uno.",
+      shortDesc: "Configura todo manualmente",
+    },
+  ];
+
   return (
-    <div style={{ display: "grid", gap: "1.5rem" }}>
-      <p style={{ fontSize: "1rem", color: "#333", margin: 0 }}>
-        Para empezar más rápido, elige un preset o personaliza completamente:
+    <div style={{ display: "grid", gap: isMobile ? "0.75rem" : "1.5rem" }}>
+      <p style={{ fontSize: isMobile ? "0.85rem" : "1rem", color: "#333", margin: 0 }}>
+        {isMobile ? "Elige un preset:" : "Para empezar más rápido, elige un preset o personaliza completamente:"}
       </p>
 
       {/* Preset Cards */}
-      <div style={{ display: "grid", gap: "1rem" }}>
-        <PresetCard
-          title="🏆 ACUMULATIVO"
-          description="Los puntos se SUMAN: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias."
-          recommended
-          onSelect={() => onSelect("CUMULATIVE" as PickConfigPresetKey)}
-        />
-
-        <PresetCard
-          title="🎯 BÁSICO"
-          description="Solo marcador exacto en todos los partidos. Los puntos aumentan automáticamente en rondas eliminatorias (grupos: 20 pts, octavos: 30 pts, final: 60 pts)."
-          onSelect={() => onSelect("BASIC")}
-        />
-
-        <PresetCard
-          title="⚡ AVANZADO"
-          description="Múltiples formas de ganar puntos: marcador exacto (20 pts), diferencia de goles (10 pts), marcador parcial (8 pts) y goles totales (5 pts) en fase de grupos. En eliminatorias solo exacto y diferencia con auto-scaling."
-          onSelect={() => onSelect("ADVANCED")}
-        />
-
-        <PresetCard
-          title="🎲 SIMPLE"
-          description="Sin marcadores de partidos. En fase de grupos ordenas los equipos de cada grupo (10 pts por posición correcta, +20 pts si el grupo completo es perfecto). En eliminatorias solo eliges quién avanza."
-          onSelect={() => onSelect("SIMPLE")}
-        />
-
-        <PresetCard
-          title="🛠️ PERSONALIZADO"
-          description="Configura cada fase manualmente según tus necesidades específicas. Elige si quieres marcadores o no, qué tipos de picks activar y cuántos puntos asignar a cada uno."
-          onSelect={() => onSelect("CUSTOM")}
-        />
+      <div style={{ display: "grid", gap: isMobile ? "0.5rem" : "1rem" }}>
+        {presets.map((preset) => (
+          <PresetCard
+            key={preset.key}
+            title={preset.title}
+            description={isMobile ? preset.shortDesc : preset.description}
+            recommended={preset.recommended}
+            onSelect={() => onSelect(preset.key)}
+            isMobile={isMobile}
+          />
+        ))}
       </div>
     </div>
   );
@@ -467,18 +501,22 @@ type PresetCardProps = {
   description: string;
   recommended?: boolean;
   onSelect: () => void;
+  isMobile?: boolean;
 };
 
-function PresetCard({ title, description, recommended, onSelect }: PresetCardProps) {
+function PresetCard({ title, description, recommended, onSelect, isMobile }: PresetCardProps) {
   return (
     <div
       style={{
         border: recommended ? "2px solid #007bff" : "1px solid #ddd",
         borderRadius: "8px",
-        padding: "1.5rem",
+        padding: isMobile ? "0.75rem" : "1.5rem",
         cursor: "pointer",
         transition: "all 0.2s",
         position: "relative",
+        display: isMobile ? "flex" : "block",
+        alignItems: isMobile ? "center" : undefined,
+        gap: isMobile ? "0.75rem" : undefined,
       }}
       onClick={onSelect}
       onMouseEnter={(e) => {
@@ -494,13 +532,13 @@ function PresetCard({ title, description, recommended, onSelect }: PresetCardPro
         <div
           style={{
             position: "absolute",
-            top: "-10px",
-            right: "1rem",
+            top: isMobile ? "-8px" : "-10px",
+            right: isMobile ? "0.5rem" : "1rem",
             background: "#007bff",
             color: "white",
-            padding: "0.25rem 0.75rem",
+            padding: isMobile ? "0.15rem 0.5rem" : "0.25rem 0.75rem",
             borderRadius: "12px",
-            fontSize: "0.75rem",
+            fontSize: isMobile ? "0.65rem" : "0.75rem",
             fontWeight: "bold",
           }}
         >
@@ -508,10 +546,22 @@ function PresetCard({ title, description, recommended, onSelect }: PresetCardPro
         </div>
       )}
 
-      <h3 style={{ margin: "0 0 0.75rem 0", fontSize: "1.25rem" }}>{title}</h3>
-      <p style={{ margin: 0, color: "#666", fontSize: "0.875rem", lineHeight: "1.5" }}>
-        {description}
-      </p>
+      {isMobile ? (
+        <>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: "bold", fontSize: "0.9rem", marginBottom: "0.15rem" }}>{title}</div>
+            <div style={{ color: "#666", fontSize: "0.75rem", lineHeight: "1.3" }}>{description}</div>
+          </div>
+          <div style={{ color: "#007bff", fontSize: "1.2rem" }}>›</div>
+        </>
+      ) : (
+        <>
+          <h3 style={{ margin: "0 0 0.75rem 0", fontSize: "1.25rem" }}>{title}</h3>
+          <p style={{ margin: 0, color: "#666", fontSize: "0.875rem", lineHeight: "1.5" }}>
+            {description}
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -521,9 +571,10 @@ type SummaryStepProps = {
   wizardState: WizardState;
   onComplete: () => void;
   getPresetConfig: (presetKey: PickConfigPresetKey) => PhasePickConfig[];
+  isMobile?: boolean;
 };
 
-function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: SummaryStepProps) {
+function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, isMobile }: SummaryStepProps) {
   void _onComplete; // Used by parent component
   const presetNames: Record<PickConfigPresetKey, string> = {
     CUMULATIVE: "Acumulativo",
@@ -536,13 +587,13 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: 
   const isPreset = wizardState.selectedPreset && wizardState.selectedPreset !== "CUSTOM";
 
   return (
-    <div style={{ display: "grid", gap: "2rem" }}>
+    <div style={{ display: "grid", gap: isMobile ? "1rem" : "2rem" }}>
       {/* Header */}
       <div>
-        <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.5rem" }}>
+        <h3 style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "1.1rem" : "1.5rem" }}>
           ✅ Resumen de Configuración
         </h3>
-        <p style={{ margin: 0, color: "#666", fontSize: "0.875rem" }}>
+        <p style={{ margin: 0, color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
           {isPreset
             ? `Usarás el preset "${presetNames[wizardState.selectedPreset!]}" con configuración predefinida.`
             : "Revisa tu configuración personalizada antes de crear la pool."}
@@ -551,21 +602,21 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: 
 
       {/* Configuración */}
       {isPreset ? (
-        <PresetSummary presetKey={wizardState.selectedPreset!} />
+        <PresetSummary presetKey={wizardState.selectedPreset!} isMobile={isMobile} />
       ) : (
-        <CustomConfigSummary configuration={wizardState.configuration} />
+        <CustomConfigSummary configuration={wizardState.configuration} isMobile={isMobile} />
       )}
 
       {/* Vista Previa para Jugadores */}
       <div>
-        <h4 style={{ margin: "0 0 1rem 0", fontSize: "1.125rem" }}>
+        <h4 style={{ margin: "0 0 0.5rem 0", fontSize: isMobile ? "0.95rem" : "1.125rem" }}>
           📋 Cómo se verá en "Reglas de la Pool"
         </h4>
         <div
           style={{
             border: "1px solid #ddd",
             borderRadius: "8px",
-            padding: "1.5rem",
+            padding: isMobile ? "0.75rem" : "1.5rem",
             background: "#f9f9f9",
           }}
         >
@@ -573,6 +624,7 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: 
             configuration={
               isPreset ? getPresetConfig(wizardState.selectedPreset!) : wizardState.configuration
             }
+            isMobile={isMobile}
           />
         </div>
       </div>
@@ -583,15 +635,14 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: 
           background: "#f0f8ff",
           border: "1px solid #b3d9ff",
           borderRadius: "8px",
-          padding: "1.5rem",
+          padding: isMobile ? "0.75rem" : "1.5rem",
         }}
       >
-        <p style={{ margin: "0 0 0.5rem 0", fontWeight: "bold", color: "#0066cc" }}>
+        <p style={{ margin: "0 0 0.25rem 0", fontWeight: "bold", color: "#0066cc", fontSize: isMobile ? "0.85rem" : "1rem" }}>
           ℹ️ Importante
         </p>
-        <p style={{ margin: 0, fontSize: "0.875rem", color: "#333" }}>
-          Esta configuración se aplicará a toda la pool. Los jugadores verán estas reglas
-          antes de unirse y podrán decidir si participar.
+        <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#333" }}>
+          Esta configuración se aplicará a toda la pool.
         </p>
       </div>
     </div>
@@ -602,9 +653,10 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig }: 
 
 type PresetSummaryProps = {
   presetKey: PickConfigPresetKey;
+  isMobile?: boolean;
 };
 
-function PresetSummary({ presetKey }: PresetSummaryProps) {
+function PresetSummary({ presetKey, isMobile }: PresetSummaryProps) {
   const presetDescriptions: Record<string, string> = {
     CUMULATIVE:
       "Los puntos se SUMAN por cada criterio: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
@@ -621,26 +673,26 @@ function PresetSummary({ presetKey }: PresetSummaryProps) {
       style={{
         border: "1px solid #ddd",
         borderRadius: "8px",
-        padding: "1.5rem",
+        padding: isMobile ? "0.75rem" : "1.5rem",
         background: "white",
       }}
     >
-      <div style={{ marginBottom: "1rem" }}>
+      <div style={{ marginBottom: isMobile ? "0.5rem" : "1rem" }}>
         <span
           style={{
             display: "inline-block",
             background: "#007bff",
             color: "white",
-            padding: "0.25rem 0.75rem",
+            padding: isMobile ? "0.15rem 0.5rem" : "0.25rem 0.75rem",
             borderRadius: "12px",
-            fontSize: "0.75rem",
+            fontSize: isMobile ? "0.65rem" : "0.75rem",
             fontWeight: "bold",
           }}
         >
           PRESET {presetKey}
         </span>
       </div>
-      <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
+      <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
         {presetDescriptions[presetKey]}
       </p>
     </div>
@@ -649,43 +701,45 @@ function PresetSummary({ presetKey }: PresetSummaryProps) {
 
 type CustomConfigSummaryProps = {
   configuration: PhasePickConfig[];
+  isMobile?: boolean;
 };
 
-function CustomConfigSummary({ configuration }: CustomConfigSummaryProps) {
+function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryProps) {
   return (
-    <div style={{ display: "grid", gap: "1rem" }}>
+    <div style={{ display: "grid", gap: isMobile ? "0.5rem" : "1rem" }}>
       {configuration.map((phase, index) => (
         <div
           key={phase.phaseId}
           style={{
             border: "1px solid #ddd",
             borderRadius: "8px",
-            padding: "1.5rem",
+            padding: isMobile ? "0.75rem" : "1.5rem",
             background: "white",
           }}
         >
-          <h4 style={{ margin: "0 0 1rem 0", fontSize: "1rem" }}>
+          <h4 style={{ margin: "0 0 0.5rem 0", fontSize: isMobile ? "0.85rem" : "1rem" }}>
             {index + 1}. {phase.phaseName}
           </h4>
 
           {phase.requiresScore && phase.matchPicks ? (
             <div>
-              <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.875rem", color: "#666" }}>
+              <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
                 <strong>Tipo:</strong> Con marcadores
               </p>
-              <div style={{ display: "grid", gap: "0.25rem", fontSize: "0.875rem" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "0.25rem 0.5rem" : "0.25rem", fontSize: isMobile ? "0.7rem" : "0.875rem" }}>
                 {phase.matchPicks.types
                   .filter((t) => t.enabled)
                   .map((type) => (
-                    <div key={type.key} style={{ color: "#333" }}>
-                      • {getPickTypeName(type.key)}: <strong>{type.points} pts</strong>
-                    </div>
+                    <span key={type.key} style={{ color: "#333" }}>
+                      {getPickTypeName(type.key)}: <strong>{type.points}pts</strong>
+                      {isMobile ? "" : " •"}
+                    </span>
                   ))}
               </div>
             </div>
           ) : (
-            <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
-              <strong>Tipo:</strong> Sin marcadores (estructural)
+            <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
+              <strong>Tipo:</strong> Sin marcadores
             </p>
           )}
         </div>
@@ -696,12 +750,13 @@ function CustomConfigSummary({ configuration }: CustomConfigSummaryProps) {
 
 type RulesPreviewProps = {
   configuration: PhasePickConfig[];
+  isMobile?: boolean;
 };
 
-function RulesPreview({ configuration }: RulesPreviewProps) {
+function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
   return (
     <div>
-      <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.125rem" }}>
+      <h3 style={{ margin: "0 0 0.5rem 0", fontSize: isMobile ? "0.9rem" : "1.125rem" }}>
         📜 REGLAS DE PUNTUACIÓN
       </h3>
 
@@ -709,39 +764,33 @@ function RulesPreview({ configuration }: RulesPreviewProps) {
         <div
           key={phase.phaseId}
           style={{
-            marginBottom: "1.5rem",
-            paddingBottom: "1.5rem",
+            marginBottom: isMobile ? "0.75rem" : "1.5rem",
+            paddingBottom: isMobile ? "0.75rem" : "1.5rem",
             borderBottom: "1px solid #ddd",
           }}
         >
-          <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "1rem" }}>
+          <h4 style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.85rem" : "1rem" }}>
             🏆 {phase.phaseName.toUpperCase()}
           </h4>
 
           {phase.requiresScore && phase.matchPicks ? (
             <>
-              <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.875rem", color: "#666" }}>
-                <strong>Tipo de predicción:</strong> Marcadores de partidos
+              <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.7rem" : "0.875rem", color: "#666" }}>
+                Marcadores de partidos
               </p>
-              <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.875rem" }}>
-                <strong>Cómo ganar puntos:</strong>
-              </p>
-              <ul style={{ margin: "0 0 0.5rem 0", paddingLeft: "1.5rem", fontSize: "0.875rem" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem 0.5rem", fontSize: isMobile ? "0.7rem" : "0.875rem" }}>
                 {phase.matchPicks.types
                   .filter((t) => t.enabled)
                   .map((type) => (
-                    <li key={type.key}>
-                      {type.points} pts - {getPickTypeName(type.key)} {getPickTypeExample(type.key)}
-                    </li>
+                    <span key={type.key} style={{ background: "#e8f4ff", padding: "0.1rem 0.3rem", borderRadius: "3px" }}>
+                      {type.points}pts {getPickTypeName(type.key)}
+                    </span>
                   ))}
-              </ul>
-              <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.75rem", color: "#999" }}>
-                ⏰ Deadline: 10 minutos antes del inicio de cada partido
-              </p>
+              </div>
             </>
           ) : (
-            <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
-              Predicción de posiciones finales o avances (sin marcadores)
+            <p style={{ margin: 0, fontSize: isMobile ? "0.7rem" : "0.875rem", color: "#666" }}>
+              Posiciones finales o avances
             </p>
           )}
         </div>

@@ -15,6 +15,7 @@ type PhaseConfigStepProps = {
   phaseTypes: Map<string, PhaseType>; // Map de phaseId -> tipo (GROUP/KNOCKOUT)
   onPhasesChange: (phases: PhasePickConfig[]) => void;
   onNext: () => void;
+  isMobile?: boolean;
 };
 
 export function PhaseConfigStep({
@@ -22,6 +23,7 @@ export function PhaseConfigStep({
   phaseTypes,
   onPhasesChange,
   onNext,
+  isMobile = false,
 }: PhaseConfigStepProps) {
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const currentPhase = phases[currentPhaseIndex];
@@ -132,18 +134,18 @@ export function PhaseConfigStep({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "1rem" : "1.5rem" }}>
       {/* Phase Progress - Sticky Header */}
       <div
         style={{
           position: "sticky",
           top: 0,
           background: "white",
-          padding: "1rem 0",
-          marginLeft: "-2rem",
-          marginRight: "-2rem",
-          paddingLeft: "2rem",
-          paddingRight: "2rem",
+          padding: isMobile ? "0.75rem 0" : "1rem 0",
+          marginLeft: isMobile ? "-1rem" : "-2rem",
+          marginRight: isMobile ? "-1rem" : "-2rem",
+          paddingLeft: isMobile ? "1rem" : "2rem",
+          paddingRight: isMobile ? "1rem" : "2rem",
           borderBottom: "1px solid #eee",
           zIndex: 10,
         }}
@@ -155,11 +157,11 @@ export function PhaseConfigStep({
             marginBottom: "0.5rem",
           }}
         >
-          <span style={{ fontWeight: "bold", fontSize: "1.125rem" }}>
+          <span style={{ fontWeight: "bold", fontSize: isMobile ? "1rem" : "1.125rem" }}>
             {currentPhase.phaseName}
           </span>
-          <span style={{ color: "#666", fontSize: "0.875rem" }}>
-            Fase {currentPhaseIndex + 1} de {phases.length}
+          <span style={{ color: "#666", fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
+            {currentPhaseIndex + 1}/{phases.length}
           </span>
         </div>
         <div
@@ -183,35 +185,41 @@ export function PhaseConfigStep({
 
       {/* Fundamental Decision */}
       <div>
-        <h3 style={{ margin: "0 0 1rem 0" }}>Decisión Fundamental</h3>
-        <p style={{ color: "#666", fontSize: "0.875rem", margin: "0 0 1rem 0" }}>
-          ¿Los jugadores deben predecir marcadores de partidos?
+        <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
+          Decisión Fundamental
+        </h3>
+        <p style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 0.75rem 0" }}>
+          ¿Predecir marcadores?
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div style={{
+          display: "flex",
+          flexDirection: isMobile ? "row" : "row",
+          gap: isMobile ? "0.5rem" : "1rem"
+        }}>
           <DecisionCard
-            title="⚽ SÍ, CON MARCADORES"
+            title={isMobile ? "⚽ CON MARCADORES" : "⚽ SÍ, CON MARCADORES"}
             selected={currentPhase.requiresScore === true}
             onClick={() => handleRequiresScoreChange(true)}
+            isMobile={isMobile}
           >
-            <p>Los jugadores predicen el resultado exacto de cada partido.</p>
-            <ul style={{ paddingLeft: "1.25rem", margin: "0.5rem 0 0 0" }}>
+            {!isMobile && <p>Los jugadores predicen el resultado exacto de cada partido.</p>}
+            <ul style={{ paddingLeft: isMobile ? "1rem" : "1.25rem", margin: isMobile ? 0 : "0.5rem 0 0 0", fontSize: isMobile ? "0.75rem" : "inherit" }}>
               <li>Más detalle</li>
-              <li>Múltiples tipos</li>
-              <li>Más trabajo para HOST</li>
+              {!isMobile && <li>Múltiples tipos</li>}
             </ul>
           </DecisionCard>
 
           <DecisionCard
-            title="📊 NO, SIN MARCADORES"
+            title={isMobile ? "📊 SIN MARCADORES" : "📊 NO, SIN MARCADORES"}
             selected={currentPhase.requiresScore === false}
             onClick={() => handleRequiresScoreChange(false)}
+            isMobile={isMobile}
           >
-            <p>Los jugadores predicen posiciones finales o quién avanza.</p>
-            <ul style={{ paddingLeft: "1.25rem", margin: "0.5rem 0 0 0" }}>
+            {!isMobile && <p>Los jugadores predicen posiciones finales o quién avanza.</p>}
+            <ul style={{ paddingLeft: isMobile ? "1rem" : "1.25rem", margin: isMobile ? 0 : "0.5rem 0 0 0", fontSize: isMobile ? "0.75rem" : "inherit" }}>
               <li>Más estratégico</li>
-              <li>Menos mantenimiento</li>
-              <li>Menos variedad</li>
+              {!isMobile && <li>Menos mantenimiento</li>}
             </ul>
           </DecisionCard>
         </div>
@@ -222,6 +230,7 @@ export function PhaseConfigStep({
         <MatchPicksConfiguration
           matchPicks={currentPhase.matchPicks}
           onTypeChange={handleMatchPickTypeChange}
+          isMobile={isMobile}
         />
       )}
 
@@ -230,42 +239,54 @@ export function PhaseConfigStep({
           structuralPicks={currentPhase.structuralPicks}
           phaseType={currentPhaseType}
           onConfigChange={handleStructuralConfigChange}
+          isMobile={isMobile}
         />
       )}
 
       {/* Navigation */}
-      <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "1rem" }}>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        gap: isMobile ? "0.5rem" : "1rem",
+        paddingTop: isMobile ? "0.75rem" : "1rem"
+      }}>
         <button
           onClick={handlePrevious}
           disabled={currentPhaseIndex === 0}
           style={{
-            padding: "0.75rem 1.5rem",
+            flex: isMobile ? 1 : "none",
+            padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
+            fontSize: isMobile ? "0.85rem" : "1rem",
             background: currentPhaseIndex === 0 ? "#f5f5f5" : "white",
             border: currentPhaseIndex === 0 ? "1px solid #ddd" : "1px solid #007bff",
             borderRadius: "6px",
             cursor: currentPhaseIndex === 0 ? "not-allowed" : "pointer",
             color: currentPhaseIndex === 0 ? "#999" : "#007bff",
             fontWeight: currentPhaseIndex === 0 ? "normal" : "500",
+            minHeight: isMobile ? "40px" : "auto",
           }}
         >
-          ← Fase Anterior
+          {isMobile ? "← Anterior" : "← Fase Anterior"}
         </button>
 
         <button
           onClick={handleNext}
           style={{
-            padding: "0.75rem 1.5rem",
+            flex: isMobile ? 1 : "none",
+            padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
+            fontSize: isMobile ? "0.85rem" : "1rem",
             background: "#007bff",
             border: "none",
             borderRadius: "6px",
             color: "white",
             cursor: "pointer",
             fontWeight: "bold",
+            minHeight: isMobile ? "40px" : "auto",
           }}
         >
           {currentPhaseIndex < phases.length - 1
-            ? "Siguiente Fase →"
-            : "Ver Resumen →"}
+            ? (isMobile ? "Siguiente →" : "Siguiente Fase →")
+            : (isMobile ? "Resumen →" : "Ver Resumen →")}
         </button>
       </div>
     </div>
@@ -279,16 +300,18 @@ type DecisionCardProps = {
   selected: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  isMobile?: boolean;
 };
 
-function DecisionCard({ title, selected, onClick, children }: DecisionCardProps) {
+function DecisionCard({ title, selected, onClick, children, isMobile = false }: DecisionCardProps) {
   return (
     <div
       onClick={onClick}
       style={{
+        flex: 1,
         border: selected ? "2px solid #007bff" : "1px solid #ddd",
-        borderRadius: "8px",
-        padding: "1.5rem",
+        borderRadius: isMobile ? "6px" : "8px",
+        padding: isMobile ? "0.75rem" : "1.5rem",
         cursor: "pointer",
         background: selected ? "#f0f8ff" : "white",
         transition: "all 0.2s",
@@ -304,8 +327,11 @@ function DecisionCard({ title, selected, onClick, children }: DecisionCardProps)
         }
       }}
     >
-      <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "1rem" }}>{title}</h4>
-      <div style={{ fontSize: "0.875rem", color: "#666" }}>{children}</div>
+      <h4 style={{
+        margin: isMobile ? "0 0 0.5rem 0" : "0 0 0.75rem 0",
+        fontSize: isMobile ? "0.85rem" : "1rem"
+      }}>{title}</h4>
+      <div style={{ fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>{children}</div>
     </div>
   );
 }
@@ -313,58 +339,70 @@ function DecisionCard({ title, selected, onClick, children }: DecisionCardProps)
 type MatchPicksConfigurationProps = {
   matchPicks: { types: MatchPickType[] };
   onTypeChange: (typeKey: MatchPickTypeKey, enabled: boolean, points?: number) => void;
+  isMobile?: boolean;
 };
 
 function MatchPicksConfiguration({
   matchPicks,
   onTypeChange,
+  isMobile = false,
 }: MatchPicksConfigurationProps) {
-  const pickTypeDescriptions: Record<MatchPickTypeKey, { title: string; description: string; example: string }> = {
+  // Full descriptions for desktop
+  const pickTypeDescriptions: Record<MatchPickTypeKey, { title: string; description: string; shortDesc: string; example: string }> = {
     EXACT_SCORE: {
       title: "Marcador Exacto",
       description: "El jugador debe acertar el marcador completo. Es el pick más difícil y el más valioso. Si aciertas el marcador exacto, también aciertas automáticamente la diferencia de goles, marcador parcial y goles totales (pero solo ganas los puntos del marcador exacto, que es el más alto).",
+      shortDesc: "Acertar el marcador completo (ej: 2-1).",
       example: "Ejemplo con 20 pts: Predices 2-1, sale 2-1 → GANAS 20 PTS | Sale 3-1 → 0 pts | Sale 2-0 → 0 pts",
     },
     GOAL_DIFFERENCE: {
       title: "Diferencia de Goles",
       description: "Acierta la diferencia exacta entre los goles del local y visitante, aunque el marcador no sea exacto. Solo ganas estos puntos si NO acertaste el marcador exacto.",
+      shortDesc: "Acertar la diferencia (+2, -1, etc).",
       example: "Ejemplo con 10 pts: Predices 2-0 (+2), sale 3-1 (+2) → GANAS 10 PTS | Sale 2-1 (+1) → 0 pts | Sale 2-0 → GANAS 20 PTS del exacto",
     },
     PARTIAL_SCORE: {
       title: "Marcador Parcial",
       description: "Acierta SOLO los goles de UN equipo (local O visitante), pero NO ambos a la vez. Si aciertas ambos, eso cuenta como marcador exacto (que vale más puntos). Este tipo es útil cuando aciertas parcialmente.",
+      shortDesc: "Acertar goles de un equipo.",
       example: "Ejemplo con 8 pts: Predices 2-1, sale 2-3 → GANAS 8 PTS (los 2 del local) | Sale 3-3 → 0 pts | Sale 2-1 → GANAS 20 PTS del exacto",
     },
     TOTAL_GOALS: {
       title: "Goles Totales",
       description: "Acierta el número total de goles del partido (local + visitante), sin importar quién los marcó ni el resultado final. Solo ganas estos puntos si NO acertaste marcador exacto, diferencia de goles, ni marcador parcial.",
+      shortDesc: "Acertar suma de goles (ej: 3 goles).",
       example: "Ejemplo con 5 pts: Predices 2-1 (3 goles), sale 3-0 (3 goles) → GANAS 5 PTS | Sale 2-0 (2 goles) → 0 pts | Sale 2-1 → GANAS 20 PTS del exacto",
     },
     MATCH_OUTCOME_90MIN: {
-      title: "Resultado en 90min",
+      title: "Resultado 90min",
       description: "Predice solo el ganador o empate en tiempo reglamentario (Victoria Local, Empate, Victoria Visitante). No disponible cuando se requieren marcadores.",
+      shortDesc: "Predice ganador o empate.",
       example: "Solo para picks sin marcador. No combinable con predicciones de goles.",
     },
     HOME_GOALS: {
-      title: "Goles del Local",
+      title: "Goles Local",
       description: "Acierta únicamente los goles marcados por el equipo local.",
+      shortDesc: "Solo goles del local.",
       example: "Ejemplo con 4 pts: Predices 2-?, sale 2-3 → GANAS 4 PTS | Sale 3-0 → 0 pts",
     },
     AWAY_GOALS: {
-      title: "Goles del Visitante",
+      title: "Goles Visitante",
       description: "Acierta únicamente los goles marcados por el equipo visitante.",
+      shortDesc: "Solo goles del visitante.",
       example: "Ejemplo con 4 pts: Predices ?-1, sale 2-1 → GANAS 4 PTS | Sale 2-2 → 0 pts",
     },
   };
 
   return (
     <div>
-      <h3 style={{ margin: "0 0 1rem 0" }}>Tipos de Picks Activos</h3>
-      <p style={{ color: "#666", fontSize: "0.875rem", margin: "0 0 1.5rem 0" }}>
-        Activa los tipos de picks que quieres permitir. Puedes tener varios activos simultáneamente.
+      <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
+        Tipos de Picks
+      </h3>
+      <p style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 1rem 0" }}>
+        {isMobile ? "Activa los tipos de picks permitidos." : "Activa los tipos de picks que quieres permitir. Puedes tener varios activos simultáneamente."}
       </p>
 
-      <div style={{ display: "grid", gap: "1rem" }}>
+      <div style={{ display: "grid", gap: isMobile ? "0.5rem" : "1rem" }}>
         {matchPicks.types
           .filter((t) => t.key !== "MATCH_OUTCOME_90MIN") // No mostrar en modo con marcadores
           .map((type) => {
@@ -374,10 +412,11 @@ function MatchPicksConfiguration({
                 key={type.key}
                 type={type}
                 title={info.title}
-                description={info.description}
+                description={isMobile ? info.shortDesc : info.description}
                 example={info.example}
                 onToggle={(enabled) => onTypeChange(type.key, enabled)}
                 onPointsChange={(points) => onTypeChange(type.key, type.enabled, points)}
+                isMobile={isMobile}
               />
             );
           })}
@@ -390,9 +429,10 @@ type StructuralPicksConfigurationProps = {
   structuralPicks: any;
   phaseType: string;
   onConfigChange: (config: Record<string, number | boolean>) => void;
+  isMobile?: boolean;
 };
 
-function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChange }: StructuralPicksConfigurationProps) {
+function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChange, isMobile = false }: StructuralPicksConfigurationProps) {
   const isGroupPhase = phaseType === "GROUP";
   const config = structuralPicks?.config || {};
 
@@ -408,11 +448,11 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
   const examplePerfect = pointsPosition1 + pointsPosition2 + pointsPosition3 + pointsPosition4 + (bonusPerfectGroupEnabled ? bonusPerfectGroup : 0);
 
   const inputStyle = {
-    width: "60px",
-    padding: "0.4rem",
+    width: isMobile ? "50px" : "60px",
+    padding: isMobile ? "0.3rem" : "0.4rem",
     border: "1px solid #ccc",
     borderRadius: "4px",
-    fontSize: "0.95rem",
+    fontSize: isMobile ? "0.85rem" : "0.95rem",
     textAlign: "center" as const,
     background: "white",
   };
@@ -420,8 +460,8 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
   const positionRowStyle = {
     display: "flex",
     alignItems: "center",
-    gap: "0.5rem",
-    padding: "0.5rem 0.75rem",
+    gap: isMobile ? "0.25rem" : "0.5rem",
+    padding: isMobile ? "0.4rem 0.5rem" : "0.5rem 0.75rem",
     background: "white",
     borderRadius: "6px",
     border: "1px solid #e0e0e0",
@@ -430,8 +470,8 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
   const labelStyle = {
     display: "flex",
     alignItems: "center",
-    gap: "0.75rem",
-    padding: "0.75rem",
+    gap: isMobile ? "0.5rem" : "0.75rem",
+    padding: isMobile ? "0.5rem" : "0.75rem",
     background: "white",
     borderRadius: "6px",
     border: "1px solid #e0e0e0",
@@ -439,25 +479,28 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
 
   return (
     <div>
-      <h3 style={{ margin: "0 0 1rem 0" }}>Configuración Sin Marcadores</h3>
+      <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
+        Configuración Sin Marcadores
+      </h3>
 
       <div
         style={{
           border: "2px solid #007bff",
-          borderRadius: "8px",
-          padding: "1.5rem",
+          borderRadius: isMobile ? "6px" : "8px",
+          padding: isMobile ? "1rem" : "1.5rem",
           background: "#f0f8ff",
         }}
       >
         {isGroupPhase ? (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-              <span style={{ fontSize: "1.5rem" }}>📊</span>
-              <strong style={{ fontSize: "1.125rem" }}>Ordenar Posiciones de Grupo</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: isMobile ? "0.5rem" : "0.75rem" }}>
+              <span style={{ fontSize: isMobile ? "1.25rem" : "1.5rem" }}>📊</span>
+              <strong style={{ fontSize: isMobile ? "1rem" : "1.125rem" }}>Ordenar Posiciones</strong>
             </div>
-            <p style={{ margin: "0 0 1.25rem 0", color: "#666", fontSize: "0.875rem" }}>
-              Los jugadores ordenan los equipos del 1° al 4° lugar en cada grupo.
-              Configura cuántos puntos vale acertar cada posición.
+            <p style={{ margin: "0 0 1rem 0", color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+              {isMobile
+                ? "Configura puntos por posición."
+                : "Los jugadores ordenan los equipos del 1° al 4° lugar en cada grupo. Configura cuántos puntos vale acertar cada posición."}
             </p>
 
             {/* Puntos por posición */}
@@ -603,6 +646,7 @@ type PickTypeCardProps = {
   example: string;
   onToggle: (enabled: boolean) => void;
   onPointsChange: (points: number) => void;
+  isMobile?: boolean;
 };
 
 function PickTypeCard({
@@ -612,7 +656,95 @@ function PickTypeCard({
   example,
   onToggle,
   onPointsChange,
+  isMobile = false,
 }: PickTypeCardProps) {
+  const [showExample, setShowExample] = useState(false);
+
+  if (isMobile) {
+    // Compact mobile layout - horizontal with minimal height
+    return (
+      <div
+        style={{
+          border: type.enabled ? "2px solid #007bff" : "1px solid #ddd",
+          borderRadius: "6px",
+          padding: "0.75rem",
+          background: type.enabled ? "#f0f8ff" : "white",
+        }}
+      >
+        {/* Main row: checkbox + title + points */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={type.enabled}
+              onChange={(e) => onToggle(e.target.checked)}
+              style={{ width: "16px", height: "16px", flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <strong style={{ fontSize: "0.9rem", display: "block" }}>{title}</strong>
+              <span style={{ fontSize: "0.75rem", color: "#666" }}>{description}</span>
+            </div>
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexShrink: 0 }}>
+            <input
+              type="number"
+              value={type.points}
+              onChange={(e) => onPointsChange(Number(e.target.value))}
+              disabled={!type.enabled}
+              min={0}
+              max={1000}
+              style={{
+                width: "50px",
+                padding: "0.35rem",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                fontSize: "0.85rem",
+                textAlign: "center",
+                background: type.enabled ? "white" : "#f5f5f5",
+              }}
+            />
+            <span style={{ fontSize: "0.7rem", color: "#666" }}>pts</span>
+          </div>
+        </div>
+
+        {/* Expandable example (optional) */}
+        {type.enabled && (
+          <button
+            type="button"
+            onClick={() => setShowExample(!showExample)}
+            style={{
+              marginTop: "0.5rem",
+              background: "none",
+              border: "none",
+              color: "#007bff",
+              fontSize: "0.7rem",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            {showExample ? "▲ Ocultar ejemplo" : "▼ Ver ejemplo"}
+          </button>
+        )}
+        {type.enabled && showExample && (
+          <div
+            style={{
+              marginTop: "0.5rem",
+              background: "#f9f9f9",
+              border: "1px solid #eee",
+              borderRadius: "4px",
+              padding: "0.5rem",
+              fontSize: "0.7rem",
+              color: "#666",
+            }}
+          >
+            {example}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop layout (original)
   return (
     <div
       style={{
