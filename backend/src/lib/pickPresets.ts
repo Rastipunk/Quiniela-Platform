@@ -621,7 +621,7 @@ const CUMULATIVE_CONFIG: PoolPickTypesConfig = [
 ];
 
 export const CUMULATIVE_PRESET: PickConfigPreset = {
-  key: "CUSTOM", // Usamos CUSTOM porque es el enum existente
+  key: "CUMULATIVE",
   name: "Acumulativo",
   description:
     "Los puntos se ACUMULAN: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + " +
