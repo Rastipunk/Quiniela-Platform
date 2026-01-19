@@ -1,12 +1,31 @@
 # Current State - Quiniela Platform
 
-> **Ultima actualizacion:** 2026-01-18 | **Version:** v0.3.0 (Sprint 3 Complete)
+> **Ultima actualizacion:** 2026-01-18 | **Version:** v0.3.1 (Sprint 3 Continued)
 
 ---
 
 ## Estado General
 
-**Resumen ejecutivo:** La plataforma está en estado v0.3.0 con todas las funcionalidades del Sprint 3 completas. Sprint 3 implementó el **Sistema de Notificaciones Internas** (badges visuales en tabs), **Rate Limiting** para protección contra abuso, y mejoras de **Mobile UX** (tabs scrollables, touch targets 44px).
+**Resumen ejecutivo:** La plataforma está en estado v0.3.1 con las funcionalidades del Sprint 3 extendidas. Esta versión añade **optimizaciones de Mobile UX para el Pool Config Wizard** (bottom sheet, layouts compactos, descripciones abreviadas) y **forzado de tema claro** independiente del sistema operativo del usuario.
+
+### Cambios Recientes (v0.3.1)
+
+1. **Pool Config Wizard Mobile Optimizations**
+   - Hook `useIsMobile()` detecta pantallas < 640px
+   - Modal tipo bottom sheet en móvil
+   - Cards de presets horizontales y compactas
+   - Descripciones cortas en móvil, largas en desktop
+   - Ejemplos colapsables en PickTypeCard
+   - Navegación con botones flex y textos abreviados
+
+2. **Light Theme Enforcement**
+   - Meta tags: `color-scheme: light only`, `theme-color`, `supported-color-schemes`
+   - CSS agresivo que sobreescribe preferencias del sistema
+   - Inline styles en HTML como fallback
+   - Compatible con iOS Safari y navegadores con dark mode
+
+3. **Bug Fix: CUMULATIVE preset**
+   - Corregido key mismatch que causaba error "Invalid preset key: CUMULATIVE"
 
 ---
 
@@ -44,7 +63,9 @@
 |---------|--------|-------|
 | **Notification Badges** | ✅ COMPLETO | Badges en tabs con polling 60s |
 | **Rate Limiting** | ✅ COMPLETO | 100 req/min API, 10/15min auth |
-| **Mobile UX** | ✅ COMPLETO | Tabs scrollables, touch 44px |
+| **Mobile UX (Tabs)** | ✅ COMPLETO | Tabs scrollables, touch 44px |
+| **Mobile UX (Wizard)** | ✅ COMPLETO | Bottom sheet, layouts compactos |
+| **Light Theme Enforcement** | ✅ COMPLETO | Forzado independiente del SO |
 
 ### Advanced Pick Types System
 
@@ -208,12 +229,13 @@ FRONTEND_URL=http://localhost:5173
 
 ## Funcionalidades Pendientes (v1.0)
 
-- [ ] Rate Limiting / proteccion brute-force
+- [x] ~~Rate Limiting / proteccion brute-force~~ (v0.3.0)
+- [x] ~~Mobile UX improvements~~ (v0.3.0/v0.3.1)
 - [ ] Email confirmation en registro
 - [ ] Chat del pool
-- [ ] Mobile UX improvements
 - [ ] Session Management (Remember Me)
 - [ ] Ingesta de resultados por API externa
+- [ ] PWA completo (offline mode, push notifications)
 
 ---
 
@@ -261,4 +283,19 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 
 ---
 
-**Última actualización:** 2026-01-18 | Sprint 2 Complete
+## Archivos Clave (Sprint 3 - Mobile UX)
+
+### Frontend - Mobile Optimizations
+- `frontend/src/hooks/useIsMobile.ts` - Hook de detección responsive + estilos interactivos
+- `frontend/src/components/PoolConfigWizard.tsx` - Modal bottom sheet, presets compactos
+- `frontend/src/components/PhaseConfigStep.tsx` - DecisionCard, PickTypeCard, navegación adaptativa
+- `frontend/src/components/MobileMatchCard.tsx` - Card de partido optimizada para móvil
+- `frontend/src/components/MobileLeaderboard.tsx` - Leaderboard compacto
+
+### Frontend - Theme Enforcement
+- `frontend/index.html` - Meta tags para color-scheme, inline styles fallback
+- `frontend/src/index.css` - CSS agresivo con `@media (prefers-color-scheme: dark)` override
+
+---
+
+**Última actualización:** 2026-01-18 | Sprint 3 v0.3.1

@@ -15,6 +15,42 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.3.1] - 2026-01-18
+
+### Sprint 3 (Continued) - Mobile UX Optimizations + Light Theme Enforcement
+
+#### Added
+- **Pool Config Wizard Mobile Optimizations**
+  - Hook `useIsMobile()` para detección responsive (breakpoint 640px)
+  - Prop `isMobile` propagado a todos los componentes hijos
+  - `PoolConfigWizard`: Bottom sheet modal en móvil, padding compacto
+  - `PresetSelectionStep`: Cards horizontales compactas, descripciones cortas
+  - `PhaseConfigStep`: Navegación con botones flex, textos abreviados
+  - `DecisionCard`: Layout horizontal, padding reducido
+  - `PickTypeCard`: Ejemplos colapsables, descripciones resumidas
+  - `StructuralPicksConfiguration`: Inputs más pequeños, spacing reducido
+  - `SummaryStep`: Tipografía escalada, padding adaptativo
+
+- **Light Theme Enforcement (sistema operativo independiente)**
+  - Meta tags HTML: `color-scheme`, `theme-color`, `supported-color-schemes`
+  - Meta tag iOS: `apple-mobile-web-app-status-bar-style`
+  - CSS override agresivo en `@media (prefers-color-scheme: dark)`
+  - Selector `*` forzando `color-scheme: light only !important`
+  - Override explícito para inputs, buttons, links, cards
+  - Inline styles en `<html>` y `<body>` como fallback
+
+#### Fixed
+- **CUMULATIVE preset key mismatch** - Cambiado de `key: "CUSTOM"` a `key: "CUMULATIVE"` en pickPresets.ts
+- Botones del wizard ocupaban espacio excesivo en móvil
+
+#### Technical
+- Nuevo hook: `frontend/src/hooks/useIsMobile.ts`
+- Export adicional: `mobileInteractiveStyles` para estilos interactivos
+- CSS mobile-first con breakpoint 640px
+- Patrón de bottom sheet modal para diálogos móviles
+
+---
+
 ## [0.3.0] - 2026-01-18
 
 ### Sprint 3 - Notificaciones Internas + Mobile UX + Rate Limiting
