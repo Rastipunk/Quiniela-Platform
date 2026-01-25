@@ -11,8 +11,8 @@ const PORT = process.env.PORT || 8080;
 const DIST_PATH = join(__dirname, 'dist');
 const INDEX_PATH = join(DIST_PATH, 'index.html');
 
-// Startup checks
-console.log('=== Frontend Server Starting ===');
+// Startup checks - v2
+console.log('=== Frontend Server Starting v2 ===');
 console.log(`Working directory: ${__dirname}`);
 console.log(`Dist path: ${DIST_PATH}`);
 console.log(`Dist exists: ${existsSync(DIST_PATH)}`);
