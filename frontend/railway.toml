@@ -1,6 +1,10 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm ci --include=dev && npm run build"
+buildCommand = "npm ci && npm run build"
 
 [deploy]
-startCommand = "npm run start"
+startCommand = "node server.js"
+
+[build.env]
+NPM_CONFIG_PRODUCTION = "false"
+NODE_ENV = "production"
