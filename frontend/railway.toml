@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm ci && npm run build"
+buildCommand = "npm install --prefer-offline && npm run build"
 
 [deploy]
 startCommand = "node server.js"
