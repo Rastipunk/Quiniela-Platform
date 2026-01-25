@@ -29,7 +29,7 @@ if (!existsSync(INDEX_PATH)) {
 app.use(express.static(DIST_PATH));
 
 // SPA fallback - serve index.html for all non-file routes
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
   console.log(`[SPA Fallback] ${req.method} ${req.path}`);
 
   if (!existsSync(INDEX_PATH)) {
