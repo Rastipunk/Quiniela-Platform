@@ -814,15 +814,3 @@ function getPickTypeName(key: string): string {
   return names[key] || key;
 }
 
-function getPickTypeExample(key: string): string {
-  const examples: Record<string, string> = {
-    EXACT_SCORE: "Si vale 20 pts: Predices 2-1, sale 2-1 → GANAS 20 PTS | Sale 3-1 → 0 pts (no acertaste exacto)",
-    GOAL_DIFFERENCE: "Predices 2-0 (+2), sale 3-1 (+2) → GANAS | Sale 2-1 (+1) → 0 pts",
-    PARTIAL_SCORE: "Predices 2-1, sale 2-3 → GANAS (acertaste los 2 del local) | Sale 3-3 → 0 pts",
-    TOTAL_GOALS: "Predices 2-1 (3 goles), sale 3-0 (3 goles) → GANAS | Sale 2-0 (2 goles) → 0 pts",
-    MATCH_OUTCOME_90MIN: "Predices victoria local (2-1), sale 3-0 (victoria local) → GANAS",
-    HOME_GOALS: "Predices 2-1, sale 2-3 → GANAS (acertaste los 2 del local)",
-    AWAY_GOALS: "Predices 2-1, sale 3-1 → GANAS (acertaste el 1 del visitante)",
-  };
-  return examples[key] || "";
-}
