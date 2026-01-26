@@ -42,8 +42,18 @@ app.use(express.json({ limit: "1mb" }));
 // Rate limiting global para toda la API (excepto health check)
 app.use(apiLimiter);
 
+// Health check con información de versión para diagnóstico de deployments
+// RAILWAY_GIT_COMMIT_SHA es inyectado automáticamente por Railway
+const BUILD_VERSION = "2026-01-25-email-system";
+const COMMIT_SHA = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || "local";
+
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, version: "2026-01-18-v3" });
+  res.json({
+    ok: true,
+    version: BUILD_VERSION,
+    commit: COMMIT_SHA,
+    deployedAt: new Date().toISOString()
+  });
 });
 
 // Rate limiting específico para auth (más estricto)

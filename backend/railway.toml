@@ -1,0 +1,17 @@
+[build]
+# Desactivar cache de builds para evitar problemas con código viejo
+builder = "nixpacks"
+
+[build.nixpacks]
+# No cachear dependencias ni builds
+nixpacksVersion = "latest"
+
+[deploy]
+# Comando de inicio
+startCommand = "npm run start"
+# Health check para verificar que el deployment fue exitoso
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+# Reiniciar si falla
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
