@@ -44,4 +44,6 @@ backend/prisma/migrations/*_temp/
 
 # Temporary files
 *.tmp
+*.bak
+*.orig
 .cache/

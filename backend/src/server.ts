@@ -42,26 +42,16 @@ app.use(express.json({ limit: "1mb" }));
 // Rate limiting global para toda la API (excepto health check)
 app.use(apiLimiter);
 
-// Health check con información de versión para diagnóstico de deployments
-// RAILWAY_GIT_COMMIT_SHA es inyectado automáticamente por Railway
-const BUILD_VERSION = "2026-01-26-auth-debug";
+// Health check con información de versión
+const BUILD_VERSION = "v0.3.2";
 const COMMIT_SHA = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || "local";
 
 app.get("/health", (_req, res) => {
-  // Verificar configuración crítica (sin exponer valores)
-  const jwtConfigured = !!process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32;
-  const dbConfigured = !!process.env.DATABASE_URL;
-
   res.json({
     ok: true,
     version: BUILD_VERSION,
     commit: COMMIT_SHA,
-    deployedAt: new Date().toISOString(),
-    config: {
-      jwtConfigured,
-      jwtSecretLength: process.env.JWT_SECRET?.length || 0,
-      dbConfigured,
-    }
+    timestamp: new Date().toISOString(),
   });
 });
 

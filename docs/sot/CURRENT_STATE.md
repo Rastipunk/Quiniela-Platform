@@ -1,28 +1,66 @@
 # Current State - Quiniela Platform
 
-> **Ultima actualizacion:** 2026-01-18 | **Version:** v0.3.1 (Sprint 3 Continued)
+> **Ultima actualizacion:** 2026-01-26 | **Version:** v0.3.2 (Sprint 3 Continued)
 
 ---
 
 ## Estado General
 
-**Resumen ejecutivo:** La plataforma está en estado v0.3.1 con las funcionalidades del Sprint 3 extendidas. Esta versión añade **optimizaciones de Mobile UX para el Pool Config Wizard** (bottom sheet, layouts compactos, descripciones abreviadas) y **forzado de tema claro** independiente del sistema operativo del usuario.
+**Resumen ejecutivo:** La plataforma está en estado v0.3.2 con el **sistema de notificaciones por email** completamente implementado. Esta versión añade emails transaccionales via Resend, verificación de email, preferencias de usuario, panel de configuración admin, y correcciones críticas para deployment en Railway.
 
-### Cambios Recientes (v0.3.1)
+### Cambios Recientes (v0.3.2)
+
+1. **Email Notification System (ADR-029)**
+   - Emails transaccionales via Resend
+   - Welcome email para nuevos usuarios
+   - Email verification flow con token seguro (24h expiry)
+   - Pool invitation emails
+   - Deadline reminder service (configurable por admin)
+   - Result published notifications
+   - Pool completed notifications
+
+2. **Admin Email Settings Panel**
+   - Toggle por tipo de email en `/admin/settings/email`
+   - Solo accesible para ADMIN (platformRole)
+   - Audit log de cambios
+
+3. **User Email Preferences**
+   - Master toggle para desactivar todos los emails
+   - Preferencias granulares por tipo de notificación
+   - Sección en perfil de usuario
+
+4. **Email Verification**
+   - Verificación de email para cuentas email/password
+   - Token con expiración de 24 horas
+   - Reenvío de email de verificación
+   - Cuentas Google marcadas como verificadas automáticamente
+
+5. **Legal Documents Infrastructure**
+   - Modelo `LegalDocument` para términos y privacidad
+   - Versionado de documentos legales
+   - Consent tracking con timestamps
+
+6. **Railway Production Fixes**
+   - Agregado `trust proxy` para rate limiting detrás de reverse proxy
+   - Configurado `releaseCommand` para migraciones automáticas
+   - Solucionado schema drift con migración de email verification fields
+   - Health endpoint con información de versión
+
+7. **Auth Improvements**
+   - 401 responses incluyen `reason` field para mejor debugging
+   - Rate limiting específico para auth endpoints
+   - Registro requiere aceptar términos, privacidad y confirmación de edad
+
+### Cambios v0.3.1 (anteriores)
 
 1. **Pool Config Wizard Mobile Optimizations**
    - Hook `useIsMobile()` detecta pantallas < 640px
    - Modal tipo bottom sheet en móvil
    - Cards de presets horizontales y compactas
-   - Descripciones cortas en móvil, largas en desktop
-   - Ejemplos colapsables en PickTypeCard
-   - Navegación con botones flex y textos abreviados
 
 2. **Light Theme Enforcement**
-   - Meta tags: `color-scheme: light only`, `theme-color`, `supported-color-schemes`
+   - Meta tags: `color-scheme: light only`, `theme-color`
    - CSS agresivo que sobreescribe preferencias del sistema
-   - Inline styles en HTML como fallback
-   - Compatible con iOS Safari y navegadores con dark mode
 
 3. **Bug Fix: CUMULATIVE preset**
    - Corregido key mismatch que causaba error "Invalid preset key: CUMULATIVE"
@@ -58,7 +96,7 @@
 | **Player Summary** | ✅ COMPLETO | Resumen personal de puntos por partido |
 | **Pick Visibility** | ✅ COMPLETO | Picks visibles post-deadline |
 
-### Sprint 3 - Notificaciones + Mobile UX + Rate Limiting
+### Sprint 3 - Notificaciones + Mobile UX + Rate Limiting + Email
 | Feature | Estado | Notas |
 |---------|--------|-------|
 | **Notification Badges** | ✅ COMPLETO | Badges en tabs con polling 60s |
@@ -66,6 +104,11 @@
 | **Mobile UX (Tabs)** | ✅ COMPLETO | Tabs scrollables, touch 44px |
 | **Mobile UX (Wizard)** | ✅ COMPLETO | Bottom sheet, layouts compactos |
 | **Light Theme Enforcement** | ✅ COMPLETO | Forzado independiente del SO |
+| **Email Notifications** | ✅ COMPLETO | Resend transactional emails |
+| **Email Verification** | ✅ COMPLETO | Token-based, 24h expiry |
+| **Admin Email Settings** | ✅ COMPLETO | Toggle por tipo de email |
+| **User Email Preferences** | ✅ COMPLETO | Master toggle + granular |
+| **Legal Documents** | ✅ COMPLETO | Versionado + consent tracking |
 
 ### Advanced Pick Types System
 
@@ -145,25 +188,35 @@ frontend/
 ```
 
 ### Base de Datos (PostgreSQL)
-- 20+ modelos Prisma
+- 25+ modelos Prisma
 - Migraciones:
   - Sprint 1: 7 migraciones base
   - Sprint 2: 13 migraciones adicionales
+  - Sprint 3: 3 migraciones (email settings, verification, admin promotion)
 - Nuevos modelos Sprint 2:
   - StructuralPrediction
   - StructuralPhaseResult
   - GroupStandingsResult
+- Nuevos modelos Sprint 3:
+  - PlatformSettings (singleton para config global)
+  - LegalDocument (términos/privacidad versionados)
+- Campos nuevos en User:
+  - emailVerified, emailVerificationToken, emailVerificationTokenExpiresAt
+  - emailNotificationsEnabled, emailPoolInvitations, emailDeadlineReminders
+  - emailResultNotifications, emailPoolCompletions
 
 ---
 
 ## Endpoints Principales
 
 ### Auth
-- `POST /auth/register` - Registro con email/username
+- `POST /auth/register` - Registro con email/username (requiere consents)
 - `POST /auth/login` - Login email/password
-- `POST /auth/google` - Login con Google
+- `POST /auth/google` - Login con Google (consent flow para nuevos)
 - `POST /auth/forgot-password` - Enviar email reset
 - `POST /auth/reset-password` - Resetear password
+- `POST /auth/verify-email` - Verificar email con token
+- `POST /auth/resend-verification` - Reenviar email de verificación
 
 ### Pools
 - `POST /pools` - Crear pool
@@ -188,6 +241,12 @@ frontend/
 - `GET /me/pools` - Mis pools
 - `GET /me/profile` - Mi perfil
 - `PATCH /me/profile` - Actualizar perfil
+- `GET /me/email-preferences` - Preferencias de email
+- `PUT /me/email-preferences` - Actualizar preferencias de email
+
+### Admin (Platform Admin only)
+- `GET /admin/settings/email` - Obtener configuración de emails
+- `PUT /admin/settings/email` - Actualizar toggles de emails
 
 ---
 
@@ -219,11 +278,16 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 RESEND_API_KEY=...
 FRONTEND_URL=http://localhost:5173
+NODE_ENV=development|production
 ```
 
 ### Frontend
 - Vite env via `import.meta.env`
-- API base URL configurable
+- `VITE_API_URL` - API base URL
+
+### Railway (Production)
+- `releaseCommand` en railway.toml ejecuta `npx prisma migrate deploy` automáticamente
+- `trust proxy` habilitado para rate limiting correcto
 
 ---
 
@@ -231,11 +295,13 @@ FRONTEND_URL=http://localhost:5173
 
 - [x] ~~Rate Limiting / proteccion brute-force~~ (v0.3.0)
 - [x] ~~Mobile UX improvements~~ (v0.3.0/v0.3.1)
-- [ ] Email confirmation en registro
+- [x] ~~Email confirmation en registro~~ (v0.3.2)
+- [x] ~~Email notifications transaccionales~~ (v0.3.2)
 - [ ] Chat del pool
 - [ ] Session Management (Remember Me)
 - [ ] Ingesta de resultados por API externa
 - [ ] PWA completo (offline mode, push notifications)
+- [ ] Dominio personalizado
 
 ---
 
@@ -298,4 +364,22 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 
 ---
 
-**Última actualización:** 2026-01-18 | Sprint 3 v0.3.1
+## Archivos Clave (Sprint 3 - Email System)
+
+### Backend - Email Service
+- `backend/src/lib/email.ts` - Servicio de email via Resend, todas las funciones de envío
+- `backend/src/lib/emailTemplates.ts` - Templates HTML profesionales para emails
+- `backend/src/services/deadlineReminderService.ts` - Servicio de recordatorios de deadline
+- `backend/src/routes/adminSettings.ts` - Endpoints admin para configuración de emails
+
+### Backend - Configuration
+- `backend/railway.toml` - Configuración de deploy (releaseCommand, healthcheck)
+
+### Database Migrations (v0.3.2)
+- `20260126013030_add_email_settings` - PlatformSettings + preferencias usuario
+- `20260126040000_add_email_verification_fields` - Campos de verificación de email
+- `20260126050000_promote_juan_to_admin` - Promoción a ADMIN de plataforma
+
+---
+
+**Última actualización:** 2026-01-26 | Sprint 3 v0.3.2

@@ -10,8 +10,64 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ### Pendiente
 - PWA completo (offline mode, push notifications)
-- Email confirmation en registro
 - Chat del pool
+- Dominio personalizado
+
+---
+
+## [0.3.2] - 2026-01-26
+
+### Sistema de Notificaciones por Email + Railway Production Fix
+
+#### Added
+- **Email Notification System (ADR-029)**
+  - Emails transaccionales via Resend
+  - Welcome email para nuevos usuarios
+  - Email verification flow con token seguro
+  - Pool invitation emails
+  - Deadline reminder service (configurable por admin)
+  - Result published notifications
+  - Pool completed notifications
+
+- **Admin Email Settings Panel**
+  - Toggle por tipo de email en `/admin/settings/email`
+  - Solo accesible para ADMIN
+  - Audit log de cambios
+
+- **User Email Preferences**
+  - Master toggle para desactivar todos los emails
+  - Preferencias granulares por tipo de notificación
+  - Sección en perfil de usuario
+
+- **Email Verification**
+  - Verificación de email para cuentas email/password
+  - Token con expiración de 24 horas
+  - Reenvío de email de verificación
+  - Cuentas Google marcadas como verificadas automáticamente
+
+- **Legal Documents Infrastructure**
+  - Modelo `LegalDocument` para términos y privacidad
+  - Versionado de documentos legales
+  - Consent tracking con timestamps
+
+#### Fixed
+- **Railway Production Deployment**
+  - Agregado `trust proxy` para rate limiting detrás de reverse proxy
+  - Configurado `releaseCommand` para migraciones automáticas
+  - Solucionado schema drift con migración de email verification fields
+  - Health endpoint con información de versión y commit
+
+#### Changed
+- Registro ahora requiere aceptar términos, privacidad y confirmación de edad
+- Google OAuth incluye consent flow para usuarios nuevos
+- 401 responses incluyen `reason` field para mejor debugging
+
+#### Technical
+- 27 migraciones de base de datos (3 nuevas)
+- `backend/railway.toml` configurado para deployments automáticos
+- Nuevo servicio: `deadlineReminderService.ts`
+- 44 tests para sistema de email
+- Rate limiting específico para auth endpoints
 
 ---
 

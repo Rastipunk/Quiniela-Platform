@@ -50,16 +50,9 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
       `HTTP ${res.status}`;
 
     if (res.status === 401) {
-      // ✅ hardening: token inválido/expirado → logout automático
+      // Token inválido/expirado → logout automático
       // Solo marcar como expirado si había un token (no en login fallido)
-      const hadToken = !!getToken();
-
-      // Logging detallado para diagnóstico
-      const reason = data?.reason || "UNKNOWN";
-      console.error(`[AUTH 401] Path: ${path}, Reason: ${reason}, HadToken: ${hadToken}`);
-      console.error(`[AUTH 401] Full response:`, JSON.stringify(data, null, 2));
-
-      if (hadToken) {
+      if (getToken()) {
         markSessionExpired();
       }
       clearToken();
