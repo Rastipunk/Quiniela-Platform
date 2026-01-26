@@ -251,13 +251,14 @@ export async function processDeadlineReminders(
       if (matchesToRemind.length === 0) continue;
 
       // Calcular el deadline más próximo para el email
+      const firstMatch = matchesToRemind[0]!; // Safe: we already checked length > 0
       const nearestDeadline = matchesToRemind.reduce((nearest, match) => {
         const deadline = getMatchDeadline(
           match.kickoffTime,
           pool.deadlineMinutesBeforeKickoff
         );
         return deadline < nearest ? deadline : nearest;
-      }, new Date(matchesToRemind[0].kickoffTime));
+      }, new Date(firstMatch.kickoffTime));
 
       const deadlineFormatted = formatDeadlineTime(nearestDeadline, pool.timeZone);
 
