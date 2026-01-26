@@ -39,7 +39,18 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     }
 
     // Comentario en español: validación adicional contra la DB (usuario existe y está activo)
-    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    let user;
+    try {
+      user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    } catch (dbError: any) {
+      console.error(`[AUTH] ${method} ${path} - Database error:`, dbError?.message || dbError);
+      console.error(`[AUTH] ${method} ${path} - Database error stack:`, dbError?.stack);
+      return res.status(401).json({
+        error: "UNAUTHENTICATED",
+        reason: "DATABASE_ERROR",
+        debug: dbError?.message || "Unknown database error",
+      });
+    }
 
     if (!user) {
       console.error(`[AUTH] ${method} ${path} - User not found: ${payload.userId}`);
@@ -55,7 +66,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return next();
   } catch (error: any) {
     console.error(`[AUTH] ${method} ${path} - Unexpected error:`, error?.message || error);
-    return res.status(401).json({ error: "UNAUTHENTICATED", reason: "INTERNAL_ERROR" });
+    console.error(`[AUTH] ${method} ${path} - Error stack:`, error?.stack);
+    return res.status(401).json({
+      error: "UNAUTHENTICATED",
+      reason: "INTERNAL_ERROR",
+      debug: error?.message || "Unknown error",
+    });
   }
 }
 
