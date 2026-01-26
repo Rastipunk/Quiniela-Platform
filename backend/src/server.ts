@@ -18,6 +18,8 @@ import { meRouter } from "./routes/me";
 import { catalogRouter } from "./routes/catalog";
 import { userProfileRouter } from "./routes/userProfile";
 import { pickPresetsRouter } from "./routes/pickPresets";
+import legalRouter from "./routes/legal";
+import adminSettingsRouter from "./routes/adminSettings";
 import { apiLimiter, authLimiter, passwordResetLimiter } from "./middleware/rateLimit";
 
 
@@ -54,6 +56,7 @@ app.use("/admin", adminRouter);
 // Comentario en español: templates admin
 app.use("/admin", adminTemplatesRouter);
 app.use("/admin", adminInstancesRouter);
+app.use("/admin/settings", adminSettingsRouter);
 app.use("/pools", poolsRouter);
 // app.use("/pools", poolsLockRouter); // TODO: implementar
 app.use("/pools", picksRouter);
@@ -65,6 +68,7 @@ app.use("/me", meRouter);
 app.use("/users", userProfileRouter);
 app.use("/catalog", catalogRouter);
 app.use("/pick-presets", pickPresetsRouter);
+app.use("/legal", legalRouter);
 
 
 

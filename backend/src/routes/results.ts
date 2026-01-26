@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
+import { sendResultPublishedEmail } from "../lib/email";
 import {
   validateCanAutoAdvance,
   advanceToRoundOf32,
@@ -153,6 +154,134 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
       ip: req.ip,
       userAgent: req.get("user-agent") ?? null,
     });
+
+    // ========== SEND RESULT NOTIFICATION EMAILS ==========
+    // Enviar notificaciones por email a los miembros del pool (async, no bloquea)
+    (async () => {
+      try {
+        // Obtener equipos del partido
+        const teams = extractTeams(pool.tournamentInstance.dataJson);
+        const teamById = new Map(teams.map((t) => [t.id, t]));
+        const homeTeam = teamById.get(match.homeTeamId);
+        const awayTeam = teamById.get(match.awayTeamId);
+        const allMatches = extractMatches(pool.tournamentInstance.dataJson);
+
+        const matchDescription = `${homeTeam?.name ?? "Local"} vs ${awayTeam?.name ?? "Visitante"}`;
+        const resultText = `${homeGoals} - ${awayGoals}`;
+
+        // Obtener miembros activos del pool
+        const members = await prisma.poolMember.findMany({
+          where: { poolId, status: "ACTIVE" },
+          include: { user: { select: { id: true, email: true, displayName: true } } },
+          orderBy: { joinedAtUtc: "asc" }
+        });
+
+        // Obtener picks de este partido
+        const matchPicks = await prisma.prediction.findMany({
+          where: { poolId, matchId }
+        });
+        const pickByUserId = new Map(matchPicks.map(p => [p.userId, p]));
+
+        // Obtener todos los resultados para calcular ranking
+        const allResults = await prisma.poolMatchResult.findMany({
+          where: { poolId },
+          include: { currentVersion: true }
+        });
+        const resultByMatchId = new Map<string, { homeGoals: number; awayGoals: number }>();
+        for (const r of allResults) {
+          if (r.currentVersion) {
+            resultByMatchId.set(r.matchId, {
+              homeGoals: r.currentVersion.homeGoals,
+              awayGoals: r.currentVersion.awayGoals
+            });
+          }
+        }
+
+        // Obtener todas las predicciones para calcular ranking
+        const allPredictions = await prisma.prediction.findMany({
+          where: { poolId, matchId: { in: allMatches.map(m => m.id) } }
+        });
+
+        // Calcular puntos por usuario
+        const userPoints = new Map<string, number>();
+        for (const pred of allPredictions) {
+          const result = resultByMatchId.get(pred.matchId);
+          if (!result) continue;
+          const pick = pred.pickJson as any;
+          let pts = 0;
+          if (pick?.type === "OUTCOME") {
+            const actual = result.homeGoals > result.awayGoals ? "HOME" :
+                          result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
+            if (pick.outcome === actual) pts = 3;
+          } else if (pick?.type === "SCORE") {
+            const actual = result.homeGoals > result.awayGoals ? "HOME" :
+                          result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
+            const predicted = pick.homeGoals > pick.awayGoals ? "HOME" :
+                             pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
+            if (predicted === actual) {
+              pts = 3;
+              if (pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
+                pts = 5;
+              }
+            }
+          }
+          userPoints.set(pred.userId, (userPoints.get(pred.userId) ?? 0) + pts);
+        }
+
+        // Ordenar para ranking
+        const sortedMembers = members
+          .map(m => ({ ...m, totalPoints: userPoints.get(m.userId) ?? 0 }))
+          .sort((a, b) => {
+            if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+            return new Date(a.joinedAtUtc).getTime() - new Date(b.joinedAtUtc).getTime();
+          });
+
+        // Calcular puntos ganados en este partido por usuario
+        const actualOutcome = homeGoals > awayGoals ? "HOME" :
+                             homeGoals < awayGoals ? "AWAY" : "DRAW";
+
+        // Enviar emails
+        const emailPromises = sortedMembers.map((member, idx) => {
+          const pick = pickByUserId.get(member.userId);
+          let pointsEarned = 0;
+          if (pick) {
+            const pickJson = pick.pickJson as any;
+            if (pickJson?.type === "OUTCOME" && pickJson.outcome === actualOutcome) {
+              pointsEarned = 3;
+            } else if (pickJson?.type === "SCORE") {
+              const predicted = pickJson.homeGoals > pickJson.awayGoals ? "HOME" :
+                               pickJson.homeGoals < pickJson.awayGoals ? "AWAY" : "DRAW";
+              if (predicted === actualOutcome) {
+                pointsEarned = 3;
+                if (pickJson.homeGoals === homeGoals && pickJson.awayGoals === awayGoals) {
+                  pointsEarned = 5;
+                }
+              }
+            }
+          }
+
+          return sendResultPublishedEmail({
+            to: member.user.email,
+            userId: member.user.id,
+            displayName: member.user.displayName,
+            poolName: pool.name,
+            poolId: poolId,
+            matchDescription,
+            result: resultText,
+            pointsEarned,
+            currentRank: idx + 1,
+            totalParticipants: sortedMembers.length,
+          }).catch((err) => {
+            console.error(`Error sending result email to ${member.user.email}:`, err);
+          });
+        });
+
+        await Promise.allSettled(emailPromises);
+        console.log(`📧 Result notification emails sent for pool ${poolId}, match ${matchId}`);
+      } catch (emailError) {
+        console.error("Error sending result notification emails:", emailError);
+      }
+    })();
 
     // ========== AUTO-ADVANCE LOGIC ==========
     // Después de publicar un resultado, verificar si se completó alguna fase

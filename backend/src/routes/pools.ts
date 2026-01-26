@@ -21,6 +21,7 @@ import {
   canCreateInvites
 } from "../services/poolStateMachine";
 import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
+import { sendPoolInvitationEmail } from "../lib/email";
 import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import { getPresetByKey } from "../lib/pickPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
@@ -1236,6 +1237,84 @@ poolsRouter.post("/:poolId/invites", async (req, res) => {
   });
 
   return res.status(201).json(invite);
+});
+
+// POST /pools/:poolId/send-invite-email
+// Envía una invitación por email a una persona específica
+const sendInviteEmailSchema = z.object({
+  email: z.string().email(),
+  inviteCode: z.string().min(6).max(64),
+});
+
+poolsRouter.post("/:poolId/send-invite-email", async (req, res) => {
+  const { poolId } = req.params;
+
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const parsed = sendInviteEmailSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const { email, inviteCode } = parsed.data;
+
+  // Obtener datos del pool y del invitador
+  const [pool, inviter] = await Promise.all([
+    prisma.pool.findUnique({ where: { id: poolId } }),
+    prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } }),
+  ]);
+
+  if (!pool) return res.status(404).json({ error: "NOT_FOUND", message: "Pool not found" });
+  if (!inviter) return res.status(404).json({ error: "NOT_FOUND", message: "Inviter not found" });
+
+  // Verificar que el código de invitación existe y pertenece a este pool
+  const invite = await prisma.poolInvite.findUnique({ where: { code: inviteCode } });
+  if (!invite || invite.poolId !== poolId) {
+    return res.status(400).json({ error: "INVALID_CODE", message: "Invalid invite code for this pool" });
+  }
+
+  // Buscar si el email corresponde a un usuario existente (para respetar preferencias)
+  const targetUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  // Enviar email de invitación
+  const emailResult = await sendPoolInvitationEmail({
+    to: email,
+    userId: targetUser?.id,
+    inviterName: inviter.displayName,
+    poolName: pool.name,
+    inviteCode,
+    poolDescription: pool.description ?? undefined,
+  });
+
+  if (!emailResult.success && !emailResult.skipped) {
+    console.error("Error sending pool invitation email:", emailResult.error);
+    return res.status(500).json({
+      error: "EMAIL_SEND_FAILED",
+      message: "No se pudo enviar el email de invitación. Intenta de nuevo más tarde."
+    });
+  }
+
+  await writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "POOL_INVITE_EMAIL_SENT",
+    entityType: "Pool",
+    entityId: poolId,
+    dataJson: { email, inviteCode, skipped: emailResult.skipped },
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({
+    success: true,
+    message: emailResult.skipped
+      ? "El email no fue enviado porque el usuario tiene deshabilitadas las notificaciones."
+      : "Invitación enviada exitosamente.",
+    skipped: emailResult.skipped,
+  });
 });
 
 const joinSchema = z.object({

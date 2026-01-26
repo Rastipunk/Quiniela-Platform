@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getUserProfile, updateUserProfile, type UserProfile, type UpdateProfileInput } from "../lib/api";
 import { getToken } from "../lib/auth";
+import { EmailPreferencesSection } from "../components/EmailPreferencesSection";
+import { EmailVerificationBanner } from "../components/EmailVerificationBanner";
 
 export function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -149,6 +151,12 @@ export function ProfilePage() {
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "2rem" }}>
       <h1>Mi Perfil</h1>
 
+      <EmailVerificationBanner
+        emailVerified={profile.emailVerified}
+        isGoogleAccount={profile.isGoogleAccount}
+        email={profile.email}
+      />
+
       <div
         style={{
           marginBottom: "2rem",
@@ -157,8 +165,48 @@ export function ProfilePage() {
           borderRadius: "8px",
         }}
       >
-        <p>
+        <p style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <strong>Email:</strong> {profile.email}
+          {profile.emailVerified ? (
+            <span
+              style={{
+                background: "#d1fae5",
+                color: "#065f46",
+                fontSize: 12,
+                padding: "2px 8px",
+                borderRadius: 12,
+                fontWeight: 500,
+              }}
+            >
+              &#10004; Verificado
+            </span>
+          ) : profile.isGoogleAccount ? (
+            <span
+              style={{
+                background: "#dbeafe",
+                color: "#1e40af",
+                fontSize: 12,
+                padding: "2px 8px",
+                borderRadius: 12,
+                fontWeight: 500,
+              }}
+            >
+              Google
+            </span>
+          ) : (
+            <span
+              style={{
+                background: "#fef3c7",
+                color: "#92400e",
+                fontSize: 12,
+                padding: "2px 8px",
+                borderRadius: 12,
+                fontWeight: 500,
+              }}
+            >
+              Pendiente
+            </span>
+          )}
         </p>
         <p>
           <strong>Cuenta creada:</strong>{" "}
@@ -544,6 +592,9 @@ export function ProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* Sección de preferencias de email (fuera del form principal) */}
+      <EmailPreferencesSection />
     </div>
   );
 }

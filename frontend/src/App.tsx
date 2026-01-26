@@ -7,6 +7,10 @@ import { PoolPage } from "./pages/PoolPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { TermsPage } from "./pages/TermsPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
+import { AdminEmailSettingsPage } from "./pages/AdminEmailSettingsPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { Layout } from "./components/Layout";
 
 /**
@@ -14,7 +18,7 @@ import { Layout } from "./components/Layout";
  * Esto incluye flujos de recuperación de contraseña que el usuario puede necesitar
  * incluso si tiene una sesión activa (ej: cambiar contraseña desde otro dispositivo).
  */
-const AUTH_INDEPENDENT_ROUTES = ["/forgot-password", "/reset-password"];
+const AUTH_INDEPENDENT_ROUTES = ["/forgot-password", "/reset-password", "/terms", "/privacy", "/verify-email"];
 
 /**
  * Componente para rutas protegidas (usuario autenticado)
@@ -26,6 +30,7 @@ function AuthedApp() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/pools/:poolId" element={<PoolPage />} />
+        <Route path="/admin/settings/email" element={<AdminEmailSettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
@@ -53,6 +58,9 @@ function AuthIndependentRoutes() {
     <Routes>
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
     </Routes>
   );
 }

@@ -83,16 +83,34 @@ export async function login(email: string, password: string): Promise<LoginRespo
   });
 }
 
+export type RegisterConsentOptions = {
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+  acceptAge: boolean;
+  acceptMarketing?: boolean;
+};
+
 export async function register(
   email: string,
   username: string,
   displayName: string,
   password: string,
-  timezone?: string
+  timezone?: string,
+  consent?: RegisterConsentOptions
 ): Promise<LoginResponse> {
   return requestJson<LoginResponse>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, username, displayName, password, timezone }),
+    body: JSON.stringify({
+      email,
+      username,
+      displayName,
+      password,
+      timezone,
+      acceptTerms: consent?.acceptTerms ?? false,
+      acceptPrivacy: consent?.acceptPrivacy ?? false,
+      acceptAge: consent?.acceptAge ?? false,
+      acceptMarketing: consent?.acceptMarketing ?? false,
+    }),
   });
 }
 
@@ -110,10 +128,21 @@ export async function resetPassword(token: string, newPassword: string): Promise
   });
 }
 
-export async function loginWithGoogle(idToken: string, timezone?: string): Promise<LoginResponse> {
+export async function loginWithGoogle(
+  idToken: string,
+  timezone?: string,
+  consent?: RegisterConsentOptions
+): Promise<LoginResponse> {
   return requestJson<LoginResponse>("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ idToken, timezone }),
+    body: JSON.stringify({
+      idToken,
+      timezone,
+      acceptTerms: consent?.acceptTerms,
+      acceptPrivacy: consent?.acceptPrivacy,
+      acceptAge: consent?.acceptAge,
+      acceptMarketing: consent?.acceptMarketing,
+    }),
   });
 }
 
@@ -124,6 +153,7 @@ export async function loginWithGoogle(idToken: string, timezone?: string): Promi
 export type UserProfile = {
   id: string;
   email: string;
+  emailVerified: boolean;
   username: string;
   displayName: string;
   platformRole: string;
@@ -138,6 +168,7 @@ export type UserProfile = {
   lastUsernameChangeAt: string | null;
   createdAtUtc: string;
   updatedAtUtc: string;
+  isGoogleAccount?: boolean;
 };
 
 export type UpdateProfileInput = {
@@ -955,6 +986,135 @@ export async function getPoolNotifications(
   return requestJson(
     `/pools/${poolId}/notifications`,
     { method: "GET" },
+    token
+  );
+}
+
+// ========== ADMIN EMAIL SETTINGS ==========
+
+export type PlatformEmailSettings = {
+  emailWelcomeEnabled: boolean;
+  emailPoolInvitationEnabled: boolean;
+  emailDeadlineReminderEnabled: boolean;
+  emailResultPublishedEnabled: boolean;
+  emailPoolCompletedEnabled: boolean;
+};
+
+export type AdminEmailSettingsResponse = {
+  settings: PlatformEmailSettings;
+  metadata: {
+    updatedAt: string;
+    updatedBy: { displayName: string; email: string } | null;
+  };
+};
+
+export async function getAdminEmailSettings(
+  token: string
+): Promise<AdminEmailSettingsResponse> {
+  return requestJson("/admin/settings/email", { method: "GET" }, token);
+}
+
+export async function updateAdminEmailSettings(
+  token: string,
+  settings: Partial<PlatformEmailSettings>
+): Promise<{
+  message: string;
+  settings: PlatformEmailSettings;
+  changes: Record<string, { from: boolean; to: boolean }>;
+}> {
+  return requestJson(
+    "/admin/settings/email",
+    {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    },
+    token
+  );
+}
+
+// ========== USER EMAIL PREFERENCES ==========
+
+export type UserEmailPreferences = {
+  emailNotificationsEnabled: boolean;
+  emailPoolInvitations: boolean;
+  emailDeadlineReminders: boolean;
+  emailResultNotifications: boolean;
+  emailPoolCompletions: boolean;
+};
+
+export type PlatformEmailEnabled = {
+  emailPoolInvitations: boolean;
+  emailDeadlineReminders: boolean;
+  emailResultNotifications: boolean;
+  emailPoolCompletions: boolean;
+};
+
+export type UserEmailPreferencesResponse = {
+  preferences: UserEmailPreferences;
+  platformEnabled?: PlatformEmailEnabled;
+  descriptions: Record<keyof UserEmailPreferences, string>;
+};
+
+export async function getUserEmailPreferences(
+  token: string
+): Promise<UserEmailPreferencesResponse> {
+  return requestJson("/me/email-preferences", { method: "GET" }, token);
+}
+
+export async function updateUserEmailPreferences(
+  token: string,
+  preferences: Partial<UserEmailPreferences>
+): Promise<{
+  message: string;
+  preferences: UserEmailPreferences;
+}> {
+  return requestJson(
+    "/me/email-preferences",
+    {
+      method: "PUT",
+      body: JSON.stringify(preferences),
+    },
+    token
+  );
+}
+
+// ========== EMAIL VERIFICATION ==========
+
+export type VerifyEmailResponse = {
+  message: string;
+  verified?: boolean;
+  alreadyVerified?: boolean;
+};
+
+export async function verifyEmail(verificationToken: string): Promise<VerifyEmailResponse> {
+  return requestJson<VerifyEmailResponse>(
+    `/auth/verify-email?token=${encodeURIComponent(verificationToken)}`,
+    { method: "GET" }
+  );
+}
+
+export async function resendVerificationEmail(token: string): Promise<{ message: string }> {
+  return requestJson<{ message: string }>(
+    "/auth/resend-verification",
+    { method: "POST" },
+    token
+  );
+}
+
+// ========== POOL INVITE BY EMAIL ==========
+
+export async function sendPoolInviteEmail(
+  token: string,
+  poolId: string,
+  email: string,
+  inviteCode: string
+): Promise<{ success: boolean; message: string; skipped?: boolean }> {
+  return requestJson(
+    `/pools/${poolId}/send-invite-email`,
+    {
+      method: "POST",
+      body: JSON.stringify({ email, inviteCode }),
+    },
     token
   );
 }

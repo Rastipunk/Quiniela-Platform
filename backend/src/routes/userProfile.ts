@@ -37,6 +37,7 @@ userProfileRouter.get("/me/profile", async (req, res) => {
     select: {
       id: true,
       email: true,
+      emailVerified: true,
       username: true,
       displayName: true,
       platformRole: true,
@@ -51,6 +52,7 @@ userProfileRouter.get("/me/profile", async (req, res) => {
       lastUsernameChangeAt: true,
       createdAtUtc: true,
       updatedAtUtc: true,
+      googleId: true, // Para saber si es cuenta Google
     },
   });
 
@@ -62,6 +64,7 @@ userProfileRouter.get("/me/profile", async (req, res) => {
     user: {
       id: user.id,
       email: user.email,
+      emailVerified: user.emailVerified,
       username: user.username,
       displayName: user.displayName,
       platformRole: user.platformRole,
@@ -76,6 +79,7 @@ userProfileRouter.get("/me/profile", async (req, res) => {
       lastUsernameChangeAt: user.lastUsernameChangeAt,
       createdAtUtc: user.createdAtUtc,
       updatedAtUtc: user.updatedAtUtc,
+      isGoogleAccount: !!user.googleId,
     },
   });
 });

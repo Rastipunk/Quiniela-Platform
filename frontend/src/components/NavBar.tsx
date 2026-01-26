@@ -219,6 +219,31 @@ export function NavBar() {
                     👤 Mi Perfil
                   </Link>
 
+                  {/* Admin Panel - solo para ADMIN */}
+                  {profile?.platformRole === "ADMIN" && (
+                    <Link
+                      to="/admin/settings/email"
+                      onClick={() => setShowUserMenu(false)}
+                      style={{
+                        display: "block",
+                        padding: "0.75rem 1rem",
+                        color: "#333",
+                        textDecoration: "none",
+                        borderBottom: "1px solid #eee",
+                        minHeight: TOUCH_TARGET.minimum,
+                        lineHeight: `${TOUCH_TARGET.minimum - 24}px`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#f5f5f5";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "white";
+                      }}
+                    >
+                      ⚙️ Panel Admin
+                    </Link>
+                  )}
+
                   <button
                     onClick={handleLogout}
                     style={{
@@ -444,6 +469,29 @@ export function NavBar() {
               >
                 👤 Mi Perfil
               </Link>
+
+              {/* Admin Panel - solo para ADMIN */}
+              {profile?.platformRole === "ADMIN" && (
+                <Link
+                  to="/admin/settings/email"
+                  onClick={() => setShowMobileMenu(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    padding: "1rem",
+                    color: "#a78bfa",
+                    textDecoration: "none",
+                    fontSize: "1rem",
+                    minHeight: TOUCH_TARGET.comfortable,
+                    borderLeft: "3px solid #a78bfa",
+                    background: "rgba(167, 139, 250, 0.1)",
+                    ...mobileInteractiveStyles.tapHighlight,
+                  }}
+                >
+                  ⚙️ Panel Admin
+                </Link>
+              )}
             </div>
 
             {/* Logout */}

@@ -50,10 +50,9 @@ body {
   /* Links de contenido - NO aplicar a navegación con estilos inline */
   /* Removed: a { color: #2563eb !important; } - causaba que links de nav se volvieran azules */
 
-  /* Cards y superficies */
+  /* Cards y superficies - NO aplicar a divs con style inline (rompe toggles) */
   .card,
-  [class*="card"],
-  div[style*="background"] {
+  [class*="card"] {
     background-color: var(--surface, #ffffff) !important;
   }
 }

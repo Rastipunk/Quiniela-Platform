@@ -53,6 +53,49 @@ model User {
   // Comentario en español: Google OAuth ID (único por usuario de Google)
   googleId String? @unique
 
+  // =========================================================================
+  // EMAIL VERIFICATION
+  // Comentario en español: verificación de email para cuentas email/password
+  // =========================================================================
+
+  emailVerified                   Boolean   @default(false) // true = email verificado
+  emailVerificationToken          String?   @unique // Token único para verificar email
+  emailVerificationTokenExpiresAt DateTime? // Expiración del token (24 horas)
+
+  // =========================================================================
+  // LEGAL CONSENT TRACKING
+  // Comentario en español: campos para tracking de consentimiento legal (GDPR/CCPA compliance)
+  // =========================================================================
+
+  // Términos de Servicio
+  acceptedTermsAt      DateTime? // Cuándo aceptó TOS
+  acceptedTermsVersion String?   // Versión del TOS aceptado (ej: "2026-01-25")
+
+  // Política de Privacidad
+  acceptedPrivacyAt      DateTime? // Cuándo aceptó Privacy Policy
+  acceptedPrivacyVersion String?   // Versión de Privacy Policy aceptada
+
+  // Consentimiento de marketing (emails promocionales) - OPCIONAL
+  marketingConsent   Boolean   @default(false)
+  marketingConsentAt DateTime?
+
+  // Confirmación de edad mínima (13+)
+  ageVerifiedAt DateTime?
+
+  // =========================================================================
+  // EMAIL NOTIFICATION PREFERENCES
+  // Comentario en español: preferencias de notificación por email del usuario
+  // =========================================================================
+
+  // Master toggle - si false, no recibe ningún email excepto password reset
+  emailNotificationsEnabled Boolean @default(true)
+
+  // Preferencias granulares (solo aplican si emailNotificationsEnabled=true)
+  emailPoolInvitations     Boolean @default(true) // Invitaciones a pools
+  emailDeadlineReminders   Boolean @default(true) // Recordatorios de deadline
+  emailResultNotifications Boolean @default(true) // Resultados publicados
+  emailPoolCompletions     Boolean @default(true) // Pool completado
+
   createdAtUtc DateTime     @default(now())
   updatedAtUtc DateTime     @updatedAt
   predictions  Prediction[]
@@ -69,6 +112,7 @@ model User {
   @@index([username])
   @@index([resetToken])
   @@index([googleId])
+  @@index([emailVerificationToken])
 }
 
 model AuditEvent {
@@ -496,4 +540,93 @@ model GroupStandingsResult {
 
   @@unique([poolId, phaseId, groupId], name: "poolId_phaseId_groupId")
   @@index([poolId])
+}
+
+// =========================================================================
+// LEGAL DOCUMENTS - Sistema de versionado de documentos legales
+// =========================================================================
+
+enum LegalDocumentType {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+}
+
+model LegalDocument {
+  id String @id @default(uuid())
+
+  type    LegalDocumentType
+  version String // Formato: "YYYY-MM-DD" o semver "1.0.0"
+
+  // Contenido del documento
+  title   String // Ej: "Términos de Servicio", "Política de Privacidad"
+  content String @db.Text // Contenido completo en markdown
+
+  // Resumen de cambios (para mostrar al usuario cuando hay nueva versión)
+  changeSummary String? @db.Text
+
+  // Metadata
+  locale       String  @default("es") // ISO 639-1 (es, en, pt)
+  isActive     Boolean @default(false) // Solo un documento activo por tipo+locale
+  publishedAt  DateTime?
+  effectiveAt  DateTime? // Cuándo entra en vigor (puede ser futuro)
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([type, version, locale])
+  @@index([type, locale, isActive])
+}
+
+// =========================================================================
+// PLATFORM SETTINGS - Configuración global de la plataforma
+// Comentario en español: tabla singleton para configuración admin de emails y otros
+// =========================================================================
+
+model PlatformSettings {
+  // ID fijo "singleton" para garantizar una sola fila
+  id String @id @default("singleton")
+
+  // =========================================================================
+  // EMAIL TOGGLES (Admin controla)
+  // Comentario en español: si false, el tipo de email NO se envía a nadie
+  // =========================================================================
+
+  emailWelcomeEnabled          Boolean @default(true) // Email de bienvenida en registro
+  emailPoolInvitationEnabled   Boolean @default(true) // Notificación de invitación a pool
+  emailDeadlineReminderEnabled Boolean @default(false) // Recordatorio de deadline (desactivado por defecto)
+  emailResultPublishedEnabled  Boolean @default(true) // Notificación de resultado publicado
+  emailPoolCompletedEnabled    Boolean @default(true) // Notificación de pool completado
+
+  // Audit trail
+  updatedAt   DateTime @updatedAt
+  updatedById String? // userId del admin que hizo el último cambio
+}
+
+// =========================================================================
+// DEADLINE REMINDER LOG - Tracking de recordatorios enviados
+// Comentario en español: evita duplicados y permite auditoría de emails enviados
+// =========================================================================
+
+model DeadlineReminderLog {
+  id String @id @default(uuid())
+
+  poolId  String
+  userId  String
+  matchId String // Partido específico para el cual se envió el recordatorio
+
+  // Información del email
+  sentAt    DateTime @default(now())
+  sentToEmail String
+
+  // Resultado del envío
+  success Boolean @default(true)
+  error   String? // Error si falló
+
+  // Metadata del contexto
+  hoursBeforeDeadline Int // Cuántas horas antes del deadline se envió
+
+  @@unique([poolId, userId, matchId]) // Un recordatorio por usuario/partido/pool
+  @@index([poolId])
+  @@index([userId])
+  @@index([sentAt])
 }
