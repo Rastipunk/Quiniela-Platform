@@ -182,18 +182,6 @@ export function EmailPreferencesSection() {
     color: type === "error" ? "#dc2626" : "#059669",
   });
 
-  const disabledBadgeStyle: React.CSSProperties = {
-    display: "inline-block",
-    fontSize: 10,
-    fontWeight: 600,
-    color: "#9ca3af",
-    background: "#e5e7eb",
-    padding: "2px 6px",
-    borderRadius: 4,
-    marginLeft: 8,
-    textTransform: "uppercase",
-  };
-
   if (loading) {
     return (
       <div style={sectionStyle}>

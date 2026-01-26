@@ -188,7 +188,7 @@ function parseMarkdown(md: string): string {
     // Line breaks
     .replace(/\n\n/g, "</p><p>")
     // Tables (basic support)
-    .replace(/^\|(.+)\|$/gim, (match, content) => {
+    .replace(/^\|(.+)\|$/gim, (_match, content) => {
       const cells = content.split("|").map((c: string) => c.trim());
       const isHeader = cells.every((c: string) => c.match(/^-+$/));
       if (isHeader) return "";
