@@ -30,6 +30,10 @@ import { apiLimiter, authLimiter, passwordResetLimiter } from "./middleware/rate
 
 const app = express();
 
+// Trust proxy - necesario para Railway/Heroku/etc. donde hay reverse proxy
+// Permite que express-rate-limit obtenga la IP real del cliente desde X-Forwarded-For
+app.set("trust proxy", 1);
+
 app.use(cors());
 
 // Comentario en español: MUY IMPORTANTE para que req.body no sea undefined
