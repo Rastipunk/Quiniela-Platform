@@ -47,10 +47,8 @@ body {
     color-scheme: light only !important;
   }
 
-  /* Links */
-  a {
-    color: #2563eb !important;
-  }
+  /* Links de contenido - NO aplicar a navegación con estilos inline */
+  /* Removed: a { color: #2563eb !important; } - causaba que links de nav se volvieran azules */
 
   /* Cards y superficies */
   .card,
