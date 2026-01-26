@@ -155,6 +155,20 @@ authRouter.post("/forgot-password", async (req, res) => {
     return res.json({ message: "Si el email existe, recibirás un enlace para restablecer tu contraseña" });
   }
 
+  // Verificar si es cuenta de Google sin contraseña local
+  // Una cuenta es "solo Google" si tiene googleId Y no tiene passwordHash válido
+  const isGoogleOnlyAccount = user.googleId && (!user.passwordHash || user.passwordHash === "");
+
+  if (isGoogleOnlyAccount) {
+    // Retornar error específico para que el frontend muestre mensaje apropiado
+    // Esto revela que el email existe, pero es necesario para buena UX
+    // y las cuentas de Google ya son "públicas" por naturaleza
+    return res.status(400).json({
+      error: "GOOGLE_ACCOUNT",
+      message: "Esta cuenta utiliza Google para iniciar sesión. Por favor, usa el botón 'Iniciar con Google' en la página de login.",
+    });
+  }
+
   // Generar token de reset
   const resetToken = crypto.randomBytes(32).toString("hex");
   const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora

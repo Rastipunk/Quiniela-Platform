@@ -1,9 +1,18 @@
 import { useState, useEffect } from "react";
 import { resetPassword } from "../lib/api";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { getToken, clearToken } from "../lib/auth";
 
+/**
+ * Página de restablecimiento de contraseña.
+ *
+ * Esta página es accesible independientemente del estado de autenticación,
+ * permitiendo a usuarios con sesión activa restablecer su contraseña
+ * (ej: desde otro dispositivo o por seguridad).
+ */
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const token = searchParams.get("token");
 
   const [newPassword, setNewPassword] = useState("");
@@ -11,6 +20,9 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Detectar si el usuario tiene una sesión activa
+  const hasActiveSession = !!getToken();
 
   useEffect(() => {
     if (!token) {
@@ -33,14 +45,35 @@ export function ResetPasswordPage() {
       }
 
       await resetPassword(token, newPassword);
+
+      // Si había sesión activa, cerrarla por seguridad
+      // (la contraseña cambió, el usuario debe re-autenticarse)
+      if (hasActiveSession) {
+        clearToken();
+      }
+
       setSuccess(true);
     } catch (err: any) {
-      setError(err?.message ?? "Error al restablecer contraseña");
+      // Manejar errores específicos del backend
+      const errorCode = err?.payload?.error;
+
+      if (errorCode === "INVALID_TOKEN") {
+        setError("El enlace ha expirado o ya fue utilizado. Solicita uno nuevo.");
+      } else {
+        setError(err?.message ?? "Error al restablecer contraseña");
+      }
     } finally {
       setLoading(false);
     }
   }
 
+  function handleLogoutAndContinue() {
+    clearToken();
+    // Forzar re-render para actualizar hasActiveSession
+    window.location.reload();
+  }
+
+  // Estado: Contraseña actualizada exitosamente
   if (success) {
     return (
       <div style={{ maxWidth: 520, margin: "60px auto", padding: 16 }}>
@@ -48,7 +81,8 @@ export function ResetPasswordPage() {
           <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
           <h2 style={{ marginBottom: 8 }}>Contraseña actualizada</h2>
           <p style={{ color: "var(--muted)", marginBottom: 20 }}>
-            Tu contraseña ha sido actualizada exitosamente.
+            Tu contraseña ha sido actualizada exitosamente. Por seguridad, todas las sesiones
+            activas han sido cerradas.
           </p>
           <Link to="/">
             <button style={{ width: "100%" }}>Iniciar sesión</button>
@@ -58,23 +92,95 @@ export function ResetPasswordPage() {
     );
   }
 
+  // Estado: Token inválido o faltante
   if (!token) {
     return (
       <div style={{ maxWidth: 520, margin: "60px auto", padding: 16 }}>
-        <div className="alert-error" style={{ padding: 16, borderRadius: 8 }}>
-          Token inválido o faltante. Por favor solicita un nuevo enlace de recuperación.
-        </div>
-        <div style={{ marginTop: 16, textAlign: "center" }}>
-          <Link to="/forgot-password">
-            <button>Solicitar nuevo enlace</button>
-          </Link>
+        <div className="card" style={{ padding: 24, borderRadius: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+          <h2 style={{ marginBottom: 8 }}>Enlace inválido</h2>
+          <p style={{ color: "var(--muted)", marginBottom: 20 }}>
+            Este enlace de recuperación es inválido o ha expirado. Los enlaces son válidos por 1
+            hora.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Link to="/forgot-password">
+              <button style={{ width: "100%" }}>Solicitar nuevo enlace</button>
+            </Link>
+            <Link to="/">
+              <button
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  color: "var(--primary)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                Volver al inicio
+              </button>
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Estado: Formulario de nueva contraseña
   return (
     <div style={{ maxWidth: 520, margin: "60px auto", padding: 16 }}>
+      {/* Aviso de sesión activa */}
+      {hasActiveSession && (
+        <div
+          style={{
+            padding: 16,
+            marginBottom: 16,
+            borderRadius: 12,
+            backgroundColor: "var(--warning-bg, #fef3c7)",
+            border: "1px solid var(--warning-border, #f59e0b)",
+            color: "var(--warning-text, #92400e)",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <span>⚠️</span>
+            <span>Sesión activa detectada</span>
+          </div>
+          <p style={{ fontSize: 13, marginBottom: 12 }}>
+            Tienes una sesión iniciada. Si continúas, la contraseña se actualizará y tu sesión
+            actual será cerrada por seguridad.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={() => navigate("/")}
+              style={{
+                flex: 1,
+                minWidth: 120,
+                padding: "8px 12px",
+                fontSize: 13,
+                background: "transparent",
+                color: "var(--warning-text, #92400e)",
+                border: "1px solid var(--warning-border, #f59e0b)",
+              }}
+            >
+              Ir al dashboard
+            </button>
+            <button
+              onClick={handleLogoutAndContinue}
+              style={{
+                flex: 1,
+                minWidth: 120,
+                padding: "8px 12px",
+                fontSize: 13,
+                background: "var(--warning-border, #f59e0b)",
+                color: "white",
+                border: "none",
+              }}
+            >
+              Cerrar sesión primero
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ fontWeight: 900, fontSize: 22, marginBottom: 8 }}>Nueva contraseña</div>
       <div style={{ color: "var(--muted)", marginBottom: 14 }}>
         Ingresa tu nueva contraseña. Debe tener al menos 8 caracteres.
@@ -115,7 +221,7 @@ export function ResetPasswordPage() {
 
         <div style={{ textAlign: "center" }}>
           <Link to="/" style={{ fontSize: 13, color: "var(--primary)", textDecoration: "none" }}>
-            Volver al login
+            {hasActiveSession ? "Volver al dashboard" : "Volver al login"}
           </Link>
         </div>
 

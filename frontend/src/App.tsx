@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { getToken, onAuthChange } from "./lib/auth";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -9,6 +9,16 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { Layout } from "./components/Layout";
 
+/**
+ * Rutas que SIEMPRE deben ser accesibles, independientemente del estado de autenticación.
+ * Esto incluye flujos de recuperación de contraseña que el usuario puede necesitar
+ * incluso si tiene una sesión activa (ej: cambiar contraseña desde otro dispositivo).
+ */
+const AUTH_INDEPENDENT_ROUTES = ["/forgot-password", "/reset-password"];
+
+/**
+ * Componente para rutas protegidas (usuario autenticado)
+ */
 function AuthedApp() {
   return (
     <Layout>
@@ -22,15 +32,54 @@ function AuthedApp() {
   );
 }
 
+/**
+ * Componente para rutas públicas (usuario no autenticado)
+ */
 function PublicApp({ onLoggedIn }: { onLoggedIn: () => void }) {
   return (
     <Routes>
       <Route path="/" element={<LoginPage onLoggedIn={onLoggedIn} />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+/**
+ * Componente para rutas independientes de autenticación.
+ * Estas rutas funcionan igual si el usuario está autenticado o no.
+ */
+function AuthIndependentRoutes() {
+  return (
+    <Routes>
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+    </Routes>
+  );
+}
+
+/**
+ * Router principal que maneja la lógica de autenticación y rutas independientes.
+ *
+ * Arquitectura de rutas:
+ * 1. Rutas independientes de auth (forgot-password, reset-password) → siempre accesibles
+ * 2. Si autenticado → AuthedApp (dashboard, pools, profile)
+ * 3. Si no autenticado → PublicApp (login)
+ */
+function AppRouter({ isAuthed, onLoggedIn }: { isAuthed: boolean; onLoggedIn: () => void }) {
+  const location = useLocation();
+
+  // Verificar si la ruta actual es independiente de autenticación
+  const isAuthIndependentRoute = AUTH_INDEPENDENT_ROUTES.some(
+    route => location.pathname === route || location.pathname.startsWith(route + "/")
+  );
+
+  // Si es una ruta independiente de auth, renderizarla sin importar el estado de autenticación
+  if (isAuthIndependentRoute) {
+    return <AuthIndependentRoutes />;
+  }
+
+  // Si no, usar la lógica normal de autenticación
+  return isAuthed ? <AuthedApp /> : <PublicApp onLoggedIn={onLoggedIn} />;
 }
 
 export default function App() {
@@ -44,7 +93,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {isAuthed ? <AuthedApp /> : <PublicApp onLoggedIn={() => setIsAuthed(true)} />}
+      <AppRouter isAuthed={isAuthed} onLoggedIn={() => setIsAuthed(true)} />
     </BrowserRouter>
   );
 }
