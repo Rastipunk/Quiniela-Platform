@@ -2,7 +2,11 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 
-export function PublicNavbar() {
+interface PublicNavbarProps {
+  onOpenAuth?: () => void;
+}
+
+export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -66,8 +70,8 @@ export function PublicNavbar() {
           ))}
 
           {/* Login Button */}
-          <Link
-            to="/login"
+          <button
+            onClick={onOpenAuth}
             style={{
               display: "flex",
               alignItems: "center",
@@ -79,12 +83,12 @@ export function PublicNavbar() {
               padding: "0.625rem 1.25rem",
               fontSize: "1rem",
               fontWeight: 600,
-              textDecoration: "none",
+              cursor: "pointer",
               transition: "background 0.2s ease",
             }}
           >
             Ingresar
-          </Link>
+          </button>
         </div>
       )}
 
@@ -92,8 +96,8 @@ export function PublicNavbar() {
       {isMobile && (
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           {/* Login Button (compact) */}
-          <Link
-            to="/login"
+          <button
+            onClick={onOpenAuth}
             style={{
               background: "white",
               color: "#1a1a1a",
@@ -102,11 +106,11 @@ export function PublicNavbar() {
               padding: "0.5rem 1rem",
               fontSize: "0.875rem",
               fontWeight: 600,
-              textDecoration: "none",
+              cursor: "pointer",
             }}
           >
             Ingresar
-          </Link>
+          </button>
 
           {/* Hamburger Menu Button */}
           <button
@@ -263,9 +267,11 @@ export function PublicNavbar() {
 
             {/* CTA Button */}
             <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-              <Link
-                to="/login"
-                onClick={() => setShowMobileMenu(false)}
+              <button
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  onOpenAuth?.();
+                }}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -277,13 +283,15 @@ export function PublicNavbar() {
                   borderRadius: "8px",
                   fontSize: "1rem",
                   fontWeight: 600,
-                  textDecoration: "none",
+                  width: "100%",
+                  border: "none",
+                  cursor: "pointer",
                   minHeight: TOUCH_TARGET.comfortable,
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
                 Ingresar
-              </Link>
+              </button>
             </div>
           </div>
         </>

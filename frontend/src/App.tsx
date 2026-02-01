@@ -52,9 +52,9 @@ function AuthedApp() {
 /**
  * Componente para rutas públicas (usuario no autenticado)
  */
-function PublicApp() {
+function PublicApp({ onLoggedIn }: { onLoggedIn: () => void }) {
   return (
-    <PublicLayout>
+    <PublicLayout onLoggedIn={onLoggedIn}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -79,7 +79,7 @@ function AuthIndependentRoutes({ onLoggedIn }: { onLoggedIn: () => void }) {
       <Route
         path="/how-it-works"
         element={
-          <PublicLayout>
+          <PublicLayout onLoggedIn={onLoggedIn}>
             <HowItWorksPage />
           </PublicLayout>
         }
@@ -87,7 +87,7 @@ function AuthIndependentRoutes({ onLoggedIn }: { onLoggedIn: () => void }) {
       <Route
         path="/faq"
         element={
-          <PublicLayout>
+          <PublicLayout onLoggedIn={onLoggedIn}>
             <FAQPage />
           </PublicLayout>
         }
@@ -118,7 +118,7 @@ function AppRouter({ isAuthed, onLoggedIn }: { isAuthed: boolean; onLoggedIn: ()
   }
 
   // Si no, usar la lógica normal de autenticación
-  return isAuthed ? <AuthedApp /> : <PublicApp />;
+  return isAuthed ? <AuthedApp /> : <PublicApp onLoggedIn={onLoggedIn} />;
 }
 
 export default function App() {
