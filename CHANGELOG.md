@@ -15,6 +15,63 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.3.3] - 2026-02-01
+
+### Rebranding to Picks4All + Public Website + Slide-in Auth Panel
+
+#### Added
+- **Rebranding to Picks4All**
+  - Updated Footer component with new branding
+  - Updated NavBar component logo to "🏆 Picks4All"
+  - Updated contact email to soporte@picks4all.com
+  - Updated copyright notice
+
+- **Public Website Pages**
+  - **LandingPage** (`/`) - Hero section, features grid (4 cards), how-it-works preview, tournament showcase (World Cup 2026), final CTA
+  - **HowItWorksPage** (`/how-it-works`) - Detailed 5-step guides for both Hosts and Players, scoring system table example, CTAs
+  - **FAQPage** (`/faq`) - 17 FAQ items with accordion UI, category filtering (General, Para Hosts, Para Jugadores, Cuenta), contact section
+
+- **Public Navigation System**
+  - **PublicNavbar** - Navigation for non-authenticated users with links: Inicio, Cómo Funciona, FAQ
+  - **PublicLayout** - Wrapper component using PublicNavbar + Footer
+  - Mobile-responsive hamburger menu with slide-in animation
+  - Separate navigation experience for public vs authenticated users
+
+- **Slide-in Auth Panel** (ADR-030)
+  - **AuthSlidePanel** - Elegant slide-in panel from right side
+  - Full login/register functionality without page navigation
+  - Google Sign-in integration with consent flow for new users
+  - Desktop: 420px wide panel, Mobile: full-screen
+  - Features: tabs (Entrar/Crear cuenta), form validation, consent checkboxes, error handling
+  - Accessibility: Escape key closes, backdrop click closes, focus management
+  - "Abrir en página completa" link for password manager compatibility
+  - Smooth CSS animations (slideInRight, fadeIn)
+
+#### Changed
+- **Routing Architecture**
+  - Landing page shown at `/` for non-authenticated users
+  - Authenticated users go directly to Dashboard
+  - Public pages (`/how-it-works`, `/faq`) accessible regardless of auth state
+  - `/login` page still available for full-page login experience
+
+- **Legal Documents**
+  - Rebranded Terms of Service from "Quiniela Platform" to "Picks4All"
+  - Rebranded Privacy Policy from "Quiniela Platform" to "Picks4All"
+  - Fixed database migration for legal document seeding
+
+#### Technical
+- New components: `AuthSlidePanel.tsx`, `PublicNavbar.tsx`, `PublicLayout.tsx`
+- New pages: `LandingPage.tsx`, `HowItWorksPage.tsx`, `FAQPage.tsx`
+- App.tsx routing refactored for public/private page separation
+- `AUTH_INDEPENDENT_ROUTES` expanded to include `/how-it-works`, `/faq`, `/login`
+- All public pages use `useIsMobile()` hook for responsive design
+
+#### Git Tags
+- `v0.3.3-pre-landing` - Before public pages implementation
+- `v0.3.4-public-pages` - After public pages, before slide-in panel
+
+---
+
 ## [0.3.2] - 2026-01-26
 
 ### Sistema de Notificaciones por Email + Railway Production Fix

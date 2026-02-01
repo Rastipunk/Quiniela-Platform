@@ -5,7 +5,7 @@
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-01-18
+> **Last Updated:** 2026-02-01
 
 ---
 
@@ -93,6 +93,9 @@ How to implement this decision (if applicable)
 | [025](#adr-025-password-reset-flow-with-email-tokens) | Password Reset Flow with Email Tokens | Accepted | 2026-01-04 |
 | [026](#adr-026-google-oauth-integration) | Google OAuth Integration | Accepted | 2026-01-04 |
 | [027](#adr-027-cumulative-scoring-system) | Cumulative Scoring System | Accepted | 2026-01-18 |
+| [028](#adr-028-rate-limiting-strategy) | Rate Limiting Strategy | Accepted | 2026-01-18 |
+| [029](#adr-029-internal-notification-system-badges) | Internal Notification System (Badges) | Accepted | 2026-01-18 |
+| [030](#adr-030-slide-in-auth-panel) | Slide-in Auth Panel | Accepted | 2026-02-01 |
 
 ---
 
@@ -2984,6 +2987,173 @@ Implementar sistema de badges en tabs con polling:
 
 ---
 
+## ADR-030: Slide-in Auth Panel
+
+**Date:** 2026-02-01
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #ux #frontend #authentication
+
+### Context
+
+El flujo de login/registro original navegaba a una página separada (`/login`), lo que causaba:
+
+1. **Pérdida de contexto:** Usuario pierde de vista la landing page mientras se registra
+2. **Experiencia interrumpida:** Se siente como "cambiar de página" en lugar de una acción fluida
+3. **UX menos moderna:** Apps modernas (Notion, Figma, etc.) usan modales/panels para auth
+
+**User Feedback:**
+> "Al dar ingresar se cambia a otra página, tal vez debería ocurrir allí mismo, como en un pop up o algo así"
+
+**Opciones evaluadas:**
+1. Página separada (actual)
+2. Modal/Popup centrado
+3. **Slide-in panel desde la derecha** ← Elegida
+4. Panel expandible inline
+
+### Decision
+
+Implementar un **Slide-in Auth Panel** que desliza desde la derecha con las siguientes características:
+
+**Diseño:**
+- Desktop: Panel de 420px de ancho, desliza desde la derecha
+- Mobile: Pantalla completa (100% width)
+- Backdrop semi-transparente detrás
+- Animación suave (0.3s ease)
+
+**Funcionalidad completa:**
+- Tabs para alternar Login/Registro
+- Todos los campos de registro (email, confirm email, username, displayName, password)
+- Checkboxes de consent (términos, privacidad, edad, marketing)
+- Google Sign-in integrado con flujo de consent para usuarios nuevos
+- Link "¿Olvidaste tu contraseña?" que cierra el panel y navega
+- Link "Abrir en página completa" para compatibilidad con password managers
+
+**Accesibilidad:**
+- Escape key cierra el panel
+- Click en backdrop cierra el panel
+- Focus trap (navegación por tab dentro del panel)
+- Body scroll bloqueado cuando está abierto
+- `aria-label` en botón de cerrar
+
+**Estados manejados:**
+- Loading (mientras procesa login/registro)
+- Error (validación, credenciales inválidas)
+- Google consent modal (para nuevos usuarios OAuth)
+
+### Rationale
+
+**¿Por qué slide-in panel vs modal centrado?**
+- **App-like feel:** Más elegante, similar a apps nativas (carrito de compras, settings)
+- **Más espacio:** Mejor para formularios largos (especialmente registro)
+- **Menos intrusivo:** No bloquea completamente la vista de la página
+- **Animación natural:** Deslizar desde el lado es más suave que aparecer/desaparecer
+
+**¿Por qué mantener también la página /login?**
+- **Password managers:** Algunos no funcionan bien con panels/modals
+- **Bookmarking:** Usuarios pueden guardar link directo a login
+- **Deep linking:** Permite enviar links directos de login (ej: password reset redirect)
+- **Accesibilidad:** Página separada es más robusta para screen readers
+
+**¿Por qué replicar la lógica de LoginPage en el panel?**
+- Evita complejidad de extraer componente compartido (por ahora)
+- Panel tiene consideraciones de UX únicas (tamaño, scroll, etc.)
+- Fácil de mantener sincronizado (misma estructura)
+
+### Consequences
+
+**Positive:**
+- ✅ UX más fluida y moderna
+- ✅ Usuario mantiene contexto de la página
+- ✅ Funcionalidad completa (login, registro, Google, consent)
+- ✅ Mobile-first (full-screen en móvil)
+- ✅ Accessible (escape, backdrop, focus)
+- ✅ Fallback a página completa disponible
+
+**Negative:**
+- ⚠️ Código duplicado con LoginPage (puede unificarse en v2)
+- ⚠️ Más código JavaScript cargado (componente adicional)
+- ⚠️ Google Sign-in puede tener issues en algunos browsers con panels
+
+**Risks:**
+- ⚠️ Password managers podrían no detectar el formulario (mitigado: link a página completa)
+- ⚠️ Focus management en mobile puede ser complicado (mitigado: full-screen mode)
+
+### Alternatives Considered
+
+1. **Página separada (mantener actual):**
+   - ❌ Rechazada: UX menos fluida, feedback del usuario
+
+2. **Modal centrado:**
+   - ❌ Rechazada: Menos espacio, más intrusivo, menos elegante
+
+3. **Dropdown desde navbar:**
+   - ❌ Rechazada: Muy pequeño para formulario de registro completo
+
+4. **Expandir inline en la página:**
+   - ❌ Rechazada: Empuja contenido, menos predecible
+
+### Implementation
+
+**Componentes creados:**
+- `frontend/src/components/AuthSlidePanel.tsx` - Panel principal con toda la lógica
+
+**Componentes modificados:**
+- `frontend/src/components/PublicNavbar.tsx` - Botón "Ingresar" abre panel
+- `frontend/src/components/PublicLayout.tsx` - Maneja estado del panel
+- `frontend/src/App.tsx` - Pasa `onLoggedIn` callback
+
+**CSS Animations:**
+```css
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+```
+
+**Estado del panel:**
+```typescript
+interface AuthSlidePanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onLoggedIn: () => void;
+}
+```
+
+**Key UX Details:**
+```typescript
+// Lock body scroll when open
+useEffect(() => {
+  if (isOpen) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "";
+  }
+}, [isOpen]);
+
+// Handle escape key
+useEffect(() => {
+  function handleEscape(e: KeyboardEvent) {
+    if (e.key === "Escape" && isOpen) onClose();
+  }
+  window.addEventListener("keydown", handleEscape);
+  return () => window.removeEventListener("keydown", handleEscape);
+}, [isOpen, onClose]);
+```
+
+### Related Decisions
+
+- ADR-026: Google OAuth Integration (reutilizado en panel)
+- ADR-024: Username System (validación en registro)
+- ADR-017: Light Theme Only (estilos del panel)
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.3.0:**
@@ -2991,8 +3161,11 @@ Implementar sistema de badges en tabs con polling:
 - [x] ADR-028: Rate Limiting Strategy ✅ (2026-01-18)
 - [x] ADR-029: Internal Notification System ✅ (2026-01-18)
 
+**v0.3.3:**
+- [x] ADR-030: Slide-in Auth Panel ✅ (2026-02-01)
+
 **v1.0:**
-- [ ] ADR-030: Email confirmation on registration
+- [ ] ADR-031: Email confirmation on registration
 - [ ] ADR-031: PWA + Service Worker
 - [ ] ADR-032: Redis caching layer
 
