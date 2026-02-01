@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "prisma generate && tsc",
-    "start": "prisma migrate deploy && node dist/server.js",
+    "start": "npx prisma migrate resolve --rolled-back 20260131120000_seed_legal_documents || true && prisma migrate deploy && node dist/server.js",
     "seed:admin": "ts-node-dev --transpile-only src/scripts/seedAdmin.ts",
     "seed:test-accounts": "ts-node-dev --transpile-only src/scripts/seedTestAccounts.ts",
     "seed:wc2026-sandbox": "ts-node-dev --transpile-only src/scripts/seedWc2026Sandbox.ts",
