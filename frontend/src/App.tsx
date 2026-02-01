@@ -11,14 +11,26 @@ import { TermsPage } from "./pages/TermsPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { AdminEmailSettingsPage } from "./pages/AdminEmailSettingsPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
+import { LandingPage } from "./pages/LandingPage";
+import { HowItWorksPage } from "./pages/HowItWorksPage";
+import { FAQPage } from "./pages/FAQPage";
 import { Layout } from "./components/Layout";
+import { PublicLayout } from "./components/PublicLayout";
 
 /**
  * Rutas que SIEMPRE deben ser accesibles, independientemente del estado de autenticación.
- * Esto incluye flujos de recuperación de contraseña que el usuario puede necesitar
- * incluso si tiene una sesión activa (ej: cambiar contraseña desde otro dispositivo).
+ * Esto incluye flujos de recuperación de contraseña, páginas legales y páginas públicas informativas.
  */
-const AUTH_INDEPENDENT_ROUTES = ["/forgot-password", "/reset-password", "/terms", "/privacy", "/verify-email"];
+const AUTH_INDEPENDENT_ROUTES = [
+  "/forgot-password",
+  "/reset-password",
+  "/terms",
+  "/privacy",
+  "/verify-email",
+  "/how-it-works",
+  "/faq",
+  "/login",
+];
 
 /**
  * Componente para rutas protegidas (usuario autenticado)
@@ -40,12 +52,14 @@ function AuthedApp() {
 /**
  * Componente para rutas públicas (usuario no autenticado)
  */
-function PublicApp({ onLoggedIn }: { onLoggedIn: () => void }) {
+function PublicApp() {
   return (
-    <Routes>
-      <Route path="/" element={<LoginPage onLoggedIn={onLoggedIn} />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <PublicLayout>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </PublicLayout>
   );
 }
 
@@ -53,7 +67,7 @@ function PublicApp({ onLoggedIn }: { onLoggedIn: () => void }) {
  * Componente para rutas independientes de autenticación.
  * Estas rutas funcionan igual si el usuario está autenticado o no.
  */
-function AuthIndependentRoutes() {
+function AuthIndependentRoutes({ onLoggedIn }: { onLoggedIn: () => void }) {
   return (
     <Routes>
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -61,6 +75,23 @@ function AuthIndependentRoutes() {
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/login" element={<LoginPage onLoggedIn={onLoggedIn} />} />
+      <Route
+        path="/how-it-works"
+        element={
+          <PublicLayout>
+            <HowItWorksPage />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/faq"
+        element={
+          <PublicLayout>
+            <FAQPage />
+          </PublicLayout>
+        }
+      />
     </Routes>
   );
 }
@@ -83,11 +114,11 @@ function AppRouter({ isAuthed, onLoggedIn }: { isAuthed: boolean; onLoggedIn: ()
 
   // Si es una ruta independiente de auth, renderizarla sin importar el estado de autenticación
   if (isAuthIndependentRoute) {
-    return <AuthIndependentRoutes />;
+    return <AuthIndependentRoutes onLoggedIn={onLoggedIn} />;
   }
 
   // Si no, usar la lógica normal de autenticación
-  return isAuthed ? <AuthedApp /> : <PublicApp onLoggedIn={onLoggedIn} />;
+  return isAuthed ? <AuthedApp /> : <PublicApp />;
 }
 
 export default function App() {

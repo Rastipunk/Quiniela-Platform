@@ -105,7 +105,7 @@ export function NavBar() {
           ...mobileInteractiveStyles.tapHighlight,
         }}
       >
-        ⚽ Quiniela
+        🏆 Picks4All
       </Link>
 
       {/* Desktop Navigation */}

@@ -40,7 +40,7 @@ export function Footer() {
               color: "var(--text)",
             }}
           >
-            Quiniela Platform
+            Picks4All
           </div>
           <p
             style={{
@@ -115,14 +115,14 @@ export function Footer() {
             Contacto
           </div>
           <a
-            href="mailto:soporte@quiniela.app"
+            href="mailto:soporte@picks4all.com"
             style={{
               fontSize: 13,
               color: "var(--muted)",
               textDecoration: "none",
             }}
           >
-            soporte@quiniela.app
+            soporte@picks4all.com
           </a>
         </div>
       </div>
@@ -139,7 +139,7 @@ export function Footer() {
           color: "var(--muted)",
         }}
       >
-        © {currentYear} Quiniela Platform. Todos los derechos reservados.
+        © {currentYear} Picks4All. Todos los derechos reservados.
       </div>
     </footer>
   );
