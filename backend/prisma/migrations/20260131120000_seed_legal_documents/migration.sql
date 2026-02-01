@@ -7,7 +7,7 @@ UPDATE "LegalDocument" SET "isActive" = false WHERE "type" = 'PRIVACY_POLICY' AN
 
 -- Insert Terms of Service
 INSERT INTO "LegalDocument" (
-  "id", "type", "version", "title", "content", "changeSummary", "locale", "isActive", "publishedAt", "effectiveAt", "createdAt", "updatedAt"
+  "id", "type", "version", "title", "content", "changeSummary", "locale", "isActive", "publishedAt", "effectiveAt", "createdAtUtc", "updatedAtUtc"
 ) VALUES (
   gen_random_uuid(),
   'TERMS_OF_SERVICE',
@@ -25,7 +25,7 @@ INSERT INTO "LegalDocument" (
 
 -- Insert Privacy Policy
 INSERT INTO "LegalDocument" (
-  "id", "type", "version", "title", "content", "changeSummary", "locale", "isActive", "publishedAt", "effectiveAt", "createdAt", "updatedAt"
+  "id", "type", "version", "title", "content", "changeSummary", "locale", "isActive", "publishedAt", "effectiveAt", "createdAtUtc", "updatedAtUtc"
 ) VALUES (
   gen_random_uuid(),
   'PRIVACY_POLICY',
