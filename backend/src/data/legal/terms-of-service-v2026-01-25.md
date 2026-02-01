@@ -7,7 +7,7 @@
 
 ## 1. Aceptación de los Términos
 
-Al acceder o utilizar la plataforma Quiniela ("la Plataforma", "el Servicio", "nosotros"), usted acepta estar legalmente vinculado por estos Términos de Servicio ("Términos"). Si no está de acuerdo con alguno de estos términos, no debe utilizar el Servicio.
+Al acceder o utilizar la plataforma Picks4All ("la Plataforma", "el Servicio", "nosotros"), usted acepta estar legalmente vinculado por estos Términos de Servicio ("Términos"). Si no está de acuerdo con alguno de estos términos, no debe utilizar el Servicio.
 
 Estos Términos constituyen un acuerdo legal vinculante entre usted ("Usuario", "usted") y los operadores de la Plataforma.
 
@@ -271,7 +271,7 @@ Estos Términos, junto con la Política de Privacidad, constituyen el acuerdo co
 
 Para preguntas sobre estos Términos de Servicio, puede contactarnos en:
 
-- **Correo electrónico:** soporte@quiniela.app *(pendiente de configuración)*
+- **Correo electrónico:** soporte@picks4all.com
 
 ---
 

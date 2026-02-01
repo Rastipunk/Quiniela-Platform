@@ -214,7 +214,7 @@ const FALLBACK_PRIVACY = `# Política de Privacidad
 
 ## 1. Introducción
 
-Esta Política de Privacidad describe cómo la plataforma Quiniela recopila, utiliza, almacena y protege su información personal.
+Esta Política de Privacidad describe cómo la plataforma Picks4All recopila, utiliza, almacena y protege su información personal.
 
 ## 2. Información que Recopilamos
 
@@ -243,5 +243,5 @@ Usted tiene derecho a:
 
 ## 5. Contacto
 
-Para preguntas sobre esta política, contáctenos en privacidad@quiniela.app
+Para preguntas sobre esta política, contáctenos en privacidad@picks4all.com
 `;

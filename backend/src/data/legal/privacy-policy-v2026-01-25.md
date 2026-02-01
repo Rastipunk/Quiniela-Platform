@@ -7,7 +7,7 @@
 
 ## 1. Introducción
 
-Esta Política de Privacidad describe cómo la plataforma Quiniela ("la Plataforma", "el Servicio", "nosotros") recopila, utiliza, almacena y protege su información personal.
+Esta Política de Privacidad describe cómo la plataforma Picks4All ("la Plataforma", "el Servicio", "nosotros") recopila, utiliza, almacena y protege su información personal.
 
 Nos comprometemos a proteger su privacidad y a ser transparentes sobre nuestras prácticas de datos. Al utilizar nuestro Servicio, usted acepta las prácticas descritas en esta Política.
 
@@ -201,8 +201,7 @@ Bajo la CCPA, los residentes de California tienen derecho a:
 ### 7.5 Cómo Ejercer sus Derechos
 
 Para ejercer cualquiera de estos derechos, contáctenos en:
-- **Email:** privacidad@quiniela.app *(pendiente de configuración)*
-
+- **Email:** privacidad@picks4all.com 
 Responderemos a su solicitud dentro de los plazos legales aplicables (generalmente 15-30 días).
 
 ---
@@ -304,8 +303,7 @@ Mantenemos un historial de versiones anteriores de esta Política, disponible ba
 
 Para preguntas, solicitudes o quejas relacionadas con esta Política de Privacidad:
 
-**Correo electrónico:** privacidad@quiniela.app *(pendiente de configuración)*
-
+**Correo electrónico:** privacidad@picks4all.com 
 **Tiempo de respuesta:** Nos esforzamos por responder a todas las solicitudes dentro de 15 días hábiles.
 
 ---
@@ -314,7 +312,7 @@ Para preguntas, solicitudes o quejas relacionadas con esta Política de Privacid
 
 ### 15.1 Responsable del Tratamiento
 
-El responsable del tratamiento de sus datos personales es el operador de la Plataforma Quiniela.
+El responsable del tratamiento de sus datos personales es el operador de la Plataforma Picks4All.
 
 ### 15.2 Finalidades
 

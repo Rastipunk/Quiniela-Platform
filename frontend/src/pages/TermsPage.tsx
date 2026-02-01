@@ -214,7 +214,7 @@ const FALLBACK_TERMS = `# Términos de Servicio
 
 ## 1. Aceptación de los Términos
 
-Al acceder o utilizar la plataforma Quiniela, usted acepta estar legalmente vinculado por estos Términos de Servicio.
+Al acceder o utilizar la plataforma Picks4All, usted acepta estar legalmente vinculado por estos Términos de Servicio.
 
 ## 2. Descripción del Servicio
 
@@ -228,5 +228,5 @@ Para utilizar la Plataforma debe tener al menos **13 años de edad**.
 
 ## 4. Contacto
 
-Para preguntas sobre estos Términos, contáctenos en soporte@quiniela.app
+Para preguntas sobre estos Términos, contáctenos en soporte@picks4all.com
 `;
