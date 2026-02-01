@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useIsMobile } from "../hooks/useIsMobile";
-
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" && window.location.hostname.includes("railway.app")
-    ? "https://quiniela-platform-production.up.railway.app"
-    : "http://localhost:3000");
+import { API_BASE } from "../lib/api";
 
 export function TermsPage() {
   const isMobile = useIsMobile();

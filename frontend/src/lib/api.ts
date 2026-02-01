@@ -20,6 +20,9 @@ function getApiBase(): string {
 
 const API_BASE = getApiBase();
 
+// Export for use in other components that need direct API access
+export { API_BASE };
+
 async function requestJson<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(init.headers);
 

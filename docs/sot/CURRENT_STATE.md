@@ -301,7 +301,35 @@ NODE_ENV=development|production
 - [ ] Session Management (Remember Me)
 - [ ] Ingesta de resultados por API externa
 - [ ] PWA completo (offline mode, push notifications)
-- [ ] Dominio personalizado
+- [x] ~~Dominio personalizado~~ (picks4all.com - 2026-01-31)
+
+---
+
+## Configuración de Producción
+
+### Dominio: picks4all.com
+
+**Registrador:** Cloudflare
+
+**DNS Records (Cloudflare → Railway):**
+
+| Subdominio | Tipo | Name | Target (Railway CNAME) |
+|------------|------|------|------------------------|
+| Root | CNAME | `@` | `gxpatrmu.up.railway.app` |
+| www | CNAME | `www` | `y1jrmv7q.up.railway.app` |
+| API | CNAME | `api` | `a1q8fzl4.up.railway.app` |
+
+**URLs de Producción:**
+- Frontend: `https://picks4all.com` / `https://www.picks4all.com`
+- Backend API: `https://api.picks4all.com`
+
+**Configuración Cloudflare:**
+- Proxy: **Desactivado** (DNS only / nube gris)
+- SSL/TLS: **Full**
+
+**Variables de Entorno (Railway):**
+- Backend: `FRONTEND_URL=https://picks4all.com`
+- Frontend: `VITE_API_URL=https://api.picks4all.com`
 
 ---
 
