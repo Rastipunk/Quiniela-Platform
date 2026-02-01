@@ -9,7 +9,7 @@ nixpacksVersion = "latest"
 [deploy]
 # Comando que se ejecuta ANTES del deploy (ideal para migraciones)
 # Esto aplica las migraciones pendientes a la base de datos de producción
-releaseCommand = "npx prisma migrate deploy && npm run seed:legal"
+releaseCommand = "npx prisma migrate deploy"
 # Comando de inicio
 startCommand = "npm run start"
 # Health check para verificar que el deployment fue exitoso
