@@ -10,6 +10,7 @@ import {
   advanceKnockoutPhase,
 } from "../services/instanceAdvancement";
 import { transitionToCompleted, canPublishResults } from "../services/poolStateMachine";
+import { ResultSource, ResultSourceMode } from "@prisma/client";
 
 export const resultsRouter = Router();
 resultsRouter.use(requireAuth);
@@ -101,6 +102,9 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
 
   const { homeGoals, awayGoals, homePenalties, awayPenalties, reason } = parsed.data;
 
+  // Determinar el modo de fuente de resultados de la instancia
+  const instanceResultSourceMode = pool.tournamentInstance.resultSourceMode as ResultSourceMode;
+
   try {
     const saved = await prisma.$transaction(async (tx) => {
       // 1) header (poolId+matchId)
@@ -108,19 +112,50 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
         (await tx.poolMatchResult.findUnique({ where: { poolId_matchId: { poolId, matchId } } })) ??
         (await tx.poolMatchResult.create({ data: { poolId, matchId } }));
 
-      // 2) siguiente versionNumber
+      // 2) siguiente versionNumber y última versión
       const last = await tx.poolMatchResultVersion.findFirst({
         where: { resultId: header.id },
         orderBy: { versionNumber: "desc" },
       });
       const nextVersion = (last?.versionNumber ?? 0) + 1;
 
-      // Comentario en español: si ya existía, exigimos reason (errata)
+      // 3) Determinar el source según el modo de la instancia y el estado actual
+      let source: ResultSource;
+
+      if (instanceResultSourceMode === "MANUAL") {
+        // Instancia MANUAL: siempre HOST_MANUAL
+        source = "HOST_MANUAL";
+      } else {
+        // Instancia AUTO: determinar si es PROVISIONAL u OVERRIDE
+        if (!last) {
+          // No hay resultado previo → HOST_PROVISIONAL (esperando API)
+          source = "HOST_PROVISIONAL";
+        } else if (last.source === "API_CONFIRMED") {
+          // Ya hay resultado de API → HOST_OVERRIDE (corrigiendo API)
+          source = "HOST_OVERRIDE";
+        } else if (last.source === "HOST_PROVISIONAL") {
+          // Actualizando provisional → sigue siendo PROVISIONAL
+          source = "HOST_PROVISIONAL";
+        } else if (last.source === "HOST_OVERRIDE") {
+          // Ya había un override → nuevo override
+          source = "HOST_OVERRIDE";
+        } else {
+          // Fallback
+          source = "HOST_PROVISIONAL";
+        }
+      }
+
+      // 4) Validar reason según las reglas
+      // - Si ya existía cualquier versión (errata), exigimos reason
+      // - Si es HOST_OVERRIDE, siempre requiere reason
       if (nextVersion > 1 && !reason) {
         throw new Error("REASON_REQUIRED_FOR_ERRATA");
       }
+      if (source === "HOST_OVERRIDE" && !reason) {
+        throw new Error("REASON_REQUIRED_FOR_OVERRIDE");
+      }
 
-      // 3) crear versión
+      // 5) crear versión con source
       const version = await tx.poolMatchResultVersion.create({
         data: {
           resultId: header.id,
@@ -132,10 +167,11 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           awayPenalties: awayPenalties ?? null,
           reason: reason ?? null,
           createdByUserId: req.auth!.userId,
+          source,
         },
       });
 
-      // 4) apuntar currentVersion
+      // 6) apuntar currentVersion
       const updatedHeader = await tx.poolMatchResult.update({
         where: { id: header.id },
         data: { currentVersionId: version.id },

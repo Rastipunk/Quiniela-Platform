@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
+import { Prisma, ResultSourceMode } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
@@ -10,6 +10,8 @@ import {
   advanceKnockoutPhase,
   validateGroupStageComplete,
 } from "../services/instanceAdvancement";
+import { getResultSyncService } from "../services/resultSync";
+import { getJobStatus, triggerManualSync } from "../jobs/resultSyncJob";
 
 export const adminInstancesRouter = Router();
 
@@ -317,5 +319,366 @@ adminInstancesRouter.get("/instances/:instanceId/group-stage-status", async (req
       message: error.message,
     });
   }
+});
+
+// ========== RESULT SOURCE CONFIGURATION ENDPOINTS ==========
+
+const resultSourceConfigSchema = z.object({
+  resultSourceMode: z.enum(["MANUAL", "AUTO"]),
+  apiFootballLeagueId: z.number().int().positive().optional(),
+  apiFootballSeasonId: z.number().int().positive().optional(),
+  syncEnabled: z.boolean().optional(),
+});
+
+// PUT /admin/instances/:instanceId/result-source
+// Configura el modo de fuente de resultados para una instancia
+adminInstancesRouter.put("/instances/:instanceId/result-source", async (req, res) => {
+  const { instanceId } = req.params;
+
+  const bodyParsed = resultSourceConfigSchema.safeParse(req.body);
+  if (!bodyParsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+  }
+
+  const { resultSourceMode, apiFootballLeagueId, apiFootballSeasonId, syncEnabled } = bodyParsed.data;
+
+  // Si es AUTO, requerir IDs de API-Football
+  if (resultSourceMode === "AUTO") {
+    if (!apiFootballLeagueId || !apiFootballSeasonId) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        message: "apiFootballLeagueId and apiFootballSeasonId are required when resultSourceMode is AUTO",
+      });
+    }
+  }
+
+  const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
+  if (!instance) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  const updated = await prisma.tournamentInstance.update({
+    where: { id: instanceId },
+    data: {
+      resultSourceMode: resultSourceMode as ResultSourceMode,
+      apiFootballLeagueId: resultSourceMode === "AUTO" ? apiFootballLeagueId : null,
+      apiFootballSeasonId: resultSourceMode === "AUTO" ? apiFootballSeasonId : null,
+      syncEnabled: syncEnabled ?? (resultSourceMode === "AUTO"),
+    },
+  });
+
+  await writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "INSTANCE_RESULT_SOURCE_CONFIGURED",
+    entityType: "TournamentInstance",
+    entityId: instanceId,
+    dataJson: {
+      resultSourceMode,
+      apiFootballLeagueId,
+      apiFootballSeasonId,
+      syncEnabled,
+    },
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json(updated);
+});
+
+// ========== MATCH MAPPING ENDPOINTS ==========
+
+const matchMappingSchema = z.object({
+  internalMatchId: z.string(),
+  apiFootballFixtureId: z.number().int().positive(),
+});
+
+const bulkMappingsSchema = z.object({
+  mappings: z.array(matchMappingSchema).min(1).max(200),
+});
+
+// POST /admin/instances/:instanceId/match-mappings
+// Crear/actualizar mapeos de partidos a API-Football (bulk)
+adminInstancesRouter.post("/instances/:instanceId/match-mappings", async (req, res) => {
+  const { instanceId } = req.params;
+
+  const bodyParsed = bulkMappingsSchema.safeParse(req.body);
+  if (!bodyParsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+  }
+
+  const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
+  if (!instance) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  if (instance.resultSourceMode !== "AUTO") {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Match mappings can only be created for instances in AUTO mode",
+    });
+  }
+
+  const { mappings } = bodyParsed.data;
+
+  // Usar upsert para cada mapeo (crear o actualizar)
+  const results = await prisma.$transaction(
+    mappings.map((m) =>
+      prisma.matchExternalMapping.upsert({
+        where: {
+          tournamentInstanceId_internalMatchId: {
+            tournamentInstanceId: instanceId,
+            internalMatchId: m.internalMatchId,
+          },
+        },
+        create: {
+          tournamentInstanceId: instanceId,
+          internalMatchId: m.internalMatchId,
+          apiFootballFixtureId: m.apiFootballFixtureId,
+        },
+        update: {
+          apiFootballFixtureId: m.apiFootballFixtureId,
+        },
+      })
+    )
+  );
+
+  await writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "MATCH_MAPPINGS_UPDATED",
+    entityType: "TournamentInstance",
+    entityId: instanceId,
+    dataJson: { mappingsCount: mappings.length },
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.status(201).json({
+    success: true,
+    created: results.length,
+    mappings: results,
+  });
+});
+
+// GET /admin/instances/:instanceId/match-mappings
+// Listar todos los mapeos de una instancia
+adminInstancesRouter.get("/instances/:instanceId/match-mappings", async (req, res) => {
+  const { instanceId } = req.params;
+
+  const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
+  if (!instance) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  const mappings = await prisma.matchExternalMapping.findMany({
+    where: { tournamentInstanceId: instanceId },
+    orderBy: { createdAtUtc: "asc" },
+  });
+
+  return res.json({
+    instanceId,
+    resultSourceMode: instance.resultSourceMode,
+    mappingsCount: mappings.length,
+    mappings,
+  });
+});
+
+// DELETE /admin/instances/:instanceId/match-mappings/:mappingId
+// Eliminar un mapeo específico
+adminInstancesRouter.delete("/instances/:instanceId/match-mappings/:mappingId", async (req, res) => {
+  const { instanceId, mappingId } = req.params;
+
+  const mapping = await prisma.matchExternalMapping.findFirst({
+    where: { id: mappingId, tournamentInstanceId: instanceId },
+  });
+
+  if (!mapping) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  await prisma.matchExternalMapping.delete({ where: { id: mappingId } });
+
+  await writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "MATCH_MAPPING_DELETED",
+    entityType: "MatchExternalMapping",
+    entityId: mappingId,
+    dataJson: { instanceId, internalMatchId: mapping.internalMatchId },
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({ success: true });
+});
+
+// ========== SYNC ENDPOINTS ==========
+
+// POST /admin/instances/:instanceId/sync
+// Disparar sincronización manual para una instancia
+adminInstancesRouter.post("/instances/:instanceId/sync", async (req, res) => {
+  const { instanceId } = req.params;
+
+  const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
+  if (!instance) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  if (instance.resultSourceMode !== "AUTO") {
+    return res.status(409).json({
+      error: "CONFLICT",
+      message: "Sync is only available for instances in AUTO mode",
+    });
+  }
+
+  const syncService = getResultSyncService();
+
+  if (!syncService.isAvailable()) {
+    return res.status(503).json({
+      error: "SERVICE_UNAVAILABLE",
+      message: "API-Football service is not available",
+    });
+  }
+
+  try {
+    const result = await syncService.syncInstance(instanceId);
+
+    await writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "MANUAL_SYNC_TRIGGERED",
+      entityType: "TournamentInstance",
+      entityId: instanceId,
+      dataJson: {
+        fixturesChecked: result.fixturesChecked,
+        fixturesUpdated: result.fixturesUpdated,
+        status: result.status,
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent") ?? null,
+    });
+
+    return res.json({
+      success: true,
+      result,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      error: "SYNC_FAILED",
+      message: error.message,
+    });
+  }
+});
+
+// GET /admin/instances/:instanceId/sync-status
+// Ver estado y logs de sincronización
+adminInstancesRouter.get("/instances/:instanceId/sync-status", async (req, res) => {
+  const { instanceId } = req.params;
+
+  const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
+  if (!instance) {
+    return res.status(404).json({ error: "NOT_FOUND" });
+  }
+
+  // Obtener últimos 20 logs de sincronización
+  const syncLogs = await prisma.resultSyncLog.findMany({
+    where: { tournamentInstanceId: instanceId },
+    orderBy: { startedAtUtc: "desc" },
+    take: 20,
+  });
+
+  // Obtener conteo de mapeos
+  const mappingsCount = await prisma.matchExternalMapping.count({
+    where: { tournamentInstanceId: instanceId },
+  });
+
+  // Estado del job global
+  const jobStatus = getJobStatus();
+
+  return res.json({
+    instanceId,
+    instanceName: instance.name,
+    resultSourceMode: instance.resultSourceMode,
+    syncEnabled: instance.syncEnabled,
+    apiFootballLeagueId: instance.apiFootballLeagueId,
+    apiFootballSeasonId: instance.apiFootballSeasonId,
+    lastSyncAtUtc: instance.lastSyncAtUtc,
+    mappingsCount,
+    jobStatus,
+    recentSyncLogs: syncLogs,
+  });
+});
+
+// POST /admin/sync/trigger-all
+// Disparar sincronización manual de todas las instancias AUTO
+adminInstancesRouter.post("/sync/trigger-all", async (req, res) => {
+  const syncService = getResultSyncService();
+
+  if (!syncService.isAvailable()) {
+    return res.status(503).json({
+      error: "SERVICE_UNAVAILABLE",
+      message: "API-Football service is not available",
+    });
+  }
+
+  try {
+    const summary = await syncService.syncAllAutoInstances();
+
+    await writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "GLOBAL_SYNC_TRIGGERED",
+      entityType: "System",
+      entityId: "result-sync",
+      dataJson: {
+        instancesChecked: summary.instancesChecked,
+        instancesUpdated: summary.instancesUpdated,
+        totalFixturesUpdated: summary.totalFixturesUpdated,
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent") ?? null,
+    });
+
+    return res.json({
+      success: true,
+      summary,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      error: "SYNC_FAILED",
+      message: error.message,
+    });
+  }
+});
+
+// GET /admin/sync/status
+// Ver estado global del sistema de sincronización
+adminInstancesRouter.get("/sync/status", async (_req, res) => {
+  const syncService = getResultSyncService();
+  const jobStatus = getJobStatus();
+
+  // Contar instancias AUTO
+  const autoInstancesCount = await prisma.tournamentInstance.count({
+    where: { resultSourceMode: "AUTO" },
+  });
+
+  const enabledAutoInstancesCount = await prisma.tournamentInstance.count({
+    where: { resultSourceMode: "AUTO", syncEnabled: true },
+  });
+
+  // Últimas sincronizaciones globales
+  const recentLogs = await prisma.resultSyncLog.findMany({
+    orderBy: { startedAtUtc: "desc" },
+    take: 10,
+    include: {
+      tournamentInstance: {
+        select: { id: true, name: true },
+      },
+    },
+  });
+
+  return res.json({
+    serviceAvailable: syncService.isAvailable(),
+    jobStatus,
+    autoInstancesCount,
+    enabledAutoInstancesCount,
+    recentLogs,
+  });
 });
 

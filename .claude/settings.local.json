@@ -42,7 +42,18 @@
       "Bash(ping:*)",
       "Bash(find:*)",
       "Bash(xargs basename:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(xxd:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI0YzI1YjUyYS0zNTM4LTQyNDEtOThkOS0yNTQ1OWYwZWViNjAiLCJwbGF0Zm9ybVJvbGUiOiJBRE1JTiIsImlhdCI6MTc2OTM5Mjg0MCwiZXhwIjoxNzY5NDA3MjQwfQ.Wt6c79GLZXChgIZ__3hjl4tEMJUQTvPjhT3b4DwrS_s\")",
+      "Bash(__NEW_LINE_a9c334b01f54c303__ echo \"1. Enviando Welcome Email...\")",
+      "Bash(__NEW_LINE_a9c334b01f54c303__ echo \"2. Enviando Pool Invitation Email...\")",
+      "Bash(__NEW_LINE_a9c334b01f54c303__ echo \"3. Enviando Deadline Reminder Email...\")",
+      "Bash(__NEW_LINE_a9c334b01f54c303__ echo \"4. Enviando Result Published Email...\")",
+      "Bash(__NEW_LINE_a9c334b01f54c303__ echo \"5. Enviando Pool Completed Email...\")",
+      "Bash(__NEW_LINE_a110d8ba9f8f16e7__ echo \"3. Reenviando Deadline Reminder Email...\")",
+      "Bash(__NEW_LINE_a110d8ba9f8f16e7__ sleep 2)",
+      "Bash(__NEW_LINE_a110d8ba9f8f16e7__ echo \"4. Reenviando Result Published Email...\")",
+      "Bash(git remote:*)"
     ]
   }
 }

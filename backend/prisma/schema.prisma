@@ -193,6 +193,29 @@ enum TournamentInstanceStatus {
   ARCHIVED
 }
 
+// =========================================================================
+// AUTO RESULTS - Configuración de fuente de resultados automáticos
+// =========================================================================
+
+enum ResultSourceMode {
+  MANUAL // Host ingresa resultados manualmente (comportamiento existente)
+  AUTO   // Resultados se obtienen automáticamente de API externa (API-Football)
+}
+
+enum ResultSource {
+  HOST_MANUAL      // Host ingresó en instancia MANUAL (comportamiento existente)
+  HOST_PROVISIONAL // Host ingresó en instancia AUTO mientras espera resultado de API
+  API_CONFIRMED    // Resultado confirmado de API-Football (autoritativo)
+  HOST_OVERRIDE    // Host corrigió un resultado de API (errata con reason obligatorio)
+}
+
+enum SyncStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL // Algunos fixtures actualizados, otros con errores
+}
+
 model TournamentInstance {
   id String @id @default(uuid())
 
@@ -205,8 +228,28 @@ model TournamentInstance {
   name   String
   status TournamentInstanceStatus @default(DRAFT)
 
-  // Comentario en español: snapshot congelado del torneo “real” (copiado desde la versión publicada)
+  // Comentario en español: snapshot congelado del torneo "real" (copiado desde la versión publicada)
   dataJson Json
+
+  // =========================================================================
+  // AUTO RESULTS - Configuración de fuente de resultados automáticos
+  // =========================================================================
+
+  // Modo de obtención de resultados: MANUAL (host) o AUTO (API-Football)
+  resultSourceMode ResultSourceMode @default(MANUAL)
+
+  // Configuración de API-Football (solo usado si resultSourceMode = AUTO)
+  apiFootballLeagueId Int? // ID de liga en API-Football (ej: 1 = World Cup)
+  apiFootballSeasonId Int? // Año/temporada en API-Football (ej: 2026)
+
+  // Estado de sincronización
+  lastSyncAtUtc DateTime? // Última sincronización exitosa con API-Football
+  syncEnabled   Boolean   @default(true) // Kill switch de emergencia para detener sync
+
+  // Relaciones para auto results
+  matchMappings    MatchExternalMapping[]
+  syncLogs         ResultSyncLog[]
+  matchSyncStates  MatchSyncState[]
 
   createdAtUtc DateTime @default(now())
   updatedAtUtc DateTime @updatedAt
@@ -214,6 +257,7 @@ model TournamentInstance {
 
   @@index([templateId])
   @@index([templateVersionId])
+  @@index([resultSourceMode])
 }
 
 enum PoolVisibility {
@@ -450,8 +494,19 @@ model PoolMatchResultVersion {
   // Comentario en español: motivo opcional cuando esto es una corrección (errata)
   reason String?
 
-  createdByUserId String
-  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+  // =========================================================================
+  // AUTO RESULTS - Tracking de fuente del resultado
+  // =========================================================================
+
+  // Fuente de este resultado: HOST_MANUAL, HOST_PROVISIONAL, API_CONFIRMED, HOST_OVERRIDE
+  source ResultSource @default(HOST_MANUAL)
+
+  // Datos de API-Football (solo si source = API_CONFIRMED)
+  externalFixtureId Int?  // ID del fixture en API-Football
+  externalDataJson  Json? // Snapshot de la respuesta de API-Football (para auditoría)
+
+  createdByUserId String?
+  createdBy       User?   @relation(fields: [createdByUserId], references: [id])
 
   publishedAtUtc DateTime @default(now())
 
@@ -460,6 +515,7 @@ model PoolMatchResultVersion {
 
   @@unique([resultId, versionNumber])
   @@index([resultId])
+  @@index([source])
 }
 
 // Sprint 2 - Advanced Pick Types: Resultados estructurales (publicados por HOST)
@@ -629,4 +685,102 @@ model DeadlineReminderLog {
   @@index([poolId])
   @@index([userId])
   @@index([sentAt])
+}
+
+// =========================================================================
+// AUTO RESULTS - Mapeo de partidos internos a IDs externos (API-Football)
+// =========================================================================
+
+model MatchExternalMapping {
+  id String @id @default(uuid())
+
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id])
+
+  // ID interno del partido (corresponde a TournamentInstance.dataJson.matches[].id)
+  internalMatchId String
+
+  // ID del fixture en API-Football
+  apiFootballFixtureId Int
+
+  // Metadata de verificación (opcional, para validar que el mapeo es correcto)
+  apiFootballHomeTeamId Int?
+  apiFootballAwayTeamId Int?
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([tournamentInstanceId, internalMatchId])
+  @@unique([tournamentInstanceId, apiFootballFixtureId])
+  @@index([apiFootballFixtureId])
+}
+
+// =========================================================================
+// AUTO RESULTS - Log de sincronizaciones con API-Football
+// =========================================================================
+
+model ResultSyncLog {
+  id String @id @default(uuid())
+
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id])
+
+  // Metadata del job
+  startedAtUtc   DateTime   @default(now())
+  completedAtUtc DateTime?
+  status         SyncStatus @default(RUNNING)
+
+  // Resultados del sync
+  fixturesChecked Int @default(0) // Cuántos fixtures se consultaron
+  fixturesUpdated Int @default(0) // Cuántos resultados se actualizaron/crearon
+  fixturesSkipped Int @default(0) // Cuántos se saltaron (ya tenían resultado, etc.)
+
+  // Errores (array de objetos con detalles)
+  errors Json?
+
+  // Metadata de API
+  apiResponseTimeMs     Int? // Tiempo de respuesta de la API en ms
+  apiRateLimitRemaining Int? // Cuántos requests quedan en el rate limit
+
+  @@index([tournamentInstanceId])
+  @@index([status])
+  @@index([startedAtUtc])
+}
+
+// Match Sync State - Tracks individual match sync status for smart polling
+model MatchSyncState {
+  id                    String   @id @default(uuid())
+  tournamentInstanceId  String
+  tournamentInstance    TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Cascade)
+  
+  internalMatchId       String   // Match ID from dataJson
+  
+  // State machine: PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
+  syncStatus            MatchSyncStatus @default(PENDING)
+  
+  // Timing
+  kickoffUtc            DateTime
+  firstCheckAtUtc       DateTime?  // kickoff + 5min
+  finishCheckAtUtc      DateTime?  // kickoff + 110min
+  lastCheckedAtUtc      DateTime?
+  completedAtUtc        DateTime?
+  
+  // API response cache
+  lastApiStatus         String?    // e.g., "1H", "HT", "2H", "FT"
+  
+  createdAtUtc          DateTime @default(now())
+  updatedAtUtc          DateTime @updatedAt
+  
+  @@unique([tournamentInstanceId, internalMatchId])
+  @@index([syncStatus])
+  @@index([firstCheckAtUtc])
+  @@index([finishCheckAtUtc])
+}
+
+enum MatchSyncStatus {
+  PENDING           // Waiting for kickoff + 5min
+  IN_PROGRESS       // Match started, waiting for finishCheckAtUtc
+  AWAITING_FINISH   // Past estimated end, polling every 5min
+  COMPLETED         // Match finished, never check again
+  SKIPPED           // No API mapping or manual mode
 }

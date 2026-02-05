@@ -24,6 +24,9 @@
     "test:scoring": "ts-node-dev --transpile-only src/scripts/testScoring.ts",
     "seed:full-test": "ts-node-dev --transpile-only src/scripts/seedFullTestScenario.ts",
     "seed:legal": "ts-node-dev --transpile-only src/scripts/seedLegalDocuments.ts",
+    "seed:wc2022-autotest": "ts-node-dev --transpile-only src/scripts/seedWc2022AutoTest.ts",
+    "init:smart-sync": "ts-node-dev --transpile-only src/scripts/initSmartSyncStates.ts",
+    "add:knockout": "ts-node-dev --transpile-only src/scripts/addKnockoutPhases.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
@@ -41,6 +44,7 @@
     "express-rate-limit": "^8.2.1",
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
+    "node-cron": "^4.2.1",
     "prisma": "^6.19.1",
     "resend": "^6.6.0",
     "zod": "^4.2.1"
@@ -51,6 +55,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.10",
+    "@types/node-cron": "^3.0.11",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"

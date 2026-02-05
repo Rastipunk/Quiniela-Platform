@@ -96,6 +96,7 @@ How to implement this decision (if applicable)
 | [028](#adr-028-rate-limiting-strategy) | Rate Limiting Strategy | Accepted | 2026-01-18 |
 | [029](#adr-029-internal-notification-system-badges) | Internal Notification System (Badges) | Accepted | 2026-01-18 |
 | [030](#adr-030-slide-in-auth-panel) | Slide-in Auth Panel | Accepted | 2026-02-01 |
+| [031](#adr-031-automatic-results-via-api-football) | Automatic Results via API-Football | Accepted | 2026-02-04 |
 
 ---
 
@@ -3154,6 +3155,332 @@ useEffect(() => {
 
 ---
 
+## ADR-031: Automatic Results via API-Football
+
+**Date:** 2026-02-04
+**Status:** Accepted
+**Deciders:** Product Team, Engineering Team
+**Tags:** #api #automation #results #integration
+
+### Context
+
+El sistema original requería que el Host ingresara manualmente todos los resultados de partidos. Esto funcionaba bien para:
+- Torneos amateur donde no hay fuente externa
+- Pools pequeños con pocos partidos
+
+Sin embargo, para el **producto principal** (World Cup 2026, Champions League, ligas oficiales), esto presenta problemas:
+
+1. **Trabajo manual excesivo:** 104 partidos en WC2026, Host debe publicar cada resultado
+2. **Delays en resultados:** Host podría no estar disponible cuando termina un partido
+3. **Errores humanos:** Posibilidad de ingresar marcadores incorrectos
+4. **Experiencia de usuario:** Jugadores quieren ver resultados inmediatamente
+
+**Requisitos:**
+- Resultados automáticos para torneos oficiales via API externa
+- Mantener capacidad de resultados manuales para torneos amateur
+- Fallback si la API falla/tarda: Host puede ingresar resultado provisional
+- Host puede corregir un resultado de API si hay erratas (con justificación)
+
+**API Elegida:** API-Football (api-sports.io)
+- 100 requests/día gratis (suficiente para desarrollo)
+- Cobertura completa de World Cup, Champions, ligas principales
+- API REST bien documentada con JSON
+- $19/mes para producción (10,000 requests/día)
+
+### Decision
+
+Implementar un **sistema híbrido de resultados** con dos modos por instancia y tracking de fuente por resultado.
+
+**Modo de Instancia (ResultSourceMode):**
+```prisma
+enum ResultSourceMode {
+  MANUAL  // Host ingresa resultados (torneos amateur)
+  AUTO    // Resultados se obtienen de API-Football
+}
+```
+
+**Fuente de Resultado (ResultSource):**
+```prisma
+enum ResultSource {
+  HOST_MANUAL       // Host en instancia MANUAL
+  HOST_PROVISIONAL  // Host en instancia AUTO mientras espera API
+  API_CONFIRMED     // Resultado confirmado de API-Football
+  HOST_OVERRIDE     // Host corrigió resultado de API (errata)
+}
+```
+
+**Arquitectura:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     TournamentInstance                               │
+│  resultSourceMode: MANUAL | AUTO                                     │
+│  apiFootballLeagueId: 1 (World Cup)                                 │
+│  apiFootballSeasonId: 2026                                          │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+┌───────────────┐   ┌─────────────────┐   ┌───────────────────┐
+│ MatchMapping  │   │  ResultSync     │   │ PoolMatchResult   │
+│ internalId ↔  │   │  Cron Job       │   │ source:           │
+│ apiFootball   │   │  (cada 5min)    │   │ - HOST_MANUAL     │
+│ fixtureId     │   │                 │   │ - HOST_PROVISIONAL│
+└───────────────┘   └─────────────────┘   │ - API_CONFIRMED   │
+                              │           │ - HOST_OVERRIDE   │
+                              ▼           └───────────────────┘
+                    ┌─────────────────┐
+                    │  API-Football   │
+                    │  External API   │
+                    └─────────────────┘
+```
+
+**Matriz de Decisiones:**
+| Modo | Resultado Existente | Nueva Fuente | Acción |
+|------|---------------------|--------------|--------|
+| MANUAL | Ninguno | HOST | Crear como HOST_MANUAL |
+| MANUAL | Cualquiera | HOST | Crear nueva versión (reason si v>1) |
+| AUTO | Ninguno | HOST | Crear como HOST_PROVISIONAL |
+| AUTO | Ninguno | API | Crear como API_CONFIRMED |
+| AUTO | PROVISIONAL | API (=score) | Cambiar source a API_CONFIRMED |
+| AUTO | PROVISIONAL | API (≠score) | Crear versión API_CONFIRMED |
+| AUTO | CONFIRMED | HOST | Crear como HOST_OVERRIDE (**reason obligatorio**) |
+| AUTO | OVERRIDE | API | **IGNORAR** (override es final) |
+
+### Rationale
+
+**¿Por qué nivel de instancia (no pool)?**
+- Una instancia puede tener múltiples pools
+- Todos los pools de una instancia comparten la misma fuente de resultados
+- Configuración centralizada: Admin configura una vez, aplica a todos
+
+**¿Por qué HOST_PROVISIONAL?**
+- API puede tardar 5-10 minutos después del partido
+- Host puede publicar para que jugadores vean puntos rápido
+- Se reemplaza automáticamente cuando llega el resultado oficial
+- Transparencia: UI muestra que es provisional
+
+**¿Por qué HOST_OVERRIDE no se reemplaza?**
+- Override es una corrección deliberada (ej: error de API, partido suspendido)
+- Requiere justificación obligatoria (reason)
+- Decisión final del Host prevalece sobre API
+
+**¿Por qué API-Football vs alternativas?**
+- Live Score API: Problemas con registro (botón no funcionaba)
+- Football-Data.org: Cobertura limitada de World Cup
+- ESPN/CBS: Sin API pública
+- API-Football: Free tier generoso, buena documentación, cobertura completa
+
+### Consequences
+
+**Positive:**
+- ✅ Resultados automáticos en tiempo real para torneos oficiales
+- ✅ Cero trabajo manual para Host en modo AUTO
+- ✅ Fallback provisional si API falla
+- ✅ Host mantiene control total (puede corregir API)
+- ✅ Trazabilidad completa (source tracking + audit log)
+- ✅ Misma UX para jugadores (no saben si resultado es manual o auto)
+- ✅ Compatibilidad total con flujo existente (MANUAL = comportamiento actual)
+
+**Negative:**
+- ⚠️ Dependencia de servicio externo (API-Football)
+- ⚠️ Costo mensual en producción ($19/mes)
+- ⚠️ Complejidad adicional (mapeos, sync job, rate limiting)
+- ⚠️ Requiere configuración inicial (Admin debe crear mapeos)
+
+**Risks:**
+- ⚠️ API-Football down → sin resultados auto (mitigado: HOST_PROVISIONAL)
+- ⚠️ Rate limit excedido → sync incompleto (mitigado: 10 req/min, job cada 5min)
+- ⚠️ Datos incorrectos de API → errores en puntuación (mitigado: HOST_OVERRIDE)
+
+### Alternatives Considered
+
+1. **Manual only (sin API):**
+   - ❌ Rechazado: Producto principal necesita automatización
+   - Demasiado trabajo para Host en torneos grandes
+
+2. **Scraping de sitios web:**
+   - ❌ Rechazado: Frágil, posiblemente ilegal, sin garantía de estructura
+   - Requiere mantenimiento constante
+
+3. **API por pool (no instancia):**
+   - ❌ Rechazado: Duplicación de configuración, inconsistencia entre pools
+   - Un torneo = una fuente de verdad
+
+4. **Sin fallback provisional:**
+   - ❌ Rechazado: Mala UX si API tarda
+   - Hosts deben poder publicar rápidamente
+
+5. **Sin override (API es final):**
+   - ❌ Rechazado: Quita control al Host
+   - APIs pueden tener errores, partidos pueden ser anulados
+
+### Implementation
+
+**Database Schema:**
+```prisma
+// TournamentInstance
+resultSourceMode     ResultSourceMode @default(MANUAL)
+apiFootballLeagueId  Int?
+apiFootballSeasonId  Int?
+lastSyncAtUtc        DateTime?
+syncEnabled          Boolean @default(true)
+
+// PoolMatchResultVersion
+source              ResultSource @default(HOST_MANUAL)
+externalFixtureId   Int?
+externalDataJson    Json?
+
+// New models
+model MatchExternalMapping {
+  id                    String @id @default(uuid())
+  tournamentInstanceId  String
+  internalMatchId       String
+  apiFootballFixtureId  Int
+  @@unique([tournamentInstanceId, internalMatchId])
+}
+
+model ResultSyncLog {
+  id                   String @id @default(uuid())
+  tournamentInstanceId String
+  status               SyncStatus
+  fixturesChecked      Int
+  fixturesUpdated      Int
+  errors               Json?
+}
+```
+
+**Services Created:**
+- `backend/src/services/apiFootball/client.ts` - HTTP client con rate limiting
+- `backend/src/services/apiFootball/types.ts` - TypeScript types para API responses
+- `backend/src/services/resultSync/service.ts` - Sincronización de resultados
+- `backend/src/jobs/resultSyncJob.ts` - Cron job (cada 5 min)
+
+**Admin Endpoints:**
+```typescript
+PUT /admin/instances/:id/result-source  // Configurar modo AUTO/MANUAL
+POST /admin/instances/:id/match-mappings // Crear mapeos en bulk
+GET /admin/instances/:id/match-mappings  // Listar mapeos
+POST /admin/instances/:id/sync           // Disparar sync manual
+GET /admin/instances/:id/sync-status     // Ver logs de sync
+```
+
+**Environment Variables:**
+```env
+API_FOOTBALL_KEY=xxx
+API_FOOTBALL_BASE_URL=https://v3.football.api-sports.io
+API_FOOTBALL_ENABLED=true
+```
+
+**Rate Limiting:**
+- API-Football free tier: 100 requests/día
+- Cliente implementa: máximo 10 requests/minuto
+- Cron job: ejecuta cada 5 minutos (12 requests/hora max)
+
+**Fixture Status Handling:**
+```typescript
+// Only sync finished matches
+const FINISHED_STATUSES = ['FT', 'AET', 'PEN'];
+// FT = Full Time (90 min)
+// AET = After Extra Time
+// PEN = After Penalty Shootout
+```
+
+### Related Decisions
+
+- ADR-007: Result Versioning (source se almacena en versión)
+- ADR-019: Penalty Shootouts (API proporciona scores de penales)
+- ADR-006: Template/Version/Instance (configuración a nivel instancia)
+
+---
+
+## ADR-032: Smart Sync - Optimized API Polling Strategy
+
+**Date:** 2026-02-04
+**Status:** Accepted
+**Deciders:** Product Team, Engineering Team
+**Tags:** #api #optimization #performance #sync
+
+### Context
+
+El sistema inicial de sincronización (ADR-031) usaba **polling periódico** cada 5 minutos para consultar todos los partidos con kickoff pasado. Esto presentaba problemas:
+
+1. **Desperdicio de requests:** Consultas a partidos ya finalizados
+2. **Límite diario agotado rápidamente:** 100 requests/día (free tier) se agotaban con ~100 partidos
+3. **Consultas innecesarias:** Partidos que no han empezado o que no pueden haber terminado aún
+
+**Observación clave:** Para una plataforma de quinielas que **no requiere resultados en tiempo real** (no es betting), solo necesitamos saber si el partido inició (para mostrar "En juego") y el resultado final (para calcular puntos).
+
+**Dato importante:** Un partido de fútbol dura mínimo 105 minutos (90 juego + 15 descanso).
+
+### Decision
+
+Implementar **Smart Sync**: un sistema que consulta cada partido solo en momentos estratégicos.
+
+**Flujo por partido:**
+```
+KICKOFF              +5min                    +110min                Cada 5min
+   │                   │                         │                      │
+   ▼                   ▼                         ▼                      ▼
+[PENDING] ────────► [IN_PROGRESS] ────────► [AWAITING_FINISH] ────► [COMPLETED]
+                       │                         │
+                  Consulta 1                Consulta 2+
+                 "¿Inició?"                "¿Terminó?"
+```
+
+**Estados (MatchSyncStatus):**
+- `PENDING` - Esperando kickoff + 5min
+- `IN_PROGRESS` - Partido inició, esperando finishCheckAtUtc
+- `AWAITING_FINISH` - Pasó tiempo estimado, polling cada 5min
+- `COMPLETED` - Partido finalizado, nunca más consultar
+- `SKIPPED` - Sin mapping de API o modo manual
+
+**Tiempos configurados:**
+| Parámetro | Valor | Razón |
+|-----------|-------|-------|
+| FIRST_CHECK_DELAY | 5 min | Confirmar que el partido inició |
+| FINISH_CHECK_DELAY | 110 min | Cubre 95% de partidos sin tiempo extra |
+| AWAITING_FINISH_POLL | 5 min | Balance entre rapidez y ahorro |
+
+### Rationale
+
+**Eficiencia comparada:**
+
+| Método | Requests por partido | Total 64 partidos |
+|--------|---------------------|-------------------|
+| Polling cada 5 min | ~20-30 | 1,280-1,920 |
+| **Smart Sync** | 2-4 | 128-256 |
+
+**Reducción: ~85-90% en llamadas a API**
+
+### Consequences
+
+**Positive:**
+- ✅ Reducción dramática de requests (85-90%)
+- ✅ Nunca se agotan los 100 requests/día del free tier
+- ✅ Estado "En juego" disponible para UI
+- ✅ Cada partido tiene trazabilidad completa
+
+**Negative:**
+- ⚠️ Complejidad adicional (nueva tabla, estados)
+- ⚠️ Delay máximo de 5 minutos para resultados
+
+### Implementation Notes
+
+**Archivos:**
+- `backend/src/services/smartSync/service.ts` - Lógica principal
+- `backend/src/jobs/smartSyncJob.ts` - Cron job (cada minuto)
+- `backend/src/scripts/initSmartSyncStates.ts` - Inicialización
+
+**Comando:** `npm run init:smart-sync [instanceId]`
+
+### Related Decisions
+
+- ADR-031: Automatic Results via API-Football (sistema base)
+- ADR-028: Rate Limiting Strategy (complementa con smart polling)
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.3.0:**
@@ -3164,16 +3491,19 @@ useEffect(() => {
 **v0.3.3:**
 - [x] ADR-030: Slide-in Auth Panel ✅ (2026-02-01)
 
+**v0.4.0:**
+- [x] ADR-031: Automatic Results via API-Football ✅ (2026-02-04)
+- [x] ADR-032: Smart Sync - Optimized API Polling ✅ (2026-02-04)
+
 **v1.0:**
-- [ ] ADR-031: Email confirmation on registration
-- [ ] ADR-031: PWA + Service Worker
-- [ ] ADR-032: Redis caching layer
+- [ ] ADR-033: Email confirmation on registration
+- [ ] ADR-034: PWA + Service Worker
+- [ ] ADR-035: Redis caching layer
 
 **v2.0:**
-- [ ] ADR-033: External API for results ingestion
-- [ ] ADR-034: Multi-sport support architecture
-- [ ] ADR-035: WebSocket for real-time updates
-- [ ] ADR-036: Facebook/Apple OAuth providers
+- [ ] ADR-036: Multi-sport support architecture
+- [ ] ADR-037: WebSocket for real-time updates
+- [ ] ADR-038: Facebook/Apple OAuth providers
 
 ---
 
