@@ -12,6 +12,8 @@ export const MatchPickTypeKeySchema = z.enum([
   "PARTIAL_SCORE",
   "TOTAL_GOALS",
   "MATCH_OUTCOME_90MIN",
+  "HOME_GOALS",
+  "AWAY_GOALS",
 ]);
 
 export const MatchPickTypeSchema = z.object({
