@@ -98,7 +98,7 @@ export function PoolPage() {
 
   const [overview, setOverview] = useState<PoolOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [verbose, setVerbose] = useState(false);
+  const verbose = false;
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [userTimezone, setUserTimezone] = useState<string | null>(null);
 

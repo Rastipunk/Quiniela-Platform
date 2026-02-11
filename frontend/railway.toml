@@ -8,4 +8,4 @@ startCommand = "node server.js"
 [build.env]
 NPM_CONFIG_PRODUCTION = "false"
 NODE_ENV = "production"
-NIXPACKS_NODE_VERSION = "22"
+NIXPACKS_NODE_VERSION = "22.13"
