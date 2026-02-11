@@ -3,8 +3,10 @@
 builder = "nixpacks"
 
 [build.nixpacks]
-# No cachear dependencias ni builds
 nixpacksVersion = "latest"
+
+[build.env]
+NIXPACKS_NODE_VERSION = "22"
 
 [deploy]
 # Comando que se ejecuta ANTES del deploy (ideal para migraciones)

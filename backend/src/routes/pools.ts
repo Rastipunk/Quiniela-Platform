@@ -1610,7 +1610,7 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
         const sorted = [...instancePhases].sort((a, b) => a.order - b.order);
         const idx = sorted.findIndex((p) => p.id === currentPhaseId);
         if (idx >= 0 && idx < sorted.length - 1) {
-          derivedNextPhase = sorted[idx + 1].id;
+          derivedNextPhase = sorted[idx + 1]?.id;
         }
       }
 

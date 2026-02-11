@@ -1,7 +1,7 @@
 // Presets predefinidos para configuración rápida de picks
 // Sprint 2 - Advanced Pick Types System
 
-import type { PickConfigPreset, PoolPickTypesConfig } from "../types/pickConfig";
+import type { PhasePickConfig, PickConfigPreset, PoolPickTypesConfig } from "../types/pickConfig";
 
 // ==================== PRESET: BÁSICO ====================
 
@@ -496,26 +496,25 @@ export function generateDynamicPresetConfig(
   }
 
   if (presetKey === "SIMPLE") {
-    return instancePhases.map((phase) => ({
+    return instancePhases.map((phase): PhasePickConfig => ({
       phaseId: phase.id,
       phaseName: phase.name,
       requiresScore: false,
-      structuralPicks: {
-        type: (phase.type === "GROUP" ? "GROUP_STANDINGS" : "KNOCKOUT_WINNER") as any,
-        config:
-          phase.type === "GROUP"
-            ? {
-                pointsPosition1: 10,
-                pointsPosition2: 10,
-                pointsPosition3: 10,
-                pointsPosition4: 10,
-                bonusPerfectGroupEnabled: true,
-                bonusPerfectGroup: 20,
-              }
-            : {
-                pointsPerCorrectAdvance: 15,
-              },
-      },
+      structuralPicks: phase.type === "GROUP"
+        ? {
+            type: "GROUP_STANDINGS" as const,
+            config: {
+              pointsPerExactPosition: 10,
+              bonusPerfectGroup: 20,
+              includeGlobalQualifiers: false,
+            },
+          }
+        : {
+            type: "KNOCKOUT_WINNER" as const,
+            config: {
+              pointsPerCorrectAdvance: 15,
+            },
+          },
     }));
   }
 
