@@ -204,208 +204,6 @@ export const BASIC_PRESET: PickConfigPreset = {
   config: BASIC_CONFIG,
 };
 
-// ==================== PRESET: AVANZADO ====================
-
-/**
- * AVANZADO: Múltiples tipos de picks con auto-scaling
- * - Para usuarios experimentados que quieren más formas de ganar puntos
- * - Combina exacto, diferencia, parcial y totales
- */
-const ADVANCED_CONFIG: PoolPickTypesConfig = [
-  {
-    phaseId: "group_stage",
-    phaseName: "Fase de Grupos",
-    requiresScore: true,
-    matchPicks: {
-      types: [
-        {
-          key: "EXACT_SCORE",
-          enabled: true,
-          points: 20,
-        },
-        {
-          key: "GOAL_DIFFERENCE",
-          enabled: true,
-          points: 10,
-        },
-        {
-          key: "PARTIAL_SCORE",
-          enabled: true,
-          points: 8,
-        },
-        {
-          key: "TOTAL_GOALS",
-          enabled: true,
-          points: 5,
-        },
-        {
-          key: "MATCH_OUTCOME_90MIN",
-          enabled: false,
-          points: 0,
-        },
-      ],
-      autoScaling: {
-        enabled: true,
-        basePhase: "group_stage",
-        multipliers: {
-          group_stage: 1.0,
-          round_of_16: 1.5,
-          quarter_finals: 2.0,
-          semi_finals: 2.5,
-          third_place: 2.5,
-          final: 3.0,
-        },
-      },
-    },
-  },
-  {
-    phaseId: "round_of_16",
-    phaseName: "Octavos de Final",
-    requiresScore: true,
-    matchPicks: {
-      types: [
-        {
-          key: "EXACT_SCORE",
-          enabled: true,
-          points: 30,
-        },
-        {
-          key: "GOAL_DIFFERENCE",
-          enabled: true,
-          points: 15,
-        },
-        {
-          key: "PARTIAL_SCORE",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "TOTAL_GOALS",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "MATCH_OUTCOME_90MIN",
-          enabled: false,
-          points: 0,
-        },
-      ],
-    },
-  },
-  {
-    phaseId: "quarter_finals",
-    phaseName: "Cuartos de Final",
-    requiresScore: true,
-    matchPicks: {
-      types: [
-        {
-          key: "EXACT_SCORE",
-          enabled: true,
-          points: 40,
-        },
-        {
-          key: "GOAL_DIFFERENCE",
-          enabled: true,
-          points: 20,
-        },
-        {
-          key: "PARTIAL_SCORE",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "TOTAL_GOALS",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "MATCH_OUTCOME_90MIN",
-          enabled: false,
-          points: 0,
-        },
-      ],
-    },
-  },
-  {
-    phaseId: "semi_finals",
-    phaseName: "Semifinales",
-    requiresScore: true,
-    matchPicks: {
-      types: [
-        {
-          key: "EXACT_SCORE",
-          enabled: true,
-          points: 50,
-        },
-        {
-          key: "GOAL_DIFFERENCE",
-          enabled: true,
-          points: 25,
-        },
-        {
-          key: "PARTIAL_SCORE",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "TOTAL_GOALS",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "MATCH_OUTCOME_90MIN",
-          enabled: false,
-          points: 0,
-        },
-      ],
-    },
-  },
-  {
-    phaseId: "final",
-    phaseName: "Final",
-    requiresScore: true,
-    matchPicks: {
-      types: [
-        {
-          key: "EXACT_SCORE",
-          enabled: true,
-          points: 60,
-        },
-        {
-          key: "GOAL_DIFFERENCE",
-          enabled: true,
-          points: 30,
-        },
-        {
-          key: "PARTIAL_SCORE",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "TOTAL_GOALS",
-          enabled: false,
-          points: 0,
-        },
-        {
-          key: "MATCH_OUTCOME_90MIN",
-          enabled: false,
-          points: 0,
-        },
-      ],
-    },
-  },
-];
-
-export const ADVANCED_PRESET: PickConfigPreset = {
-  key: "ADVANCED",
-  name: "Avanzado",
-  description:
-    "Múltiples formas de ganar puntos: marcador exacto (20 pts), diferencia de goles (10 pts), " +
-    "marcador parcial (8 pts) y goles totales (5 pts) en fase de grupos. " +
-    "En eliminatorias solo exacto y diferencia con auto-scaling.",
-  config: ADVANCED_CONFIG,
-};
-
 // ==================== PRESET: SIMPLE ====================
 
 /**
@@ -635,13 +433,91 @@ export const CUMULATIVE_PRESET: PickConfigPreset = {
  * Obtiene todos los presets disponibles
  */
 export function getAllPresets(): PickConfigPreset[] {
-  return [BASIC_PRESET, ADVANCED_PRESET, SIMPLE_PRESET, CUMULATIVE_PRESET];
+  return [CUMULATIVE_PRESET, BASIC_PRESET, SIMPLE_PRESET];
 }
 
 /**
- * Obtiene un preset por su key
+ * Obtiene un preset por su key (hardcoded config con phaseIds genéricos)
  */
 export function getPresetByKey(key: string): PickConfigPreset | null {
   const presets = getAllPresets();
   return presets.find((p) => p.key === key) || null;
+}
+
+/**
+ * Genera configuración de preset dinámicamente usando las fases reales de la instancia.
+ * Esto evita el mismatch de phaseIds entre presets hardcoded y datos reales del torneo.
+ *
+ * @param presetKey - Key del preset ("CUMULATIVE", "BASIC", "SIMPLE")
+ * @param instancePhases - Fases extraídas del dataJson de la instancia
+ * @returns Configuración de picks con phaseIds reales, o null si el preset no existe
+ */
+export function generateDynamicPresetConfig(
+  presetKey: string,
+  instancePhases: Array<{ id: string; name: string; type: string }>
+): PoolPickTypesConfig | null {
+  if (presetKey === "CUMULATIVE") {
+    return instancePhases.map((phase) => {
+      const isKnockout = phase.type !== "GROUP";
+      return {
+        phaseId: phase.id,
+        phaseName: phase.name,
+        requiresScore: true,
+        matchPicks: {
+          types: [
+            { key: "EXACT_SCORE" as const, enabled: false, points: 0 },
+            { key: "GOAL_DIFFERENCE" as const, enabled: true, points: isKnockout ? 2 : 1 },
+            { key: "PARTIAL_SCORE" as const, enabled: false, points: 0 },
+            { key: "TOTAL_GOALS" as const, enabled: false, points: 0 },
+            { key: "MATCH_OUTCOME_90MIN" as const, enabled: true, points: isKnockout ? 10 : 5 },
+            { key: "HOME_GOALS" as const, enabled: true, points: isKnockout ? 4 : 2 },
+            { key: "AWAY_GOALS" as const, enabled: true, points: isKnockout ? 4 : 2 },
+          ],
+        },
+      };
+    });
+  }
+
+  if (presetKey === "BASIC") {
+    return instancePhases.map((phase, index) => ({
+      phaseId: phase.id,
+      phaseName: phase.name,
+      requiresScore: true,
+      matchPicks: {
+        types: [
+          { key: "EXACT_SCORE" as const, enabled: true, points: 20 + index * 10 },
+          { key: "GOAL_DIFFERENCE" as const, enabled: false, points: 0 },
+          { key: "PARTIAL_SCORE" as const, enabled: false, points: 0 },
+          { key: "TOTAL_GOALS" as const, enabled: false, points: 0 },
+          { key: "MATCH_OUTCOME_90MIN" as const, enabled: false, points: 0 },
+        ],
+      },
+    }));
+  }
+
+  if (presetKey === "SIMPLE") {
+    return instancePhases.map((phase) => ({
+      phaseId: phase.id,
+      phaseName: phase.name,
+      requiresScore: false,
+      structuralPicks: {
+        type: (phase.type === "GROUP" ? "GROUP_STANDINGS" : "KNOCKOUT_WINNER") as any,
+        config:
+          phase.type === "GROUP"
+            ? {
+                pointsPosition1: 10,
+                pointsPosition2: 10,
+                pointsPosition3: 10,
+                pointsPosition4: 10,
+                bonusPerfectGroupEnabled: true,
+                bonusPerfectGroup: 20,
+              }
+            : {
+                pointsPerCorrectAdvance: 15,
+              },
+      },
+    }));
+  }
+
+  return null;
 }

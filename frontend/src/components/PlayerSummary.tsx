@@ -1,7 +1,7 @@
 // frontend/src/components/PlayerSummary.tsx
 // Componente que muestra el resumen detallado de puntos de un jugador
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getPlayerSummary } from "../lib/api";
 import type { PlayerSummaryResponse, PlayerSummaryPhase, PlayerSummaryMatch } from "../lib/api";
 import { getToken } from "../lib/auth";
@@ -15,81 +15,132 @@ type PlayerSummaryProps = {
   onClose?: () => void; // Si se usa en modal
 };
 
-// Badge para mostrar tipo de acierto
-function MatchTypeBadge({ type, matched, points }: { type: string; matched: boolean; points: number }) {
-  if (!matched) return null;
+// Grid template: home column auto-sizes to widest name, "vs" stays close
+// [home:auto] [vs:20px] [away:1fr] [pick:70px] [result:70px] [points:80px]
+const GRID_TEMPLATE = "auto 20px 1fr 70px 70px 80px";
 
-  const typeLabels: Record<string, string> = {
-    EXACT_SCORE: "Exacto",
-    GOAL_DIFFERENCE: "Diferencia",
-    PARTIAL_SCORE: "Parcial",
-    TOTAL_GOALS: "Total goles",
-    OUTCOME: "Resultado",
-    MATCH_OUTCOME_90MIN: "Resultado",
-    HOME_GOALS: "Local",
-    AWAY_GOALS: "Visitante",
-  };
+const typeLabels: Record<string, string> = {
+  EXACT_SCORE: "Exacto",
+  GOAL_DIFFERENCE: "Diferencia",
+  PARTIAL_SCORE: "Parcial",
+  TOTAL_GOALS: "Total goles",
+  OUTCOME: "Resultado",
+  MATCH_OUTCOME_90MIN: "Resultado",
+  HOME_GOALS: "Local",
+  AWAY_GOALS: "Visitante",
+};
 
-  const typeColors: Record<string, string> = {
-    EXACT_SCORE: "#28a745",
-    GOAL_DIFFERENCE: "#17a2b8",
-    PARTIAL_SCORE: "#ffc107",
-    TOTAL_GOALS: "#6c757d",
-    OUTCOME: "#007bff",
-    MATCH_OUTCOME_90MIN: "#007bff",
-    HOME_GOALS: "#fd7e14",  // Orange
-    AWAY_GOALS: "#e83e8c",  // Pink
-  };
+const typeColors: Record<string, string> = {
+  EXACT_SCORE: "#28a745",
+  GOAL_DIFFERENCE: "#17a2b8",
+  PARTIAL_SCORE: "#ffc107",
+  TOTAL_GOALS: "#6c757d",
+  OUTCOME: "#007bff",
+  MATCH_OUTCOME_90MIN: "#007bff",
+  HOME_GOALS: "#fd7e14",
+  AWAY_GOALS: "#e83e8c",
+};
 
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        padding: "2px 8px",
-        borderRadius: 12,
-        fontSize: 11,
-        fontWeight: 600,
-        backgroundColor: typeColors[type] ?? "#6c757d",
-        color: "#fff",
-      }}
-    >
-      {typeLabels[type] ?? type} +{points}
-    </span>
-  );
-}
+// Popover for breakdown details
+function BreakdownPopover({ breakdown, onClose }: {
+  breakdown: Array<{ type: string; matched: boolean; points: number }>;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
 
-// Componente para una fila de partido
-function MatchRow({ match, tournamentKey }: { match: PlayerSummaryMatch; tournamentKey: string }) {
-  const statusColors: Record<string, { bg: string; text: string }> = {
-    SCORED: { bg: "#d4edda", text: "#155724" },
-    NO_PICK: { bg: "#f8d7da", text: "#721c24" },
-    PENDING_RESULT: { bg: "#fff3cd", text: "#856404" },
-    LOCKED: { bg: "#e2e3e5", text: "#383d41" },
-  };
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
 
-  const statusLabels: Record<string, string> = {
-    SCORED: "Puntuado",
-    NO_PICK: "Sin pick",
-    PENDING_RESULT: "Esperando resultado",
-    LOCKED: "Bloqueado",
-  };
-
-  const colors = statusColors[match.status] ?? statusColors.LOCKED;
+  const matched = breakdown.filter((b) => b.matched);
 
   return (
     <div
+      ref={ref}
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr auto auto auto",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 16px",
-        borderBottom: "1px solid #eee",
-        backgroundColor: match.status === "SCORED" && match.pointsEarned > 0 ? "#f8fff8" : "#fff",
+        position: "absolute",
+        right: 0,
+        top: "100%",
+        marginTop: 4,
+        backgroundColor: "#fff",
+        border: "1px solid #ddd",
+        borderRadius: 8,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+        padding: "8px 12px",
+        zIndex: 50,
+        minWidth: 160,
+        whiteSpace: "nowrap",
       }}
     >
+      {matched.length === 0 ? (
+        <div style={{ fontSize: 12, color: "#999" }}>Sin aciertos</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {matched.map((b, idx) => (
+            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor: typeColors[b.type] ?? "#6c757d",
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ fontSize: 12, color: "#333" }}>{typeLabels[b.type] ?? b.type}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: typeColors[b.type] ?? "#6c757d", marginLeft: "auto" }}>
+                +{b.points}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const statusColors: Record<string, { bg: string; text: string }> = {
+  SCORED: { bg: "#d4edda", text: "#155724" },
+  NO_PICK: { bg: "#f8d7da", text: "#721c24" },
+  PENDING_RESULT: { bg: "#fff3cd", text: "#856404" },
+  LOCKED: { bg: "#e2e3e5", text: "#383d41" },
+};
+
+const statusLabels: Record<string, string> = {
+  SCORED: "Puntuado",
+  NO_PICK: "Sin pick",
+  PENDING_RESULT: "Esperando resultado",
+  LOCKED: "Bloqueado",
+};
+
+// Componente para una fila de partido (usa display:contents para compartir grid del padre)
+function MatchRow({ match, tournamentKey }: { match: PlayerSummaryMatch; tournamentKey: string }) {
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  const colors = statusColors[match.status] ?? statusColors.LOCKED;
+  const hasBreakdown = match.status === "SCORED" && match.breakdown?.some((b) => b.matched);
+  const rowBg = match.status === "SCORED" && match.pointsEarned > 0 ? "#f8fff8" : "#fff";
+
+  // Shared style for all cells in this row (continuous background, no gaps)
+  const cell: React.CSSProperties = {
+    backgroundColor: rowBg,
+    borderBottom: "1px solid #eee",
+    padding: "10px 4px",
+    display: "flex",
+    alignItems: "center",
+  };
+
+  return (
+    <div style={{ display: "contents" }}>
       {/* Equipo local */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ ...cell, paddingLeft: 16, gap: 4, whiteSpace: "nowrap" }}>
         {match.homeTeam ? (
           <TeamFlag
             teamId={`t_${match.homeTeam.code ?? match.homeTeam.id}`}
@@ -98,15 +149,17 @@ function MatchRow({ match, tournamentKey }: { match: PlayerSummaryMatch; tournam
             showName={true}
           />
         ) : (
-          <span style={{ color: "#999" }}>TBD</span>
+          <span style={{ color: "#999", fontSize: 13 }}>TBD</span>
         )}
       </div>
 
       {/* VS */}
-      <span style={{ color: "#999", fontSize: 12 }}>vs</span>
+      <div style={{ ...cell, justifyContent: "center" }}>
+        <span style={{ color: "#aaa", fontSize: 11 }}>vs</span>
+      </div>
 
       {/* Equipo visitante */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ ...cell, gap: 4, overflow: "hidden" }}>
         {match.awayTeam ? (
           <TeamFlag
             teamId={`t_${match.awayTeam.code ?? match.awayTeam.id}`}
@@ -115,23 +168,23 @@ function MatchRow({ match, tournamentKey }: { match: PlayerSummaryMatch; tournam
             showName={true}
           />
         ) : (
-          <span style={{ color: "#999" }}>TBD</span>
+          <span style={{ color: "#999", fontSize: 13 }}>TBD</span>
         )}
       </div>
 
-      {/* Pick del usuario */}
-      <div style={{ textAlign: "center", minWidth: 60 }}>
+      {/* Mi Pick */}
+      <div style={{ ...cell, justifyContent: "center" }}>
         {match.pick ? (
-          <span style={{ fontWeight: 600, color: "#333" }}>
+          <span style={{ fontWeight: 600, color: "#333", fontSize: 14 }}>
             {match.pick.homeGoals} - {match.pick.awayGoals}
           </span>
         ) : (
-          <span style={{ color: "#999", fontSize: 12 }}>-</span>
+          <span style={{ color: "#bbb", fontSize: 13 }}>-</span>
         )}
       </div>
 
       {/* Resultado oficial */}
-      <div style={{ textAlign: "center", minWidth: 60 }}>
+      <div style={{ ...cell, justifyContent: "center" }}>
         {match.result ? (
           <span
             style={{
@@ -140,35 +193,37 @@ function MatchRow({ match, tournamentKey }: { match: PlayerSummaryMatch; tournam
               backgroundColor: "#e7f3ff",
               padding: "2px 8px",
               borderRadius: 4,
+              fontSize: 14,
             }}
           >
             {match.result.homeGoals} - {match.result.awayGoals}
           </span>
         ) : (
-          <span style={{ color: "#999", fontSize: 12 }}>-</span>
+          <span style={{ color: "#bbb", fontSize: 13 }}>-</span>
         )}
       </div>
 
-      {/* Puntos y badges */}
-      <div style={{ textAlign: "right", minWidth: 100 }}>
+      {/* Puntos (con popover de breakdown) */}
+      <div style={{ ...cell, justifyContent: "flex-end", paddingRight: 16, position: "relative" }}>
         {match.status === "SCORED" ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-            <span style={{ fontWeight: 700, fontSize: 16, color: match.pointsEarned > 0 ? "#28a745" : "#dc3545" }}>
-              {match.pointsEarned > 0 ? `+${match.pointsEarned}` : "0"} pts
-            </span>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              {match.breakdown
-                .filter((b) => b.matched)
-                .map((b, idx) => (
-                  <MatchTypeBadge key={idx} type={b.type} matched={b.matched} points={b.points} />
-                ))}
-            </div>
-          </div>
+          <span
+            onClick={hasBreakdown ? () => setShowBreakdown(!showBreakdown) : undefined}
+            style={{
+              fontWeight: 700,
+              fontSize: 14,
+              color: match.pointsEarned > 0 ? "#28a745" : "#dc3545",
+              cursor: hasBreakdown ? "pointer" : "default",
+              borderBottom: hasBreakdown ? "1px dashed currentColor" : "none",
+              paddingBottom: 1,
+            }}
+          >
+            {match.pointsEarned > 0 ? `+${match.pointsEarned}` : "0"} pts
+          </span>
         ) : (
           <span
             style={{
               display: "inline-block",
-              padding: "4px 8px",
+              padding: "2px 8px",
               borderRadius: 4,
               fontSize: 11,
               backgroundColor: colors.bg,
@@ -177,6 +232,12 @@ function MatchRow({ match, tournamentKey }: { match: PlayerSummaryMatch; tournam
           >
             {statusLabels[match.status]}
           </span>
+        )}
+        {showBreakdown && (
+          <BreakdownPopover
+            breakdown={match.breakdown}
+            onClose={() => setShowBreakdown(false)}
+          />
         )}
       </div>
     </div>
@@ -226,33 +287,48 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded }: { phase: Player
         </div>
       </div>
 
-      {/* Contenido expandible */}
+      {/* Contenido expandible: single grid so all rows share column tracks */}
       {expanded && (
-        <div>
-          {/* Headers de columnas */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: GRID_TEMPLATE,
+          }}
+        >
+          {/* Header row (display:contents so cells participate in the grid) */}
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto 1fr auto auto auto",
-              alignItems: "center",
-              gap: 12,
-              padding: "8px 16px",
-              backgroundColor: "#f1f3f5",
-              fontSize: 11,
-              fontWeight: 600,
-              color: "#666",
-              textTransform: "uppercase",
-            }}
+            style={{ display: "contents" }}
           >
-            <span>Local</span>
-            <span></span>
-            <span>Visitante</span>
-            <span style={{ textAlign: "center" }}>Mi Pick</span>
-            <span style={{ textAlign: "center" }}>Resultado</span>
-            <span style={{ textAlign: "right" }}>Puntos</span>
+            {[
+              { label: "Local", align: "left" as const, pl: 16 },
+              { label: "", align: "center" as const },
+              { label: "Visitante", align: "left" as const },
+              { label: "Mi Pick", align: "center" as const },
+              { label: "Resultado", align: "center" as const },
+              { label: "Puntos", align: "right" as const, pr: 16 },
+            ].map((h, i) => (
+              <span
+                key={i}
+                style={{
+                  backgroundColor: "#f1f3f5",
+                  padding: "8px 4px",
+                  paddingLeft: h.pl ?? 4,
+                  paddingRight: h.pr ?? 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#666",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.03em",
+                  textAlign: h.align,
+                  borderBottom: "1px solid #ddd",
+                }}
+              >
+                {h.label}
+              </span>
+            ))}
           </div>
 
-          {/* Filas de partidos */}
+          {/* Match rows (each uses display:contents) */}
           {phase.matches.map((match) => (
             <MatchRow key={match.matchId} match={match} tournamentKey={tournamentKey} />
           ))}

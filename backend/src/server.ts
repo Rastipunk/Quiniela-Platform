@@ -21,7 +21,7 @@ import { pickPresetsRouter } from "./routes/pickPresets";
 import legalRouter from "./routes/legal";
 import adminSettingsRouter from "./routes/adminSettings";
 import { apiLimiter, authLimiter, passwordResetLimiter } from "./middleware/rateLimit";
-import { startResultSyncJob } from "./jobs/resultSyncJob";
+import { startSmartSyncJob } from "./jobs/smartSyncJob";
 
 
 
@@ -98,6 +98,6 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
 
-  // Iniciar el job de sincronización de resultados automáticos
-  startResultSyncJob();
+  // Iniciar Smart Sync (sincronización optimizada por partido)
+  startSmartSyncJob();
 });

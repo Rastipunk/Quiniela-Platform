@@ -144,7 +144,6 @@ export type PoolPickTypesConfig = PhasePickConfig[];
  */
 export type PickConfigPresetKey =
   | "BASIC"       // Solo marcador exacto, auto-scaling
-  | "ADVANCED"    // Múltiples tipos de picks con marcador
   | "SIMPLE"      // Sin marcadores, solo posiciones/avances
   | "CUMULATIVE"  // Sistema acumulativo (HOME_GOALS + AWAY_GOALS + OUTCOME + DIFF)
   | "CUSTOM";     // Personalizado

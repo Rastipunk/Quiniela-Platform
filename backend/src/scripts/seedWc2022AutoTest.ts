@@ -15,7 +15,7 @@ import { hashPassword } from "../lib/password";
 // Hora de inicio del primer partido (ajustar a tu zona horaria)
 // Formato: new Date("YYYY-MM-DDTHH:MM:SS")
 // Ejemplo para Colombia (UTC-5): 10:45 PM del 4 de febrero 2026
-const START_TIME = new Date("2026-02-04T22:45:00"); // ← CAMBIAR ESTO
+const START_TIME = new Date("2026-02-06T13:50:00"); // ← CAMBIAR ESTO
 
 // Intervalo entre jornadas (en minutos)
 const ROUND_INTERVAL_MINUTES = 5;
@@ -40,25 +40,17 @@ const WC2022_GROUPS: Record<string, { teams: string[]; teamCodes: string[] }> = 
 };
 
 // Fixture IDs de API-Football para WC2022 (grupo stage)
-// Obtenidos de: https://www.api-football.com/documentation-v3#tag/Fixtures/operation/get-fixtures
+// IDs 855719-855766 = 48 matches de fase de grupos (sin solapamiento con knockout 855767+)
 // League ID: 1 (World Cup), Season: 2022
 const WC2022_FIXTURE_IDS: Record<string, number[]> = {
-  // Grupo A: Qatar, Ecuador, Senegal, Netherlands
-  A: [855736, 855746, 855756, 855766, 855773, 855777],
-  // Grupo B: England, Iran, USA, Wales
-  B: [855737, 855747, 855757, 855767, 855774, 855778],
-  // Grupo C: Argentina, Saudi Arabia, Mexico, Poland
-  C: [855738, 855748, 855758, 855768, 855775, 855779],
-  // Grupo D: France, Australia, Denmark, Tunisia
-  D: [855739, 855749, 855759, 855769, 855776, 855780],
-  // Grupo E: Spain, Costa Rica, Germany, Japan
-  E: [855740, 855750, 855760, 855770, 855781, 855785],
-  // Grupo F: Belgium, Canada, Morocco, Croatia
-  F: [855741, 855751, 855761, 855771, 855782, 855786],
-  // Grupo G: Brazil, Serbia, Switzerland, Cameroon
-  G: [855742, 855752, 855762, 855772, 855783, 855787],
-  // Grupo H: Portugal, Ghana, Uruguay, South Korea
-  H: [855743, 855753, 855763, 855764, 855784, 855788],
+  A: [855719, 855720, 855721, 855722, 855723, 855724],
+  B: [855725, 855726, 855727, 855728, 855729, 855730],
+  C: [855731, 855732, 855733, 855734, 855735, 855736],
+  D: [855737, 855738, 855739, 855740, 855741, 855742],
+  E: [855743, 855744, 855745, 855746, 855747, 855748],
+  F: [855749, 855750, 855751, 855752, 855753, 855754],
+  G: [855755, 855756, 855757, 855758, 855759, 855760],
+  H: [855761, 855762, 855763, 855764, 855765, 855766],
 };
 
 // Emparejamientos por jornada (índices 0-3 de equipos en cada grupo)

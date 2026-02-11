@@ -270,7 +270,7 @@ export type CreatePoolInput = {
   timeZone?: string;
   deadlineMinutesBeforeKickoff?: number;
   scoringPresetKey?: string; // "CLASSIC" | "OUTCOME_ONLY" | "EXACT_HEAVY" ... (legacy)
-  pickTypesConfig?: any; // PhasePickConfig[] | "BASIC" | "ADVANCED" | "SIMPLE"
+  pickTypesConfig?: any; // PhasePickConfig[] | "BASIC" | "SIMPLE" | "CUMULATIVE"
   requireApproval?: boolean;
 };
 

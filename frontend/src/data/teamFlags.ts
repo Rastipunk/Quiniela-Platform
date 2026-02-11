@@ -94,15 +94,54 @@ export const WC2026_FLAGS: TeamFlagMapping = {
 };
 
 /**
- * Helper function para obtener datos de bandera de un equipo
- * @param teamCode Código del equipo (ej: "A1", "B2")
- * @param tournamentKey Clave del torneo (ej: "wc_2026_sandbox")
- * @returns Datos de la bandera o null si no existe
+ * Mapeo de escudos para UEFA Champions League 2025-26
+ * Logos desde API-Football (api-sports.io)
+ */
+const CLUB_LOGO = (id: number) => `https://media.api-sports.io/football/teams/${id}.png`;
+
+export const UCL_2025_FLAGS: TeamFlagMapping = {
+  // Dieciseisavos de Final
+  "GAL": { country: "Galatasaray", iso2: "tr", flagUrl: CLUB_LOGO(645) },
+  "JUV": { country: "Juventus", iso2: "it", flagUrl: CLUB_LOGO(496) },
+  "MON": { country: "Monaco", iso2: "fr", flagUrl: CLUB_LOGO(91) },
+  "PSG": { country: "Paris Saint-Germain", iso2: "fr", flagUrl: CLUB_LOGO(85) },
+  "BVB": { country: "Borussia Dortmund", iso2: "de", flagUrl: CLUB_LOGO(165) },
+  "ATA": { country: "Atalanta", iso2: "it", flagUrl: CLUB_LOGO(499) },
+  "BEN": { country: "Benfica", iso2: "pt", flagUrl: CLUB_LOGO(211) },
+  "RMA": { country: "Real Madrid", iso2: "es", flagUrl: CLUB_LOGO(541) },
+  "QAR": { country: "Qarabağ", iso2: "az", flagUrl: CLUB_LOGO(556) },
+  "NEW": { country: "Newcastle United", iso2: "gb-eng", flagUrl: CLUB_LOGO(34) },
+  "BOD": { country: "Bodø/Glimt", iso2: "no", flagUrl: CLUB_LOGO(327) },
+  "INT": { country: "Inter Milan", iso2: "it", flagUrl: CLUB_LOGO(505) },
+  "OLY": { country: "Olympiacos", iso2: "gr", flagUrl: CLUB_LOGO(553) },
+  "LEV": { country: "Bayer Leverkusen", iso2: "de", flagUrl: CLUB_LOGO(168) },
+  "BRU": { country: "Club Brugge", iso2: "be", flagUrl: CLUB_LOGO(569) },
+  "ATM": { country: "Atlético de Madrid", iso2: "es", flagUrl: CLUB_LOGO(530) },
+  // Top 8 (seeded for R16)
+  "ARS": { country: "Arsenal", iso2: "gb-eng", flagUrl: CLUB_LOGO(42) },
+  "BAY": { country: "Bayern München", iso2: "de", flagUrl: CLUB_LOGO(157) },
+  "LIV": { country: "Liverpool", iso2: "gb-eng", flagUrl: CLUB_LOGO(40) },
+  "TOT": { country: "Tottenham Hotspur", iso2: "gb-eng", flagUrl: CLUB_LOGO(47) },
+  "BAR": { country: "FC Barcelona", iso2: "es", flagUrl: CLUB_LOGO(529) },
+  "CHE": { country: "Chelsea", iso2: "gb-eng", flagUrl: CLUB_LOGO(49) },
+  "SPO": { country: "Sporting CP", iso2: "pt", flagUrl: CLUB_LOGO(228) },
+  "MCI": { country: "Manchester City", iso2: "gb-eng", flagUrl: CLUB_LOGO(50) },
+  // Placeholder
+  "TBD": { country: "Por Definir", iso2: "xx", flagUrl: "" },
+};
+
+/**
+ * Helper function para obtener datos de bandera/escudo de un equipo
+ * @param teamCode Código del equipo (ej: "A1", "B2", "GAL", "RMA")
+ * @param tournamentKey Clave del torneo (ej: "wc_2026_sandbox", "ucl-2025")
+ * @returns Datos de la bandera/escudo o null si no existe
  */
 export function getTeamFlag(teamCode: string, tournamentKey: string): TeamFlagData | null {
-  // Por ahora solo WC2026, a futuro puede buscar en otros mappings
   if (tournamentKey === "wc_2026_sandbox") {
     return WC2026_FLAGS[teamCode] || null;
+  }
+  if (tournamentKey === "ucl-2025") {
+    return UCL_2025_FLAGS[teamCode] || null;
   }
   return null;
 }

@@ -66,8 +66,8 @@ async function addKnockoutPhases() {
     }>;
   };
 
-  // Base time: después de Jornada 3 (10:30) + 5 min = 10:35
-  const baseKnockoutTime = new Date("2026-02-04T22:35:00");
+  // Base time: después de Jornada 3 (2:00) + 5 min = 2:05 PM
+  const baseKnockoutTime = new Date("2026-02-06T14:05:00");
 
   // 2. Agregar phases si no existen
   for (const phase of KNOCKOUT_PHASES) {

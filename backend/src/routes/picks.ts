@@ -141,6 +141,13 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
   const match = matches.find((m) => m.id === matchId);
   if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
 
+  // Block picks on placeholder matches (teams not yet determined)
+  const placeholderPrefixes = ["t_TBD", "W_", "RU_", "L_", "3rd_"];
+  const isPlaceholder = (teamId: string) => placeholderPrefixes.some((p) => teamId === p || teamId.startsWith(p));
+  if (isPlaceholder(match.homeTeamId) || isPlaceholder(match.awayTeamId)) {
+    return res.status(409).json({ error: "MATCH_PENDING", message: "Cannot make picks on matches with teams not yet determined" });
+  }
+
   const deadlineUtc = computeDeadlineUtc(match.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
   if (!deadlineUtc) {
     return res.status(400).json({ error: "VALIDATION_ERROR", message: "Invalid kickoffUtc on match" });

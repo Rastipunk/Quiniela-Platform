@@ -37,6 +37,15 @@ function formatPhaseName(phaseId: string): string {
     third_place: "3er",
     finals: "Final",
     final: "Final",
+    // UCL two-legged phases
+    r32_leg1: "16avos Ida",
+    r32_leg2: "16avos Vta",
+    r16_leg1: "8vos Ida",
+    r16_leg2: "8vos Vta",
+    qf_leg1: "4tos Ida",
+    qf_leg2: "4tos Vta",
+    sf_leg1: "Semi Ida",
+    sf_leg2: "Semi Vta",
   };
   return phaseNames[phaseId] || phaseId.replace(/_/g, " ").slice(0, 6);
 }
@@ -54,6 +63,15 @@ function formatPhaseFullName(phaseId: string): string {
     third_place: "Tercer Lugar",
     finals: "Final",
     final: "Final",
+    // UCL two-legged phases
+    r32_leg1: "Play Offs (16avos) - Ida",
+    r32_leg2: "Play Offs (16avos) - Vuelta",
+    r16_leg1: "Octavos de Final - Ida",
+    r16_leg2: "Octavos de Final - Vuelta",
+    qf_leg1: "Cuartos de Final - Ida",
+    qf_leg2: "Cuartos de Final - Vuelta",
+    sf_leg1: "Semifinales - Ida",
+    sf_leg2: "Semifinales - Vuelta",
   };
   return phaseNames[phaseId] || phaseId.replace(/_/g, " ");
 }
@@ -188,7 +206,7 @@ export function PoolPage() {
 
   // Helper: check if a teamId is a placeholder
   const isPlaceholder = (teamId: string) => {
-    return teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
+    return teamId === "t_TBD" || teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
   };
 
   // Helper: get display name for placeholder
@@ -248,16 +266,14 @@ export function PoolPage() {
     return hasAllResults ? "COMPLETED" : "ACTIVE";
   };
 
-  // Mapa de siguiente fase para cada fase
-  const nextPhaseMap: Record<string, string | null> = {
-    group_stage: "round_of_32",
-    round_of_32: "round_of_16",
-    round_of_16: "quarter_finals",
-    quarter_finals: "semi_finals",
-    semi_finals: "finals",
-    third_place: null,
-    finals: null,
-  };
+  // Mapa de siguiente fase: generado dinámicamente del orden de fases del torneo
+  const nextPhaseMap: Record<string, string | null> = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    for (let i = 0; i < phases.length; i++) {
+      map[phases[i].id] = i < phases.length - 1 ? phases[i + 1].id : null;
+    }
+    return map;
+  }, [phases]);
 
   // Verificar si una fase ya avanzó (la siguiente fase ya NO tiene placeholders)
   const hasPhaseAdvanced = (phaseId: string): boolean => {
@@ -454,11 +470,6 @@ export function PoolPage() {
     <div style={{ maxWidth: 1180, margin: "18px auto", padding: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <Link to="/">&larr; Dashboard</Link>
-
-        <label style={{ display: "flex", gap: 8, alignItems: "center", color: "#666", fontSize: 12 }}>
-          <input type="checkbox" checked={verbose} onChange={(e) => setVerbose(e.target.checked)} />
-          Leaderboard verbose
-        </label>
       </div>
 
       {error && (
@@ -1306,7 +1317,7 @@ export function PoolPage() {
               <PlayerSummary
                 poolId={poolId!}
                 userId={overview.myMembership.userId ?? ""}
-                tournamentKey="wc_2026_sandbox"
+                tournamentKey={overview.tournamentInstance.templateKey ?? "wc_2026_sandbox"}
               />
             </div>
           )}
@@ -1820,7 +1831,7 @@ export function PoolPage() {
 
                           {/* Match Info */}
                           <div style={{ color: "#666", fontSize: 12, marginBottom: 12, paddingLeft: 4 }}>
-                            {m.roundLabel ?? m.id} • kickoff: {fmtUtc(m.kickoffUtc, userTimezone)} • deadline: {fmtUtc(m.deadlineUtc, userTimezone)}
+                            {m.label ?? m.roundLabel ?? `Partido ${m.matchNumber ?? m.id}`} • {fmtUtc(m.kickoffUtc, userTimezone)}
                           </div>
 
                           {/* Content: Picks and Results OR Placeholder Message */}
@@ -1946,11 +1957,8 @@ export function PoolPage() {
           {/* Tab Content: Leaderboard */}
           {activeTab === "leaderboard" && (
             <div style={{ marginTop: 14, padding: isMobile ? 12 : 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "stretch" : "center", marginBottom: 16, gap: isMobile ? 8 : 0 }}>
+              <div style={{ marginBottom: 16 }}>
                 <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20, fontWeight: 900 }}>Clasificación General</h3>
-                <div style={{ color: "#666", fontSize: 12, textAlign: isMobile ? "left" : "right" }}>
-                  <div><b>Sistema:</b> {overview.leaderboard.scoring.outcomePoints}pts resultado + {overview.leaderboard.scoring.exactScoreBonus}pts exacto</div>
-                </div>
               </div>
 
               {/* Mobile Leaderboard (cards) */}
@@ -2457,7 +2465,7 @@ export function PoolPage() {
                   <PlayerSummary
                     poolId={poolId}
                     userId={playerSummaryModal.userId}
-                    tournamentKey="wc_2026_sandbox"
+                    tournamentKey={overview.tournamentInstance.templateKey ?? "wc_2026_sandbox"}
                     initialPhase={playerSummaryModal.initialPhase}
                     onClose={() => setPlayerSummaryModal(null)}
                   />
@@ -2811,55 +2819,40 @@ function PickEditor(props: {
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {props.allowScorePick ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-          {/* Home team input */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 10 }}>
+          {/* Home team: logo + name stacked */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 56 }}>
             {homeFlag?.flagUrl ? (
-              <img
-                src={homeFlag.flagUrl}
-                alt={homeName}
-                style={{ width: 20, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
-              />
+              <img src={homeFlag.flagUrl} alt={homeName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
             ) : (
-              <div style={{ width: 20, height: 15, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
-                <span style={{ fontSize: 12 }}>⚽</span>
+              <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+                <span style={{ fontSize: 18 }}>⚽</span>
               </div>
             )}
-            <span style={{ fontSize: 10, color: "#666", textAlign: "center", maxWidth: 70 }}>{homeName}</span>
+            <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>{homeName}</span>
+          </div>
+          {/* Score inputs */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
             <input
-              type="number"
-              min={0}
-              value={homeGoals}
-              onChange={(e) => setHomeGoals(e.target.value)}
-              placeholder="0"
-              style={{ width: 60, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 18, fontWeight: 700 }}
+              type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} placeholder="0"
+              style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
+            />
+            <span style={{ fontWeight: 900, fontSize: 18, color: "#666" }}>-</span>
+            <input
+              type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} placeholder="0"
+              style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
             />
           </div>
-
-          <span style={{ fontWeight: 900, fontSize: 18, color: "#666", marginTop: 30 }}>-</span>
-
-          {/* Away team input */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          {/* Away team: logo + name stacked */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 56 }}>
             {awayFlag?.flagUrl ? (
-              <img
-                src={awayFlag.flagUrl}
-                alt={awayName}
-                style={{ width: 20, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
-              />
+              <img src={awayFlag.flagUrl} alt={awayName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
             ) : (
-              <div style={{ width: 20, height: 15, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
-                <span style={{ fontSize: 12 }}>⚽</span>
+              <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+                <span style={{ fontSize: 18 }}>⚽</span>
               </div>
             )}
-            <span style={{ fontSize: 10, color: "#666", textAlign: "center", maxWidth: 70 }}>{awayName}</span>
-            <input
-              type="number"
-              min={0}
-              value={awayGoals}
-              onChange={(e) => setAwayGoals(e.target.value)}
-              placeholder="0"
-              style={{ width: 60, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 18, fontWeight: 700 }}
-            />
+            <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>{awayName}</span>
           </div>
         </div>
       ) : (
@@ -3114,55 +3107,40 @@ function ResultEditor(props: {
 
   return (
     <div style={{ display: "grid", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-        {/* Home team input */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 10 }}>
+        {/* Home team: logo + name stacked */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 56 }}>
           {homeFlag?.flagUrl ? (
-            <img
-              src={homeFlag.flagUrl}
-              alt={homeName}
-              style={{ width: 20, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
-            />
+            <img src={homeFlag.flagUrl} alt={homeName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
           ) : (
-            <div style={{ width: 20, height: 15, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
-              <span style={{ fontSize: 12 }}>⚽</span>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+              <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 10, color: "#666", textAlign: "center", maxWidth: 70 }}>{homeName}</span>
+          <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>{homeName}</span>
+        </div>
+        {/* Score inputs */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
           <input
-            type="number"
-            min={0}
-            value={homeGoals}
-            onChange={(e) => setHomeGoals(e.target.value)}
-            placeholder="0"
-            style={{ width: 60, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 18, fontWeight: 700 }}
+            type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} placeholder="0"
+            style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
+          />
+          <span style={{ fontWeight: 900, fontSize: 18, color: "#666" }}>-</span>
+          <input
+            type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} placeholder="0"
+            style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
           />
         </div>
-
-        <span style={{ fontWeight: 900, fontSize: 18, color: "#666", marginTop: 30 }}>-</span>
-
-        {/* Away team input */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        {/* Away team: logo + name stacked */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 56 }}>
           {awayFlag?.flagUrl ? (
-            <img
-              src={awayFlag.flagUrl}
-              alt={awayName}
-              style={{ width: 20, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
-            />
+            <img src={awayFlag.flagUrl} alt={awayName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
           ) : (
-            <div style={{ width: 20, height: 15, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
-              <span style={{ fontSize: 12 }}>⚽</span>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+              <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 10, color: "#666", textAlign: "center", maxWidth: 70 }}>{awayName}</span>
-          <input
-            type="number"
-            min={0}
-            value={awayGoals}
-            onChange={(e) => setAwayGoals(e.target.value)}
-            placeholder="0"
-            style={{ width: 60, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 18, fontWeight: 700 }}
-          />
+          <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any }}>{awayName}</span>
         </div>
       </div>
 

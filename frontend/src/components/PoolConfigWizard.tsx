@@ -108,7 +108,9 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
     if (wizardState.selectedPreset === "CUSTOM") {
       onComplete(wizardState.configuration);
     } else {
-      onComplete(wizardState.selectedPreset!);
+      // Always send the full config with real instance phaseIds
+      // (not just the preset key, which would resolve to hardcoded phaseIds on the backend)
+      onComplete(getPresetConfig(wizardState.selectedPreset!));
     }
   }
 
@@ -146,31 +148,6 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           types: [{ key: "EXACT_SCORE", enabled: true, points: 20 + index * 10 }],
         },
       }));
-    } else if (presetKey === "ADVANCED") {
-      // Múltiples tipos de pick en fase de grupos, menos en eliminatorias
-      return instancePhases.map((phase, index) => {
-        const basePoints = 20 + index * 10;
-        const types: any[] = [
-          { key: "EXACT_SCORE", enabled: true, points: basePoints },
-          { key: "GOAL_DIFFERENCE", enabled: true, points: Math.floor(basePoints * 0.5) },
-        ];
-
-        // En fase de grupos: 4 tipos de pick (más opciones para acertar)
-        // En eliminatorias: solo 2 tipos (más difícil)
-        if (phase.type === "GROUP") {
-          types.push(
-            { key: "PARTIAL_SCORE", enabled: true, points: Math.floor(basePoints * 0.4) },
-            { key: "TOTAL_GOALS", enabled: true, points: Math.floor(basePoints * 0.25) }
-          );
-        }
-
-        return {
-          phaseId: phase.id,
-          phaseName: phase.name,
-          requiresScore: true,
-          matchPicks: { types },
-        };
-      });
     } else if (presetKey === "SIMPLE") {
       // Sin marcadores, picks estructurales
       return instancePhases.map((phase) => ({
@@ -454,12 +431,6 @@ function PresetSelectionStep({ onSelect, isMobile }: PresetSelectionStepProps) {
       shortDesc: "Solo marcador exacto con puntos crecientes",
     },
     {
-      key: "ADVANCED" as PickConfigPresetKey,
-      title: "⚡ AVANZADO",
-      description: "Múltiples formas de ganar puntos: marcador exacto (20 pts), diferencia de goles (10 pts), marcador parcial (8 pts) y goles totales (5 pts) en fase de grupos. En eliminatorias solo exacto y diferencia con auto-scaling.",
-      shortDesc: "Múltiples tipos: exacto, diferencia, parcial, totales",
-    },
-    {
       key: "SIMPLE" as PickConfigPresetKey,
       title: "🎲 SIMPLE",
       description: "Sin marcadores de partidos. En fase de grupos ordenas los equipos de cada grupo (10 pts por posición correcta, +20 pts si el grupo completo es perfecto). En eliminatorias solo eliges quién avanza.",
@@ -579,7 +550,6 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
   const presetNames: Record<PickConfigPresetKey, string> = {
     CUMULATIVE: "Acumulativo",
     BASIC: "Básico",
-    ADVANCED: "Avanzado",
     SIMPLE: "Simple",
     CUSTOM: "Personalizado",
   };
@@ -662,8 +632,6 @@ function PresetSummary({ presetKey, isMobile }: PresetSummaryProps) {
       "Los puntos se SUMAN por cada criterio: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
     BASIC:
       "Solo marcador exacto en todos los partidos con auto-scaling (20 pts en grupos → 60 pts en final).",
-    ADVANCED:
-      "Múltiples tipos de picks: marcador exacto (20 pts), diferencia (10 pts), parcial (8 pts) y totales (5 pts) en grupos. En eliminatorias: exacto y diferencia con auto-scaling.",
     SIMPLE:
       "Sin marcadores. En grupos: ordena equipos (10 pts por posición + 20 pts bonus grupo perfecto). En eliminatorias: elige quién avanza.",
   };

@@ -89,7 +89,7 @@ export type PoolPickTypesConfig = PhasePickConfig[];
 
 // ==================== PRESETS ====================
 
-export type PickConfigPresetKey = "BASIC" | "ADVANCED" | "SIMPLE" | "CUMULATIVE" | "CUSTOM";
+export type PickConfigPresetKey = "BASIC" | "SIMPLE" | "CUMULATIVE" | "CUSTOM";
 
 export type PickConfigPreset = {
   key: PickConfigPresetKey;

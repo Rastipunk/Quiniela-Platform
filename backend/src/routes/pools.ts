@@ -23,7 +23,7 @@ import {
 import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
 import { sendPoolInvitationEmail } from "../lib/email";
 import { validatePoolPickTypesConfig } from "../validation/pickConfig";
-import { getPresetByKey } from "../lib/pickPresets";
+import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
 import { scoreUserStructuralPicks } from "../services/structuralScoring";
 import {
@@ -42,6 +42,7 @@ type SnapshotMatch = {
   awayTeamId: string;
   matchNumber?: number;
   roundLabel?: string;
+  label?: string;
   venue?: string;
   groupId?: string;
 };
@@ -73,7 +74,7 @@ export const poolsRouter = Router();
 poolsRouter.use(requireAuth);
 
 const createPoolSchema = z.object({
-  tournamentInstanceId: z.string().uuid(),
+  tournamentInstanceId: z.string().min(1),
   name: z.string().min(3).max(120),
   description: z.string().max(500).optional(),
   timeZone: z.string().min(3).max(64).optional(), // Comentario en español: IANA TZ
@@ -81,10 +82,10 @@ const createPoolSchema = z.object({
   scoringPresetKey: z.enum(["CLASSIC", "OUTCOME_ONLY", "EXACT_HEAVY"]).optional(),
   requireApproval: z.boolean().optional(),
 
-  // Comentario en español: configuración avanzada de tipos de picks
-  // Puede ser: preset key ("BASIC", "ADVANCED", "SIMPLE", "CUMULATIVE") o configuración custom
+  // Comentario en español: configuración de tipos de picks
+  // Puede ser: preset key ("BASIC", "SIMPLE", "CUMULATIVE") o configuración custom
   pickTypesConfig: z.union([
-    z.enum(["BASIC", "ADVANCED", "SIMPLE", "CUMULATIVE"]), // Preset key
+    z.enum(["BASIC", "SIMPLE", "CUMULATIVE"]), // Preset key
     PoolPickTypesConfigSchema, // Configuración custom
   ]).optional(),
 });
@@ -132,16 +133,29 @@ poolsRouter.post("/", async (req, res) => {
   let finalPickTypesConfig: any = null;
 
   if (pickTypesConfig) {
-    // Si es un string, es un preset key
+    // Si es un string, es un preset key — generar config dinámica con fases reales
     if (typeof pickTypesConfig === "string") {
-      const preset = getPresetByKey(pickTypesConfig);
-      if (!preset) {
-        return res.status(400).json({
-          error: "VALIDATION_ERROR",
-          message: `Invalid preset key: ${pickTypesConfig}`
-        });
+      // Extraer fases del dataJson de la instancia
+      const instanceData = instance.dataJson as any;
+      const instancePhases: Array<{ id: string; name: string; type: string }> =
+        instanceData?.phases ?? [];
+
+      let dynamicConfig = instancePhases.length > 0
+        ? generateDynamicPresetConfig(pickTypesConfig, instancePhases)
+        : null;
+
+      // Fallback a preset hardcoded si no hay fases en la instancia
+      if (!dynamicConfig) {
+        const preset = getPresetByKey(pickTypesConfig);
+        if (!preset) {
+          return res.status(400).json({
+            error: "VALIDATION_ERROR",
+            message: `Invalid preset key: ${pickTypesConfig}`
+          });
+        }
+        dynamicConfig = preset.config;
       }
-      finalPickTypesConfig = preset.config;
+      finalPickTypesConfig = dynamicConfig;
     } else {
       // Es una configuración custom, validar
       const validation = validatePoolPickTypesConfig(pickTypesConfig);
@@ -235,7 +249,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
   // 2) Pool + instancia
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    include: { tournamentInstance: true },
+    include: { tournamentInstance: { include: { template: { select: { key: true } } } } },
   });
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
   if (!pool.tournamentInstance) return res.status(409).json({ error: "CONFLICT", message: "Pool has no tournamentInstance" });
@@ -307,6 +321,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       isLocked,
       matchNumber: m.matchNumber ?? null,
       roundLabel: m.roundLabel ?? null,
+      label: m.label ?? null,
       venue: m.venue ?? null,
       groupId: m.groupId ?? null,
       homeTeam: { id: m.homeTeamId, name: homeTeam?.name ?? null, code: homeTeam?.code ?? null },
@@ -701,6 +716,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       status: pool.tournamentInstance.status,
       templateId: pool.tournamentInstance.templateId,
       templateVersionId: pool.tournamentInstance.templateVersionId,
+      templateKey: pool.tournamentInstance.template?.key ?? null,
       // Usar fixtureSnapshot si existe (tiene equipos resueltos para knockout)
       // Fallback a dataJson original si no hay snapshot
       dataJson: pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson,
@@ -1586,14 +1602,29 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
         userAgent: req.get("user-agent") ?? null,
       });
     } else {
-      const phaseOrder: Record<string, string> = {
-        round_of_32: "round_of_16",
-        round_of_16: "quarter_finals",
-        quarter_finals: "semi_finals",
-        semi_finals: "finals",
-      };
+      // Derive next phase dynamically from tournament data phase order
+      let derivedNextPhase: string | undefined;
+      const instanceData = pool.tournamentInstance!.dataJson as any;
+      const instancePhases: Array<{ id: string; order: number }> = instanceData?.phases ?? [];
+      if (instancePhases.length > 0) {
+        const sorted = [...instancePhases].sort((a, b) => a.order - b.order);
+        const idx = sorted.findIndex((p) => p.id === currentPhaseId);
+        if (idx >= 0 && idx < sorted.length - 1) {
+          derivedNextPhase = sorted[idx + 1].id;
+        }
+      }
 
-      const derivedNextPhase = phaseOrder[currentPhaseId];
+      // Fallback to hardcoded WC-style map if dynamic derivation fails
+      if (!derivedNextPhase) {
+        const phaseOrderFallback: Record<string, string> = {
+          round_of_32: "round_of_16",
+          round_of_16: "quarter_finals",
+          quarter_finals: "semi_finals",
+          semi_finals: "finals",
+        };
+        derivedNextPhase = phaseOrderFallback[currentPhaseId];
+      }
+
       actualNextPhaseId = nextPhaseId || derivedNextPhase || "";
       if (!actualNextPhaseId) {
         return res.status(400).json({
@@ -2619,8 +2650,13 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
               scoredCount += 1;
 
               // Calcular máximo posible
-              const maxType = phaseConfig.matchPicks.types.find((t) => t.enabled);
-              pointsMax = maxType?.points ?? 0;
+              const allEnabled = phaseConfig.matchPicks.types.filter((t) => t.enabled);
+              const isCumulative = allEnabled.some((t) => t.key === "HOME_GOALS" || t.key === "AWAY_GOALS");
+              if (isCumulative) {
+                pointsMax = allEnabled.reduce((sum, t) => sum + t.points, 0);
+              } else {
+                pointsMax = Math.max(...allEnabled.map((t) => t.points), 0);
+              }
             } catch (err) {
               console.error(`Error scoring match ${match.id}:`, err);
             }

@@ -84,8 +84,8 @@ export const PoolPickTypesConfigSchema = z.array(PhasePickConfigSchema);
 
 export const PickConfigPresetKeySchema = z.enum([
   "BASIC",
-  "ADVANCED",
   "SIMPLE",
+  "CUMULATIVE",
   "CUSTOM",
 ]);
 
