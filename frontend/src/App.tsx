@@ -10,6 +10,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { TermsPage } from "./pages/TermsPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { AdminEmailSettingsPage } from "./pages/AdminEmailSettingsPage";
+import { AdminFeedbackPage } from "./pages/AdminFeedbackPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { LandingPage } from "./pages/LandingPage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
@@ -61,6 +62,7 @@ function AuthedApp() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/pools/:poolId" element={<PoolPage />} />
         <Route path="/admin/settings/email" element={<AdminEmailSettingsPage />} />
+        <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/how-it-works" element={<HowItWorksPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
