@@ -800,6 +800,7 @@ model BetaFeedback {
   message        String
   imageBase64    String?          // Screenshot as base64 string
   wantsContact   Boolean          @default(false)
+  contactName    String?
   phoneNumber    String?
 
   // User info (optional - may be anonymous)

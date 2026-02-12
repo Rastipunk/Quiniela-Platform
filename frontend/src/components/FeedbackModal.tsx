@@ -13,6 +13,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [wantsContact, setWantsContact] = useState(false);
+  const [contactName, setContactName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -58,6 +59,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
         message.trim(),
         imageBase64 || undefined,
         wantsContact,
+        wantsContact ? contactName.trim() || undefined : undefined,
         wantsContact ? phoneNumber.trim() || undefined : undefined
       );
       setStatus("success");
@@ -269,9 +271,25 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
               </label>
             </div>
 
-            {/* Phone number (conditional) */}
+            {/* Contact fields (conditional) */}
             {wantsContact && (
-              <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                <input
+                  type="text"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="Tu nombre"
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    border: "1px solid var(--border, #d1d5db)",
+                    padding: 10,
+                    fontSize: "0.9rem",
+                    background: "var(--surface, #f9fafb)",
+                    color: "var(--text, #111)",
+                    boxSizing: "border-box",
+                  }}
+                />
                 <input
                   type="tel"
                   value={phoneNumber}

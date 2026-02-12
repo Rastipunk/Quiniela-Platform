@@ -19,6 +19,7 @@ const submitFeedbackSchema = z.object({
   message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres").max(2000),
   imageBase64: z.string().max(700_000).optional(), // ~500KB image → ~700KB base64
   wantsContact: z.boolean().default(false),
+  contactName: z.string().max(100).optional(),
   phoneNumber: z.string().max(20).optional(),
   currentUrl: z.string().max(500).optional(),
 });
@@ -30,7 +31,7 @@ feedbackRouter.post("/", feedbackLimiter, async (req, res) => {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
   }
 
-  const { type, message, imageBase64, wantsContact, phoneNumber, currentUrl } = parsed.data;
+  const { type, message, imageBase64, wantsContact, contactName, phoneNumber, currentUrl } = parsed.data;
 
   // Try to extract user info from optional auth header
   let userId: string | null = null;
@@ -58,6 +59,7 @@ feedbackRouter.post("/", feedbackLimiter, async (req, res) => {
       message,
       imageBase64: imageBase64 || null,
       wantsContact,
+      contactName: wantsContact ? (contactName || null) : null,
       phoneNumber: wantsContact ? (phoneNumber || null) : null,
       userId,
       userEmail,
@@ -101,6 +103,7 @@ feedbackRouter.get("/admin", requireAuth, requireAdmin, async (req, res) => {
         message: true,
         imageBase64: true,
         wantsContact: true,
+        contactName: true,
         phoneNumber: true,
         userId: true,
         userEmail: true,

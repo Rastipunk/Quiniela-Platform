@@ -400,7 +400,7 @@ function FeedbackCard({
             {item.wantsContact && (
               <MetaField
                 label="Contacto"
-                value={item.phoneNumber || "Sí (sin teléfono)"}
+                value={[item.contactName, item.phoneNumber].filter(Boolean).join(" — ") || "Sí (sin datos)"}
                 highlight
               />
             )}

@@ -1113,6 +1113,7 @@ export type BetaFeedbackItem = {
   message: string;
   imageBase64: string | null;
   wantsContact: boolean;
+  contactName: string | null;
   phoneNumber: string | null;
   userId: string | null;
   userEmail: string | null;
@@ -1149,6 +1150,7 @@ export async function submitFeedback(
   message: string,
   imageBase64?: string,
   wantsContact?: boolean,
+  contactName?: string,
   phoneNumber?: string
 ): Promise<{ success: boolean; message: string; id: string }> {
   const token = getToken();
@@ -1161,6 +1163,7 @@ export async function submitFeedback(
         message,
         imageBase64,
         wantsContact: wantsContact ?? false,
+        contactName,
         phoneNumber,
         currentUrl: window.location.href,
       }),
