@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PublicNavbar } from "./PublicNavbar";
 import { Footer } from "./Footer";
 import { AuthSlidePanel } from "./AuthSlidePanel";
+import { AuthPanelContext } from "../contexts/AuthPanelContext";
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,12 @@ interface PublicLayoutProps {
 
 export function PublicLayout({ children, onLoggedIn }: PublicLayoutProps) {
   const [showAuthPanel, setShowAuthPanel] = useState(false);
+  const [authPanelMode, setAuthPanelMode] = useState<"login" | "register">("login");
+
+  const openAuthPanel = (mode: "login" | "register" = "login") => {
+    setAuthPanelMode(mode);
+    setShowAuthPanel(true);
+  };
 
   const handleLoggedIn = () => {
     setShowAuthPanel(false);
@@ -17,16 +24,19 @@ export function PublicLayout({ children, onLoggedIn }: PublicLayoutProps) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <PublicNavbar onOpenAuth={() => setShowAuthPanel(true)} />
-      <main style={{ flex: 1 }}>{children}</main>
-      <Footer />
+    <AuthPanelContext.Provider value={{ openAuthPanel }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <PublicNavbar onOpenAuth={() => openAuthPanel("login")} />
+        <main style={{ flex: 1 }}>{children}</main>
+        <Footer />
 
-      <AuthSlidePanel
-        isOpen={showAuthPanel}
-        onClose={() => setShowAuthPanel(false)}
-        onLoggedIn={handleLoggedIn}
-      />
-    </div>
+        <AuthSlidePanel
+          isOpen={showAuthPanel}
+          onClose={() => setShowAuthPanel(false)}
+          onLoggedIn={handleLoggedIn}
+          initialMode={authPanelMode}
+        />
+      </div>
+    </AuthPanelContext.Provider>
   );
 }

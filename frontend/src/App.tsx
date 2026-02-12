@@ -16,17 +16,35 @@ import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { FAQPage } from "./pages/FAQPage";
 import { Layout } from "./components/Layout";
 import { PublicLayout } from "./components/PublicLayout";
+import { BetaFeedbackBar } from "./components/BetaFeedbackBar";
 
 /**
  * Rutas que SIEMPRE deben ser accesibles, independientemente del estado de autenticación.
- * Esto incluye flujos de recuperación de contraseña, páginas legales y páginas públicas informativas.
+ * Esto incluye flujos de recuperación de contraseña y páginas legales.
  */
-const AUTH_INDEPENDENT_ROUTES = [
+const ALWAYS_INDEPENDENT_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/terms",
   "/privacy",
   "/verify-email",
+];
+
+/**
+ * Rutas de auth que no tienen sentido cuando el usuario ya está autenticado.
+ * Si el usuario está autenticado y navega a estas, redirigir a dashboard.
+ */
+const AUTH_ONLY_ROUTES = [
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+];
+
+/**
+ * Rutas de contenido público que se renderizan en PublicLayout cuando no autenticado,
+ * pero en Layout (con NavBar) cuando autenticado.
+ */
+const PUBLIC_CONTENT_ROUTES = [
   "/how-it-works",
   "/faq",
   "/login",
@@ -43,6 +61,8 @@ function AuthedApp() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/pools/:poolId" element={<PoolPage />} />
         <Route path="/admin/settings/email" element={<AdminEmailSettingsPage />} />
+        <Route path="/faq" element={<FAQPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
@@ -106,19 +126,36 @@ function AuthIndependentRoutes({ onLoggedIn }: { onLoggedIn: () => void }) {
  */
 function AppRouter({ isAuthed, onLoggedIn }: { isAuthed: boolean; onLoggedIn: () => void }) {
   const location = useLocation();
+  const path = location.pathname;
 
-  // Verificar si la ruta actual es independiente de autenticación
-  const isAuthIndependentRoute = AUTH_INDEPENDENT_ROUTES.some(
-    route => location.pathname === route || location.pathname.startsWith(route + "/")
+  // Si el usuario está autenticado y está en una ruta de auth (login, forgot-password, etc.), redirigir a dashboard
+  if (isAuthed && AUTH_ONLY_ROUTES.some(r => path === r || path.startsWith(r + "/"))) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Rutas siempre independientes (terms, privacy, verify-email): renderizan sin importar auth
+  const isAlwaysIndependent = ALWAYS_INDEPENDENT_ROUTES.some(
+    r => path === r || path.startsWith(r + "/")
   );
-
-  // Si es una ruta independiente de auth, renderizarla sin importar el estado de autenticación
-  if (isAuthIndependentRoute) {
+  if (isAlwaysIndependent) {
     return <AuthIndependentRoutes onLoggedIn={onLoggedIn} />;
   }
 
-  // Si no, usar la lógica normal de autenticación
-  return isAuthed ? <AuthedApp /> : <PublicApp onLoggedIn={onLoggedIn} />;
+  // Si autenticado: AuthedApp maneja todo (incluyendo /faq, /how-it-works con NavBar)
+  if (isAuthed) {
+    return <AuthedApp />;
+  }
+
+  // No autenticado: rutas de contenido público van a AuthIndependentRoutes (con PublicLayout)
+  const isPublicContent = PUBLIC_CONTENT_ROUTES.some(
+    r => path === r || path.startsWith(r + "/")
+  );
+  if (isPublicContent) {
+    return <AuthIndependentRoutes onLoggedIn={onLoggedIn} />;
+  }
+
+  // Todo lo demás: PublicApp (landing page)
+  return <PublicApp onLoggedIn={onLoggedIn} />;
 }
 
 export default function App() {
@@ -132,6 +169,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <BetaFeedbackBar />
       <AppRouter isAuthed={isAuthed} onLoggedIn={() => setIsAuthed(true)} />
     </BrowserRouter>
   );

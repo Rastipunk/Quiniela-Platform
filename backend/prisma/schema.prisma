@@ -784,3 +784,34 @@ enum MatchSyncStatus {
   COMPLETED         // Match finished, never check again
   SKIPPED           // No API mapping or manual mode
 }
+
+// ==========================================
+// Beta Feedback (testing period)
+// ==========================================
+
+enum BetaFeedbackType {
+  BUG
+  SUGGESTION
+}
+
+model BetaFeedback {
+  id             String           @id @default(uuid())
+  type           BetaFeedbackType
+  message        String
+  imageBase64    String?          // Screenshot as base64 string
+  wantsContact   Boolean          @default(false)
+  phoneNumber    String?
+
+  // User info (optional - may be anonymous)
+  userId         String?
+  userEmail      String?
+
+  // Context
+  currentUrl     String?
+  userAgent      String?
+
+  createdAtUtc   DateTime         @default(now())
+
+  @@index([type])
+  @@index([createdAtUtc])
+}

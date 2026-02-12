@@ -22,12 +22,20 @@ interface AuthSlidePanelProps {
   isOpen: boolean;
   onClose: () => void;
   onLoggedIn: () => void;
+  initialMode?: "login" | "register";
 }
 
-export function AuthSlidePanel({ isOpen, onClose, onLoggedIn }: AuthSlidePanelProps) {
+export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: AuthSlidePanelProps) {
   const isMobile = useIsMobile();
 
   const [mode, setMode] = useState<"login" | "register">("login");
+
+  // Sync mode when panel opens with initialMode
+  useEffect(() => {
+    if (isOpen && initialMode) {
+      setMode(initialMode);
+    }
+  }, [isOpen, initialMode]);
 
   const [email, setEmail] = useState("");
   const [emailConfirm, setEmailConfirm] = useState("");

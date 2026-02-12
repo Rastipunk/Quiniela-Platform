@@ -1,69 +1,59 @@
 # Current State - Quiniela Platform
 
-> **Ultima actualizacion:** 2026-01-26 | **Version:** v0.3.2 (Sprint 3 Continued)
+> **Ultima actualizacion:** 2026-02-10 | **Version:** v0.3.5 (Sprint 4 - Auto Results + Code Review)
 
 ---
 
 ## Estado General
 
-**Resumen ejecutivo:** La plataforma está en estado v0.3.2 con el **sistema de notificaciones por email** completamente implementado. Esta versión añade emails transaccionales via Resend, verificación de email, preferencias de usuario, panel de configuración admin, y correcciones críticas para deployment en Railway.
+**Resumen ejecutivo:** La plataforma está en estado v0.3.5. Esta versión incorpora el **sistema de resultados automáticos via API-Football** (Smart Sync), soporte para **UCL 2025-26**, deployment completo en **Railway** con dominio `picks4all.com`, y una **revisión profunda de código** con hallazgos documentados.
 
-### Cambios Recientes (v0.3.2)
+### Cambios Recientes (v0.3.5 - 2026-02-10)
 
-1. **Email Notification System (ADR-029)**
-   - Emails transaccionales via Resend
-   - Welcome email para nuevos usuarios
-   - Email verification flow con token seguro (24h expiry)
-   - Pool invitation emails
-   - Deadline reminder service (configurable por admin)
-   - Result published notifications
-   - Pool completed notifications
+1. **Revisión Profunda de Código**
+   - 24 hallazgos en Backend (4 CRITICAL, 6 HIGH, 8 MEDIUM, 6 LOW)
+   - 30 hallazgos en Frontend (7 CRITICAL, 7 HIGH, 8 MEDIUM, 8 LOW)
+   - Auditoría de documentación vs código (4 áreas faltantes, 4 desactualizadas)
+   - Ver sección "Code Review Findings" abajo para detalle completo
 
-2. **Admin Email Settings Panel**
-   - Toggle por tipo de email en `/admin/settings/email`
-   - Solo accesible para ADMIN (platformRole)
-   - Audit log de cambios
+2. **Railway Deployment Fixes**
+   - Corregidos errores TypeScript en pickPresets.ts (union type) y pools.ts (optional chaining)
+   - Node.js bumped a v22 (backend) y v22.13 (frontend) en nixpacks
+   - Variables de entorno de API-Football configuradas en producción
 
-3. **User Email Preferences**
-   - Master toggle para desactivar todos los emails
-   - Preferencias granulares por tipo de notificación
-   - Sección en perfil de usuario
+3. **Zod Validation Fix**
+   - Agregados `HOME_GOALS` y `AWAY_GOALS` a `MatchPickTypeKeySchema`
+   - Corrige error VALIDATION_ERROR al crear pools con preset CUMULATIVE
 
-4. **Email Verification**
-   - Verificación de email para cuentas email/password
-   - Token con expiración de 24 horas
-   - Reenvío de email de verificación
-   - Cuentas Google marcadas como verificadas automáticamente
+### Cambios v0.3.4 (2026-02-04 a 2026-02-09)
 
-5. **Legal Documents Infrastructure**
-   - Modelo `LegalDocument` para términos y privacidad
-   - Versionado de documentos legales
-   - Consent tracking con timestamps
+1. **Smart Sync - Resultados Automáticos (ADR-031, ADR-032)**
+   - Sistema híbrido: modo MANUAL (Host ingresa) y AUTO (API-Football)
+   - Smart Sync optimizado: 2-4 llamadas API por partido (vs 20-30 con polling)
+   - MatchSyncState machine: PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
+   - ResultSource tracking: HOST_MANUAL, HOST_PROVISIONAL, API_CONFIRMED, HOST_OVERRIDE
+   - Cron job cada minuto evalúa qué partidos necesitan consulta
+   - Kill switch (`syncEnabled`) para emergencias
 
-6. **Railway Production Fixes**
-   - Agregado `trust proxy` para rate limiting detrás de reverse proxy
-   - Configurado `releaseCommand` para migraciones automáticas
-   - Solucionado schema drift con migración de email verification fields
-   - Health endpoint con información de versión
+2. **UCL 2025-26 Instance**
+   - Template `ucl-2025` con 9 fases (Dieciseisavos ×2, R16 ×2, QF ×2, SF ×2, Final)
+   - 45 partidos totales: 16 programados (Dieciseisavos) + 29 placeholder
+   - 16 mapeos de fixture a API-Football
+   - Instance ID: `ucl-2025-instance`
+   - Seeded en producción con sync states inicializados
 
-7. **Auth Improvements**
-   - 401 responses incluyen `reason` field para mejor debugging
-   - Rate limiting específico para auth endpoints
-   - Registro requiere aceptar términos, privacidad y confirmación de edad
+3. **Producción Configurada**
+   - API-Football key y variables configuradas en Railway
+   - Smart Sync habilitado en producción
+   - Backend corriendo en commit `ac348ed`
 
-### Cambios v0.3.1 (anteriores)
+### Cambios v0.3.3 (2026-02-01)
 
-1. **Pool Config Wizard Mobile Optimizations**
-   - Hook `useIsMobile()` detecta pantallas < 640px
-   - Modal tipo bottom sheet en móvil
-   - Cards de presets horizontales y compactas
-
-2. **Light Theme Enforcement**
-   - Meta tags: `color-scheme: light only`, `theme-color`
-   - CSS agresivo que sobreescribe preferencias del sistema
-
-3. **Bug Fix: CUMULATIVE preset**
-   - Corregido key mismatch que causaba error "Invalid preset key: CUMULATIVE"
+1. **Rebranding a Picks4All**
+   - Landing page pública con hero, features, how-it-works
+   - Páginas públicas: `/how-it-works`, `/faq`
+   - Slide-in Auth Panel (ADR-030)
+   - Dominio: picks4all.com / api.picks4all.com
 
 ---
 
@@ -110,6 +100,16 @@
 | **User Email Preferences** | ✅ COMPLETO | Master toggle + granular |
 | **Legal Documents** | ✅ COMPLETO | Versionado + consent tracking |
 
+### Sprint 4 - Auto Results + Public Website
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| **Rebranding Picks4All** | ✅ COMPLETO | Landing, FAQ, How-it-Works |
+| **Slide-in Auth Panel** | ✅ COMPLETO | ADR-030, login sin navegación |
+| **Auto Results (API-Football)** | ✅ COMPLETO | ADR-031, modo AUTO/MANUAL |
+| **Smart Sync** | ✅ COMPLETO | ADR-032, 85-90% menos requests |
+| **UCL 2025-26** | ✅ COMPLETO | 45 partidos, 9 fases, seeded |
+| **Custom Domain** | ✅ COMPLETO | picks4all.com via Cloudflare |
+
 ### Advanced Pick Types System
 
 El sistema soporta dos modos de picks:
@@ -148,13 +148,33 @@ El sistema soporta dos modos de picks:
    - EXACT_SCORE termina evaluación si acierta (no acumula)
    - Otorga el mayor puntaje único posible
 
-**Detección automática:**
-```typescript
-function isCumulativeScoring(config: PhasePickConfig): boolean {
-  return config.matchPickTypes.HOME_GOALS?.enabled ||
-         config.matchPickTypes.AWAY_GOALS?.enabled;
-}
+### Smart Sync System
+
+**Arquitectura:**
 ```
+Cron (cada min) → SmartSyncJob → SmartSyncService → API-Football Client
+                       │                                     │
+                       ▼                                     ▼
+              MatchSyncState (DB)                    API-Football API
+              PENDING → IN_PROGRESS →               v3.football.api-sports.io
+              AWAITING_FINISH → COMPLETED
+```
+
+**Flujo por partido:**
+1. `PENDING`: Espera kickoff + 5 min
+2. `IN_PROGRESS`: Primera consulta confirma que inició
+3. `AWAITING_FINISH`: Espera kickoff + 110 min, luego poll cada 5 min
+4. `COMPLETED`: Resultado obtenido, nunca más consultar
+
+**Eficiencia:** 2-4 requests por partido (vs 20-30 con polling cada 5 min)
+
+**Fuentes de resultado:**
+| Source | Significado | Override por API? |
+|--------|-------------|-------------------|
+| HOST_MANUAL | Host en instancia MANUAL | N/A |
+| HOST_PROVISIONAL | Host en AUTO, espera API | Sí |
+| API_CONFIRMED | Resultado oficial de API | N/A |
+| HOST_OVERRIDE | Host corrigió API (reason) | No |
 
 ---
 
@@ -165,45 +185,45 @@ function isCumulativeScoring(config: PhasePickConfig): boolean {
 backend/
   src/
     routes/          # Endpoints Express
-    lib/             # Utilities (jwt, password, scoring, etc.)
-    services/        # Business logic (stateMachine, structuralScoring)
-    middleware/      # Auth middleware
+    lib/             # Utilities (jwt, password, scoring, email, etc.)
+    services/        # Business logic
+    │ ├── smartSync/      # Smart Sync service
+    │ ├── apiFootball/    # API-Football client + types
+    │ ├── resultSync/     # Result sync logic
+    │ └── ...
+    middleware/      # Auth, admin, rate limit
     validation/      # Zod schemas
     types/           # TypeScript types
+    jobs/            # Cron jobs (smartSyncJob, resultSyncJob)
     scripts/         # Seeds, migrations, diagnostics
   prisma/
-    schema.prisma    # 20+ modelos
-    migrations/      # 13 migraciones Sprint 2
+    schema.prisma    # 30+ modelos
+    migrations/      # 30+ migraciones
 ```
 
 ### Frontend
 ```
 frontend/
   src/
-    pages/           # LoginPage, DashboardPage, PoolPage, ProfilePage
-    components/      # UI components (wizard, pickers, cards)
+    pages/           # LoginPage, DashboardPage, PoolPage, ProfilePage, etc.
+    components/      # UI components (wizard, pickers, cards, auth panel)
     lib/             # api.ts, auth.ts, timezone.ts
+    hooks/           # useIsMobile, usePoolNotifications
     types/           # Shared types
     data/            # Static data (teamFlags)
 ```
 
 ### Base de Datos (PostgreSQL)
-- 25+ modelos Prisma
-- Migraciones:
-  - Sprint 1: 7 migraciones base
-  - Sprint 2: 13 migraciones adicionales
-  - Sprint 3: 3 migraciones (email settings, verification, admin promotion)
-- Nuevos modelos Sprint 2:
-  - StructuralPrediction
-  - StructuralPhaseResult
-  - GroupStandingsResult
-- Nuevos modelos Sprint 3:
-  - PlatformSettings (singleton para config global)
-  - LegalDocument (términos/privacidad versionados)
-- Campos nuevos en User:
-  - emailVerified, emailVerificationToken, emailVerificationTokenExpiresAt
-  - emailNotificationsEnabled, emailPoolInvitations, emailDeadlineReminders
-  - emailResultNotifications, emailPoolCompletions
+- 30+ modelos Prisma
+- Nuevos modelos Sprint 4:
+  - MatchExternalMapping (mapeo interno ↔ API-Football)
+  - ResultSyncLog (logs de sincronización)
+  - MatchSyncState (estado de sync por partido)
+- Nuevos enums:
+  - ResultSourceMode (MANUAL | AUTO)
+  - ResultSource (HOST_MANUAL | HOST_PROVISIONAL | API_CONFIRMED | HOST_OVERRIDE)
+  - MatchSyncStatus (PENDING | IN_PROGRESS | AWAITING_FINISH | COMPLETED | SKIPPED)
+  - SyncStatus (RUNNING | COMPLETED | FAILED | PARTIAL)
 
 ---
 
@@ -247,6 +267,9 @@ frontend/
 ### Admin (Platform Admin only)
 - `GET /admin/settings/email` - Obtener configuración de emails
 - `PUT /admin/settings/email` - Actualizar toggles de emails
+- `POST /admin/instances/:id/enable-auto-results` - Habilitar modo AUTO
+- `POST /admin/instances/:id/trigger-sync` - Disparar sync manual
+- `GET /admin/instances/:id/sync-status` - Estado del sync job
 
 ---
 
@@ -257,6 +280,9 @@ frontend/
 npm run seed:admin              # Crear admin
 npm run seed:test-accounts      # Cuentas de prueba
 npm run seed:wc2026-sandbox     # Torneo WC2026
+npm run seed:wc2022-autotest    # WC2022 para testing Smart Sync
+npm run add:knockout            # Agregar fases knockout a instancia
+npm run init:smart-sync         # Inicializar estados de Smart Sync
 ```
 
 ### Diagnostico
@@ -279,6 +305,13 @@ GOOGLE_CLIENT_SECRET=...
 RESEND_API_KEY=...
 FRONTEND_URL=http://localhost:5173
 NODE_ENV=development|production
+
+# API-Football (Smart Sync)
+API_FOOTBALL_KEY=...
+API_FOOTBALL_BASE_URL=https://v3.football.api-sports.io
+API_FOOTBALL_ENABLED=true
+API_FOOTBALL_RATE_LIMIT=10
+SMART_SYNC_ENABLED=true
 ```
 
 ### Frontend
@@ -288,20 +321,7 @@ NODE_ENV=development|production
 ### Railway (Production)
 - `releaseCommand` en railway.toml ejecuta `npx prisma migrate deploy` automáticamente
 - `trust proxy` habilitado para rate limiting correcto
-
----
-
-## Funcionalidades Pendientes (v1.0)
-
-- [x] ~~Rate Limiting / proteccion brute-force~~ (v0.3.0)
-- [x] ~~Mobile UX improvements~~ (v0.3.0/v0.3.1)
-- [x] ~~Email confirmation en registro~~ (v0.3.2)
-- [x] ~~Email notifications transaccionales~~ (v0.3.2)
-- [ ] Chat del pool
-- [ ] Session Management (Remember Me)
-- [ ] Ingesta de resultados por API externa
-- [ ] PWA completo (offline mode, push notifications)
-- [x] ~~Dominio personalizado~~ (picks4all.com - 2026-01-31)
+- NIXPACKS_NODE_VERSION: 22 (backend), 22.13 (frontend)
 
 ---
 
@@ -323,13 +343,172 @@ NODE_ENV=development|production
 - Frontend: `https://picks4all.com` / `https://www.picks4all.com`
 - Backend API: `https://api.picks4all.com`
 
-**Configuración Cloudflare:**
-- Proxy: **Desactivado** (DNS only / nube gris)
-- SSL/TLS: **Full**
+**Railway Project:** poetic-success (ID: 40a0c639-e009-4245-aa0a-65e8fc313625)
+- Backend service: daa3af02-3f89-443b-bb2e-0e028f86146a
+- Frontend service: 6fc1cfb2-178c-4e2b-a13c-8f9d77aefb0b
+- Postgres service: f2551801-2c01-41e8-81d3-b7d44105b631
 
-**Variables de Entorno (Railway):**
-- Backend: `FRONTEND_URL=https://picks4all.com`
-- Frontend: `VITE_API_URL=https://api.picks4all.com`
+### Instances en Producción
+| Instance | Template Key | Status | Modo | Partidos |
+|----------|-------------|--------|------|----------|
+| UCL 2025-26 | ucl-2025 | ACTIVE | AUTO | 45 (16 mapped) |
+
+---
+
+## Code Review Findings (2026-02-10)
+
+### Backend - 24 Hallazgos
+
+#### CRITICAL (4)
+| # | Issue | Archivo(s) | Impacto |
+|---|-------|-----------|---------|
+| B1 | Email fire-and-forget sin tracking | auth.ts, results.ts, poolStateMachine.ts | Emails perdidos silenciosamente |
+| B2 | Race condition en invite counter | pools.ts:1375-1421 | Más joins que maxUses |
+| B3 | Placeholder validation hardcodeada | picks.ts:145-149 | Prefijos "W_" podrían bloquear equipos reales |
+| B4 | Password verification faltante | pools.ts (delete pool, ban, etc.) | Operaciones destructivas sin re-auth |
+
+#### HIGH (6)
+| # | Issue | Archivo(s) |
+|---|-------|-----------|
+| B5 | Body size sin validación por campo | server.ts (1mb global) |
+| B6 | `as any` excesivo (40+ instancias) | picks.ts, results.ts, pools.ts |
+| B7 | Scoring duplicado en 3 lugares | pools.ts, scoringAdvanced.ts, poolStateMachine.ts |
+| B8 | Transaction error handling incompleto | pools.ts:1375-1430 |
+| B9 | OAuth username collision race | auth.ts:465-488 |
+| B10 | Bootstrap admin sin audit log | admin.ts:14-56 |
+
+#### MEDIUM (8)
+| # | Issue |
+|---|-------|
+| B11 | Error responses inconsistentes (5+ formatos) |
+| B12 | JSON extraction sin validación de estructura |
+| B13 | Operaciones destructivas sin confirmación |
+| B14 | Rate limiting no aplicado a pool creation |
+| B15 | Cascade deletes faltantes en Pool |
+| B16 | Emails en logs sin enmascarar (GDPR) |
+| B17 | Max length faltante en algunos text fields |
+| B18 | JWT error handling limitado a TokenExpired |
+
+#### LOW (6)
+| # | Issue |
+|---|-------|
+| B19 | Console.log de debug en producción (groupStandings.ts) |
+| B20 | Validación de penalties (correcta, solo nota) |
+| B21 | Código comentado en server.ts |
+| B22 | Falta JSDoc en endpoints |
+| B23 | Email config hardcodeada |
+| B24 | Sin request tracing (X-Request-ID) |
+
+### Frontend - 30 Hallazgos
+
+#### CRITICAL (7)
+| # | Issue | Archivo(s) |
+|---|-------|-----------|
+| F1 | setTimeout memory leak | EmailPreferencesSection.tsx:116 |
+| F2 | setTimeout memory leak (×4) | GroupStandingsCard.tsx:188, 235, 255, 952 |
+| F3 | setTimeout memory leak (×2) | KnockoutMatchCard.tsx:145, 201 |
+| F4 | setTimeout memory leak | AdminEmailSettingsPage.tsx:117 |
+| F5 | setTimeout memory leak | ProfilePage.tsx:124 |
+| F6 | setTimeout memory leak | VerifyEmailPage.tsx:47 |
+| F7 | setTimeout memory leak | StructuralPicksManager.tsx:219 |
+
+**Patrón común:** `setTimeout(() => setState(null), 2000)` sin cleanup en useEffect. Si el componente se desmonta antes del timeout, se llama setState en componente desmontado.
+
+**Fix recomendado:**
+```typescript
+useEffect(() => {
+  if (success) {
+    const timer = setTimeout(() => setSuccess(null), 2000);
+    return () => clearTimeout(timer);
+  }
+}, [success]);
+```
+
+#### HIGH (7)
+| # | Issue | Archivo(s) |
+|---|-------|-----------|
+| F8 | console.log debug '[TOGGLE]' (×5) | PoolPage.tsx:631-642 |
+| F9 | console.error en producción | PoolPage.tsx:187 |
+| F10 | console.log emoji en NavBar | NavBar.tsx:53 |
+| F11 | console.log en StructuralPicksManager | StructuralPicksManager.tsx:206, 221 |
+| F12 | `[key: string]: any` en tipos API | api.ts:216, 231, 237, 239 |
+| F13 | `user?: any` en LoginResponse | api.ts:76-79 |
+| F14 | setTimeout sin mount check | PoolPage.tsx:952 |
+
+#### MEDIUM (8)
+| # | Issue |
+|---|-------|
+| F15 | `const verbose = false` muerto |
+| F16 | `void _var` dead code en StructuralPicksManager |
+| F17 | 17+ useState en PoolPage.tsx (considerar useReducer) |
+| F18 | Inline styles recreados en cada render (100s) |
+| F19 | Google Sign-In failure silencioso |
+| F20 | URL de producción hardcodeada en api.ts |
+| F21 | useCallback dependencies posiblemente stale |
+| F22 | Async onClick handlers podrían extraerse |
+
+#### LOW (8)
+| # | Issue |
+|---|-------|
+| F23 | console.warn para Google (acceptable) |
+| F24 | alert() para feedback de usuario |
+| F25 | Magic numbers en styles (borderRadius, gap) |
+| F26 | Falta JSDoc en componentes |
+| F27 | Accesibilidad: toggles son divs, faltan ARIA labels |
+| F28 | Sin React.memo en componentes pesados |
+| F29 | Sin Error Boundary |
+| F30 | Import posiblemente innecesario |
+
+### Schema/Docs - Hallazgos
+
+#### Documentación Faltante
+1. Smart Sync system → No documentado en DATA_MODEL.md ni API_SPEC.md (ahora resuelto en CURRENT_STATE.md)
+2. UCL 2025-26 instance → No documentado (ahora resuelto)
+3. Admin sync endpoints → Faltaban en API_SPEC.md
+4. MatchSyncState model → Faltaba en DATA_MODEL.md
+
+#### Documentación Desactualizada
+1. CURRENT_STATE.md decía v0.3.2 → Ahora actualizado a v0.3.5
+2. CHANGELOG.md sin entradas post v0.3.3 → Ahora actualizado
+3. "Ingesta de resultados por API externa" marcado como pendiente → Ya está implementado
+4. Legal Documents marcados como "v1.1 future" en DATA_MODEL.md → Ya implementados
+
+#### Schema Issues Pendientes
+1. Cascade deletes faltantes en Pool → PoolMember, Prediction, PoolMatchResult
+2. Indexes faltantes → PoolMatchResultVersion.source, Prediction.updatedAtUtc, AuditEvent.(entityType, entityId)
+3. DeadlineReminderLog → Modelo definido pero sin uso en código
+4. PoolMemberStatus.PENDING_APPROVAL → No documentado en docs
+
+### Prioridad de Fixes Recomendada
+
+**Semana 1 (Critical):**
+1. Fix setTimeout memory leaks (F1-F7) - patrón repetitivo, fix mecánico
+2. Fix race condition invite counter (B2) - agregar check atómico
+3. Consolidar scoring logic (B7) - single source of truth
+4. Remover console.log debug (F8-F11) - cleanup inmediato
+
+**Semana 2 (High):**
+5. Eliminar `as any` (B6) - crear tipos estrictos para dataJson
+6. Tighten API types (F12-F13) - reemplazar `[key: string]: any`
+7. Agregar password verification para ops destructivas (B4)
+8. Estandarizar error responses (B11)
+
+**Semana 3+ (Medium/Low):**
+- Remaining items según capacidad
+
+---
+
+## Funcionalidades Pendientes (v1.0)
+
+- [x] ~~Rate Limiting / proteccion brute-force~~ (v0.3.0)
+- [x] ~~Mobile UX improvements~~ (v0.3.0/v0.3.1)
+- [x] ~~Email confirmation en registro~~ (v0.3.2)
+- [x] ~~Email notifications transaccionales~~ (v0.3.2)
+- [x] ~~Dominio personalizado~~ (picks4all.com - 2026-01-31)
+- [x] ~~Ingesta de resultados por API externa~~ (v0.3.4 - Smart Sync)
+- [ ] Chat del pool
+- [ ] Session Management (Remember Me)
+- [ ] PWA completo (offline mode, push notifications)
 
 ---
 
@@ -349,6 +528,11 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 5. Publicar resultados
 6. Verificar leaderboard
 
+### Testing de Smart Sync
+1. Usar WC2022 instance (`wc2022-autotest-instance`) para testing local
+2. Correr `npm run init:smart-sync wc2022-autotest-instance`
+3. Verificar sync con `npm run check:instance-state wc2022-autotest-instance`
+
 ---
 
 ## Documentacion Relacionada
@@ -358,56 +542,36 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 - [API_SPEC.md](API_SPEC.md) - Contratos de API
 - [BUSINESS_RULES.md](BUSINESS_RULES.md) - Reglas de negocio
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Arquitectura tecnica
-- [DECISION_LOG.md](DECISION_LOG.md) - ADRs
+- [DECISION_LOG.md](DECISION_LOG.md) - ADRs (32 documentados)
 
 ---
 
-## Archivos Clave (Sprint 2)
+## Archivos Clave (Sprint 4 - Auto Results)
+
+### Backend - Smart Sync
+- `backend/src/services/smartSync/service.ts` - Lógica principal de Smart Sync
+- `backend/src/services/apiFootball/client.ts` - Cliente HTTP con rate limiting
+- `backend/src/services/apiFootball/types.ts` - Tipos de API-Football
+- `backend/src/services/resultSync/service.ts` - Publicación de resultados
+- `backend/src/jobs/smartSyncJob.ts` - Cron job (cada minuto)
+- `backend/src/jobs/resultSyncJob.ts` - Job de sincronización legacy
+- `backend/src/scripts/initSmartSyncStates.ts` - Inicialización de estados
+- `backend/src/scripts/seedUcl2025.ts` - Seed de UCL 2025-26
 
 ### Backend - Scoring System
 - `backend/src/types/pickConfig.ts` - Tipos de MatchPickTypeKey, PhasePickConfig
 - `backend/src/lib/pickPresets.ts` - 4 presets (CUMULATIVE, BASIC, ADVANCED, SIMPLE)
 - `backend/src/lib/scoringAdvanced.ts` - Lógica de scoring + `isCumulativeScoring()`
 - `backend/src/lib/scoringBreakdown.ts` - Generación de breakdown por partido
+- `backend/src/validation/pickConfig.ts` - Zod schemas de configuración
 
 ### Frontend - UI Components
 - `frontend/src/components/PoolConfigWizard.tsx` - Wizard de configuración con presets
 - `frontend/src/components/PickRulesDisplay.tsx` - Muestra reglas según modo
 - `frontend/src/components/PlayerSummary.tsx` - Resumen personal de puntos
+- `frontend/src/components/AuthSlidePanel.tsx` - Panel slide-in de login
+- `frontend/src/pages/LandingPage.tsx` - Página pública principal
 
 ---
 
-## Archivos Clave (Sprint 3 - Mobile UX)
-
-### Frontend - Mobile Optimizations
-- `frontend/src/hooks/useIsMobile.ts` - Hook de detección responsive + estilos interactivos
-- `frontend/src/components/PoolConfigWizard.tsx` - Modal bottom sheet, presets compactos
-- `frontend/src/components/PhaseConfigStep.tsx` - DecisionCard, PickTypeCard, navegación adaptativa
-- `frontend/src/components/MobileMatchCard.tsx` - Card de partido optimizada para móvil
-- `frontend/src/components/MobileLeaderboard.tsx` - Leaderboard compacto
-
-### Frontend - Theme Enforcement
-- `frontend/index.html` - Meta tags para color-scheme, inline styles fallback
-- `frontend/src/index.css` - CSS agresivo con `@media (prefers-color-scheme: dark)` override
-
----
-
-## Archivos Clave (Sprint 3 - Email System)
-
-### Backend - Email Service
-- `backend/src/lib/email.ts` - Servicio de email via Resend, todas las funciones de envío
-- `backend/src/lib/emailTemplates.ts` - Templates HTML profesionales para emails
-- `backend/src/services/deadlineReminderService.ts` - Servicio de recordatorios de deadline
-- `backend/src/routes/adminSettings.ts` - Endpoints admin para configuración de emails
-
-### Backend - Configuration
-- `backend/railway.toml` - Configuración de deploy (releaseCommand, healthcheck)
-
-### Database Migrations (v0.3.2)
-- `20260126013030_add_email_settings` - PlatformSettings + preferencias usuario
-- `20260126040000_add_email_verification_fields` - Campos de verificación de email
-- `20260126050000_promote_juan_to_admin` - Promoción a ADMIN de plataforma
-
----
-
-**Última actualización:** 2026-01-26 | Sprint 3 v0.3.2
+**Última actualización:** 2026-02-10 | Sprint 4 v0.3.5

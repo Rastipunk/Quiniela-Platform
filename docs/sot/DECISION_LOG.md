@@ -3488,22 +3488,27 @@ KICKOFF              +5min                    +110min                Cada 5min
 - [x] ADR-028: Rate Limiting Strategy ✅ (2026-01-18)
 - [x] ADR-029: Internal Notification System ✅ (2026-01-18)
 
+**v0.3.2:**
+- [x] Email verification on registration ✅ (2026-01-26) — implemented without separate ADR
+
 **v0.3.3:**
 - [x] ADR-030: Slide-in Auth Panel ✅ (2026-02-01)
 
-**v0.4.0:**
+**v0.3.4:**
 - [x] ADR-031: Automatic Results via API-Football ✅ (2026-02-04)
 - [x] ADR-032: Smart Sync - Optimized API Polling ✅ (2026-02-04)
 
+**v0.3.5:**
+- [x] Comprehensive Code Review ✅ (2026-02-10) — findings documented in CURRENT_STATE.md
+
 **v1.0:**
-- [ ] ADR-033: Email confirmation on registration
-- [ ] ADR-034: PWA + Service Worker
-- [ ] ADR-035: Redis caching layer
+- [ ] ADR-033: PWA + Service Worker
+- [ ] ADR-034: Redis caching layer
 
 **v2.0:**
-- [ ] ADR-036: Multi-sport support architecture
-- [ ] ADR-037: WebSocket for real-time updates
-- [ ] ADR-038: Facebook/Apple OAuth providers
+- [ ] ADR-035: Multi-sport support architecture
+- [ ] ADR-036: WebSocket for real-time updates
+- [ ] ADR-037: Facebook/Apple OAuth providers
 
 ---
 

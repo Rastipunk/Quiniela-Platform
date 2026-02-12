@@ -1103,6 +1103,35 @@ export async function resendVerificationEmail(token: string): Promise<{ message:
   );
 }
 
+/* =========================
+   BETA FEEDBACK
+   ========================= */
+
+export async function submitFeedback(
+  type: "BUG" | "SUGGESTION",
+  message: string,
+  imageBase64?: string,
+  wantsContact?: boolean,
+  phoneNumber?: string
+): Promise<{ success: boolean; message: string; id: string }> {
+  const token = getToken();
+  return requestJson<{ success: boolean; message: string; id: string }>(
+    "/feedback",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        type,
+        message,
+        imageBase64,
+        wantsContact: wantsContact ?? false,
+        phoneNumber,
+        currentUrl: window.location.href,
+      }),
+    },
+    token || undefined
+  );
+}
+
 // ========== POOL INVITE BY EMAIL ==========
 
 export async function sendPoolInviteEmail(

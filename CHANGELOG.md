@@ -11,7 +11,103 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 ### Pendiente
 - PWA completo (offline mode, push notifications)
 - Chat del pool
-- Dominio personalizado
+- Session Management (Remember Me)
+
+---
+
+## [0.3.5] - 2026-02-10
+
+### Code Review + Documentation Update + Deployment Fixes
+
+#### Added
+- **Comprehensive Code Review**
+  - 24 hallazgos backend (4 CRITICAL, 6 HIGH, 8 MEDIUM, 6 LOW)
+  - 30 hallazgos frontend (7 CRITICAL, 7 HIGH, 8 MEDIUM, 8 LOW)
+  - Auditoría de docs vs código con gaps identificados
+  - Prioridad de fixes documentada en CURRENT_STATE.md
+
+#### Fixed
+- **Railway Backend Build Errors**
+  - TypeScript union type error in `pickPresets.ts` (PhasePickConfig annotation)
+  - Optional chaining for `sorted[idx + 1]?.id` in `pools.ts`
+  - NIXPACKS_NODE_VERSION bumped to 22 in `backend/railway.toml`
+
+- **Railway Frontend Build Errors**
+  - Unused `setVerbose` variable in `PoolPage.tsx` (replaced with constant)
+  - NIXPACKS_NODE_VERSION bumped to 22.13 in `frontend/railway.toml` (vite 7 requires >=22.12)
+
+- **Pool Creation Validation**
+  - Added `HOME_GOALS` and `AWAY_GOALS` to `MatchPickTypeKeySchema` Zod enum
+  - Fixes VALIDATION_ERROR when creating pools with CUMULATIVE preset
+
+#### Changed
+- **Documentation Updated**
+  - CURRENT_STATE.md fully rewritten to v0.3.5 (was stuck at v0.3.2)
+  - CHANGELOG.md updated with v0.3.4 and v0.3.5 entries
+  - Smart Sync system documented in CURRENT_STATE.md
+  - UCL 2025-26 instance documented
+  - Code review findings documented with severity, file references, and fix priorities
+
+#### Technical
+- Commits: `0dbffe7`, `9df2a68`, `ac348ed`
+- Railway CLI installed and project linked
+- All env vars configured on Railway production
+
+---
+
+## [0.3.4] - 2026-02-04
+
+### Automatic Results System (Smart Sync) + UCL 2025-26
+
+#### Added
+- **Automatic Results via API-Football (ADR-031)**
+  - Hybrid result system: MANUAL mode (Host enters) and AUTO mode (API-Football)
+  - `ResultSourceMode` enum: MANUAL | AUTO (per TournamentInstance)
+  - `ResultSource` tracking: HOST_MANUAL, HOST_PROVISIONAL, API_CONFIRMED, HOST_OVERRIDE
+  - Decision matrix for result priority and overrides
+  - Host can enter PROVISIONAL results while waiting for API
+  - HOST_OVERRIDE (with mandatory reason) takes final precedence over API
+
+- **Smart Sync - Optimized API Polling (ADR-032)**
+  - Per-match state machine: PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
+  - 85-90% reduction in API calls vs naive polling (2-4 per match vs 20-30)
+  - First check: kickoff + 5 min (confirm match started)
+  - Finish check: kickoff + 110 min (covers 95% without extra time)
+  - Awaiting finish poll: every 5 min until FT/AET/PEN status
+  - Cron job runs every minute, evaluates which matches need checking
+  - Kill switch (`syncEnabled`) for emergencies
+
+- **UCL 2025-26 Tournament Instance**
+  - Template `ucl-2025` with 9 phases
+  - 45 matches: Dieciseisavos (×2 legs), R16 (×2), QF (×2), SF (×2), Final
+  - 16 matches scheduled (Dieciseisavos de Final)
+  - 29 placeholder matches for later rounds
+  - 16 API-Football fixture mappings
+  - Seeded in production with sync states initialized
+
+- **API-Football Integration**
+  - HTTP client with rate limiting (10 req/min)
+  - Fixture status handling: FT, AET, PEN
+  - Match external mapping (internal ID ↔ API-Football fixture ID)
+  - Result sync logs for audit trail
+
+- **Admin Sync Endpoints**
+  - `POST /admin/instances/:id/enable-auto-results` - Enable AUTO mode
+  - `POST /admin/instances/:id/trigger-sync` - Manual sync trigger
+  - `GET /admin/instances/:id/sync-status` - Sync job status
+
+- **Production Configuration**
+  - API-Football environment variables set on Railway
+  - Smart Sync enabled in production
+  - UCL 2025-26 instance seeded in production DB
+
+#### Technical
+- New models: MatchExternalMapping, ResultSyncLog, MatchSyncState
+- New enums: ResultSourceMode, ResultSource, MatchSyncStatus, SyncStatus
+- New services: smartSync/, apiFootball/, resultSync/
+- New jobs: smartSyncJob.ts, resultSyncJob.ts
+- New scripts: initSmartSyncStates.ts, seedUcl2025.ts
+- ADR-031 and ADR-032 documented in DECISION_LOG.md
 
 ---
 

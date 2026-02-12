@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useAuthPanel } from "../contexts/AuthPanelContext";
 
 export function LandingPage() {
   const isMobile = useIsMobile();
+  const { openAuthPanel } = useAuthPanel();
 
   return (
     <div style={{ background: "var(--bg)" }}>
@@ -45,8 +47,8 @@ export function LandingPage() {
               flexWrap: "wrap",
             }}
           >
-            <Link
-              to="/login"
+            <button
+              onClick={() => openAuthPanel("register")}
               style={{
                 background: "white",
                 color: "#1a1a1a",
@@ -54,12 +56,13 @@ export function LandingPage() {
                 borderRadius: 8,
                 fontSize: isMobile ? "1rem" : "1.1rem",
                 fontWeight: 700,
-                textDecoration: "none",
+                border: "none",
+                cursor: "pointer",
                 transition: "transform 0.2s ease, box-shadow 0.2s ease",
               }}
             >
               Crear cuenta gratis
-            </Link>
+            </button>
             <Link
               to="/how-it-works"
               style={{
@@ -288,8 +291,8 @@ export function LandingPage() {
         >
           Únete gratis y comienza a competir con tus amigos.
         </p>
-        <Link
-          to="/login"
+        <button
+          onClick={() => openAuthPanel("register")}
           style={{
             background: "white",
             color: "#764ba2",
@@ -297,12 +300,13 @@ export function LandingPage() {
             borderRadius: 8,
             fontSize: isMobile ? "1rem" : "1.1rem",
             fontWeight: 700,
-            textDecoration: "none",
+            border: "none",
+            cursor: "pointer",
             display: "inline-block",
           }}
         >
           Comenzar ahora - Es gratis
-        </Link>
+        </button>
       </section>
     </div>
   );
