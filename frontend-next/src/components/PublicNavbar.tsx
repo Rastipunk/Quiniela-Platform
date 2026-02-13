@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { BrandLogo } from "./BrandLogo";
 
 interface PublicNavbarProps {
   onOpenAuth?: () => void;
@@ -51,6 +52,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
           ...mobileInteractiveStyles.tapHighlight,
         }}
       >
+        <BrandLogo size={isMobile ? 26 : 30} />
         Picks4All
       </Link>
 

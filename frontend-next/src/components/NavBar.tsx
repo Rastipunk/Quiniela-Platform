@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { clearToken, getToken } from "../lib/auth";
 import { getUserProfile, type UserProfile } from "../lib/api";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { BrandLogo } from "./BrandLogo";
 
 export function NavBar() {
   const router = useRouter();
@@ -108,7 +109,7 @@ export function NavBar() {
           ...mobileInteractiveStyles.tapHighlight,
         }}
       >
-        {"\uD83C\uDFC6"} Picks4All
+        <BrandLogo size={isMobile ? 26 : 30} /> Picks4All
       </Link>
 
       {/* Desktop Navigation */}

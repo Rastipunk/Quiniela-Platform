@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandLogo } from "./BrandLogo";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -31,8 +32,12 @@ export function Footer() {
               fontSize: 16,
               marginBottom: 8,
               color: "var(--text)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
             }}
           >
+            <BrandLogo size={22} />
             Picks4All
           </div>
           <p
