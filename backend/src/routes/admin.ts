@@ -11,6 +11,34 @@ adminRouter.get("/ping", requireAuth, requireAdmin, (_req, res) => {
   res.json({ ok: true, admin: true });
 });
 
+// GET /admin/stats — platform stats (users, pools, feedback)
+adminRouter.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
+  const [totalUsers, testUsers, usersByMonth, totalPools, totalFeedback] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { email: { contains: "example.com" } } }),
+    prisma.$queryRaw<Array<{ month: string; count: bigint }>>`
+      SELECT to_char("createdAtUtc", 'YYYY-MM') AS month, COUNT(*)::bigint AS count
+      FROM "User"
+      WHERE email NOT LIKE '%example.com%'
+      GROUP BY month
+      ORDER BY month ASC
+    `,
+    prisma.pool.count(),
+    prisma.betaFeedback.count(),
+  ]);
+
+  res.json({
+    users: {
+      total: totalUsers,
+      test: testUsers,
+      real: totalUsers - testUsers,
+      byMonth: usersByMonth.map((r) => ({ month: r.month, count: Number(r.count) })),
+    },
+    pools: { total: totalPools },
+    feedback: { total: totalFeedback },
+  });
+});
+
 // Endpoint público para crear admin inicial (solo funciona si no hay admins)
 // NOTA: Este endpoint NO tiene requireAuth - es público intencionalmente
 adminRouter.post("/bootstrap-admin", async (req, res) => {
