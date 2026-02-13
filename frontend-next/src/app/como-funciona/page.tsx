@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
 import { Breadcrumbs } from "../../components/Breadcrumbs";
+import { RegisterButton } from "../../components/RegisterButton";
 
 export const metadata: Metadata = {
   title: "Como Crear tu Quiniela (Polla, Prode) en 3 Pasos — Gratis",
@@ -495,21 +496,7 @@ export default function ComoFuncionaPage() {
           >
             Crea tu cuenta gratis y comienza a competir. Arma tu polla, prode o penca en minutos.
           </p>
-          <Link
-            href="/login"
-            style={{
-              background: "white",
-              color: "#764ba2",
-              padding: "16px 32px",
-              borderRadius: 8,
-              fontSize: "1.1rem",
-              fontWeight: 700,
-              textDecoration: "none",
-              display: "inline-block",
-            }}
-          >
-            Crear cuenta gratis
-          </Link>
+          <RegisterButton label="Crear cuenta gratis" />
         </section>
       </div>
 

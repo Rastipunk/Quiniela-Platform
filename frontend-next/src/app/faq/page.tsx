@@ -4,6 +4,7 @@ import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
 import { FAQAccordion } from "../../components/FAQAccordion";
 import { Breadcrumbs } from "../../components/Breadcrumbs";
+import { RegisterButton } from "../../components/RegisterButton";
 
 export const metadata: Metadata = {
   title:
@@ -293,21 +294,7 @@ export default function FAQPage() {
           >
             Crea tu cuenta gratis y comienza a competir con tu polla, prode o penca.
           </p>
-          <Link
-            href="/login"
-            style={{
-              background: "white",
-              color: "#764ba2",
-              padding: "16px 32px",
-              borderRadius: 8,
-              fontSize: "1.1rem",
-              fontWeight: 700,
-              textDecoration: "none",
-              display: "inline-block",
-            }}
-          >
-            Crear cuenta gratis
-          </Link>
+          <RegisterButton label="Crear cuenta gratis" />
         </section>
       </div>
 

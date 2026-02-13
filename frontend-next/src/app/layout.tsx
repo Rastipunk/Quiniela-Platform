@@ -47,6 +47,9 @@ export const metadata: Metadata = {
       "x-default": "https://picks4all.com",
     },
   },
+  verification: {
+    google: "mLDBKCz1jxTO32YsN9ovBRguWz9Ikmc7RWZoq21O3mY",
+  },
   other: {
     "color-scheme": "light only",
     "supported-color-schemes": "light only",

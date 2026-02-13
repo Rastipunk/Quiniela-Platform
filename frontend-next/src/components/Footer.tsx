@@ -143,6 +143,66 @@ export function Footer() {
           </Link>
         </div>
 
+        {/* Regional */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text)",
+              marginBottom: 4,
+            }}
+          >
+            Por Pais
+          </div>
+          <Link
+            href="/polla-futbolera"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            Polla Futbolera
+          </Link>
+          <Link
+            href="/prode-deportivo"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            Prode Deportivo
+          </Link>
+          <Link
+            href="/penca-futbol"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            Penca de Futbol
+          </Link>
+          <Link
+            href="/porra-deportiva"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            Porra Deportiva
+          </Link>
+        </div>
+
         {/* Contact */}
         <div>
           <div
