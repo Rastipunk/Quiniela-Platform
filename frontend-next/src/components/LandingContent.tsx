@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useAuthPanel } from "../contexts/AuthPanelContext";
 
 export function LandingContent() {
   const isMobile = useIsMobile();
+  const { openAuthPanel } = useAuthPanel();
 
   return (
     <div style={{ background: "var(--bg)" }}>
@@ -39,8 +41,8 @@ export function LandingContent() {
               marginRight: "auto",
             }}
           >
-            La plataforma gratuita de quinielas, pollas, prodes y pencas deportivas.
-            Sin dinero real, sin apuestas — solo entretenimiento puro entre amigos.
+            Crea tu quiniela (polla, prode, penca) gratis y diviertete
+            prediciendo resultados de fútbol con tus amigos.
           </p>
           <div
             style={{
@@ -51,8 +53,8 @@ export function LandingContent() {
               marginTop: 32,
             }}
           >
-            <Link
-              href="/login"
+            <button
+              onClick={() => openAuthPanel("register")}
               style={{
                 background: "white",
                 color: "#1a1a1a",
@@ -62,10 +64,12 @@ export function LandingContent() {
                 fontWeight: 700,
                 textDecoration: "none",
                 display: "inline-block",
+                border: "none",
+                cursor: "pointer",
               }}
             >
               Crear cuenta gratis
-            </Link>
+            </button>
             <Link
               href="/como-funciona"
               style={{
@@ -119,7 +123,7 @@ export function LandingContent() {
           Tambien conocida como <strong style={{ color: "var(--text)" }}>polla futbolera</strong> en Colombia, Chile y Venezuela,{" "}
           <strong style={{ color: "var(--text)" }}>prode</strong> en Argentina,{" "}
           <strong style={{ color: "var(--text)" }}>penca</strong> en Uruguay, o{" "}
-          <strong style={{ color: "var(--text)" }}>porra</strong> en Espana.
+          <strong style={{ color: "var(--text)" }}>porra</strong> en España.
         </p>
         <p
           style={{
@@ -338,7 +342,7 @@ export function LandingContent() {
         <p
           style={{
             fontSize: isMobile ? "1.1rem" : "1.25rem",
-            opacity: 0.9,
+            color: "rgba(255,255,255,0.9)",
             marginBottom: 12,
           }}
         >
@@ -347,14 +351,14 @@ export function LandingContent() {
         <p
           style={{
             fontSize: isMobile ? "0.9rem" : "1rem",
-            opacity: 0.75,
+            color: "rgba(255,255,255,0.75)",
             marginBottom: 32,
           }}
         >
           Crea tu quiniela gratis en menos de 1 minuto.
         </p>
-        <Link
-          href="/login"
+        <button
+          onClick={() => openAuthPanel("register")}
           style={{
             background: "white",
             color: "#764ba2",
@@ -364,10 +368,12 @@ export function LandingContent() {
             fontWeight: 700,
             textDecoration: "none",
             display: "inline-block",
+            border: "none",
+            cursor: "pointer",
           }}
         >
           Comenzar ahora — Es gratis
-        </Link>
+        </button>
       </section>
     </div>
   );

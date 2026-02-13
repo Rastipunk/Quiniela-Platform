@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { API_BASE } from "../../lib/api";
-import { PublicNavbar } from "../../components/PublicNavbar";
-import { Footer } from "../../components/Footer";
+import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 
 // Simple markdown parser for legal documents
 function parseMarkdown(md: string): string {
@@ -109,8 +108,7 @@ export default function TerminosPage() {
 
   return (
     <>
-      <PublicNavbar />
-
+      <PublicPageWrapper>
       <div
         style={{
           maxWidth: 800,
@@ -247,7 +245,7 @@ export default function TerminosPage() {
         `}</style>
       </div>
 
-      <Footer />
+      </PublicPageWrapper>
     </>
   );
 }

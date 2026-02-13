@@ -18,7 +18,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
     { to: "/", label: "Inicio" },
     { to: "/como-funciona", label: "Como Funciona" },
     { to: "/faq", label: "FAQ" },
-    { to: "/que-es-una-quiniela", label: "Quiniela?" },
+    { to: "/que-es-una-quiniela", label: "¿Qué es una quiniela?" },
   ];
 
   const isActive = (path: string) => pathname === path;

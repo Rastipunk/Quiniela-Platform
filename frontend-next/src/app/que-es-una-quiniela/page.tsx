@@ -1,44 +1,64 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PublicNavbar } from "../../components/PublicNavbar";
-import { Footer } from "../../components/Footer";
+import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
 
 export const metadata: Metadata = {
   title:
-    "Que es una Quiniela? — Polla, Prode, Penca, Porra Explicados",
+    "¿Qué es una Quiniela? — Historia, Orígenes y Nombres por País",
   description:
-    "Conoce los nombres de las quinielas deportivas en cada pais: quiniela (Mexico), polla (Colombia/Chile), prode (Argentina), penca (Uruguay) y porra (Espana).",
+    "La historia de las quinielas deportivas: desde las porras españolas del siglo XIX hasta las pollas mundialistas, el prode argentino y las pencas uruguayas. Cómo un juego de amigos conquistó todo un continente.",
   openGraph: {
-    title: "Que es una Quiniela? — Polla, Prode, Penca, Porra Explicados",
+    title: "¿Qué es una Quiniela? — Historia, Orígenes y Nombres por País",
     description:
-      "Conoce los nombres de las quinielas deportivas en cada pais: quiniela (Mexico), polla (Colombia/Chile), prode (Argentina), penca (Uruguay) y porra (Espana).",
+      "La historia de las quinielas deportivas: desde las porras españolas del siglo XIX hasta las pollas mundialistas, el prode argentino y las pencas uruguayas.",
     url: "https://picks4all.com/que-es-una-quiniela",
-    type: "website",
+    type: "article",
   },
 };
 
 const termsByCountry = [
-  { country: "Mexico", flag: "🇲🇽", term: "Quiniela" },
-  { country: "Colombia", flag: "🇨🇴", term: "Polla" },
-  { country: "Argentina", flag: "🇦🇷", term: "Prode" },
-  { country: "Uruguay", flag: "🇺🇾", term: "Penca" },
-  { country: "Chile", flag: "🇨🇱", term: "Polla" },
-  { country: "Venezuela", flag: "🇻🇪", term: "Polla" },
-  { country: "Espana", flag: "🇪🇸", term: "Porra" },
-  { country: "Peru", flag: "🇵🇪", term: "Chancha / Polla" },
-  { country: "Ecuador", flag: "🇪🇨", term: "Quiniela" },
-  { country: "Bolivia", flag: "🇧🇴", term: "Vaquita" },
+  { country: "México", flag: "🇲🇽", term: "Quiniela", origin: "Del latín quinella (combinación de cinco)" },
+  { country: "Colombia", flag: "🇨🇴", term: "Polla", origin: "De 'polla de beneficencia'" },
+  { country: "Argentina", flag: "🇦🇷", term: "Prode", origin: "Acrónimo de PROnósticos DEportivos" },
+  { country: "Uruguay", flag: "🇺🇾", term: "Penca", origin: "Del guaraní, tradición rioplatense" },
+  { country: "Chile", flag: "🇨🇱", term: "Polla", origin: "De la Polla Chilena de Beneficencia" },
+  { country: "Venezuela", flag: "🇻🇪", term: "Polla", origin: "Influencia colombiana y caribeña" },
+  { country: "España", flag: "🇪🇸", term: "Porra / Quiniela", origin: "Tradición de apuestas colectivas" },
+  { country: "Perú", flag: "🇵🇪", term: "Polla / Chancha", origin: "'Chancha' = colecta entre amigos" },
+  { country: "Ecuador", flag: "🇪🇨", term: "Quiniela", origin: "Influencia mexicana" },
+  { country: "Bolivia", flag: "🇧🇴", term: "Vaquita", origin: "'Poner la vaquita' = aportar al pozo" },
 ];
 
+const articleStyle = {
+  paragraph: {
+    color: "var(--text)",
+    lineHeight: 1.85,
+    fontSize: "1.05rem",
+    marginBottom: 24,
+  } as const,
+  highlight: {
+    color: "var(--text)",
+    fontWeight: 600 as const,
+  },
+  pullQuote: {
+    borderLeft: "4px solid #667eea",
+    paddingLeft: 24,
+    margin: "32px 0",
+    fontStyle: "italic" as const,
+    color: "var(--muted)",
+    fontSize: "1.15rem",
+    lineHeight: 1.7,
+  },
+};
+
 export default function QueEsUnaQuinielaPage() {
-  // JSON-LD: DefinedTermSet schema
   const definedTermSetJsonLd = {
     "@context": "https://schema.org",
     "@type": "DefinedTermSet",
     name: "Nombres regionales de quinielas deportivas",
     description:
-      "Glosario de los diferentes nombres que reciben las quinielas deportivas en paises de habla hispana",
+      "Glosario de los diferentes nombres que reciben las quinielas deportivas en países de habla hispana",
     hasDefinedTerm: termsByCountry.map((item) => ({
       "@type": "DefinedTerm",
       name: item.term,
@@ -47,172 +67,372 @@ export default function QueEsUnaQuinielaPage() {
     })),
   };
 
-  // JSON-LD: FAQPage schema for the questions on this page
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     mainEntity: [
       {
         "@type": "Question",
-        name: "Que es una quiniela deportiva?",
+        name: "¿Qué es una quiniela deportiva?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Una quiniela deportiva es un juego de predicciones donde un grupo de amigos, familiares o companeros de trabajo intentan adivinar los resultados de partidos de futbol. Cada participante hace sus pronosticos antes de que comience el partido y gana puntos segun la precision de sus predicciones. Es una forma de entretenimiento gratuita que no involucra dinero real ni apuestas.",
+          text: "Una quiniela deportiva es un juego de predicciones donde un grupo de amigos, familiares o compañeros de trabajo intentan adivinar los resultados de partidos de fútbol. Cada participante hace sus pronósticos antes de que comience el partido y gana puntos según la precisión de sus predicciones. Es una tradición social que existe desde hace más de un siglo en el mundo hispanohablante.",
         },
       },
       {
         "@type": "Question",
-        name: "Cual es la diferencia entre quiniela, polla, prode y penca?",
+        name: "¿Cuál es la diferencia entre quiniela, polla, prode y penca?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Todos se refieren al mismo concepto: un juego de predicciones deportivas entre amigos. El nombre varia segun el pais: quiniela en Mexico y Ecuador, polla en Colombia, Chile y Venezuela, prode en Argentina, penca en Uruguay, porra en Espana, chancha o polla en Peru, y vaquita en Bolivia.",
+          text: "Todos se refieren al mismo concepto: un juego de predicciones deportivas entre amigos. El nombre varía según el país: quiniela en México y Ecuador, polla en Colombia, Chile y Venezuela, prode en Argentina, penca en Uruguay, porra en España, chancha o polla en Perú, y vaquita en Bolivia. Cada término tiene su propia historia y origen etimológico.",
         },
       },
       {
         "@type": "Question",
-        name: "Es legal jugar quinielas entre amigos?",
+        name: "¿Es legal jugar quinielas entre amigos?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Si. Las quinielas entre amigos son una tradicion social completamente legal cuando no se apuesta dinero real. Picks4All es una plataforma gratuita de entretenimiento — no somos un sitio de apuestas ni de juegos de azar.",
+          text: "Sí. Las quinielas entre amigos son una tradición social completamente legal cuando no se apuesta dinero real. Picks4All es una plataforma gratuita de entretenimiento — no es un sitio de apuestas ni de juegos de azar.",
         },
       },
     ],
+  };
+
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: "¿Qué es una Quiniela? Historia, Orígenes y Nombres por País",
+    description: "La historia de las quinielas deportivas en el mundo hispanohablante",
+    inLanguage: "es",
+    publisher: {
+      "@type": "Organization",
+      name: "Picks4All",
+      url: "https://picks4all.com",
+    },
   };
 
   return (
     <>
       <JsonLd data={definedTermSetJsonLd} />
       <JsonLd data={faqJsonLd} />
-      <PublicNavbar />
-
+      <JsonLd data={articleJsonLd} />
+      <PublicPageWrapper>
       <div style={{ background: "var(--bg)" }}>
-        {/* Header */}
+        {/* Article Header */}
         <section
           style={{
             background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
             color: "white",
-            padding: "60px 40px",
+            padding: "80px 40px 60px",
             textAlign: "center",
           }}
         >
+          <p
+            style={{
+              fontSize: "0.85rem",
+              textTransform: "uppercase",
+              letterSpacing: "2px",
+              color: "rgba(255,255,255,0.5)",
+              marginBottom: 16,
+            }}
+          >
+            Cultura Deportiva
+          </p>
           <h1
             style={{
               fontSize: "2.5rem",
               fontWeight: 800,
-              marginBottom: 12,
+              marginBottom: 16,
+              lineHeight: 1.2,
+              maxWidth: 700,
+              marginLeft: "auto",
+              marginRight: "auto",
             }}
           >
-            Que es una Quiniela?
+            ¿Qué es una Quiniela Deportiva?
           </h1>
           <p
             style={{
-              fontSize: "1.1rem",
-              color: "rgba(255,255,255,0.8)",
+              fontSize: "1.15rem",
+              color: "rgba(255,255,255,0.75)",
               maxWidth: 650,
               margin: "0 auto",
+              lineHeight: 1.6,
             }}
           >
-            Quiniela, polla, prode, penca, porra... muchos nombres, un mismo
-            juego. Conoce como se llaman las predicciones deportivas en cada pais.
+            Quiniela, polla, prode, penca, porra — la tradición que une a
+            millones de aficionados al fútbol en todo el mundo hispanohablante.
+            Esta es su historia.
           </p>
         </section>
 
-        {/* Section 1: Que es una quiniela deportiva? */}
-        <section
+        {/* Article Body */}
+        <article
           style={{
-            padding: "80px 40px",
-            maxWidth: 800,
+            padding: "64px 40px",
+            maxWidth: 780,
             margin: "0 auto",
           }}
         >
+          {/* Intro */}
+          <p style={articleStyle.paragraph}>
+            Cada cuatro años, cuando llega la Copa del Mundo, ocurre un fenómeno
+            que se repite en oficinas, grupos de WhatsApp y reuniones familiares
+            de toda Latinoamérica y España: alguien propone{" "}
+            <strong style={articleStyle.highlight}>armar la quiniela</strong>.
+            Aunque depende del país donde te encuentres, es posible que la llamen{" "}
+            <strong style={articleStyle.highlight}>polla</strong>,{" "}
+            <strong style={articleStyle.highlight}>prode</strong>,{" "}
+            <strong style={articleStyle.highlight}>penca</strong> o{" "}
+            <strong style={articleStyle.highlight}>porra</strong>. El nombre
+            cambia, pero la esencia es la misma: predecir resultados de fútbol y
+            competir entre amigos por el honor de ser el que más sabe.
+          </p>
+
+          <p style={articleStyle.paragraph}>
+            Se trata de una de las tradiciones sociales más arraigadas en el
+            mundo del fútbol. No requiere conocimiento táctico profundo ni
+            entender formaciones — basta con atreverse a decir "2 a 1" y esperar
+            los 90 minutos. Es entretenimiento puro, y durante décadas se ha
+            jugado en papel, pizarras de oficina y hojas de cálculo
+            interminables.
+          </p>
+
+          <div style={articleStyle.pullQuote}>
+            "La quiniela es ese raro espacio donde el fanático casual y el
+            analista táctico compiten en igualdad de condiciones. Todos tienen
+            una opinión sobre el próximo partido, y eso es lo que la hace
+            especial."
+          </div>
+
+          {/* Origins */}
           <h2
             style={{
-              fontSize: "2rem",
+              fontSize: "1.75rem",
               fontWeight: 700,
-              marginBottom: 24,
+              marginBottom: 20,
+              marginTop: 48,
               color: "var(--text)",
             }}
           >
-            Que es una quiniela deportiva?
+            Los orígenes: de las apuestas colectivas al juego entre amigos
           </h2>
 
-          <p
+          <p style={articleStyle.paragraph}>
+            La historia de las predicciones deportivas organizadas se remonta al
+            siglo XIX en Europa. En{" "}
+            <strong style={articleStyle.highlight}>España</strong>, las{" "}
+            <strong style={articleStyle.highlight}>porras</strong> — colectas
+            informales donde cada participante aportaba una cantidad simbólica y
+            apostaba por un resultado — ya eran tradición en tabernas y peñas
+            deportivas antes de que el fútbol se profesionalizara. La palabra
+            "porra" viene precisamente de esa costumbre de "echar al pozo" y
+            repartir entre los acertantes.
+          </p>
+
+          <p style={articleStyle.paragraph}>
+            El término{" "}
+            <strong style={articleStyle.highlight}>quiniela</strong>, por su
+            parte, tiene raíces en el latín{" "}
+            <em>quinella</em> (una combinación de cinco elementos) y se
+            popularizó primero en el contexto de la lotería. En 1946, España
+            lanzó oficialmente{" "}
+            <strong style={articleStyle.highlight}>La Quiniela</strong>, un
+            juego estatal donde los participantes predecían los resultados de 15
+            partidos de fútbol marcando 1 (local), X (empate) o 2 (visitante).
+            Fue un éxito inmediato y se convirtió en ritual de cada fin de
+            semana para millones de españoles.
+          </p>
+
+          <p style={articleStyle.paragraph}>
+            Ese modelo cruzó el Atlántico y se adaptó de formas muy diversas en
+            cada país latinoamericano, adquiriendo nombres propios y matices
+            culturales únicos.
+          </p>
+
+          {/* Regional Deep Dive */}
+          <h2
             style={{
-              color: "var(--text)",
-              lineHeight: 1.8,
-              fontSize: "1.05rem",
+              fontSize: "1.75rem",
+              fontWeight: 700,
               marginBottom: 20,
-            }}
-          >
-            Una <strong>quiniela deportiva</strong> es un juego de predicciones
-            donde un grupo de amigos, familiares o companeros de trabajo
-            intentan adivinar los resultados de partidos de futbol. Cada
-            participante hace sus pronosticos antes de que comience el partido y
-            gana puntos segun la precision de sus predicciones.
-          </p>
-
-          <p
-            style={{
+              marginTop: 48,
               color: "var(--text)",
-              lineHeight: 1.8,
-              fontSize: "1.05rem",
-              marginBottom: 20,
             }}
           >
-            Es una tradicion que existe desde hace decadas en toda Latinoamerica
-            y Espana. Antes se hacia en papel o en hojas de Excel. Hoy,
-            plataformas como <strong>Picks4All</strong> permiten crear tu
-            quiniela online de forma gratuita, invitar a tus amigos y llevar el
-            puntaje automaticamente.
+            Un juego, muchos nombres: el mapa de las quinielas en Latinoamérica
+          </h2>
+
+          <p style={articleStyle.paragraph}>
+            Lo fascinante de esta tradición es cómo cada país la hizo suya. No
+            solo cambiaron el nombre — en muchos casos crearon instituciones
+            oficiales alrededor del concepto.
           </p>
 
-          <p
+          {/* Prode - Argentina */}
+          <h3
             style={{
-              color: "var(--text)",
-              lineHeight: 1.8,
-              fontSize: "1.05rem",
-              marginBottom: 0,
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              color: "#667eea",
+              marginBottom: 8,
+              marginTop: 32,
             }}
           >
-            Lo mejor de todo: <strong>no es apuestas</strong>. Una quiniela
-            entre amigos es entretenimiento puro. Compites por el honor de ser
-            el mejor predictor del grupo, no por dinero. Es la forma mas
-            divertida de vivir los torneos de futbol como la Copa del Mundo 2026
-            o la Champions League.
+            🇦🇷 El Prode argentino: cuando el gobierno oficializó el juego
+          </h3>
+          <p style={articleStyle.paragraph}>
+            En 1972, el gobierno argentino creó el{" "}
+            <strong style={articleStyle.highlight}>
+              PRODE (Pronósticos Deportivos)
+            </strong>
+            , un sistema oficial donde los ciudadanos compraban cartones y
+            predecían resultados de la liga local. Fue un fenómeno social
+            masivo: los lunes, la conversación en cualquier oficina de Buenos
+            Aires empezaba con "¿cómo te fue en el prode?". Aunque el PRODE
+            oficial fue discontinuado, la palabra quedó grabada en el vocabulario
+            argentino. Hoy, cuando un grupo de amigos en Argentina organiza
+            predicciones para el Mundial, lo siguen llamando{" "}
+            <strong style={articleStyle.highlight}>prode</strong>.
           </p>
-        </section>
 
-        {/* Section 2: Table of terms by country */}
+          {/* Polla - Colombia/Chile */}
+          <h3
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              color: "#667eea",
+              marginBottom: 8,
+              marginTop: 32,
+            }}
+          >
+            🇨🇴🇨🇱 La polla: de la beneficencia a la pasión mundialista
+          </h3>
+          <p style={articleStyle.paragraph}>
+            En <strong style={articleStyle.highlight}>Colombia</strong>,{" "}
+            <strong style={articleStyle.highlight}>Chile</strong> y{" "}
+            <strong style={articleStyle.highlight}>Venezuela</strong>, el
+            término dominante es{" "}
+            <strong style={articleStyle.highlight}>polla</strong>. Su origen se
+            encuentra en la{" "}
+            <em>Polla Chilena de Beneficencia</em>, creada en 1934 como un
+            sistema de apuestas colectivas cuyas ganancias se destinaban a obras
+            sociales. La palabra se exportó a toda la región y hoy es sinónimo
+            de quiniela deportiva. En Colombia, la expresión{" "}
+            <strong style={articleStyle.highlight}>
+              "polla mundialista"
+            </strong>{" "}
+            se activa cada cuatro años como un reloj: desde la empresa más
+            grande hasta el grupo de amigos del barrio, todo el mundo arma su
+            polla.
+          </p>
+
+          {/* Penca - Uruguay */}
+          <h3
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              color: "#667eea",
+              marginBottom: 8,
+              marginTop: 32,
+            }}
+          >
+            🇺🇾 La penca uruguaya: tradición rioplatense
+          </h3>
+          <p style={articleStyle.paragraph}>
+            En <strong style={articleStyle.highlight}>Uruguay</strong>, nadie
+            dice quiniela ni polla — se dice{" "}
+            <strong style={articleStyle.highlight}>penca</strong>. La tradición
+            de las pencas está profundamente ligada a la cultura futbolera del
+            país que vio nacer la primera Copa del Mundo en 1930. Los uruguayos
+            arman pencas para todo: el Campeonato Uruguayo, la Copa América, el
+            Mundial, e incluso las Eliminatorias. Es un ritual social que
+            trasciende generaciones.
+          </p>
+
+          {/* Porra - España */}
+          <h3
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              color: "#667eea",
+              marginBottom: 8,
+              marginTop: 32,
+            }}
+          >
+            🇪🇸 La porra española: del bar a la oficina
+          </h3>
+          <p style={articleStyle.paragraph}>
+            Mientras que en España{" "}
+            <strong style={articleStyle.highlight}>La Quiniela</strong> es el
+            juego oficial del estado, entre amigos se usa más la palabra{" "}
+            <strong style={articleStyle.highlight}>porra</strong>. "Echar una
+            porra" significa organizar predicciones informales, generalmente en
+            el trabajo o en la peña del bar. Durante la Liga, la Champions
+            League y cada Mundial, las porras se multiplican. Es una tradición
+            tan antigua como el fútbol español.
+          </p>
+
+          {/* Others */}
+          <h3
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: 700,
+              color: "#667eea",
+              marginBottom: 8,
+              marginTop: 32,
+            }}
+          >
+            🇧🇴🇵🇪 La vaquita y la chancha: los nombres más creativos
+          </h3>
+          <p style={articleStyle.paragraph}>
+            En <strong style={articleStyle.highlight}>Bolivia</strong> se la
+            conoce como{" "}
+            <strong style={articleStyle.highlight}>vaquita</strong> — "poner la
+            vaquita" significa contribuir al pozo común, una expresión que nace
+            de las colectas informales. En{" "}
+            <strong style={articleStyle.highlight}>Perú</strong>, además de
+            "polla", se usa{" "}
+            <strong style={articleStyle.highlight}>chancha</strong>, que también
+            se refiere a juntar dinero entre un grupo. Y en{" "}
+            <strong style={articleStyle.highlight}>México</strong> y{" "}
+            <strong style={articleStyle.highlight}>Ecuador</strong>, el término{" "}
+            <strong style={articleStyle.highlight}>quiniela</strong> reina
+            absoluto, con una cultura especialmente fuerte durante los mundiales
+            y la Liga MX.
+          </p>
+        </article>
+
+        {/* Country Table */}
         <section
           style={{
             background: "var(--surface)",
-            padding: "80px 40px",
+            padding: "64px 40px",
           }}
         >
-          <div style={{ maxWidth: 800, margin: "0 auto" }}>
+          <div style={{ maxWidth: 780, margin: "0 auto" }}>
             <h2
               style={{
-                fontSize: "2rem",
+                fontSize: "1.75rem",
                 fontWeight: 700,
-                marginBottom: 16,
+                marginBottom: 12,
                 color: "var(--text)",
                 textAlign: "center",
               }}
             >
-              Como se llama la quiniela en cada pais?
+              Guía rápida: ¿cómo se dice en tu país?
             </h2>
             <p
               style={{
                 textAlign: "center",
                 color: "var(--muted)",
                 marginBottom: 32,
-                maxWidth: 600,
+                maxWidth: 550,
                 marginLeft: "auto",
                 marginRight: "auto",
               }}
             >
-              El mismo juego de predicciones deportivas tiene diferentes nombres
-              segun el pais. Aqui los mas comunes:
+              Diez países, diez maneras de llamar al mismo juego.
             </p>
 
             <div
@@ -234,23 +454,33 @@ export default function QueEsUnaQuinielaPage() {
                   <tr style={{ background: "var(--surface-2)" }}>
                     <th
                       style={{
-                        padding: "16px 20px",
+                        padding: "14px 20px",
                         textAlign: "left",
                         fontWeight: 600,
                         borderBottom: "1px solid var(--border)",
                       }}
                     >
-                      Pais
+                      País
                     </th>
                     <th
                       style={{
-                        padding: "16px 20px",
+                        padding: "14px 20px",
                         textAlign: "left",
                         fontWeight: 600,
                         borderBottom: "1px solid var(--border)",
                       }}
                     >
-                      Nombre local
+                      Nombre
+                    </th>
+                    <th
+                      style={{
+                        padding: "14px 20px",
+                        textAlign: "left",
+                        fontWeight: 600,
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
+                      Origen
                     </th>
                   </tr>
                 </thead>
@@ -259,30 +489,41 @@ export default function QueEsUnaQuinielaPage() {
                     <tr key={item.country}>
                       <td
                         style={{
-                          padding: "14px 20px",
+                          padding: "12px 20px",
                           borderBottom:
                             index < termsByCountry.length - 1
                               ? "1px solid var(--border)"
                               : "none",
-                          fontSize: "1rem",
                         }}
                       >
-                        <span style={{ marginRight: 10 }}>{item.flag}</span>
+                        <span style={{ marginRight: 8 }}>{item.flag}</span>
                         {item.country}
                       </td>
                       <td
                         style={{
-                          padding: "14px 20px",
+                          padding: "12px 20px",
                           borderBottom:
                             index < termsByCountry.length - 1
                               ? "1px solid var(--border)"
                               : "none",
                           fontWeight: 600,
                           color: "#667eea",
-                          fontSize: "1rem",
                         }}
                       >
                         {item.term}
+                      </td>
+                      <td
+                        style={{
+                          padding: "12px 20px",
+                          borderBottom:
+                            index < termsByCountry.length - 1
+                              ? "1px solid var(--border)"
+                              : "none",
+                          color: "var(--muted)",
+                          fontSize: "0.9rem",
+                        }}
+                      >
+                        {item.origin}
                       </td>
                     </tr>
                   ))}
@@ -292,301 +533,83 @@ export default function QueEsUnaQuinielaPage() {
           </div>
         </section>
 
-        {/* Section 3: Differences explained */}
-        <section
+        {/* Digital Evolution */}
+        <article
           style={{
-            padding: "80px 40px",
-            maxWidth: 800,
+            padding: "64px 40px",
+            maxWidth: 780,
             margin: "0 auto",
           }}
         >
           <h2
             style={{
-              fontSize: "2rem",
+              fontSize: "1.75rem",
               fontWeight: 700,
-              marginBottom: 24,
+              marginBottom: 20,
               color: "var(--text)",
             }}
           >
-            Cual es la diferencia entre quiniela, polla, prode y penca?
+            Del papel a la pantalla: la evolución digital
           </h2>
 
-          <p
+          <p style={articleStyle.paragraph}>
+            Durante décadas, organizar una quiniela significaba lo mismo en todos
+            los países: alguien imprimía una tabla con los partidos, la pasaba
+            por la oficina, y cada persona anotaba sus pronósticos a mano.
+            Después venía lo difícil — calcular los puntos. Siempre había
+            alguien con una hoja de Excel heroica que intentaba mantener el
+            leaderboard actualizado, y siempre había discusiones sobre si un
+            punto estaba bien sumado.
+          </p>
+
+          <p style={articleStyle.paragraph}>
+            Hoy, plataformas como{" "}
+            <strong style={articleStyle.highlight}>Picks4All</strong>{" "}
+            digitalizan toda esa experiencia: crear tu quiniela (o polla,
+            prode, penca — como quieras llamarla), invitar amigos con un código,
+            hacer predicciones desde el celular y tener el ranking actualizado
+            automáticamente después de cada partido. La esencia del juego sigue
+            siendo exactamente la misma que hace 50 años. Solo que ahora es más
+            fácil, más rápido, y sin errores de cálculo.
+          </p>
+
+          <div style={articleStyle.pullQuote}>
+            "Lo que antes requería una hoja de cálculo y un voluntario muy
+            paciente, hoy se resuelve en 2 minutos desde el celular."
+          </div>
+
+          <h2
             style={{
-              color: "var(--text)",
-              lineHeight: 1.8,
-              fontSize: "1.05rem",
+              fontSize: "1.75rem",
+              fontWeight: 700,
               marginBottom: 20,
-            }}
-          >
-            En esencia, <strong>no hay diferencia</strong>. Todos estos terminos
-            se refieren al mismo concepto: un juego donde predices resultados de
-            partidos de futbol y compites contra otros jugadores. La diferencia
-            es puramente regional:
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                padding: "20px 24px",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "#667eea",
-                  marginBottom: 8,
-                }}
-              >
-                Quiniela
-              </h3>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                Termino predominante en <strong>Mexico</strong> y{" "}
-                <strong>Ecuador</strong>. Originalmente se referia a los sorteos
-                de loteria, pero en el contexto deportivo se usa para cualquier
-                juego de predicciones de futbol. Es el termino mas reconocido a
-                nivel global en espanol.
-              </p>
-            </div>
-
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                padding: "20px 24px",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "#667eea",
-                  marginBottom: 8,
-                }}
-              >
-                Polla
-              </h3>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                Usado principalmente en <strong>Colombia</strong>,{" "}
-                <strong>Chile</strong>, <strong>Venezuela</strong> y{" "}
-                <strong>Peru</strong>. Viene de "polla de beneficencia", un
-                sistema de apuestas colectivas. En Colombia es muy comun la
-                "polla mundialista" durante las Copas del Mundo.
-              </p>
-            </div>
-
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                padding: "20px 24px",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "#667eea",
-                  marginBottom: 8,
-                }}
-              >
-                Prode
-              </h3>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                Abreviatura de "PROnosticos DEportivos", tipico de{" "}
-                <strong>Argentina</strong>. Fue un juego oficial del gobierno
-                argentino desde 1972. Hoy se usa coloquialmente para cualquier
-                prediccion deportiva entre amigos.
-              </p>
-            </div>
-
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                padding: "20px 24px",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "#667eea",
-                  marginBottom: 8,
-                }}
-              >
-                Penca
-              </h3>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                Predominante en <strong>Uruguay</strong>. Los uruguayos arman
-                sus "pencas" para cada torneo importante. Es una tradicion muy
-                arraigada en la cultura futbolera del pais.
-              </p>
-            </div>
-
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                padding: "20px 24px",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "#667eea",
-                  marginBottom: 8,
-                }}
-              >
-                Porra
-              </h3>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                Usado en <strong>Espana</strong>. "Echar una porra" significa
-                hacer una prediccion deportiva. Es comun en oficinas y grupos de
-                amigos durante la Liga, Champions y mundiales.
-              </p>
-            </div>
-          </div>
-
-          <p
-            style={{
+              marginTop: 48,
               color: "var(--text)",
-              lineHeight: 1.8,
-              fontSize: "1.05rem",
-              marginTop: 24,
             }}
           >
-            En Picks4All usamos la palabra <strong>"pool"</strong> como termino
-            neutral, pero no importa como lo llames en tu pais — la plataforma
-            funciona igual para todos.
+            ¿Por qué la quiniela sigue siendo tan popular?
+          </h2>
+
+          <p style={articleStyle.paragraph}>
+            En un mundo con apps de apuestas, fantasy sports y estadísticas
+            avanzadas, la quiniela entre amigos sigue siendo imbatible por una
+            razón simple: <strong style={articleStyle.highlight}>es personal</strong>.
+            No compites contra desconocidos ni contra algoritmos — compites
+            contra tu cuñado que dice que sabe más de fútbol, contra tu
+            compañera de trabajo que siempre acierta los empates, contra tu
+            mejor amigo que lleva ganando tres mundiales seguidos.
           </p>
-        </section>
 
-        {/* Section 4: Is it legal? */}
-        <section
-          style={{
-            background: "var(--surface)",
-            padding: "80px 40px",
-          }}
-        >
-          <div style={{ maxWidth: 800, margin: "0 auto" }}>
-            <h2
-              style={{
-                fontSize: "2rem",
-                fontWeight: 700,
-                marginBottom: 24,
-                color: "var(--text)",
-              }}
-            >
-              Es legal jugar quinielas entre amigos?
-            </h2>
+          <p style={articleStyle.paragraph}>
+            Eso es algo que ninguna casa de apuestas puede replicar: la
+            rivalidad sana, las cargadas cuando fallas, el grupo de WhatsApp que
+            explota después de un resultado inesperado. La quiniela convierte
+            cada partido en algo personal, y eso la mantiene viva generación
+            tras generación.
+          </p>
+        </article>
 
-            <div
-              style={{
-                background: "var(--bg)",
-                border: "1px solid var(--border)",
-                borderRadius: 16,
-                padding: "32px",
-              }}
-            >
-              <p
-                style={{
-                  color: "var(--text)",
-                  lineHeight: 1.8,
-                  fontSize: "1.05rem",
-                  marginBottom: 20,
-                }}
-              >
-                <strong>Si, absolutamente.</strong> Las quinielas entre amigos
-                son una tradicion social completamente legal en toda
-                Latinoamerica y Espana. Picks4All es una plataforma de{" "}
-                <strong>entretenimiento gratuito</strong> donde:
-              </p>
-
-              <ul
-                style={{
-                  color: "var(--text)",
-                  lineHeight: 2,
-                  fontSize: "1.05rem",
-                  paddingLeft: 24,
-                  marginBottom: 20,
-                }}
-              >
-                <li>
-                  <strong>No se apuesta dinero real</strong> — compites por
-                  puntos y posiciones en el ranking
-                </li>
-                <li>
-                  <strong>No hay transacciones monetarias</strong> — la
-                  plataforma es 100% gratuita
-                </li>
-                <li>
-                  <strong>No somos casa de apuestas</strong> — somos una app de
-                  entretenimiento entre amigos
-                </li>
-                <li>
-                  <strong>No hay juegos de azar</strong> — tus predicciones
-                  dependen de tu conocimiento deportivo
-                </li>
-              </ul>
-
-              <p
-                style={{
-                  color: "var(--muted)",
-                  lineHeight: 1.8,
-                  fontSize: "0.95rem",
-                  margin: 0,
-                }}
-              >
-                Picks4All existe para digitalizar la experiencia clasica de las
-                quinielas entre amigos — la misma que se ha jugado en papel,
-                pizarras y hojas de Excel durante decadas. Solo que ahora es mas
-                facil, automatico y divertido.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 5: CTA */}
+        {/* CTA */}
         <section
           style={{
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -602,12 +625,12 @@ export default function QueEsUnaQuinielaPage() {
               marginBottom: 16,
             }}
           >
-            Crea tu quiniela gratis ahora
+            Crea tu quiniela gratis
           </h2>
           <p
             style={{
               fontSize: "1.1rem",
-              opacity: 0.9,
+              color: "rgba(255,255,255,0.9)",
               marginBottom: 12,
               maxWidth: 550,
               marginLeft: "auto",
@@ -620,11 +643,11 @@ export default function QueEsUnaQuinielaPage() {
           <p
             style={{
               fontSize: "0.95rem",
-              opacity: 0.75,
+              color: "rgba(255,255,255,0.7)",
               marginBottom: 32,
             }}
           >
-            100% gratis. Sin apuestas. Sin dinero real.
+            100% gratis. Puro entretenimiento entre amigos.
           </p>
           <Link
             href="/login"
@@ -644,7 +667,7 @@ export default function QueEsUnaQuinielaPage() {
         </section>
       </div>
 
-      <Footer />
+      </PublicPageWrapper>
     </>
   );
 }

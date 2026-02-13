@@ -68,7 +68,7 @@ export default function AdminEmailSettingsPage() {
   const fetchSettings = useCallback(async () => {
     const token = getToken();
     if (!token) {
-      router.push("/login");
+      router.push("/");
       return;
     }
 
@@ -82,7 +82,7 @@ export default function AdminEmailSettingsPage() {
     } catch (err: any) {
       if (err.status === 401) {
         // Token inválido o expirado - el api.ts ya hizo logout
-        router.push("/login");
+        router.push("/");
         return;
       } else if (err.status === 403) {
         setAccessDenied(true);

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PublicNavbar } from "../../components/PublicNavbar";
-import { Footer } from "../../components/Footer";
+import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
 
 export const metadata: Metadata = {
@@ -125,8 +124,7 @@ export default function ComoFuncionaPage() {
           },
         }}
       />
-      <PublicNavbar />
-
+      <PublicPageWrapper>
       <div style={{ background: "var(--bg)" }}>
         {/* Header */}
         <section
@@ -481,7 +479,7 @@ export default function ComoFuncionaPage() {
           <p
             style={{
               fontSize: "1.1rem",
-              opacity: 0.9,
+              color: "rgba(255,255,255,0.9)",
               marginBottom: 32,
             }}
           >
@@ -505,7 +503,7 @@ export default function ComoFuncionaPage() {
         </section>
       </div>
 
-      <Footer />
+      </PublicPageWrapper>
     </>
   );
 }

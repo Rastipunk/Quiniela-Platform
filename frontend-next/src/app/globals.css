@@ -258,6 +258,41 @@ button:disabled {
   scroll-behavior: smooth;
 }
 
+/* Indicadores de scroll horizontal */
+.scroll-horizontal {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scroll-horizontal::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-horizontal > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Gradient fade para indicar scroll */
+.scroll-fade-right {
+  position: relative;
+}
+
+.scroll-fade-right::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--bg));
+  pointer-events: none;
+}
+
 /* Touch feedback */
 .touch-feedback {
   transition: transform 0.1s ease, opacity 0.1s ease;

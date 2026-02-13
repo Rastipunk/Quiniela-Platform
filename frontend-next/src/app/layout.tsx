@@ -1,6 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
+import { BetaFeedbackBar } from "../components/BetaFeedbackBar";
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#f4f5f7",
+};
 
 export const metadata: Metadata = {
   title: {
@@ -44,6 +50,11 @@ export const metadata: Metadata = {
   alternates: {
     languages: { es: "https://picks4all.com" },
   },
+  other: {
+    "color-scheme": "light only",
+    "supported-color-schemes": "light only",
+    "apple-mobile-web-app-status-bar-style": "default",
+  },
 };
 
 export default function RootLayout({
@@ -52,13 +63,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body>
+    <html lang="es" style={{ colorScheme: "light only" } as React.CSSProperties}>
+      <body style={{ backgroundColor: "#f4f5f7", color: "#111827" }}>
+        <BetaFeedbackBar />
         {children}
         {/* Google Identity Services (for Google login) */}
         <Script
           src="https://accounts.google.com/gsi/client"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
       </body>
     </html>

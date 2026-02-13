@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { PublicNavbar } from "../components/PublicNavbar";
-import { Footer } from "../components/Footer";
+import { PublicPageWrapper } from "../components/PublicPageWrapper";
 import { JsonLd } from "../components/JsonLd";
 import { LandingContent } from "../components/LandingContent";
 
@@ -41,9 +40,9 @@ export default function LandingPage() {
           },
         }}
       />
-      <PublicNavbar />
-      <LandingContent />
-      <Footer />
+      <PublicPageWrapper>
+        <LandingContent />
+      </PublicPageWrapper>
     </>
   );
 }

@@ -47,3 +47,4 @@ backend/prisma/migrations/*_temp/
 *.bak
 *.orig
 .cache/
+nul

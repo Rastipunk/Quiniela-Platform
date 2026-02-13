@@ -121,7 +121,7 @@ export default function LoginPage() {
     }
   };
 
-  // Inicializar Google Sign In
+  // Inicializar Google Sign In (with retry for script loading)
   useEffect(() => {
     const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -130,17 +130,14 @@ export default function LoginPage() {
       return;
     }
 
-    if (!window.google) {
-      console.warn("Google Identity Services no cargado");
-      return;
-    }
+    const initGoogle = () => {
+      if (!window.google || !googleButtonRef.current) return false;
 
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleGoogleCallback,
-    });
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCallback,
+      });
 
-    if (googleButtonRef.current) {
       window.google.accounts.id.renderButton(googleButtonRef.current, {
         theme: "outline",
         size: "large",
@@ -148,7 +145,22 @@ export default function LoginPage() {
         text: mode === "login" ? "signin_with" : "signup_with",
         locale: "es",
       });
-    }
+      return true;
+    };
+
+    // Try immediately
+    if (initGoogle()) return;
+
+    // Retry until script loads (max 5 seconds)
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (initGoogle() || attempts >= 50) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
   }, [mode]);
 
   // Reset consent when switching modes

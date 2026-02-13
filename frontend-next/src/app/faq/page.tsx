@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PublicNavbar } from "../../components/PublicNavbar";
-import { Footer } from "../../components/Footer";
+import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
 import { FAQAccordion } from "../../components/FAQAccordion";
 
@@ -55,7 +54,7 @@ const faqData: FAQItem[] = [
     category: "General",
     question: "Cual es la diferencia entre quiniela, polla, prode y penca?",
     answer:
-      "Todos se refieren al mismo concepto: un juego de predicciones deportivas entre amigos. El nombre cambia segun el pais: en Mexico se dice 'quiniela', en Colombia y Chile 'polla', en Argentina 'prode', en Uruguay 'penca', y en Espana 'porra'. Picks4All funciona para todos — no importa como lo llames en tu pais.",
+      "Todos se refieren al mismo concepto: un juego de predicciones deportivas entre amigos. El nombre cambia segun el pais: en Mexico se dice 'quiniela', en Colombia y Chile 'polla', en Argentina 'prode', en Uruguay 'penca', y en España 'porra'. Picks4All funciona para todos — no importa como lo llames en tu pais.",
   },
   {
     category: "General",
@@ -173,8 +172,7 @@ export default function FAQPage() {
   return (
     <>
       <JsonLd data={faqJsonLd} />
-      <PublicNavbar />
-
+      <PublicPageWrapper>
       <div style={{ background: "var(--bg)" }}>
         {/* Header */}
         <section
@@ -279,7 +277,7 @@ export default function FAQPage() {
           <p
             style={{
               fontSize: "1.1rem",
-              opacity: 0.9,
+              color: "rgba(255,255,255,0.9)",
               marginBottom: 32,
             }}
           >
@@ -303,7 +301,7 @@ export default function FAQPage() {
         </section>
       </div>
 
-      <Footer />
+      </PublicPageWrapper>
     </>
   );
 }
