@@ -3481,6 +3481,90 @@ KICKOFF              +5min                    +110min                Cada 5min
 
 ---
 
+## ADR-033: Next.js Migration (SSR + SEO)
+
+**Date:** 2026-02-13
+**Status:** Accepted
+**Deciders:** Juan, Claude
+**Tags:** #architecture #frontend #seo #deployment
+
+### Context
+
+The platform frontend was a React SPA (Vite) with no server-side rendering. This created critical limitations:
+- **No SEO**: Search engine crawlers see empty HTML divs, zero indexable content
+- **No social sharing**: OG tags not present in initial HTML, so WhatsApp/Twitter/LinkedIn show blank previews
+- **No regional SEO**: Platform targets all Spanish-speaking countries with different terms (quiniela, polla, prode, penca, porra) — need indexable landing pages
+- **World Cup 2026 approaching**: Need organic traffic from searches like "quiniela mundial 2026 gratis"
+
+### Decision
+
+Migrate frontend from React SPA (Vite) to **Next.js App Router** with:
+- **Blue-green deployment**: New `/frontend-next` project deployed as separate Railway service
+- **SSR for public pages**: Landing, FAQ, Cómo Funciona, regional pages, legal
+- **Client components for authenticated pages**: Dashboard, Pool, Profile, Admin (same auth via localStorage)
+- **Spanish URLs**: `/como-funciona`, `/terminos`, `/privacidad`, `/que-es-una-quiniela`
+- **Regional landing pages**: `/polla-futbolera`, `/prode-deportivo`, `/penca-futbol`, `/porra-deportiva`
+- **Full SEO stack**: metadata API, JSON-LD structured data, sitemap.xml, robots.txt, OG images
+
+### Rationale
+
+- Next.js App Router provides SSR/SSG out of the box with zero config
+- Metadata API is type-safe and generates all meta/OG tags automatically
+- `output: 'standalone'` works perfectly with Railway/nixpacks
+- Blue-green approach means zero downtime — switch domain when ready
+- Same API, same auth tokens — backend unchanged
+
+### Consequences
+
+**Positive:**
+- ✅ Full SEO: All public content visible to crawlers in initial HTML
+- ✅ Social sharing works (OG tags rendered server-side)
+- ✅ Regional SEO captures traffic from 10+ Spanish-speaking countries
+- ✅ Google Search Console verified, sitemap submitted, pages indexed
+- ✅ Google Analytics (GA4) integrated
+- ✅ PageSpeed: Performance 93, Accessibility 95, Best Practices 96, SEO 100
+- ✅ Core Web Vitals optimized (modern browserslist, no legacy polyfills)
+
+**Negative:**
+- ⚠️ Two frontend projects during transition (old SPA still on Railway)
+- ⚠️ Slightly more complex deployment (Next.js standalone vs static Vite build)
+- ⚠️ `beforeInteractive` script strategy needed for Google Identity Services on Safari
+
+### Implementation Notes
+
+**Key files:**
+- `frontend-next/src/app/layout.tsx` — Root layout with global metadata, GA4, Google Identity Services
+- `frontend-next/src/app/page.tsx` — Landing page (SSR)
+- `frontend-next/src/middleware.ts` — www → non-www 301 redirect
+- `frontend-next/src/app/sitemap.ts` — Dynamic sitemap
+- `frontend-next/src/app/robots.ts` — Dynamic robots.txt
+- `frontend-next/src/app/icon.tsx` — Dynamic favicon (branded P)
+- `frontend-next/src/components/JsonLd.tsx` — Reusable structured data helper
+
+**SEO pages:**
+- `/como-funciona` — How it works (SSR)
+- `/faq` — FAQ with FAQPage JSON-LD schema
+- `/que-es-una-quiniela` — Regional glossary (DefinedTermSet schema)
+- `/polla-futbolera`, `/prode-deportivo`, `/penca-futbol`, `/porra-deportiva` — Regional landing pages
+- `/terminos`, `/privacidad` — Legal pages (SSR)
+
+**Railway config:**
+- Service: Frontend-Next (ad6cc321-0e26-454b-8253-a2b67f49a050)
+- Domain: picks4all.com + www.picks4all.com
+- Start command: `node .next/standalone/server.js`
+
+**Safari Google login fix:**
+- `use_fedcm_for_prompt: false` in Google Identity Services init (Safari doesn't support FedCM)
+- Script loaded with `strategy="beforeInteractive"` (Safari ITP delays afterInteractive)
+- Retry timeout increased from 5s to 10s
+
+### Related Decisions
+
+- ADR-030: Slide-in Auth Panel (migrated to Next.js)
+- ADR-031: Auto Results (backend unchanged)
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.3.0:**
@@ -3501,14 +3585,17 @@ KICKOFF              +5min                    +110min                Cada 5min
 **v0.3.5:**
 - [x] Comprehensive Code Review ✅ (2026-02-10) — findings documented in CURRENT_STATE.md
 
+**v0.4.0:**
+- [x] ADR-033: Next.js Migration ✅ (2026-02-13)
+
 **v1.0:**
-- [ ] ADR-033: PWA + Service Worker
-- [ ] ADR-034: Redis caching layer
+- [ ] ADR-034: PWA + Service Worker
+- [ ] ADR-035: Redis caching layer
 
 **v2.0:**
-- [ ] ADR-035: Multi-sport support architecture
-- [ ] ADR-036: WebSocket for real-time updates
-- [ ] ADR-037: Facebook/Apple OAuth providers
+- [ ] ADR-036: Multi-sport support architecture
+- [ ] ADR-037: WebSocket for real-time updates
+- [ ] ADR-038: Facebook/Apple OAuth providers
 
 ---
 

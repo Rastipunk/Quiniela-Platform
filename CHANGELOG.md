@@ -15,6 +15,58 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.4.0] - 2026-02-13
+
+### Next.js Migration + SEO + Google Analytics (ADR-033)
+
+#### Added
+- **Next.js App Router Frontend** (`/frontend-next`)
+  - Full SSR for all public pages (landing, FAQ, how-it-works, legal, regional)
+  - Metadata API with type-safe title, description, OG tags per page
+  - JSON-LD structured data: Organization, FAQPage, DefinedTermSet, WebApplication
+  - Dynamic `sitemap.xml` and `robots.txt`
+  - Dynamic branded favicon (`icon.tsx` — purple gradient P)
+  - Dynamic OG image (`opengraph-image.tsx` — 1200x630)
+
+- **Regional SEO Pages** (5 new pages targeting Spanish-speaking countries)
+  - `/que-es-una-quiniela` — Glossary with all regional terms
+  - `/polla-futbolera` — Colombia, Chile, Venezuela
+  - `/prode-deportivo` — Argentina
+  - `/penca-futbol` — Uruguay
+  - `/porra-deportiva` — Spain
+  - Spanish URLs: `/como-funciona`, `/terminos`, `/privacidad`
+
+- **Google Analytics (GA4)** — Measurement ID `G-8JG2YTDLPH`
+- **Google Search Console** — Verified, sitemap submitted, pages indexed
+- **www → non-www redirect** — 301 via Next.js middleware
+- **Accessibility improvements** — `aria-current="page"` on nav, `aria-label` on CTA
+
+- **Authenticated Pages Migrated**
+  - Login/Register with Google OAuth consent flow
+  - Forgot Password, Reset Password, Verify Email
+  - Dashboard with PoolConfigWizard + PhaseConfigStep
+  - Pool page with all 16 sub-components (TeamFlag, GroupStandingsCard, KnockoutMatchCard, etc.)
+  - Profile with EmailPreferences + EmailVerificationBanner
+  - Admin pages (Email Settings, Feedback Viewer)
+  - Authenticated layout with AuthGuard + NavBar + Footer
+
+#### Fixed
+- **Google Sign-In on Safari** — Disabled FedCM (`use_fedcm_for_prompt: false`), changed script to `beforeInteractive`, increased retry timeout to 10s
+- **www redirect port 8080 bug** — Middleware was including Railway internal port in redirect URL
+- **Backend Railway build** — Added `NPM_CONFIG_PRODUCTION=false` so devDependencies install during build
+
+#### Changed
+- **Tab title** — Shows "Picks4All" first instead of "Quinielas Deportivas..."
+- **Modern browsers only** — browserslist targets Chrome 87+, Firefox 78+, Safari 14+, Edge 88+ (eliminates ~13KB legacy polyfills)
+
+#### Technical
+- PageSpeed Insights: Performance 93, Accessibility 95, Best Practices 96, SEO 100
+- Railway service: Frontend-Next (ad6cc321-0e26-454b-8253-a2b67f49a050)
+- Domain: picks4all.com (switched from old Vite SPA)
+- ADR-033 documented in DECISION_LOG.md
+
+---
+
 ## [0.3.5] - 2026-02-10
 
 ### Code Review + Documentation Update + Deployment Fixes

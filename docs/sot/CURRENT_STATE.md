@@ -1,29 +1,62 @@
 # Current State - Quiniela Platform
 
-> **Ultima actualizacion:** 2026-02-10 | **Version:** v0.3.5 (Sprint 4 - Auto Results + Code Review)
+> **Ultima actualizacion:** 2026-02-13 | **Version:** v0.4.0 (Next.js Migration + SEO)
 
 ---
 
 ## Estado General
 
-**Resumen ejecutivo:** La plataforma está en estado v0.3.5. Esta versión incorpora el **sistema de resultados automáticos via API-Football** (Smart Sync), soporte para **UCL 2025-26**, deployment completo en **Railway** con dominio `picks4all.com`, y una **revisión profunda de código** con hallazgos documentados.
+**Resumen ejecutivo:** La plataforma está en estado v0.4.0. El frontend fue **migrado de React SPA (Vite) a Next.js App Router** con SSR completo, SEO profesional, páginas regionales para todo el mercado hispanohablante, Google Analytics y Google Search Console. PageSpeed Insights: Performance 93, Accessibility 95, Best Practices 96, **SEO 100**.
 
-### Cambios Recientes (v0.3.5 - 2026-02-10)
+### Cambios Recientes (v0.4.0 - 2026-02-13)
+
+1. **Next.js Migration (ADR-033)**
+   - Frontend completamente migrado a Next.js App Router (`/frontend-next`)
+   - SSR para todas las páginas públicas (landing, FAQ, cómo funciona, legal, regionales)
+   - Páginas autenticadas migradas: login, dashboard, pool, profile, admin
+   - Blue-green deployment: nuevo servicio Railway "Frontend-Next"
+   - Dominio picks4all.com apuntando al nuevo frontend
+
+2. **SEO Profesional**
+   - Metadata API con títulos, descripciones y OG tags por página
+   - JSON-LD: Organization, FAQPage, DefinedTermSet, WebApplication
+   - Sitemap dinámico con 10 páginas públicas
+   - robots.txt (bloquea /dashboard, /pools, /admin, /profile)
+   - Favicon dinámico con branding (P morada)
+   - OG image 1200x630 para social sharing
+   - URLs en español: /como-funciona, /terminos, /privacidad
+   - www → non-www redirect 301 via middleware
+
+3. **Páginas Regionales SEO**
+   - `/que-es-una-quiniela` — Glosario con todos los términos regionales
+   - `/polla-futbolera` — Colombia, Chile, Venezuela
+   - `/prode-deportivo` — Argentina
+   - `/penca-futbol` — Uruguay
+   - `/porra-deportiva` — España
+   - Internal linking entre todas las páginas regionales
+
+4. **Google Analytics + Search Console**
+   - GA4 integrado (G-8JG2YTDLPH)
+   - GSC verificado, sitemap submitted, páginas indexándose
+   - Core Web Vitals optimizados (browserslist moderno)
+
+5. **Safari Google Login Fix**
+   - Deshabilitado FedCM (`use_fedcm_for_prompt: false`)
+   - Script GIS cargado con `beforeInteractive`
+   - Timeout de retry aumentado de 5s a 10s
+   - Mensaje de error visible si Google no carga
+
+### Cambios v0.3.5 (2026-02-10)
 
 1. **Revisión Profunda de Código**
    - 24 hallazgos en Backend (4 CRITICAL, 6 HIGH, 8 MEDIUM, 6 LOW)
    - 30 hallazgos en Frontend (7 CRITICAL, 7 HIGH, 8 MEDIUM, 8 LOW)
-   - Auditoría de documentación vs código (4 áreas faltantes, 4 desactualizadas)
    - Ver sección "Code Review Findings" abajo para detalle completo
 
 2. **Railway Deployment Fixes**
    - Corregidos errores TypeScript en pickPresets.ts (union type) y pools.ts (optional chaining)
-   - Node.js bumped a v22 (backend) y v22.13 (frontend) en nixpacks
-   - Variables de entorno de API-Football configuradas en producción
-
-3. **Zod Validation Fix**
-   - Agregados `HOME_GOALS` y `AWAY_GOALS` a `MatchPickTypeKeySchema`
-   - Corrige error VALIDATION_ERROR al crear pools con preset CUMULATIVE
+   - Node.js bumped a v22 (backend)
+   - Added `NPM_CONFIG_PRODUCTION=false` para instalar devDependencies en build
 
 ### Cambios v0.3.4 (2026-02-04 a 2026-02-09)
 
@@ -109,6 +142,19 @@
 | **Smart Sync** | ✅ COMPLETO | ADR-032, 85-90% menos requests |
 | **UCL 2025-26** | ✅ COMPLETO | 45 partidos, 9 fases, seeded |
 | **Custom Domain** | ✅ COMPLETO | picks4all.com via Cloudflare |
+
+### Sprint 5 - Next.js Migration + SEO
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| **Next.js Migration** | ✅ COMPLETO | ADR-033, App Router, SSR |
+| **SEO Profesional** | ✅ COMPLETO | Metadata, JSON-LD, sitemap, robots |
+| **Páginas Regionales** | ✅ COMPLETO | 5 páginas (polla, prode, penca, porra, glosario) |
+| **Google Analytics** | ✅ COMPLETO | GA4 G-8JG2YTDLPH |
+| **Google Search Console** | ✅ COMPLETO | Verificado, sitemap submitted |
+| **Core Web Vitals** | ✅ COMPLETO | 93/95/96/100 PageSpeed |
+| **Safari Google Fix** | ✅ COMPLETO | FedCM disabled, beforeInteractive |
+| **www Redirect** | ✅ COMPLETO | 301 via middleware |
+| **Branded Favicon** | ✅ COMPLETO | Dynamic icon.tsx (P morada) |
 
 ### Advanced Pick Types System
 
@@ -201,17 +247,38 @@ backend/
     migrations/      # 30+ migraciones
 ```
 
-### Frontend
+### Frontend (Next.js — `/frontend-next`)
 ```
-frontend/
+frontend-next/
   src/
-    pages/           # LoginPage, DashboardPage, PoolPage, ProfilePage, etc.
-    components/      # UI components (wizard, pickers, cards, auth panel)
+    app/             # Next.js App Router pages
+    │ ├── layout.tsx           # Root layout (metadata, GA4, Google Identity)
+    │ ├── page.tsx             # Landing page (SSR)
+    │ ├── login/page.tsx       # Login/Register
+    │ ├── (authenticated)/     # Route group with AuthGuard
+    │ │ ├── dashboard/page.tsx
+    │ │ ├── pools/[poolId]/page.tsx
+    │ │ ├── profile/page.tsx
+    │ │ └── admin/...
+    │ ├── como-funciona/       # Public SSR pages
+    │ ├── faq/
+    │ ├── que-es-una-quiniela/
+    │ ├── polla-futbolera/     # Regional SEO pages
+    │ ├── prode-deportivo/
+    │ ├── penca-futbol/
+    │ ├── porra-deportiva/
+    │ ├── sitemap.ts           # Dynamic sitemap
+    │ ├── robots.ts            # Dynamic robots.txt
+    │ ├── icon.tsx             # Dynamic favicon
+    │ └── opengraph-image.tsx  # Dynamic OG image
+    components/      # UI components (NavBar, PoolConfigWizard, etc.)
     lib/             # api.ts, auth.ts, timezone.ts
-    hooks/           # useIsMobile, usePoolNotifications
-    types/           # Shared types
+    hooks/           # useIsMobile, useAuth, usePoolNotifications
     data/            # Static data (teamFlags)
+    middleware.ts    # www → non-www redirect
 ```
+
+> **Nota:** El frontend antiguo (`/frontend` — Vite SPA) aún existe en el repo pero está congelado. El servicio "Frontend" antiguo en Railway debería eliminarse.
 
 ### Base de Datos (PostgreSQL)
 - 30+ modelos Prisma
@@ -314,14 +381,15 @@ API_FOOTBALL_RATE_LIMIT=10
 SMART_SYNC_ENABLED=true
 ```
 
-### Frontend
-- Vite env via `import.meta.env`
-- `VITE_API_URL` - API base URL
+### Frontend (Next.js)
+- `NEXT_PUBLIC_API_URL` — API base URL
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — Google OAuth client ID
 
 ### Railway (Production)
 - `releaseCommand` en railway.toml ejecuta `npx prisma migrate deploy` automáticamente
 - `trust proxy` habilitado para rate limiting correcto
-- NIXPACKS_NODE_VERSION: 22 (backend), 22.13 (frontend)
+- Backend: `NPM_CONFIG_PRODUCTION=false` + NIXPACKS_NODE_VERSION=22
+- Frontend-Next: `output: 'standalone'`, start command `node .next/standalone/server.js`
 
 ---
 
@@ -340,13 +408,14 @@ SMART_SYNC_ENABLED=true
 | API | CNAME | `api` | `a1q8fzl4.up.railway.app` |
 
 **URLs de Producción:**
-- Frontend: `https://picks4all.com` / `https://www.picks4all.com`
+- Frontend (Next.js): `https://picks4all.com` (www redirige a non-www)
 - Backend API: `https://api.picks4all.com`
 
 **Railway Project:** poetic-success (ID: 40a0c639-e009-4245-aa0a-65e8fc313625)
 - Backend service: daa3af02-3f89-443b-bb2e-0e028f86146a
-- Frontend service: 6fc1cfb2-178c-4e2b-a13c-8f9d77aefb0b
+- Frontend-Next service: ad6cc321-0e26-454b-8253-a2b67f49a050
 - Postgres service: f2551801-2c01-41e8-81d3-b7d44105b631
+- Frontend (Vite - LEGACY, pendiente de eliminar): 6fc1cfb2-178c-4e2b-a13c-8f9d77aefb0b
 
 ### Instances en Producción
 | Instance | Template Key | Status | Modo | Partidos |
@@ -542,7 +611,7 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 - [API_SPEC.md](API_SPEC.md) - Contratos de API
 - [BUSINESS_RULES.md](BUSINESS_RULES.md) - Reglas de negocio
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Arquitectura tecnica
-- [DECISION_LOG.md](DECISION_LOG.md) - ADRs (32 documentados)
+- [DECISION_LOG.md](DECISION_LOG.md) - ADRs (33 documentados)
 
 ---
 
@@ -565,13 +634,19 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 - `backend/src/lib/scoringBreakdown.ts` - Generación de breakdown por partido
 - `backend/src/validation/pickConfig.ts` - Zod schemas de configuración
 
-### Frontend - UI Components
-- `frontend/src/components/PoolConfigWizard.tsx` - Wizard de configuración con presets
-- `frontend/src/components/PickRulesDisplay.tsx` - Muestra reglas según modo
-- `frontend/src/components/PlayerSummary.tsx` - Resumen personal de puntos
-- `frontend/src/components/AuthSlidePanel.tsx` - Panel slide-in de login
-- `frontend/src/pages/LandingPage.tsx` - Página pública principal
+### Frontend (Next.js) - Key Files
+- `frontend-next/src/app/layout.tsx` - Root layout (metadata, GA4, Google Identity Services)
+- `frontend-next/src/app/page.tsx` - Landing page (SSR, SEO)
+- `frontend-next/src/app/login/page.tsx` - Login/Register with Google OAuth
+- `frontend-next/src/app/(authenticated)/layout.tsx` - Auth layout (AuthGuard + NavBar)
+- `frontend-next/src/app/(authenticated)/pools/[poolId]/page.tsx` - Pool page
+- `frontend-next/src/middleware.ts` - www → non-www redirect
+- `frontend-next/src/components/PoolConfigWizard.tsx` - Wizard de configuración con presets
+- `frontend-next/src/components/GroupStandingsCard.tsx` - Drag-and-drop standings
+- `frontend-next/src/components/JsonLd.tsx` - Structured data helper
+- `frontend-next/src/lib/api.ts` - API client (55 funciones)
+- `frontend-next/src/hooks/useAuth.ts` - Client-side auth hook
 
 ---
 
-**Última actualización:** 2026-02-10 | Sprint 4 v0.3.5
+**Última actualización:** 2026-02-13 | Sprint 5 v0.4.0
