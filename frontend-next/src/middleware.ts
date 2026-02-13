@@ -6,9 +6,12 @@ export function middleware(request: NextRequest) {
 
   // Redirect www → non-www
   if (host.startsWith("www.")) {
-    const newUrl = new URL(request.url);
-    newUrl.host = host.replace("www.", "");
-    return NextResponse.redirect(newUrl, 301);
+    const nonWwwHost = host.replace("www.", "");
+    const url = new URL(
+      request.nextUrl.pathname + request.nextUrl.search,
+      `https://${nonWwwHost}`
+    );
+    return NextResponse.redirect(url, 301);
   }
 
   return NextResponse.next();
