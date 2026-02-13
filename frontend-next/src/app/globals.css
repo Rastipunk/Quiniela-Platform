@@ -1,0 +1,370 @@
+/* ===========================
+   Picks4All — Light UI (Next.js)
+   Forzado a tema claro (no depende del SO/navegador)
+   =========================== */
+
+/* Forzar tema claro en TODO el documento */
+:root,
+html,
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+
+/* Deshabilitar dark mode del sistema */
+@media (prefers-color-scheme: dark) {
+  :root,
+  html,
+  body {
+    color-scheme: light only !important;
+    -webkit-color-scheme: light only !important;
+    background-color: #f4f5f7 !important;
+    color: #111827 !important;
+  }
+
+  * {
+    color-scheme: light only !important;
+    -webkit-color-scheme: light only !important;
+  }
+
+  input,
+  select,
+  textarea {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af !important;
+  }
+
+  button {
+    color-scheme: light only !important;
+  }
+
+  .card,
+  [class*="card"] {
+    background-color: var(--surface, #ffffff) !important;
+  }
+}
+
+:root {
+  /* Tipografia base */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  /* Paleta */
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+
+  /* Marca/acciones */
+  --primary: #111827;
+  --primary-hover: #0b1220;
+
+  /* Estados */
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #991b1b;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reset suave */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Links */
+a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Tipos */
+h1, h2, h3 {
+  margin: 0 0 10px 0;
+  letter-spacing: -0.02em;
+}
+p {
+  margin: 0 0 10px 0;
+  color: var(--muted);
+}
+
+/* Inputs */
+input, select, textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9ca3af;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+/* Botones */
+button {
+  font: inherit;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+button:hover {
+  background: var(--primary-hover);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Tarjetas */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* Alertas */
+.alert-error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+/* ===========================
+   Animations
+   =========================== */
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+
+.tabs-scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===========================
+   Mobile-First Responsive
+   =========================== */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+@media (max-width: 640px) {
+  input, select, textarea {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 12px 14px;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 12px 16px;
+  }
+
+  a {
+    display: inline-block;
+    padding: 4px 0;
+  }
+
+  body {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+
+  .card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+}
+
+/* iOS scroll improvements */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Touch feedback */
+.touch-feedback {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.touch-feedback:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* Slide animations */
+@keyframes slideInUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideInDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (max-width: 640px) {
+  .modal-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 90vh;
+    border-radius: 16px 16px 0 0;
+    animation: slideInUp 0.25s ease;
+  }
+}
+
+@supports (padding: max(0px)) {
+  .safe-area-bottom {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .safe-area-top {
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+}
+
+/* ===========================
+   Legal pages markdown content
+   =========================== */
+.legal-content h1 {
+  font-size: 1.75rem;
+  margin: 0 0 8px 0;
+  color: var(--text);
+}
+.legal-content h2 {
+  font-size: 1.25rem;
+  margin: 32px 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.legal-content h3 {
+  font-size: 1.1rem;
+  margin: 24px 0 8px 0;
+  color: var(--text);
+}
+.legal-content p {
+  margin: 0 0 16px 0;
+  color: var(--text);
+}
+.legal-content ul, .legal-content ol {
+  margin: 0 0 16px 0;
+  padding-left: 24px;
+}
+.legal-content li {
+  margin-bottom: 8px;
+  color: var(--text);
+}
+.legal-content strong {
+  font-weight: 600;
+}
+.legal-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+.legal-content a {
+  color: #2563eb;
+}
+.legal-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+}
+.legal-content th, .legal-content td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+}
+.legal-content th {
+  background: var(--surface-2);
+  font-weight: 600;
+}

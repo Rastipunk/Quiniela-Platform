@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && npm run build"
+
+[deploy]
+startCommand = "node .next/standalone/server.js"
+healthcheckPath = "/"
+healthcheckTimeout = 30
+
+[build.env]
+NODE_ENV = "production"
+NIXPACKS_NODE_VERSION = "22"
