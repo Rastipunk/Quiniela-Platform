@@ -5,7 +5,7 @@ import { LandingContent } from "../components/LandingContent";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Quinielas Deportivas Gratis con Amigos — Polla, Prode, Penca | Picks4All",
+    absolute: "Picks4All — Quinielas Deportivas Gratis con Amigos",
   },
   description:
     "Crea tu quiniela, polla o prode gratis. Invita amigos, haz predicciones de futbol y compite en el leaderboard. Mundial 2026 y Champions League. 100% gratis, sin apuestas.",
