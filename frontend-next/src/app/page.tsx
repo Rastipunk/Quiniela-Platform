@@ -16,6 +16,9 @@ export const metadata: Metadata = {
     url: "https://picks4all.com",
     type: "website",
   },
+  alternates: {
+    canonical: "https://picks4all.com",
+  },
 };
 
 export default function LandingPage() {
@@ -33,10 +36,29 @@ export default function LandingPage() {
           applicationSubCategory: "Game",
           operatingSystem: "Web",
           inLanguage: "es",
+          image: "https://picks4all.com/opengraph-image",
           offers: {
             "@type": "Offer",
             price: "0",
             priceCurrency: "USD",
+          },
+          publisher: {
+            "@type": "Organization",
+            name: "Picks4All",
+            url: "https://picks4all.com",
+          },
+          featureList: [
+            "Crear quinielas deportivas gratis",
+            "Invitar amigos con codigo de invitacion",
+            "Predicciones de partidos de futbol",
+            "Leaderboard automatico en tiempo real",
+            "Reglas de puntuacion personalizables",
+            "Compatible con Mundial 2026 y Champions League",
+          ],
+          potentialAction: {
+            "@type": "ViewAction",
+            target: "https://picks4all.com",
+            name: "Crear Quiniela Gratis",
           },
         }}
       />

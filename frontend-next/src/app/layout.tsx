@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { BetaFeedbackBar } from "../components/BetaFeedbackBar";
+import { JsonLd } from "../components/JsonLd";
 
 export const viewport: Viewport = {
   colorScheme: "light",
@@ -36,19 +37,15 @@ export const metadata: Metadata = {
     locale: "es_LA",
     url: "https://picks4all.com",
     siteName: "Picks4All",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Picks4All — Quinielas, Pollas y Prodes de Futbol Gratis",
-      },
-    ],
   },
   twitter: { card: "summary_large_image" },
   metadataBase: new URL("https://picks4all.com"),
   alternates: {
-    languages: { es: "https://picks4all.com" },
+    canonical: "https://picks4all.com",
+    languages: {
+      es: "https://picks4all.com",
+      "x-default": "https://picks4all.com",
+    },
   },
   other: {
     "color-scheme": "light only",
@@ -64,7 +61,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" style={{ colorScheme: "light only" } as React.CSSProperties}>
+      <head>
+        <link rel="preconnect" href="https://accounts.google.com" />
+        <link rel="dns-prefetch" href="https://accounts.google.com" />
+        <link rel="dns-prefetch" href="https://media.api-sports.io" />
+        <link rel="dns-prefetch" href="https://flagcdn.com" />
+      </head>
       <body style={{ backgroundColor: "#f4f5f7", color: "#111827" }}>
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Picks4All",
+            url: "https://picks4all.com",
+            logo: "https://picks4all.com/opengraph-image",
+            description:
+              "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de futbol",
+          }}
+        />
         <BetaFeedbackBar />
         {children}
         {/* Google Identity Services (for Google login) */}

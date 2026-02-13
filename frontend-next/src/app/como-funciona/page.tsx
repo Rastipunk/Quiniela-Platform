@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
+import { Breadcrumbs } from "../../components/Breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Como Crear tu Quiniela (Polla, Prode) en 3 Pasos — Gratis",
@@ -13,6 +14,9 @@ export const metadata: Metadata = {
       "Aprende a crear una quiniela deportiva online, invitar amigos y competir con predicciones de futbol. Gratis, facil y sin apuestas.",
     url: "https://picks4all.com/como-funciona",
     type: "website",
+  },
+  alternates: {
+    canonical: "https://picks4all.com/como-funciona",
   },
 };
 
@@ -79,6 +83,12 @@ function StepItem({
 export default function ComoFuncionaPage() {
   return (
     <>
+      <Breadcrumbs
+        items={[
+          { name: "Inicio", url: "https://picks4all.com" },
+          { name: "Como Funciona", url: "https://picks4all.com/como-funciona" },
+        ]}
+      />
       <JsonLd
         data={{
           "@context": "https://schema.org",

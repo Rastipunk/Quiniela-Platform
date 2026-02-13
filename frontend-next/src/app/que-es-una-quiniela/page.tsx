@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
+import { Breadcrumbs } from "../../components/Breadcrumbs";
 
 export const metadata: Metadata = {
   title:
@@ -14,6 +15,9 @@ export const metadata: Metadata = {
       "La historia de las quinielas deportivas: desde las porras españolas del siglo XIX hasta las pollas mundialistas, el prode argentino y las pencas uruguayas.",
     url: "https://picks4all.com/que-es-una-quiniela",
     type: "article",
+  },
+  alternates: {
+    canonical: "https://picks4all.com/que-es-una-quiniela",
   },
 };
 
@@ -104,15 +108,37 @@ export default function QueEsUnaQuinielaPage() {
     headline: "¿Qué es una Quiniela? Historia, Orígenes y Nombres por País",
     description: "La historia de las quinielas deportivas en el mundo hispanohablante",
     inLanguage: "es",
+    datePublished: "2026-02-12",
+    dateModified: "2026-02-13",
+    image: "https://picks4all.com/opengraph-image",
+    author: {
+      "@type": "Organization",
+      name: "Picks4All",
+      url: "https://picks4all.com",
+    },
     publisher: {
       "@type": "Organization",
       name: "Picks4All",
       url: "https://picks4all.com",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://picks4all.com/opengraph-image",
+      },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": "https://picks4all.com/que-es-una-quiniela",
     },
   };
 
   return (
     <>
+      <Breadcrumbs
+        items={[
+          { name: "Inicio", url: "https://picks4all.com" },
+          { name: "¿Qué es una Quiniela?", url: "https://picks4all.com/que-es-una-quiniela" },
+        ]}
+      />
       <JsonLd data={definedTermSetJsonLd} />
       <JsonLd data={faqJsonLd} />
       <JsonLd data={articleJsonLd} />

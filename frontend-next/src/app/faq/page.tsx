@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PublicPageWrapper } from "../../components/PublicPageWrapper";
 import { JsonLd } from "../../components/JsonLd";
 import { FAQAccordion } from "../../components/FAQAccordion";
+import { Breadcrumbs } from "../../components/Breadcrumbs";
 
 export const metadata: Metadata = {
   title:
@@ -15,6 +16,9 @@ export const metadata: Metadata = {
       "Que es una quiniela? Es gratis? Como funciona una polla futbolera? Todas las respuestas sobre predicciones deportivas entre amigos.",
     url: "https://picks4all.com/faq",
     type: "website",
+  },
+  alternates: {
+    canonical: "https://picks4all.com/faq",
   },
 };
 
@@ -171,6 +175,12 @@ export default function FAQPage() {
 
   return (
     <>
+      <Breadcrumbs
+        items={[
+          { name: "Inicio", url: "https://picks4all.com" },
+          { name: "Preguntas Frecuentes", url: "https://picks4all.com/faq" },
+        ]}
+      />
       <JsonLd data={faqJsonLd} />
       <PublicPageWrapper>
       <div style={{ background: "var(--bg)" }}>
