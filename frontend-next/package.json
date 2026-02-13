@@ -16,6 +16,14 @@
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
+  "browserslist": [
+    "chrome >= 87",
+    "firefox >= 78",
+    "safari >= 14",
+    "edge >= 88",
+    "not dead",
+    "not ie 11"
+  ],
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",

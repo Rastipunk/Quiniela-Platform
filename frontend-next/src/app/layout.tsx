@@ -65,8 +65,6 @@ export default function RootLayout({
   return (
     <html lang="es" style={{ colorScheme: "light only" } as React.CSSProperties}>
       <head>
-        <link rel="preconnect" href="https://accounts.google.com" />
-        <link rel="dns-prefetch" href="https://accounts.google.com" />
         <link rel="dns-prefetch" href="https://media.api-sports.io" />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
       </head>
