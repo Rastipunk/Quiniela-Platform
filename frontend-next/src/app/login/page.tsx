@@ -121,6 +121,8 @@ export default function LoginPage() {
     }
   };
 
+  const [googleLoadFailed, setGoogleLoadFailed] = useState(false);
+
   // Inicializar Google Sign In (with retry for script loading)
   useEffect(() => {
     const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -130,37 +132,50 @@ export default function LoginPage() {
       return;
     }
 
+    setGoogleLoadFailed(false);
+    let isMounted = true;
+
     const initGoogle = () => {
       if (!window.google || !googleButtonRef.current) return false;
 
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCallback,
-      });
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+          use_fedcm_for_prompt: false, // Safari no soporta FedCM bien
+        });
 
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "outline",
-        size: "large",
-        width: googleButtonRef.current.offsetWidth,
-        text: mode === "login" ? "signin_with" : "signup_with",
-        locale: "es",
-      });
-      return true;
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: "outline",
+          size: "large",
+          width: googleButtonRef.current.offsetWidth,
+          text: mode === "login" ? "signin_with" : "signup_with",
+          locale: "es",
+        });
+        return true;
+      } catch (err) {
+        console.error("Error initializing Google Sign-In:", err);
+        return false;
+      }
     };
 
     // Try immediately
-    if (initGoogle()) return;
+    if (initGoogle()) return () => { isMounted = false; };
 
-    // Retry until script loads (max 5 seconds)
+    // Retry until script loads (max 10 seconds — Safari ITP can delay loading)
     let attempts = 0;
     const interval = setInterval(() => {
+      if (!isMounted) { clearInterval(interval); return; }
       attempts++;
-      if (initGoogle() || attempts >= 50) {
+      if (initGoogle()) {
         clearInterval(interval);
+      } else if (attempts >= 100) {
+        clearInterval(interval);
+        if (isMounted) setGoogleLoadFailed(true);
       }
     }, 100);
 
-    return () => clearInterval(interval);
+    return () => { isMounted = false; clearInterval(interval); };
   }, [mode]);
 
   // Reset consent when switching modes
@@ -571,6 +586,24 @@ export default function LoginPage() {
           </div>
 
           <div ref={googleButtonRef} style={{ display: "flex", justifyContent: "center" }} />
+
+          {googleLoadFailed && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: "10px 14px",
+                background: "#fef3c7",
+                border: "1px solid #f59e0b",
+                borderRadius: 8,
+                fontSize: 13,
+                color: "#92400e",
+                textAlign: "center",
+                lineHeight: 1.4,
+              }}
+            >
+              Google Sign-In no pudo cargar. Intenta recargar la página o usa email/contraseña.
+            </div>
+          )}
         </div>
 
         {/* Disclaimer legal en footer */}

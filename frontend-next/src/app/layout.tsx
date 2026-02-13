@@ -103,10 +103,10 @@ export default function RootLayout({
             gtag('config', 'G-8JG2YTDLPH');
           `}
         </Script>
-        {/* Google Identity Services (for Google login) */}
+        {/* Google Identity Services (for Google login) — beforeInteractive for Safari ITP compatibility */}
         <Script
           src="https://accounts.google.com/gsi/client"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
         />
       </body>
     </html>
