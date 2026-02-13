@@ -84,6 +84,19 @@ export default function RootLayout({
         />
         <BetaFeedbackBar />
         {children}
+        {/* Google Analytics (GA4) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-8JG2YTDLPH"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-8JG2YTDLPH');
+          `}
+        </Script>
         {/* Google Identity Services (for Google login) */}
         <Script
           src="https://accounts.google.com/gsi/client"
