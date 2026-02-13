@@ -7,6 +7,7 @@ nixpacksVersion = "latest"
 
 [build.env]
 NIXPACKS_NODE_VERSION = "22"
+NPM_CONFIG_PRODUCTION = "false"
 
 [deploy]
 # Comando que se ejecuta ANTES del deploy (ideal para migraciones)
