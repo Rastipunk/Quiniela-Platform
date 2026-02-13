@@ -37,6 +37,14 @@ export const metadata: Metadata = {
     locale: "es_LA",
     url: "https://picks4all.com",
     siteName: "Picks4All",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Picks4All — Quinielas deportivas gratis entre amigos",
+      },
+    ],
   },
   twitter: { card: "summary_large_image" },
   metadataBase: new URL("https://picks4all.com"),

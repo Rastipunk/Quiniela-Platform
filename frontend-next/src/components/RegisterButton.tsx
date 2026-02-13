@@ -16,6 +16,7 @@ export function RegisterButton({
   return (
     <button
       onClick={() => openAuthPanel("register")}
+      aria-label="Crear cuenta gratis en Picks4All"
       style={{
         background: "white",
         color: "#764ba2",

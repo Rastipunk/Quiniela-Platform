@@ -636,6 +636,67 @@ export default function QueEsUnaQuinielaPage() {
           </p>
         </article>
 
+        {/* Regional links */}
+        <section
+          style={{
+            padding: "48px 40px",
+            maxWidth: 800,
+            margin: "0 auto",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              marginBottom: 24,
+              color: "var(--text)",
+              textAlign: "center",
+            }}
+          >
+            Explora por region
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: 16,
+            }}
+          >
+            {[
+              { href: "/polla-futbolera", flag: "\u{1F1E8}\u{1F1F4}", label: "Polla Futbolera", region: "Colombia, Chile, Venezuela" },
+              { href: "/prode-deportivo", flag: "\u{1F1E6}\u{1F1F7}", label: "Prode Deportivo", region: "Argentina" },
+              { href: "/penca-futbol", flag: "\u{1F1FA}\u{1F1FE}", label: "Penca de Futbol", region: "Uruguay" },
+              { href: "/porra-deportiva", flag: "\u{1F1EA}\u{1F1F8}", label: "Porra Deportiva", region: "Espana" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "16px 20px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  textDecoration: "none",
+                  transition: "border-color 0.2s",
+                }}
+              >
+                <span style={{ fontSize: "1.5rem" }}>{item.flag}</span>
+                <div>
+                  <div style={{ fontWeight: 600, color: "var(--text)", fontSize: "0.95rem" }}>
+                    {item.label}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+                    {item.region}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* CTA */}
         <section
           style={{

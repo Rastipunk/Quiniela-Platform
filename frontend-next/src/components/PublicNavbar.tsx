@@ -63,6 +63,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
             <Link
               key={link.to}
               href={link.to}
+              aria-current={isActive(link.to) ? "page" : undefined}
               style={{
                 color: isActive(link.to) ? "white" : "rgba(255,255,255,0.7)",
                 textDecoration: "none",
@@ -244,6 +245,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
                   key={link.to}
                   href={link.to}
                   onClick={() => setShowMobileMenu(false)}
+                  aria-current={isActive(link.to) ? "page" : undefined}
                   style={{
                     display: "flex",
                     alignItems: "center",
