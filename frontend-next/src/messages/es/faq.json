@@ -1,0 +1,123 @@
+{
+  "hero": {
+    "title": "Preguntas Frecuentes",
+    "subtitle": "Encuentra respuestas a las preguntas más comunes sobre quinielas, pollas, prodes y pencas deportivas en Picks4All."
+  },
+  "contact": {
+    "title": "¿No encontraste lo que buscabas?",
+    "description": "Escríbenos y te responderemos lo antes posible.",
+    "button": "Contactar soporte"
+  },
+  "cta": {
+    "title": "¿Listo para empezar tu quiniela?",
+    "description": "Crea tu cuenta gratis y comienza a competir con tu polla, prode o penca.",
+    "button": "Crear cuenta gratis"
+  },
+  "breadcrumbs": {
+    "home": "Inicio",
+    "faq": "Preguntas Frecuentes"
+  },
+  "categories": ["General", "Para Hosts", "Para Jugadores", "Cuenta"],
+  "items": [
+    {
+      "category": "General",
+      "question": "¿Qué es Picks4All?",
+      "answer": "Picks4All es una plataforma gratuita para crear y participar en quinielas deportivas con tus amigos, familia o compañeros de trabajo. Haces predicciones sobre los resultados de partidos de fútbol y compites por puntos en un leaderboard. Ya sea que la conozcas como quiniela, polla, prode, penca o porra, aquí puedes jugar gratis."
+    },
+    {
+      "category": "General",
+      "question": "¿Es gratis usar Picks4All?",
+      "answer": "Sí, Picks4All es completamente gratis. Puedes crear pools (quinielas), invitar amigos y hacer predicciones sin ningún costo. No hay planes de pago obligatorios ni cargos ocultos para la funcionalidad principal."
+    },
+    {
+      "category": "General",
+      "question": "¿Esto es apuestas?",
+      "answer": "No. Picks4All es una plataforma de entretenimiento donde compites por puntos y posiciones en el ranking, no por dinero. No hay apuestas ni transacciones monetarias involucradas. Es simplemente una quiniela entre amigos para divertirse."
+    },
+    {
+      "category": "General",
+      "question": "¿Qué torneos están disponibles?",
+      "answer": "Actualmente tenemos disponible la Copa del Mundo 2026, el torneo más grande de la historia con 48 equipos y 104 partidos. Iremos agregando más torneos en el futuro, incluyendo Champions League y ligas locales."
+    },
+    {
+      "category": "General",
+      "question": "¿Cuál es la diferencia entre quiniela, polla, prode y penca?",
+      "answer": "Todos se refieren al mismo concepto: un juego de predicciones deportivas entre amigos. El nombre cambia según el país: en México se dice 'quiniela', en Colombia y Chile 'polla', en Argentina 'prode', en Uruguay 'penca', y en España 'porra'. Picks4All funciona para todos — no importa cómo lo llames en tu país."
+    },
+    {
+      "category": "General",
+      "question": "¿Es legal jugar quinielas entre amigos?",
+      "answer": "Sí. Picks4All es una plataforma de entretenimiento gratuita donde no se apuesta dinero real. Las quinielas, pollas, prodes y pencas entre amigos son una tradición social completamente legal. No somos un sitio de apuestas ni de juegos de azar — es pura diversión y competencia sana entre amigos."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "¿Cómo creo un pool (quiniela)?",
+      "answer": "Después de crear tu cuenta, ve a 'Mis Pools' y haz clic en 'Crear Pool'. Elige el torneo, dale un nombre a tu quiniela, configura el sistema de puntos y el tiempo límite para predicciones. Una vez creado, recibirás un código de invitación para compartir."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "¿Puedo personalizar las reglas de puntuación?",
+      "answer": "Sí. Puedes elegir entre varios presets de puntuación o configurar los puntos para cada tipo de acierto: marcador exacto, resultado correcto (local/empate/visitante), goles del local correctos, goles del visitante correctos, y diferencia de goles."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "¿Cómo invito personas a mi pool?",
+      "answer": "Cada pool tiene un código de invitación único. Comparte este código por WhatsApp, email, o cualquier medio. Quien tenga el código puede unirse a tu quiniela después de crear su cuenta."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "¿Cómo publico los resultados?",
+      "answer": "Como Host, después de que termine un partido, ve al partido en tu pool y haz clic en 'Publicar Resultado'. Ingresa el marcador oficial y el leaderboard se actualizará automáticamente."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "¿Qué pasa si me equivoco al publicar un resultado?",
+      "answer": "Puedes corregir un resultado publicado en cualquier momento. El sistema te pedirá una razón para la corrección (errata) y actualizará los puntos automáticamente. Todas las correcciones quedan registradas para transparencia."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "¿Puedo nombrar co-administradores?",
+      "answer": "Sí. Puedes nombrar a otros miembros del pool como co-administradores para que te ayuden a publicar resultados. Ellos tendrán los mismos permisos que tú para administrar la quiniela."
+    },
+    {
+      "category": "Para Jugadores",
+      "question": "¿Cómo me uno a un pool?",
+      "answer": "Necesitas el código de invitación que te compartió el Host. Después de crear tu cuenta o iniciar sesión, ve a 'Mis Pools' y haz clic en 'Unirse a Pool'. Ingresa el código y estarás dentro de la quiniela."
+    },
+    {
+      "category": "Para Jugadores",
+      "question": "¿Hasta cuándo puedo hacer mis predicciones?",
+      "answer": "Cada partido tiene un deadline para predicciones, generalmente 10 minutos antes del inicio del partido (el Host puede configurar esto). Después del deadline, no podrás modificar tu predicción para ese partido."
+    },
+    {
+      "category": "Para Jugadores",
+      "question": "¿Puedo cambiar mi predicción?",
+      "answer": "Sí, puedes modificar tu predicción cuantas veces quieras ANTES del deadline. Una vez que el deadline pasa, tu predicción queda bloqueada."
+    },
+    {
+      "category": "Para Jugadores",
+      "question": "¿Cómo se calculan los puntos?",
+      "answer": "Los puntos se acumulan según tus aciertos. Por ejemplo, con el preset estándar: marcador exacto = 10 pts, resultado correcto = 5 pts, goles del local correctos = 2 pts, goles del visitante correctos = 2 pts, diferencia de goles = 1 pt. Si aciertas el marcador exacto, ganas puntos por todos los criterios."
+    },
+    {
+      "category": "Para Jugadores",
+      "question": "¿Puedo participar en varios pools?",
+      "answer": "Sí. Puedes unirte a tantos pools como quieras, incluso del mismo torneo. Cada quiniela tiene su propio leaderboard y reglas."
+    },
+    {
+      "category": "Cuenta",
+      "question": "¿Cómo creo una cuenta?",
+      "answer": "Haz clic en 'Crear cuenta gratis' e ingresa tu email, un nombre de usuario, tu nombre para mostrar y una contraseña. También puedes registrarte con tu cuenta de Google."
+    },
+    {
+      "category": "Cuenta",
+      "question": "¿Qué hago si olvidé mi contraseña?",
+      "answer": "En la página de inicio de sesión, haz clic en '¿Olvidaste tu contraseña?' e ingresa tu email. Recibirás un enlace para restablecer tu contraseña."
+    },
+    {
+      "category": "Cuenta",
+      "question": "¿Puedo cambiar mi nombre de usuario?",
+      "answer": "Tu nombre de usuario es único y no puede cambiarse una vez creada la cuenta. Sin embargo, puedes cambiar tu nombre para mostrar (display name) en cualquier momento desde tu perfil."
+    }
+  ]
+}

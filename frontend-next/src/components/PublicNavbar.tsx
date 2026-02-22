@@ -1,25 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/navigation";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { BrandLogo } from "./BrandLogo";
+import { LanguageSelector } from "./LanguageSelector";
 
 interface PublicNavbarProps {
   onOpenAuth?: () => void;
 }
 
 export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const navLinks = [
-    { to: "/", label: "Inicio" },
-    { to: "/como-funciona", label: "Como Funciona" },
-    { to: "/faq", label: "FAQ" },
-    { to: "/que-es-una-quiniela", label: "¿Qué es una quiniela?" },
+    { to: "/" as const, label: t("home") },
+    { to: "/como-funciona" as const, label: t("howItWorks") },
+    { to: "/faq" as const, label: t("faq") },
+    { to: "/que-es-una-quiniela" as const, label: t("whatIsQuiniela") },
   ];
 
   const isActive = (path: string) => pathname === path;
@@ -76,6 +78,8 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
             </Link>
           ))}
 
+          <LanguageSelector />
+
           <button
             onClick={onOpenAuth}
             style={{
@@ -93,7 +97,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
               transition: "background 0.2s ease",
             }}
           >
-            Ingresar
+            {t("login")}
           </button>
         </div>
       )}
@@ -114,12 +118,12 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
               cursor: "pointer",
             }}
           >
-            Ingresar
+            {t("login")}
           </button>
 
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            aria-label="Abrir menu"
+            aria-label={t("openMenu")}
             aria-expanded={showMobileMenu}
             style={{
               display: "flex",
@@ -216,10 +220,10 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
                 borderBottom: "1px solid rgba(255,255,255,0.1)",
               }}
             >
-              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>Menu</span>
+              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{t("menu")}</span>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                aria-label="Cerrar menu"
+                aria-label={t("closeMenu")}
                 style={{
                   width: TOUCH_TARGET.minimum,
                   height: TOUCH_TARGET.minimum,
@@ -264,6 +268,19 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
                   {link.label}
                 </Link>
               ))}
+
+              {/* Language Selector in mobile menu */}
+              <div
+                style={{
+                  padding: "1rem",
+                  borderTop: "1px solid rgba(255,255,255,0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+              >
+                <LanguageSelector />
+              </div>
             </div>
 
             <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
@@ -290,7 +307,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                Ingresar
+                {t("login")}
               </button>
             </div>
           </div>

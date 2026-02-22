@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useIsMobile } from "../hooks/useIsMobile";
-import { submitFeedback } from "../lib/api";
+import { useTranslations } from "next-intl";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { submitFeedback } from "@/lib/api";
 
 interface FeedbackModalProps {
   type: "BUG" | "SUGGESTION";
@@ -10,6 +11,7 @@ interface FeedbackModalProps {
 }
 
 export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
+  const t = useTranslations("feedback");
   const isMobile = useIsMobile();
   const [message, setMessage] = useState("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -21,18 +23,15 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const title = type === "BUG" ? "Reportar Bug" : "Enviar Sugerencia";
-  const placeholder =
-    type === "BUG"
-      ? "Describe el bug: que esperabas que pasara y que paso en su lugar..."
-      : "Describe tu sugerencia o idea para mejorar la plataforma...";
+  const title = type === "BUG" ? t("bugTitle") : t("suggestionTitle");
+  const placeholder = type === "BUG" ? t("bugPlaceholder") : t("suggestionPlaceholder");
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 500_000) {
-      setErrorMsg("La imagen no debe superar 500KB.");
+      setErrorMsg(t("imageSize"));
       return;
     }
 
@@ -40,7 +39,6 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
     reader.onload = () => {
       const result = reader.result as string;
       setImagePreview(result);
-      // Strip the data:image/...;base64, prefix for storage
       setImageBase64(result.split(",")[1] || result);
     };
     reader.readAsDataURL(file);
@@ -48,7 +46,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
 
   const handleSubmit = async () => {
     if (message.trim().length < 10) {
-      setErrorMsg("El mensaje debe tener al menos 10 caracteres.");
+      setErrorMsg(t("minChars"));
       return;
     }
 
@@ -67,7 +65,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
       setStatus("success");
     } catch (err: any) {
       setStatus("error");
-      setErrorMsg(err.message || "Error al enviar. Intenta de nuevo.");
+      setErrorMsg(err.message || t("submitError"));
     }
   };
 
@@ -112,10 +110,10 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                 marginBottom: 8,
               }}
             >
-              Enviado exitosamente
+              {t("success")}
             </h3>
             <p style={{ color: "var(--muted, #6b7280)", marginBottom: 20 }}>
-              Gracias por tu feedback. Nos ayuda mucho a mejorar la plataforma.
+              {t("successMessage")}
             </p>
             <button
               onClick={onClose}
@@ -129,7 +127,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                 cursor: "pointer",
               }}
             >
-              Cerrar
+              {t("close")}
             </button>
           </div>
         ) : (
@@ -172,7 +170,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                 marginBottom: 16,
               }}
             >
-              {message.length}/2000 caracteres (min. 10)
+              {message.length}/2000 {t("charCounter")}
             </div>
 
             {/* Image upload */}
@@ -186,7 +184,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                   display: "block",
                 }}
               >
-                Captura de pantalla (opcional, max 500KB)
+                {t("screenshotLabel")}
               </label>
               <input
                 ref={fileInputRef}
@@ -208,7 +206,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                   width: "100%",
                 }}
               >
-                {imagePreview ? "Cambiar imagen" : "Seleccionar imagen..."}
+                {imagePreview ? t("changeImage") : t("selectImage")}
               </button>
               {imagePreview && (
                 <div style={{ marginTop: 8, position: "relative" }}>
@@ -269,7 +267,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                   onChange={(e) => setWantsContact(e.target.checked)}
                   style={{ width: 16, height: 16, cursor: "pointer" }}
                 />
-                Me gustaria ser contactado para ampliar esta informacion
+                {t("contactCheckbox")}
               </label>
             </div>
 
@@ -280,7 +278,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                   type="text"
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  placeholder="Tu nombre"
+                  placeholder={t("nameField")}
                   style={{
                     width: "100%",
                     borderRadius: 8,
@@ -296,7 +294,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                   type="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="Numero de celular (ej: +57 300 123 4567)"
+                  placeholder={t("phoneField")}
                   style={{
                     width: "100%",
                     borderRadius: 8,
@@ -342,7 +340,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                   color: "var(--text, #111)",
                 }}
               >
-                Cancelar
+                {t("cancel")}
               </button>
               <button
                 onClick={handleSubmit}
@@ -362,7 +360,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
                   opacity: status === "loading" || message.trim().length < 10 ? 0.6 : 1,
                 }}
               >
-                {status === "loading" ? "Enviando..." : "Enviar"}
+                {status === "loading" ? t("sending") : t("send")}
               </button>
             </div>
           </>

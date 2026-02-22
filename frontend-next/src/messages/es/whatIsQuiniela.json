@@ -1,0 +1,130 @@
+{
+  "breadcrumbs": {
+    "home": "Inicio",
+    "title": "¿Qué es una Quiniela?"
+  },
+  "hero": {
+    "badge": "Cultura Deportiva",
+    "title": "¿Qué es una Quiniela Deportiva?",
+    "subtitle": "Quiniela, polla, prode, penca, porra — la tradición que une a millones de aficionados al fútbol en todo el mundo hispanohablante. Esta es su historia."
+  },
+  "intro": {
+    "paragraphs": [
+      "Cada cuatro años, cuando llega la Copa del Mundo, ocurre un fenómeno que se repite en oficinas, grupos de WhatsApp y reuniones familiares de toda Latinoamérica y España: alguien propone <strong>armar la quiniela</strong>. Aunque depende del país donde te encuentres, es posible que la llamen <strong>polla</strong>, <strong>prode</strong>, <strong>penca</strong> o <strong>porra</strong>. El nombre cambia, pero la esencia es la misma: predecir resultados de fútbol y competir entre amigos por el honor de ser el que más sabe.",
+      "Se trata de una de las tradiciones sociales más arraigadas en el mundo del fútbol. No requiere conocimiento táctico profundo ni entender formaciones — basta con atreverse a decir \"2 a 1\" y esperar los 90 minutos. Es entretenimiento puro, y durante décadas se ha jugado en papel, pizarras de oficina y hojas de cálculo interminables."
+    ],
+    "pullQuote": "\"La quiniela es ese raro espacio donde el fanático casual y el analista táctico compiten en igualdad de condiciones. Todos tienen una opinión sobre el próximo partido, y eso es lo que la hace especial.\""
+  },
+  "origins": {
+    "title": "Los orígenes: de las apuestas colectivas al juego entre amigos",
+    "paragraphs": [
+      "La historia de las predicciones deportivas organizadas se remonta al siglo XIX en Europa. En <strong>España</strong>, las <strong>porras</strong> — colectas informales donde cada participante aportaba una cantidad simbólica y apostaba por un resultado — ya eran tradición en tabernas y peñas deportivas antes de que el fútbol se profesionalizara. La palabra \"porra\" viene precisamente de esa costumbre de \"echar al pozo\" y repartir entre los acertantes.",
+      "El término <strong>quiniela</strong>, por su parte, tiene raíces en el latín <em>quinella</em> (una combinación de cinco elementos) y se popularizó primero en el contexto de la lotería. En 1946, España lanzó oficialmente <strong>La Quiniela</strong>, un juego estatal donde los participantes predecían los resultados de 15 partidos de fútbol marcando 1 (local), X (empate) o 2 (visitante). Fue un éxito inmediato y se convirtió en ritual de cada fin de semana para millones de españoles.",
+      "Ese modelo cruzó el Atlántico y se adaptó de formas muy diversas en cada país latinoamericano, adquiriendo nombres propios y matices culturales únicos."
+    ]
+  },
+  "regionalMap": {
+    "title": "Un juego, muchos nombres: el mapa de las quinielas en Latinoamérica",
+    "intro": "Lo fascinante de esta tradición es cómo cada país la hizo suya. No solo cambiaron el nombre — en muchos casos crearon instituciones oficiales alrededor del concepto."
+  },
+  "regionalSections": [
+    {
+      "emoji": "\uD83C\uDDE6\uD83C\uDDF7",
+      "title": "El Prode argentino: cuando el gobierno oficializó el juego",
+      "paragraphs": [
+        "En 1972, el gobierno argentino creó el <strong>PRODE (Pronósticos Deportivos)</strong>, un sistema oficial donde los ciudadanos compraban cartones y predecían resultados de la liga local. Fue un fenómeno social masivo: los lunes, la conversación en cualquier oficina de Buenos Aires empezaba con \"¿cómo te fue en el prode?\". Aunque el PRODE oficial fue discontinuado, la palabra quedó grabada en el vocabulario argentino. Hoy, cuando un grupo de amigos en Argentina organiza predicciones para el Mundial, lo siguen llamando <strong>prode</strong>."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDE8\uD83C\uDDF4\uD83C\uDDE8\uD83C\uDDF1",
+      "title": "La polla: de la beneficencia a la pasión mundialista",
+      "paragraphs": [
+        "En <strong>Colombia</strong>, <strong>Chile</strong> y <strong>Venezuela</strong>, el término dominante es <strong>polla</strong>. Su origen se encuentra en la <em>Polla Chilena de Beneficencia</em>, creada en 1934 como un sistema de apuestas colectivas cuyas ganancias se destinaban a obras sociales. La palabra se exportó a toda la región y hoy es sinónimo de quiniela deportiva. En Colombia, la expresión <strong>\"polla mundialista\"</strong> se activa cada cuatro años como un reloj: desde la empresa más grande hasta el grupo de amigos del barrio, todo el mundo arma su polla."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDFA\uD83C\uDDFE",
+      "title": "La penca uruguaya: tradición rioplatense",
+      "paragraphs": [
+        "En <strong>Uruguay</strong>, nadie dice quiniela ni polla — se dice <strong>penca</strong>. La tradición de las pencas está profundamente ligada a la cultura futbolera del país que vio nacer la primera Copa del Mundo en 1930. Los uruguayos arman pencas para todo: el Campeonato Uruguayo, la Copa América, el Mundial, e incluso las Eliminatorias. Es un ritual social que trasciende generaciones."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDEA\uD83C\uDDF8",
+      "title": "La porra española: del bar a la oficina",
+      "paragraphs": [
+        "Mientras que en España <strong>La Quiniela</strong> es el juego oficial del estado, entre amigos se usa más la palabra <strong>porra</strong>. \"Echar una porra\" significa organizar predicciones informales, generalmente en el trabajo o en la peña del bar. Durante la Liga, la Champions League y cada Mundial, las porras se multiplican. Es una tradición tan antigua como el fútbol español."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDE7\uD83C\uDDF4\uD83C\uDDF5\uD83C\uDDEA",
+      "title": "La vaquita y la chancha: los nombres más creativos",
+      "paragraphs": [
+        "En <strong>Bolivia</strong> se la conoce como <strong>vaquita</strong> — \"poner la vaquita\" significa contribuir al pozo común, una expresión que nace de las colectas informales. En <strong>Perú</strong>, además de \"polla\", se usa <strong>chancha</strong>, que también se refiere a juntar dinero entre un grupo. Y en <strong>México</strong> y <strong>Ecuador</strong>, el término <strong>quiniela</strong> reina absoluto, con una cultura especialmente fuerte durante los mundiales y la Liga MX."
+      ]
+    }
+  ],
+  "countryTable": {
+    "title": "Guía rápida: ¿cómo se dice en tu país?",
+    "subtitle": "Diez países, diez maneras de llamar al mismo juego.",
+    "columns": {
+      "country": "País",
+      "term": "Nombre",
+      "origin": "Origen"
+    },
+    "rows": [
+      { "country": "México", "flag": "\uD83C\uDDF2\uD83C\uDDFD", "term": "Quiniela", "origin": "Del latín quinella (combinación de cinco)" },
+      { "country": "Colombia", "flag": "\uD83C\uDDE8\uD83C\uDDF4", "term": "Polla", "origin": "De 'polla de beneficencia'" },
+      { "country": "Argentina", "flag": "\uD83C\uDDE6\uD83C\uDDF7", "term": "Prode", "origin": "Acrónimo de PROnósticos DEportivos" },
+      { "country": "Uruguay", "flag": "\uD83C\uDDFA\uD83C\uDDFE", "term": "Penca", "origin": "Del guaraní, tradición rioplatense" },
+      { "country": "Chile", "flag": "\uD83C\uDDE8\uD83C\uDDF1", "term": "Polla", "origin": "De la Polla Chilena de Beneficencia" },
+      { "country": "Venezuela", "flag": "\uD83C\uDDFB\uD83C\uDDEA", "term": "Polla", "origin": "Influencia colombiana y caribeña" },
+      { "country": "España", "flag": "\uD83C\uDDEA\uD83C\uDDF8", "term": "Porra / Quiniela", "origin": "Tradición de apuestas colectivas" },
+      { "country": "Perú", "flag": "\uD83C\uDDF5\uD83C\uDDEA", "term": "Polla / Chancha", "origin": "'Chancha' = colecta entre amigos" },
+      { "country": "Ecuador", "flag": "\uD83C\uDDEA\uD83C\uDDE8", "term": "Quiniela", "origin": "Influencia mexicana" },
+      { "country": "Bolivia", "flag": "\uD83C\uDDE7\uD83C\uDDF4", "term": "Vaquita", "origin": "'Poner la vaquita' = aportar al pozo" }
+    ]
+  },
+  "digitalEvolution": {
+    "title": "Del papel a la pantalla: la evolución digital",
+    "paragraphs": [
+      "Durante décadas, organizar una quiniela significaba lo mismo en todos los países: alguien imprimía una tabla con los partidos, la pasaba por la oficina, y cada persona anotaba sus pronósticos a mano. Después venía lo difícil — calcular los puntos. Siempre había alguien con una hoja de Excel heroica que intentaba mantener el leaderboard actualizado, y siempre había discusiones sobre si un punto estaba bien sumado.",
+      "Hoy, plataformas como <strong>Picks4All</strong> digitalizan toda esa experiencia: crear tu quiniela (o polla, prode, penca — como quieras llamarla), invitar amigos con un código, hacer predicciones desde el celular y tener el ranking actualizado automáticamente después de cada partido. La esencia del juego sigue siendo exactamente la misma que hace 50 años. Solo que ahora es más fácil, más rápido, y sin errores de cálculo."
+    ],
+    "pullQuote": "\"Lo que antes requería una hoja de cálculo y un voluntario muy paciente, hoy se resuelve en 2 minutos desde el celular.\""
+  },
+  "whyPopular": {
+    "title": "¿Por qué la quiniela sigue siendo tan popular?",
+    "paragraphs": [
+      "En un mundo con apps de apuestas, fantasy sports y estadísticas avanzadas, la quiniela entre amigos sigue siendo imbatible por una razón simple: <strong>es personal</strong>. No compites contra desconocidos ni contra algoritmos — compites contra tu cuñado que dice que sabe más de fútbol, contra tu compañera de trabajo que siempre acierta los empates, contra tu mejor amigo que lleva ganando tres mundiales seguidos.",
+      "Eso es algo que ninguna casa de apuestas puede replicar: la rivalidad sana, las cargadas cuando fallas, el grupo de WhatsApp que explota después de un resultado inesperado. La quiniela convierte cada partido en algo personal, y eso la mantiene viva generación tras generación."
+    ]
+  },
+  "relatedLinks": {
+    "title": "Explora por región",
+    "links": [
+      { "href": "/polla-futbolera", "flag": "\uD83C\uDDE8\uD83C\uDDF4", "label": "Polla Futbolera", "region": "Colombia, Chile, Venezuela" },
+      { "href": "/prode-deportivo", "flag": "\uD83C\uDDE6\uD83C\uDDF7", "label": "Prode Deportivo", "region": "Argentina" },
+      { "href": "/penca-futbol", "flag": "\uD83C\uDDFA\uD83C\uDDFE", "label": "Penca de Fútbol", "region": "Uruguay" },
+      { "href": "/porra-deportiva", "flag": "\uD83C\uDDEA\uD83C\uDDF8", "label": "Porra Deportiva", "region": "España" }
+    ]
+  },
+  "cta": {
+    "title": "Crea tu quiniela gratis",
+    "description": "No importa si la llamas quiniela, polla, prode, penca o porra. Con Picks4All puedes crearla en minutos y competir con tus amigos.",
+    "subdescription": "100% gratis. Puro entretenimiento entre amigos.",
+    "button": "Crear cuenta gratis"
+  },
+  "jsonLd": {
+    "definedTermSet": {
+      "name": "Nombres regionales de quinielas deportivas",
+      "description": "Glosario de los diferentes nombres que reciben las quinielas deportivas en países de habla hispana",
+      "termDescriptionTemplate": "Nombre para quiniela deportiva en {country}"
+    },
+    "article": {
+      "headline": "¿Qué es una Quiniela? Historia, Orígenes y Nombres por País",
+      "description": "La historia de las quinielas deportivas en el mundo hispanohablante",
+      "inLanguage": "es"
+    }
+  }
+}

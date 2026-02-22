@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { useTranslations } from "next-intl";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { FeedbackModal } from "./FeedbackModal";
 
 export function BetaFeedbackBar() {
+  const t = useTranslations("beta");
   const isMobile = useIsMobile();
   const [modalType, setModalType] = useState<"BUG" | "SUGGESTION" | null>(null);
 
@@ -28,7 +30,7 @@ export function BetaFeedbackBar() {
         }}
       >
         <span style={{ opacity: 0.9 }}>
-          {isMobile ? "Beta - Tu feedback nos ayuda" : "Beta - Tu feedback nos ayuda a mejorar"}
+          {isMobile ? t("messageMobile") : t("message")}
         </span>
 
         <div style={{ display: "flex", gap: 8 }}>
@@ -48,7 +50,7 @@ export function BetaFeedbackBar() {
               ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            Reportar Bug
+            {t("reportBug")}
           </button>
           <button
             onClick={() => setModalType("SUGGESTION")}
@@ -66,7 +68,7 @@ export function BetaFeedbackBar() {
               ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            Sugerencia
+            {t("suggestion")}
           </button>
         </div>
       </div>

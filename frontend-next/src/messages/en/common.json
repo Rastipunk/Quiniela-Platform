@@ -1,0 +1,163 @@
+{
+  "brand": {
+    "name": "Picks4All",
+    "tagline": "Free Sports Pools with Friends"
+  },
+  "nav": {
+    "home": "Home",
+    "myPools": "My Pools",
+    "faq": "FAQ",
+    "howItWorks": "How It Works",
+    "whatIsQuiniela": "What is a Sports Pool?",
+    "myProfile": "My Profile",
+    "adminPanel": "Admin Panel",
+    "viewFeedback": "View Feedback",
+    "logout": "Log Out",
+    "login": "Log In",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "menu": "Menu"
+  },
+  "footer": {
+    "tagline": "Free sports prediction platform to play with friends.",
+    "disclaimer": "Football pools, picks, and brackets — 100% free, no real money or gambling.",
+    "legal": "Legal",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "resources": "Resources",
+    "howItWorks": "How It Works",
+    "faqTitle": "Frequently Asked Questions",
+    "whatIsQuiniela": "What is a Sports Pool?",
+    "byCountry": "By Region",
+    "pollaFutbolera": "Polla Futbolera",
+    "prodeDeportivo": "Prode Deportivo",
+    "pencaFutbol": "Penca de Fútbol",
+    "porraDeportiva": "Porra Deportiva",
+    "footballPool": "Football Pool",
+    "contact": "Contact",
+    "copyright": "All rights reserved."
+  },
+  "beta": {
+    "message": "Beta — Your feedback helps us improve",
+    "messageMobile": "Beta — Your feedback helps",
+    "reportBug": "Report Bug",
+    "suggestion": "Suggestion"
+  },
+  "language": {
+    "label": "Language",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português"
+  },
+  "landing": {
+    "hero": {
+      "title": "Compete with friends predicting football matches",
+      "subtitle": "Create your free sports pool and have fun predicting football results with your friends.",
+      "cta": "Create free account",
+      "secondaryCta": "See how it works"
+    },
+    "whatIs": {
+      "title": "What is Picks4All?",
+      "p1": "Picks4All is the free platform to create <strong>sports pools</strong> online and compete with friends, family, or coworkers by predicting football results. Known as <strong>polla futbolera</strong> in Colombia, <strong>prode</strong> in Argentina, <strong>penca</strong> in Uruguay, or <strong>porra</strong> in Spain.",
+      "p2": "Create your pool for free, invite anyone with a code, make your predictions and compete on the leaderboard. <strong>100% free with no gambling</strong> — just fun and friendly rivalry."
+    },
+    "features": {
+      "title": "Everything you need to compete",
+      "subtitle": "A complete platform to organize sports pools with friends, family, or coworkers."
+    },
+    "feature1": {
+      "title": "Create your pool",
+      "description": "Customize rules, scoring system, and deadlines. You decide how your pool is played."
+    },
+    "feature2": {
+      "title": "Live leaderboard",
+      "description": "Rankings automatically updated after every match. Always know who's winning."
+    },
+    "feature3": {
+      "title": "Flexible predictions",
+      "description": "Exact score, match result, goal difference. Multiple ways to earn points with your picks."
+    },
+    "feature4": {
+      "title": "Invite friends easily",
+      "description": "Share an invitation code via WhatsApp and done. Join in seconds, no hassle."
+    },
+    "howItWorks": {
+      "title": "How it works"
+    },
+    "step1": {
+      "title": "Create or join",
+      "description": "Create your own pool or join an existing one with an invitation code."
+    },
+    "step2": {
+      "title": "Make your predictions",
+      "description": "Enter your picks before each match deadline."
+    },
+    "step3": {
+      "title": "Climb the rankings",
+      "description": "Earn points with every correct prediction and prove you're the best predictor."
+    },
+    "seeMore": "See more details →",
+    "tournaments": {
+      "title": "Available tournaments",
+      "subtitle": "Create pools for the most exciting tournaments in the world."
+    },
+    "wc2026": {
+      "name": "World Cup 2026",
+      "description": "48 teams • 104 matches • The biggest tournament in history"
+    },
+    "final": {
+      "title": "Ready to prove you know football?",
+      "subtitle": "Join for free and start competing with your friends.",
+      "hint": "Create your free pool in less than 1 minute.",
+      "cta": "Start now — It's free"
+    }
+  },
+  "feedback": {
+    "bugTitle": "Report Bug",
+    "suggestionTitle": "Send Suggestion",
+    "bugPlaceholder": "Describe the bug: what you expected to happen and what happened instead...",
+    "suggestionPlaceholder": "Describe your suggestion or idea to improve the platform...",
+    "screenshotLabel": "Screenshot (optional, max 500KB)",
+    "imageSize": "Image must not exceed 500KB.",
+    "minChars": "Message must be at least 10 characters.",
+    "charCounter": "characters (min. 10)",
+    "changeImage": "Change image",
+    "selectImage": "Select image...",
+    "contactCheckbox": "I'd like to be contacted for more information",
+    "nameField": "Your name",
+    "phoneField": "Phone number (e.g. +1 555 123 4567)",
+    "cancel": "Cancel",
+    "send": "Send",
+    "sending": "Sending...",
+    "close": "Close",
+    "success": "Sent successfully",
+    "successMessage": "Thanks for your feedback. It helps us improve the platform.",
+    "submitError": "Error sending. Please try again."
+  },
+  "seo": {
+    "home": {
+      "title": "Picks4All — Free Sports Pools with Friends",
+      "description": "Create free football pools and predictions. Predict World Cup 2026, Champions League results and more. No real money, just fun with friends.",
+      "ogDescription": "The free platform to create football pools and predictions. Compete with friends by predicting match results."
+    }
+  },
+  "jsonLd": {
+    "orgDescription": "Free sports prediction platform (pools, picks, brackets) to compete with friends predicting football results",
+    "appDescription": "Free sports prediction platform (pools, picks, brackets) to compete with friends predicting football results",
+    "featureList": [
+      "Create free sports pools",
+      "Invite friends with invitation codes",
+      "Football match predictions",
+      "Real-time automatic leaderboard",
+      "Customizable scoring rules",
+      "Compatible with World Cup 2026 and Champions League"
+    ],
+    "ctaName": "Create Free Pool"
+  },
+  "notFound": {
+    "message": "The page you're looking for doesn't exist or was moved.",
+    "subMessage": "But your pool is waiting for you.",
+    "goHome": "Go to home",
+    "faq": "FAQ"
+  }
+}

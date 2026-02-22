@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getToken } from "../lib/auth";
+import { getToken } from "@/lib/auth";
 import {
   getUserEmailPreferences,
   updateUserEmailPreferences,
-} from "../lib/api";
+} from "@/lib/api";
+import { useTranslations } from "next-intl";
 
 // Tipo definido localmente para evitar issues de Vite con type exports
 type UserEmailPreferences = {
@@ -31,40 +32,42 @@ type PreferenceItem = {
   isMaster?: boolean;
 };
 
-const PREFERENCE_ITEMS: PreferenceItem[] = [
-  {
-    key: "emailNotificationsEnabled",
-    label: "Recibir notificaciones por email",
-    description: "Activa o desactiva todas las notificaciones (excepto recuperación de contraseña)",
-    isMaster: true,
-  },
-  {
-    key: "emailPoolInvitations",
-    platformKey: "emailPoolInvitations",
-    label: "Invitaciones a quinielas",
-    description: "Recibe notificaciones cuando alguien te invita a una quiniela",
-  },
-  {
-    key: "emailDeadlineReminders",
-    platformKey: "emailDeadlineReminders",
-    label: "Recordatorios de deadline",
-    description: "Recibe recordatorios cuando tengas pronósticos pendientes",
-  },
-  {
-    key: "emailResultNotifications",
-    platformKey: "emailResultNotifications",
-    label: "Resultados publicados",
-    description: "Recibe notificaciones cuando se publican resultados de partidos",
-  },
-  {
-    key: "emailPoolCompletions",
-    platformKey: "emailPoolCompletions",
-    label: "Quinielas completadas",
-    description: "Recibe notificaciones cuando termina una quiniela",
-  },
-];
-
 export function EmailPreferencesSection() {
+  const t = useTranslations("profile");
+
+  const preferenceItems: PreferenceItem[] = [
+    {
+      key: "emailNotificationsEnabled",
+      label: t("emailPrefs.masterLabel"),
+      description: t("emailPrefs.masterDesc"),
+      isMaster: true,
+    },
+    {
+      key: "emailPoolInvitations",
+      platformKey: "emailPoolInvitations",
+      label: t("emailPrefs.invitationsLabel"),
+      description: t("emailPrefs.invitationsDesc"),
+    },
+    {
+      key: "emailDeadlineReminders",
+      platformKey: "emailDeadlineReminders",
+      label: t("emailPrefs.deadlineLabel"),
+      description: t("emailPrefs.deadlineDesc"),
+    },
+    {
+      key: "emailResultNotifications",
+      platformKey: "emailResultNotifications",
+      label: t("emailPrefs.resultsLabel"),
+      description: t("emailPrefs.resultsDesc"),
+    },
+    {
+      key: "emailPoolCompletions",
+      platformKey: "emailPoolCompletions",
+      label: t("emailPrefs.completionsLabel"),
+      description: t("emailPrefs.completionsDesc"),
+    },
+  ];
+
   const [preferences, setPreferences] = useState<UserEmailPreferences | null>(null);
   const [platformEnabled, setPlatformEnabled] = useState<PlatformEnabled | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,7 +90,7 @@ export function EmailPreferencesSection() {
         setPlatformEnabled(data.platformEnabled);
       }
     } catch (err: any) {
-      setError(err.message || "Error al cargar preferencias");
+      setError(err.message || t("emailPrefs.loadError"));
     } finally {
       setLoading(false);
     }
@@ -114,12 +117,12 @@ export function EmailPreferencesSection() {
     try {
       const result = await updateUserEmailPreferences(token, { [key]: newValue });
       setPreferences(result.preferences);
-      setSuccess("Preferencias guardadas");
+      setSuccess(t("emailPrefs.saved"));
       setTimeout(() => setSuccess(null), 2000);
     } catch (err: any) {
       // Revert on error
       setPreferences((prev) => (prev ? { ...prev, [key]: !newValue } : prev));
-      setError(err.message || "Error al guardar preferencias");
+      setError(err.message || t("emailPrefs.saveError"));
     } finally {
       setSaving(false);
     }
@@ -187,8 +190,8 @@ export function EmailPreferencesSection() {
   if (loading) {
     return (
       <div style={sectionStyle}>
-        <h2 style={headingStyle}>Notificaciones por Email</h2>
-        <p style={{ color: "#6b7280", fontSize: 14 }}>Cargando preferencias...</p>
+        <h2 style={headingStyle}>{t("emailPrefs.title")}</h2>
+        <p style={{ color: "#6b7280", fontSize: 14 }}>{t("emailPrefs.loading")}</p>
       </div>
     );
   }
@@ -196,8 +199,8 @@ export function EmailPreferencesSection() {
   if (!preferences) {
     return (
       <div style={sectionStyle}>
-        <h2 style={headingStyle}>Notificaciones por Email</h2>
-        <p style={{ color: "#dc2626", fontSize: 14 }}>Error al cargar preferencias</p>
+        <h2 style={headingStyle}>{t("emailPrefs.title")}</h2>
+        <p style={{ color: "#dc2626", fontSize: 14 }}>{t("emailPrefs.loadError")}</p>
       </div>
     );
   }
@@ -205,7 +208,7 @@ export function EmailPreferencesSection() {
   const masterEnabled = preferences.emailNotificationsEnabled;
 
   // Filtrar items: no mostrar los que están deshabilitados a nivel de plataforma
-  const visibleItems = PREFERENCE_ITEMS.filter((item) => {
+  const visibleItems = preferenceItems.filter((item) => {
     // El master toggle siempre es visible
     if (item.isMaster) return true;
     // Si no hay platformEnabled, mostrar todo (compatibilidad)
@@ -215,16 +218,15 @@ export function EmailPreferencesSection() {
   });
 
   // Verificar si hay algún email deshabilitado por admin
-  const hasDisabledByAdmin = platformEnabled && PREFERENCE_ITEMS.some(
+  const hasDisabledByAdmin = platformEnabled && preferenceItems.some(
     (item) => item.platformKey && !platformEnabled[item.platformKey]
   );
 
   return (
     <div style={sectionStyle}>
-      <h2 style={headingStyle}>Notificaciones por Email</h2>
+      <h2 style={headingStyle}>{t("emailPrefs.title")}</h2>
       <p style={descStyle}>
-        Configura qué notificaciones deseas recibir por email.
-        La recuperación de contraseña siempre está activa.
+        {t("emailPrefs.description")}
       </p>
 
       {error && <div style={alertStyle("error")}>{error}</div>}
@@ -309,10 +311,9 @@ export function EmailPreferencesSection() {
             gap: 8,
           }}
         >
-          <span style={{ fontSize: 16 }}>ℹ️</span>
+          <span style={{ fontSize: 16 }}>&#x2139;&#xFE0F;</span>
           <span>
-            Algunas notificaciones han sido desactivadas por el administrador de la plataforma
-            y no están disponibles actualmente.
+            {t("emailPrefs.adminDisabled")}
           </span>
         </div>
       )}

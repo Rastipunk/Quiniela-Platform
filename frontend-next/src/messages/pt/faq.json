@@ -1,0 +1,123 @@
+{
+  "hero": {
+    "title": "Perguntas Frequentes",
+    "subtitle": "Encontre respostas para as perguntas mais comuns sobre pencas e previsões esportivas no Picks4All."
+  },
+  "contact": {
+    "title": "Não encontrou o que procurava?",
+    "description": "Escreva para nós e responderemos o mais breve possível.",
+    "button": "Contatar suporte"
+  },
+  "cta": {
+    "title": "Pronto para começar sua penca?",
+    "description": "Crie sua conta grátis e comece a competir com seus amigos.",
+    "button": "Criar conta grátis"
+  },
+  "breadcrumbs": {
+    "home": "Início",
+    "faq": "Perguntas Frequentes"
+  },
+  "categories": ["Geral", "Para Hosts", "Para Jogadores", "Conta"],
+  "items": [
+    {
+      "category": "Geral",
+      "question": "O que é o Picks4All?",
+      "answer": "Picks4All é uma plataforma gratuita para criar e participar de pencas esportivas com seus amigos, família ou colegas de trabalho. Você faz previsões sobre os resultados de jogos de futebol e compete por pontos em um ranking. Seja penca, bolão ou previsão — aqui você pode jogar de graça."
+    },
+    {
+      "category": "Geral",
+      "question": "É grátis usar o Picks4All?",
+      "answer": "Sim, o Picks4All é completamente grátis. Você pode criar pools (pencas), convidar amigos e fazer previsões sem nenhum custo. Não há planos de pagamento obrigatórios nem cobranças ocultas para a funcionalidade principal."
+    },
+    {
+      "category": "Geral",
+      "question": "Isso é apostas?",
+      "answer": "Não. Picks4All é uma plataforma de entretenimento onde você compete por pontos e posições no ranking, não por dinheiro. Não há apostas nem transações monetárias envolvidas. É simplesmente uma penca entre amigos para se divertir."
+    },
+    {
+      "category": "Geral",
+      "question": "Quais torneios estão disponíveis?",
+      "answer": "Atualmente temos disponível a Copa do Mundo 2026, o maior torneio da história com 48 seleções e 104 jogos. Iremos adicionando mais torneios no futuro, incluindo Champions League e ligas locais."
+    },
+    {
+      "category": "Geral",
+      "question": "Qual é a diferença entre penca, bolão e quiniela?",
+      "answer": "Todos se referem ao mesmo conceito: um jogo de previsões esportivas entre amigos. O nome muda conforme o país: no Brasil se diz 'penca' ou 'bolão', no México 'quiniela', na Colômbia e Chile 'polla', na Argentina 'prode', no Uruguai 'penca', e na Espanha 'porra'. Picks4All funciona para todos — não importa como você chama no seu país."
+    },
+    {
+      "category": "Geral",
+      "question": "É legal jogar pencas entre amigos?",
+      "answer": "Sim. Picks4All é uma plataforma de entretenimento gratuita onde não se aposta dinheiro real. Pencas e bolões entre amigos são uma tradição social completamente legal. Não somos um site de apostas nem de jogos de azar — é pura diversão e competição saudável entre amigos."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "Como crio um pool (penca)?",
+      "answer": "Depois de criar sua conta, vá para 'Minhas Pencas' e clique em 'Criar Pool'. Escolha o torneio, dê um nome à sua penca, configure o sistema de pontos e o prazo para previsões. Uma vez criado, você receberá um código de convite para compartilhar."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "Posso personalizar as regras de pontuação?",
+      "answer": "Sim. Você pode escolher entre vários presets de pontuação ou configurar os pontos para cada tipo de acerto: placar exato, resultado correto (mandante/empate/visitante), gols do mandante corretos, gols do visitante corretos e diferença de gols."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "Como convido pessoas para meu pool?",
+      "answer": "Cada pool tem um código de convite único. Compartilhe este código por WhatsApp, email ou qualquer outro meio. Quem tiver o código pode entrar na sua penca depois de criar sua conta."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "Como publico os resultados?",
+      "answer": "Como Host, depois que um jogo terminar, vá ao jogo no seu pool e clique em 'Publicar Resultado'. Insira o placar oficial e a classificação será atualizada automaticamente."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "E se eu errar ao publicar um resultado?",
+      "answer": "Você pode corrigir um resultado publicado a qualquer momento. O sistema pedirá um motivo para a correção (errata) e atualizará os pontos automaticamente. Todas as correções ficam registradas para transparência."
+    },
+    {
+      "category": "Para Hosts",
+      "question": "Posso nomear co-administradores?",
+      "answer": "Sim. Você pode nomear outros membros do pool como co-administradores para ajudá-lo a publicar resultados. Eles terão as mesmas permissões que você para administrar a penca."
+    },
+    {
+      "category": "Para Jogadores",
+      "question": "Como entro em um pool?",
+      "answer": "Você precisa do código de convite compartilhado pelo Host. Depois de criar sua conta ou fazer login, vá para 'Minhas Pencas' e clique em 'Entrar em Pool'. Insira o código e pronto."
+    },
+    {
+      "category": "Para Jogadores",
+      "question": "Até quando posso fazer minhas previsões?",
+      "answer": "Cada jogo tem um prazo para previsões, geralmente 10 minutos antes do início do jogo (o Host pode configurar isso). Depois do prazo, você não poderá modificar sua previsão para aquele jogo."
+    },
+    {
+      "category": "Para Jogadores",
+      "question": "Posso mudar minha previsão?",
+      "answer": "Sim, você pode modificar sua previsão quantas vezes quiser ANTES do prazo. Uma vez que o prazo passa, sua previsão fica bloqueada."
+    },
+    {
+      "category": "Para Jogadores",
+      "question": "Como os pontos são calculados?",
+      "answer": "Os pontos se acumulam conforme seus acertos. Por exemplo, com o preset padrão: placar exato = 10 pts, resultado correto = 5 pts, gols do mandante corretos = 2 pts, gols do visitante corretos = 2 pts, diferença de gols = 1 pt. Se acertar o placar exato, ganha pontos por todos os critérios."
+    },
+    {
+      "category": "Para Jogadores",
+      "question": "Posso participar de vários pools?",
+      "answer": "Sim. Você pode entrar em quantos pools quiser, até do mesmo torneio. Cada penca tem seu próprio ranking e regras."
+    },
+    {
+      "category": "Conta",
+      "question": "Como crio uma conta?",
+      "answer": "Clique em 'Criar conta grátis' e insira seu email, um nome de usuário, seu nome de exibição e uma senha. Você também pode se cadastrar com sua conta Google."
+    },
+    {
+      "category": "Conta",
+      "question": "E se eu esqueci minha senha?",
+      "answer": "Na página de login, clique em 'Esqueceu sua senha?' e insira seu email. Você receberá um link para redefinir sua senha."
+    },
+    {
+      "category": "Conta",
+      "question": "Posso mudar meu nome de usuário?",
+      "answer": "Seu nome de usuário é único e não pode ser alterado após a criação da conta. No entanto, você pode mudar seu nome de exibição a qualquer momento no seu perfil."
+    }
+  ]
+}

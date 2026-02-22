@@ -1,0 +1,163 @@
+{
+  "brand": {
+    "name": "Picks4All",
+    "tagline": "Pencas Esportivas Grátis com Amigos"
+  },
+  "nav": {
+    "home": "Início",
+    "myPools": "Minhas Pencas",
+    "faq": "FAQ",
+    "howItWorks": "Como Funciona",
+    "whatIsQuiniela": "O que é uma Penca?",
+    "myProfile": "Meu Perfil",
+    "adminPanel": "Painel Admin",
+    "viewFeedback": "Ver Feedback",
+    "logout": "Sair",
+    "login": "Entrar",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
+    "menu": "Menu"
+  },
+  "footer": {
+    "tagline": "Plataforma gratuita de previsões esportivas para jogar com amigos.",
+    "disclaimer": "Pencas, bolões e previsões — 100% grátis, sem dinheiro real nem apostas.",
+    "legal": "Legal",
+    "terms": "Termos de Serviço",
+    "privacy": "Política de Privacidade",
+    "resources": "Recursos",
+    "howItWorks": "Como Funciona",
+    "faqTitle": "Perguntas Frequentes",
+    "whatIsQuiniela": "O que é uma Penca?",
+    "byCountry": "Por País",
+    "pollaFutbolera": "Polla Futbolera",
+    "prodeDeportivo": "Prode Deportivo",
+    "pencaFutbol": "Penca de Futebol",
+    "porraDeportiva": "Porra Deportiva",
+    "footballPool": "Football Pool",
+    "contact": "Contato",
+    "copyright": "Todos os direitos reservados."
+  },
+  "beta": {
+    "message": "Beta — Seu feedback nos ajuda a melhorar",
+    "messageMobile": "Beta — Seu feedback nos ajuda",
+    "reportBug": "Reportar Bug",
+    "suggestion": "Sugestão"
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português"
+  },
+  "landing": {
+    "hero": {
+      "title": "Compita com seus amigos prevendo jogos de futebol",
+      "subtitle": "Crie sua penca grátis e divirta-se prevendo resultados de futebol com seus amigos.",
+      "cta": "Criar conta grátis",
+      "secondaryCta": "Veja como funciona"
+    },
+    "whatIs": {
+      "title": "O que é o Picks4All?",
+      "p1": "O Picks4All é a plataforma gratuita para criar <strong>pencas esportivas</strong> online e competir com amigos, família ou colegas de trabalho prevendo resultados de futebol. Também conhecida como <strong>polla</strong> na Colômbia, <strong>prode</strong> na Argentina, <strong>quiniela</strong> no México, ou <strong>porra</strong> na Espanha.",
+      "p2": "Crie sua penca grátis, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>100% grátis e sem apostas</strong> — só diversão e rivalidade saudável."
+    },
+    "features": {
+      "title": "Tudo o que você precisa para competir",
+      "subtitle": "Uma plataforma completa para organizar pencas com amigos, família ou colegas de trabalho."
+    },
+    "feature1": {
+      "title": "Crie sua penca",
+      "description": "Personalize as regras, o sistema de pontos e os prazos. Você decide como sua penca funciona."
+    },
+    "feature2": {
+      "title": "Placar ao vivo",
+      "description": "Ranking atualizado automaticamente após cada jogo. Sempre saiba quem está ganhando."
+    },
+    "feature3": {
+      "title": "Previsões flexíveis",
+      "description": "Placar exato, resultado, diferença de gols. Múltiplas formas de pontuar com seus palpites."
+    },
+    "feature4": {
+      "title": "Convide amigos facilmente",
+      "description": "Compartilhe um código de convite pelo WhatsApp e pronto. Entre em segundos, sem complicação."
+    },
+    "howItWorks": {
+      "title": "Como funciona"
+    },
+    "step1": {
+      "title": "Crie ou participe",
+      "description": "Crie sua própria penca ou participe de uma existente com um código de convite."
+    },
+    "step2": {
+      "title": "Faça suas previsões",
+      "description": "Insira seus palpites antes do prazo de cada jogo."
+    },
+    "step3": {
+      "title": "Suba no ranking",
+      "description": "Ganhe pontos com cada acerto e prove que você é o melhor palpiteiro."
+    },
+    "seeMore": "Ver mais detalhes →",
+    "tournaments": {
+      "title": "Torneios disponíveis",
+      "subtitle": "Crie pencas para os torneios mais emocionantes do mundo."
+    },
+    "wc2026": {
+      "name": "Copa do Mundo 2026",
+      "description": "48 seleções • 104 jogos • O maior torneio da história"
+    },
+    "final": {
+      "title": "Pronto para provar que entende de futebol?",
+      "subtitle": "Participe grátis e comece a competir com seus amigos.",
+      "hint": "Crie sua penca grátis em menos de 1 minuto.",
+      "cta": "Começar agora — É grátis"
+    }
+  },
+  "feedback": {
+    "bugTitle": "Reportar Bug",
+    "suggestionTitle": "Enviar Sugestão",
+    "bugPlaceholder": "Descreva o bug: o que você esperava que acontecesse e o que aconteceu...",
+    "suggestionPlaceholder": "Descreva sua sugestão ou ideia para melhorar a plataforma...",
+    "screenshotLabel": "Captura de tela (opcional, máx 500KB)",
+    "imageSize": "A imagem não deve exceder 500KB.",
+    "minChars": "A mensagem deve ter pelo menos 10 caracteres.",
+    "charCounter": "caracteres (mín. 10)",
+    "changeImage": "Mudar imagem",
+    "selectImage": "Selecionar imagem...",
+    "contactCheckbox": "Gostaria de ser contatado para mais informações",
+    "nameField": "Seu nome",
+    "phoneField": "Número de celular (ex: +55 11 91234 5678)",
+    "cancel": "Cancelar",
+    "send": "Enviar",
+    "sending": "Enviando...",
+    "close": "Fechar",
+    "success": "Enviado com sucesso",
+    "successMessage": "Obrigado pelo seu feedback. Nos ajuda muito a melhorar a plataforma.",
+    "submitError": "Erro ao enviar. Tente novamente."
+  },
+  "seo": {
+    "home": {
+      "title": "Picks4All — Pencas Esportivas Grátis com Amigos",
+      "description": "Crie pencas e previsões de futebol grátis. Preveja resultados da Copa do Mundo 2026, Champions League e mais. Sem dinheiro real, só diversão entre amigos.",
+      "ogDescription": "A plataforma gratuita para criar pencas e previsões de futebol. Compita com amigos prevendo resultados de partidas."
+    }
+  },
+  "jsonLd": {
+    "orgDescription": "Plataforma gratuita de previsões esportivas (pencas, bolões) para competir com amigos prevendo resultados de futebol",
+    "appDescription": "Plataforma gratuita de previsões esportivas (pencas, bolões) para competir com amigos prevendo resultados de futebol",
+    "featureList": [
+      "Criar pencas esportivas grátis",
+      "Convidar amigos com código de convite",
+      "Previsões de partidas de futebol",
+      "Placar automático em tempo real",
+      "Regras de pontuação personalizáveis",
+      "Compatível com Copa do Mundo 2026 e Champions League"
+    ],
+    "ctaName": "Criar Penca Grátis"
+  },
+  "notFound": {
+    "message": "A página que você procura não existe ou foi movida.",
+    "subMessage": "Mas sua penca está esperando por você.",
+    "goHome": "Ir para o início",
+    "faq": "Perguntas frequentes"
+  }
+}

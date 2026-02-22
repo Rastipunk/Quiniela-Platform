@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { resendVerificationEmail } from "../lib/api";
-import { getToken } from "../lib/auth";
+import { useTranslations } from "next-intl";
+import { resendVerificationEmail } from "@/lib/api";
+import { getToken } from "@/lib/auth";
 
 type Props = {
   emailVerified: boolean;
@@ -15,6 +16,7 @@ export function EmailVerificationBanner({
   isGoogleAccount,
   email,
 }: Props) {
+  const t = useTranslations("auth");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,17 +115,16 @@ export function EmailVerificationBanner({
     <div style={bannerStyle}>
       <div style={iconStyle}>&#9888;&#65039;</div>
       <div style={contentStyle}>
-        <div style={titleStyle}>Verifica tu email</div>
+        <div style={titleStyle}>{t("emailBanner.title")}</div>
         <div style={descStyle}>
-          Enviamos un enlace de verificación a <strong>{email}</strong>.
+          {t("emailBanner.message", { email })}
           <br />
-          Revisa tu bandeja de entrada (y spam) para activar todas las
-          funciones.
+          {t("emailBanner.checkInbox")}
         </div>
 
         {sent && (
           <div style={successStyle}>
-            &#10004; Email de verificación enviado. Revisa tu bandeja de entrada.
+            {t("emailBanner.resendSuccess")}
           </div>
         )}
 
@@ -131,7 +132,7 @@ export function EmailVerificationBanner({
 
         {!sent && (
           <button style={buttonStyle} onClick={handleResend} disabled={sending}>
-            {sending ? "Enviando..." : "Reenviar email de verificación"}
+            {sending ? t("emailBanner.sending") : t("emailBanner.resendButton")}
           </button>
         )}
       </div>

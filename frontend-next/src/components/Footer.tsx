@@ -1,7 +1,11 @@
-import Link from "next/link";
+"use client";
+
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { BrandLogo } from "./BrandLogo";
 
 export function Footer() {
+  const t = useTranslations("footer");
   const currentYear = new Date().getFullYear();
 
   return (
@@ -50,8 +54,9 @@ export function Footer() {
               lineHeight: 1.5,
             }}
           >
-            Plataforma gratuita de predicciones deportivas entre amigos.
-            Quinielas, pollas, prodes y pencas — 100% gratis, sin dinero real ni apuestas.
+            {t("tagline")}
+            {" "}
+            {t("disclaimer")}
           </p>
         </div>
 
@@ -71,7 +76,7 @@ export function Footer() {
               marginBottom: 4,
             }}
           >
-            Legal
+            {t("legal")}
           </div>
           <Link
             href="/terminos"
@@ -81,7 +86,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Terminos de Servicio
+            {t("terms")}
           </Link>
           <Link
             href="/privacidad"
@@ -91,7 +96,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Politica de Privacidad
+            {t("privacy")}
           </Link>
         </div>
 
@@ -111,7 +116,7 @@ export function Footer() {
               marginBottom: 4,
             }}
           >
-            Recursos
+            {t("resources")}
           </div>
           <Link
             href="/como-funciona"
@@ -121,7 +126,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Como Funciona
+            {t("howItWorks")}
           </Link>
           <Link
             href="/faq"
@@ -131,7 +136,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Preguntas Frecuentes
+            {t("faqTitle")}
           </Link>
           <Link
             href="/que-es-una-quiniela"
@@ -141,7 +146,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Que es una Quiniela?
+            {t("whatIsQuiniela")}
           </Link>
         </div>
 
@@ -161,7 +166,7 @@ export function Footer() {
               marginBottom: 4,
             }}
           >
-            Por Pais
+            {t("byCountry")}
           </div>
           <Link
             href="/polla-futbolera"
@@ -171,7 +176,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Polla Futbolera
+            {t("pollaFutbolera")}
           </Link>
           <Link
             href="/prode-deportivo"
@@ -181,7 +186,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Prode Deportivo
+            {t("prodeDeportivo")}
           </Link>
           <Link
             href="/penca-futbol"
@@ -191,7 +196,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Penca de Futbol
+            {t("pencaFutbol")}
           </Link>
           <Link
             href="/porra-deportiva"
@@ -201,7 +206,7 @@ export function Footer() {
               textDecoration: "none",
             }}
           >
-            Porra Deportiva
+            {t("porraDeportiva")}
           </Link>
         </div>
 
@@ -215,7 +220,7 @@ export function Footer() {
               marginBottom: 4,
             }}
           >
-            Contacto
+            {t("contact")}
           </div>
           <a
             href="mailto:soporte@picks4all.com"
@@ -242,7 +247,7 @@ export function Footer() {
           color: "var(--muted)",
         }}
       >
-        &copy; {currentYear} Picks4All. Todos los derechos reservados.
+        &copy; {currentYear} Picks4All. {t("copyright")}
       </div>
     </footer>
   );

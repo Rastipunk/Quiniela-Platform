@@ -4,6 +4,7 @@
 // Sprint 2 - Advanced Pick Types System
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { GroupStandingsCard } from "./GroupStandingsCard";
 import { KnockoutMatchCard } from "./KnockoutMatchCard";
 import {
@@ -84,6 +85,7 @@ export function StructuralPicksManager({
   onDataChanged,
   onShowBreakdown: _onShowBreakdown,
 }: StructuralPicksManagerProps) {
+  const t = useTranslations("pool");
   void _phaseName; // Used for display in child components
   void _phaseConfig; // Config passed to child components
   const [loading, setLoading] = useState(true);
@@ -134,7 +136,7 @@ export function StructuralPicksManager({
           loadPickData_internal(pick);
         }
       } catch (err: any) {
-        setError(err?.message || "Error al cargar datos");
+        setError(err?.message || t("structuralManager.errorLoading"));
       } finally {
         setLoading(false);
       }
@@ -187,7 +189,7 @@ export function StructuralPicksManager({
 
         // Validacion: debe haber al menos un grupo completo
         if (groups.length === 0) {
-          setError("Debes ordenar al menos un grupo antes de guardar");
+          setError(t("structuralManager.orderAtLeastOneGroup"));
           return;
         }
       } else {
@@ -200,7 +202,7 @@ export function StructuralPicksManager({
 
         // Validacion: debe haber al menos un ganador seleccionado
         if (matches.length === 0) {
-          setError("Debes seleccionar al menos un ganador antes de guardar");
+          setError(t("structuralManager.selectAtLeastOneWinner"));
           return;
         }
       }
@@ -210,18 +212,18 @@ export function StructuralPicksManager({
       if (isHost) {
         // HOST publicando resultado oficial
         await publishStructuralResult(token, poolId, phaseId, pickData);
-        setSuccessMessage("✅ Resultado oficial publicado exitosamente");
+        setSuccessMessage("✅ " + t("structuralManager.resultPublished"));
       } else {
         // PLAYER guardando pick
         await upsertStructuralPick(token, poolId, phaseId, pickData);
-        setSuccessMessage("✅ Predicción guardada exitosamente");
+        setSuccessMessage("✅ " + t("structuralManager.pickSaved"));
       }
 
       // Auto-hide success message despues de 3 segundos
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error("❌ Error al guardar:", err);
-      setError(err?.message || "Error al guardar");
+      setError(err?.message || t("structuralManager.errorSaving"));
     } finally {
       _setSaving(false);
     }
@@ -235,7 +237,7 @@ export function StructuralPicksManager({
   if (loading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
-        <div style={{ fontSize: 18, color: "#666" }}>⏳ Cargando...</div>
+        <div style={{ fontSize: 18, color: "#666" }}>⏳ {t("structuralManager.loading")}</div>
       </div>
     );
   }
@@ -251,7 +253,7 @@ export function StructuralPicksManager({
           color: "#721c24",
         }}
       >
-        ❌ <strong>Error:</strong> {error}
+        ❌ <strong>{t("structuralManager.error")}:</strong> {error}
       </div>
     );
   }
@@ -272,15 +274,15 @@ export function StructuralPicksManager({
       >
         <h2 style={{ margin: "0 0 0.5rem 0", fontSize: 24, fontWeight: 900, color: "white" }}>
           {phaseType === "GROUP"
-            ? (isHost ? "📊 Publicar Resultados de Grupos" : "🎯 Predecir Posiciones de Grupos")
-            : "⚔️ Fase Eliminatoria"}
+            ? (isHost ? `📊 ${t("structuralManager.hostGroupTitle")}` : `🎯 ${t("structuralManager.playerGroupTitle")}`)
+            : `⚔️ ${t("structuralManager.knockoutTitle")}`}
         </h2>
         <p style={{ margin: 0, fontSize: 14, color: "white", opacity: 1 }}>
           {phaseType === "GROUP"
-            ? "Ordena los equipos del 1° al 4° lugar en cada grupo"
+            ? t("structuralManager.hostGroupDesc")
             : (isHost
-                ? "Publica el resultado de cada partido (los jugadores predicen quién avanza)"
-                : "Selecciona qué equipo avanza en cada partido")}
+                ? t("structuralManager.hostKnockoutDesc")
+                : t("structuralManager.playerKnockoutDesc"))}
         </p>
       </div>
 
@@ -310,7 +312,7 @@ export function StructuralPicksManager({
               poolId={poolId}
               phaseId={phaseId}
               groupId={group.id}
-              groupName={group.name}
+              groupName={t("structuralManager.groupName", { id: group.name })}
               teams={group.teams}
               matches={group.matches}
               token={token}
@@ -364,7 +366,7 @@ export function StructuralPicksManager({
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: _onShowBreakdown ? "1rem" : 0 }}>
-            {isHost ? "Todos los resultados oficiales han sido publicados" : "Fase bloqueada - Los resultados oficiales ya fueron publicados"}
+            {isHost ? t("structuralManager.hostLockedMessage") : t("structuralManager.playerLockedMessage")}
           </div>
           {_onShowBreakdown && (
             <button
@@ -384,7 +386,7 @@ export function StructuralPicksManager({
               }}
             >
               <span style={{ fontSize: 18 }}>📊</span>
-              Ver desglose de puntos
+              {t("structuralManager.viewPointsBreakdown")}
             </button>
           )}
         </div>
@@ -404,8 +406,8 @@ export function StructuralPicksManager({
           }}
         >
           {isHost
-            ? `Resultados publicados: ${matchResults?.size || 0}/${matches.length} partidos`
-            : `Predicciones guardadas: ${knockoutPicks.size}/${matches.length} partidos`}
+            ? t("structuralManager.hostResultsProgress", { count: matchResults?.size || 0, total: matches.length })
+            : t("structuralManager.playerPicksProgress", { count: knockoutPicks.size, total: matches.length })}
         </div>
       )}
     </div>
@@ -452,7 +454,7 @@ function extractGroups(tournamentData: any, _phaseId: string): Group[] {
   teamsByGroup.forEach((teams, groupId) => {
     groups.push({
       id: groupId,
-      name: `Grupo ${groupId}`,
+      name: groupId,
       teams,
       matches: matchesByGroup.get(groupId) || [],
     });

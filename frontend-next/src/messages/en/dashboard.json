@@ -1,0 +1,125 @@
+{
+  "title": "My Pools",
+  "subtitle": "Create / Join / Enter a pool",
+  "createPool": "+ Create pool",
+  "joinWithCode": "Join with code",
+  "logout": "Logout",
+  "loading": "Loading...",
+  "emptyState": "You're not in any pool yet. Create one or join with a code.",
+  "openPool": "Open →",
+  "waitingApproval": "Waiting for approval",
+  "pendingBadge": "Pending",
+  "status": {
+    "DRAFT": "Draft",
+    "ACTIVE": "Active",
+    "COMPLETED": "Completed",
+    "ARCHIVED": "Archived",
+    "UNKNOWN": "Unknown"
+  },
+  "createPanel": {
+    "title": "Create pool",
+    "tournamentLabel": "Tournament / Instance",
+    "poolNameLabel": "Pool name",
+    "poolNamePlaceholder": "E.g.: Pool with friends",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "Quick rules or context",
+    "deadlineLabel": "Deadline (min before kickoff)",
+    "timezoneLabel": "Time Zone",
+    "requireApprovalLabel": "Require host approval",
+    "requireApprovalDesc": "Players will need to wait for approval to join",
+    "scoringTitle": "How will players score?",
+    "scoringDesc": "Define the scoring rules for each tournament phase.",
+    "configWizard": "Configuration Wizard",
+    "configReady": "Configuration ready ({count} phases)",
+    "creating": "Creating...",
+    "createButton": "Create pool"
+  },
+  "joinPanel": {
+    "title": "Join a pool",
+    "inviteCodeLabel": "Invite code",
+    "inviteCodePlaceholder": "E.g.: ABC123",
+    "joining": "Joining...",
+    "joinButton": "Join"
+  },
+  "errors": {
+    "selectInstance": "Select a tournament/instance.",
+    "poolNameMin": "Pool name: minimum 3 characters.",
+    "configRequired": "You must configure the scoring rules using the Configuration Wizard.",
+    "inviteCodeRequired": "Enter an invite code."
+  },
+  "joinApproval": {
+    "alertTitle": "Request sent successfully",
+    "alertMessage": "Your request will appear on the Dashboard with 'Pending approval' status."
+  },
+  "poolCard": {
+    "timezone": "TZ",
+    "deadline": "Deadline",
+    "tournament": "Tournament"
+  },
+  "wizard": {
+    "title": "Configure the Scoring Rules",
+    "step1": "Step 1 of 2: Choose a preset",
+    "step2": "Step 2 of 2: Configure each phase",
+    "stepSummary": "Configuration summary",
+    "loadingConfig": "Loading configuration...",
+    "loadingPhases": "Loading tournament phases",
+    "errorLoadingPhases": "Error loading tournament phases",
+    "errorTitle": "Error",
+    "close": "Close",
+    "cancel": "Cancel",
+    "back": "Back",
+    "createPool": "Create Pool",
+    "confirmAndCreate": "Confirm and Create Pool",
+    "presetIntro": "Choose a preset:",
+    "presetIntroFull": "To get started faster, choose a preset or fully customize:",
+    "recommended": "Recommended",
+    "presets": {
+      "CUMULATIVE": {
+        "title": "CUMULATIVE",
+        "description": "Points are ADDED up: Result (5/10 pts) + Home goals (2/4 pts) + Away goals (2/4 pts) + Difference (1/2 pts). Exact score = 10 pts in groups, 20 pts in knockouts.",
+        "shortDesc": "Stackable points: result + goals + difference"
+      },
+      "BASIC": {
+        "title": "BASIC",
+        "description": "Only exact score for all matches. Points increase automatically in knockout rounds (groups: 20 pts, round of 16: 30 pts, final: 60 pts).",
+        "shortDesc": "Only exact score with increasing points"
+      },
+      "SIMPLE": {
+        "title": "SIMPLE",
+        "description": "No match scores. In group stage you order the teams in each group (10 pts per correct position, +20 pts if the complete group is perfect). In knockouts you just pick who advances.",
+        "shortDesc": "No scores: order groups, pick who advances"
+      },
+      "CUSTOM": {
+        "title": "CUSTOM",
+        "description": "Configure each phase manually according to your specific needs. Choose whether you want scores or not, what pick types to enable and how many points to assign to each one.",
+        "shortDesc": "Configure everything manually"
+      }
+    },
+    "summary": {
+      "title": "Configuration Summary",
+      "presetUsing": "You will use the \"{preset}\" preset with predefined configuration.",
+      "customReview": "Review your custom configuration before creating the pool.",
+      "presetLabel": "PRESET {key}",
+      "presetDescriptions": {
+        "CUMULATIVE": "Points are ADDED up per criterion: Result (5/10 pts) + Home goals (2/4 pts) + Away goals (2/4 pts) + Difference (1/2 pts). Exact score = 10 pts in groups, 20 pts in knockouts.",
+        "BASIC": "Only exact score for all matches with auto-scaling (20 pts in groups -> 60 pts in final).",
+        "SIMPLE": "No scores. In groups: order teams (10 pts per position + 20 pts perfect group bonus). In knockouts: pick who advances."
+      },
+      "typeWithScores": "Type:",
+      "withScores": "With scores",
+      "withoutScores": "Without scores",
+      "rulesPreviewTitle": "How it will look in \"Pool Rules\"",
+      "scoringRulesTitle": "SCORING RULES",
+      "matchScores": "Match scores",
+      "positionsOrAdvances": "Final positions or advances",
+      "importantTitle": "Important",
+      "importantMessage": "This configuration will be applied to the entire pool."
+    },
+    "presetNames": {
+      "CUMULATIVE": "Cumulative",
+      "BASIC": "Basic",
+      "SIMPLE": "Simple",
+      "CUSTOM": "Custom"
+    }
+  }
+}

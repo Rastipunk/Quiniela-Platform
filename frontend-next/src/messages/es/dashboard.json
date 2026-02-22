@@ -1,0 +1,125 @@
+{
+  "title": "Mis Pools",
+  "subtitle": "Crear / Unirse / Entrar a una pool",
+  "createPool": "+ Crear pool",
+  "joinWithCode": "Unirme con código",
+  "logout": "Logout",
+  "loading": "Cargando...",
+  "emptyState": "Aún no estás en ninguna pool. Crea una o únete con un código.",
+  "openPool": "Abrir →",
+  "waitingApproval": "Esperando aprobación",
+  "pendingBadge": "Pendiente",
+  "status": {
+    "DRAFT": "Borrador",
+    "ACTIVE": "En curso",
+    "COMPLETED": "Finalizada",
+    "ARCHIVED": "Archivada",
+    "UNKNOWN": "Desconocido"
+  },
+  "createPanel": {
+    "title": "Crear pool",
+    "tournamentLabel": "Torneo / Instancia",
+    "poolNameLabel": "Nombre de la pool",
+    "poolNamePlaceholder": "Ej: Quiniela con amigos",
+    "descriptionLabel": "Descripción (opcional)",
+    "descriptionPlaceholder": "Reglas rápidas o contexto",
+    "deadlineLabel": "Deadline (min antes del kickoff)",
+    "timezoneLabel": "Time Zone",
+    "requireApprovalLabel": "Requiere aprobación del host",
+    "requireApprovalDesc": "Los jugadores deberán esperar aprobación para unirse",
+    "scoringTitle": "¿Cómo puntuarán los jugadores?",
+    "scoringDesc": "Define las reglas de puntuación para cada fase del torneo.",
+    "configWizard": "Asistente de Configuración",
+    "configReady": "Configuración lista ({count} fases)",
+    "creating": "Creando...",
+    "createButton": "Crear pool"
+  },
+  "joinPanel": {
+    "title": "Unirme a una pool",
+    "inviteCodeLabel": "Código de invitación",
+    "inviteCodePlaceholder": "Ej: ABC123",
+    "joining": "Uniéndome...",
+    "joinButton": "Unirme"
+  },
+  "errors": {
+    "selectInstance": "Selecciona un torneo/instancia.",
+    "poolNameMin": "Nombre de pool: mínimo 3 caracteres.",
+    "configRequired": "Debes configurar las reglas de puntuación usando el Asistente de Configuración.",
+    "inviteCodeRequired": "Escribe un código de invitación."
+  },
+  "joinApproval": {
+    "alertTitle": "Solicitud enviada exitosamente",
+    "alertMessage": "Tu solicitud aparecerá en el Dashboard con estado 'Pendiente de aprobación'."
+  },
+  "poolCard": {
+    "timezone": "TZ",
+    "deadline": "Deadline",
+    "tournament": "Torneo"
+  },
+  "wizard": {
+    "title": "Configura las Reglas de Puntuación",
+    "step1": "Paso 1 de 2: Elige un preset",
+    "step2": "Paso 2 de 2: Configura cada fase",
+    "stepSummary": "Resumen de configuración",
+    "loadingConfig": "Cargando configuración...",
+    "loadingPhases": "Obteniendo fases del torneo",
+    "errorLoadingPhases": "Error al cargar fases del torneo",
+    "errorTitle": "Error",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "back": "Atrás",
+    "createPool": "Crear Pool",
+    "confirmAndCreate": "Confirmar y Crear Pool",
+    "presetIntro": "Elige un preset:",
+    "presetIntroFull": "Para empezar más rápido, elige un preset o personaliza completamente:",
+    "recommended": "Recomendado",
+    "presets": {
+      "CUMULATIVE": {
+        "title": "ACUMULATIVO",
+        "description": "Los puntos se SUMAN: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
+        "shortDesc": "Puntos acumulables: resultado + goles + diferencia"
+      },
+      "BASIC": {
+        "title": "BÁSICO",
+        "description": "Solo marcador exacto en todos los partidos. Los puntos aumentan automáticamente en rondas eliminatorias (grupos: 20 pts, octavos: 30 pts, final: 60 pts).",
+        "shortDesc": "Solo marcador exacto con puntos crecientes"
+      },
+      "SIMPLE": {
+        "title": "SIMPLE",
+        "description": "Sin marcadores de partidos. En fase de grupos ordenas los equipos de cada grupo (10 pts por posición correcta, +20 pts si el grupo completo es perfecto). En eliminatorias solo eliges quién avanza.",
+        "shortDesc": "Sin marcadores: ordena grupos, elige quién avanza"
+      },
+      "CUSTOM": {
+        "title": "PERSONALIZADO",
+        "description": "Configura cada fase manualmente según tus necesidades específicas. Elige si quieres marcadores o no, qué tipos de picks activar y cuántos puntos asignar a cada uno.",
+        "shortDesc": "Configura todo manualmente"
+      }
+    },
+    "summary": {
+      "title": "Resumen de Configuración",
+      "presetUsing": "Usarás el preset \"{preset}\" con configuración predefinida.",
+      "customReview": "Revisa tu configuración personalizada antes de crear la pool.",
+      "presetLabel": "PRESET {key}",
+      "presetDescriptions": {
+        "CUMULATIVE": "Los puntos se SUMAN por cada criterio: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
+        "BASIC": "Solo marcador exacto en todos los partidos con auto-scaling (20 pts en grupos → 60 pts en final).",
+        "SIMPLE": "Sin marcadores. En grupos: ordena equipos (10 pts por posición + 20 pts bonus grupo perfecto). En eliminatorias: elige quién avanza."
+      },
+      "typeWithScores": "Tipo:",
+      "withScores": "Con marcadores",
+      "withoutScores": "Sin marcadores",
+      "rulesPreviewTitle": "Cómo se verá en \"Reglas de la Pool\"",
+      "scoringRulesTitle": "REGLAS DE PUNTUACIÓN",
+      "matchScores": "Marcadores de partidos",
+      "positionsOrAdvances": "Posiciones finales o avances",
+      "importantTitle": "Importante",
+      "importantMessage": "Esta configuración se aplicará a toda la pool."
+    },
+    "presetNames": {
+      "CUMULATIVE": "Acumulativo",
+      "BASIC": "Básico",
+      "SIMPLE": "Simple",
+      "CUSTOM": "Personalizado"
+    }
+  }
+}

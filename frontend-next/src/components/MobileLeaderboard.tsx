@@ -3,6 +3,7 @@
 // Componente de Leaderboard optimizado para móvil
 // Sprint 3 - Mobile UX Improvements
 
+import { useTranslations } from "next-intl";
 import { mobileInteractiveStyles } from "../hooks/useIsMobile";
 
 type LeaderboardRow = {
@@ -29,6 +30,7 @@ export function MobileLeaderboard({
   formatPhaseName,
   formatPhaseFullName,
 }: MobileLeaderboardProps) {
+  const t = useTranslations("pool");
   const leaderPoints = rows[0]?.points ?? 0;
 
   return (
@@ -115,7 +117,7 @@ export function MobileLeaderboard({
                         fontWeight: 600,
                       }}
                     >
-                      👑 HOST
+                      👑 {t("mobileLeaderboard.host")}
                     </span>
                   )}
                   {r.role === "CO_ADMIN" && (
@@ -130,7 +132,7 @@ export function MobileLeaderboard({
                         fontWeight: 600,
                       }}
                     >
-                      ⭐ CO-ADMIN
+                      ⭐ {t("mobileLeaderboard.coAdmin")}
                     </span>
                   )}
                 </div>
@@ -150,7 +152,7 @@ export function MobileLeaderboard({
                 </div>
                 <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
                   {idx === 0 ? (
-                    <span style={{ color: "#28a745", fontWeight: 600 }}>Líder</span>
+                    <span style={{ color: "#28a745", fontWeight: 600 }}>{t("mobileLeaderboard.leader")}</span>
                   ) : (
                     <span>-{diff} pts</span>
                   )}
@@ -240,7 +242,7 @@ export function MobileLeaderboard({
             borderRadius: 12,
           }}
         >
-          Aún no hay datos en el leaderboard
+          {t("mobileLeaderboard.emptyState")}
         </div>
       )}
 
@@ -254,7 +256,7 @@ export function MobileLeaderboard({
             padding: "8px 0",
           }}
         >
-          ← Desliza para ver más fases →
+          ← {t("mobileLeaderboard.scrollHint")} →
         </div>
       )}
     </div>

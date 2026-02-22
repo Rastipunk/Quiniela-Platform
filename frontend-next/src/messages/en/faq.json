@@ -1,0 +1,123 @@
+{
+  "hero": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers to the most common questions about sports pools and predictions on Picks4All."
+  },
+  "contact": {
+    "title": "Didn't find what you were looking for?",
+    "description": "Write to us and we'll get back to you as soon as possible.",
+    "button": "Contact support"
+  },
+  "cta": {
+    "title": "Ready to start your pool?",
+    "description": "Create your free account and start competing with your friends.",
+    "button": "Create free account"
+  },
+  "breadcrumbs": {
+    "home": "Home",
+    "faq": "Frequently Asked Questions"
+  },
+  "categories": ["General", "For Hosts", "For Players", "Account"],
+  "items": [
+    {
+      "category": "General",
+      "question": "What is Picks4All?",
+      "answer": "Picks4All is a free platform to create and participate in sports prediction pools with your friends, family, or coworkers. You make predictions about football match results and compete for points on a leaderboard. Whether you call it a pool, bracket, or sweepstake — you can play for free here."
+    },
+    {
+      "category": "General",
+      "question": "Is Picks4All free to use?",
+      "answer": "Yes, Picks4All is completely free. You can create pools, invite friends, and make predictions at no cost. There are no mandatory paid plans or hidden charges for the core functionality."
+    },
+    {
+      "category": "General",
+      "question": "Is this gambling?",
+      "answer": "No. Picks4All is an entertainment platform where you compete for points and rankings, not money. There are no bets or monetary transactions involved. It's simply a prediction game among friends for fun."
+    },
+    {
+      "category": "General",
+      "question": "What tournaments are available?",
+      "answer": "Currently we have the 2026 World Cup available, the biggest tournament in history with 48 teams and 104 matches. We will be adding more tournaments in the future, including Champions League and local leagues."
+    },
+    {
+      "category": "General",
+      "question": "What's the difference between a pool, bracket, and sweepstake?",
+      "answer": "They all refer to the same concept: a sports prediction game among friends. The name varies by country and tradition. In Latin America it's known as 'quiniela', 'polla', 'prode', or 'penca'. In English-speaking countries, 'pool' or 'bracket' are common terms. Picks4All works for everyone — no matter what you call it."
+    },
+    {
+      "category": "General",
+      "question": "Is it legal to play prediction pools with friends?",
+      "answer": "Yes. Picks4All is a free entertainment platform where no real money is wagered. Prediction pools among friends are a completely legal social tradition. We are not a betting or gambling site — it's pure fun and healthy competition among friends."
+    },
+    {
+      "category": "For Hosts",
+      "question": "How do I create a pool?",
+      "answer": "After creating your account, go to 'My Pools' and click 'Create Pool'. Choose the tournament, name your pool, configure the scoring system and the deadline for predictions. Once created, you'll receive an invitation code to share."
+    },
+    {
+      "category": "For Hosts",
+      "question": "Can I customize the scoring rules?",
+      "answer": "Yes. You can choose from various scoring presets or configure points for each type of correct prediction: exact score, correct result (home/draw/away), correct home goals, correct away goals, and goal difference."
+    },
+    {
+      "category": "For Hosts",
+      "question": "How do I invite people to my pool?",
+      "answer": "Each pool has a unique invitation code. Share this code via WhatsApp, email, or any other means. Anyone with the code can join your pool after creating their account."
+    },
+    {
+      "category": "For Hosts",
+      "question": "How do I publish results?",
+      "answer": "As a Host, after a match ends, go to the match in your pool and click 'Publish Result'. Enter the official score and the leaderboard will update automatically."
+    },
+    {
+      "category": "For Hosts",
+      "question": "What if I make a mistake publishing a result?",
+      "answer": "You can correct a published result at any time. The system will ask you for a reason for the correction (errata) and will update points automatically. All corrections are recorded for transparency."
+    },
+    {
+      "category": "For Hosts",
+      "question": "Can I appoint co-administrators?",
+      "answer": "Yes. You can appoint other pool members as co-administrators to help you publish results. They will have the same permissions as you to manage the pool."
+    },
+    {
+      "category": "For Players",
+      "question": "How do I join a pool?",
+      "answer": "You need the invitation code shared by the Host. After creating your account or logging in, go to 'My Pools' and click 'Join Pool'. Enter the code and you'll be in."
+    },
+    {
+      "category": "For Players",
+      "question": "When is the deadline for predictions?",
+      "answer": "Each match has a prediction deadline, typically 10 minutes before the match starts (the Host can configure this). After the deadline, you won't be able to modify your prediction for that match."
+    },
+    {
+      "category": "For Players",
+      "question": "Can I change my prediction?",
+      "answer": "Yes, you can modify your prediction as many times as you want BEFORE the deadline. Once the deadline passes, your prediction is locked."
+    },
+    {
+      "category": "For Players",
+      "question": "How are points calculated?",
+      "answer": "Points accumulate based on your correct predictions. For example, with the standard preset: exact score = 10 pts, correct result = 5 pts, correct home goals = 2 pts, correct away goals = 2 pts, goal difference = 1 pt. If you get the exact score right, you earn points for all criteria."
+    },
+    {
+      "category": "For Players",
+      "question": "Can I participate in multiple pools?",
+      "answer": "Yes. You can join as many pools as you want, even for the same tournament. Each pool has its own leaderboard and rules."
+    },
+    {
+      "category": "Account",
+      "question": "How do I create an account?",
+      "answer": "Click 'Create free account' and enter your email, a username, your display name, and a password. You can also sign up with your Google account."
+    },
+    {
+      "category": "Account",
+      "question": "What if I forgot my password?",
+      "answer": "On the login page, click 'Forgot your password?' and enter your email. You'll receive a link to reset your password."
+    },
+    {
+      "category": "Account",
+      "question": "Can I change my username?",
+      "answer": "Your username is unique and cannot be changed once the account is created. However, you can change your display name at any time from your profile."
+    }
+  ]
+}

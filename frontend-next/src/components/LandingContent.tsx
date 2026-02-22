@@ -1,12 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { useIsMobile } from "../hooks/useIsMobile";
-import { useAuthPanel } from "../contexts/AuthPanelContext";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { useAuthPanel } from "@/contexts/AuthPanelContext";
 
 export function LandingContent() {
+  const t = useTranslations("landing");
   const isMobile = useIsMobile();
   const { openAuthPanel } = useAuthPanel();
+
+  const strongTag = (chunks: React.ReactNode) => (
+    <strong style={{ color: "var(--text)" }}>{chunks}</strong>
+  );
 
   return (
     <div style={{ background: "var(--bg)" }}>
@@ -28,7 +34,7 @@ export function LandingContent() {
               lineHeight: 1.2,
             }}
           >
-            Compite con tus amigos prediciendo partidos de futbol
+            {t("hero.title")}
           </h1>
           <p
             style={{
@@ -41,8 +47,7 @@ export function LandingContent() {
               marginRight: "auto",
             }}
           >
-            Crea tu quiniela (polla, prode, penca) gratis y diviertete
-            prediciendo resultados de fútbol con tus amigos.
+            {t("hero.subtitle")}
           </p>
           <div
             style={{
@@ -68,7 +73,7 @@ export function LandingContent() {
                 cursor: "pointer",
               }}
             >
-              Crear cuenta gratis
+              {t("hero.cta")}
             </button>
             <Link
               href="/como-funciona"
@@ -84,7 +89,7 @@ export function LandingContent() {
                 display: "inline-block",
               }}
             >
-              Ver como funciona
+              {t("hero.secondaryCta")}
             </Link>
           </div>
         </div>
@@ -107,7 +112,7 @@ export function LandingContent() {
             color: "var(--text)",
           }}
         >
-          Que es Picks4All?
+          {t("whatIs.title")}
         </h2>
         <p
           style={{
@@ -118,12 +123,7 @@ export function LandingContent() {
             margin: "0 auto 16px",
           }}
         >
-          Picks4All es la plataforma gratuita para crear <strong style={{ color: "var(--text)" }}>quinielas deportivas</strong> online
-          y competir con amigos, familia o companeros de trabajo prediciendo resultados de futbol.
-          Tambien conocida como <strong style={{ color: "var(--text)" }}>polla futbolera</strong> en Colombia, Chile y Venezuela,{" "}
-          <strong style={{ color: "var(--text)" }}>prode</strong> en Argentina,{" "}
-          <strong style={{ color: "var(--text)" }}>penca</strong> en Uruguay, o{" "}
-          <strong style={{ color: "var(--text)" }}>porra</strong> en España.
+          {t.rich("whatIs.p1", { strong: strongTag })}
         </p>
         <p
           style={{
@@ -134,9 +134,7 @@ export function LandingContent() {
             margin: "0 auto",
           }}
         >
-          Crea tu quiniela gratis, invita a quien quieras con un codigo, haz tus predicciones
-          y compite en el leaderboard. <strong style={{ color: "var(--text)" }}>100% gratis y sin apuestas</strong> — solo diversion
-          y rivalidad sana.
+          {t.rich("whatIs.p2", { strong: strongTag })}
         </p>
       </section>
 
@@ -157,7 +155,7 @@ export function LandingContent() {
             color: "var(--text)",
           }}
         >
-          Todo lo que necesitas para competir
+          {t("features.title")}
         </h2>
         <p
           style={{
@@ -170,7 +168,7 @@ export function LandingContent() {
             marginRight: "auto",
           }}
         >
-          Una plataforma completa para organizar tus quinielas con amigos, familia o companeros de trabajo.
+          {t("features.subtitle")}
         </p>
 
         <div
@@ -181,24 +179,24 @@ export function LandingContent() {
           }}
         >
           <FeatureCard
-            icon="⚽"
-            title="Crea tu quiniela"
-            description="Personaliza las reglas, el sistema de puntos y los plazos. Tu decides como se juega tu polla, prode o penca."
+            icon={"\u26BD"}
+            title={t("feature1.title")}
+            description={t("feature1.description")}
           />
           <FeatureCard
-            icon="📊"
-            title="Leaderboard en vivo"
-            description="Ranking actualizado automaticamente despues de cada partido. Siempre sabes quien va ganando."
+            icon={"\uD83D\uDCCA"}
+            title={t("feature2.title")}
+            description={t("feature2.description")}
           />
           <FeatureCard
-            icon="🎯"
-            title="Predicciones flexibles"
-            description="Marcador exacto, resultado, diferencia de goles. Multiples formas de sumar puntos con tus pronosticos."
+            icon={"\uD83C\uDFAF"}
+            title={t("feature3.title")}
+            description={t("feature3.description")}
           />
           <FeatureCard
-            icon="👥"
-            title="Invita amigos facilmente"
-            description="Comparte un codigo de invitacion por WhatsApp y listo. Unite en segundos, sin complicaciones."
+            icon={"\uD83D\uDC65"}
+            title={t("feature4.title")}
+            description={t("feature4.description")}
           />
         </div>
       </section>
@@ -220,7 +218,7 @@ export function LandingContent() {
               color: "var(--text)",
             }}
           >
-            Como funciona
+            {t("howItWorks.title")}
           </h2>
 
           <div
@@ -232,18 +230,18 @@ export function LandingContent() {
           >
             <StepCard
               number={1}
-              title="Crea o unite"
-              description="Crea tu propia quiniela o unite a una existente con un codigo de invitacion."
+              title={t("step1.title")}
+              description={t("step1.description")}
             />
             <StepCard
               number={2}
-              title="Haz tus predicciones"
-              description="Ingresa tus pronosticos antes del deadline de cada partido."
+              title={t("step2.title")}
+              description={t("step2.description")}
             />
             <StepCard
               number={3}
-              title="Sube en el ranking"
-              description="Gana puntos con cada acierto y demuestra que sos el mejor predictor."
+              title={t("step3.title")}
+              description={t("step3.description")}
             />
           </div>
 
@@ -260,7 +258,7 @@ export function LandingContent() {
                 gap: 8,
               }}
             >
-              Ver mas detalles →
+              {t("seeMore")}
             </Link>
           </div>
         </div>
@@ -283,7 +281,7 @@ export function LandingContent() {
             color: "var(--text)",
           }}
         >
-          Torneos disponibles
+          {t("tournaments.title")}
         </h2>
         <p
           style={{
@@ -292,7 +290,7 @@ export function LandingContent() {
             fontSize: isMobile ? "1rem" : "1.1rem",
           }}
         >
-          Crea quinielas para los torneos mas emocionantes del mundo.
+          {t("tournaments.subtitle")}
         </p>
 
         <div
@@ -304,7 +302,7 @@ export function LandingContent() {
             display: "inline-block",
           }}
         >
-          <div style={{ fontSize: "3rem", marginBottom: 12 }}>🏆</div>
+          <div style={{ fontSize: "3rem", marginBottom: 12 }}>{"\uD83C\uDFC6"}</div>
           <h3
             style={{
               fontSize: "1.5rem",
@@ -313,10 +311,10 @@ export function LandingContent() {
               color: "var(--text)",
             }}
           >
-            Copa del Mundo 2026
+            {t("wc2026.name")}
           </h3>
           <p style={{ color: "var(--muted)", marginBottom: 0 }}>
-            48 equipos &bull; 104 partidos &bull; El torneo mas grande de la historia
+            {t("wc2026.description")}
           </p>
         </div>
       </section>
@@ -337,7 +335,7 @@ export function LandingContent() {
             marginBottom: 16,
           }}
         >
-          Listo para demostrar que sabes de futbol?
+          {t("final.title")}
         </h2>
         <p
           style={{
@@ -346,7 +344,7 @@ export function LandingContent() {
             marginBottom: 12,
           }}
         >
-          Unite gratis y comenza a competir con tus amigos.
+          {t("final.subtitle")}
         </p>
         <p
           style={{
@@ -355,7 +353,7 @@ export function LandingContent() {
             marginBottom: 32,
           }}
         >
-          Crea tu quiniela gratis en menos de 1 minuto.
+          {t("final.hint")}
         </p>
         <button
           onClick={() => openAuthPanel("register")}
@@ -372,7 +370,7 @@ export function LandingContent() {
             cursor: "pointer",
           }}
         >
-          Comenzar ahora — Es gratis
+          {t("final.cta")}
         </button>
       </section>
     </div>

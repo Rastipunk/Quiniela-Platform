@@ -4,6 +4,7 @@
 // Componente que muestra el resumen detallado de puntos de un jugador
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { getPlayerSummary } from "../lib/api";
 import type { PlayerSummaryResponse, PlayerSummaryPhase, PlayerSummaryMatch } from "../lib/api";
 import { getToken } from "../lib/auth";
@@ -23,15 +24,16 @@ type PlayerSummaryProps = {
 const GRID_TEMPLATE = "auto 20px 1fr 70px 70px 80px";
 const GRID_TEMPLATE_MOBILE = "auto 16px 1fr 56px 56px 60px";
 
-const typeLabels: Record<string, string> = {
-  EXACT_SCORE: "Exacto",
-  GOAL_DIFFERENCE: "Diferencia",
-  PARTIAL_SCORE: "Parcial",
-  TOTAL_GOALS: "Total goles",
-  OUTCOME: "Resultado",
-  MATCH_OUTCOME_90MIN: "Resultado",
-  HOME_GOALS: "Local",
-  AWAY_GOALS: "Visitante",
+// Translation keys for pick type labels - resolved via t() in components
+const typeTranslationKeys: Record<string, string> = {
+  EXACT_SCORE: "pickTypeNames.EXACT_SCORE",
+  GOAL_DIFFERENCE: "pickTypeNames.GOAL_DIFFERENCE",
+  PARTIAL_SCORE: "pickTypeNames.PARTIAL_SCORE",
+  TOTAL_GOALS: "pickTypeNames.TOTAL_GOALS",
+  OUTCOME: "pickTypeNames.MATCH_OUTCOME_90MIN",
+  MATCH_OUTCOME_90MIN: "pickTypeNames.MATCH_OUTCOME_90MIN",
+  HOME_GOALS: "pickTypeNames.HOME_GOALS",
+  AWAY_GOALS: "pickTypeNames.AWAY_GOALS",
 };
 
 const typeColors: Record<string, string> = {
@@ -50,6 +52,7 @@ function BreakdownPopover({ breakdown, onClose }: {
   breakdown: Array<{ type: string; matched: boolean; points: number }>;
   onClose: () => void;
 }) {
+  const t = useTranslations("pool");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,7 +86,7 @@ function BreakdownPopover({ breakdown, onClose }: {
       }}
     >
       {matched.length === 0 ? (
-        <div style={{ fontSize: 12, color: "#999" }}>Sin aciertos</div>
+        <div style={{ fontSize: 12, color: "#999" }}>{t("scoringBreakdown.noHits")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {matched.map((b, idx) => (
@@ -98,7 +101,7 @@ function BreakdownPopover({ breakdown, onClose }: {
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: 12, color: "#333" }}>{typeLabels[b.type] ?? b.type}</span>
+              <span style={{ fontSize: 12, color: "#333" }}>{typeTranslationKeys[b.type] ? t(typeTranslationKeys[b.type] as any) : b.type}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: typeColors[b.type] ?? "#6c757d", marginLeft: "auto" }}>
                 +{b.points}
               </span>
@@ -117,15 +120,17 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   LOCKED: { bg: "#e2e3e5", text: "#383d41" },
 };
 
-const statusLabels: Record<string, string> = {
-  SCORED: "Puntuado",
-  NO_PICK: "Sin pick",
-  PENDING_RESULT: "Esperando resultado",
-  LOCKED: "Bloqueado",
+// Translation keys for status labels - resolved via t() in components
+const statusTranslationKeys: Record<string, string> = {
+  SCORED: "playerSummaryView.statusScored",
+  NO_PICK: "playerSummaryView.statusNoPick",
+  PENDING_RESULT: "playerSummaryView.statusPendingResult",
+  LOCKED: "playerSummaryView.statusLocked",
 };
 
 // Componente para una fila de partido (usa display:contents para compartir grid del padre)
 function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatch; tournamentKey: string; isMobile?: boolean }) {
+  const t = useTranslations("pool");
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const colors = statusColors[match.status] ?? statusColors.LOCKED;
@@ -238,7 +243,7 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
               whiteSpace: "nowrap",
             }}
           >
-            {statusLabels[match.status]}
+            {statusTranslationKeys[match.status] ? t(statusTranslationKeys[match.status] as any) : match.status}
           </span>
         )}
         {showBreakdown && (
@@ -254,6 +259,7 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
 
 // Componente para una fase
 function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { phase: PlayerSummaryPhase; tournamentKey: string; defaultExpanded?: boolean; isMobile?: boolean }) {
+  const t = useTranslations("pool");
   const [expanded, setExpanded] = useState(defaultExpanded ?? false);
 
   const successRate = phase.scoredCount > 0
@@ -282,7 +288,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
           <div>
             <div style={{ fontWeight: 600, fontSize: isMobile ? 14 : 16 }}>{phase.phaseName}</div>
             <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>
-              {phase.scoredCount} de {phase.matchCount} puntuados
+              {t("playerSummaryView.scoredOfTotal", { scored: phase.scoredCount, total: phase.matchCount })}
             </div>
           </div>
         </div>
@@ -310,12 +316,12 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
             {/* Header row (display:contents so cells participate in the grid) */}
             <div style={{ display: "contents" }}>
               {[
-                { label: "Local", align: "left" as const, pl: isMobile ? 8 : 16 },
+                { label: t("playerSummaryView.headerHome"), align: "left" as const, pl: isMobile ? 8 : 16 },
                 { label: "", align: "center" as const },
-                { label: "Visitante", align: "left" as const },
-                { label: "Pick", align: "center" as const },
-                { label: "Res.", align: "center" as const },
-                { label: "Pts", align: "right" as const, pr: isMobile ? 8 : 16 },
+                { label: t("playerSummaryView.headerAway"), align: "left" as const },
+                { label: t("playerSummaryView.headerPick"), align: "center" as const },
+                { label: t("playerSummaryView.headerResult"), align: "center" as const },
+                { label: t("playerSummaryView.headerPts"), align: "right" as const, pr: isMobile ? 8 : 16 },
               ].map((h, i) => (
                 <span
                   key={i}
@@ -351,6 +357,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
 
 // Componente principal
 export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox", initialPhase, onClose }: PlayerSummaryProps) {
+  const t = useTranslations("pool");
   const isMobile = useIsMobile();
   const [data, setData] = useState<PlayerSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -363,24 +370,24 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
         setError(null);
         const token = getToken();
         if (!token) {
-          setError("No autenticado");
+          setError(t("playerSummaryView.notAuthenticated"));
           return;
         }
         const result = await getPlayerSummary(token, poolId, userId);
         setData(result);
       } catch (err: any) {
-        setError(err.message ?? "Error cargando resumen");
+        setError(err.message ?? t("playerSummaryView.errorLoading"));
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, [poolId, userId]);
+  }, [poolId, userId, t]);
 
   if (loading) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
-        <div style={{ fontSize: 24 }}>Cargando resumen...</div>
+        <div style={{ fontSize: 24 }}>{t("playerSummaryView.loadingSummary")}</div>
       </div>
     );
   }
@@ -388,7 +395,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
   if (error) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#dc3545" }}>
-        <div style={{ fontSize: 18 }}>Error: {error}</div>
+        <div style={{ fontSize: 18 }}>{t("playerSummaryView.errorPrefix", { message: error })}</div>
       </div>
     );
   }
@@ -424,7 +431,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
             </span>
             <div>
               <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 24 }}>
-                {data.isViewingSelf ? "Mi Resumen" : data.player.displayName}
+                {data.isViewingSelf ? t("playerSummaryView.mySummary") : data.player.displayName}
               </h2>
               <div style={{ color: "#666", fontSize: isMobile ? 13 : 14 }}>
                 #{data.player.rank} • {data.player.role}
@@ -435,7 +442,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
 
         <div style={{ textAlign: isMobile ? "center" : "right" }}>
           <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: "#007bff" }}>{data.player.totalPoints}</div>
-          <div style={{ fontSize: isMobile ? 13 : 14, color: "#666" }}>puntos totales</div>
+          <div style={{ fontSize: isMobile ? 13 : 14, color: "#666" }}>{t("playerSummaryView.totalPoints")}</div>
         </div>
       </div>
 
@@ -450,21 +457,21 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
       >
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: "#e7f3ff", borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "#0056b3" }}>{data.player.rank}°</div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>Posición</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.position")}</div>
         </div>
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: "#d4edda", borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "#155724" }}>{data.player.totalPoints}</div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>Puntos</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.pointsLabel")}</div>
         </div>
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: "#fff3cd", borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "#856404" }}>{totalScored}</div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>Puntuados</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.scored")}</div>
         </div>
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: "#f8d7da", borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "#721c24" }}>
             {totalMaxPoints > 0 ? Math.round((data.player.totalPoints / totalMaxPoints) * 100) : 0}%
           </div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>Efectividad</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.effectiveness")}</div>
         </div>
       </div>
 
@@ -481,15 +488,15 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
             color: "#856404",
           }}
         >
-          Solo se muestran los picks de partidos cuyo deadline ya pasó.
+          {t("playerSummaryView.onlyDeadlinePassed")}
         </div>
       )}
 
       {/* Fases */}
-      <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: "#333" }}>Desglose por fase</h3>
+      <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: "#333" }}>{t("playerSummaryView.phaseBreakdown")}</h3>
       {data.phases.length === 0 ? (
         <div style={{ padding: isMobile ? 20 : 40, textAlign: "center", color: "#666" }}>
-          No hay partidos visibles todavía
+          {t("playerSummaryView.noMatchesVisible")}
         </div>
       ) : (
         data.phases.map((phase, idx) => (
@@ -520,7 +527,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
               ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            Cerrar
+            {t("playerSummaryView.close")}
           </button>
         </div>
       )}

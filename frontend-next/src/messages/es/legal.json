@@ -1,0 +1,11 @@
+{
+  "termsTitle": "Términos de Servicio",
+  "privacyTitle": "Política de Privacidad",
+  "loading": "Cargando...",
+  "backToHome": "Volver al inicio",
+  "errorTerms": "Error al cargar los Términos de Servicio",
+  "errorPrivacy": "Error al cargar la Política de Privacidad",
+  "documentVersion": "Versión del documento: {version}",
+  "fallbackTerms": "# Términos de Servicio\n\n**Última actualización:** Enero 2026\n\n## 1. Aceptación de los Términos\n\nAl acceder o utilizar la plataforma Picks4All, usted acepta estar legalmente vinculado por estos Términos de Servicio. La Plataforma es un servicio de entretenimiento que permite realizar predicciones sobre eventos deportivos.\n\n## 2. Servicio Gratuito\n\n**IMPORTANTE:** Esta plataforma NO es un sitio de apuestas ni de juegos de azar. No se requiere ni se acepta dinero real para participar.\n\n## 3. Contacto\n\nPara preguntas sobre estos Términos, contáctenos en soporte@picks4all.com",
+  "fallbackPrivacy": "# Política de Privacidad\n\n**Última actualización:** Enero 2026\n\n## 1. Introducción\n\nEsta Política de Privacidad describe cómo la plataforma Picks4All recopila, utiliza, almacena y protege su información personal. Recopilamos datos de registro (correo electrónico, nombre de usuario) y datos de uso (predicciones, participación en pools).\n\n## 2. Sus Derechos\n\nUsted tiene derecho a acceder, rectificar y solicitar la eliminación de sus datos personales.\n\n## 3. Contacto\n\nPara preguntas sobre esta política, contáctenos en privacidad@picks4all.com"
+}

@@ -1,0 +1,123 @@
+{
+  "breadcrumbs": {
+    "home": "Home",
+    "howItWorks": "How It Works"
+  },
+  "hero": {
+    "title": "How It Works",
+    "subtitle": "Learn how to use Picks4All in minutes and start competing with your friends. Whether you call it a pool, bracket, or prediction game, here's how it works."
+  },
+  "jsonLd": {
+    "name": "How to create a free sports prediction pool",
+    "description": "Step-by-step guide to creating your sports prediction pool with Picks4All. Invite friends and compete by predicting football match results.",
+    "steps": [
+      { "name": "Create your account", "text": "Sign up for free with your email or Google. It only takes a few seconds." },
+      { "name": "Create your pool", "text": "Choose a tournament, name your pool, and set up the scoring rules." },
+      { "name": "Invite your friends", "text": "Share the invite code via WhatsApp, email, or however you like." },
+      { "name": "Publish the results", "text": "Enter the official score after each match. The leaderboard updates automatically." },
+      { "name": "Enjoy the competition", "text": "Watch the rankings rise and fall among your friends." }
+    ],
+    "tool": "Picks4All - Sports Prediction Platform"
+  },
+  "hostSection": {
+    "title": "Want to create a pool? (Host)",
+    "steps": [
+      {
+        "number": 1,
+        "title": "Create your account",
+        "description": "Sign up for free with your email or Google. It only takes a few seconds."
+      },
+      {
+        "number": 2,
+        "title": "Create your pool",
+        "description": "Choose a tournament (e.g., World Cup 2026), name your pool, and set up the rules: scoring system, deadline before each match, etc."
+      },
+      {
+        "number": 3,
+        "title": "Invite your friends",
+        "description": "Generate an invite code and share it via WhatsApp, email, or however you like. Anyone with the code can join your pool."
+      },
+      {
+        "number": 4,
+        "title": "Publish the results",
+        "description": "After each match, enter the official score. The leaderboard updates automatically."
+      },
+      {
+        "number": 5,
+        "title": "Enjoy the competition",
+        "description": "Watch the rankings rise and fall. Appoint co-admins if you need help managing your pool."
+      }
+    ]
+  },
+  "playerSection": {
+    "title": "Want to join a pool? (Player)",
+    "steps": [
+      {
+        "number": 1,
+        "title": "Get the invite code",
+        "description": "Your friend (the Host) will share a unique code so you can join their prediction pool."
+      },
+      {
+        "number": 2,
+        "title": "Create your account and join",
+        "description": "Sign up if you don't have an account yet, then enter the code to join the pool."
+      },
+      {
+        "number": 3,
+        "title": "Make your predictions",
+        "description": "For each match, submit your prediction before the deadline (usually 10 minutes before kickoff)."
+      },
+      {
+        "number": 4,
+        "title": "Earn points",
+        "description": "When the results are published, you'll earn points based on your accuracy: exact score, correct outcome, goal difference, and more."
+      },
+      {
+        "number": 5,
+        "title": "Climb the rankings",
+        "description": "Track your position on the leaderboard and prove you're the best predictor in the group."
+      }
+    ]
+  },
+  "scoringSection": {
+    "title": "Scoring System",
+    "subtitle": "The Host can customize the scoring system for the pool. Here's a typical example:",
+    "columns": {
+      "type": "Prediction type",
+      "points": "Points"
+    },
+    "rows": [
+      {
+        "emoji": "\uD83C\uDFAF",
+        "type": "Exact score (e.g., 2-1)",
+        "points": "10 pts"
+      },
+      {
+        "emoji": "\u2705",
+        "type": "Correct outcome (Home/Draw/Away)",
+        "points": "5 pts"
+      },
+      {
+        "emoji": "\uD83C\uDFE0",
+        "type": "Correct home goals",
+        "points": "2 pts"
+      },
+      {
+        "emoji": "\u2708\uFE0F",
+        "type": "Correct away goals",
+        "points": "2 pts"
+      },
+      {
+        "emoji": "\u2797",
+        "type": "Correct goal difference",
+        "points": "1 pt"
+      }
+    ],
+    "note": "* Points stack up. If you predict the exact score, you earn points for all matching criteria."
+  },
+  "cta": {
+    "title": "Ready to start your pool?",
+    "description": "Create your free account and start competing. Set up your prediction pool in minutes.",
+    "button": "Create free account"
+  }
+}

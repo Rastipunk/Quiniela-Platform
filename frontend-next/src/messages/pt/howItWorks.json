@@ -1,0 +1,123 @@
+{
+  "breadcrumbs": {
+    "home": "Inicio",
+    "howItWorks": "Como Funciona"
+  },
+  "hero": {
+    "title": "Como Funciona",
+    "subtitle": "Aprenda a usar o Picks4All em minutos e comece a competir com seus amigos. Seja bolao, palpite ou preditivo esportivo, aqui explicamos como funciona."
+  },
+  "jsonLd": {
+    "name": "Como criar um bolao esportivo gratis",
+    "description": "Guia passo a passo para criar seu bolao esportivo online com o Picks4All. Convide amigos e compita prevendo resultados de futebol.",
+    "steps": [
+      { "name": "Crie sua conta", "text": "Cadastre-se gratis com seu e-mail ou Google. Leva apenas alguns segundos." },
+      { "name": "Crie seu bolao", "text": "Escolha o torneio, de um nome ao seu bolao e configure as regras de pontuacao." },
+      { "name": "Convide seus amigos", "text": "Compartilhe o codigo de convite pelo WhatsApp, e-mail ou como preferir." },
+      { "name": "Publique os resultados", "text": "Insira o placar oficial apos cada jogo. O ranking e atualizado automaticamente." },
+      { "name": "Curta a competicao", "text": "Acompanhe a subida e descida no ranking entre seus amigos." }
+    ],
+    "tool": "Picks4All - Plataforma de Palpites Esportivos"
+  },
+  "hostSection": {
+    "title": "Quer criar um bolao? (Organizador)",
+    "steps": [
+      {
+        "number": 1,
+        "title": "Crie sua conta",
+        "description": "Cadastre-se gratis com seu e-mail ou Google. Leva apenas alguns segundos."
+      },
+      {
+        "number": 2,
+        "title": "Crie seu bolao",
+        "description": "Escolha o torneio (ex: Copa do Mundo 2026), de um nome ao seu bolao e configure as regras: sistema de pontos, prazo antes de cada jogo, etc."
+      },
+      {
+        "number": 3,
+        "title": "Convide seus amigos",
+        "description": "Gere um codigo de convite e compartilhe pelo WhatsApp, e-mail ou como preferir. Quem tiver o codigo pode entrar no seu bolao."
+      },
+      {
+        "number": 4,
+        "title": "Publique os resultados",
+        "description": "Apos cada jogo, insira o placar oficial. O ranking e atualizado automaticamente."
+      },
+      {
+        "number": 5,
+        "title": "Curta a competicao",
+        "description": "Acompanhe o ranking subindo e descendo. Nomeie co-admins se precisar de ajuda para gerenciar seu bolao."
+      }
+    ]
+  },
+  "playerSection": {
+    "title": "Quer participar de um bolao? (Jogador)",
+    "steps": [
+      {
+        "number": 1,
+        "title": "Receba o codigo de convite",
+        "description": "Seu amigo (o Organizador) vai compartilhar um codigo unico para voce entrar no bolao dele."
+      },
+      {
+        "number": 2,
+        "title": "Crie sua conta e participe",
+        "description": "Cadastre-se se ainda nao tem conta, depois insira o codigo para entrar no bolao."
+      },
+      {
+        "number": 3,
+        "title": "Faca seus palpites",
+        "description": "Para cada jogo, envie seu palpite antes do prazo (geralmente 10 minutos antes do inicio da partida)."
+      },
+      {
+        "number": 4,
+        "title": "Ganhe pontos",
+        "description": "Quando os resultados forem publicados, voce ganha pontos conforme seus acertos: placar exato, resultado correto, saldo de gols, etc."
+      },
+      {
+        "number": 5,
+        "title": "Suba no ranking",
+        "description": "Acompanhe sua posicao no ranking e prove que voce e o melhor palpiteiro do grupo."
+      }
+    ]
+  },
+  "scoringSection": {
+    "title": "Sistema de Pontos",
+    "subtitle": "O Organizador pode personalizar o sistema de pontos do bolao. Aqui esta um exemplo tipico:",
+    "columns": {
+      "type": "Tipo de acerto",
+      "points": "Pontos"
+    },
+    "rows": [
+      {
+        "emoji": "\uD83C\uDFAF",
+        "type": "Placar exato (ex: 2-1)",
+        "points": "10 pts"
+      },
+      {
+        "emoji": "\u2705",
+        "type": "Resultado correto (Casa/Empate/Fora)",
+        "points": "5 pts"
+      },
+      {
+        "emoji": "\uD83C\uDFE0",
+        "type": "Gols do mandante corretos",
+        "points": "2 pts"
+      },
+      {
+        "emoji": "\u2708\uFE0F",
+        "type": "Gols do visitante corretos",
+        "points": "2 pts"
+      },
+      {
+        "emoji": "\u2797",
+        "type": "Saldo de gols correto",
+        "points": "1 pt"
+      }
+    ],
+    "note": "* Os pontos se acumulam. Se voce acertar o placar exato, ganha pontos por todos os criterios."
+  },
+  "cta": {
+    "title": "Pronto para comecar seu bolao?",
+    "description": "Crie sua conta gratis e comece a competir. Monte seu bolao em minutos.",
+    "button": "Criar conta gratis"
+  }
+}

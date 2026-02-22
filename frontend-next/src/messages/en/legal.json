@@ -1,0 +1,11 @@
+{
+  "termsTitle": "Terms of Service",
+  "privacyTitle": "Privacy Policy",
+  "loading": "Loading...",
+  "backToHome": "Back to home",
+  "errorTerms": "Failed to load Terms of Service",
+  "errorPrivacy": "Failed to load Privacy Policy",
+  "documentVersion": "Document version: {version}",
+  "fallbackTerms": "# Terms of Service\n\n**Last updated:** January 2026\n\n## 1. Acceptance of Terms\n\nBy accessing or using the Picks4All platform, you agree to be legally bound by these Terms of Service. The Platform is an entertainment service that allows you to make predictions about sporting events.\n\n## 2. Free Service\n\n**IMPORTANT:** This platform is NOT a betting or gambling site. No real money is required or accepted to participate.\n\n## 3. Contact\n\nFor questions about these Terms, contact us at soporte@picks4all.com",
+  "fallbackPrivacy": "# Privacy Policy\n\n**Last updated:** January 2026\n\n## 1. Introduction\n\nThis Privacy Policy describes how the Picks4All platform collects, uses, stores, and protects your personal information. We collect registration data (email, username) and usage data (predictions, pool participation).\n\n## 2. Your Rights\n\nYou have the right to access, rectify, and request deletion of your personal data.\n\n## 3. Contact\n\nFor questions about this policy, contact us at privacidad@picks4all.com"
+}

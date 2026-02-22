@@ -1,0 +1,123 @@
+{
+  "breadcrumbs": {
+    "home": "Inicio",
+    "howItWorks": "Como Funciona"
+  },
+  "hero": {
+    "title": "Como Funciona",
+    "subtitle": "Aprende a usar Picks4All en minutos y comienza a competir con tus amigos. Ya sea que la conozcas como quiniela, polla, prode, penca o porra, aqui te explicamos como funciona."
+  },
+  "jsonLd": {
+    "name": "Como crear una quiniela deportiva gratis",
+    "description": "Guia paso a paso para crear tu quiniela, polla, prode o penca deportiva online con Picks4All. Invita amigos y compite prediciendo resultados de futbol.",
+    "steps": [
+      { "name": "Crea tu cuenta", "text": "Registrate gratis con tu email o Google. Solo toma unos segundos." },
+      { "name": "Crea tu pool (quiniela)", "text": "Elige el torneo, ponle nombre a tu pool y configura las reglas de puntuacion." },
+      { "name": "Invita a tus amigos", "text": "Comparte el codigo de invitacion por WhatsApp, email o donde quieras." },
+      { "name": "Publica los resultados", "text": "Ingresa el marcador oficial despues de cada partido. El leaderboard se actualiza automaticamente." },
+      { "name": "Disfruta la competencia", "text": "Observa como sube y baja el ranking entre tus amigos." }
+    ],
+    "tool": "Picks4All - Plataforma de quinielas deportivas"
+  },
+  "hostSection": {
+    "title": "Si quieres crear una quiniela (Host)",
+    "steps": [
+      {
+        "number": 1,
+        "title": "Crea tu cuenta",
+        "description": "Registrate gratis con tu email o Google. Solo toma unos segundos."
+      },
+      {
+        "number": 2,
+        "title": "Crea tu pool (quiniela, polla o prode)",
+        "description": "Elige el torneo (ej: Copa del Mundo 2026), ponle nombre a tu pool y configura las reglas: sistema de puntos, deadline antes de cada partido, etc."
+      },
+      {
+        "number": 3,
+        "title": "Invita a tus amigos",
+        "description": "Genera un codigo de invitacion y compartelo por WhatsApp, email o donde quieras. Quien tenga el codigo puede unirse a tu quiniela."
+      },
+      {
+        "number": 4,
+        "title": "Publica los resultados",
+        "description": "Despues de cada partido, ingresa el marcador oficial. El leaderboard se actualiza automaticamente."
+      },
+      {
+        "number": 5,
+        "title": "Disfruta la competencia",
+        "description": "Observa como sube y baja el ranking. Nombra co-admins si necesitas ayuda para administrar tu polla o quiniela."
+      }
+    ]
+  },
+  "playerSection": {
+    "title": "Si quieres unirte a un pool (Jugador)",
+    "steps": [
+      {
+        "number": 1,
+        "title": "Recibe el codigo de invitacion",
+        "description": "Tu amigo (el Host) te compartira un codigo unico para unirte a su quiniela, polla o prode."
+      },
+      {
+        "number": 2,
+        "title": "Crea tu cuenta y unete",
+        "description": "Registrate si aun no tienes cuenta, luego ingresa el codigo para unirte al pool."
+      },
+      {
+        "number": 3,
+        "title": "Haz tus predicciones",
+        "description": "Para cada partido, ingresa tu pronostico antes del deadline (generalmente 10 minutos antes del partido)."
+      },
+      {
+        "number": 4,
+        "title": "Gana puntos",
+        "description": "Cuando se publiquen los resultados, ganaras puntos segun tus aciertos: marcador exacto, resultado correcto, diferencia de goles, etc."
+      },
+      {
+        "number": 5,
+        "title": "Sube en el ranking",
+        "description": "Sigue tu posicion en el leaderboard y demuestra que eres el mejor predictor del grupo. Compite en tu penca, quiniela o porra entre amigos."
+      }
+    ]
+  },
+  "scoringSection": {
+    "title": "Sistema de Puntos",
+    "subtitle": "El Host puede personalizar el sistema de puntos de la quiniela. Aqui hay un ejemplo tipico:",
+    "columns": {
+      "type": "Tipo de acierto",
+      "points": "Puntos"
+    },
+    "rows": [
+      {
+        "emoji": "\uD83C\uDFAF",
+        "type": "Marcador exacto (ej: 2-1)",
+        "points": "10 pts"
+      },
+      {
+        "emoji": "\u2705",
+        "type": "Resultado correcto (Local/Empate/Visitante)",
+        "points": "5 pts"
+      },
+      {
+        "emoji": "\uD83C\uDFE0",
+        "type": "Goles del local correctos",
+        "points": "2 pts"
+      },
+      {
+        "emoji": "\u2708\uFE0F",
+        "type": "Goles del visitante correctos",
+        "points": "2 pts"
+      },
+      {
+        "emoji": "\u2797",
+        "type": "Diferencia de goles correcta",
+        "points": "1 pt"
+      }
+    ],
+    "note": "* Los puntos se acumulan. Si aciertas el marcador exacto, ganas puntos por todos los criterios."
+  },
+  "cta": {
+    "title": "Listo para empezar tu quiniela?",
+    "description": "Crea tu cuenta gratis y comienza a competir. Arma tu polla, prode o penca en minutos.",
+    "button": "Crear cuenta gratis"
+  }
+}

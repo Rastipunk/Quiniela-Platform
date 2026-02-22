@@ -1,0 +1,163 @@
+{
+  "brand": {
+    "name": "Picks4All",
+    "tagline": "Quinielas Deportivas Gratis con Amigos"
+  },
+  "nav": {
+    "home": "Inicio",
+    "myPools": "Mis Pools",
+    "faq": "FAQ",
+    "howItWorks": "Cómo Funciona",
+    "whatIsQuiniela": "¿Qué es una Quiniela?",
+    "myProfile": "Mi Perfil",
+    "adminPanel": "Panel Admin",
+    "viewFeedback": "Ver Feedback",
+    "logout": "Cerrar Sesión",
+    "login": "Ingresar",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "menu": "Menú"
+  },
+  "footer": {
+    "tagline": "Plataforma gratuita de predicciones deportivas entre amigos.",
+    "disclaimer": "Quinielas, pollas, prodes y pencas — 100% gratis, sin dinero real ni apuestas.",
+    "legal": "Legal",
+    "terms": "Términos de Servicio",
+    "privacy": "Política de Privacidad",
+    "resources": "Recursos",
+    "howItWorks": "Cómo Funciona",
+    "faqTitle": "Preguntas Frecuentes",
+    "whatIsQuiniela": "¿Qué es una Quiniela?",
+    "byCountry": "Por País",
+    "pollaFutbolera": "Polla Futbolera",
+    "prodeDeportivo": "Prode Deportivo",
+    "pencaFutbol": "Penca de Fútbol",
+    "porraDeportiva": "Porra Deportiva",
+    "footballPool": "Football Pool",
+    "contact": "Contacto",
+    "copyright": "Todos los derechos reservados."
+  },
+  "beta": {
+    "message": "Beta — Tu feedback nos ayuda a mejorar",
+    "messageMobile": "Beta — Tu feedback nos ayuda",
+    "reportBug": "Reportar Bug",
+    "suggestion": "Sugerencia"
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português"
+  },
+  "landing": {
+    "hero": {
+      "title": "Compite con tus amigos prediciendo partidos de fútbol",
+      "subtitle": "Crea tu quiniela (polla, prode, penca) gratis y diviértete prediciendo resultados de fútbol con tus amigos.",
+      "cta": "Crear cuenta gratis",
+      "secondaryCta": "Ver cómo funciona"
+    },
+    "whatIs": {
+      "title": "¿Qué es Picks4All?",
+      "p1": "Picks4All es la plataforma gratuita para crear <strong>quinielas deportivas</strong> online y competir con amigos, familia o compañeros de trabajo prediciendo resultados de fútbol. También conocida como <strong>polla futbolera</strong> en Colombia, Chile y Venezuela, <strong>prode</strong> en Argentina, <strong>penca</strong> en Uruguay, o <strong>porra</strong> en España.",
+      "p2": "Crea tu quiniela gratis, invita a quien quieras con un código, haz tus predicciones y compite en el leaderboard. <strong>100% gratis y sin apuestas</strong> — solo diversión y rivalidad sana."
+    },
+    "features": {
+      "title": "Todo lo que necesitas para competir",
+      "subtitle": "Una plataforma completa para organizar tus quinielas con amigos, familia o compañeros de trabajo."
+    },
+    "feature1": {
+      "title": "Crea tu quiniela",
+      "description": "Personaliza las reglas, el sistema de puntos y los plazos. Tú decides cómo se juega tu polla, prode o penca."
+    },
+    "feature2": {
+      "title": "Leaderboard en vivo",
+      "description": "Ranking actualizado automáticamente después de cada partido. Siempre sabes quién va ganando."
+    },
+    "feature3": {
+      "title": "Predicciones flexibles",
+      "description": "Marcador exacto, resultado, diferencia de goles. Múltiples formas de sumar puntos con tus pronósticos."
+    },
+    "feature4": {
+      "title": "Invita amigos fácilmente",
+      "description": "Comparte un código de invitación por WhatsApp y listo. Únete en segundos, sin complicaciones."
+    },
+    "howItWorks": {
+      "title": "Cómo funciona"
+    },
+    "step1": {
+      "title": "Crea o únete",
+      "description": "Crea tu propia quiniela o únete a una existente con un código de invitación."
+    },
+    "step2": {
+      "title": "Haz tus predicciones",
+      "description": "Ingresa tus pronósticos antes del deadline de cada partido."
+    },
+    "step3": {
+      "title": "Sube en el ranking",
+      "description": "Gana puntos con cada acierto y demuestra que sos el mejor predictor."
+    },
+    "seeMore": "Ver más detalles →",
+    "tournaments": {
+      "title": "Torneos disponibles",
+      "subtitle": "Crea quinielas para los torneos más emocionantes del mundo."
+    },
+    "wc2026": {
+      "name": "Copa del Mundo 2026",
+      "description": "48 equipos • 104 partidos • El torneo más grande de la historia"
+    },
+    "final": {
+      "title": "¿Listo para demostrar que sabes de fútbol?",
+      "subtitle": "Únete gratis y comienza a competir con tus amigos.",
+      "hint": "Crea tu quiniela gratis en menos de 1 minuto.",
+      "cta": "Comenzar ahora — Es gratis"
+    }
+  },
+  "feedback": {
+    "bugTitle": "Reportar Bug",
+    "suggestionTitle": "Enviar Sugerencia",
+    "bugPlaceholder": "Describe el bug: qué esperabas que pasara y qué pasó en su lugar...",
+    "suggestionPlaceholder": "Describe tu sugerencia o idea para mejorar la plataforma...",
+    "screenshotLabel": "Captura de pantalla (opcional, máx 500KB)",
+    "imageSize": "La imagen no debe superar 500KB.",
+    "minChars": "El mensaje debe tener al menos 10 caracteres.",
+    "charCounter": "caracteres (mín. 10)",
+    "changeImage": "Cambiar imagen",
+    "selectImage": "Seleccionar imagen...",
+    "contactCheckbox": "Me gustaría ser contactado para ampliar esta información",
+    "nameField": "Tu nombre",
+    "phoneField": "Número de celular (ej: +57 300 123 4567)",
+    "cancel": "Cancelar",
+    "send": "Enviar",
+    "sending": "Enviando...",
+    "close": "Cerrar",
+    "success": "Enviado exitosamente",
+    "successMessage": "Gracias por tu feedback. Nos ayuda mucho a mejorar la plataforma.",
+    "submitError": "Error al enviar. Intenta de nuevo."
+  },
+  "seo": {
+    "home": {
+      "title": "Picks4All — Quinielas Deportivas Gratis con Amigos",
+      "description": "Crea quinielas, pollas, prodes y pencas de futbol gratis. Predice resultados del Mundial 2026, Champions League y mas. Sin dinero real, solo diversion entre amigos.",
+      "ogDescription": "La plataforma gratuita para crear quinielas, pollas, prodes y pencas de futbol. Compite con amigos prediciendo resultados."
+    }
+  },
+  "jsonLd": {
+    "orgDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de futbol",
+    "appDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de futbol",
+    "featureList": [
+      "Crear quinielas deportivas gratis",
+      "Invitar amigos con codigo de invitacion",
+      "Predicciones de partidos de futbol",
+      "Leaderboard automatico en tiempo real",
+      "Reglas de puntuacion personalizables",
+      "Compatible con Mundial 2026 y Champions League"
+    ],
+    "ctaName": "Crear Quiniela Gratis"
+  },
+  "notFound": {
+    "message": "La página que buscas no existe o fue movida.",
+    "subMessage": "Pero tu quiniela te está esperando.",
+    "goHome": "Ir al inicio",
+    "faq": "Preguntas frecuentes"
+  }
+}

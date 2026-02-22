@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useRouter } from "next/navigation";
-import { clearToken, getToken } from "../lib/auth";
-import { getUserProfile, type UserProfile } from "../lib/api";
-import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { clearToken, getToken } from "@/lib/auth";
+import { getUserProfile, type UserProfile } from "@/lib/api";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { BrandLogo } from "./BrandLogo";
+import { LanguageSelector } from "./LanguageSelector";
 
 export function NavBar() {
+  const t = useTranslations("nav");
   const router = useRouter();
   const isMobile = useIsMobile();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -19,7 +22,6 @@ export function NavBar() {
     loadProfile();
   }, []);
 
-  // Cerrar menú móvil cuando cambia el tamaño de pantalla
   useEffect(() => {
     if (!isMobile) {
       setShowMobileMenu(false);
@@ -34,7 +36,6 @@ export function NavBar() {
       const data = await getUserProfile(token);
       setProfile(data.user);
 
-      // Auto-actualizar timezone si no está configurado (cuentas existentes)
       if (!data.user.timezone) {
         await autoUpdateTimezone(token);
       }
@@ -46,15 +47,12 @@ export function NavBar() {
   async function autoUpdateTimezone(token: string) {
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const { updateUserProfile } = await import("../lib/api");
+      const { updateUserProfile } = await import("@/lib/api");
 
       await updateUserProfile(token, { timezone });
 
-      // Recargar perfil para reflejar el cambio
       const data = await getUserProfile(token);
       setProfile(data.user);
-
-      console.log(`Zona horaria configurada: ${timezone}`);
     } catch (err) {
       console.error("Error auto-updating timezone:", err);
     }
@@ -66,7 +64,6 @@ export function NavBar() {
     window.location.reload();
   }
 
-  // Estilos base para el avatar
   const avatarStyle = {
     width: isMobile ? 36 : 32,
     height: isMobile ? 36 : 32,
@@ -124,7 +121,7 @@ export function NavBar() {
               fontWeight: 500,
             }}
           >
-            Mis Pools
+            {t("myPools")}
           </Link>
 
           <Link
@@ -136,8 +133,10 @@ export function NavBar() {
               fontWeight: 500,
             }}
           >
-            FAQ
+            {t("faq")}
           </Link>
+
+          <LanguageSelector />
 
           {/* User Menu */}
           <div style={{ position: "relative" }}>
@@ -166,7 +165,6 @@ export function NavBar() {
 
             {showUserMenu && (
               <>
-                {/* Backdrop para cerrar el menú al hacer click fuera */}
                 <div
                   onClick={() => setShowUserMenu(false)}
                   style={{
@@ -179,7 +177,6 @@ export function NavBar() {
                   }}
                 />
 
-                {/* Dropdown Menu */}
                 <div
                   style={{
                     position: "absolute",
@@ -232,10 +229,10 @@ export function NavBar() {
                       e.currentTarget.style.background = "white";
                     }}
                   >
-                    {"\uD83D\uDC64"} Mi Perfil
+                    {"\uD83D\uDC64"} {t("myProfile")}
                   </Link>
 
-                  {/* Admin Panel - solo para ADMIN */}
+                  {/* Admin Panel */}
                   {profile?.platformRole === "ADMIN" && (
                     <>
                       <Link
@@ -257,7 +254,7 @@ export function NavBar() {
                           e.currentTarget.style.background = "white";
                         }}
                       >
-                        {"\u2699\uFE0F"} Panel Admin
+                        {"\u2699\uFE0F"} {t("adminPanel")}
                       </Link>
                       <Link
                         href="/admin/feedback"
@@ -278,7 +275,7 @@ export function NavBar() {
                           e.currentTarget.style.background = "white";
                         }}
                       >
-                        {"\uD83D\uDCAC"} Ver Feedback
+                        {"\uD83D\uDCAC"} {t("viewFeedback")}
                       </Link>
                     </>
                   )}
@@ -303,7 +300,7 @@ export function NavBar() {
                       e.currentTarget.style.background = "white";
                     }}
                   >
-                    {"\uD83D\uDEAA"} Cerrar Sesion
+                    {"\uD83D\uDEAA"} {t("logout")}
                   </button>
                 </div>
               </>
@@ -315,15 +312,13 @@ export function NavBar() {
       {/* Mobile: Hamburger Button + Avatar */}
       {isMobile && (
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {/* Avatar (visual only on mobile, menu opens on hamburger) */}
           <div style={avatarStyle}>
             {profile?.displayName?.charAt(0).toUpperCase() || "U"}
           </div>
 
-          {/* Hamburger Menu Button */}
           <button
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            aria-label="Abrir menu"
+            aria-label={t("openMenu")}
             aria-expanded={showMobileMenu}
             style={{
               display: "flex",
@@ -381,7 +376,6 @@ export function NavBar() {
       {/* Mobile Menu Overlay */}
       {isMobile && showMobileMenu && (
         <>
-          {/* Backdrop */}
           <div
             onClick={() => setShowMobileMenu(false)}
             style={{
@@ -396,7 +390,6 @@ export function NavBar() {
             }}
           />
 
-          {/* Slide-in Menu */}
           <div
             style={{
               position: "fixed",
@@ -423,10 +416,10 @@ export function NavBar() {
                 borderBottom: "1px solid rgba(255,255,255,0.1)",
               }}
             >
-              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>Menu</span>
+              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{t("menu")}</span>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                aria-label="Cerrar menu"
+                aria-label={t("closeMenu")}
                 style={{
                   width: TOUCH_TARGET.minimum,
                   height: TOUCH_TARGET.minimum,
@@ -487,7 +480,7 @@ export function NavBar() {
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                {"\uD83C\uDFE0"} Mis Pools
+                {"\uD83C\uDFE0"} {t("myPools")}
               </Link>
 
               <Link
@@ -506,7 +499,7 @@ export function NavBar() {
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                {"\uD83D\uDC64"} Mi Perfil
+                {"\uD83D\uDC64"} {t("myProfile")}
               </Link>
 
               <Link
@@ -525,10 +518,10 @@ export function NavBar() {
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                FAQ
+                {t("faq")}
               </Link>
 
-              {/* Admin Panel - solo para ADMIN */}
+              {/* Admin Panel */}
               {profile?.platformRole === "ADMIN" && (
                 <>
                   <Link
@@ -548,7 +541,7 @@ export function NavBar() {
                       ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
-                    {"\u2699\uFE0F"} Panel Admin
+                    {"\u2699\uFE0F"} {t("adminPanel")}
                   </Link>
                   <Link
                     href="/admin/feedback"
@@ -567,10 +560,23 @@ export function NavBar() {
                       ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
-                    {"\uD83D\uDCAC"} Ver Feedback
+                    {"\uD83D\uDCAC"} {t("viewFeedback")}
                   </Link>
                 </>
               )}
+
+              {/* Language Selector in mobile menu */}
+              <div
+                style={{
+                  padding: "1rem",
+                  borderTop: "1px solid rgba(255,255,255,0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+              >
+                <LanguageSelector />
+              </div>
             </div>
 
             {/* Logout */}
@@ -598,7 +604,7 @@ export function NavBar() {
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                {"\uD83D\uDEAA"} Cerrar Sesion
+                {"\uD83D\uDEAA"} {t("logout")}
               </button>
             </div>
           </div>

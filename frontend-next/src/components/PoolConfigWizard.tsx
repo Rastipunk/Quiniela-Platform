@@ -5,6 +5,7 @@
 // Sprint 3 - Mobile UX Improvements
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { PhaseConfigStep } from "./PhaseConfigStep";
 import { getInstancePhases, type InstancePhase } from "../lib/api";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -23,6 +24,7 @@ type PoolConfigWizardProps = {
 };
 
 export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: PoolConfigWizardProps) {
+  const t = useTranslations("dashboard");
   const isMobile = useIsMobile();
   const [wizardState, setWizardState] = useState<WizardState>({
     currentStep: "PRESET_SELECTION",
@@ -42,7 +44,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
         const data = await getInstancePhases(token, instanceId);
         setInstancePhases(data.phases);
       } catch (err: any) {
-        setError(err?.message || "Error al cargar fases del torneo");
+        setError(err?.message || t("wizard.errorLoadingPhases"));
       } finally {
         setLoading(false);
       }
@@ -204,8 +206,8 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: 18, marginBottom: 8 }}>⏳ Cargando configuración...</div>
-          <div style={{ fontSize: 14, color: "#666" }}>Obteniendo fases del torneo</div>
+          <div style={{ fontSize: 18, marginBottom: 8 }}>⏳ {t("wizard.loadingConfig")}</div>
+          <div style={{ fontSize: 14, color: "#666" }}>{t("wizard.loadingPhases")}</div>
         </div>
       </div>
     );
@@ -237,7 +239,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
             maxWidth: "400px",
           }}
         >
-          <div style={{ fontSize: 18, marginBottom: 8, color: "#dc3545" }}>❌ Error</div>
+          <div style={{ fontSize: 18, marginBottom: 8, color: "#dc3545" }}>❌ {t("wizard.errorTitle")}</div>
           <div style={{ fontSize: 14, color: "#666", marginBottom: 16 }}>{error}</div>
           <button
             onClick={onCancel}
@@ -250,7 +252,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
               cursor: "pointer",
             }}
           >
-            Cerrar
+            {t("wizard.close")}
           </button>
         </div>
       </div>
@@ -293,12 +295,12 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           }}
         >
           <h2 style={{ margin: 0, fontSize: isMobile ? "1.2rem" : "1.5rem" }}>
-            Configura las Reglas de Puntuación
+            {t("wizard.title")}
           </h2>
           <p style={{ margin: "0.25rem 0 0 0", color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
-            {wizardState.currentStep === "PRESET_SELECTION" && "Paso 1 de 2: Elige un preset"}
-            {wizardState.currentStep === "PHASE_CONFIG" && "Paso 2 de 2: Configura cada fase"}
-            {wizardState.currentStep === "SUMMARY" && "Resumen de configuración"}
+            {wizardState.currentStep === "PRESET_SELECTION" && t("wizard.step1")}
+            {wizardState.currentStep === "PHASE_CONFIG" && t("wizard.step2")}
+            {wizardState.currentStep === "SUMMARY" && t("wizard.stepSummary")}
           </p>
         </div>
 
@@ -362,7 +364,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
               minHeight: isMobile ? "40px" : "auto",
             }}
           >
-            Cancelar
+            {t("wizard.cancel")}
           </button>
 
           {wizardState.currentStep !== "PRESET_SELECTION" && (
@@ -380,7 +382,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
                 minHeight: isMobile ? "40px" : "auto",
               }}
             >
-              Atrás
+              {t("wizard.back")}
             </button>
           )}
 
@@ -400,7 +402,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
                 minHeight: isMobile ? "40px" : "auto",
               }}
             >
-              {isMobile ? "Crear Pool" : "Confirmar y Crear Pool"}
+              {isMobile ? t("wizard.createPool") : t("wizard.confirmAndCreate")}
             </button>
           )}
         </div>
@@ -417,39 +419,46 @@ type PresetSelectionStepProps = {
 };
 
 function PresetSelectionStep({ onSelect, isMobile }: PresetSelectionStepProps) {
-  // Descripciones cortas para móvil
+  const t = useTranslations("dashboard");
+  const presetEmojis: Record<string, string> = {
+    CUMULATIVE: "🏆",
+    BASIC: "🎯",
+    SIMPLE: "🎲",
+    CUSTOM: "🛠️",
+  };
+
   const presets = [
     {
       key: "CUMULATIVE" as PickConfigPresetKey,
-      title: "🏆 ACUMULATIVO",
-      description: "Los puntos se SUMAN: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
-      shortDesc: "Puntos acumulables: resultado + goles + diferencia",
+      title: `${presetEmojis.CUMULATIVE} ${t("wizard.presets.CUMULATIVE.title")}`,
+      description: t("wizard.presets.CUMULATIVE.description"),
+      shortDesc: t("wizard.presets.CUMULATIVE.shortDesc"),
       recommended: true,
     },
     {
       key: "BASIC" as PickConfigPresetKey,
-      title: "🎯 BÁSICO",
-      description: "Solo marcador exacto en todos los partidos. Los puntos aumentan automáticamente en rondas eliminatorias (grupos: 20 pts, octavos: 30 pts, final: 60 pts).",
-      shortDesc: "Solo marcador exacto con puntos crecientes",
+      title: `${presetEmojis.BASIC} ${t("wizard.presets.BASIC.title")}`,
+      description: t("wizard.presets.BASIC.description"),
+      shortDesc: t("wizard.presets.BASIC.shortDesc"),
     },
     {
       key: "SIMPLE" as PickConfigPresetKey,
-      title: "🎲 SIMPLE",
-      description: "Sin marcadores de partidos. En fase de grupos ordenas los equipos de cada grupo (10 pts por posición correcta, +20 pts si el grupo completo es perfecto). En eliminatorias solo eliges quién avanza.",
-      shortDesc: "Sin marcadores: ordena grupos, elige quién avanza",
+      title: `${presetEmojis.SIMPLE} ${t("wizard.presets.SIMPLE.title")}`,
+      description: t("wizard.presets.SIMPLE.description"),
+      shortDesc: t("wizard.presets.SIMPLE.shortDesc"),
     },
     {
       key: "CUSTOM" as PickConfigPresetKey,
-      title: "🛠️ PERSONALIZADO",
-      description: "Configura cada fase manualmente según tus necesidades específicas. Elige si quieres marcadores o no, qué tipos de picks activar y cuántos puntos asignar a cada uno.",
-      shortDesc: "Configura todo manualmente",
+      title: `${presetEmojis.CUSTOM} ${t("wizard.presets.CUSTOM.title")}`,
+      description: t("wizard.presets.CUSTOM.description"),
+      shortDesc: t("wizard.presets.CUSTOM.shortDesc"),
     },
   ];
 
   return (
     <div style={{ display: "grid", gap: isMobile ? "0.75rem" : "1.5rem" }}>
       <p style={{ fontSize: isMobile ? "0.85rem" : "1rem", color: "#333", margin: 0 }}>
-        {isMobile ? "Elige un preset:" : "Para empezar más rápido, elige un preset o personaliza completamente:"}
+        {isMobile ? t("wizard.presetIntro") : t("wizard.presetIntroFull")}
       </p>
 
       {/* Preset Cards */}
@@ -478,6 +487,7 @@ type PresetCardProps = {
 };
 
 function PresetCard({ title, description, recommended, onSelect, isMobile }: PresetCardProps) {
+  const t = useTranslations("dashboard");
   return (
     <div
       style={{
@@ -515,7 +525,7 @@ function PresetCard({ title, description, recommended, onSelect, isMobile }: Pre
             fontWeight: "bold",
           }}
         >
-          Recomendado
+          {t("wizard.recommended")}
         </div>
       )}
 
@@ -549,12 +559,7 @@ type SummaryStepProps = {
 
 function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, isMobile }: SummaryStepProps) {
   void _onComplete; // Used by parent component
-  const presetNames: Record<PickConfigPresetKey, string> = {
-    CUMULATIVE: "Acumulativo",
-    BASIC: "Básico",
-    SIMPLE: "Simple",
-    CUSTOM: "Personalizado",
-  };
+  const t = useTranslations("dashboard");
 
   const isPreset = wizardState.selectedPreset && wizardState.selectedPreset !== "CUSTOM";
 
@@ -563,12 +568,12 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
       {/* Header */}
       <div>
         <h3 style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "1.1rem" : "1.5rem" }}>
-          ✅ Resumen de Configuración
+          ✅ {t("wizard.summary.title")}
         </h3>
         <p style={{ margin: 0, color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
           {isPreset
-            ? `Usarás el preset "${presetNames[wizardState.selectedPreset!]}" con configuración predefinida.`
-            : "Revisa tu configuración personalizada antes de crear la pool."}
+            ? t("wizard.summary.presetUsing", { preset: t(`wizard.presetNames.${wizardState.selectedPreset!}` as any) })
+            : t("wizard.summary.customReview")}
         </p>
       </div>
 
@@ -582,7 +587,7 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
       {/* Vista Previa para Jugadores */}
       <div>
         <h4 style={{ margin: "0 0 0.5rem 0", fontSize: isMobile ? "0.95rem" : "1.125rem" }}>
-          📋 Cómo se verá en "Reglas de la Pool"
+          📋 {t("wizard.summary.rulesPreviewTitle")}
         </h4>
         <div
           style={{
@@ -611,10 +616,10 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
         }}
       >
         <p style={{ margin: "0 0 0.25rem 0", fontWeight: "bold", color: "#0066cc", fontSize: isMobile ? "0.85rem" : "1rem" }}>
-          ℹ️ Importante
+          ℹ️ {t("wizard.summary.importantTitle")}
         </p>
         <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#333" }}>
-          Esta configuración se aplicará a toda la pool.
+          {t("wizard.summary.importantMessage")}
         </p>
       </div>
     </div>
@@ -629,14 +634,7 @@ type PresetSummaryProps = {
 };
 
 function PresetSummary({ presetKey, isMobile }: PresetSummaryProps) {
-  const presetDescriptions: Record<string, string> = {
-    CUMULATIVE:
-      "Los puntos se SUMAN por cada criterio: Resultado (5/10 pts) + Goles local (2/4 pts) + Goles visitante (2/4 pts) + Diferencia (1/2 pts). Marcador exacto = 10 pts en grupos, 20 pts en eliminatorias.",
-    BASIC:
-      "Solo marcador exacto en todos los partidos con auto-scaling (20 pts en grupos → 60 pts en final).",
-    SIMPLE:
-      "Sin marcadores. En grupos: ordena equipos (10 pts por posición + 20 pts bonus grupo perfecto). En eliminatorias: elige quién avanza.",
-  };
+  const t = useTranslations("dashboard");
 
   return (
     <div
@@ -659,11 +657,11 @@ function PresetSummary({ presetKey, isMobile }: PresetSummaryProps) {
             fontWeight: "bold",
           }}
         >
-          PRESET {presetKey}
+          {t("wizard.summary.presetLabel", { key: presetKey })}
         </span>
       </div>
       <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
-        {presetDescriptions[presetKey]}
+        {t(`wizard.summary.presetDescriptions.${presetKey}` as any)}
       </p>
     </div>
   );
@@ -675,6 +673,8 @@ type CustomConfigSummaryProps = {
 };
 
 function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryProps) {
+  const t = useTranslations("dashboard");
+  const tp = useTranslations("pool");
   return (
     <div style={{ display: "grid", gap: isMobile ? "0.5rem" : "1rem" }}>
       {configuration.map((phase, index) => (
@@ -694,22 +694,22 @@ function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryPro
           {phase.requiresScore && phase.matchPicks ? (
             <div>
               <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
-                <strong>Tipo:</strong> Con marcadores
+                <strong>{t("wizard.summary.typeWithScores")}</strong> {t("wizard.summary.withScores")}
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "0.25rem 0.5rem" : "0.25rem", fontSize: isMobile ? "0.7rem" : "0.875rem" }}>
                 {phase.matchPicks.types
-                  .filter((t) => t.enabled)
+                  .filter((pt) => pt.enabled)
                   .map((type) => (
                     <span key={type.key} style={{ color: "#333" }}>
-                      {getPickTypeName(type.key)}: <strong>{type.points}pts</strong>
-                      {isMobile ? "" : " •"}
+                      {tp(`pickTypeNames.${type.key}` as any)}: <strong>{type.points}{tp("points")}</strong>
+                      {isMobile ? "" : " \u2022"}
                     </span>
                   ))}
               </div>
             </div>
           ) : (
             <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
-              <strong>Tipo:</strong> Sin marcadores
+              <strong>{t("wizard.summary.typeWithScores")}</strong> {t("wizard.summary.withoutScores")}
             </p>
           )}
         </div>
@@ -724,10 +724,12 @@ type RulesPreviewProps = {
 };
 
 function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
+  const t = useTranslations("dashboard");
+  const tp = useTranslations("pool");
   return (
     <div>
       <h3 style={{ margin: "0 0 0.5rem 0", fontSize: isMobile ? "0.9rem" : "1.125rem" }}>
-        📜 REGLAS DE PUNTUACIÓN
+        📜 {t("wizard.summary.scoringRulesTitle")}
       </h3>
 
       {configuration.map((phase) => (
@@ -746,21 +748,21 @@ function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
           {phase.requiresScore && phase.matchPicks ? (
             <>
               <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.7rem" : "0.875rem", color: "#666" }}>
-                Marcadores de partidos
+                {t("wizard.summary.matchScores")}
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem 0.5rem", fontSize: isMobile ? "0.7rem" : "0.875rem" }}>
                 {phase.matchPicks.types
-                  .filter((t) => t.enabled)
+                  .filter((pt) => pt.enabled)
                   .map((type) => (
                     <span key={type.key} style={{ background: "#e8f4ff", padding: "0.1rem 0.3rem", borderRadius: "3px" }}>
-                      {type.points}pts {getPickTypeName(type.key)}
+                      {type.points}{tp("points")} {tp(`pickTypeNames.${type.key}` as any)}
                     </span>
                   ))}
               </div>
             </>
           ) : (
             <p style={{ margin: 0, fontSize: isMobile ? "0.7rem" : "0.875rem", color: "#666" }}>
-              Posiciones finales o avances
+              {t("wizard.summary.positionsOrAdvances")}
             </p>
           )}
         </div>
@@ -770,16 +772,5 @@ function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
 }
 
 // ==================== HELPER FUNCTIONS ====================
-
-function getPickTypeName(key: string): string {
-  const names: Record<string, string> = {
-    EXACT_SCORE: "Marcador exacto",
-    GOAL_DIFFERENCE: "Diferencia de goles",
-    PARTIAL_SCORE: "Marcador parcial",
-    TOTAL_GOALS: "Goles totales",
-    MATCH_OUTCOME_90MIN: "Resultado (ganador/empate)",
-    HOME_GOALS: "Goles del local",
-    AWAY_GOALS: "Goles del visitante",
-  };
-  return names[key] || key;
-}
+// Pick type names and descriptions are now provided via next-intl translations
+// (pool namespace: pickTypeNames.*, pickTypeDescriptions.*, pickTypeExtended.*)

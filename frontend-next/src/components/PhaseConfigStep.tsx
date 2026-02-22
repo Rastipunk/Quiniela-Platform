@@ -4,6 +4,7 @@
 // Sprint 2 - Advanced Pick Types System
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type {
   PhasePickConfig,
   MatchPickType,
@@ -27,6 +28,7 @@ export function PhaseConfigStep({
   onNext,
   isMobile = false,
 }: PhaseConfigStepProps) {
+  const tp = useTranslations("pool");
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const currentPhase = phases[currentPhaseIndex];
 
@@ -188,10 +190,10 @@ export function PhaseConfigStep({
       {/* Fundamental Decision */}
       <div>
         <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
-          Decisión Fundamental
+          {tp("phaseConfig.fundamentalDecision")}
         </h3>
         <p style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 0.75rem 0" }}>
-          ¿Predecir marcadores?
+          {tp("phaseConfig.predictScores")}
         </p>
 
         <div style={{
@@ -200,28 +202,28 @@ export function PhaseConfigStep({
           gap: isMobile ? "0.5rem" : "1rem"
         }}>
           <DecisionCard
-            title={isMobile ? "⚽ CON MARCADORES" : "⚽ SÍ, CON MARCADORES"}
+            title={isMobile ? `⚽ ${tp("phaseConfig.withScoresMobile")}` : `⚽ ${tp("phaseConfig.withScores")}`}
             selected={currentPhase.requiresScore === true}
             onClick={() => handleRequiresScoreChange(true)}
             isMobile={isMobile}
           >
-            {!isMobile && <p>Los jugadores predicen el resultado exacto de cada partido.</p>}
+            {!isMobile && <p>{tp("phaseConfig.withScoresDesc")}</p>}
             <ul style={{ paddingLeft: isMobile ? "1rem" : "1.25rem", margin: isMobile ? 0 : "0.5rem 0 0 0", fontSize: isMobile ? "0.75rem" : "inherit" }}>
-              <li>Más detalle</li>
-              {!isMobile && <li>Múltiples tipos</li>}
+              <li>{tp("phaseConfig.withScoresMore")}</li>
+              {!isMobile && <li>{tp("phaseConfig.withScoresMultiple")}</li>}
             </ul>
           </DecisionCard>
 
           <DecisionCard
-            title={isMobile ? "📊 SIN MARCADORES" : "📊 NO, SIN MARCADORES"}
+            title={isMobile ? `📊 ${tp("phaseConfig.withoutScoresMobile")}` : `📊 ${tp("phaseConfig.withoutScores")}`}
             selected={currentPhase.requiresScore === false}
             onClick={() => handleRequiresScoreChange(false)}
             isMobile={isMobile}
           >
-            {!isMobile && <p>Los jugadores predicen posiciones finales o quién avanza.</p>}
+            {!isMobile && <p>{tp("phaseConfig.withoutScoresDesc")}</p>}
             <ul style={{ paddingLeft: isMobile ? "1rem" : "1.25rem", margin: isMobile ? 0 : "0.5rem 0 0 0", fontSize: isMobile ? "0.75rem" : "inherit" }}>
-              <li>Más estratégico</li>
-              {!isMobile && <li>Menos mantenimiento</li>}
+              <li>{tp("phaseConfig.withoutScoresMore")}</li>
+              {!isMobile && <li>{tp("phaseConfig.withoutScoresLess")}</li>}
             </ul>
           </DecisionCard>
         </div>
@@ -268,7 +270,7 @@ export function PhaseConfigStep({
             minHeight: isMobile ? "40px" : "auto",
           }}
         >
-          {isMobile ? "← Anterior" : "← Fase Anterior"}
+          {isMobile ? `← ${tp("phaseConfig.previousPhaseMobile")}` : `← ${tp("phaseConfig.previousPhase")}`}
         </button>
 
         <button
@@ -287,8 +289,8 @@ export function PhaseConfigStep({
           }}
         >
           {currentPhaseIndex < phases.length - 1
-            ? (isMobile ? "Siguiente →" : "Siguiente Fase →")
-            : (isMobile ? "Resumen →" : "Ver Resumen →")}
+            ? (isMobile ? `${tp("phaseConfig.nextPhaseMobile")} →` : `${tp("phaseConfig.nextPhase")} →`)
+            : (isMobile ? `${tp("phaseConfig.viewSummaryMobile")} →` : `${tp("phaseConfig.viewSummary")} →`)}
         </button>
       </div>
     </div>
@@ -349,79 +351,34 @@ function MatchPicksConfiguration({
   onTypeChange,
   isMobile = false,
 }: MatchPicksConfigurationProps) {
-  // Full descriptions for desktop
-  const pickTypeDescriptions: Record<MatchPickTypeKey, { title: string; description: string; shortDesc: string; example: string }> = {
-    EXACT_SCORE: {
-      title: "Marcador Exacto",
-      description: "El jugador debe acertar el marcador completo. Es el pick más difícil y el más valioso. Si aciertas el marcador exacto, también aciertas automáticamente la diferencia de goles, marcador parcial y goles totales (pero solo ganas los puntos del marcador exacto, que es el más alto).",
-      shortDesc: "Acertar el marcador completo (ej: 2-1).",
-      example: "Ejemplo con 20 pts: Predices 2-1, sale 2-1 → GANAS 20 PTS | Sale 3-1 → 0 pts | Sale 2-0 → 0 pts",
-    },
-    GOAL_DIFFERENCE: {
-      title: "Diferencia de Goles",
-      description: "Acierta la diferencia exacta entre los goles del local y visitante, aunque el marcador no sea exacto. Solo ganas estos puntos si NO acertaste el marcador exacto.",
-      shortDesc: "Acertar la diferencia (+2, -1, etc).",
-      example: "Ejemplo con 10 pts: Predices 2-0 (+2), sale 3-1 (+2) → GANAS 10 PTS | Sale 2-1 (+1) → 0 pts | Sale 2-0 → GANAS 20 PTS del exacto",
-    },
-    PARTIAL_SCORE: {
-      title: "Marcador Parcial",
-      description: "Acierta SOLO los goles de UN equipo (local O visitante), pero NO ambos a la vez. Si aciertas ambos, eso cuenta como marcador exacto (que vale más puntos). Este tipo es útil cuando aciertas parcialmente.",
-      shortDesc: "Acertar goles de un equipo.",
-      example: "Ejemplo con 8 pts: Predices 2-1, sale 2-3 → GANAS 8 PTS (los 2 del local) | Sale 3-3 → 0 pts | Sale 2-1 → GANAS 20 PTS del exacto",
-    },
-    TOTAL_GOALS: {
-      title: "Goles Totales",
-      description: "Acierta el número total de goles del partido (local + visitante), sin importar quién los marcó ni el resultado final. Solo ganas estos puntos si NO acertaste marcador exacto, diferencia de goles, ni marcador parcial.",
-      shortDesc: "Acertar suma de goles (ej: 3 goles).",
-      example: "Ejemplo con 5 pts: Predices 2-1 (3 goles), sale 3-0 (3 goles) → GANAS 5 PTS | Sale 2-0 (2 goles) → 0 pts | Sale 2-1 → GANAS 20 PTS del exacto",
-    },
-    MATCH_OUTCOME_90MIN: {
-      title: "Resultado 90min",
-      description: "Predice solo el ganador o empate en tiempo reglamentario (Victoria Local, Empate, Victoria Visitante). No disponible cuando se requieren marcadores.",
-      shortDesc: "Predice ganador o empate.",
-      example: "Solo para picks sin marcador. No combinable con predicciones de goles.",
-    },
-    HOME_GOALS: {
-      title: "Goles Local",
-      description: "Acierta únicamente los goles marcados por el equipo local.",
-      shortDesc: "Solo goles del local.",
-      example: "Ejemplo con 4 pts: Predices 2-?, sale 2-3 → GANAS 4 PTS | Sale 3-0 → 0 pts",
-    },
-    AWAY_GOALS: {
-      title: "Goles Visitante",
-      description: "Acierta únicamente los goles marcados por el equipo visitante.",
-      shortDesc: "Solo goles del visitante.",
-      example: "Ejemplo con 4 pts: Predices ?-1, sale 2-1 → GANAS 4 PTS | Sale 2-2 → 0 pts",
-    },
-  };
+  const tp = useTranslations("pool");
 
   return (
     <div>
       <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
-        Tipos de Picks
+        {tp("phaseConfig.pickTypes")}
       </h3>
       <p style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 1rem 0" }}>
-        {isMobile ? "Activa los tipos de picks permitidos." : "Activa los tipos de picks que quieres permitir. Puedes tener varios activos simultáneamente."}
+        {isMobile ? tp("phaseConfig.pickTypesDesc") : tp("phaseConfig.pickTypesDescFull")}
       </p>
 
       <div style={{ display: "grid", gap: isMobile ? "0.5rem" : "1rem" }}>
         {matchPicks.types
-          .filter((t) => t.key !== "MATCH_OUTCOME_90MIN") // No mostrar en modo con marcadores
-          .map((type) => {
-            const info = pickTypeDescriptions[type.key];
-            return (
-              <PickTypeCard
-                key={type.key}
-                type={type}
-                title={info.title}
-                description={isMobile ? info.shortDesc : info.description}
-                example={info.example}
-                onToggle={(enabled) => onTypeChange(type.key, enabled)}
-                onPointsChange={(points) => onTypeChange(type.key, type.enabled, points)}
-                isMobile={isMobile}
-              />
-            );
-          })}
+          .filter((t) => t.key !== "MATCH_OUTCOME_90MIN")
+          .map((type) => (
+            <PickTypeCard
+              key={type.key}
+              type={type}
+              title={tp(`pickTypeExtended.${type.key}.title` as any)}
+              description={isMobile
+                ? tp(`pickTypeExtended.${type.key}.shortDesc` as any)
+                : tp(`pickTypeExtended.${type.key}.description` as any)}
+              example={tp(`pickTypeExtended.${type.key}.example` as any)}
+              onToggle={(enabled) => onTypeChange(type.key, enabled)}
+              onPointsChange={(points) => onTypeChange(type.key, type.enabled, points)}
+              isMobile={isMobile}
+            />
+          ))}
       </div>
     </div>
   );
@@ -435,6 +392,7 @@ type StructuralPicksConfigurationProps = {
 };
 
 function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChange, isMobile = false }: StructuralPicksConfigurationProps) {
+  const tp = useTranslations("pool");
   const isGroupPhase = phaseType === "GROUP";
   const config = structuralPicks?.config || {};
 
@@ -482,7 +440,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
   return (
     <div>
       <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
-        Configuración Sin Marcadores
+        {tp("phaseConfig.noScoresConfig")}
       </h3>
 
       <div
@@ -497,18 +455,18 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
           <>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: isMobile ? "0.5rem" : "0.75rem" }}>
               <span style={{ fontSize: isMobile ? "1.25rem" : "1.5rem" }}>📊</span>
-              <strong style={{ fontSize: isMobile ? "1rem" : "1.125rem" }}>Ordenar Posiciones</strong>
+              <strong style={{ fontSize: isMobile ? "1rem" : "1.125rem" }}>{tp("phaseConfig.orderPositions")}</strong>
             </div>
             <p style={{ margin: "0 0 1rem 0", color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
               {isMobile
-                ? "Configura puntos por posición."
-                : "Los jugadores ordenan los equipos del 1° al 4° lugar en cada grupo. Configura cuántos puntos vale acertar cada posición."}
+                ? tp("phaseConfig.orderPositionsDesc")
+                : tp("phaseConfig.orderPositionsDescFull")}
             </p>
 
             {/* Puntos por posición */}
             <div style={{ marginBottom: "1.25rem" }}>
               <div style={{ fontSize: "0.85rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#333" }}>
-                Puntos por acertar posición:
+                {tp("phaseConfig.pointsPerPosition")}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
                 <div style={positionRowStyle}>
@@ -580,7 +538,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                   />
                   <span style={{ fontSize: "1.25rem" }}>🎯</span>
                   <span style={{ fontSize: "0.9rem", color: "#333" }}>
-                    Bonus por acertar grupo completo
+                    {tp("phaseConfig.bonusPerfectGroup")}
                   </span>
                 </label>
                 {bonusPerfectGroupEnabled && (
@@ -593,7 +551,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                       max={100}
                       style={inputStyle}
                     />
-                    <span style={{ fontSize: "0.85rem", color: "#666" }}>pts</span>
+                    <span style={{ fontSize: "0.85rem", color: "#666" }}>{tp("points")}</span>
                   </div>
                 )}
               </div>
@@ -601,9 +559,19 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
 
             {/* Ejemplo dinámico */}
             <div style={{ padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: "#555" }}>
-              <strong>Ejemplo:</strong> Si un jugador acierta las 4 posiciones de un grupo, gana {pointsPosition1} + {pointsPosition2} + {pointsPosition3} + {pointsPosition4} = {pointsPosition1 + pointsPosition2 + pointsPosition3 + pointsPosition4} pts.
+              <strong>{tp("phaseConfig.exampleLabel")}</strong> {tp("phaseConfig.exampleGroup", {
+                p1: pointsPosition1,
+                p2: pointsPosition2,
+                p3: pointsPosition3,
+                p4: pointsPosition4,
+                total: pointsPosition1 + pointsPosition2 + pointsPosition3 + pointsPosition4,
+              })}
               {bonusPerfectGroupEnabled && (
-                <> Además recibe <strong>+{bonusPerfectGroup} pts de bonus</strong>, para un total de <strong>{examplePerfect} pts</strong> por grupo perfecto.</>
+                <>{tp.rich("phaseConfig.exampleGroupBonus", {
+                  bonus: bonusPerfectGroup,
+                  grandTotal: examplePerfect,
+                  b: (chunks) => <b>{chunks}</b>,
+                })}</>
               )}
             </div>
           </>
@@ -611,11 +579,10 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
           <>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
               <span style={{ fontSize: "1.5rem" }}>🏆</span>
-              <strong style={{ fontSize: "1.125rem" }}>Predecir Quién Avanza</strong>
+              <strong style={{ fontSize: "1.125rem" }}>{tp("phaseConfig.predictWhoAdvances")}</strong>
             </div>
             <p style={{ margin: "0 0 1.25rem 0", color: "#666", fontSize: "0.875rem" }}>
-              Los jugadores seleccionan qué equipo avanza a la siguiente ronda en cada partido.
-              No importa el marcador ni cómo avancen (tiempo regular, prórroga o penales).
+              {tp("phaseConfig.predictWhoAdvancesDesc")}
             </p>
             <div style={labelStyle}>
               <span style={{ fontSize: "1.25rem" }}>✅</span>
@@ -628,11 +595,11 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                 style={{ ...inputStyle, width: "70px" }}
               />
               <span style={{ fontSize: "0.9rem", color: "#333" }}>
-                <strong>pts</strong> por cada equipo que aciertes que avanza
+                <strong>{tp("points")}</strong> {tp("phaseConfig.ptsPerCorrectAdvance")}
               </span>
             </div>
             <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: "#555" }}>
-              <strong>Ejemplo:</strong> En Round of 32 hay 16 partidos. Si aciertas 10 de 16, ganas {(config.pointsPerCorrectAdvance ?? 15) * 10} pts.
+              <strong>{tp("phaseConfig.exampleLabel")}</strong> {tp("phaseConfig.exampleAdvance", { points: (config.pointsPerCorrectAdvance ?? 15) * 10 })}
             </div>
           </>
         )}
@@ -660,6 +627,7 @@ function PickTypeCard({
   onPointsChange,
   isMobile = false,
 }: PickTypeCardProps) {
+  const tp = useTranslations("pool");
   const [showExample, setShowExample] = useState(false);
 
   if (isMobile) {
@@ -705,7 +673,7 @@ function PickTypeCard({
                 background: type.enabled ? "white" : "#f5f5f5",
               }}
             />
-            <span style={{ fontSize: "0.7rem", color: "#666" }}>pts</span>
+            <span style={{ fontSize: "0.7rem", color: "#666" }}>{tp("points")}</span>
           </div>
         </div>
 
@@ -724,7 +692,7 @@ function PickTypeCard({
               padding: 0,
             }}
           >
-            {showExample ? "▲ Ocultar ejemplo" : "▼ Ver ejemplo"}
+            {showExample ? `▲ ${tp("phaseConfig.hideExample")}` : `▼ ${tp("phaseConfig.showExample")}`}
           </button>
         )}
         {type.enabled && showExample && (
@@ -784,13 +752,13 @@ function PickTypeCard({
               color: "#666",
             }}
           >
-            <strong>Ejemplo:</strong> {example}
+            <strong>{tp("phaseConfig.exampleLabel")}</strong> {example}
           </div>
         </div>
 
         <div style={{ marginLeft: "1.5rem" }}>
           <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.75rem", color: "#666" }}>
-            Puntos
+            {tp("phaseConfig.pointsLabel")}
           </label>
           <input
             type="number"

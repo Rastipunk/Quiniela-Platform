@@ -1,0 +1,564 @@
+{
+  "loading": "Loading overview...",
+  "poolIdMissing": "PoolId missing",
+  "backToDashboard": "Dashboard",
+  "members": "members",
+  "yourRole": "Your role",
+  "invalidScore": "Invalid score",
+
+  "phases": {
+    "group_stage": "Groups",
+    "round_of_32": "R32",
+    "round_of_16": "R16",
+    "quarter_finals": "QF",
+    "quarterfinals": "QF",
+    "semi_finals": "SF",
+    "semifinals": "SF",
+    "third_place": "3rd",
+    "finals": "Final",
+    "final": "Final",
+    "r32_leg1": "R32 Leg 1",
+    "r32_leg2": "R32 Leg 2",
+    "r16_leg1": "R16 Leg 1",
+    "r16_leg2": "R16 Leg 2",
+    "qf_leg1": "QF Leg 1",
+    "qf_leg2": "QF Leg 2",
+    "sf_leg1": "SF Leg 1",
+    "sf_leg2": "SF Leg 2"
+  },
+  "phasesLong": {
+    "group_stage": "Group Stage",
+    "round_of_32": "Round of 32",
+    "round_of_16": "Round of 16",
+    "quarter_finals": "Quarter-finals",
+    "quarterfinals": "Quarter-finals",
+    "semi_finals": "Semi-finals",
+    "semifinals": "Semi-finals",
+    "third_place": "Third Place",
+    "finals": "Final",
+    "final": "Final",
+    "r32_leg1": "Play-offs (R32) - 1st Leg",
+    "r32_leg2": "Play-offs (R32) - 2nd Leg",
+    "r16_leg1": "Round of 16 - 1st Leg",
+    "r16_leg2": "Round of 16 - 2nd Leg",
+    "qf_leg1": "Quarter-finals - 1st Leg",
+    "qf_leg2": "Quarter-finals - 2nd Leg",
+    "sf_leg1": "Semi-finals - 1st Leg",
+    "sf_leg2": "Semi-finals - 2nd Leg"
+  },
+
+  "status": {
+    "DRAFT": "Draft",
+    "ACTIVE": "Active",
+    "COMPLETED": "Completed",
+    "ARCHIVED": "Archived",
+    "UNKNOWN": "Unknown"
+  },
+
+  "phaseStatus": {
+    "PENDING": "PENDING",
+    "ACTIVE": "ACTIVE",
+    "COMPLETED": "COMPLETED"
+  },
+
+  "placeholders": {
+    "winner": "Winner {ref}",
+    "winnerGroup": "Winner Group {group}",
+    "runnerUp": "Runner-up Group {group}",
+    "loser": "Loser {ref}",
+    "bestThird": "{rank} Best 3rd"
+  },
+
+  "tabs": {
+    "matches": "Matches",
+    "leaderboard": "Leaderboard",
+    "summary": "My Summary",
+    "rules": "Rules",
+    "admin": "Admin"
+  },
+
+  "admin": {
+    "title": "Host Admin Panel",
+    "autoAdvance": {
+      "title": "Auto-Advance Phases",
+      "description": "When enabled, the system will automatically advance to the next phase when all matches in the current phase are completed.",
+      "enabled": "Auto-advance ENABLED",
+      "disabled": "Auto-advance DISABLED",
+      "enabledDesc": "Phases will advance automatically when all results are in",
+      "disabledDesc": "You will need to advance phases manually using the buttons below",
+      "updateError": "Error updating settings"
+    },
+    "approval": {
+      "title": "Join Request Approval",
+      "description": "When enabled, players who try to join will need to wait for host or co-admin approval.",
+      "required": "Approval REQUIRED",
+      "direct": "DIRECT join",
+      "requiredDesc": "Players will need your approval to join",
+      "directDesc": "Players can join directly with the invite code"
+    },
+    "phasePanel": {
+      "title": "Tournament Phase Status",
+      "matchesProgress": "{completed} of {total} matches with results ({percent}%)",
+      "advanceButton": "Advance Phase",
+      "advancing": "Advancing...",
+      "advanceSuccess": "Phase advanced successfully",
+      "advanceError": "Error advancing phase",
+      "alreadyAdvanced": "Already advanced",
+      "lockButton": "Lock",
+      "unlockButton": "Unlock",
+      "processing": "Processing...",
+      "phaseUnlocked": "Phase unlocked",
+      "phaseLocked": "Phase locked",
+      "lockError": "Error locking/unlocking phase"
+    },
+    "pendingRequests": {
+      "title": "Pending Requests ({count})",
+      "description": "The following users have requested to join the pool and are waiting for your approval.",
+      "requestedAt": "Requested to join",
+      "approveConfirm": "Approve {name}?",
+      "approveButton": "Approve",
+      "approveError": "Error approving",
+      "rejectPrompt": "Reject {name}?\n\nReason (optional):",
+      "rejectButton": "Reject",
+      "rejectError": "Error rejecting"
+    },
+    "members": {
+      "title": "Member Management",
+      "description": "You can promote players to Co-Admins to help you manage results and create invitations.",
+      "promoteConfirm": "Promote {name} to Co-Admin?\n\nCo-Admins can:\n• Publish and correct results\n• Create invite codes\n• View the admin panel",
+      "promoteButton": "Promote",
+      "promoteSuccess": "{name} promoted to Co-Admin",
+      "promoteError": "Error promoting member",
+      "demoteConfirm": "Demote {name} to regular player?\n\nThey will lose Co-Admin permissions.",
+      "demoteButton": "Demote",
+      "demoteSuccess": "{name} demoted to Player",
+      "demoteError": "Error demoting member",
+      "kickButton": "Kick",
+      "banButton": "Ban",
+      "pts": "pts"
+    },
+    "archive": {
+      "title": "Archive Pool",
+      "description": "The tournament has ended. You can archive this pool to move it out of the main view. Archived pools remain accessible but are marked as historical.",
+      "confirm": "Are you sure you want to archive this pool?\n\nThis will mark the pool as archived. Members will still be able to view the leaderboard and final results, but no further changes will be allowed.",
+      "archiving": "Archiving...",
+      "archiveButton": "Archive Pool",
+      "success": "Pool archived successfully",
+      "error": "Error archiving pool"
+    },
+    "hostInfo": {
+      "title": "Host Information",
+      "tip1": "Phases advance automatically when all matches have results (if auto-advance is enabled)",
+      "tip2": "If we detect a <b>recent errata</b> (last 24h), auto-advance will be blocked and you'll need to advance manually",
+      "tip3": "You can use the \"Advance Phase\" button to force manual advancement when needed",
+      "tip4": "Use the \"Lock\" button to <b>prevent auto-advances and allow corrections</b> on a completed phase",
+      "tip5": "Locked phases will allow modifying results even after advancing to the next phase",
+      "tip6": "The system will apply tiebreaker criteria automatically (points, goal difference, head-to-head)"
+    },
+    "notifications": {
+      "pendingJoins": "{count} pending join request.",
+      "pendingJoinsPlural": "{count} pending join requests.",
+      "phasesReady": "{count} phase ready to advance.",
+      "phasesReadyPlural": "{count} phases ready to advance."
+    }
+  },
+
+  "invite": {
+    "title": "Invitations",
+    "createCode": "Create code",
+    "codeCopied": "Code (copied if browser allowed):"
+  },
+
+  "filters": {
+    "searchPlaceholder": "Search by team / group / roundLabel...",
+    "onlyOpen": "Only OPEN",
+    "noPick": "No pick",
+    "noResult": "No result only",
+    "total": "Total",
+    "matches": "matches",
+    "suggestedGroup": "Suggested group",
+    "all": "All",
+    "group": "Group {name}",
+    "others": "Others"
+  },
+
+  "pendingPhase": {
+    "title": "Pending Phase - Teams To Be Determined",
+    "description": "The teams in this phase will be determined automatically when the matches in the previous phase are completed. For now, you can see the scheduled matches with placeholders (e.g.: \"Winner Group A\", \"Best 3rd\")."
+  },
+
+  "matchCard": {
+    "locked": "LOCKED",
+    "open": "OPEN",
+    "matchLabel": "Match {id}",
+    "pendingTitle": "Pending Match",
+    "pendingDesc": "This match will be enabled when the participating teams are determined.",
+    "viewBreakdown": "View breakdown",
+    "viewOtherPicks": "View others' picks"
+  },
+
+  "pick": {
+    "myPick": "My Pick",
+    "noPick": "No pick made (deadline passed)",
+    "noPickYet": "No pick yet",
+    "modify": "Modify",
+    "save": "Save",
+    "cancel": "Cancel",
+    "selectPlaceholder": "Select...",
+    "homeWin": "Home Win",
+    "draw": "Draw",
+    "awayWin": "Away Win"
+  },
+
+  "result": {
+    "title": "Result",
+    "noResultHost": "No result (publish when finished)",
+    "noResultPlayer": "Pending official result",
+    "correctResult": "Correct result",
+    "publishCorrection": "Publish correction",
+    "publishResult": "Publish result",
+    "cancel": "Cancel",
+    "penalties": "Penalties",
+    "penaltiesRequired": "Regular time draw - Penalties required",
+    "penaltiesLabel": "Penalties {team}",
+    "teamWins": "{team} wins",
+    "officialResult": "Official result",
+    "correctionLabel": "Correction",
+    "correctionPlaceholder": "Reason for correction (required)",
+    "correctionRequired": "To correct a result, you must provide a reason"
+  },
+
+  "leaderboard": {
+    "title": "Overall Standings",
+    "pos": "Pos",
+    "player": "Player",
+    "total": "Total",
+    "diff": "Diff",
+    "leader": "Leader",
+    "emptyState": "No leaderboard data yet",
+    "noPointsYet": "No points yet",
+    "viewPhaseDetail": "View {phase} details"
+  },
+
+  "matchPicks": {
+    "title": "Picks",
+    "loading": "Loading picks...",
+    "error": "Error",
+    "notUnlocked": "The deadline has not passed yet. You can only see your own pick.",
+    "you": "You",
+    "home": "Home",
+    "drawLabel": "Draw",
+    "away": "Away",
+    "noPick": "No pick",
+    "empty": "No picks for this match"
+  },
+
+  "playerSummary": {
+    "title": "{name}'s Summary"
+  },
+
+  "expulsion": {
+    "kickTitle": "Kick {name}",
+    "kickWarning": "<strong>Simple kick:</strong> The player will be removed from the pool but <strong>will be able to request access again</strong> later using an invite code.",
+    "kickReasonLabel": "Reason (optional)",
+    "kickReasonPlaceholder": "E.g.: Requested to leave the pool",
+    "kickButton": "Kick",
+    "kicking": "Kicking...",
+    "kickSuccess": "{name} has been kicked from the pool",
+    "kickError": "Error kicking member",
+    "banTitle": "Ban {name}",
+    "banWarning": "WARNING: This action is PERMANENT and IRREVERSIBLE",
+    "banDetail1": "The player will NOT be able to rejoin this pool ever again",
+    "banDetail2": "Optionally you can delete all their picks",
+    "banDetail3": "This action is recorded in the audit log",
+    "banReasonLabel": "Ban reason *",
+    "banReasonPlaceholder": "E.g.: Inappropriate behavior, cheating, offensive language, etc.",
+    "banReasonRequired": "You must provide a reason for the ban",
+    "deletePicks": "<strong>Delete all their picks</strong> (will affect the leaderboard)",
+    "banButton": "Ban Permanently",
+    "banning": "Banning...",
+    "banSuccess": "{name} has been permanently banned",
+    "banError": "Error banning member",
+    "cancel": "Cancel"
+  },
+
+  "rules": {
+    "title": "Pool Rules",
+    "scoring": {
+      "title": "Scoring System",
+      "preset": "Preset",
+      "defaultDesc": "Classic scoring system for sports pools",
+      "exactScore": "points for getting the <b>exact score</b> right",
+      "outcomeOnly": "points for getting only the <b>result</b> right (winner or draw)"
+    },
+    "pickTypes": {
+      "title": "Pick Types",
+      "method": "Allowed method",
+      "scoreMethod": "Exact Score (SCORE)",
+      "outcomeMethod": "Result Only (OUTCOME)",
+      "scoreDesc": "You must predict the exact score of the match (e.g.: 2-1). If you get the exact score right, you earn more points.",
+      "outcomeDesc": "You only need to predict the match result (Home Win, Draw, Away Win)."
+    },
+    "deadline": {
+      "title": "Deadline Policy",
+      "timeLimit": "Time limit",
+      "minutesBefore": "{minutes} minutes before kickoff",
+      "description": "You can make and modify your picks up to {minutes} minutes before the start of each match. Once the deadline is reached, the match becomes <b>LOCKED</b> and you won't be able to edit your pick.",
+      "important": "<b>Important:</b> Make sure to check the dates and times of the matches. All times are shown in the time zone: <b>{timezone}</b>"
+    },
+    "tournament": {
+      "title": "Tournament Information",
+      "name": "Tournament",
+      "activeMembers": "Active members",
+      "visibility": "Visibility",
+      "private": "PRIVATE",
+      "public": "PUBLIC",
+      "description": "Description"
+    }
+  },
+
+  "notifications": {
+    "urgentPicks": "You have {count} match without a pick closing in the next few hours ({details}).",
+    "urgentPicksPlural": "You have {count} matches without picks closing in the next few hours ({details}).",
+    "countInPhase": "{count} in {phase}",
+    "pendingResults": "{count} played match without a published result.",
+    "pendingResultsPlural": "{count} played matches without published results."
+  },
+
+  "breakdown": {
+    "phaseTitle": "Breakdown - {name}"
+  },
+
+  "configNoRules": "No scoring configuration available for this pool.",
+  "rulesHeader": "Scoring Rules",
+  "rulesSubheader": "This pool has custom configuration per phase. Read each phase carefully to understand how to earn points.",
+  "predictionType": "Prediction type",
+  "matchScores": "Match scores",
+  "structuralPicks": "Structural predictions",
+  "enabledPickTypes": "Enabled pick types",
+  "phase": "Phase",
+  "deadlineInfo": "Deadline",
+  "deadlineMinutes": "{minutes} min before kickoff",
+  "timezoneInfo": "Time zone: {timezone}",
+
+  "pickTypeNames": {
+    "EXACT_SCORE": "Exact score",
+    "GOAL_DIFFERENCE": "Goal difference",
+    "PARTIAL_SCORE": "Partial score",
+    "TOTAL_GOALS": "Total goals",
+    "HOME_GOALS": "Home goals",
+    "AWAY_GOALS": "Away goals",
+    "MATCH_OUTCOME_90MIN": "Match result"
+  },
+  "pickTypeDescriptions": {
+    "EXACT_SCORE": "Get the exact score right (e.g.: 2-1)",
+    "GOAL_DIFFERENCE": "Get the goal difference right (e.g.: +1)",
+    "PARTIAL_SCORE": "Get at least one of the scores right (e.g.: 2-? or ?-1)",
+    "TOTAL_GOALS": "Get the total number of goals in the match right (e.g.: 3 goals)",
+    "HOME_GOALS": "Get the home team's goals right",
+    "AWAY_GOALS": "Get the away team's goals right",
+    "MATCH_OUTCOME_90MIN": "Get who wins or if they draw right"
+  },
+  "points": "pts",
+  "structuralSection": {
+    "title": "Structural predictions",
+    "groupPositions": "Order group positions",
+    "perfectGroupBonus": "Perfect group bonus",
+    "advancingTeams": "Advancing teams"
+  },
+
+  "rulesDisplay": {
+    "howToEarnPoints": "How to earn points",
+    "noScores": "No scores",
+    "groupStandingsTitle": "Order positions in each group",
+    "positionPoints1": "{points} pts for guessing 1st place",
+    "positionPoints2": "{points} pts for guessing 2nd place",
+    "positionPoints3": "{points} pts for guessing 3rd place",
+    "positionPoints4": "{points} pts for guessing 4th place",
+    "ptsPerExactPosition": "{points} pts for each team in its exact position",
+    "bonusPerfectGroupPts": "+{points} pts bonus for getting a whole group right",
+    "globalQualifiersAdditional": "Additional prediction of global qualifiers ({points} pts/position)",
+    "globalQualifiersTitle": "Order global qualifiers",
+    "predictTotalQualifiers": "Predict the order of the {total} qualifying teams",
+    "lockDateWarning": "This prediction will be locked on: {date}",
+    "knockoutWinnerTitle": "Predict who advances",
+    "knockoutWinnerPoints": "{points} pts for each team you correctly predict to advance to the next round",
+    "knockoutWinnerNote": "(The score or how they advance doesn't matter, only who goes through)",
+    "importantNotes": "Important notes",
+    "notePhaseRules": "Each tournament phase can have different pick types and scoring.",
+    "noteReadCarefully": "Read the rules of EACH PHASE carefully before making your predictions.",
+    "notePointsIncrease": "Points usually increase in later tournament phases (round of 16, quarter-finals, semi-finals, final).",
+    "cumulativeSystem": "<strong>Cumulative system:</strong> Points ADD UP for each criterion you get right. If you get the exact score, you earn the sum of all criteria (max 10 pts in groups, 20 pts in knockouts).",
+    "nonCumulativeNote": "If you get the exact score, you also automatically match other types (but you only earn points for the exact score).",
+    "deadlineNote": "Picks are locked based on the deadline configured for this pool: <strong>{minutes} minutes before each match starts</strong>."
+  },
+
+  "scoringBreakdown": {
+    "defaultTitle": "Scoring Breakdown",
+    "loading": "Loading breakdown...",
+    "unauthorized": "Unauthorized",
+    "errorLoading": "Error loading breakdown",
+    "unsupportedType": "Unsupported breakdown type",
+    "pointsEarned": "points earned",
+    "yourPrediction": "Your prediction",
+    "noPrediction": "No prediction",
+    "officialResult": "Official result",
+    "pending": "Pending",
+    "rulesEvaluation": "Rules evaluation",
+    "pointsObtained": "Points earned: <strong>0</strong> / {max} possible",
+    "ptsPerExactPosition": "<strong>{points} pts</strong> per exact position",
+    "bonusPerfectGroupLabel": "<strong>+{points} pts</strong> perfect group bonus",
+    "ptsPerCorrectAdvance": "<strong>{points} pts</strong> for each team that advances correctly",
+    "noPredictionMade": "No prediction made",
+    "pendingResults": "Pending results",
+    "yourPosition": "(yours: {position})",
+    "bonusPerfectGroupResult": "Perfect group bonus: {points} pts",
+    "perfect": "Perfect!",
+    "yourPredictionKnockout": "Your prediction: <strong>{name}</strong>",
+    "noPredictionKnockout": "No prediction",
+    "advanced": "Advanced: <strong>{name}</strong>",
+    "pendingResult": "Pending result",
+    "noHits": "No hits"
+  },
+
+  "structuralManager": {
+    "loading": "Loading...",
+    "error": "Error",
+    "errorLoading": "Error loading data",
+    "hostGroupTitle": "Publish Group Results",
+    "playerGroupTitle": "Predict Group Positions",
+    "knockoutTitle": "Knockout Phase",
+    "hostGroupDesc": "Order the teams from 1st to 4th place in each group",
+    "hostKnockoutDesc": "Publish the result of each match (players predict who advances)",
+    "playerKnockoutDesc": "Select which team advances in each match",
+    "hostLockedMessage": "All official results have been published",
+    "playerLockedMessage": "Phase locked - Official results have already been published",
+    "viewPointsBreakdown": "View points breakdown",
+    "hostResultsProgress": "Results published: {count}/{total} matches",
+    "playerPicksProgress": "Predictions saved: {count}/{total} matches",
+    "groupName": "Group {id}",
+    "orderAtLeastOneGroup": "You must order at least one group before saving",
+    "selectAtLeastOneWinner": "You must select at least one winner before saving",
+    "resultPublished": "Official result published successfully",
+    "pickSaved": "Prediction saved successfully",
+    "errorSaving": "Error saving"
+  },
+
+  "playerSummaryView": {
+    "loadingSummary": "Loading summary...",
+    "errorPrefix": "Error: {message}",
+    "notAuthenticated": "Not authenticated",
+    "errorLoading": "Error loading summary",
+    "mySummary": "My Summary",
+    "totalPoints": "total points",
+    "position": "Position",
+    "pointsLabel": "Points",
+    "scored": "Scored",
+    "effectiveness": "Effectiveness",
+    "onlyDeadlinePassed": "Only picks for matches whose deadline has passed are shown.",
+    "phaseBreakdown": "Breakdown by phase",
+    "noMatchesVisible": "No visible matches yet",
+    "scoredOfTotal": "{scored} of {total} scored",
+    "close": "Close",
+    "headerHome": "Home",
+    "headerAway": "Away",
+    "headerPick": "Pick",
+    "headerResult": "Res.",
+    "headerPts": "Pts",
+    "statusScored": "Scored",
+    "statusNoPick": "No pick",
+    "statusPendingResult": "Awaiting result",
+    "statusLocked": "Locked"
+  },
+
+  "mobileLeaderboard": {
+    "leader": "Leader",
+    "emptyState": "No leaderboard data yet",
+    "scrollHint": "Swipe to see more phases",
+    "host": "HOST",
+    "coAdmin": "CO-ADMIN"
+  },
+  "phaseConfig": {
+    "fundamentalDecision": "Fundamental Decision",
+    "predictScores": "Predict scores?",
+    "withScoresMobile": "WITH SCORES",
+    "withScores": "YES, WITH SCORES",
+    "withoutScoresMobile": "WITHOUT SCORES",
+    "withoutScores": "NO, WITHOUT SCORES",
+    "withScoresDesc": "Players predict the exact result of each match.",
+    "withScoresMore": "More detail",
+    "withScoresMultiple": "Multiple types",
+    "withoutScoresDesc": "Players predict final positions or who advances.",
+    "withoutScoresMore": "More strategic",
+    "withoutScoresLess": "Less maintenance",
+    "pickTypes": "Pick Types",
+    "pickTypesDesc": "Enable the pick types you want to allow.",
+    "pickTypesDescFull": "Enable the pick types you want to allow. You can have several active simultaneously.",
+    "pointsLabel": "Points",
+    "hideExample": "Hide example",
+    "showExample": "Show example",
+    "exampleLabel": "Example:",
+    "noScoresConfig": "No Scores Configuration",
+    "orderPositions": "Order Positions",
+    "orderPositionsDesc": "Configure points per position.",
+    "orderPositionsDescFull": "Players order the teams from 1st to 4th place in each group. Configure how many points each correct position is worth.",
+    "pointsPerPosition": "Points per correct position:",
+    "bonusPerfectGroup": "Bonus for getting the complete group right",
+    "exampleGroup": "If a player gets all 4 positions in a group right, they earn {p1} + {p2} + {p3} + {p4} = {total} pts.",
+    "exampleGroupBonus": " They also receive <b>+{bonus} pts bonus</b>, for a total of <b>{grandTotal} pts</b> per perfect group.",
+    "predictWhoAdvances": "Predict Who Advances",
+    "predictWhoAdvancesDesc": "Players select which team advances to the next round in each match. It doesn't matter the score or how they advance (regular time, extra time or penalties).",
+    "ptsPerCorrectAdvance": "per correct team advance",
+    "exampleAdvance": "In Round of 32 there are 16 matches. If you get 10 of 16 right, you earn {points} pts.",
+    "previousPhase": "Previous Phase",
+    "previousPhaseMobile": "Previous",
+    "nextPhase": "Next Phase",
+    "nextPhaseMobile": "Next",
+    "viewSummary": "View Summary",
+    "viewSummaryMobile": "Summary"
+  },
+  "pickTypeExtended": {
+    "EXACT_SCORE": {
+      "title": "Exact Score",
+      "description": "The player must get the full score right. It's the hardest and most valuable pick. If you get the exact score, you also get the goal difference, partial score and total goals right (but you only earn the exact score points, which is the highest).",
+      "shortDesc": "Get the full score right (e.g.: 2-1).",
+      "example": "Example with 20 pts: You predict 2-1, result is 2-1 -> WIN 20 PTS | Result 3-1 -> 0 pts | Result 2-0 -> 0 pts"
+    },
+    "GOAL_DIFFERENCE": {
+      "title": "Goal Difference",
+      "description": "Get the exact difference between home and away goals right, even if the score isn't exact. You only earn these points if you did NOT get the exact score.",
+      "shortDesc": "Get the difference right (+2, -1, etc).",
+      "example": "Example with 10 pts: You predict 2-0 (+2), result is 3-1 (+2) -> WIN 10 PTS | Result 2-1 (+1) -> 0 pts | Result 2-0 -> WIN 20 PTS for exact"
+    },
+    "PARTIAL_SCORE": {
+      "title": "Partial Score",
+      "description": "Get ONLY the goals of ONE team (home OR away) right, but NOT both at once. If you get both right, that counts as exact score (worth more points). This type is useful when you partially get it right.",
+      "shortDesc": "Get one team's goals right.",
+      "example": "Example with 8 pts: You predict 2-1, result is 2-3 -> WIN 8 PTS (the 2 from home) | Result 3-3 -> 0 pts | Result 2-1 -> WIN 20 PTS for exact"
+    },
+    "TOTAL_GOALS": {
+      "title": "Total Goals",
+      "description": "Get the total number of goals in the match (home + away), regardless of who scored them or the final result. You only earn these points if you did NOT get exact score, goal difference, or partial score.",
+      "shortDesc": "Get the sum of goals right (e.g.: 3 goals).",
+      "example": "Example with 5 pts: You predict 2-1 (3 goals), result is 3-0 (3 goals) -> WIN 5 PTS | Result 2-0 (2 goals) -> 0 pts | Result 2-1 -> WIN 20 PTS for exact"
+    },
+    "MATCH_OUTCOME_90MIN": {
+      "title": "Result 90min",
+      "description": "Predict only the winner or draw in regular time (Home Win, Draw, Away Win). Not available when scores are required.",
+      "shortDesc": "Predict winner or draw.",
+      "example": "Only for no-score picks. Not combinable with goal predictions."
+    },
+    "HOME_GOALS": {
+      "title": "Home Goals",
+      "description": "Get only the goals scored by the home team right.",
+      "shortDesc": "Only home team goals.",
+      "example": "Example with 4 pts: You predict 2-?, result is 2-3 -> WIN 4 PTS | Result 3-0 -> 0 pts"
+    },
+    "AWAY_GOALS": {
+      "title": "Away Goals",
+      "description": "Get only the goals scored by the away team right.",
+      "shortDesc": "Only away team goals.",
+      "example": "Example with 4 pts: You predict ?-1, result is 2-1 -> WIN 4 PTS | Result 2-2 -> 0 pts"
+    }
+  }
+}

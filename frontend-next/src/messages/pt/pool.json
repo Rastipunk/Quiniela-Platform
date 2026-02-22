@@ -1,0 +1,564 @@
+{
+  "loading": "Carregando overview...",
+  "poolIdMissing": "PoolId ausente",
+  "backToDashboard": "Dashboard",
+  "members": "membros",
+  "yourRole": "Seu papel",
+  "invalidScore": "Placar inválido",
+
+  "phases": {
+    "group_stage": "Grupos",
+    "round_of_32": "R32",
+    "round_of_16": "R16",
+    "quarter_finals": "QF",
+    "quarterfinals": "QF",
+    "semi_finals": "SF",
+    "semifinals": "SF",
+    "third_place": "3º",
+    "finals": "Final",
+    "final": "Final",
+    "r32_leg1": "R32 Ida",
+    "r32_leg2": "R32 Volta",
+    "r16_leg1": "R16 Ida",
+    "r16_leg2": "R16 Volta",
+    "qf_leg1": "QF Ida",
+    "qf_leg2": "QF Volta",
+    "sf_leg1": "SF Ida",
+    "sf_leg2": "SF Volta"
+  },
+  "phasesLong": {
+    "group_stage": "Fase de Grupos",
+    "round_of_32": "32 avos de Final",
+    "round_of_16": "Oitavas de Final",
+    "quarter_finals": "Quartas de Final",
+    "quarterfinals": "Quartas de Final",
+    "semi_finals": "Semifinais",
+    "semifinals": "Semifinais",
+    "third_place": "Terceiro Lugar",
+    "finals": "Final",
+    "final": "Final",
+    "r32_leg1": "Play-offs (R32) - Ida",
+    "r32_leg2": "Play-offs (R32) - Volta",
+    "r16_leg1": "Oitavas de Final - Ida",
+    "r16_leg2": "Oitavas de Final - Volta",
+    "qf_leg1": "Quartas de Final - Ida",
+    "qf_leg2": "Quartas de Final - Volta",
+    "sf_leg1": "Semifinais - Ida",
+    "sf_leg2": "Semifinais - Volta"
+  },
+
+  "status": {
+    "DRAFT": "Rascunho",
+    "ACTIVE": "Em andamento",
+    "COMPLETED": "Finalizado",
+    "ARCHIVED": "Arquivado",
+    "UNKNOWN": "Desconhecido"
+  },
+
+  "phaseStatus": {
+    "PENDING": "PENDENTE",
+    "ACTIVE": "ATIVA",
+    "COMPLETED": "COMPLETA"
+  },
+
+  "placeholders": {
+    "winner": "Vencedor {ref}",
+    "winnerGroup": "Vencedor Grupo {group}",
+    "runnerUp": "2º Grupo {group}",
+    "loser": "Perdedor {ref}",
+    "bestThird": "{rank}º Melhor 3º"
+  },
+
+  "tabs": {
+    "matches": "Jogos",
+    "leaderboard": "Classificação",
+    "summary": "Meu Resumo",
+    "rules": "Regras",
+    "admin": "Administração"
+  },
+
+  "admin": {
+    "title": "Painel de Administração do Host",
+    "autoAdvance": {
+      "title": "Avanço Automático de Fases",
+      "description": "Quando habilitado, o sistema avançará automaticamente para a próxima fase quando todos os jogos da fase atual forem completados.",
+      "enabled": "Avanço automático HABILITADO",
+      "disabled": "Avanço automático DESABILITADO",
+      "enabledDesc": "As fases avançarão automaticamente quando todos os resultados forem registrados",
+      "disabledDesc": "Você precisará avançar as fases manualmente usando os botões abaixo",
+      "updateError": "Erro ao atualizar configuração"
+    },
+    "approval": {
+      "title": "Aprovação de Solicitações de Ingresso",
+      "description": "Quando habilitado, os jogadores que tentarem entrar precisarão aguardar a aprovação do host ou co-admins.",
+      "required": "Aprovação OBRIGATÓRIA",
+      "direct": "Ingresso DIRETO",
+      "requiredDesc": "Os jogadores precisarão da sua aprovação para entrar",
+      "directDesc": "Os jogadores podem entrar diretamente com o código de convite"
+    },
+    "phasePanel": {
+      "title": "Status das Fases do Torneio",
+      "matchesProgress": "{completed} de {total} jogos com resultado ({percent}%)",
+      "advanceButton": "Avançar Fase",
+      "advancing": "Avançando...",
+      "advanceSuccess": "Fase avançada com sucesso",
+      "advanceError": "Erro ao avançar fase",
+      "alreadyAdvanced": "Já avançou",
+      "lockButton": "Bloquear",
+      "unlockButton": "Desbloquear",
+      "processing": "Processando...",
+      "phaseUnlocked": "Fase desbloqueada",
+      "phaseLocked": "Fase bloqueada",
+      "lockError": "Erro ao bloquear/desbloquear fase"
+    },
+    "pendingRequests": {
+      "title": "Solicitações Pendentes ({count})",
+      "description": "Os seguintes usuários solicitaram entrar no pool e estão aguardando sua aprovação.",
+      "requestedAt": "Solicitou entrar",
+      "approveConfirm": "Aprovar {name}?",
+      "approveButton": "Aprovar",
+      "approveError": "Erro ao aprovar",
+      "rejectPrompt": "Rejeitar {name}?\n\nMotivo (opcional):",
+      "rejectButton": "Rejeitar",
+      "rejectError": "Erro ao rejeitar"
+    },
+    "members": {
+      "title": "Gestão de Membros",
+      "description": "Você pode promover jogadores a Co-Admins para ajudá-lo a gerenciar resultados e criar convites.",
+      "promoteConfirm": "Promover {name} a Co-Admin?\n\nCo-Admins podem:\n• Publicar e corrigir resultados\n• Criar códigos de convite\n• Ver o painel de administração",
+      "promoteButton": "Promover",
+      "promoteSuccess": "{name} promovido a Co-Admin",
+      "promoteError": "Erro ao promover membro",
+      "demoteConfirm": "Rebaixar {name} a jogador normal?\n\nPerderá as permissões de Co-Admin.",
+      "demoteButton": "Rebaixar",
+      "demoteSuccess": "{name} rebaixado a Player",
+      "demoteError": "Erro ao rebaixar membro",
+      "kickButton": "Expulsar",
+      "banButton": "Banir",
+      "pts": "pts"
+    },
+    "archive": {
+      "title": "Arquivar Pool",
+      "description": "O torneio terminou. Você pode arquivar este pool para removê-lo da vista principal. Pools arquivados permanecem acessíveis mas são marcados como históricos.",
+      "confirm": "Tem certeza de que deseja arquivar este pool?\n\nEsta ação marcará o pool como arquivado. Os membros ainda poderão ver a classificação e resultados finais, mas nenhuma alteração será permitida.",
+      "archiving": "Arquivando...",
+      "archiveButton": "Arquivar Pool",
+      "success": "Pool arquivado com sucesso",
+      "error": "Erro ao arquivar pool"
+    },
+    "hostInfo": {
+      "title": "Informações para o Host",
+      "tip1": "As fases avançam automaticamente quando todos os jogos têm resultado (se o avanço automático estiver habilitado)",
+      "tip2": "Se detectarmos uma <b>errata recente</b> (últimas 24h), o avanço automático será bloqueado e você precisará avançar manualmente",
+      "tip3": "Você pode usar o botão \"Avançar Fase\" para forçar o avanço manual quando necessário",
+      "tip4": "Use o botão \"Bloquear\" para <b>prevenir avanços automáticos e permitir correções</b> em uma fase completa",
+      "tip5": "Fases bloqueadas permitirão modificar resultados mesmo após avançar para a próxima fase",
+      "tip6": "O sistema aplicará critérios de desempate automaticamente (pontos, saldo de gols, confronto direto)"
+    },
+    "notifications": {
+      "pendingJoins": "{count} solicitação de ingresso pendente.",
+      "pendingJoinsPlural": "{count} solicitações de ingresso pendentes.",
+      "phasesReady": "{count} fase pronta para avançar.",
+      "phasesReadyPlural": "{count} fases prontas para avançar."
+    }
+  },
+
+  "invite": {
+    "title": "Convites",
+    "createCode": "Criar código",
+    "codeCopied": "Código (copiado se o navegador permitiu):"
+  },
+
+  "filters": {
+    "searchPlaceholder": "Buscar por time / grupo / rodada...",
+    "onlyOpen": "Apenas ABERTOS",
+    "noPick": "Sem palpite",
+    "noResult": "Sem resultado apenas",
+    "total": "Total",
+    "matches": "jogos",
+    "suggestedGroup": "Grupo sugerido",
+    "all": "Todos",
+    "group": "Grupo {name}",
+    "others": "Outros"
+  },
+
+  "pendingPhase": {
+    "title": "Fase Pendente - Times a Definir",
+    "description": "Os times desta fase serão determinados automaticamente quando os jogos da fase anterior forem completados. Por enquanto, você pode ver os jogos programados com marcadores (ex: \"Vencedor Grupo A\", \"Melhor 3º\")."
+  },
+
+  "matchCard": {
+    "locked": "BLOQUEADO",
+    "open": "ABERTO",
+    "matchLabel": "Jogo {id}",
+    "pendingTitle": "Jogo Pendente",
+    "pendingDesc": "Este jogo será habilitado quando os times participantes forem definidos.",
+    "viewBreakdown": "Ver detalhamento",
+    "viewOtherPicks": "Ver palpites de outros"
+  },
+
+  "pick": {
+    "myPick": "Meu Palpite",
+    "noPick": "Sem palpite (prazo encerrado)",
+    "noPickYet": "Sem palpite ainda",
+    "modify": "Modificar",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "selectPlaceholder": "Selecione...",
+    "homeWin": "Vitória Mandante",
+    "draw": "Empate",
+    "awayWin": "Vitória Visitante"
+  },
+
+  "result": {
+    "title": "Resultado",
+    "noResultHost": "Sem resultado (publique quando terminar)",
+    "noResultPlayer": "Aguardando resultado oficial",
+    "correctResult": "Corrigir resultado",
+    "publishCorrection": "Publicar correção",
+    "publishResult": "Publicar resultado",
+    "cancel": "Cancelar",
+    "penalties": "Pênaltis",
+    "penaltiesRequired": "Empate no tempo regulamentar - Pênaltis obrigatórios",
+    "penaltiesLabel": "Pênaltis {team}",
+    "teamWins": "{team} vence",
+    "officialResult": "Resultado oficial",
+    "correctionLabel": "Correção",
+    "correctionPlaceholder": "Motivo da correção (obrigatório)",
+    "correctionRequired": "Para corrigir um resultado, você deve fornecer um motivo"
+  },
+
+  "leaderboard": {
+    "title": "Classificação Geral",
+    "pos": "Pos",
+    "player": "Jogador",
+    "total": "Total",
+    "diff": "Dif",
+    "leader": "Líder",
+    "emptyState": "Ainda não há dados na classificação",
+    "noPointsYet": "Sem pontos ainda",
+    "viewPhaseDetail": "Ver detalhes de {phase}"
+  },
+
+  "matchPicks": {
+    "title": "Palpites",
+    "loading": "Carregando palpites...",
+    "error": "Erro",
+    "notUnlocked": "O prazo ainda não passou. Você só pode ver seu próprio palpite.",
+    "you": "Você",
+    "home": "Mandante",
+    "drawLabel": "Empate",
+    "away": "Visitante",
+    "noPick": "Sem palpite",
+    "empty": "Sem palpites para este jogo"
+  },
+
+  "playerSummary": {
+    "title": "Resumo de {name}"
+  },
+
+  "expulsion": {
+    "kickTitle": "Expulsar {name}",
+    "kickWarning": "<strong>Expulsão simples:</strong> O jogador será removido do pool mas <strong>poderá solicitar acesso novamente</strong> mais tarde usando um código de convite.",
+    "kickReasonLabel": "Motivo (opcional)",
+    "kickReasonPlaceholder": "Ex: Solicitou sair do pool",
+    "kickButton": "Expulsar",
+    "kicking": "Expulsando...",
+    "kickSuccess": "{name} foi expulso do pool",
+    "kickError": "Erro ao expulsar membro",
+    "banTitle": "Banir {name}",
+    "banWarning": "AVISO: Esta ação é PERMANENTE e IRREVERSÍVEL",
+    "banDetail1": "O jogador NÃO poderá voltar a entrar neste pool nunca mais",
+    "banDetail2": "Opcionalmente você pode excluir todos os seus palpites",
+    "banDetail3": "Esta ação fica registrada no histórico de auditoria",
+    "banReasonLabel": "Motivo do banimento *",
+    "banReasonPlaceholder": "Ex: Comportamento inadequado, trapaças, linguagem ofensiva, etc.",
+    "banReasonRequired": "Você deve fornecer um motivo para o banimento",
+    "deletePicks": "<strong>Excluir todos os seus palpites</strong> (afetará a classificação)",
+    "banButton": "Banir Permanentemente",
+    "banning": "Banindo...",
+    "banSuccess": "{name} foi banido permanentemente",
+    "banError": "Erro ao banir membro",
+    "cancel": "Cancelar"
+  },
+
+  "rules": {
+    "title": "Regras do Pool",
+    "scoring": {
+      "title": "Sistema de Pontuação",
+      "preset": "Preset",
+      "defaultDesc": "Sistema de pontuação clássico para bolões esportivos",
+      "exactScore": "pontos por acertar o <b>placar exato</b>",
+      "outcomeOnly": "pontos por acertar apenas o <b>resultado</b> (vencedor ou empate)"
+    },
+    "pickTypes": {
+      "title": "Tipos de Palpite",
+      "method": "Método permitido",
+      "scoreMethod": "Placar Exato (SCORE)",
+      "outcomeMethod": "Apenas Resultado (OUTCOME)",
+      "scoreDesc": "Você deve prever o placar exato do jogo (ex: 2-1). Se acertar o placar exato, ganha mais pontos.",
+      "outcomeDesc": "Você só precisa prever o resultado do jogo (Vitória Mandante, Empate, Vitória Visitante)."
+    },
+    "deadline": {
+      "title": "Política de Prazo",
+      "timeLimit": "Prazo limite",
+      "minutesBefore": "{minutes} minutos antes do início",
+      "description": "Você pode fazer e modificar seus palpites até {minutes} minutos antes do início de cada jogo. Uma vez que o prazo seja atingido, o jogo fica <b>BLOQUEADO</b> e você não poderá editar seu palpite.",
+      "important": "<b>Importante:</b> Certifique-se de verificar as datas e horários dos jogos. Todos os horários são exibidos no fuso horário: <b>{timezone}</b>"
+    },
+    "tournament": {
+      "title": "Informações do Torneio",
+      "name": "Torneio",
+      "activeMembers": "Membros ativos",
+      "visibility": "Visibilidade",
+      "private": "PRIVADO",
+      "public": "PÚBLICO",
+      "description": "Descrição"
+    }
+  },
+
+  "notifications": {
+    "urgentPicks": "Você tem {count} jogo sem palpite que fecha nas próximas horas ({details}).",
+    "urgentPicksPlural": "Você tem {count} jogos sem palpite que fecham nas próximas horas ({details}).",
+    "countInPhase": "{count} em {phase}",
+    "pendingResults": "{count} jogo disputado sem resultado publicado.",
+    "pendingResultsPlural": "{count} jogos disputados sem resultado publicado."
+  },
+
+  "breakdown": {
+    "phaseTitle": "Detalhamento - {name}"
+  },
+
+  "configNoRules": "Nenhuma configuração de regras disponível para este pool.",
+  "rulesHeader": "Regras de Pontuação",
+  "rulesSubheader": "Este pool tem configuração personalizada por fase. Leia cada fase com atenção para entender como ganhar pontos.",
+  "predictionType": "Tipo de previsão",
+  "matchScores": "Placares de jogos",
+  "structuralPicks": "Previsões estruturais",
+  "enabledPickTypes": "Tipos de palpite habilitados",
+  "phase": "Fase",
+  "deadlineInfo": "Prazo",
+  "deadlineMinutes": "{minutes} min antes do início",
+  "timezoneInfo": "Fuso horário: {timezone}",
+
+  "pickTypeNames": {
+    "EXACT_SCORE": "Placar exato",
+    "GOAL_DIFFERENCE": "Diferença de gols",
+    "PARTIAL_SCORE": "Placar parcial",
+    "TOTAL_GOALS": "Total de gols",
+    "HOME_GOALS": "Gols mandante",
+    "AWAY_GOALS": "Gols visitante",
+    "MATCH_OUTCOME_90MIN": "Resultado do jogo"
+  },
+  "pickTypeDescriptions": {
+    "EXACT_SCORE": "Acertar o placar exato (ex: 2-1)",
+    "GOAL_DIFFERENCE": "Acertar a diferença de gols (ex: +1)",
+    "PARTIAL_SCORE": "Acertar pelo menos um dos placares (ex: 2-? ou ?-1)",
+    "TOTAL_GOALS": "Acertar o total de gols do jogo (ex: 3 gols)",
+    "HOME_GOALS": "Acertar os gols do time mandante",
+    "AWAY_GOALS": "Acertar os gols do time visitante",
+    "MATCH_OUTCOME_90MIN": "Acertar quem vence ou se empatam"
+  },
+  "points": "pts",
+  "structuralSection": {
+    "title": "Previsões estruturais",
+    "groupPositions": "Ordenar posições do grupo",
+    "perfectGroupBonus": "Bônus por grupo perfeito",
+    "advancingTeams": "Times que avançam"
+  },
+
+  "rulesDisplay": {
+    "howToEarnPoints": "Como ganhar pontos",
+    "noScores": "Sem placares",
+    "groupStandingsTitle": "Ordenar posições de cada grupo",
+    "positionPoints1": "{points} pts por acertar o 1° lugar",
+    "positionPoints2": "{points} pts por acertar o 2° lugar",
+    "positionPoints3": "{points} pts por acertar o 3° lugar",
+    "positionPoints4": "{points} pts por acertar o 4° lugar",
+    "ptsPerExactPosition": "{points} pts por cada time na posição exata",
+    "bonusPerfectGroupPts": "+{points} pts de bônus por acertar um grupo completo",
+    "globalQualifiersAdditional": "Previsão adicional de classificados globais ({points} pts/posição)",
+    "globalQualifiersTitle": "Ordenar classificados globais",
+    "predictTotalQualifiers": "Preveja a ordem dos {total} times classificados",
+    "lockDateWarning": "Esta previsão será bloqueada em: {date}",
+    "knockoutWinnerTitle": "Prever quem avança",
+    "knockoutWinnerPoints": "{points} pts por cada time que você acertar que avança para a próxima fase",
+    "knockoutWinnerNote": "(Não importa o placar nem como avançam, apenas quem passa)",
+    "importantNotes": "Notas importantes",
+    "notePhaseRules": "Cada fase do torneio pode ter diferentes tipos de palpites e pontuações.",
+    "noteReadCarefully": "Leia atentamente as regras de CADA FASE antes de fazer suas previsões.",
+    "notePointsIncrease": "Os pontos geralmente aumentam nas fases mais avançadas do torneio (oitavas, quartas, semifinais, final).",
+    "cumulativeSystem": "<strong>Sistema acumulativo:</strong> Os pontos se SOMAM por cada critério que você acertar. Se acertar o placar exato, ganha a soma de todos os critérios (máx 10 pts nos grupos, 20 pts nas eliminatórias).",
+    "nonCumulativeNote": "Se você acertar o placar exato, também acerta automaticamente outros tipos (mas só ganha os pontos do exato).",
+    "deadlineNote": "Os palpites são bloqueados conforme o prazo configurado para este pool: <strong>{minutes} minutos antes do início de cada jogo</strong>."
+  },
+
+  "scoringBreakdown": {
+    "defaultTitle": "Detalhamento da Pontuação",
+    "loading": "Carregando detalhamento...",
+    "unauthorized": "Não autorizado",
+    "errorLoading": "Erro ao carregar detalhamento",
+    "unsupportedType": "Tipo de detalhamento não suportado",
+    "pointsEarned": "pontos obtidos",
+    "yourPrediction": "Sua previsão",
+    "noPrediction": "Sem previsão",
+    "officialResult": "Resultado oficial",
+    "pending": "Pendente",
+    "rulesEvaluation": "Avaliação de regras",
+    "pointsObtained": "Pontos obtidos: <strong>0</strong> / {max} possíveis",
+    "ptsPerExactPosition": "<strong>{points} pts</strong> por posição exata",
+    "bonusPerfectGroupLabel": "<strong>+{points} pts</strong> bônus grupo perfeito",
+    "ptsPerCorrectAdvance": "<strong>{points} pts</strong> por cada time que avança corretamente",
+    "noPredictionMade": "Você não fez previsão",
+    "pendingResults": "Aguardando resultados",
+    "yourPosition": "(seu: {position})",
+    "bonusPerfectGroupResult": "Bônus grupo perfeito: {points} pts",
+    "perfect": "Perfeito!",
+    "yourPredictionKnockout": "Sua previsão: <strong>{name}</strong>",
+    "noPredictionKnockout": "Sem previsão",
+    "advanced": "Avançou: <strong>{name}</strong>",
+    "pendingResult": "Aguardando resultado",
+    "noHits": "Sem acertos"
+  },
+
+  "structuralManager": {
+    "loading": "Carregando...",
+    "error": "Erro",
+    "errorLoading": "Erro ao carregar dados",
+    "hostGroupTitle": "Publicar Resultados dos Grupos",
+    "playerGroupTitle": "Prever Posições dos Grupos",
+    "knockoutTitle": "Fase Eliminatória",
+    "hostGroupDesc": "Ordene os times do 1° ao 4° lugar em cada grupo",
+    "hostKnockoutDesc": "Publique o resultado de cada jogo (os jogadores preveem quem avança)",
+    "playerKnockoutDesc": "Selecione qual time avança em cada jogo",
+    "hostLockedMessage": "Todos os resultados oficiais foram publicados",
+    "playerLockedMessage": "Fase bloqueada - Os resultados oficiais já foram publicados",
+    "viewPointsBreakdown": "Ver detalhamento de pontos",
+    "hostResultsProgress": "Resultados publicados: {count}/{total} jogos",
+    "playerPicksProgress": "Previsões salvas: {count}/{total} jogos",
+    "groupName": "Grupo {id}",
+    "orderAtLeastOneGroup": "Você deve ordenar pelo menos um grupo antes de salvar",
+    "selectAtLeastOneWinner": "Você deve selecionar pelo menos um vencedor antes de salvar",
+    "resultPublished": "Resultado oficial publicado com sucesso",
+    "pickSaved": "Previsão salva com sucesso",
+    "errorSaving": "Erro ao salvar"
+  },
+
+  "playerSummaryView": {
+    "loadingSummary": "Carregando resumo...",
+    "errorPrefix": "Erro: {message}",
+    "notAuthenticated": "Não autenticado",
+    "errorLoading": "Erro ao carregar resumo",
+    "mySummary": "Meu Resumo",
+    "totalPoints": "pontos totais",
+    "position": "Posição",
+    "pointsLabel": "Pontos",
+    "scored": "Pontuados",
+    "effectiveness": "Efetividade",
+    "onlyDeadlinePassed": "Apenas palpites de jogos cujo prazo já passou são mostrados.",
+    "phaseBreakdown": "Detalhamento por fase",
+    "noMatchesVisible": "Nenhum jogo visível ainda",
+    "scoredOfTotal": "{scored} de {total} pontuados",
+    "close": "Fechar",
+    "headerHome": "Mandante",
+    "headerAway": "Visitante",
+    "headerPick": "Palpite",
+    "headerResult": "Res.",
+    "headerPts": "Pts",
+    "statusScored": "Pontuado",
+    "statusNoPick": "Sem palpite",
+    "statusPendingResult": "Aguardando resultado",
+    "statusLocked": "Bloqueado"
+  },
+
+  "mobileLeaderboard": {
+    "leader": "Líder",
+    "emptyState": "Ainda não há dados na classificação",
+    "scrollHint": "Deslize para ver mais fases",
+    "host": "HOST",
+    "coAdmin": "CO-ADMIN"
+  },
+  "phaseConfig": {
+    "fundamentalDecision": "Decisão Fundamental",
+    "predictScores": "Prever placares?",
+    "withScoresMobile": "COM PLACARES",
+    "withScores": "SIM, COM PLACARES",
+    "withoutScoresMobile": "SEM PLACARES",
+    "withoutScores": "NÃO, SEM PLACARES",
+    "withScoresDesc": "Os jogadores preveem o resultado exato de cada jogo.",
+    "withScoresMore": "Mais detalhe",
+    "withScoresMultiple": "Múltiplos tipos",
+    "withoutScoresDesc": "Os jogadores preveem posições finais ou quem avança.",
+    "withoutScoresMore": "Mais estratégico",
+    "withoutScoresLess": "Menos manutenção",
+    "pickTypes": "Tipos de Palpites",
+    "pickTypesDesc": "Ative os tipos de palpites permitidos.",
+    "pickTypesDescFull": "Ative os tipos de palpites que deseja permitir. Você pode ter vários ativos simultaneamente.",
+    "pointsLabel": "Pontos",
+    "hideExample": "Ocultar exemplo",
+    "showExample": "Ver exemplo",
+    "exampleLabel": "Exemplo:",
+    "noScoresConfig": "Configuração Sem Placares",
+    "orderPositions": "Ordenar Posições",
+    "orderPositionsDesc": "Configure pontos por posição.",
+    "orderPositionsDescFull": "Os jogadores ordenam os times do 1° ao 4° lugar em cada grupo. Configure quantos pontos vale acertar cada posição.",
+    "pointsPerPosition": "Pontos por acertar posição:",
+    "bonusPerfectGroup": "Bônus por acertar grupo completo",
+    "exampleGroup": "Se um jogador acertar as 4 posições de um grupo, ganha {p1} + {p2} + {p3} + {p4} = {total} pts.",
+    "exampleGroupBonus": " Além disso recebe <b>+{bonus} pts de bônus</b>, para um total de <b>{grandTotal} pts</b> por grupo perfeito.",
+    "predictWhoAdvances": "Prever Quem Avança",
+    "predictWhoAdvancesDesc": "Os jogadores selecionam qual time avança para a próxima fase em cada jogo. Não importa o placar nem como avançam (tempo regular, prorrogação ou pênaltis).",
+    "ptsPerCorrectAdvance": "por cada time que avança corretamente",
+    "exampleAdvance": "No Round of 32 há 16 jogos. Se você acertar 10 de 16, ganha {points} pts.",
+    "previousPhase": "Fase Anterior",
+    "previousPhaseMobile": "Anterior",
+    "nextPhase": "Próxima Fase",
+    "nextPhaseMobile": "Próxima",
+    "viewSummary": "Ver Resumo",
+    "viewSummaryMobile": "Resumo"
+  },
+  "pickTypeExtended": {
+    "EXACT_SCORE": {
+      "title": "Placar Exato",
+      "description": "O jogador deve acertar o placar completo. É o palpite mais difícil e mais valioso. Se você acertar o placar exato, também acerta automaticamente a diferença de gols, placar parcial e total de gols (mas só ganha os pontos do placar exato, que é o mais alto).",
+      "shortDesc": "Acertar o placar completo (ex: 2-1).",
+      "example": "Exemplo com 20 pts: Você prevê 2-1, resultado 2-1 → GANHA 20 PTS | Resultado 3-1 → 0 pts | Resultado 2-0 → 0 pts"
+    },
+    "GOAL_DIFFERENCE": {
+      "title": "Diferença de Gols",
+      "description": "Acertar a diferença exata entre os gols do mandante e visitante, mesmo que o placar não seja exato. Só ganha esses pontos se NÃO acertou o placar exato.",
+      "shortDesc": "Acertar a diferença (+2, -1, etc).",
+      "example": "Exemplo com 10 pts: Você prevê 2-0 (+2), resultado 3-1 (+2) → GANHA 10 PTS | Resultado 2-1 (+1) → 0 pts | Resultado 2-0 → GANHA 20 PTS do exato"
+    },
+    "PARTIAL_SCORE": {
+      "title": "Placar Parcial",
+      "description": "Acertar APENAS os gols de UM time (mandante OU visitante), mas NÃO ambos ao mesmo tempo. Se acertar ambos, isso conta como placar exato (que vale mais pontos). Este tipo é útil quando você acerta parcialmente.",
+      "shortDesc": "Acertar gols de um time.",
+      "example": "Exemplo com 8 pts: Você prevê 2-1, resultado 2-3 → GANHA 8 PTS (os 2 do mandante) | Resultado 3-3 → 0 pts | Resultado 2-1 → GANHA 20 PTS do exato"
+    },
+    "TOTAL_GOALS": {
+      "title": "Total de Gols",
+      "description": "Acertar o número total de gols do jogo (mandante + visitante), sem importar quem marcou ou o resultado final. Só ganha esses pontos se NÃO acertou placar exato, diferença de gols nem placar parcial.",
+      "shortDesc": "Acertar soma de gols (ex: 3 gols).",
+      "example": "Exemplo com 5 pts: Você prevê 2-1 (3 gols), resultado 3-0 (3 gols) → GANHA 5 PTS | Resultado 2-0 (2 gols) → 0 pts | Resultado 2-1 → GANHA 20 PTS do exato"
+    },
+    "MATCH_OUTCOME_90MIN": {
+      "title": "Resultado 90min",
+      "description": "Preveja apenas o vencedor ou empate no tempo regulamentar (Vitória Mandante, Empate, Vitória Visitante). Não disponível quando placares são obrigatórios.",
+      "shortDesc": "Prever vencedor ou empate.",
+      "example": "Apenas para palpites sem placar. Não combinável com previsões de gols."
+    },
+    "HOME_GOALS": {
+      "title": "Gols Mandante",
+      "description": "Acertar apenas os gols marcados pelo time mandante.",
+      "shortDesc": "Apenas gols do mandante.",
+      "example": "Exemplo com 4 pts: Você prevê 2-?, resultado 2-3 → GANHA 4 PTS | Resultado 3-0 → 0 pts"
+    },
+    "AWAY_GOALS": {
+      "title": "Gols Visitante",
+      "description": "Acertar apenas os gols marcados pelo time visitante.",
+      "shortDesc": "Apenas gols do visitante.",
+      "example": "Exemplo com 4 pts: Você prevê ?-1, resultado 2-1 → GANHA 4 PTS | Resultado 2-2 → 0 pts"
+    }
+  }
+}

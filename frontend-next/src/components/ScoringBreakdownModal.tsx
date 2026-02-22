@@ -4,6 +4,7 @@
 // Sprint 2 - Scoring Breakdown System
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   getMatchBreakdown,
   getPhaseBreakdown,
@@ -43,6 +44,7 @@ export function ScoringBreakdownModal({
   phaseId,
   phaseTitle,
 }: BreakdownModalProps) {
+  const t = useTranslations("pool");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [breakdown, setBreakdown] = useState<ScoringBreakdown | null>(null);
@@ -62,7 +64,7 @@ export function ScoringBreakdownModal({
 
       const token = getToken();
       if (!token) {
-        setError("No autorizado");
+        setError(t("scoringBreakdown.unauthorized"));
         setLoading(false);
         return;
       }
@@ -80,18 +82,18 @@ export function ScoringBreakdownModal({
           setBreakdown(data.breakdown);
         }
       } catch (err: any) {
-        setError(err.message || "Error al cargar desglose");
+        setError(err.message || t("scoringBreakdown.errorLoading"));
       } finally {
         setLoading(false);
       }
     };
 
     fetchBreakdown();
-  }, [isOpen, poolId, matchId, phaseId]);
+  }, [isOpen, poolId, matchId, phaseId, t]);
 
   if (!isOpen) return null;
 
-  const title = matchTitle || phaseTitle || "Desglose de Puntuacion";
+  const title = matchTitle || phaseTitle || t("scoringBreakdown.defaultTitle");
 
   return (
     <div
@@ -160,7 +162,7 @@ export function ScoringBreakdownModal({
         <div style={{ padding: "1.5rem", overflowY: "auto", flex: 1 }}>
           {loading && (
             <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
-              Cargando desglose...
+              {t("scoringBreakdown.loading")}
             </div>
           )}
 
@@ -201,13 +203,19 @@ function renderBreakdown(
     case "KNOCKOUT_WINNER":
       return <KnockoutWinnerBreakdownView breakdown={breakdown} />;
     default:
-      return <div>Tipo de breakdown no soportado</div>;
+      return <UnsupportedBreakdownView />;
   }
+}
+
+function UnsupportedBreakdownView() {
+  const t = useTranslations("pool");
+  return <div>{t("scoringBreakdown.unsupportedType")}</div>;
 }
 
 // ==================== NO PICK VIEW ====================
 
 function NoPickBreakdownView({ breakdown }: { breakdown: NoPickBreakdown }) {
+  const t = useTranslations("pool");
   return (
     <div style={{ textAlign: "center", padding: "2rem" }}>
       <div
@@ -222,7 +230,7 @@ function NoPickBreakdownView({ breakdown }: { breakdown: NoPickBreakdown }) {
         {breakdown.reason}
       </h4>
       <p style={{ margin: 0, color: "#666" }}>
-        Puntos obtenidos: <strong>0</strong> / {breakdown.totalPointsMax} posibles
+        {t.rich("scoringBreakdown.pointsObtained", { strong: (chunks) => <strong>{chunks}</strong>, max: breakdown.totalPointsMax })}
       </p>
     </div>
   );
@@ -237,6 +245,7 @@ function MatchBreakdownView({
   breakdown: MatchPickBreakdown;
   matchInfo: { homeTeam: { id: string; name: string }; awayTeam: { id: string; name: string } } | null;
 }) {
+  const t = useTranslations("pool");
   return (
     <div>
       {/* Summary Card */}
@@ -258,7 +267,7 @@ function MatchBreakdownView({
         <div style={{ fontSize: 36, fontWeight: 900 }}>
           {breakdown.totalPointsEarned} / {breakdown.totalPointsMax}
         </div>
-        <div style={{ fontSize: 14, opacity: 0.9 }}>puntos obtenidos</div>
+        <div style={{ fontSize: 14, opacity: 0.9 }}>{t("scoringBreakdown.pointsEarned")}</div>
       </div>
 
       {/* Pick vs Result */}
@@ -281,14 +290,14 @@ function MatchBreakdownView({
             }}
           >
             <div style={{ fontSize: 12, color: "#666", marginBottom: 4, fontWeight: 600 }}>
-              Tu prediccion
+              {t("scoringBreakdown.yourPrediction")}
             </div>
             {breakdown.pick ? (
               <div style={{ fontSize: 24, fontWeight: 900, color: "#007bff" }}>
                 {breakdown.pick.homeGoals} - {breakdown.pick.awayGoals}
               </div>
             ) : (
-              <div style={{ fontSize: 16, color: "#dc3545" }}>Sin prediccion</div>
+              <div style={{ fontSize: 16, color: "#dc3545" }}>{t("scoringBreakdown.noPrediction")}</div>
             )}
           </div>
 
@@ -302,14 +311,14 @@ function MatchBreakdownView({
             }}
           >
             <div style={{ fontSize: 12, color: "#666", marginBottom: 4, fontWeight: 600 }}>
-              Resultado oficial
+              {t("scoringBreakdown.officialResult")}
             </div>
             {breakdown.result ? (
               <div style={{ fontSize: 24, fontWeight: 900, color: "#28a745" }}>
                 {breakdown.result.homeGoals} - {breakdown.result.awayGoals}
               </div>
             ) : (
-              <div style={{ fontSize: 16, color: "#ffc107" }}>Pendiente</div>
+              <div style={{ fontSize: 16, color: "#ffc107" }}>{t("scoringBreakdown.pending")}</div>
             )}
           </div>
         </div>
@@ -319,7 +328,7 @@ function MatchBreakdownView({
       {breakdown.hasResult && breakdown.rules.length > 0 && (
         <div>
           <h4 style={{ margin: "0 0 0.75rem 0", fontSize: 16, color: "#495057" }}>
-            Evaluacion de reglas
+            {t("scoringBreakdown.rulesEvaluation")}
           </h4>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {breakdown.rules.map((rule) => (
@@ -382,6 +391,7 @@ function RuleEvaluationRow({ rule }: { rule: RuleEvaluation }) {
 // ==================== GROUP STANDINGS BREAKDOWN VIEW ====================
 
 function GroupStandingsBreakdownView({ breakdown }: { breakdown: GroupStandingsBreakdown }) {
+  const t = useTranslations("pool");
   return (
     <div>
       {/* Summary Card */}
@@ -403,7 +413,7 @@ function GroupStandingsBreakdownView({ breakdown }: { breakdown: GroupStandingsB
         <div style={{ fontSize: 36, fontWeight: 900 }}>
           {breakdown.totalPointsEarned} / {breakdown.totalPointsMax}
         </div>
-        <div style={{ fontSize: 14, opacity: 0.9 }}>puntos obtenidos</div>
+        <div style={{ fontSize: 14, opacity: 0.9 }}>{t("scoringBreakdown.pointsEarned")}</div>
       </div>
 
       {/* Config Info */}
@@ -417,9 +427,9 @@ function GroupStandingsBreakdownView({ breakdown }: { breakdown: GroupStandingsB
           color: "#004085",
         }}
       >
-        <strong>{breakdown.config.pointsPerExactPosition} pts</strong> por posicion exacta
+        {t.rich("scoringBreakdown.ptsPerExactPosition", { strong: (chunks) => <strong>{chunks}</strong>, points: breakdown.config.pointsPerExactPosition })}
         {breakdown.config.bonusPerfectGroup && (
-          <> | <strong>+{breakdown.config.bonusPerfectGroup} pts</strong> bonus grupo perfecto</>
+          <> | {t.rich("scoringBreakdown.bonusPerfectGroupLabel", { strong: (chunks) => <strong>{chunks}</strong>, points: breakdown.config.bonusPerfectGroup })}</>
         )}
       </div>
 
@@ -434,6 +444,7 @@ function GroupStandingsBreakdownView({ breakdown }: { breakdown: GroupStandingsB
 // ==================== GROUP EVALUATION CARD ====================
 
 function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
+  const t = useTranslations("pool");
   const isPerfect =
     group.bonusPerfectGroup.enabled && group.bonusPerfectGroup.achieved;
 
@@ -457,7 +468,7 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
       >
         <h5 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
           {group.groupName}
-          {isPerfect && <span style={{ marginLeft: 8, color: "#28a745" }}>★ Perfecto!</span>}
+          {isPerfect && <span style={{ marginLeft: 8, color: "#28a745" }}>★ {t("scoringBreakdown.perfect")}</span>}
         </h5>
         <span style={{ fontWeight: 900, color: "#28a745" }}>
           +{group.totalPointsEarned}
@@ -465,9 +476,9 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
       </div>
 
       {!group.hasPick ? (
-        <div style={{ color: "#dc3545", fontSize: 14 }}>No hiciste prediccion</div>
+        <div style={{ color: "#dc3545", fontSize: 14 }}>{t("scoringBreakdown.noPredictionMade")}</div>
       ) : !group.hasResult ? (
-        <div style={{ color: "#ffc107", fontSize: 14 }}>Pendiente de resultados</div>
+        <div style={{ color: "#ffc107", fontSize: 14 }}>{t("scoringBreakdown.pendingResults")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {group.positions.map((pos) => (
@@ -487,7 +498,7 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
               <span style={{ flex: 1 }}>{pos.teamName || pos.teamId}</span>
               {pos.predictedPosition !== null && pos.predictedPosition !== pos.position && (
                 <span style={{ color: "#6c757d", fontSize: 11 }}>
-                  (tu: {pos.predictedPosition})
+                  {t("scoringBreakdown.yourPosition", { position: pos.predictedPosition })}
                 </span>
               )}
               <span
@@ -515,7 +526,7 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
             color: group.bonusPerfectGroup.achieved ? "#155724" : "#6c757d",
           }}
         >
-          Bonus grupo perfecto: {group.bonusPerfectGroup.achieved ? `+${group.bonusPerfectGroup.pointsEarned}` : "0"} pts
+          {t("scoringBreakdown.bonusPerfectGroupResult", { points: group.bonusPerfectGroup.achieved ? `+${group.bonusPerfectGroup.pointsEarned}` : "0" })}
         </div>
       )}
     </div>
@@ -525,6 +536,7 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
 // ==================== KNOCKOUT WINNER BREAKDOWN VIEW ====================
 
 function KnockoutWinnerBreakdownView({ breakdown }: { breakdown: KnockoutWinnerBreakdown }) {
+  const t = useTranslations("pool");
   return (
     <div>
       {/* Summary Card */}
@@ -546,7 +558,7 @@ function KnockoutWinnerBreakdownView({ breakdown }: { breakdown: KnockoutWinnerB
         <div style={{ fontSize: 36, fontWeight: 900 }}>
           {breakdown.totalPointsEarned} / {breakdown.totalPointsMax}
         </div>
-        <div style={{ fontSize: 14, opacity: 0.9 }}>puntos obtenidos</div>
+        <div style={{ fontSize: 14, opacity: 0.9 }}>{t("scoringBreakdown.pointsEarned")}</div>
       </div>
 
       {/* Config Info */}
@@ -560,7 +572,7 @@ function KnockoutWinnerBreakdownView({ breakdown }: { breakdown: KnockoutWinnerB
           color: "#004085",
         }}
       >
-        <strong>{breakdown.config.pointsPerCorrectAdvance} pts</strong> por cada equipo que avanza correctamente
+        {t.rich("scoringBreakdown.ptsPerCorrectAdvance", { strong: (chunks) => <strong>{chunks}</strong>, points: breakdown.config.pointsPerCorrectAdvance })}
       </div>
 
       {/* Matches */}
@@ -576,6 +588,7 @@ function KnockoutWinnerBreakdownView({ breakdown }: { breakdown: KnockoutWinnerB
 // ==================== KNOCKOUT MATCH ROW ====================
 
 function KnockoutMatchRow({ match }: { match: KnockoutMatchEvaluation }) {
+  const t = useTranslations("pool");
   return (
     <div
       style={{
@@ -596,15 +609,15 @@ function KnockoutMatchRow({ match }: { match: KnockoutMatchEvaluation }) {
       {/* Match Info */}
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, color: "#666", marginBottom: 2 }}>
-          Tu prediccion: <strong>{match.predictedWinnerName || "Sin prediccion"}</strong>
+          {t.rich("scoringBreakdown.yourPredictionKnockout", { strong: (chunks) => <strong>{chunks}</strong>, name: match.predictedWinnerName || t("scoringBreakdown.noPredictionKnockout") })}
         </div>
         {match.hasResult && (
           <div style={{ fontSize: 13, color: "#666" }}>
-            Avanzo: <strong style={{ color: "#28a745" }}>{match.actualWinnerName}</strong>
+            {t.rich("scoringBreakdown.advanced", { strong: (chunks) => <strong style={{ color: "#28a745" }}>{chunks}</strong>, name: match.actualWinnerName ?? "" })}
           </div>
         )}
         {!match.hasResult && (
-          <div style={{ fontSize: 12, color: "#ffc107" }}>Pendiente de resultado</div>
+          <div style={{ fontSize: 12, color: "#ffc107" }}>{t("scoringBreakdown.pendingResult")}</div>
         )}
       </div>
 
