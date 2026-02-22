@@ -2,14 +2,54 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { useTransition, useState, useRef, useEffect } from "react";
+import { useTransition, useState, useRef, useEffect, type ReactNode } from "react";
 import type { Locale } from "@/i18n/routing";
 
-const localeConfig: { locale: Locale; flag: string; label: string }[] = [
-  { locale: "es", flag: "\u{1F1EA}\u{1F1F8}", label: "ES" },
-  { locale: "en", flag: "\u{1F1FA}\u{1F1F8}", label: "EN" },
-  { locale: "pt", flag: "\u{1F1E7}\u{1F1F7}", label: "PT" },
+/* ── SVG Flag Components ── */
+
+function FlagSpain({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 640 480" style={{ borderRadius: 3, display: "block" }}>
+      <rect width="640" height="480" fill="#c60b1e" />
+      <rect width="640" height="240" y="120" fill="#ffc400" />
+    </svg>
+  );
+}
+
+function FlagUSA({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 640 480" style={{ borderRadius: 3, display: "block" }}>
+      <rect width="640" height="480" fill="#fff" />
+      {/* Red stripes */}
+      {[0, 2, 4, 6, 8, 10, 12].map((i) => (
+        <rect key={i} width="640" height={Math.round(480 / 13)} y={Math.round(i * 480 / 13)} fill="#b22234" />
+      ))}
+      {/* Blue canton */}
+      <rect width="256" height={Math.round(480 * 7 / 13)} fill="#3c3b6e" />
+    </svg>
+  );
+}
+
+function FlagBrazil({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 640 480" style={{ borderRadius: 3, display: "block" }}>
+      <rect width="640" height="480" fill="#009b3a" />
+      <polygon points="320,40 600,240 320,440 40,240" fill="#fedf00" />
+      <circle cx="320" cy="240" r="100" fill="#002776" />
+      <path d="M220,240 Q320,190 420,240" fill="none" stroke="#fff" strokeWidth="12" />
+    </svg>
+  );
+}
+
+/* ── Config ── */
+
+const localeConfig: { locale: Locale; flag: (size?: number) => ReactNode; label: string }[] = [
+  { locale: "es", flag: (s) => <FlagSpain size={s} />, label: "ES" },
+  { locale: "en", flag: (s) => <FlagUSA size={s} />, label: "EN" },
+  { locale: "pt", flag: (s) => <FlagBrazil size={s} />, label: "PT" },
 ];
+
+/* ── Component ── */
 
 export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "light" }) {
   const t = useTranslations("language");
@@ -78,7 +118,7 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
           transition: "all 0.2s ease",
         }}
       >
-        <span style={{ fontSize: "1.1rem", lineHeight: 1 }}>{current.flag}</span>
+        {current.flag(18)}
         <span>{current.label}</span>
         <span
           style={{
@@ -107,7 +147,7 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
             boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
             overflow: "hidden",
             zIndex: 1000,
-            minWidth: 160,
+            minWidth: 170,
             animation: "fadeInDown 0.15s ease",
           }}
         >
@@ -149,7 +189,7 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
                   }
                 }}
               >
-                <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>{item.flag}</span>
+                {item.flag(22)}
                 <span style={{ fontWeight: isActive ? 700 : 400 }}>
                   {t(item.locale)}
                 </span>
