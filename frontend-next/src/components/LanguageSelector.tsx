@@ -140,7 +140,7 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
           style={{
             position: "absolute",
             top: "calc(100% + 4px)",
-            right: 0,
+            left: 0,
             background: isDark ? "#1e1e1e" : "white",
             border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"}`,
             borderRadius: 10,
