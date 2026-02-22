@@ -4,6 +4,8 @@ builder = "nixpacks"
 
 [build.nixpacks]
 nixpacksVersion = "latest"
+# Force install devDependencies (needed for @types/* and typescript)
+installCmd = "npm ci --include=dev"
 
 [build.env]
 NIXPACKS_NODE_VERSION = "22"

@@ -35,6 +35,9 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@prisma/client": "^6.19.1",
     "bcrypt": "^6.0.0",
