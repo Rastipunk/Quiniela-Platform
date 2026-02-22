@@ -26,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
         es: `${baseUrl}/terminos`,
         en: `${baseUrl}/en/terms`,
         pt: `${baseUrl}/pt/termos`,
+        "x-default": `${baseUrl}/terminos`,
       },
     },
   };
@@ -37,12 +38,19 @@ export default async function TerminosPage() {
   const baseUrl = "https://picks4all.com";
   const localePath = locale === "es" ? "" : `/${locale}`;
 
+  const pathMap: Record<string, string> = {
+    es: "/terminos",
+    en: "/terms",
+    pt: "/termos",
+  };
+  const breadcrumbPath = pathMap[locale] || pathMap.es;
+
   return (
     <>
       <Breadcrumbs
         items={[
           { name: t("breadcrumbHome"), url: `${baseUrl}${localePath}` },
-          { name: t("breadcrumbTerms"), url: `${baseUrl}${localePath}/terminos` },
+          { name: t("breadcrumbTerms"), url: `${baseUrl}${localePath}${breadcrumbPath}` },
         ]}
       />
       <TerminosContent />

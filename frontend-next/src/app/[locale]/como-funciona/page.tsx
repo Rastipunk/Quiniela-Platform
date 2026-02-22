@@ -29,6 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
         es: `${baseUrl}/como-funciona`,
         en: `${baseUrl}/en/how-it-works`,
         pt: `${baseUrl}/pt/como-funciona`,
+        "x-default": `${baseUrl}/como-funciona`,
       },
     },
   };
@@ -130,13 +131,16 @@ function StepItem({
 export default async function ComoFuncionaPage() {
   const locale = await getLocale();
   const msg: HowItWorksMessages = (await import(`@/messages/${locale}/howItWorks.json`)).default;
+  const baseUrl = "https://picks4all.com";
+  const localePath = locale === "es" ? "" : `/${locale}`;
+  const pagePath = locale === "en" ? "/how-it-works" : "/como-funciona";
 
   return (
     <>
       <Breadcrumbs
         items={[
-          { name: msg.breadcrumbs.home, url: "https://picks4all.com" },
-          { name: msg.breadcrumbs.howItWorks, url: "https://picks4all.com/como-funciona" },
+          { name: msg.breadcrumbs.home, url: `${baseUrl}${localePath}` },
+          { name: msg.breadcrumbs.howItWorks, url: `${baseUrl}${localePath}${pagePath}` },
         ]}
       />
       <JsonLd

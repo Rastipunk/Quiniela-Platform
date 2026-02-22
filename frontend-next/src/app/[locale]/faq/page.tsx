@@ -29,6 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
         es: `${baseUrl}/faq`,
         en: `${baseUrl}/en/faq`,
         pt: `${baseUrl}/pt/faq`,
+        "x-default": `${baseUrl}/faq`,
       },
     },
   };
@@ -52,6 +53,8 @@ interface FAQMessages {
 export default async function FAQPage() {
   const locale = await getLocale();
   const faqMessages: FAQMessages = (await import(`@/messages/${locale}/faq.json`)).default;
+  const baseUrl = "https://picks4all.com";
+  const localePath = locale === "es" ? "" : `/${locale}`;
 
   const { hero, contact, cta, breadcrumbs, items } = faqMessages;
 
@@ -73,8 +76,8 @@ export default async function FAQPage() {
     <>
       <Breadcrumbs
         items={[
-          { name: breadcrumbs.home, url: "https://picks4all.com" },
-          { name: breadcrumbs.faq, url: "https://picks4all.com/faq" },
+          { name: breadcrumbs.home, url: `${baseUrl}${localePath}` },
+          { name: breadcrumbs.faq, url: `${baseUrl}${localePath}/faq` },
         ]}
       />
       <JsonLd data={faqJsonLd} />

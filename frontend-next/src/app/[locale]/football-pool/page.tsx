@@ -26,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
         es: `${baseUrl}/football-pool`,
         en: `${baseUrl}/en/football-pool`,
         pt: `${baseUrl}/pt/football-pool`,
+        "x-default": `${baseUrl}/football-pool`,
       },
     },
   };

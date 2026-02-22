@@ -26,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
         es: `${baseUrl}/privacidad`,
         en: `${baseUrl}/en/privacy`,
         pt: `${baseUrl}/pt/privacidade`,
+        "x-default": `${baseUrl}/privacidad`,
       },
     },
   };
@@ -37,12 +38,19 @@ export default async function PrivacidadPage() {
   const baseUrl = "https://picks4all.com";
   const localePath = locale === "es" ? "" : `/${locale}`;
 
+  const pathMap: Record<string, string> = {
+    es: "/privacidad",
+    en: "/privacy",
+    pt: "/privacidade",
+  };
+  const breadcrumbPath = pathMap[locale] || pathMap.es;
+
   return (
     <>
       <Breadcrumbs
         items={[
           { name: t("breadcrumbHome"), url: `${baseUrl}${localePath}` },
-          { name: t("breadcrumbPrivacy"), url: `${baseUrl}${localePath}/privacidad` },
+          { name: t("breadcrumbPrivacy"), url: `${baseUrl}${localePath}${breadcrumbPath}` },
         ]}
       />
       <PrivacidadContent />

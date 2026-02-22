@@ -29,6 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
         es: baseUrl,
         en: `${baseUrl}/en`,
         pt: `${baseUrl}/pt`,
+        "x-default": baseUrl,
       },
     },
   };

@@ -35,6 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
         es: `${baseUrl}/que-es-una-quiniela`,
         en: `${baseUrl}/en/what-is-a-pool`,
         pt: `${baseUrl}/pt/o-que-e-uma-penca`,
+        "x-default": `${baseUrl}/que-es-una-quiniela`,
       },
     },
   };
@@ -104,6 +105,15 @@ const articleStyle = {
 export default async function QueEsUnaQuinielaPage() {
   const locale = await getLocale();
   const msg: WhatIsQuinielaMessages = (await import(`@/messages/${locale}/whatIsQuiniela.json`)).default;
+  const baseUrl = "https://picks4all.com";
+  const pathMap: Record<string, string> = {
+    es: "/que-es-una-quiniela",
+    en: "/what-is-a-pool",
+    pt: "/o-que-e-uma-penca",
+  };
+  const localePath = locale === "es" ? "" : `/${locale}`;
+  const pagePath = pathMap[locale] || pathMap.es;
+  const pageUrl = `${baseUrl}${localePath}${pagePath}`;
 
   const definedTermSetJsonLd = {
     "@context": "https://schema.org",
@@ -143,7 +153,7 @@ export default async function QueEsUnaQuinielaPage() {
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": "https://picks4all.com/que-es-una-quiniela",
+      "@id": pageUrl,
     },
   };
 
@@ -151,8 +161,8 @@ export default async function QueEsUnaQuinielaPage() {
     <>
       <Breadcrumbs
         items={[
-          { name: msg.breadcrumbs.home, url: "https://picks4all.com" },
-          { name: msg.breadcrumbs.title, url: "https://picks4all.com/que-es-una-quiniela" },
+          { name: msg.breadcrumbs.home, url: `${baseUrl}${localePath}` },
+          { name: msg.breadcrumbs.title, url: pageUrl },
         ]}
       />
       <JsonLd data={definedTermSetJsonLd} />
