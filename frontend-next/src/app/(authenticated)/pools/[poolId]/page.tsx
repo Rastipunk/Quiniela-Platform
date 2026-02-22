@@ -1748,7 +1748,7 @@ export default function PoolPage() {
                           }}
                         >
                           {/* Match Header with Flags or Placeholders */}
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 16 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: isMobile ? 8 : 16, alignItems: "center", marginBottom: isMobile ? 10 : 16, flexWrap: "wrap" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
                               {/* Home team - flag on left or placeholder */}
                               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1855,7 +1855,7 @@ export default function PoolPage() {
                               </div>
                             </div>
                           ) : (
-                            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
                               {/* Pick */}
                               <PickSection
                                 pick={m.myPick}
@@ -1906,7 +1906,7 @@ export default function PoolPage() {
                                     matchTitle: `${getCountryName(m.homeTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")} vs ${getCountryName(m.awayTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")}`,
                                   })}
                                   style={{
-                                    padding: "6px 12px",
+                                    padding: isMobile ? "10px 16px" : "6px 12px",
                                     borderRadius: 6,
                                     border: "none",
                                     background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -1914,6 +1914,8 @@ export default function PoolPage() {
                                     cursor: "pointer",
                                     fontSize: 12,
                                     fontWeight: 600,
+                                    minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+                                    ...mobileInteractiveStyles.tapHighlight,
                                   }}
                                 >
                                   Ver desglose
@@ -1927,7 +1929,7 @@ export default function PoolPage() {
                                   `${getCountryName(m.homeTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")} vs ${getCountryName(m.awayTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")}`
                                 )}
                                 style={{
-                                  padding: "6px 12px",
+                                  padding: isMobile ? "10px 16px" : "6px 12px",
                                   borderRadius: 6,
                                   border: "1px solid #17a2b8",
                                   background: "#e7f6f8",
@@ -1935,6 +1937,8 @@ export default function PoolPage() {
                                   cursor: "pointer",
                                   fontSize: 12,
                                   fontWeight: 600,
+                                  minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+                                  ...mobileInteractiveStyles.tapHighlight,
                                 }}
                               >
                                 Ver picks de otros
@@ -2677,7 +2681,7 @@ function PickSection(props: {
               fontSize: 13,
             }}
           >
-            ✏️ Modificar elección
+            ✏️ Modificar
           </button>
         </>
       )}
@@ -2798,6 +2802,7 @@ function PickEditor(props: {
   awayTeam: any;
   tournamentKey: string;
 }) {
+  const isMobile = useIsMobile();
   const pickType = props.pick?.type;
   const isScore = pickType === "SCORE";
   const isOutcome = pickType === "OUTCOME";
@@ -2838,12 +2843,12 @@ function PickEditor(props: {
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
             <input
               type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} placeholder="0"
-              style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
+              style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
             />
             <span style={{ fontWeight: 900, fontSize: 18, color: "#666" }}>-</span>
             <input
               type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} placeholder="0"
-              style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
+              style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
             />
           </div>
           {/* Away team: logo + name stacked */}
@@ -2862,7 +2867,7 @@ function PickEditor(props: {
         <select
           value={outcome}
           onChange={(e) => setOutcome(e.target.value)}
-          style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd", fontSize: 14 }}
+          style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd", fontSize: isMobile ? 16 : 14, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
         >
           <option value="">Selecciona...</option>
           <option value="HOME">🏠 Gana Local</option>
@@ -2884,6 +2889,8 @@ function PickEditor(props: {
             color: "#fff",
             cursor: "pointer",
             fontWeight: 600,
+            minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+            ...mobileInteractiveStyles.tapHighlight,
           }}
         >
           {props.disabled ? "..." : "💾 Guardar"}
@@ -2898,6 +2905,8 @@ function PickEditor(props: {
               background: "#fff",
               color: "#666",
               cursor: "pointer",
+              minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+              ...mobileInteractiveStyles.tapHighlight,
             }}
           >
             Cancelar
@@ -3087,6 +3096,7 @@ function ResultEditor(props: {
   tournamentKey: string;
   phaseId?: string; // Para detectar si es fase eliminatoria
 }) {
+  const isMobile = useIsMobile();
   const [homeGoals, setHomeGoals] = useState(props.result ? String(props.result.homeGoals) : "");
   const [awayGoals, setAwayGoals] = useState(props.result ? String(props.result.awayGoals) : "");
   const [homePenalties, setHomePenalties] = useState(props.result?.homePenalties ? String(props.result.homePenalties) : "");
@@ -3126,12 +3136,12 @@ function ResultEditor(props: {
         <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
           <input
             type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} placeholder="0"
-            style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
+            style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
           />
           <span style={{ fontWeight: 900, fontSize: 18, color: "#666" }}>-</span>
           <input
             type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} placeholder="0"
-            style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: 22, fontWeight: 700 }}
+            style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
           />
         </div>
         {/* Away team: logo + name stacked */}
@@ -3188,7 +3198,7 @@ function ResultEditor(props: {
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="⚠️ Razón de la corrección (obligatorio)"
-          style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd", fontSize: 13 }}
+          style={{ padding: 10, borderRadius: 10, border: "1px solid #ddd", fontSize: isMobile ? 16 : 13, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
         />
       )}
 
@@ -3215,6 +3225,8 @@ function ResultEditor(props: {
             color: "#fff",
             cursor: needReason ? "not-allowed" : "pointer",
             fontWeight: 600,
+            minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+            ...mobileInteractiveStyles.tapHighlight,
           }}
         >
           {props.disabled ? "..." : props.requireReason ? "📝 Publicar corrección" : "📢 Publicar resultado"}
@@ -3229,6 +3241,8 @@ function ResultEditor(props: {
               background: "#fff",
               color: "#666",
               cursor: "pointer",
+              minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+              ...mobileInteractiveStyles.tapHighlight,
             }}
           >
             Cancelar
