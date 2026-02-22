@@ -193,6 +193,7 @@ export default function ComoFuncionaPage() {
             }}
           >
             <span
+              aria-hidden="true"
               style={{
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                 color: "white",
@@ -261,6 +262,7 @@ export default function ComoFuncionaPage() {
               }}
             >
               <span
+                aria-hidden="true"
                 style={{
                   background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                   color: "white",
@@ -384,7 +386,7 @@ export default function ComoFuncionaPage() {
               <tbody>
                 <tr>
                   <td style={{ padding: "16px", borderBottom: "1px solid var(--border)" }}>
-                    {"🎯"} Marcador exacto (ej: 2-1)
+                    <span aria-hidden="true">{"🎯"}</span> Marcador exacto (ej: 2-1)
                   </td>
                   <td
                     style={{
@@ -400,7 +402,7 @@ export default function ComoFuncionaPage() {
                 </tr>
                 <tr>
                   <td style={{ padding: "16px", borderBottom: "1px solid var(--border)" }}>
-                    {"✅"} Resultado correcto (Local/Empate/Visitante)
+                    <span aria-hidden="true">{"✅"}</span> Resultado correcto (Local/Empate/Visitante)
                   </td>
                   <td
                     style={{
@@ -416,7 +418,7 @@ export default function ComoFuncionaPage() {
                 </tr>
                 <tr>
                   <td style={{ padding: "16px", borderBottom: "1px solid var(--border)" }}>
-                    {"🏠"} Goles del local correctos
+                    <span aria-hidden="true">{"🏠"}</span> Goles del local correctos
                   </td>
                   <td
                     style={{
@@ -432,7 +434,7 @@ export default function ComoFuncionaPage() {
                 </tr>
                 <tr>
                   <td style={{ padding: "16px", borderBottom: "1px solid var(--border)" }}>
-                    {"✈️"} Goles del visitante correctos
+                    <span aria-hidden="true">{"✈️"}</span> Goles del visitante correctos
                   </td>
                   <td
                     style={{
@@ -448,7 +450,7 @@ export default function ComoFuncionaPage() {
                 </tr>
                 <tr>
                   <td style={{ padding: "16px" }}>
-                    {"➗"} Diferencia de goles correcta
+                    <span aria-hidden="true">{"➗"}</span> Diferencia de goles correcta
                   </td>
                   <td
                     style={{

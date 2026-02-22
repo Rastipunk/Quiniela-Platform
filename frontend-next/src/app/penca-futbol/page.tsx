@@ -76,45 +76,6 @@ export default function PencaFutbolPage() {
     },
   };
 
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "Que es una penca de futbol?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Una penca de futbol es un juego de predicciones deportivas muy popular en Uruguay. Un grupo de amigos, familiares o companeros de trabajo pronostica los resultados de los partidos y compite por ver quien acierta mas. Es una tradicion social profundamente ligada a la cultura futbolera uruguaya, desde el primer Mundial de 1930 hasta hoy.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Como armo una penca online gratis en Picks4All?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "En Picks4All podes armar tu penca en menos de 2 minutos: registrate gratis, elegi el torneo, ponele nombre a tu penca y compartile el codigo a tus amigos por WhatsApp. Es 100% gratis, sin dinero real y sin sorteos de ningun tipo.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Es lo mismo una penca que una quiniela?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Si, es el mismo concepto con diferentes nombres segun el pais. En Uruguay se dice penca, en Argentina prode, en Colombia y Chile polla, en Mexico quiniela y en Espana porra. Todos se refieren a un juego de predicciones deportivas entre amigos.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Puedo armar pencas del Campeonato Uruguayo y las Eliminatorias?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Si. Picks4All permite crear pencas para cualquier torneo de futbol: Campeonato Uruguayo, Copa America, Eliminatorias Sudamericanas, Copa del Mundo y mas. El administrador de la penca configura los partidos y las reglas de puntuacion.",
-        },
-      },
-    ],
-  };
-
   return (
     <>
       <Breadcrumbs
@@ -127,7 +88,6 @@ export default function PencaFutbolPage() {
         ]}
       />
       <JsonLd data={articleJsonLd} />
-      <JsonLd data={faqJsonLd} />
       <PublicPageWrapper>
         <div style={{ background: "var(--bg)" }}>
           {/* Hero Header */}
@@ -611,6 +571,42 @@ export default function PencaFutbolPage() {
                     }}
                   >
                     Preguntas frecuentes sobre pencas y quinielas
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/polla-futbolera"
+                    style={{
+                      color: "#667eea",
+                      textDecoration: "none",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    Polla Futbolera — La quiniela colombiana y chilena
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/prode-deportivo"
+                    style={{
+                      color: "#667eea",
+                      textDecoration: "none",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    Prode Deportivo — La quiniela argentina
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/porra-deportiva"
+                    style={{
+                      color: "#667eea",
+                      textDecoration: "none",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    Porra Deportiva — La tradicion española
                   </Link>
                 </li>
               </ul>

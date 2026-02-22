@@ -77,45 +77,6 @@ export default function PollaFutboleraPage() {
     },
   };
 
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "¿Que es una polla futbolera?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Una polla futbolera es un juego de predicciones deportivas donde un grupo de amigos, familiares o companeros de trabajo pronostican los resultados de partidos de futbol y compiten por puntos. Es una tradicion muy popular en Colombia, Chile y Venezuela. En otros paises se conoce como quiniela (Mexico), prode (Argentina) o penca (Uruguay).",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Como crear una polla mundialista gratis en Picks4All?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Crear tu polla mundialista es muy facil: registrate gratis en Picks4All, selecciona el torneo (Mundial 2026, Champions League u otro), configura las reglas de puntuacion y comparte el codigo de invitacion con tus amigos. Todos pueden hacer predicciones desde el celular o la computadora sin pagar nada.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Picks4All cobra algo por crear una polla futbolera?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "No. Picks4All es 100% gratis. No se usa dinero real, no hay costos ocultos y no es un sitio de juegos de azar. Es una plataforma de entretenimiento disenada para que grupos de amigos organicen sus pollas deportivas de forma gratuita.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Cual es la diferencia entre polla futbolera y quiniela?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Son exactamente el mismo concepto con distintos nombres segun la region. En Colombia, Chile y Venezuela se dice polla futbolera o polla mundialista. En Mexico y Ecuador se usa quiniela. En Argentina la llaman prode y en Uruguay, penca. Todos se refieren a un juego de predicciones de futbol entre amigos.",
-        },
-      },
-    ],
-  };
-
   return (
     <>
       <Breadcrumbs
@@ -128,7 +89,6 @@ export default function PollaFutboleraPage() {
         ]}
       />
       <JsonLd data={articleJsonLd} />
-      <JsonLd data={faqJsonLd} />
       <PublicPageWrapper>
         <div style={{ background: "var(--bg)" }}>
           {/* Hero Header */}
@@ -462,6 +422,45 @@ export default function PollaFutboleraPage() {
                   }}
                 >
                   Preguntas frecuentes sobre pollas y predicciones deportivas
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/prode-deportivo"
+                  style={{
+                    color: "#667eea",
+                    textDecoration: "none",
+                    fontSize: "1.05rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  Prode Deportivo — La quiniela argentina
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/penca-futbol"
+                  style={{
+                    color: "#667eea",
+                    textDecoration: "none",
+                    fontSize: "1.05rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  Penca de Futbol — Predicciones a la uruguaya
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/porra-deportiva"
+                  style={{
+                    color: "#667eea",
+                    textDecoration: "none",
+                    fontSize: "1.05rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  Porra Deportiva — La tradicion española
                 </Link>
               </li>
             </ul>

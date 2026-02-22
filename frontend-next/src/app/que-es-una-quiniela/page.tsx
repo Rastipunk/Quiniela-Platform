@@ -72,37 +72,6 @@ export default function QueEsUnaQuinielaPage() {
     })),
   };
 
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "¿Qué es una quiniela deportiva?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Una quiniela deportiva es un juego de predicciones donde un grupo de amigos, familiares o compañeros de trabajo intentan adivinar los resultados de partidos de fútbol. Cada participante hace sus pronósticos antes de que comience el partido y gana puntos según la precisión de sus predicciones. Es una tradición social que existe desde hace más de un siglo en el mundo hispanohablante.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Cuál es la diferencia entre quiniela, polla, prode y penca?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Todos se refieren al mismo concepto: un juego de predicciones deportivas entre amigos. El nombre varía según el país: quiniela en México y Ecuador, polla en Colombia, Chile y Venezuela, prode en Argentina, penca en Uruguay, porra en España, chancha o polla en Perú, y vaquita en Bolivia. Cada término tiene su propia historia y origen etimológico.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Es legal jugar quinielas entre amigos?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Sí. Las quinielas entre amigos son una tradición social completamente legal cuando no se apuesta dinero real. Picks4All es una plataforma gratuita de entretenimiento — no es un sitio de apuestas ni de juegos de azar.",
-        },
-      },
-    ],
-  };
-
   const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -141,7 +110,6 @@ export default function QueEsUnaQuinielaPage() {
         ]}
       />
       <JsonLd data={definedTermSetJsonLd} />
-      <JsonLd data={faqJsonLd} />
       <JsonLd data={articleJsonLd} />
       <PublicPageWrapper>
       <div style={{ background: "var(--bg)" }}>

@@ -76,45 +76,6 @@ export default function PorraDeportivaPage() {
     },
   };
 
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "¿Qué es una porra deportiva?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Una porra deportiva es un juego de predicciones entre amigos donde cada participante pronostica los resultados de partidos de fútbol. Es una tradición social muy arraigada en España, típica de peñas deportivas, oficinas y grupos de amigos. No implica dinero real: se juega por diversión y por el honor de acertar más que los demás.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Cuál es la diferencia entre una porra y La Quiniela oficial?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "La Quiniela es un juego oficial del Estado español gestionado por Loterías y Apuestas del Estado desde 1946, donde se apuesta dinero real. Una porra deportiva, en cambio, es un juego informal entre amigos sin dinero de por medio. Picks4All permite crear porras digitales gratuitas manteniendo el espíritu social de la tradición.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Cómo puedo crear una porra de fútbol online gratis?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Con Picks4All puedes crear tu porra en menos de dos minutos: regístrate gratis, elige el torneo (Liga, Champions, Mundial), personaliza las reglas de puntuación e invita a tus amigos compartiendo un código por WhatsApp o email. El ranking se actualiza automáticamente después de cada partido.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "¿Es legal hacer porras deportivas entre amigos?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Sí. Las porras entre amigos son una tradición social completamente legal cuando no se juega dinero real. Picks4All es una plataforma gratuita de entretenimiento, no es un sitio de apuestas ni de juegos de azar. Se juega por diversión y por el orgullo de ser el que más sabe de fútbol en tu grupo.",
-        },
-      },
-    ],
-  };
-
   return (
     <>
       <Breadcrumbs
@@ -124,7 +85,6 @@ export default function PorraDeportivaPage() {
         ]}
       />
       <JsonLd data={articleJsonLd} />
-      <JsonLd data={faqJsonLd} />
       <PublicPageWrapper>
       <div style={{ background: "var(--bg)" }}>
         {/* Hero Header */}
@@ -471,6 +431,45 @@ export default function PorraDeportivaPage() {
                   }}
                 >
                   Preguntas frecuentes
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/polla-futbolera"
+                  style={{
+                    color: "#667eea",
+                    textDecoration: "none",
+                    fontSize: "1rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  Polla Futbolera — La quiniela colombiana y chilena
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/prode-deportivo"
+                  style={{
+                    color: "#667eea",
+                    textDecoration: "none",
+                    fontSize: "1rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  Prode Deportivo — La quiniela argentina
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/penca-futbol"
+                  style={{
+                    color: "#667eea",
+                    textDecoration: "none",
+                    fontSize: "1rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  Penca de Futbol — Predicciones a la uruguaya
                 </Link>
               </li>
             </ul>

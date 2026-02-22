@@ -76,45 +76,6 @@ export default function ProdeDeportivoPage() {
     },
   };
 
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: [
-      {
-        "@type": "Question",
-        name: "Que es un prode deportivo?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Un prode deportivo es un juego de pronosticos donde un grupo de amigos, familiares o companeros de trabajo intenta adivinar los resultados de partidos de futbol. La palabra 'prode' viene de PRODE (Pronosticos Deportivos), un sistema oficial creado en Argentina en 1972. Hoy se usa para referirse a cualquier quiniela entre amigos.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Como armo un prode online gratis?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Con Picks4All podes armar tu prode en 3 pasos: 1) Crea tu cuenta gratis, 2) Crea un pool eligiendo el torneo y las reglas de puntuacion, 3) Invita a tus amigos con un codigo. No se necesita dinero real, es 100% gratuito y sin apuestas.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "Cual es la diferencia entre un prode y una quiniela?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Es el mismo concepto con distintos nombres segun el pais. En Argentina se dice prode, en Mexico quiniela, en Colombia y Chile polla, en Uruguay penca y en Espana porra. Todos se refieren a un juego de predicciones deportivas entre amigos.",
-        },
-      },
-      {
-        "@type": "Question",
-        name: "El prode de Picks4All es legal?",
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: "Si. Picks4All es una plataforma gratuita de entretenimiento entre amigos. No es un sitio de apuestas, no involucra dinero real y no es un juego de azar. Es simplemente una herramienta digital para organizar pronosticos deportivos con tu grupo de amigos.",
-        },
-      },
-    ],
-  };
-
   return (
     <>
       <Breadcrumbs
@@ -127,7 +88,6 @@ export default function ProdeDeportivoPage() {
         ]}
       />
       <JsonLd data={articleJsonLd} />
-      <JsonLd data={faqJsonLd} />
       <PublicPageWrapper>
         <div style={{ background: "var(--bg)" }}>
           {/* Hero Header */}
@@ -454,6 +414,45 @@ export default function ProdeDeportivoPage() {
                     }}
                   >
                     Preguntas frecuentes sobre quinielas y prodes
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/polla-futbolera"
+                    style={{
+                      color: "#667eea",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                      fontSize: "1rem",
+                    }}
+                  >
+                    Polla Futbolera — La quiniela colombiana y chilena
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/penca-futbol"
+                    style={{
+                      color: "#667eea",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                      fontSize: "1rem",
+                    }}
+                  >
+                    Penca de Futbol — Predicciones a la uruguaya
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/porra-deportiva"
+                    style={{
+                      color: "#667eea",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                      fontSize: "1rem",
+                    }}
+                  >
+                    Porra Deportiva — La tradicion española
                   </Link>
                 </li>
               </ul>
