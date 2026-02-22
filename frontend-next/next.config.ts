@@ -4,10 +4,10 @@ import type { NextConfig } from "next";
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.googletagmanager.com",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https://media.api-sports.io https://flagcdn.com https://www.googletagmanager.com https://*.gstatic.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "connect-src 'self' https://quiniela-platform-production.up.railway.app https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com",
+  "connect-src 'self' https://api.picks4all.com https://quiniela-platform-production.up.railway.app https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com",
   "frame-src https://accounts.google.com https://apis.google.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
@@ -17,7 +17,7 @@ const cspDirectives = [
 const securityHeaders = [
   { key: "Content-Security-Policy", value: cspDirectives },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  // COOP omitted: GIS needs cross-origin popup postMessage for OAuth flow
   { key: "X-Frame-Options", value: "DENY" },
 ];
 
