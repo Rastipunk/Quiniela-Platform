@@ -22,7 +22,7 @@ Meta final:
 
 Idioma:
 
-* **MVP: español**.
+* **Español, Inglés, Portugués** — i18n implementado con next-intl v4.
 
 ---
 
@@ -60,7 +60,7 @@ La documentación oficial y completa está en:
    - Contratos de Auth, Pools, Picks, Results, Admin
 
 4. **[ARCHITECTURE.md](/docs/sot/ARCHITECTURE.md)** - Arquitectura Técnica
-   - Stack completo (Backend: Node/Express/Prisma, Frontend: React/Vite)
+   - Stack completo (Backend: Node/Express/Prisma, Frontend: Next.js/App Router)
    - Estructura del monorepo
    - Flujos de datos (diagramas)
    - Patrones de diseño (middleware, validation, ORM)
@@ -112,13 +112,9 @@ docs/
 │   └── CURRENT_STATE.md    # Estado actual del sistema
 ├── guides/                 # Guías operativas
 │   ├── GOOGLE_OAUTH_SETUP.md
+│   ├── EMAIL_SYSTEM.md
 │   ├── TOURNAMENT_ADVANCEMENT_GUIDE.md
-│   ├── WC2026_TOURNAMENT_STRUCTURE.md
-│   └── TESTING_GUIDE_SPRINT2.md
-└── sprints/                # Reportes históricos
-    ├── SPRINT_1_CLOSURE.md
-    ├── SPRINT_2_PLAN.md
-    └── SPRINT2_COMPLETION_REPORT.md
+│   └── WC2026_TOURNAMENT_STRUCTURE.md
 ```
 
 * **CHANGELOG.md** en la raíz del proyecto contiene el historial de cambios
@@ -135,35 +131,34 @@ docs/
 
 ---
 
-## 2) Alcance por fases
+## 2) Estado de features
 
-### MVP (Sprint 1) — “Core jugable end‑to‑end”
+### Completado ✅
+* Register/Login (email/password + Google OAuth)
+* Forgot/Reset password (Resend email)
+* Email verification
+* Dashboard con pools del usuario
+* Crear pool / unirse por código
+* Pool page: partidos por fases, reglas, leaderboard
+* Picks (SCORE + OUTCOME + structural)
+* Resultados (Host publish + errata + Smart Sync automático)
+* Co-Admin system, Join approval, Player expulsion
+* Rate limiting, Mobile UX, Notification badges
+* Email notifications (transactional via Resend)
+* Legal documents (versionado + consent)
+* Next.js migration (SSR, App Router)
+* SEO profesional (metadata, JSON-LD, sitemap, robots, OG images)
+* Páginas regionales (polla, prode, penca, porra, football-pool)
+* i18n (ES/EN/PT) con next-intl v4
+* Google Analytics + Search Console
+* Smart Sync (API-Football, resultados automáticos)
+* UCL 2025-26 instance (45 partidos, 9 fases)
 
-Debe funcionar siempre:
-
-1. **Register/Login** (email/password)
-2. Dashboard: lista “Mis pools” y distingue rol (HOST vs PLAYER)
-3. Crear pool o unirse por código
-4. Pool page: ver partidos por grupos, reglas, leaderboard
-5. Player: guardar pick (y modificar antes de deadline)
-6. Host: publicar resultado (y corregir con reason)
-7. Leaderboard se actualiza acorde al preset
-8. Hardening FE: token inválido/expirado ⇒ logout y redirect a login
-
-### Next
-
-* Forgot password (evaluar costos + proveedor email)
-* Google login
+### Pendiente
 * UI Admin para creación de templates sin código
-* UX pulido (banderas, layout responsive, componentes)
-
-### Later
-
-* Ingesta resultados por API externa
+* Chat del pool
+* PWA completo (offline, push notifications)
 * Más deportes
-* Reglas avanzadas por fase (posiciones en grupos, “quién pasa”, etc.)
-* Cambio de reglas post‑creación por votación unánime (nice‑to‑have)
-* i18n
 
 ---
 
@@ -183,47 +178,48 @@ Archivos clave:
 * DB: `backend/src/db.ts`
 * JWT/Auth helpers: `backend/src/lib/jwt.ts`, `backend/src/lib/password.ts`
 * Middleware: `backend/src/middleware/requireAuth.ts`, `backend/src/middleware/requireAdmin.ts`
-* Auditoría: `backend/src/lib/audit.ts`
+* Scoring: `backend/src/lib/scoringAdvanced.ts`, `backend/src/lib/pickPresets.ts`
+* Smart Sync: `backend/src/services/smartSync/service.ts`
+* API-Football: `backend/src/services/apiFootball/client.ts`
 
-Rutas (actuales):
+Rutas:
 
-* `backend/src/routes/auth.ts`
-* `backend/src/routes/me.ts`
-* `backend/src/routes/pools.ts`
-* `backend/src/routes/picks.ts`
-* `backend/src/routes/results.ts`
-* `backend/src/routes/admin.ts`
-* `backend/src/routes/adminInstances.ts`
-* `backend/src/routes/adminTemplates.ts`
+* `backend/src/routes/auth.ts` (register, login, Google OAuth, password recovery, email verification)
+* `backend/src/routes/me.ts` (profile, pools, email preferences)
+* `backend/src/routes/pools.ts` (CRUD, join, overview, members, invites)
+* `backend/src/routes/picks.ts` (match picks + structural picks)
+* `backend/src/routes/results.ts` (publish + structural results)
+* `backend/src/routes/admin.ts` (platform admin)
+* `backend/src/routes/adminInstances.ts` (instance management + sync)
+* `backend/src/routes/adminTemplates.ts` (template management)
+* `backend/src/routes/catalog.ts` (public instance listing)
 
 Seeds/Scripts:
 
+* `backend/src/scripts/seedAdmin.ts`
 * `backend/src/scripts/seedTestAccounts.ts`
 * `backend/src/scripts/seedWc2026Sandbox.ts`
-* `backend/src/scripts/seedAdmin.ts`
+* `backend/src/scripts/seedUcl2025.ts`
+* `backend/src/scripts/seedLegalDocuments.ts`
+* `backend/src/scripts/fetchUclData.ts`
+* `backend/src/scripts/initSmartSyncStates.ts`
 
-Docker DB:
+### `/frontend-next`
 
-* `backend/docker-compose.yml`
-
-### `/frontend`
-
-* React + Vite + TypeScript
+* Next.js 16 (App Router) + TypeScript
+* next-intl v4 (i18n: ES/EN/PT)
+* SSR para páginas públicas, CSR para autenticadas
 
 Archivos clave:
 
-* Routing: `frontend/src/App.tsx`
-* API client: `frontend/src/lib/api.ts`
-* Auth storage/events: `frontend/src/lib/auth.ts`
-* Pages:
-
-  * `frontend/src/pages/LoginPage.tsx`
-  * `frontend/src/pages/DashboardPage.tsx`
-  * `frontend/src/pages/PoolPage.tsx`
-* Styles:
-
-  * `frontend/src/index.css`
-  * `frontend/src/App.css`
+* Layout: `frontend-next/src/app/[locale]/layout.tsx`
+* i18n: `frontend-next/src/i18n/routing.ts`, `navigation.ts`, `request.ts`
+* Messages: `frontend-next/src/messages/{es,en,pt}/*.json`
+* Content (SEO): `frontend-next/src/content/{es,en,pt}/*.tsx`
+* API client: `frontend-next/src/lib/api.ts`
+* Auth: `frontend-next/src/hooks/useAuth.ts`
+* Middleware: `frontend-next/src/proxy.ts` (www redirect + locale routing)
+* Pool page: `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx`
 
 ---
 
@@ -381,7 +377,7 @@ npm run seed:wc2026-sandbox
 ### Frontend
 
 ```bat
-cd frontend
+cd frontend-next
 npm install
 npm run dev
 ```
@@ -395,8 +391,6 @@ Las cuentas de prueba se crean por seed y se parametrizan por variables `TEST_*`
 * `TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD`
 * `TEST_HOST_EMAIL / TEST_HOST_PASSWORD`
 * `TEST_PLAYER_EMAIL / TEST_PLAYER_PASSWORD`
-
-Tokens de dev se pueden cargar con scripts en `backend/dev/` (ej. `tokens.cmd`) si existen.
 
 **Regla:** jamás commitear credenciales ni imprimir tokens en logs compartidos.
 
@@ -431,38 +425,20 @@ Nunca:
 
 ## 12) Prioridades actuales (cuando el usuario diga "¿qué sigue?")
 
-**Estado:** Documentación SoT completada ✅ (2026-01-02)
+**Estado:** v0.5.0 — i18n + SEO completados (2026-02-22)
 
-### Próximos pasos (Sprint 1 - Cierre):
+### Completado recientemente:
+- ✅ i18n completo (ES/EN/PT) con next-intl v4
+- ✅ SEO profesional (metadata, JSON-LD, sitemap, hreflang)
+- ✅ Páginas regionales (polla, prode, penca, porra, football-pool)
+- ✅ Auth pages con generateMetadata
+- ✅ Footer rediseñado con sección "Explore"
+- ✅ Limpieza del repositorio para publicación
 
-1. ✅ **Consolidar docs** - COMPLETADO (toda la SoT en `/docs/sot/`)
-2. **UX picks** (modo lectura + modificar antes de deadline)
-3. **UX resultados** (estado + fecha + resultado oficial bonito)
-4. **Mejoras visuales** (banderas, spacing, cards, responsive mobile)
-
-### Preparación para v0.2-beta:
-
-Revisar con el usuario las prioridades de v0.2-beta según [PRD.md](/docs/sot/PRD.md):
-- Co-Admin system (nombrar, permisos, auditoría)
-- Username único (separado de displayName)
-- Multi-type pick system (4 tipos iniciales)
-- Join approval workflow
-- Player expulsion (permanent/temporary)
-- Pool state machine (DRAFT/ACTIVE/COMPLETED/ARCHIVED)
-- Timezone por usuario
-
----
-
-## 13) Definition of Done (Sprint 1)
-
-* ✅ **Documentación SoT completa** - 7 documentos profesionales en `/docs/sot/`
-* Smoke test end‑to‑end pasa sin hacks
-* Hardening confirmado (token expiry → logout)
-* WC2026 sandbox usable (grupos A–L visibles y filtrables)
-* Contratos API estables y documentados ✅
-* UX picks pulido (modo lectura + edición)
-* UX resultados pulido (estado + fecha + resultado oficial)
-* Responsive mobile básico
-* **Cierre del día:** docs actualizados en `/docs/sot/` si hubo cambios relevantes
+### Próximos pasos:
+- Marketing: Product Hunt launch, AlternativeTo, SaaSHub, BetaList
+- WC 2026 template preparation
+- Code review fixes (setTimeout leaks, scoring consolidation)
+- UI Admin para templates sin código
 
 

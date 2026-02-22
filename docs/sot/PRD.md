@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # Quiniela Platform
 
-> **Version:** 0.2-beta (Sprint 2 Complete)
-> **Last Updated:** 2026-01-18
-> **Status:** Internal Development - Sprint 2 Complete
+> **Version:** 0.5.0 (i18n + SEO + Repo Cleanup)
+> **Last Updated:** 2026-02-22
+> **Status:** Live at picks4all.com
 > **Document Owner:** Product Team
 
 ---
@@ -20,9 +20,9 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 
 ### 1.2 Product Name
 
-**Working Name:** Quiniela Platform
-**Status:** Official branding and naming TBD
-**Note:** Brand identity (logo, colors, design system) will be developed in future phase.
+**Name:** Picks4All
+**Domain:** picks4all.com
+**Known as:** quiniela (Mexico), polla futbolera (Colombia), prode (Argentina), penca (Uruguay), porra (Spain).
 
 ---
 
@@ -94,16 +94,11 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 - 🆕 **Tournament Advancement System** - Automatic phase transitions with validation
 - 🆕 **Penalty Shootout Support** - Track penalty results in knockout matches
 
-**Limitations:**
-- ⚠️ No co-admin support (planned for v0.2-beta)
-- ⚠️ No approval workflow for join requests (planned for v0.2-beta)
-- ⚠️ Limited pick types (only 2, expanding to 7 in v1.0)
-- ⚠️ No timezone personalization per user (planned for v0.2-beta)
-- ⚠️ No player expulsion/ban system (planned for v0.2-beta)
-- ⚠️ Rules can be changed even after players join (planned for v0.2-beta)
+**Current Limitations:**
 - ⚠️ No Facebook/Apple login (Google only for now)
-- ⚠️ Mobile UX needs polish
-- ⚠️ Email confirmation not required (only double-entry field)
+- ⚠️ No in-pool chat system
+- ⚠️ No PWA offline mode or push notifications
+- ⚠️ Admin template creation requires code (no UI wizard yet)
 
 ---
 
@@ -284,16 +279,17 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
   - Phase-specific rules (group stage vs knockout)
   - "Who advances" predictions
   - Bracket predictions
-- [ ] **External API Integration:**
-  - Auto-fetch results from ESPN, TheScore, etc.
-  - Reduce manual result entry
+- [x] **External API Integration:** ✅ (v0.3.4 — Smart Sync with API-Football)
+  - Auto-fetch results from API-Football
+  - Smart Sync: 2-4 requests per match (optimized)
 - [ ] **Chat & Social:**
   - In-pool chat (optional, per pool)
   - Reactions to matches/results
   - Trash talk wall (moderated)
-- [ ] **Internationalization (i18n):**
+- [x] **Internationalization (i18n):** ✅ (v0.5.0 — next-intl v4)
   - Spanish, English, Portuguese
-  - Locale-specific date/time formats
+  - Locale-specific URLs (/en/, /pt/)
+  - SEO: hreflang, localized sitemap, regional pages
 - [ ] **Premium Features:**
   - Unlimited pools (free: 3 max)
   - Advanced analytics

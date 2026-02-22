@@ -1,14 +1,36 @@
 # Current State - Quiniela Platform
 
-> **Ultima actualizacion:** 2026-02-13 | **Version:** v0.4.0 (Next.js Migration + SEO)
+> **Ultima actualizacion:** 2026-02-22 | **Version:** v0.5.0 (i18n + SEO + Repo Cleanup)
 
 ---
 
 ## Estado General
 
-**Resumen ejecutivo:** La plataforma está en estado v0.4.0. El frontend fue **migrado de React SPA (Vite) a Next.js App Router** con SSR completo, SEO profesional, páginas regionales para todo el mercado hispanohablante, Google Analytics y Google Search Console. PageSpeed Insights: Performance 93, Accessibility 95, Best Practices 96, **SEO 100**.
+**Resumen ejecutivo:** La plataforma está en estado v0.5.0. Frontend en **Next.js App Router** con SSR, **i18n completo (ES/EN/PT)** via next-intl v4, SEO profesional con hreflang/sitemap multi-locale, páginas regionales para todo el mercado hispanohablante + EN/PT, y repo limpio listo para open source. PageSpeed Insights: Performance 93, Accessibility 95, Best Practices 96, **SEO 100**.
 
-### Cambios Recientes (v0.4.0 - 2026-02-13)
+### Cambios Recientes (v0.5.0 - 2026-02-22)
+
+1. **i18n (ES/EN/PT)** — next-intl v4
+   - `localePrefix: 'as-needed'` (Spanish no prefix, EN/PT with prefix)
+   - Translation JSONs in `messages/{es,en,pt}/`
+   - Heavy SEO content as JSX in `content/{es,en,pt}/`
+   - LanguageSelector component, cookie persistence
+   - Regional pages: `/en/football-pool`, `/pt/penca-futbol`
+   - Legal pages translated to EN/PT
+   - hreflang alternates, localized sitemap (36 entries)
+   - generateMetadata on all pages including auth pages
+
+2. **Repo Cleanup** (pre-open-source)
+   - Removed `frontend/` (old Vite SPA, 64 files)
+   - Removed `backend/dev/` (31 dump files), `backend/tmp/` (3 files)
+   - Removed 39 one-time scripts from `backend/src/scripts/`
+   - Removed `docs/TODO_NEXT_SESSION.md` (contained exposed API key)
+   - Removed `docs/sprints/` (3 historical reports)
+   - Removed 14 root-level artifacts (empty files, Windows path dumps)
+   - Updated all SoT documentation to reflect current state
+   - Added README.md with project description and backlinks
+
+### Cambios v0.4.0 (2026-02-13)
 
 1. **Next.js Migration (ADR-033)**
    - Frontend completamente migrado a Next.js App Router (`/frontend-next`)
@@ -148,13 +170,27 @@
 |---------|--------|-------|
 | **Next.js Migration** | ✅ COMPLETO | ADR-033, App Router, SSR |
 | **SEO Profesional** | ✅ COMPLETO | Metadata, JSON-LD, sitemap, robots |
-| **Páginas Regionales** | ✅ COMPLETO | 5 páginas (polla, prode, penca, porra, glosario) |
+| **Páginas Regionales** | ✅ COMPLETO | 5 páginas ES + 1 EN + 1 PT |
 | **Google Analytics** | ✅ COMPLETO | GA4 G-8JG2YTDLPH |
 | **Google Search Console** | ✅ COMPLETO | Verificado, sitemap submitted |
 | **Core Web Vitals** | ✅ COMPLETO | 93/95/96/100 PageSpeed |
 | **Safari Google Fix** | ✅ COMPLETO | FedCM disabled, beforeInteractive |
 | **www Redirect** | ✅ COMPLETO | 301 via middleware |
 | **Branded Favicon** | ✅ COMPLETO | Dynamic icon.tsx (P morada) |
+
+### Sprint 6 - i18n + Repo Cleanup
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| **i18n (ES/EN/PT)** | ✅ COMPLETO | next-intl v4, localePrefix as-needed |
+| **Translation System** | ✅ COMPLETO | JSONs + JSX content per locale |
+| **LanguageSelector** | ✅ COMPLETO | Dropdown con banderas |
+| **Localized SEO** | ✅ COMPLETO | hreflang, sitemap multi-locale |
+| **Auth Pages Metadata** | ✅ COMPLETO | generateMetadata en login, forgot-pw, etc |
+| **Footer Redesign** | ✅ COMPLETO | Sección "Explore" unificada |
+| **Regional EN/PT** | ✅ COMPLETO | football-pool (EN), penca (PT) |
+| **Legal EN/PT** | ✅ COMPLETO | Términos y privacidad traducidos |
+| **Repo Cleanup** | ✅ COMPLETO | Eliminados 120+ archivos obsoletos |
+| **README.md** | ✅ COMPLETO | Para GitHub público |
 
 ### Advanced Pick Types System
 
@@ -278,7 +314,7 @@ frontend-next/
     middleware.ts    # www → non-www redirect
 ```
 
-> **Nota:** El frontend antiguo (`/frontend` — Vite SPA) aún existe en el repo pero está congelado. El servicio "Frontend" antiguo en Railway debería eliminarse.
+> **Nota:** El frontend antiguo (`/frontend` — Vite SPA) fue eliminado en v0.5.0. El servicio "Frontend" antiguo en Railway debería eliminarse.
 
 ### Base de Datos (PostgreSQL)
 - 30+ modelos Prisma
@@ -347,17 +383,12 @@ frontend-next/
 npm run seed:admin              # Crear admin
 npm run seed:test-accounts      # Cuentas de prueba
 npm run seed:wc2026-sandbox     # Torneo WC2026
-npm run seed:wc2022-autotest    # WC2022 para testing Smart Sync
-npm run add:knockout            # Agregar fases knockout a instancia
+npm run seed:ucl2025            # UCL 2025-26
+npm run seed:legal-documents    # Términos y privacidad
 npm run init:smart-sync         # Inicializar estados de Smart Sync
 ```
 
-### Diagnostico
-```bash
-npm run check:instance-state    # Estado de instance
-npm run script:list-pools       # Listar pools
-npm run script:force-completed  # Forzar completar pool
-```
+> **Nota:** En v0.5.0 se eliminaron ~39 scripts de un solo uso (check*, fix*, migrate*, test*). Solo quedan los seeds activos y `fetchUclData.ts`.
 
 ---
 
@@ -635,18 +666,21 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 - `backend/src/validation/pickConfig.ts` - Zod schemas de configuración
 
 ### Frontend (Next.js) - Key Files
-- `frontend-next/src/app/layout.tsx` - Root layout (metadata, GA4, Google Identity Services)
-- `frontend-next/src/app/page.tsx` - Landing page (SSR, SEO)
-- `frontend-next/src/app/login/page.tsx` - Login/Register with Google OAuth
-- `frontend-next/src/app/(authenticated)/layout.tsx` - Auth layout (AuthGuard + NavBar)
-- `frontend-next/src/app/(authenticated)/pools/[poolId]/page.tsx` - Pool page
-- `frontend-next/src/middleware.ts` - www → non-www redirect
-- `frontend-next/src/components/PoolConfigWizard.tsx` - Wizard de configuración con presets
-- `frontend-next/src/components/GroupStandingsCard.tsx` - Drag-and-drop standings
-- `frontend-next/src/components/JsonLd.tsx` - Structured data helper
+- `frontend-next/src/app/[locale]/layout.tsx` - Locale layout (NextIntlClientProvider, html lang)
+- `frontend-next/src/app/[locale]/page.tsx` - Landing page (SSR, SEO, JSON-LD)
+- `frontend-next/src/app/[locale]/login/page.tsx` - Login/Register with Google OAuth
+- `frontend-next/src/app/[locale]/(authenticated)/layout.tsx` - Auth layout (AuthGuard + NavBar)
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx` - Pool page
+- `frontend-next/src/i18n/routing.ts` - Locale config, localized pathnames
+- `frontend-next/src/i18n/navigation.ts` - Locale-aware Link, useRouter, usePathname
+- `frontend-next/src/i18n/request.ts` - Message loading config
+- `frontend-next/src/proxy.ts` - Middleware (www redirect + next-intl locale routing)
+- `frontend-next/src/messages/{es,en,pt}/` - Translation JSONs
+- `frontend-next/src/content/{es,en,pt}/` - Heavy SEO content as JSX
+- `frontend-next/src/components/LanguageSelector.tsx` - Language dropdown
 - `frontend-next/src/lib/api.ts` - API client (55 funciones)
 - `frontend-next/src/hooks/useAuth.ts` - Client-side auth hook
 
 ---
 
-**Última actualización:** 2026-02-13 | Sprint 5 v0.4.0
+**Última actualización:** 2026-02-22 | Sprint 6 v0.5.0

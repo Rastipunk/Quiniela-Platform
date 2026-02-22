@@ -15,6 +15,67 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.5.0] - 2026-02-22
+
+### Internationalization (i18n) + SEO Enhancements + Repo Cleanup
+
+#### Added
+- **i18n with next-intl v4** — Full support for Spanish, English, and Portuguese
+  - `localePrefix: 'as-needed'` — Spanish has no URL prefix, EN/PT use `/en/`, `/pt/`
+  - Translation files in `messages/{es,en,pt}/` (common, landing, auth, dashboard, pool, faq, seo, jsonLd)
+  - Heavy SEO content as JSX components in `content/{es,en,pt}/`
+  - Locale-aware `Link`, `useRouter`, `usePathname` via `@/i18n/navigation`
+  - `LanguageSelector` component with country flags (ES/EN/PT)
+  - Cookie `NEXT_LOCALE` persists language choice
+
+- **Localized SEO**
+  - `hreflang` alternates on all pages (es, en, pt, x-default)
+  - Localized `sitemap.xml` with alternates per locale (36 entries)
+  - JSON-LD `inLanguage` field uses current locale
+  - `generateMetadata` with translated titles/descriptions on all pages
+  - Auth pages (login, forgot-password, reset-password, verify-email) now have proper metadata
+
+- **Regional Pages (EN/PT)**
+  - `/en/football-pool` — English regional page
+  - `/pt/penca-futbol` — Portuguese regional page (Penca de Futebol)
+
+- **Legal Pages (EN/PT)**
+  - Terms of Service and Privacy Policy translated to English and Portuguese
+
+- **Footer Redesign**
+  - Merged "Resources" + "By Country" sections into single "Explore" section
+  - All 8 links visible: How it works, FAQ, Quiniela, Polla, Prode, Penca, Porra, Football Pool
+  - Regional labels translated per locale with country context
+
+- **Landing Page JSON-LD**
+  - Made locale-aware: `inLanguage`, `description`, `featureList`, `ctaName` all from translations
+
+#### Changed
+- Middleware renamed from `middleware.ts` to `proxy.ts` (composes www redirect + next-intl)
+- All pages moved under `app/[locale]/` segment
+- All internal links use `@/i18n/navigation` Link (locale-aware)
+
+#### Removed (Repo Cleanup)
+- **`frontend/`** — Old Vite/React SPA (64 files, fully replaced by `frontend-next/`)
+- **`backend/dev/`** — 31 dev dump files (JSON responses, expired tokens, demo scripts)
+- **`backend/tmp/`** — 3 temp test files
+- **39 one-time scripts** from `backend/src/scripts/` (check*, fix*, migrate*, test*, seed*AutoTest, etc.)
+- **`docs/TODO_NEXT_SESSION.md`** — Contained exposed API key + obsolete TODOs
+- **`docs/sprints/`** — 3 historical sprint reports (no longer relevant)
+- **`docs/guides/TESTING_GUIDE_SPRINT2.md`** — Contained test passwords
+- **`docs/guides/TEST_ACCOUNTS.md`** — Duplicate test account info
+- **14 root-level artifacts** — Empty files (`√`, `7.2.0`, `curl`, `npx`, `nul`), Windows path dumps, temp docs (`FIXES_SUMMARY.md`, `QUE_DEBERIA_VER.md`, `TEST_ACCOUNTS.txt`, `repo_tree.txt`, `frontend_tree.txt`)
+
+#### Updated Documentation
+- `CLAUDE.md` — Updated stack to Next.js, frontend-next paths, current priorities
+- `ARCHITECTURE.md` — Full rewrite reflecting Next.js, i18n, Railway deployment
+- `API_SPEC.md` — Added 15+ missing endpoints
+- `PRD.md` — Updated version, branding, completed features
+- `CURRENT_STATE.md` — Updated to v0.5.0
+- `.gitignore` — Added Next.js, Windows artifact patterns
+
+---
+
 ## [0.4.0] - 2026-02-13
 
 ### Next.js Migration + SEO + Google Analytics (ADR-033)

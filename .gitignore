@@ -48,3 +48,12 @@ backend/prisma/migrations/*_temp/
 *.orig
 .cache/
 nul
+
+# Next.js
+.next/
+.vercel/
+
+# Windows artifacts
+[Cc]:Users*
+√
+

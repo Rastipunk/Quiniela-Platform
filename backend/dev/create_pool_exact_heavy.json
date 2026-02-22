@@ -1,7 +1,0 @@
-{
-  "tournamentInstanceId": "c961a6be-d847-4b32-b6a0-6cc3b2837813",
-  "name": "Pool EXACT_HEAVY",
-  "description": "Test preset scoring",
-  "timeZone": "America/Bogota",
-  "scoringPresetKey": "EXACT_HEAVY"
-}

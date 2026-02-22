@@ -1,7 +1,0 @@
-{
-  "tournamentInstanceId": "c961a6be-d847-4b32-b6a0-6cc3b2837813",
-  "name": "Pool OUTCOME_ONLY",
-  "description": "Test preset",
-  "timeZone": "America/Bogota",
-  "scoringPresetKey": "OUTCOME_ONLY"
-}
