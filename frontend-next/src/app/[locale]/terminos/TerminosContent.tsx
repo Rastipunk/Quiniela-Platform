@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { API_BASE } from "@/lib/api";
+import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 
 // Simple markdown parser for legal documents
@@ -56,31 +54,7 @@ function parseMarkdown(md: string): string {
 
 export function TerminosContent() {
   const t = useTranslations("legal");
-  const [content, setContent] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [version, setVersion] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function loadTerms() {
-      try {
-        const res = await fetch(`${API_BASE}/legal/documents/TERMS_OF_SERVICE`);
-        if (!res.ok) {
-          throw new Error("Failed to load document");
-        }
-        const data = await res.json();
-        setContent(data.document.content);
-        setVersion(data.document.version);
-      } catch {
-        setError(t("errorTerms"));
-        setContent(t("fallbackTerms"));
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadTerms();
-  }, [t]);
+  const content = t("termsContent");
 
   return (
     <PublicPageWrapper>
@@ -107,59 +81,22 @@ export function TerminosContent() {
           {"<-"} {t("backToHome")}
         </Link>
 
-        {loading && (
-          <div style={{ padding: 40, textAlign: "center" }}>
-            <p style={{ color: "var(--muted)" }}>{t("loading")}</p>
-          </div>
-        )}
-
-        {error && (
+        <article
+          style={{
+            background: "var(--surface)",
+            borderRadius: 16,
+            padding: 32,
+            border: "1px solid var(--border)",
+            lineHeight: 1.7,
+          }}
+        >
           <div
-            style={{
-              marginBottom: 20,
-              padding: "12px 16px",
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: 8,
-              color: "#991b1b",
-              fontSize: 14,
+            dangerouslySetInnerHTML={{
+              __html: parseMarkdown(content),
             }}
-          >
-            {error}
-          </div>
-        )}
-
-        {!loading && (
-          <article
-            style={{
-              background: "var(--surface)",
-              borderRadius: 16,
-              padding: 32,
-              border: "1px solid var(--border)",
-              lineHeight: 1.7,
-            }}
-          >
-            <div
-              dangerouslySetInnerHTML={{
-                __html: parseMarkdown(content || ""),
-              }}
-              style={{ color: "var(--text)" }}
-            />
-          </article>
-        )}
-
-        {version && (
-          <p
-            style={{
-              marginTop: 20,
-              fontSize: 12,
-              color: "var(--muted)",
-              textAlign: "center",
-            }}
-          >
-            {t("documentVersion", { version })}
-          </p>
-        )}
+            style={{ color: "var(--text)" }}
+          />
+        </article>
 
         <style>{`
           article h1 {

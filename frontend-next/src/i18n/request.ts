@@ -9,20 +9,30 @@ export default getRequestConfig(async ({ requestLocale }) => {
     : routing.defaultLocale;
 
   // Load and merge all message files
-  const [common, auth, dashboard, profile, pool, legal, penca, seo] =
-    await Promise.all([
-      import(`../messages/${locale}/common.json`).then((m) => m.default),
-      import(`../messages/${locale}/auth.json`).then((m) => m.default),
-      import(`../messages/${locale}/dashboard.json`).then((m) => m.default),
-      import(`../messages/${locale}/profile.json`).then((m) => m.default),
-      import(`../messages/${locale}/pool.json`).then((m) => m.default),
-      import(`../messages/${locale}/legal.json`).then((m) => m.default),
-      import(`../messages/${locale}/penca.json`).then((m) => m.default),
-      import(`../messages/${locale}/seo.json`).then((m) => m.default),
-    ]);
+  const [
+    common, auth, dashboard, profile, pool, legal,
+    penca, polla, prode, porra, footballPool, seo,
+  ] = await Promise.all([
+    import(`../messages/${locale}/common.json`).then((m) => m.default),
+    import(`../messages/${locale}/auth.json`).then((m) => m.default),
+    import(`../messages/${locale}/dashboard.json`).then((m) => m.default),
+    import(`../messages/${locale}/profile.json`).then((m) => m.default),
+    import(`../messages/${locale}/pool.json`).then((m) => m.default),
+    import(`../messages/${locale}/legal.json`).then((m) => m.default),
+    import(`../messages/${locale}/penca.json`).then((m) => m.default),
+    import(`../messages/${locale}/polla.json`).then((m) => m.default),
+    import(`../messages/${locale}/prode.json`).then((m) => m.default),
+    import(`../messages/${locale}/porra.json`).then((m) => m.default),
+    import(`../messages/${locale}/footballPool.json`).then((m) => m.default),
+    import(`../messages/${locale}/seo.json`).then((m) => m.default),
+  ]);
 
   return {
     locale,
-    messages: { ...common, auth, dashboard, profile, pool, legal, penca, seo },
+    messages: {
+      ...common,
+      auth, dashboard, profile, pool, legal,
+      penca, polla, prode, porra, footballPool, seo,
+    },
   };
 });

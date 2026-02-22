@@ -15,6 +15,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     };
   }
 
+  // Helper: same path for all locales
+  function samePath(path: string) {
+    return allLocales(path, path, path);
+  }
+
   return [
     // --- Pages available in all 3 locales ---
 
@@ -33,7 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.8,
-      alternates: allLocales("/faq", "/faq", "/faq"),
+      alternates: samePath("/faq"),
     },
 
     // How it works (localized paths)
@@ -78,52 +83,45 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.6,
-      alternates: allLocales("/login", "/login", "/login"),
+      alternates: samePath("/login"),
     },
 
-    // --- Spanish-only regional pages ---
+    // --- Regional pages (all 3 locales) ---
 
     {
       url: `${baseUrl}/polla-futbolera`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
+      alternates: samePath("/polla-futbolera"),
     },
     {
       url: `${baseUrl}/prode-deportivo`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
+      alternates: samePath("/prode-deportivo"),
     },
     {
       url: `${baseUrl}/porra-deportiva`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
+      alternates: samePath("/porra-deportiva"),
     },
-
-    // --- Penca: Spanish + Portuguese ---
-
     {
       url: `${baseUrl}/penca-futbol`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
-      alternates: {
-        languages: {
-          es: `${baseUrl}/penca-futbol`,
-          pt: `${baseUrl}/pt/penca-futbol`,
-        },
-      },
+      alternates: samePath("/penca-futbol"),
     },
-
-    // --- English-only regional page ---
-
     {
-      url: `${baseUrl}/en/football-pool`,
+      url: `${baseUrl}/football-pool`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
+      alternates: samePath("/football-pool"),
     },
   ];
 }

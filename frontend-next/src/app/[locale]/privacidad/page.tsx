@@ -31,13 +31,18 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function PrivacidadPage() {
+export default async function PrivacidadPage() {
+  const locale = await getLocale();
+  const t = await getTranslations("legal");
+  const baseUrl = "https://picks4all.com";
+  const localePath = locale === "es" ? "" : `/${locale}`;
+
   return (
     <>
       <Breadcrumbs
         items={[
-          { name: "Inicio", url: "https://picks4all.com" },
-          { name: "Politica de Privacidad", url: "https://picks4all.com/privacidad" },
+          { name: t("breadcrumbHome"), url: `${baseUrl}${localePath}` },
+          { name: t("breadcrumbPrivacy"), url: `${baseUrl}${localePath}/privacidad` },
         ]}
       />
       <PrivacidadContent />

@@ -31,13 +31,18 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function TerminosPage() {
+export default async function TerminosPage() {
+  const locale = await getLocale();
+  const t = await getTranslations("legal");
+  const baseUrl = "https://picks4all.com";
+  const localePath = locale === "es" ? "" : `/${locale}`;
+
   return (
     <>
       <Breadcrumbs
         items={[
-          { name: "Inicio", url: "https://picks4all.com" },
-          { name: "Terminos y Condiciones", url: "https://picks4all.com/terminos" },
+          { name: t("breadcrumbHome"), url: `${baseUrl}${localePath}` },
+          { name: t("breadcrumbTerms"), url: `${baseUrl}${localePath}/terminos` },
         ]}
       />
       <TerminosContent />
