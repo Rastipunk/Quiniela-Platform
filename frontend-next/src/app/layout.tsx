@@ -92,12 +92,12 @@ export default function RootLayout({
         />
         <BetaFeedbackBar />
         {children}
-        {/* Google Analytics (GA4) */}
+        {/* Google Analytics (GA4) — lazyOnload: analytics can wait for idle time */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-8JG2YTDLPH"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -105,10 +105,10 @@ export default function RootLayout({
             gtag('config', 'G-8JG2YTDLPH');
           `}
         </Script>
-        {/* Google Identity Services (for Google login) */}
+        {/* Google Identity Services — lazyOnload: only needed on login page */}
         <Script
           src="https://accounts.google.com/gsi/client"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
       </body>
     </html>
