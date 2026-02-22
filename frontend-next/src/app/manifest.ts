@@ -14,9 +14,9 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["sports", "entertainment", "games"],
     icons: [
       {
-        src: "/favicon.ico",
-        sizes: "any",
-        type: "image/x-icon",
+        src: "/icon",
+        sizes: "32x32",
+        type: "image/png",
       },
       {
         src: "/pwa-icon-192",
