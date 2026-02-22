@@ -36,6 +36,32 @@ const FINISH_CHECK_DELAY_MINUTES = 110;
 // Polling interval for matches awaiting finish (in minutes)
 const AWAITING_FINISH_POLL_MINUTES = 5;
 
+// Backoff intervals for PENDING matches that haven't started (in minutes)
+// 0-30 min late: every 5 min | 30min-3h: every 60 min | 3h-10h: every 120 min | 10h+: every 1440 min (24h)
+const PENDING_BACKOFF_TIERS = [
+  { afterMinutes: 0,   pollEveryMinutes: 5 },
+  { afterMinutes: 30,  pollEveryMinutes: 60 },
+  { afterMinutes: 180, pollEveryMinutes: 120 },
+  { afterMinutes: 600, pollEveryMinutes: 1440 },
+];
+
+/**
+ * Returns the poll interval (in minutes) for a PENDING match based on
+ * how long it has been since its firstCheckAtUtc.
+ */
+function getPendingPollInterval(firstCheckAtUtc: Date | null, now: Date): number {
+  if (!firstCheckAtUtc) return PENDING_BACKOFF_TIERS[0]!.pollEveryMinutes;
+  const minutesWaiting = (now.getTime() - firstCheckAtUtc.getTime()) / 60_000;
+  // Walk tiers in reverse to find the highest matching tier
+  for (let i = PENDING_BACKOFF_TIERS.length - 1; i >= 0; i--) {
+    const tier = PENDING_BACKOFF_TIERS[i]!;
+    if (minutesWaiting >= tier.afterMinutes) {
+      return tier.pollEveryMinutes;
+    }
+  }
+  return PENDING_BACKOFF_TIERS[0]!.pollEveryMinutes;
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -168,15 +194,27 @@ export class SmartSyncService {
     }
 
     // Find matches that need checking based on their state and timing
-    const matchesToCheck = await prisma.matchSyncState.findMany({
+    // PENDING matches use backoff tiers, so we fetch all eligible and filter in code
+    const pendingCandidates = await prisma.matchSyncState.findMany({
+      where: {
+        tournamentInstanceId: instanceId,
+        syncStatus: "PENDING",
+        firstCheckAtUtc: { lte: now },
+      },
+    });
+
+    // Apply backoff: only include PENDING matches whose lastCheckedAtUtc is old enough
+    const pendingReady = pendingCandidates.filter((m) => {
+      if (!m.lastCheckedAtUtc) return true; // never checked → check now
+      const pollInterval = getPendingPollInterval(m.firstCheckAtUtc, now);
+      const nextCheckAt = new Date(m.lastCheckedAtUtc.getTime() + pollInterval * 60_000);
+      return now >= nextCheckAt;
+    });
+
+    const nonPendingToCheck = await prisma.matchSyncState.findMany({
       where: {
         tournamentInstanceId: instanceId,
         OR: [
-          // Case 1: PENDING matches where firstCheckAtUtc has passed
-          {
-            syncStatus: "PENDING",
-            firstCheckAtUtc: { lte: now },
-          },
           // Case 2: IN_PROGRESS matches where finishCheckAtUtc has passed
           {
             syncStatus: "IN_PROGRESS",
@@ -197,6 +235,8 @@ export class SmartSyncService {
         ],
       },
     });
+
+    const matchesToCheck = [...pendingReady, ...nonPendingToCheck];
 
     if (matchesToCheck.length === 0) {
       return result;
