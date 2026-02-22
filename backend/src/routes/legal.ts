@@ -47,7 +47,8 @@ router.get("/documents/:type", async (req: Request, res: Response) => {
       PRIVACY_POLICY: "PRIVACY_POLICY",
     };
 
-    const documentType = type ? typeMap[type] : undefined;
+    const typeKey = Array.isArray(type) ? type[0] : type;
+    const documentType = typeKey ? typeMap[typeKey] : undefined;
     if (!documentType) {
       return res.status(400).json({
         error: "INVALID_TYPE",
