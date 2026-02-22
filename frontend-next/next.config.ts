@@ -1,7 +1,31 @@
 import type { NextConfig } from "next";
 
+// Content Security Policy — allow our app + Google services (GA4, GIS)
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://www.googletagmanager.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://media.api-sports.io https://flagcdn.com https://www.googletagmanager.com",
+  "font-src 'self'",
+  "connect-src 'self' https://quiniela-platform-production.up.railway.app https://accounts.google.com https://www.google-analytics.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com",
+  "frame-src https://accounts.google.com",
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+].join("; ");
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: cspDirectives },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  { key: "X-Frame-Options", value: "DENY" },
+];
+
 const nextConfig: NextConfig = {
   output: "standalone", // Required for Railway deployment
+  async headers() {
+    return [{ source: "/(.*)", headers: securityHeaders }];
+  },
   images: {
     remotePatterns: [
       {
