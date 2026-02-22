@@ -27,6 +27,15 @@
     "title": "Sign In — Picks4All",
     "description": "Sign in or create an account on Picks4All to join football prediction pools with your friends."
   },
+  "forgotPassword": {
+    "title": "Forgot Password"
+  },
+  "resetPassword": {
+    "title": "Reset Password"
+  },
+  "verifyEmail": {
+    "title": "Verify Email"
+  },
   "pollaFutbolera": {
     "title": "Polla Futbolera Online Gratis — Colombia, Chile, Venezuela",
     "description": "Crea tu polla futbolera online gratis con amigos. La tradición colombiana y chilena de predicciones deportivas, ahora digital en Picks4All."

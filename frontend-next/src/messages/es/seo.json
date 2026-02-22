@@ -27,6 +27,15 @@
     "title": "Iniciar Sesión — Picks4All",
     "description": "Inicia sesión o crea una cuenta en Picks4All para participar en quinielas de fútbol con tus amigos."
   },
+  "forgotPassword": {
+    "title": "Recuperar Contraseña"
+  },
+  "resetPassword": {
+    "title": "Restablecer Contraseña"
+  },
+  "verifyEmail": {
+    "title": "Verificar Email"
+  },
   "pollaFutbolera": {
     "title": "Polla Futbolera Online Gratis — Colombia, Chile, Venezuela",
     "description": "Crea tu polla futbolera online gratis con amigos. La tradición colombiana y chilena de predicciones deportivas, ahora digital en Picks4All."

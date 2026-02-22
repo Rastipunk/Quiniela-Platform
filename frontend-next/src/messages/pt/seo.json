@@ -27,6 +27,15 @@
     "title": "Entrar — Picks4All",
     "description": "Entre ou crie uma conta no Picks4All para participar de pencas de futebol com seus amigos."
   },
+  "forgotPassword": {
+    "title": "Recuperar Senha"
+  },
+  "resetPassword": {
+    "title": "Redefinir Senha"
+  },
+  "verifyEmail": {
+    "title": "Verificar Email"
+  },
   "pollaFutbolera": {
     "title": "Polla Futbolera Online Gratis — Colombia, Chile, Venezuela",
     "description": "Crea tu polla futbolera online gratis con amigos. La tradición colombiana y chilena de predicciones deportivas, ahora digital en Picks4All."
