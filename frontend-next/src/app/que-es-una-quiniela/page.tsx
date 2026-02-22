@@ -146,7 +146,7 @@ export default function QueEsUnaQuinielaPage() {
       <PublicPageWrapper>
       <div style={{ background: "var(--bg)" }}>
         {/* Article Header */}
-        <section
+        <section className="seo-hero"
           style={{
             background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
             color: "white",
@@ -165,7 +165,7 @@ export default function QueEsUnaQuinielaPage() {
           >
             Cultura Deportiva
           </p>
-          <h1
+          <h1 className="seo-h1"
             style={{
               fontSize: "2.5rem",
               fontWeight: 800,
@@ -233,7 +233,7 @@ export default function QueEsUnaQuinielaPage() {
           </div>
 
           {/* Origins */}
-          <h2
+          <h2 className="seo-h2"
             style={{
               fontSize: "1.75rem",
               fontWeight: 700,
@@ -278,7 +278,7 @@ export default function QueEsUnaQuinielaPage() {
           </p>
 
           {/* Regional Deep Dive */}
-          <h2
+          <h2 className="seo-h2"
             style={{
               fontSize: "1.75rem",
               fontWeight: 700,
@@ -431,14 +431,14 @@ export default function QueEsUnaQuinielaPage() {
         </article>
 
         {/* Country Table */}
-        <section
+        <section className="seo-section"
           style={{
             background: "var(--surface)",
             padding: "64px 40px",
           }}
         >
           <div style={{ maxWidth: 780, margin: "0 auto" }}>
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -568,7 +568,7 @@ export default function QueEsUnaQuinielaPage() {
             margin: "0 auto",
           }}
         >
-          <h2
+          <h2 className="seo-h2"
             style={{
               fontSize: "1.75rem",
               fontWeight: 700,
@@ -605,7 +605,7 @@ export default function QueEsUnaQuinielaPage() {
             paciente, hoy se resuelve en 2 minutos desde el celular."
           </div>
 
-          <h2
+          <h2 className="seo-h2"
             style={{
               fontSize: "1.75rem",
               fontWeight: 700,
@@ -637,14 +637,14 @@ export default function QueEsUnaQuinielaPage() {
         </article>
 
         {/* Regional links */}
-        <section
+        <section className="seo-section"
           style={{
             padding: "48px 40px",
             maxWidth: 800,
             margin: "0 auto",
           }}
         >
-          <h2
+          <h2 className="seo-h2"
             style={{
               fontSize: "1.5rem",
               fontWeight: 700,
@@ -698,7 +698,7 @@ export default function QueEsUnaQuinielaPage() {
         </section>
 
         {/* CTA */}
-        <section
+        <section className="seo-cta"
           style={{
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             color: "white",
@@ -706,7 +706,7 @@ export default function QueEsUnaQuinielaPage() {
             textAlign: "center",
           }}
         >
-          <h2
+          <h2 className="seo-h2"
             style={{
               fontSize: "2rem",
               fontWeight: 700,

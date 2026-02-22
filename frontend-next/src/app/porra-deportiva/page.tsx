@@ -129,6 +129,7 @@ export default function PorraDeportivaPage() {
       <div style={{ background: "var(--bg)" }}>
         {/* Hero Header */}
         <section
+          className="seo-hero"
           style={{
             background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
             color: "white",
@@ -148,6 +149,7 @@ export default function PorraDeportivaPage() {
             Predicciones Deportivas
           </p>
           <h1
+            className="seo-h1"
             style={{
               fontSize: "2.5rem",
               fontWeight: 800,
@@ -176,6 +178,7 @@ export default function PorraDeportivaPage() {
 
         {/* Article Body */}
         <article
+          className="seo-article"
           style={{
             padding: "64px 40px",
             maxWidth: 780,
@@ -184,6 +187,7 @@ export default function PorraDeportivaPage() {
         >
           {/* Section 1: ¿Qué es una porra deportiva? */}
           <h2
+            className="seo-h2"
             style={{
               fontSize: "1.75rem",
               fontWeight: 700,
@@ -243,6 +247,7 @@ export default function PorraDeportivaPage() {
 
           {/* Section 2: ¿Cómo funciona una porra en Picks4All? */}
           <h2
+            className="seo-h2"
             style={{
               fontSize: "1.75rem",
               fontWeight: 700,
@@ -330,6 +335,7 @@ export default function PorraDeportivaPage() {
 
           {/* Section 3: ¿Por qué Picks4All para tu porra? */}
           <h2
+            className="seo-h2"
             style={{
               fontSize: "1.75rem",
               fontWeight: 700,
@@ -473,6 +479,7 @@ export default function PorraDeportivaPage() {
 
         {/* CTA */}
         <section
+          className="seo-cta"
           style={{
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             color: "white",
@@ -481,6 +488,7 @@ export default function PorraDeportivaPage() {
           }}
         >
           <h2
+            className="seo-h2"
             style={{
               fontSize: "2rem",
               fontWeight: 700,

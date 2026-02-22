@@ -32,6 +32,7 @@ import {
   getGroupBreakdown,
   type GroupSingleBreakdown,
 } from "../lib/api";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 
 type Team = {
   id: string;
@@ -86,6 +87,7 @@ export function GroupStandingsCard({
   isLocked,
 }: GroupStandingsCardProps) {
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
+  const isMobile = useIsMobile();
 
   // Player pick state
   const [playerPick, setPlayerPick] = useState<string[]>([]);
@@ -303,19 +305,19 @@ export function GroupStandingsCard({
 
   if (loading) {
     return (
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: "1.25rem", background: "#fff", textAlign: "center" }}>
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: "#fff", textAlign: "center" }}>
         Cargando...
       </div>
     );
   }
 
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: "1.25rem", background: "#fff" }}>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: "#fff" }}>
       {/* Header */}
       <h3 style={{ margin: "0 0 1rem 0", fontSize: 16, fontWeight: 700, color: "#1f2937" }}>{groupName}</h3>
 
       {/* Two column layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "1.5rem" }}>
 
         {/* LEFT: Player Pick */}
         <div>
@@ -330,6 +332,7 @@ export function GroupStandingsCard({
                 orderedTeamIds={playerPick}
                 onOrderChange={setPlayerPick}
                 disabled={savingPick}
+                isMobile={isMobile}
               />
               {!isLocked && (
                 <button
@@ -338,14 +341,16 @@ export function GroupStandingsCard({
                   style={{
                     width: "100%",
                     marginTop: "0.75rem",
-                    padding: "0.6rem",
-                    fontSize: 13,
+                    padding: isMobile ? "12px 20px" : "0.6rem",
+                    fontSize: isMobile ? 15 : 13,
                     fontWeight: 600,
                     background: "#10b981",
                     color: "white",
                     border: "none",
-                    borderRadius: 6,
+                    borderRadius: 8,
                     cursor: savingPick ? "not-allowed" : "pointer",
+                    minHeight: TOUCH_TARGET.minimum,
+                    ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
                   {savingPick ? "Guardando..." : "Guardar"}
@@ -354,21 +359,23 @@ export function GroupStandingsCard({
             </>
           ) : (
             <>
-              <StaticTeamList teams={teams} orderedTeamIds={playerPick} />
+              <StaticTeamList teams={teams} orderedTeamIds={playerPick} isMobile={isMobile} />
               {!isLocked && (
                 <button
                   onClick={() => setIsEditingPick(true)}
                   style={{
                     width: "100%",
                     marginTop: "0.75rem",
-                    padding: "0.6rem",
-                    fontSize: 13,
+                    padding: isMobile ? "12px 20px" : "0.6rem",
+                    fontSize: isMobile ? 15 : 13,
                     fontWeight: 600,
                     background: "#f3f4f6",
                     color: "#374151",
                     border: "1px solid #d1d5db",
-                    borderRadius: 6,
+                    borderRadius: 8,
                     cursor: "pointer",
+                    minHeight: TOUCH_TARGET.minimum,
+                    ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
                   Editar
@@ -387,20 +394,22 @@ export function GroupStandingsCard({
           {officialResult && !isEditingMatches ? (
             // Show official standings
             <>
-              <StaticTeamList teams={teams} orderedTeamIds={officialResult} isOfficial />
+              <StaticTeamList teams={teams} orderedTeamIds={officialResult} isOfficial isMobile={isMobile} />
               {isHost && (
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                   <button
                     onClick={() => setShowMatchDetails(!showMatchDetails)}
                     style={{
                       flex: 1,
-                      padding: "0.4rem",
-                      fontSize: 12,
+                      padding: isMobile ? "10px 12px" : "0.4rem",
+                      fontSize: isMobile ? 13 : 12,
                       background: "#f3f4f6",
                       color: "#374151",
                       border: "1px solid #d1d5db",
-                      borderRadius: 4,
+                      borderRadius: 6,
                       cursor: "pointer",
+                      minHeight: TOUCH_TARGET.minimum,
+                      ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
                     {showMatchDetails ? "Ocultar partidos" : "Ver partidos"}
@@ -409,13 +418,15 @@ export function GroupStandingsCard({
                     onClick={handleEnterEditMode}
                     style={{
                       flex: 1,
-                      padding: "0.4rem",
-                      fontSize: 12,
+                      padding: isMobile ? "10px 12px" : "0.4rem",
+                      fontSize: isMobile ? 13 : 12,
                       background: "#fef3c7",
                       color: "#92400e",
                       border: "1px solid #fcd34d",
-                      borderRadius: 4,
+                      borderRadius: 6,
                       cursor: "pointer",
+                      minHeight: TOUCH_TARGET.minimum,
+                      ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
                     Editar partidos
@@ -444,7 +455,7 @@ export function GroupStandingsCard({
                 {savedMatchCount}/{matches.length} partidos
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "0.5rem" : "0.35rem" }}>
                 {matches.map((match) => {
                   const state = matchResults.get(match.id) || { homeGoals: "", awayGoals: "", saved: false, existsInDb: false };
                   const homeTeam = teamMap.get(match.homeTeamId);
@@ -459,14 +470,15 @@ export function GroupStandingsCard({
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "0.35rem",
-                        padding: "0.3rem",
+                        gap: isMobile ? "0.5rem" : "0.35rem",
+                        padding: isMobile ? "0.5rem" : "0.3rem",
                         background: state.saved ? "#f0fdf4" : "#f9fafb",
-                        borderRadius: 4,
+                        borderRadius: 6,
                         border: state.saved ? "1px solid #bbf7d0" : "1px solid #e5e7eb",
+                        minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
                       }}
                     >
-                      <span style={{ fontSize: 11, fontWeight: 500, width: 40, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: isMobile ? 13 : 11, fontWeight: 500, width: isMobile ? 44 : 40, textAlign: "right" as const, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, flexShrink: 0 }}>
                         {homeTeam?.code || homeTeam?.name?.slice(0, 3).toUpperCase()}
                       </span>
                       <input
@@ -476,9 +488,9 @@ export function GroupStandingsCard({
                         value={state.homeGoals}
                         onChange={(e) => updateMatchResult(match.id, "homeGoals", e.target.value)}
                         disabled={isSaving}
-                        style={{ width: 28, padding: "0.15rem", fontSize: 12, textAlign: "center", border: "1px solid #d1d5db", borderRadius: 3 }}
+                        style={{ width: isMobile ? 40 : 28, padding: isMobile ? "0.4rem" : "0.15rem", fontSize: isMobile ? 16 : 12, textAlign: "center" as const, border: "1px solid #d1d5db", borderRadius: 4, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
                       />
-                      <span style={{ fontSize: 10, color: "#9ca3af" }}>-</span>
+                      <span style={{ fontSize: isMobile ? 12 : 10, color: "#9ca3af" }}>-</span>
                       <input
                         type="number"
                         min="0"
@@ -486,9 +498,9 @@ export function GroupStandingsCard({
                         value={state.awayGoals}
                         onChange={(e) => updateMatchResult(match.id, "awayGoals", e.target.value)}
                         disabled={isSaving}
-                        style={{ width: 28, padding: "0.15rem", fontSize: 12, textAlign: "center", border: "1px solid #d1d5db", borderRadius: 3 }}
+                        style={{ width: isMobile ? 40 : 28, padding: isMobile ? "0.4rem" : "0.15rem", fontSize: isMobile ? 16 : 12, textAlign: "center" as const, border: "1px solid #d1d5db", borderRadius: 4, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
                       />
-                      <span style={{ fontSize: 11, fontWeight: 500, width: 40, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: isMobile ? 13 : 11, fontWeight: 500, width: isMobile ? 44 : 40, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, flexShrink: 0 }}>
                         {awayTeam?.code || awayTeam?.name?.slice(0, 3).toUpperCase()}
                       </span>
                       <button
@@ -496,16 +508,19 @@ export function GroupStandingsCard({
                         disabled={isSaving || !state.homeGoals || !state.awayGoals || (needsReason && !errataReason.trim())}
                         title={needsReason && !errataReason.trim() ? "Escribe una razón abajo" : undefined}
                         style={{
-                          padding: "0.15rem 0.3rem",
-                          fontSize: 10,
+                          padding: isMobile ? "0.4rem 0.6rem" : "0.15rem 0.3rem",
+                          fontSize: isMobile ? 13 : 10,
                           fontWeight: 600,
                           background: state.saved ? "#10b981" : isSaving ? "#d1d5db" : "#3b82f6",
                           color: "white",
                           border: "none",
-                          borderRadius: 3,
+                          borderRadius: 4,
                           cursor: isSaving || !state.homeGoals || !state.awayGoals || (needsReason && !errataReason.trim()) ? "not-allowed" : "pointer",
-                          minWidth: 32,
+                          minWidth: isMobile ? 40 : 32,
+                          minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
                           opacity: (needsReason && !errataReason.trim()) ? 0.5 : 1,
+                          flexShrink: 0,
+                          ...mobileInteractiveStyles.tapHighlight,
                         }}
                       >
                         {isSaving ? "..." : state.saved ? "✓" : "OK"}
@@ -518,7 +533,7 @@ export function GroupStandingsCard({
               {/* Campo de razon para errata (solo cuando hay partidos que ya existen en DB) */}
               {Array.from(matchResults.values()).some(s => s.existsInDb) && (
                 <div style={{ marginTop: "0.75rem" }}>
-                  <label style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: "0.25rem" }}>
+                  <label style={{ display: "block", fontSize: isMobile ? 13 : 11, color: "#6b7280", marginBottom: "0.25rem" }}>
                     Razón de corrección (requerido):
                   </label>
                   <input
@@ -528,11 +543,12 @@ export function GroupStandingsCard({
                     placeholder="Ej: Error de tipeo, resultado oficial corregido..."
                     style={{
                       width: "100%",
-                      padding: "0.4rem",
-                      fontSize: 12,
+                      padding: isMobile ? "0.6rem" : "0.4rem",
+                      fontSize: isMobile ? 14 : 12,
                       border: "1px solid #fcd34d",
-                      borderRadius: 4,
+                      borderRadius: 6,
                       background: "#fffbeb",
+                      minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
                 </div>
@@ -544,14 +560,16 @@ export function GroupStandingsCard({
                     onClick={handleCancelEdit}
                     style={{
                       flex: 1,
-                      padding: "0.6rem",
-                      fontSize: 13,
+                      padding: isMobile ? "12px 16px" : "0.6rem",
+                      fontSize: isMobile ? 15 : 13,
                       fontWeight: 600,
                       background: "#f3f4f6",
                       color: "#374151",
                       border: "1px solid #d1d5db",
-                      borderRadius: 6,
+                      borderRadius: 8,
                       cursor: "pointer",
+                      minHeight: TOUCH_TARGET.minimum,
+                      ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
                     Cancelar
@@ -563,14 +581,16 @@ export function GroupStandingsCard({
                     disabled={generatingStandings}
                     style={{
                       flex: 1,
-                      padding: "0.6rem",
-                      fontSize: 13,
+                      padding: isMobile ? "12px 16px" : "0.6rem",
+                      fontSize: isMobile ? 15 : 13,
                       fontWeight: 600,
                       background: generatingStandings ? "#d1d5db" : "#f59e0b",
                       color: "white",
                       border: "none",
-                      borderRadius: 6,
+                      borderRadius: 8,
                       cursor: generatingStandings ? "not-allowed" : "pointer",
+                      minHeight: TOUCH_TARGET.minimum,
+                      ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
                     {generatingStandings ? "Generando..." : officialResult ? "Regenerar posiciones" : "Generar posiciones"}
@@ -666,18 +686,20 @@ export function GroupStandingsCard({
             onClick={handleShowBreakdown}
             disabled={loadingBreakdown}
             style={{
-              padding: "0.5rem 1rem",
-              fontSize: 12,
+              padding: isMobile ? "12px 20px" : "0.5rem 1rem",
+              fontSize: isMobile ? 14 : 12,
               fontWeight: 600,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
               color: "white",
               border: "none",
-              borderRadius: 6,
+              borderRadius: 8,
               cursor: loadingBreakdown ? "not-allowed" : "pointer",
               opacity: loadingBreakdown ? 0.7 : 1,
+              minHeight: TOUCH_TARGET.minimum,
+              ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            {loadingBreakdown ? "Cargando..." : "📊 Ver desglose de puntos"}
+            {loadingBreakdown ? "Cargando..." : "Ver desglose de puntos"}
           </button>
         </div>
       )}
@@ -705,20 +727,20 @@ export function GroupStandingsCard({
             bottom: 0,
             backgroundColor: "rgba(0, 0, 0, 0.6)",
             display: "flex",
-            alignItems: "center",
+            alignItems: isMobile ? "flex-end" : "center",
             justifyContent: "center",
             zIndex: 1000,
-            padding: "1rem",
+            padding: isMobile ? 0 : "1rem",
           }}
           onClick={() => { setShowBreakdown(false); setBreakdownData(null); }}
         >
           <div
             style={{
               background: "white",
-              borderRadius: 16,
-              maxWidth: 450,
+              borderRadius: isMobile ? "16px 16px 0 0" : 16,
+              maxWidth: isMobile ? "100%" : 450,
               width: "100%",
-              maxHeight: "90vh",
+              maxHeight: isMobile ? "85vh" : "90vh",
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
@@ -744,14 +766,15 @@ export function GroupStandingsCard({
                   background: "rgba(255,255,255,0.2)",
                   border: "none",
                   color: "white",
-                  width: 32,
-                  height: 32,
+                  width: TOUCH_TARGET.minimum,
+                  height: TOUCH_TARGET.minimum,
                   borderRadius: "50%",
                   cursor: "pointer",
                   fontSize: 18,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
                 ✕
@@ -895,12 +918,12 @@ export function GroupStandingsCard({
 }
 
 // Static team list with medals
-function StaticTeamList({ teams, orderedTeamIds }: { teams: Team[]; orderedTeamIds: string[]; isOfficial?: boolean }) {
+function StaticTeamList({ teams, orderedTeamIds, isMobile }: { teams: Team[]; orderedTeamIds: string[]; isOfficial?: boolean; isMobile?: boolean }) {
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const orderedTeams = orderedTeamIds.map((id) => teamMap.get(id)!).filter(Boolean);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "0.5rem" : "0.35rem" }}>
       {orderedTeams.map((team, index) => (
         <div
           key={team.id}
@@ -908,15 +931,16 @@ function StaticTeamList({ teams, orderedTeamIds }: { teams: Team[]; orderedTeamI
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
-            padding: "0.5rem 0.75rem",
+            padding: isMobile ? "0.65rem 0.75rem" : "0.5rem 0.75rem",
             background: "#fff",
             border: "1px solid #e5e7eb",
             borderRadius: 6,
+            minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
           }}
         >
           <span style={{ fontSize: 16, width: 24 }}>{MEDALS[index]}</span>
-          <span style={{ fontSize: 12, color: "#6b7280", width: 20 }}>{index + 1}.</span>
-          <span style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>{team.name}</span>
+          <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: 20 }}>{index + 1}.</span>
+          <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: "#1f2937" }}>{team.name}</span>
         </div>
       ))}
     </div>
@@ -929,11 +953,13 @@ function DraggableTeamList({
   orderedTeamIds,
   onOrderChange,
   disabled,
+  isMobile,
 }: {
   teams: Team[];
   orderedTeamIds: string[];
   onOrderChange: (ids: string[]) => void;
   disabled: boolean;
+  isMobile?: boolean;
 }) {
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const orderedTeams = orderedTeamIds.map((id) => teamMap.get(id)!).filter(Boolean);
@@ -959,9 +985,9 @@ function DraggableTeamList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={orderedTeams.map((t) => t.id)} strategy={verticalListSortingStrategy} disabled={disabled}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "0.5rem" : "0.35rem" }}>
           {orderedTeams.map((team, index) => (
-            <SortableTeamItem key={team.id} team={team} position={index} disabled={disabled} />
+            <SortableTeamItem key={team.id} team={team} position={index} disabled={disabled} isMobile={isMobile} />
           ))}
         </div>
       </SortableContext>
@@ -970,7 +996,7 @@ function DraggableTeamList({
 }
 
 // Sortable team item
-function SortableTeamItem({ team, position, disabled }: { team: Team; position: number; disabled: boolean }) {
+function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; position: number; disabled: boolean; isMobile?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: team.id, disabled });
 
   const style = {
@@ -986,17 +1012,19 @@ function SortableTeamItem({ team, position, disabled }: { team: Team; position: 
           display: "flex",
           alignItems: "center",
           gap: "0.5rem",
-          padding: "0.5rem 0.75rem",
+          padding: isMobile ? "0.65rem 0.75rem" : "0.5rem 0.75rem",
           background: "#fff",
           border: "1px solid #d1d5db",
           borderRadius: 6,
           cursor: disabled ? "not-allowed" : "grab",
+          minHeight: isMobile ? TOUCH_TARGET.comfortable : undefined,
+          ...(isMobile ? mobileInteractiveStyles.tapHighlight : {}),
         }}
       >
         <span style={{ fontSize: 16, width: 24 }}>{MEDALS[position]}</span>
-        <span style={{ fontSize: 12, color: "#6b7280", width: 20 }}>{position + 1}.</span>
-        <span style={{ fontSize: 13, fontWeight: 500, color: "#1f2937", flex: 1 }}>{team.name}</span>
-        {!disabled && <span style={{ color: "#9ca3af", fontSize: 14 }}>⋮⋮</span>}
+        <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: 20 }}>{position + 1}.</span>
+        <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: "#1f2937", flex: 1 }}>{team.name}</span>
+        {!disabled && <span style={{ color: "#9ca3af", fontSize: isMobile ? 18 : 14 }}>⋮⋮</span>}
       </div>
     </div>
   );

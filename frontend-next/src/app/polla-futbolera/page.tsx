@@ -132,7 +132,7 @@ export default function PollaFutboleraPage() {
       <PublicPageWrapper>
         <div style={{ background: "var(--bg)" }}>
           {/* Hero Header */}
-          <section
+          <section className="seo-hero"
             style={{
               background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
               color: "white",
@@ -151,7 +151,7 @@ export default function PollaFutboleraPage() {
             >
               Predicciones Deportivas
             </p>
-            <h1
+            <h1 className="seo-h1"
               style={{
                 fontSize: "2.5rem",
                 fontWeight: 800,
@@ -188,7 +188,7 @@ export default function PollaFutboleraPage() {
             }}
           >
             {/* Section: What is a polla futbolera */}
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -244,7 +244,7 @@ export default function PollaFutboleraPage() {
             </p>
 
             {/* Section: How it works in Picks4All */}
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -331,7 +331,7 @@ export default function PollaFutboleraPage() {
             </p>
 
             {/* Section: Why Picks4All */}
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -403,7 +403,7 @@ export default function PollaFutboleraPage() {
             </div>
 
             {/* Internal links section */}
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -468,7 +468,7 @@ export default function PollaFutboleraPage() {
           </article>
 
           {/* CTA Section */}
-          <section
+          <section className="seo-cta"
             style={{
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
               color: "white",
@@ -476,7 +476,7 @@ export default function PollaFutboleraPage() {
               textAlign: "center",
             }}
           >
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "2rem",
                 fontWeight: 700,

@@ -131,7 +131,7 @@ export default function ProdeDeportivoPage() {
       <PublicPageWrapper>
         <div style={{ background: "var(--bg)" }}>
           {/* Hero Header */}
-          <section
+          <section className="seo-hero"
             style={{
               background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
               color: "white",
@@ -150,7 +150,7 @@ export default function ProdeDeportivoPage() {
             >
               Pronosticos Deportivos
             </p>
-            <h1
+            <h1 className="seo-h1"
               style={{
                 fontSize: "2.5rem",
                 fontWeight: 800,
@@ -187,7 +187,7 @@ export default function ProdeDeportivoPage() {
             }}
           >
             {/* Que es un prode */}
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -251,7 +251,7 @@ export default function ProdeDeportivoPage() {
             </p>
 
             {/* Como funciona en Picks4All */}
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -321,7 +321,7 @@ export default function ProdeDeportivoPage() {
             </p>
 
             {/* Por que es mejor que Excel */}
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -461,7 +461,7 @@ export default function ProdeDeportivoPage() {
           </article>
 
           {/* CTA */}
-          <section
+          <section className="seo-cta"
             style={{
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
               color: "white",
@@ -469,7 +469,7 @@ export default function ProdeDeportivoPage() {
               textAlign: "center",
             }}
           >
-            <h2
+            <h2 className="seo-h2"
               style={{
                 fontSize: "2rem",
                 fontWeight: 700,

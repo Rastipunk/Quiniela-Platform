@@ -10,6 +10,7 @@ import {
   upsertResult,
   upsertStructuralPick,
 } from "../lib/api";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 
 type Team = {
   id: string;
@@ -57,6 +58,8 @@ export function KnockoutMatchCard({
   onPickSaved,
 }: KnockoutMatchCardProps) {
   void _kickoffUtc; // Reserved for future deadline display
+  const isMobile = useIsMobile();
+
   // Player pick state
   const [selectedWinner, setSelectedWinner] = useState<string | null>(existingPick || null);
   const [pickSaved, setPickSaved] = useState(!!existingPick);
@@ -212,7 +215,7 @@ export function KnockoutMatchCard({
   const winnerTeam = winnerId === homeTeam.id ? homeTeam : winnerId === awayTeam.id ? awayTeam : null;
 
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: "1.25rem", background: "#fff" }}>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: "#fff" }}>
       {/* Header */}
       <div style={{
         display: "flex",
@@ -246,7 +249,7 @@ export function KnockoutMatchCard({
       </div>
 
       {/* Two column layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "1.5rem" }}>
         {/* LEFT: Player Pick */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
@@ -275,14 +278,16 @@ export function KnockoutMatchCard({
               style={{
                 width: "100%",
                 marginTop: "0.75rem",
-                padding: "0.6rem",
-                fontSize: 13,
+                padding: isMobile ? "12px 20px" : "0.6rem",
+                fontSize: isMobile ? 15 : 13,
                 fontWeight: 600,
                 background: "#10b981",
                 color: "white",
                 border: "none",
-                borderRadius: 6,
+                borderRadius: 8,
                 cursor: savingPick ? "not-allowed" : "pointer",
+                minHeight: TOUCH_TARGET.minimum,
+                ...mobileInteractiveStyles.tapHighlight,
               }}
             >
               {savingPick ? "Guardando..." : "Guardar"}
@@ -295,14 +300,16 @@ export function KnockoutMatchCard({
               style={{
                 width: "100%",
                 marginTop: "0.75rem",
-                padding: "0.6rem",
-                fontSize: 13,
+                padding: isMobile ? "12px 20px" : "0.6rem",
+                fontSize: isMobile ? 15 : 13,
                 fontWeight: 600,
                 background: "#f3f4f6",
                 color: "#374151",
                 border: "1px solid #d1d5db",
-                borderRadius: 6,
+                borderRadius: 8,
                 cursor: "pointer",
+                minHeight: TOUCH_TARGET.minimum,
+                ...mobileInteractiveStyles.tapHighlight,
               }}
             >
               Editar
@@ -353,10 +360,10 @@ export function KnockoutMatchCard({
               <div style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "0.5rem",
+                gap: isMobile ? "0.75rem" : "0.5rem",
                 marginBottom: "0.75rem"
               }}>
-                <span style={{ fontSize: 12, color: "#6b7280", width: 60 }}>90 min:</span>
+                <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: isMobile ? 50 : 60, flexShrink: 0 }}>90 min:</span>
                 <input
                   type="number"
                   min="0"
@@ -365,12 +372,13 @@ export function KnockoutMatchCard({
                   onChange={(e) => { setHomeGoals(e.target.value); setResultSaved(false); }}
                   placeholder={homeTeam.code || "L"}
                   style={{
-                    width: 50,
-                    padding: "0.4rem",
-                    fontSize: 14,
-                    textAlign: "center",
+                    width: isMobile ? 56 : 50,
+                    padding: isMobile ? "0.6rem" : "0.4rem",
+                    fontSize: isMobile ? 16 : 14,
+                    textAlign: "center" as const,
                     border: "1px solid #d1d5db",
-                    borderRadius: 4
+                    borderRadius: 6,
+                    minHeight: TOUCH_TARGET.minimum,
                   }}
                 />
                 <span style={{ color: "#9ca3af" }}>-</span>
@@ -382,12 +390,13 @@ export function KnockoutMatchCard({
                   onChange={(e) => { setAwayGoals(e.target.value); setResultSaved(false); }}
                   placeholder={awayTeam.code || "V"}
                   style={{
-                    width: 50,
-                    padding: "0.4rem",
-                    fontSize: 14,
-                    textAlign: "center",
+                    width: isMobile ? 56 : 50,
+                    padding: isMobile ? "0.6rem" : "0.4rem",
+                    fontSize: isMobile ? 16 : 14,
+                    textAlign: "center" as const,
                     border: "1px solid #d1d5db",
-                    borderRadius: 4
+                    borderRadius: 6,
+                    minHeight: TOUCH_TARGET.minimum,
                   }}
                 />
               </div>
@@ -397,13 +406,13 @@ export function KnockoutMatchCard({
                 <div style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.5rem",
+                  gap: isMobile ? "0.75rem" : "0.5rem",
                   marginBottom: "0.75rem",
-                  padding: "0.5rem",
+                  padding: isMobile ? "0.75rem" : "0.5rem",
                   background: "#fef3c7",
                   borderRadius: 6
                 }}>
-                  <span style={{ fontSize: 12, color: "#92400e", width: 60 }}>Penales:</span>
+                  <span style={{ fontSize: isMobile ? 13 : 12, color: "#92400e", width: isMobile ? 50 : 60, flexShrink: 0 }}>Penales:</span>
                   <input
                     type="number"
                     min="0"
@@ -411,13 +420,14 @@ export function KnockoutMatchCard({
                     value={homePenalties}
                     onChange={(e) => { setHomePenalties(e.target.value); setResultSaved(false); }}
                     style={{
-                      width: 50,
-                      padding: "0.4rem",
-                      fontSize: 14,
-                      textAlign: "center",
+                      width: isMobile ? 56 : 50,
+                      padding: isMobile ? "0.6rem" : "0.4rem",
+                      fontSize: isMobile ? 16 : 14,
+                      textAlign: "center" as const,
                       border: "1px solid #fcd34d",
-                      borderRadius: 4,
-                      background: "#fffbeb"
+                      borderRadius: 6,
+                      background: "#fffbeb",
+                      minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
                   <span style={{ color: "#92400e" }}>-</span>
@@ -428,13 +438,14 @@ export function KnockoutMatchCard({
                     value={awayPenalties}
                     onChange={(e) => { setAwayPenalties(e.target.value); setResultSaved(false); }}
                     style={{
-                      width: 50,
-                      padding: "0.4rem",
-                      fontSize: 14,
-                      textAlign: "center",
+                      width: isMobile ? 56 : 50,
+                      padding: isMobile ? "0.6rem" : "0.4rem",
+                      fontSize: isMobile ? 16 : 14,
+                      textAlign: "center" as const,
                       border: "1px solid #fcd34d",
-                      borderRadius: 4,
-                      background: "#fffbeb"
+                      borderRadius: 6,
+                      background: "#fffbeb",
+                      minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
                 </div>
@@ -466,11 +477,12 @@ export function KnockoutMatchCard({
                     placeholder="Razón de corrección..."
                     style={{
                       width: "100%",
-                      padding: "0.4rem",
-                      fontSize: 12,
+                      padding: isMobile ? "0.6rem" : "0.4rem",
+                      fontSize: isMobile ? 14 : 12,
                       border: "1px solid #fcd34d",
-                      borderRadius: 4,
+                      borderRadius: 6,
                       background: "#fffbeb",
+                      minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
                 </div>
@@ -482,14 +494,16 @@ export function KnockoutMatchCard({
                 disabled={savingResult || !homeGoals || !awayGoals || (needsPenalties() && (!homePenalties || !awayPenalties))}
                 style={{
                   width: "100%",
-                  padding: "0.6rem",
-                  fontSize: 13,
+                  padding: isMobile ? "12px 20px" : "0.6rem",
+                  fontSize: isMobile ? 15 : 13,
                   fontWeight: 600,
                   background: savingResult ? "#d1d5db" : resultSaved ? "#f59e0b" : "#3b82f6",
                   color: "white",
                   border: "none",
-                  borderRadius: 6,
+                  borderRadius: 8,
                   cursor: savingResult ? "not-allowed" : "pointer",
+                  minHeight: TOUCH_TARGET.minimum,
+                  ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
                 {savingResult ? "Guardando..." : resultSaved ? "Actualizar resultado" : "Publicar resultado"}
@@ -569,6 +583,8 @@ function TeamPickButton({
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled && !isSelected ? 0.5 : 1,
         transition: "all 0.2s",
+        minHeight: TOUCH_TARGET.minimum,
+        ...mobileInteractiveStyles.tapHighlight,
       }}
     >
       {isSelected && (

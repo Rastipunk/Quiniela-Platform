@@ -6,6 +6,7 @@ export function Footer() {
 
   return (
     <footer
+      className="footer-outer"
       style={{
         background: "var(--surface)",
         borderTop: "1px solid var(--border)",
@@ -14,6 +15,7 @@ export function Footer() {
       }}
     >
       <div
+        className="footer-inner"
         style={{
           maxWidth: 1200,
           margin: "0 auto",

@@ -132,6 +132,7 @@ export default function PencaFutbolPage() {
         <div style={{ background: "var(--bg)" }}>
           {/* Hero Header */}
           <section
+            className="seo-hero"
             style={{
               background:
                 "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
@@ -152,6 +153,7 @@ export default function PencaFutbolPage() {
               Predicciones Deportivas
             </p>
             <h1
+              className="seo-h1"
               style={{
                 fontSize: "2.5rem",
                 fontWeight: 800,
@@ -181,6 +183,7 @@ export default function PencaFutbolPage() {
 
           {/* Article Body */}
           <article
+            className="seo-article"
             style={{
               padding: "64px 40px",
               maxWidth: 780,
@@ -189,6 +192,7 @@ export default function PencaFutbolPage() {
           >
             {/* Section: Que es una penca */}
             <h2
+              className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -266,6 +270,7 @@ export default function PencaFutbolPage() {
 
             {/* Section: Como funciona en Picks4All */}
             <h2
+              className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -458,6 +463,7 @@ export default function PencaFutbolPage() {
 
             {/* Section: Por que Picks4All */}
             <h2
+              className="seo-h2"
               style={{
                 fontSize: "1.75rem",
                 fontWeight: 700,
@@ -613,6 +619,7 @@ export default function PencaFutbolPage() {
 
           {/* CTA */}
           <section
+            className="seo-cta"
             style={{
               background:
                 "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -622,6 +629,7 @@ export default function PencaFutbolPage() {
             }}
           >
             <h2
+              className="seo-h2"
               style={{
                 fontSize: "2rem",
                 fontWeight: 700,

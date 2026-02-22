@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useIsMobile } from "../hooks/useIsMobile";
+import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 import { FeedbackModal } from "./FeedbackModal";
 
 export function BetaFeedbackBar() {
@@ -39,11 +39,13 @@ export function BetaFeedbackBar() {
               color: "white",
               border: "none",
               borderRadius: 6,
-              padding: isMobile ? "4px 10px" : "5px 14px",
-              fontSize: isMobile ? "0.75rem" : "0.8rem",
+              padding: isMobile ? "8px 14px" : "5px 14px",
+              fontSize: isMobile ? "0.8rem" : "0.8rem",
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
+              minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+              ...mobileInteractiveStyles.tapHighlight,
             }}
           >
             Reportar Bug
@@ -55,14 +57,16 @@ export function BetaFeedbackBar() {
               color: "white",
               border: "none",
               borderRadius: 6,
-              padding: isMobile ? "4px 10px" : "5px 14px",
-              fontSize: isMobile ? "0.75rem" : "0.8rem",
+              padding: isMobile ? "8px 14px" : "5px 14px",
+              fontSize: isMobile ? "0.8rem" : "0.8rem",
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
+              minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+              ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            Enviar Sugerencia
+            Sugerencia
           </button>
         </div>
       </div>

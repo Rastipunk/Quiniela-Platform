@@ -334,6 +334,20 @@ button:disabled {
     border-radius: 16px 16px 0 0;
     animation: slideInUp 0.25s ease;
   }
+
+  /* SEO pages responsive */
+  .seo-hero { padding: 40px 20px !important; }
+  .seo-section { padding: 40px 20px !important; }
+  .seo-h1 { font-size: 1.75rem !important; }
+  .seo-h2 { font-size: 1.4rem !important; }
+  .seo-h3 { font-size: 1.15rem !important; }
+  .seo-article { padding: 20px 16px !important; }
+  .seo-cta { padding: 32px 20px !important; }
+  .seo-grid-2col { grid-template-columns: 1fr !important; }
+
+  /* Footer responsive */
+  .footer-outer { padding: 20px 16px !important; }
+  .footer-inner { gap: 24px !important; }
 }
 
 @supports (padding: max(0px)) {

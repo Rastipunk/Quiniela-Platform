@@ -139,6 +139,7 @@ export default function ComoFuncionaPage() {
       <div style={{ background: "var(--bg)" }}>
         {/* Header */}
         <section
+          className="seo-hero"
           style={{
             background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
             color: "white",
@@ -147,6 +148,7 @@ export default function ComoFuncionaPage() {
           }}
         >
           <h1
+            className="seo-h1"
             style={{
               fontSize: "2.5rem",
               fontWeight: 800,
@@ -171,6 +173,7 @@ export default function ComoFuncionaPage() {
 
         {/* For Hosts */}
         <section
+          className="seo-section"
           style={{
             padding: "80px 40px",
             maxWidth: 900,
@@ -178,6 +181,7 @@ export default function ComoFuncionaPage() {
           }}
         >
           <h2
+            className="seo-h2"
             style={{
               fontSize: "2rem",
               fontWeight: 700,
@@ -237,6 +241,7 @@ export default function ComoFuncionaPage() {
 
         {/* For Players */}
         <section
+          className="seo-section"
           style={{
             background: "var(--surface)",
             padding: "80px 40px",
@@ -244,6 +249,7 @@ export default function ComoFuncionaPage() {
         >
           <div style={{ maxWidth: 900, margin: "0 auto" }}>
             <h2
+              className="seo-h2"
               style={{
                 fontSize: "2rem",
                 fontWeight: 700,
@@ -304,6 +310,7 @@ export default function ComoFuncionaPage() {
 
         {/* Scoring System */}
         <section
+          className="seo-section"
           style={{
             padding: "80px 40px",
             maxWidth: 900,
@@ -311,6 +318,7 @@ export default function ComoFuncionaPage() {
           }}
         >
           <h2
+            className="seo-h2"
             style={{
               fontSize: "2rem",
               fontWeight: 700,
@@ -471,6 +479,7 @@ export default function ComoFuncionaPage() {
 
         {/* CTA */}
         <section
+          className="seo-cta"
           style={{
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             color: "white",
@@ -479,6 +488,7 @@ export default function ComoFuncionaPage() {
           }}
         >
           <h2
+            className="seo-h2"
             style={{
               fontSize: "2rem",
               fontWeight: 700,
