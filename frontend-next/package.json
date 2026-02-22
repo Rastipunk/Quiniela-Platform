@@ -17,12 +17,11 @@
     "react-dom": "19.2.3"
   },
   "browserslist": [
-    "chrome >= 87",
-    "firefox >= 78",
-    "safari >= 14",
-    "edge >= 88",
-    "not dead",
-    "not ie 11"
+    "chrome >= 93",
+    "firefox >= 92",
+    "safari >= 15.4",
+    "edge >= 93",
+    "not dead"
   ],
   "devDependencies": {
     "@types/node": "^20",

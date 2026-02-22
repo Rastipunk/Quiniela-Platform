@@ -73,6 +73,8 @@ export default function RootLayout({
   return (
     <html lang="es" style={{ colorScheme: "light only" } as React.CSSProperties}>
       <head>
+        <link rel="preconnect" href="https://accounts.google.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://media.api-sports.io" />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
       </head>
@@ -103,10 +105,10 @@ export default function RootLayout({
             gtag('config', 'G-8JG2YTDLPH');
           `}
         </Script>
-        {/* Google Identity Services (for Google login) — beforeInteractive for Safari ITP compatibility */}
+        {/* Google Identity Services (for Google login) */}
         <Script
           src="https://accounts.google.com/gsi/client"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
       </body>
     </html>
