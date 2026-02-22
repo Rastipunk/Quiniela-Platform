@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { RegisterButton } from "@/components/RegisterButton";
 
@@ -275,7 +275,8 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
               {relatedLinks.map((link) => (
                 <li key={link.key}>
                   <Link
-                    href={link.href}
+                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                    href={link.href as any}
                     style={{
                       color: "#667eea",
                       textDecoration: "none",

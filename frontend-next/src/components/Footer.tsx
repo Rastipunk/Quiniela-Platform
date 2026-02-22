@@ -100,7 +100,7 @@ export function Footer() {
           </Link>
         </div>
 
-        {/* Resources */}
+        {/* Explore (Resources + Regional merged) */}
         <div
           style={{
             display: "flex",
@@ -116,7 +116,7 @@ export function Footer() {
               marginBottom: 4,
             }}
           >
-            {t("resources")}
+            {t("explore")}
           </div>
           <Link
             href="/como-funciona"
@@ -148,26 +148,6 @@ export function Footer() {
           >
             {t("whatIsQuiniela")}
           </Link>
-        </div>
-
-        {/* Regional */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "var(--text)",
-              marginBottom: 4,
-            }}
-          >
-            {t("byCountry")}
-          </div>
           <Link
             href="/polla-futbolera"
             style={{
@@ -207,6 +187,16 @@ export function Footer() {
             }}
           >
             {t("porraDeportiva")}
+          </Link>
+          <Link
+            href="/football-pool"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            {t("footballPool")}
           </Link>
         </div>
 

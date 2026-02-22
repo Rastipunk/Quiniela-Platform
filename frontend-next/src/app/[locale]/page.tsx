@@ -35,7 +35,18 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const locale = await getLocale();
+  const t = await getTranslations("jsonLd");
+  const baseUrl = "https://picks4all.com";
+  const localePath = locale === "es" ? "" : `/${locale}`;
+  const url = `${baseUrl}${localePath}`;
+
+  const featureList: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    featureList.push(t(`featureList.${i}`));
+  }
+
   return (
     <>
       <JsonLd
@@ -43,13 +54,12 @@ export default function LandingPage() {
           "@context": "https://schema.org",
           "@type": "WebApplication",
           name: "Picks4All",
-          description:
-            "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de futbol",
-          url: "https://picks4all.com",
+          description: t("appDescription"),
+          url,
           applicationCategory: "SportsApplication",
           applicationSubCategory: "Game",
           operatingSystem: "Web",
-          inLanguage: "es",
+          inLanguage: locale,
           image: "https://picks4all.com/opengraph-image",
           offers: {
             "@type": "Offer",
@@ -61,18 +71,11 @@ export default function LandingPage() {
             name: "Picks4All",
             url: "https://picks4all.com",
           },
-          featureList: [
-            "Crear quinielas deportivas gratis",
-            "Invitar amigos con codigo de invitacion",
-            "Predicciones de partidos de futbol",
-            "Leaderboard automatico en tiempo real",
-            "Reglas de puntuacion personalizables",
-            "Compatible con Mundial 2026 y Champions League",
-          ],
+          featureList,
           potentialAction: {
             "@type": "ViewAction",
-            target: "https://picks4all.com",
-            name: "Crear Quiniela Gratis",
+            target: url,
+            name: t("ctaName"),
           },
         }}
       />
