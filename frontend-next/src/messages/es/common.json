@@ -98,11 +98,43 @@
     "seeMore": "Ver más detalles →",
     "tournaments": {
       "title": "Torneos disponibles",
-      "subtitle": "Crea quinielas para los torneos más emocionantes del mundo."
-    },
-    "wc2026": {
-      "name": "Copa del Mundo 2026",
-      "description": "48 equipos • 104 partidos • El torneo más grande de la historia"
+      "subtitle": "Crea quinielas para los torneos más emocionantes del mundo.",
+      "comingSoon": "Próximamente",
+      "createPool": "Crear pool",
+      "items": {
+        "wc2026": {
+          "name": "Copa del Mundo 2026",
+          "description": "48 equipos • 104 partidos • El torneo más grande de la historia"
+        },
+        "ucl2025": {
+          "name": "Champions League 2025-26",
+          "description": "36 equipos • Formato liga + eliminatorias"
+        },
+        "copaAmerica2028": {
+          "name": "Copa América 2028",
+          "description": "16 selecciones • El torneo más antiguo del mundo"
+        },
+        "euro2028": {
+          "name": "Eurocopa 2028",
+          "description": "24 selecciones • UK e Irlanda"
+        },
+        "nationsLeague": {
+          "name": "UEFA Nations League",
+          "description": "Selecciones europeas • Formato liga"
+        },
+        "libertadores": {
+          "name": "Copa Libertadores",
+          "description": "Los mejores clubes de Sudamérica"
+        },
+        "sudamericana": {
+          "name": "Copa Sudamericana",
+          "description": "La segunda competencia de clubes de Sudamérica"
+        },
+        "premierLeague": {
+          "name": "Premier League",
+          "description": "La liga más competitiva del mundo"
+        }
+      }
     },
     "final": {
       "title": "¿Listo para demostrar que sabes de fútbol?",

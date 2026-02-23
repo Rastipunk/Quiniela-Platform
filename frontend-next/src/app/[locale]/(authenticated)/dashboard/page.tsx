@@ -16,6 +16,7 @@ import { clearToken, getToken } from "@/lib/auth";
 import { PoolConfigWizard } from "@/components/PoolConfigWizard";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 
 function detectTz() {
   try {
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const isMobile = useIsMobile();
   const t = useTranslations("dashboard");
+  const tc = useTranslations("landing.tournaments");
 
   function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
     const labels: Record<string, { color: string; emoji: string }> = {
@@ -440,20 +442,88 @@ export default function DashboardPage() {
 
             {panel === "CREATE" && !showWizard && (
               <div style={{ display: "grid", gap: 14 }}>
-                <label style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.tournamentLabel")}</span>
-                  <select
-                    value={instanceId}
-                    onChange={(e) => setInstanceId(e.target.value)}
-                    style={inputStyle}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, 1fr)",
+                      gap: 8,
+                    }}
                   >
-                    {(instances ?? []).map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.name} ({i.status})
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    {TOURNAMENT_CATALOG.map((tournament) => {
+                      const matchingInstance = (instances ?? []).find(
+                        (inst) => inst.template?.key === tournament.templateKey
+                      );
+                      const isAvailable = tournament.active && !!matchingInstance;
+                      const isSelected = isAvailable && instanceId === matchingInstance?.id;
+
+                      return (
+                        <button
+                          key={tournament.key}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() => {
+                            if (matchingInstance) setInstanceId(matchingInstance.id);
+                          }}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "12px 8px",
+                            borderRadius: 10,
+                            border: isSelected
+                              ? "2px solid #667eea"
+                              : "1px solid #e5e7eb",
+                            background: isSelected
+                              ? "linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08))"
+                              : isAvailable
+                                ? "#fff"
+                                : "#f9fafb",
+                            cursor: isAvailable ? "pointer" : "default",
+                            opacity: isAvailable ? 1 : 0.45,
+                            filter: isAvailable ? "none" : "grayscale(100%)",
+                            transition: "border-color 0.15s, background 0.15s",
+                            position: "relative",
+                          }}
+                        >
+                          {!isAvailable && (
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: 4,
+                                right: 4,
+                                fontSize: "0.55rem",
+                                fontWeight: 600,
+                                color: "#fff",
+                                background: "#9ca3af",
+                                padding: "1px 4px",
+                                borderRadius: 3,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.3px",
+                              }}
+                            >
+                              {tc("comingSoon")}
+                            </span>
+                          )}
+                          <span style={{ fontSize: "1.5rem" }}>{tournament.emoji}</span>
+                          <span
+                            style={{
+                              fontSize: "0.72rem",
+                              fontWeight: 600,
+                              color: isAvailable ? "#111827" : "#9ca3af",
+                              textAlign: "center",
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {tc(`items.${tournament.i18nKey}.name`)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 <label style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.poolNameLabel")}</span>

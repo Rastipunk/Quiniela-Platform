@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
+import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 
 export function LandingContent() {
   const t = useTranslations("landing");
@@ -268,7 +269,7 @@ export function LandingContent() {
       <section
         style={{
           padding: isMobile ? "60px 20px" : "80px 40px",
-          maxWidth: 800,
+          maxWidth: 1100,
           margin: "0 auto",
           textAlign: "center",
         }}
@@ -286,8 +287,11 @@ export function LandingContent() {
         <p
           style={{
             color: "var(--muted)",
-            marginBottom: 32,
+            marginBottom: 40,
             fontSize: isMobile ? "1rem" : "1.1rem",
+            maxWidth: 600,
+            marginLeft: "auto",
+            marginRight: "auto",
           }}
         >
           {t("tournaments.subtitle")}
@@ -295,27 +299,24 @@ export function LandingContent() {
 
         <div
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 16,
-            padding: 32,
-            display: "inline-block",
+            display: "grid",
+            gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+            gap: isMobile ? 12 : 16,
           }}
         >
-          <div style={{ fontSize: "3rem", marginBottom: 12 }}>{"\uD83C\uDFC6"}</div>
-          <h3
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: 700,
-              marginBottom: 8,
-              color: "var(--text)",
-            }}
-          >
-            {t("wc2026.name")}
-          </h3>
-          <p style={{ color: "var(--muted)", marginBottom: 0 }}>
-            {t("wc2026.description")}
-          </p>
+          {TOURNAMENT_CATALOG.map((tournament) => (
+            <TournamentCard
+              key={tournament.key}
+              emoji={tournament.emoji}
+              name={t(`tournaments.items.${tournament.i18nKey}.name`)}
+              description={t(`tournaments.items.${tournament.i18nKey}.description`)}
+              active={tournament.active}
+              comingSoonLabel={t("tournaments.comingSoon")}
+              ctaLabel={t("tournaments.createPool")}
+              onCta={() => openAuthPanel("register")}
+              isMobile={isMobile}
+            />
+          ))}
         </div>
       </section>
 
@@ -454,6 +455,112 @@ function StepCard({
       <p style={{ color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>
         {description}
       </p>
+    </div>
+  );
+}
+
+function TournamentCard({
+  emoji,
+  name,
+  description,
+  active,
+  comingSoonLabel,
+  ctaLabel,
+  onCta,
+  isMobile,
+}: {
+  emoji: string;
+  name: string;
+  description: string;
+  active: boolean;
+  comingSoonLabel: string;
+  ctaLabel: string;
+  onCta: () => void;
+  isMobile: boolean;
+}) {
+  return (
+    <div
+      style={{
+        background: active ? "var(--surface)" : "var(--surface)",
+        border: active ? "2px solid var(--border)" : "1px solid var(--border)",
+        borderRadius: 14,
+        padding: isMobile ? 16 : 20,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 8,
+        position: "relative",
+        opacity: active ? 1 : 0.5,
+        filter: active ? "none" : "grayscale(100%)",
+        transition: "transform 0.15s, box-shadow 0.15s",
+        ...(active
+          ? {
+              cursor: "default",
+            }
+          : {}),
+      }}
+    >
+      {!active && (
+        <div
+          style={{
+            position: "absolute",
+            top: isMobile ? 6 : 8,
+            right: isMobile ? 6 : 8,
+            background: "#6b7280",
+            color: "white",
+            fontSize: isMobile ? "0.6rem" : "0.65rem",
+            fontWeight: 600,
+            padding: "2px 6px",
+            borderRadius: 4,
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          {comingSoonLabel}
+        </div>
+      )}
+      <div style={{ fontSize: isMobile ? "2rem" : "2.5rem" }}>{emoji}</div>
+      <h3
+        style={{
+          fontSize: isMobile ? "0.85rem" : "0.95rem",
+          fontWeight: 700,
+          color: "var(--text)",
+          margin: 0,
+          lineHeight: 1.3,
+        }}
+      >
+        {name}
+      </h3>
+      <p
+        style={{
+          fontSize: isMobile ? "0.7rem" : "0.75rem",
+          color: "var(--muted)",
+          margin: 0,
+          lineHeight: 1.4,
+          flex: 1,
+        }}
+      >
+        {description}
+      </p>
+      {active && (
+        <button
+          onClick={onCta}
+          style={{
+            marginTop: 4,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            border: "none",
+            borderRadius: 6,
+            padding: isMobile ? "6px 12px" : "7px 16px",
+            fontSize: isMobile ? "0.7rem" : "0.75rem",
+            fontWeight: 600,
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          {ctaLabel}
+        </button>
+      )}
     </div>
   );
 }

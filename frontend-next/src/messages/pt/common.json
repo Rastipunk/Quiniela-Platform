@@ -98,11 +98,43 @@
     "seeMore": "Ver mais detalhes →",
     "tournaments": {
       "title": "Torneios disponíveis",
-      "subtitle": "Crie pencas para os torneios mais emocionantes do mundo."
-    },
-    "wc2026": {
-      "name": "Copa do Mundo 2026",
-      "description": "48 seleções • 104 jogos • O maior torneio da história"
+      "subtitle": "Crie pencas para os torneios mais emocionantes do mundo.",
+      "comingSoon": "Em breve",
+      "createPool": "Criar penca",
+      "items": {
+        "wc2026": {
+          "name": "Copa do Mundo 2026",
+          "description": "48 seleções • 104 jogos • O maior torneio da história"
+        },
+        "ucl2025": {
+          "name": "Champions League 2025-26",
+          "description": "36 equipes • Formato liga + eliminatórias"
+        },
+        "copaAmerica2028": {
+          "name": "Copa América 2028",
+          "description": "16 seleções • O torneio mais antigo do mundo"
+        },
+        "euro2028": {
+          "name": "Eurocopa 2028",
+          "description": "24 seleções • Reino Unido e Irlanda"
+        },
+        "nationsLeague": {
+          "name": "UEFA Nations League",
+          "description": "Seleções europeias • Formato liga"
+        },
+        "libertadores": {
+          "name": "Copa Libertadores",
+          "description": "Os melhores clubes da América do Sul"
+        },
+        "sudamericana": {
+          "name": "Copa Sul-Americana",
+          "description": "A segunda competição de clubes da América do Sul"
+        },
+        "premierLeague": {
+          "name": "Premier League",
+          "description": "A liga mais competitiva do mundo"
+        }
+      }
     },
     "final": {
       "title": "Pronto para provar que entende de futebol?",

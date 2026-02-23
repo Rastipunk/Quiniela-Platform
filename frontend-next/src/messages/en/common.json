@@ -98,11 +98,43 @@
     "seeMore": "See more details →",
     "tournaments": {
       "title": "Available tournaments",
-      "subtitle": "Create pools for the most exciting tournaments in the world."
-    },
-    "wc2026": {
-      "name": "World Cup 2026",
-      "description": "48 teams • 104 matches • The biggest tournament in history"
+      "subtitle": "Create pools for the most exciting tournaments in the world.",
+      "comingSoon": "Coming soon",
+      "createPool": "Create pool",
+      "items": {
+        "wc2026": {
+          "name": "World Cup 2026",
+          "description": "48 teams • 104 matches • The biggest tournament in history"
+        },
+        "ucl2025": {
+          "name": "Champions League 2025-26",
+          "description": "36 teams • League + knockout format"
+        },
+        "copaAmerica2028": {
+          "name": "Copa América 2028",
+          "description": "16 teams • The oldest tournament in the world"
+        },
+        "euro2028": {
+          "name": "Euro 2028",
+          "description": "24 teams • UK & Ireland"
+        },
+        "nationsLeague": {
+          "name": "UEFA Nations League",
+          "description": "European national teams • League format"
+        },
+        "libertadores": {
+          "name": "Copa Libertadores",
+          "description": "The best clubs in South America"
+        },
+        "sudamericana": {
+          "name": "Copa Sudamericana",
+          "description": "South America's second club competition"
+        },
+        "premierLeague": {
+          "name": "Premier League",
+          "description": "The most competitive league in the world"
+        }
+      }
     },
     "final": {
       "title": "Ready to prove you know football?",
