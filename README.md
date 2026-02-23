@@ -11,8 +11,9 @@ Create free football prediction pools and compete with friends, family, or cowor
 
 Known as **quiniela** in Mexico, **polla futbolera** in Colombia, **prode** in Argentina, **penca** in Uruguay, and **porra** in Spain.
 
-<!-- SCREENSHOTS -->
-<!-- ![Picks4All Screenshot](docs/images/screenshot.png) -->
+![Landing Page](docs/images/landing.png)
+
+![Pool Page — Matches & Predictions](docs/images/pool.png)
 
 ## Features
 
