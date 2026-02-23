@@ -24,7 +24,7 @@ export const TOURNAMENT_CATALOG: TournamentEntry[] = [
     i18nKey: "wc2026",
     emoji: "🏆",
     active: true,
-    templateKey: "wc2026",
+    templateKey: "wc_2026_sandbox",
   },
   {
     key: "ucl2025",

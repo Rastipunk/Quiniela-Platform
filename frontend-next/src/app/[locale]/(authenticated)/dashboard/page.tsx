@@ -432,11 +432,13 @@ export default function DashboardPage() {
                   border: "none",
                   borderRadius: 10,
                   fontSize: 18,
+                  color: "#666",
                   cursor: "pointer",
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
+                aria-label="Close"
               >
-                {"\u2715"}
+                &#10005;
               </button>
             </div>
 

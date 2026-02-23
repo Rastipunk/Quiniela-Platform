@@ -1598,8 +1598,8 @@ export default function PoolPage() {
             </div>
           )}
 
-          {/* Tab Content: Partidos - Group Tabs */}
-          {activeTab === "partidos" && !requiresStructuralPicks && (
+          {/* Tab Content: Partidos - Group Tabs (hide when only SIN_GRUPO) */}
+          {activeTab === "partidos" && !requiresStructuralPicks && !(groupOrder.length === 1 && groupOrder[0] === "SIN_GRUPO") && (
             <div style={{
               marginTop: 14,
               display: "flex",
@@ -1657,17 +1657,10 @@ export default function PoolPage() {
           {/* Tab Content: Partidos - Matches by group */}
           {activeTab === "partidos" && !requiresStructuralPicks && (
             <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-              {groupOrder.filter(g => !selectedGroup || g === selectedGroup).map((g) => (
-                <details
-                  key={g}
-                  open={g === nextOpenGroup}
-                  style={{ border: "1px solid #ddd", borderRadius: 14, background: "#fff", padding: 12 }}
-                >
-                  <summary style={{ cursor: "pointer", fontWeight: 900 }}>
-                    {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })} ({matchesByGroup[g]?.length ?? 0})
-                  </summary>
-
-                  <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+              {groupOrder.filter(g => !selectedGroup || g === selectedGroup).map((g) => {
+                const noGroups = groupOrder.length === 1 && groupOrder[0] === "SIN_GRUPO";
+                const matchList = (
+                  <div key={g} style={noGroups ? { display: "grid", gap: 12 } : { marginTop: 12, display: "grid", gap: 12 }}>
                     {matchesByGroup[g].map((m: any) => {
                       const busyPick = busyKey === `pick:${m.id}`;
                       const busyRes = busyKey === `res:${m.id}`;
@@ -1899,8 +1892,21 @@ export default function PoolPage() {
                       );
                     })}
                   </div>
-                </details>
-              ))}
+                );
+                if (noGroups) return matchList;
+                return (
+                  <details
+                    key={g}
+                    open={g === nextOpenGroup}
+                    style={{ border: "1px solid #ddd", borderRadius: 14, background: "#fff", padding: 12 }}
+                  >
+                    <summary style={{ cursor: "pointer", fontWeight: 900 }}>
+                      {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })} ({matchesByGroup[g]?.length ?? 0})
+                    </summary>
+                    {matchList}
+                  </details>
+                );
+              })}
             </div>
           )}
 
