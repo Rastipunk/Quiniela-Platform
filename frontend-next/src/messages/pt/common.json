@@ -153,6 +153,15 @@
     ],
     "ctaName": "Criar Penca Grátis"
   },
+  "whatsNew": {
+    "title": "Novidades",
+    "subtitle": "Veja o que há de novo no Picks4All",
+    "item1Title": "Agora em 3 idiomas",
+    "item1Desc": "A plataforma já está disponível em Español, English e Português. Mude o idioma no menu.",
+    "item2Title": "Melhor experiência mobile",
+    "item2Desc": "Navegação, partidas e placar otimizados para seu celular.",
+    "dismiss": "Entendi"
+  },
   "notFound": {
     "message": "A página que você procura não existe ou foi movida.",
     "subMessage": "Mas sua penca está esperando por você.",

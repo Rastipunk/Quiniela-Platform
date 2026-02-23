@@ -3,6 +3,7 @@
 import { AuthGuard } from "@/components/AuthGuard";
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
+import { WhatsNewModal } from "@/components/WhatsNewModal";
 
 export default function AuthenticatedLayout({
   children,
@@ -13,6 +14,7 @@ export default function AuthenticatedLayout({
     <AuthGuard>
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <NavBar />
+        <WhatsNewModal />
         <main style={{ flex: 1 }}>{children}</main>
         <Footer />
       </div>

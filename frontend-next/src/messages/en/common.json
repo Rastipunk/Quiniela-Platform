@@ -153,6 +153,15 @@
     ],
     "ctaName": "Create Free Pool"
   },
+  "whatsNew": {
+    "title": "What's New",
+    "subtitle": "See what's new in Picks4All",
+    "item1Title": "Now in 3 languages",
+    "item1Desc": "The platform is now available in Español, English, and Português. Switch languages from the menu.",
+    "item2Title": "Improved mobile experience",
+    "item2Desc": "Navigation, matches, and leaderboard optimized for your phone.",
+    "dismiss": "Got it"
+  },
   "notFound": {
     "message": "The page you're looking for doesn't exist or was moved.",
     "subMessage": "But your pool is waiting for you.",

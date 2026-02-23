@@ -153,6 +153,15 @@
     ],
     "ctaName": "Crear Quiniela Gratis"
   },
+  "whatsNew": {
+    "title": "Novedades",
+    "subtitle": "Mira lo nuevo en Picks4All",
+    "item1Title": "Ahora en 3 idiomas",
+    "item1Desc": "La plataforma ya está disponible en Español, English y Português. Cambia el idioma desde el menú.",
+    "item2Title": "Mejor experiencia móvil",
+    "item2Desc": "Navegación, partidos y leaderboard optimizados para tu celular.",
+    "dismiss": "Entendido"
+  },
   "notFound": {
     "message": "La página que buscas no existe o fue movida.",
     "subMessage": "Pero tu quiniela te está esperando.",
