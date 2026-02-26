@@ -23,6 +23,7 @@ import adminSettingsRouter from "./routes/adminSettings";
 import { feedbackRouter } from "./routes/feedback";
 import { apiLimiter, authLimiter, passwordResetLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob } from "./jobs/smartSyncJob";
+import { startDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 
 
 
@@ -102,4 +103,7 @@ app.listen(PORT, () => {
 
   // Iniciar Smart Sync (sincronización optimizada por partido)
   startSmartSyncJob();
+
+  // Iniciar recordatorios de deadline (diario 7:00 AM Colombia)
+  startDeadlineReminderJob();
 });
