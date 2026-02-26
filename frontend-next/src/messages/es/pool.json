@@ -201,6 +201,8 @@
     "locked": "LOCKED",
     "open": "OPEN",
     "matchLabel": "Partido {id}",
+    "kickoff": "Inicio",
+    "deadline": "Cierre de picks",
     "pendingTitle": "Partido Pendiente",
     "pendingDesc": "Este partido se habilitará cuando se definan los equipos participantes.",
     "viewBreakdown": "Ver desglose",

@@ -201,6 +201,8 @@
     "locked": "LOCKED",
     "open": "OPEN",
     "matchLabel": "Match {id}",
+    "kickoff": "Kickoff",
+    "deadline": "Picks close",
     "pendingTitle": "Pending Match",
     "pendingDesc": "This match will be enabled when the participating teams are determined.",
     "viewBreakdown": "View breakdown",

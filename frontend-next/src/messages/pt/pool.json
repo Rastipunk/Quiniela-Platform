@@ -201,6 +201,8 @@
     "locked": "BLOQUEADO",
     "open": "ABERTO",
     "matchLabel": "Jogo {id}",
+    "kickoff": "Início",
+    "deadline": "Encerramento dos palpites",
     "pendingTitle": "Jogo Pendente",
     "pendingDesc": "Este jogo será habilitado quando os times participantes forem definidos.",
     "viewBreakdown": "Ver detalhamento",

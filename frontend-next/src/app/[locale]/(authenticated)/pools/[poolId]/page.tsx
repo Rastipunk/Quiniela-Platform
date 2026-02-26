@@ -1899,9 +1899,14 @@ export default function PoolPage() {
                             </div>
                           </div>
 
-                          {/* Match Info */}
-                          <div style={{ color: "#666", fontSize: 12, marginBottom: 12, paddingLeft: 4 }}>
-                            {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {fmtUtc(m.kickoffUtc, userTimezone)}
+                          {/* Match Info: kickoff + deadline */}
+                          <div style={{ color: "#666", fontSize: 12, marginBottom: 12, paddingLeft: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+                            <div>
+                              {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone)}
+                            </div>
+                            <div style={{ color: m.isLocked ? "#999" : "#c0392b" }}>
+                              {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone)}
+                            </div>
                           </div>
 
                           {/* Content: Picks and Results OR Placeholder Message */}
