@@ -715,6 +715,137 @@ export default function PoolPage() {
                 </label>
               </div>
 
+              {/* Extra Time Configuration */}
+              {overview.pool.pickTypesConfig && (() => {
+                const ptc = overview.pool.pickTypesConfig as any[];
+                const scoringPhases = ptc.filter((pc: any) => pc.requiresScore);
+                if (scoringPhases.length === 0) return null;
+
+                const now = Date.now();
+                const deadlineMinutes = overview.pool.deadlineMinutesBeforeKickoff ?? 10;
+
+                return (
+                  <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
+                    <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#007bff" }}>
+                      {"⏱️"} {t("admin.extraTime.title")}
+                    </h4>
+                    <div style={{ fontSize: 13, lineHeight: 1.6, color: "#666", marginBottom: 14 }}>
+                      {t("admin.extraTime.description")}
+                    </div>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {scoringPhases.map((pc: any) => {
+                        const phase = phases.find((p: any) => p.id === pc.phaseId);
+                        const phaseName = phase ? formatPhaseFullName(pc.phaseId, t) : pc.phaseName;
+                        const phaseMatches = overview.matches.filter((m: any) => m.phaseId === pc.phaseId);
+                        const matchesWithResult = phaseMatches.filter((m: any) => m.result);
+                        const includeET = pc.includeExtraTime ?? false;
+
+                        // Lock logic
+                        let locked = false;
+                        let lockReason = "";
+
+                        // 1. Old results without homeGoals90 data → locked
+                        if (matchesWithResult.length > 0) {
+                          locked = true;
+                          lockReason = matchesWithResult.length === phaseMatches.length
+                            ? t("admin.extraTime.lockedCompleted")
+                            : t("admin.extraTime.lockedOldResults");
+                        }
+
+                        // 2. First deadline < 48h
+                        if (!locked && phaseMatches.length > 0) {
+                          const kickoffs = phaseMatches
+                            .filter((m: any) => m.kickoffUtc)
+                            .map((m: any) => new Date(m.kickoffUtc).getTime() - deadlineMinutes * 60_000);
+                          if (kickoffs.length > 0) {
+                            const firstDeadline = Math.min(...kickoffs);
+                            const hoursUntil = (firstDeadline - now) / (1000 * 60 * 60);
+                            if (hoursUntil < 48) {
+                              locked = true;
+                              lockReason = t("admin.extraTime.lockedDeadline");
+                            }
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={pc.phaseId}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              padding: "10px 12px",
+                              background: "#fff",
+                              borderRadius: 8,
+                              border: "1px solid #dee2e6",
+                              opacity: locked ? 0.7 : 1,
+                            }}
+                          >
+                            <div
+                              onClick={async () => {
+                                if (locked || busyKey === `et-${pc.phaseId}` || !token || !poolId) return;
+                                setBusyKey(`et-${pc.phaseId}`);
+                                setError(null);
+                                try {
+                                  const currentEtPhases = (overview.pool.pickTypesConfig as any[])
+                                    .filter((p: any) => p.includeExtraTime)
+                                    .map((p: any) => p.phaseId);
+                                  const newEtPhases = includeET
+                                    ? currentEtPhases.filter((id: string) => id !== pc.phaseId)
+                                    : [...currentEtPhases, pc.phaseId];
+                                  await updatePoolSettings(token, poolId, { extraTimePhases: newEtPhases });
+                                  await load(verbose);
+                                } catch (err: any) {
+                                  setError(err?.message ?? t("admin.extraTime.updateError"));
+                                } finally {
+                                  setBusyKey(null);
+                                }
+                              }}
+                              style={{
+                                position: "relative",
+                                width: 40,
+                                height: 20,
+                                borderRadius: 10,
+                                background: locked ? "#aaa" : includeET ? "#007bff" : "#ccc",
+                                cursor: locked ? "not-allowed" : busyKey === `et-${pc.phaseId}` ? "wait" : "pointer",
+                                transition: "background 0.3s ease",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 2,
+                                  left: includeET ? 22 : 2,
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: "50%",
+                                  background: "#fff",
+                                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                                  transition: "left 0.3s ease",
+                                }}
+                              />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: "#333" }}>
+                                {phaseName}
+                              </div>
+                              <div style={{ fontSize: 11, color: locked ? "#999" : "#666", marginTop: 1 }}>
+                                {locked
+                                  ? lockReason
+                                  : includeET
+                                    ? t("admin.extraTime.labelET")
+                                    : t("admin.extraTime.label90")}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Phase Status Panel */}
               <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
                 <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>

@@ -81,6 +81,7 @@ export type PhasePickConfig = {
   phaseId: string;
   phaseName: string;
   requiresScore: boolean;
+  includeExtraTime?: boolean;
   structuralPicks?: StructuralPicksConfig;
   matchPicks?: MatchPicksConfig;
 };

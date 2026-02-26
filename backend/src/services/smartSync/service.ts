@@ -442,6 +442,12 @@ export class SmartSyncService {
         });
         const nextVersion = (lastVersion?.versionNumber ?? 0) + 1;
 
+        // For AET/PEN matches, store the 90-minute score separately
+        const wentToExtraTime =
+          parsedResult.status === "AET" || parsedResult.status === "PEN";
+        const homeGoals90 = wentToExtraTime ? parsedResult.fulltimeHome : null;
+        const awayGoals90 = wentToExtraTime ? parsedResult.fulltimeAway : null;
+
         const version = await tx.poolMatchResultVersion.create({
           data: {
             resultId: header.id,
@@ -449,6 +455,8 @@ export class SmartSyncService {
             status: "PUBLISHED",
             homeGoals: parsedResult.homeGoals,
             awayGoals: parsedResult.awayGoals,
+            homeGoals90,
+            awayGoals90,
             homePenalties: parsedResult.penaltyHome,
             awayPenalties: parsedResult.penaltyAway,
             source: "API_CONFIRMED",

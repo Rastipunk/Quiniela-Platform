@@ -96,6 +96,16 @@
       "requiredDesc": "Os jogadores precisarão da sua aprovação para entrar",
       "directDesc": "Os jogadores podem entrar diretamente com o código de convite"
     },
+    "extraTime": {
+      "title": "Medição do Resultado",
+      "description": "Escolha se os palpites são avaliados pelo placar aos 90 minutos ou incluindo a prorrogação. Os pênaltis nunca são contados.",
+      "label90": "Apenas 90 minutos",
+      "labelET": "Incluir prorrogação",
+      "lockedOldResults": "Fixo — fase com resultados anteriores",
+      "lockedCompleted": "Fixo — fase concluída",
+      "lockedDeadline": "Bloqueado — menos de 48h para o primeiro jogo",
+      "updateError": "Erro ao atualizar configuração de prorrogação"
+    },
     "phasePanel": {
       "title": "Status das Fases do Torneio",
       "matchesProgress": "{completed} de {total} jogos com resultado ({percent}%)",

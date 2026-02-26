@@ -487,6 +487,10 @@ model PoolMatchResultVersion {
   homeGoals Int
   awayGoals Int
 
+  // Score al minuto 90 (null = no hubo ET o dato anterior, usar homeGoals/awayGoals)
+  homeGoals90 Int?
+  awayGoals90 Int?
+
   // Comentario en español: goles de penalties (solo para fases eliminatorias)
   homePenalties Int?
   awayPenalties Int?

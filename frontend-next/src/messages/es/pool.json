@@ -96,6 +96,16 @@
       "requiredDesc": "Los jugadores deberán esperar tu aprobación para unirse",
       "directDesc": "Los jugadores pueden unirse directamente con el código de invitación"
     },
+    "extraTime": {
+      "title": "Medición del Resultado",
+      "description": "Elige si los pronósticos se evalúan con el marcador al minuto 90 o incluyendo el tiempo extra. Los penales nunca se cuentan.",
+      "label90": "Solo 90 minutos",
+      "labelET": "Incluir tiempo extra",
+      "lockedOldResults": "Fijo — fase con resultados previos",
+      "lockedCompleted": "Fijo — fase completada",
+      "lockedDeadline": "Bloqueado — menos de 48h para el primer partido",
+      "updateError": "Error al actualizar configuración de tiempo extra"
+    },
     "phasePanel": {
       "title": "Estado de las Fases del Torneo",
       "matchesProgress": "{completed} de {total} partidos con resultado ({percent}%)",

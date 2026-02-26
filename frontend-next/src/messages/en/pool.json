@@ -96,6 +96,16 @@
       "requiredDesc": "Players will need your approval to join",
       "directDesc": "Players can join directly with the invite code"
     },
+    "extraTime": {
+      "title": "Result Measurement",
+      "description": "Choose whether picks are scored against the 90-minute result or including extra time. Penalties are never counted.",
+      "label90": "90 minutes only",
+      "labelET": "Include extra time",
+      "lockedOldResults": "Fixed — phase with prior results",
+      "lockedCompleted": "Fixed — phase completed",
+      "lockedDeadline": "Locked — less than 48h until first match",
+      "updateError": "Error updating extra time settings"
+    },
     "phasePanel": {
       "title": "Tournament Phase Status",
       "matchesProgress": "{completed} of {total} matches with results ({percent}%)",

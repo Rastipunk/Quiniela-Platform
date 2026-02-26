@@ -390,7 +390,7 @@ export async function submitFeedback(
    ADMIN / HOST ACTIONS
    ========================= */
 
-export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean; requireApproval?: boolean }): Promise<any> {
+export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean; requireApproval?: boolean; extraTimePhases?: string[] }): Promise<any> {
   return requestJson<any>(
     `/pools/${poolId}/settings`,
     {

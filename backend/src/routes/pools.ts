@@ -283,6 +283,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
   const resultByMatchId = new Map<string, {
     homeGoals: number;
     awayGoals: number;
+    homeGoals90?: number | null;
+    awayGoals90?: number | null;
     homePenalties?: number | null;
     awayPenalties?: number | null;
     version: number;
@@ -293,6 +295,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       resultByMatchId.set(r.matchId, {
         homeGoals: r.currentVersion.homeGoals,
         awayGoals: r.currentVersion.awayGoals,
+        homeGoals90: r.currentVersion.homeGoals90,
+        awayGoals90: r.currentVersion.awayGoals90,
         homePenalties: r.currentVersion.homePenalties,
         awayPenalties: r.currentVersion.awayPenalties,
         version: r.currentVersion.versionNumber,
@@ -593,9 +597,18 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
           // Validar que el pick tiene la estructura correcta para scoring avanzado
           if (pick.type === "SCORE" && typeof pick.homeGoals === "number" && typeof pick.awayGoals === "number") {
             try {
+              // Choose score based on includeExtraTime config
+              const resultForScoring = {
+                homeGoals: phaseConfig.includeExtraTime
+                  ? r.homeGoals
+                  : (r.homeGoals90 ?? r.homeGoals),
+                awayGoals: phaseConfig.includeExtraTime
+                  ? r.awayGoals
+                  : (r.awayGoals90 ?? r.awayGoals),
+              };
               const advancedResult = scoreMatchPick(
                 { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
-                { homeGoals: r.homeGoals, awayGoals: r.awayGoals },
+                resultForScoring,
                 phaseConfig
               );
 
@@ -623,7 +636,12 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       }
 
       // ✅ SCORING LEGACY: Si no hay pickTypesConfig o falló el avanzado
-      const scored = scorePick(pick, r.homeGoals, r.awayGoals);
+      // Apply includeExtraTime logic even for legacy scoring
+      const phaseConfigs2 = pool.pickTypesConfig as PhasePickConfig[] | null;
+      const phaseConfig2 = phaseConfigs2?.find((p) => p.phaseId === match.phaseId);
+      const legacyHome = phaseConfig2?.includeExtraTime ? r.homeGoals : (r.homeGoals90 ?? r.homeGoals);
+      const legacyAway = phaseConfig2?.includeExtraTime ? r.awayGoals : (r.awayGoals90 ?? r.awayGoals);
+      const scored = scorePick(pick, legacyHome, legacyAway);
       points += scored.totalPoints;
       pointsByPhase[match.phaseId] = (pointsByPhase[match.phaseId] ?? 0) + scored.totalPoints;
       scoredMatches += 1;
@@ -1678,6 +1696,7 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
 const updatePoolSettingsSchema = z.object({
   autoAdvanceEnabled: z.boolean().optional(),
   requireApproval: z.boolean().optional(),
+  extraTimePhases: z.array(z.string()).optional(), // Phase IDs where includeExtraTime = true
 });
 
 poolsRouter.patch("/:poolId/settings", async (req, res) => {
@@ -1695,7 +1714,103 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
     return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede modificar configuraciones de la pool" });
   }
 
-  const { autoAdvanceEnabled, requireApproval } = parsed.data;
+  const { autoAdvanceEnabled, requireApproval, extraTimePhases } = parsed.data;
+
+  // Handle extraTimePhases: update pickTypesConfig JSON
+  let pickTypesConfigUpdate: PhasePickConfig[] | undefined;
+  if (extraTimePhases !== undefined) {
+    const pool = await prisma.pool.findUnique({
+      where: { id: poolId },
+      select: {
+        pickTypesConfig: true,
+        deadlineMinutesBeforeKickoff: true,
+        tournamentInstance: { select: { dataJson: true } },
+      },
+    });
+    if (!pool) {
+      return res.status(404).json({ error: "NOT_FOUND" });
+    }
+
+    const phaseConfigs = pool.pickTypesConfig as PhasePickConfig[] | null;
+    if (!phaseConfigs) {
+      return res.status(400).json({ error: "NO_CONFIG", message: "Pool has no pick types config" });
+    }
+
+    // Get matches from tournament data for deadline validation
+    const dataJson = pool.tournamentInstance?.dataJson as any;
+    const allMatches: any[] = dataJson?.phases?.flatMap((p: any) =>
+      (p.groups ?? []).flatMap((g: any) => g.matches ?? [])
+    ) ?? [];
+
+    // Get existing results to check for lock conditions
+    const resultsRaw = await prisma.poolMatchResult.findMany({
+      where: { poolId },
+      include: { currentVersion: true },
+    });
+    const resultsByPhase = new Map<string, any[]>();
+    for (const r of resultsRaw) {
+      if (r.currentVersion) {
+        // Find which phase this match belongs to
+        const match = allMatches.find((m: any) => m.id === r.matchId);
+        if (match) {
+          const phaseId = match.phaseId ?? (dataJson?.phases?.find((p: any) =>
+            (p.groups ?? []).some((g: any) => (g.matches ?? []).some((m: any) => m.id === r.matchId))
+          )?.id);
+          if (phaseId) {
+            const arr = resultsByPhase.get(phaseId) ?? [];
+            arr.push(r.currentVersion);
+            resultsByPhase.set(phaseId, arr);
+          }
+        }
+      }
+    }
+
+    const now = Date.now();
+    pickTypesConfigUpdate = phaseConfigs.map((pc) => {
+      const wantET = extraTimePhases.includes(pc.phaseId);
+      const currentET = pc.includeExtraTime ?? false;
+
+      // If no change needed, keep as is
+      if (wantET === currentET) return pc;
+
+      // Check lock conditions
+      const phaseResults = resultsByPhase.get(pc.phaseId) ?? [];
+
+      // 1. Old results without homeGoals90 → locked to ET
+      const hasOldResults = phaseResults.some(
+        (r: any) => r.homeGoals90 === null && r.homeGoals !== null
+      );
+      if (hasOldResults) {
+        return pc; // Can't change — silently keep current
+      }
+
+      // 2. Phase completed (all matches have results)
+      const phaseMatches = allMatches.filter((m: any) => {
+        const mPhaseId = m.phaseId ?? (dataJson?.phases?.find((p: any) =>
+          (p.groups ?? []).some((g: any) => (g.matches ?? []).some((mx: any) => mx.id === m.id))
+        )?.id);
+        return mPhaseId === pc.phaseId;
+      });
+      const allHaveResults = phaseMatches.length > 0 &&
+        phaseMatches.every((m: any) => resultsRaw.some((r) => r.matchId === m.id && r.currentVersion));
+      if (allHaveResults) {
+        return pc; // Can't change — phase completed
+      }
+
+      // 3. First deadline < 48h
+      const deadlineMinutes = pool.deadlineMinutesBeforeKickoff;
+      const phaseKickoffs = phaseMatches
+        .filter((m: any) => m.kickoffUtc)
+        .map((m: any) => new Date(m.kickoffUtc).getTime() - deadlineMinutes * 60_000);
+      const firstDeadline = phaseKickoffs.length > 0 ? Math.min(...phaseKickoffs) : Infinity;
+      const hoursUntil = (firstDeadline - now) / (1000 * 60 * 60);
+      if (hoursUntil < 48) {
+        return pc; // Can't change — within 48h of first deadline
+      }
+
+      return { ...pc, includeExtraTime: wantET };
+    });
+  }
 
   // Update pool settings
   const updatedPool = await prisma.pool.update({
@@ -1703,6 +1818,7 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
     data: {
       ...(autoAdvanceEnabled !== undefined ? { autoAdvanceEnabled } : {}),
       ...(requireApproval !== undefined ? { requireApproval } : {}),
+      ...(pickTypesConfigUpdate ? { pickTypesConfig: pickTypesConfigUpdate as any } : {}),
     },
   });
 
@@ -1719,6 +1835,7 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
       id: updatedPool.id,
       autoAdvanceEnabled: updatedPool.autoAdvanceEnabled,
       requireApproval: updatedPool.requireApproval,
+      pickTypesConfig: updatedPool.pickTypesConfig,
     },
   });
 });
@@ -2565,6 +2682,8 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
           {
             homeGoals: r.currentVersion!.homeGoals,
             awayGoals: r.currentVersion!.awayGoals,
+            homeGoals90: r.currentVersion!.homeGoals90,
+            awayGoals90: r.currentVersion!.awayGoals90,
           },
         ])
     );
@@ -2633,11 +2752,19 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
         if (result) {
           // Hay resultado oficial
           if (pick && pick.type === "SCORE" && phaseConfig?.requiresScore && phaseConfig.matchPicks) {
-            // Scoring avanzado
+            // Scoring avanzado — choose score based on includeExtraTime
             try {
+              const resultForScoring = {
+                homeGoals: phaseConfig.includeExtraTime
+                  ? result.homeGoals
+                  : (result.homeGoals90 ?? result.homeGoals),
+                awayGoals: phaseConfig.includeExtraTime
+                  ? result.awayGoals
+                  : (result.awayGoals90 ?? result.awayGoals),
+              };
               const scoring = scoreMatchPick(
                 { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
-                { homeGoals: result.homeGoals, awayGoals: result.awayGoals },
+                resultForScoring,
                 phaseConfig
               );
               pointsEarned = scoring.totalPoints;
@@ -2661,16 +2788,24 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
               console.error(`Error scoring match ${match.id}:`, err);
             }
           } else if (pick) {
-            // Scoring legacy
+            // Scoring legacy — use correct score based on includeExtraTime
             const preset = getScoringPreset(pool.scoringPresetKey ?? "CLASSIC");
-            const actualOutcome = outcomeFromScore(result.homeGoals, result.awayGoals);
+            const legacyResult = {
+              homeGoals: phaseConfig?.includeExtraTime
+                ? result.homeGoals
+                : (result.homeGoals90 ?? result.homeGoals),
+              awayGoals: phaseConfig?.includeExtraTime
+                ? result.awayGoals
+                : (result.awayGoals90 ?? result.awayGoals),
+            };
+            const actualOutcome = outcomeFromScore(legacyResult.homeGoals, legacyResult.awayGoals);
             const pickOutcome = pick.type === "SCORE"
               ? outcomeFromScore(pick.homeGoals, pick.awayGoals)
               : pick.outcome;
             const outcomeCorrect = pickOutcome === actualOutcome;
             const exact = pick.type === "SCORE" &&
-              pick.homeGoals === result.homeGoals &&
-              pick.awayGoals === result.awayGoals;
+              pick.homeGoals === legacyResult.homeGoals &&
+              pick.awayGoals === legacyResult.awayGoals;
 
             pointsEarned = (outcomeCorrect ? preset.outcomePoints : 0) +
               (exact && preset.allowScorePick ? preset.exactScoreBonus : 0);
@@ -2753,23 +2888,39 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
 
         if (pick.type === "SCORE" && phaseConfig?.requiresScore && phaseConfig.matchPicks) {
           try {
+            const resultForScoring = {
+              homeGoals: phaseConfig.includeExtraTime
+                ? result.homeGoals
+                : (result.homeGoals90 ?? result.homeGoals),
+              awayGoals: phaseConfig.includeExtraTime
+                ? result.awayGoals
+                : (result.awayGoals90 ?? result.awayGoals),
+            };
             const scoring = scoreMatchPick(
               { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
-              { homeGoals: result.homeGoals, awayGoals: result.awayGoals },
+              resultForScoring,
               phaseConfig
             );
             totalPoints += scoring.totalPoints;
           } catch {}
         } else {
           const preset = getScoringPreset(pool.scoringPresetKey ?? "CLASSIC");
-          const actualOutcome = outcomeFromScore(result.homeGoals, result.awayGoals);
+          const scoringResult = {
+            homeGoals: phaseConfig?.includeExtraTime
+              ? result.homeGoals
+              : (result.homeGoals90 ?? result.homeGoals),
+            awayGoals: phaseConfig?.includeExtraTime
+              ? result.awayGoals
+              : (result.awayGoals90 ?? result.awayGoals),
+          };
+          const actualOutcome = outcomeFromScore(scoringResult.homeGoals, scoringResult.awayGoals);
           const pickOutcome = pick.type === "SCORE"
             ? outcomeFromScore(pick.homeGoals, pick.awayGoals)
             : pick.outcome;
           const outcomeCorrect = pickOutcome === actualOutcome;
           const exact = pick.type === "SCORE" &&
-            pick.homeGoals === result.homeGoals &&
-            pick.awayGoals === result.awayGoals;
+            pick.homeGoals === scoringResult.homeGoals &&
+            pick.awayGoals === scoringResult.awayGoals;
 
           totalPoints += (outcomeCorrect ? preset.outcomePoints : 0) +
             (exact && preset.allowScorePick ? preset.exactScoreBonus : 0);

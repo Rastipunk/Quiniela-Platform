@@ -18,6 +18,9 @@ resultsRouter.use(requireAuth);
 const upsertResultSchema = z.object({
   homeGoals: z.number().int().min(0).max(99),
   awayGoals: z.number().int().min(0).max(99),
+  // Score al minuto 90 (opcional — solo necesario si el partido fue a tiempo extra)
+  homeGoals90: z.number().int().min(0).max(99).optional(),
+  awayGoals90: z.number().int().min(0).max(99).optional(),
   // Comentario en español: penalties opcionales (solo fases eliminatorias con empate)
   homePenalties: z.number().int().min(0).max(99).optional(),
   awayPenalties: z.number().int().min(0).max(99).optional(),
@@ -100,7 +103,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   const match = matches.find((m) => m.id === matchId);
   if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
 
-  const { homeGoals, awayGoals, homePenalties, awayPenalties, reason } = parsed.data;
+  const { homeGoals, awayGoals, homeGoals90, awayGoals90, homePenalties, awayPenalties, reason } = parsed.data;
 
   // Determinar el modo de fuente de resultados de la instancia
   const instanceResultSourceMode = pool.tournamentInstance.resultSourceMode as ResultSourceMode;
@@ -163,6 +166,8 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           status: "PUBLISHED",
           homeGoals,
           awayGoals,
+          homeGoals90: homeGoals90 ?? null,
+          awayGoals90: awayGoals90 ?? null,
           homePenalties: homePenalties ?? null,
           awayPenalties: awayPenalties ?? null,
           reason: reason ?? null,
