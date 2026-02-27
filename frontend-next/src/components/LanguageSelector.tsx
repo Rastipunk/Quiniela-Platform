@@ -112,6 +112,10 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
     // Default locale (es) needs no prefix (localePrefix: "as-needed")
     const newPath = next === "es" ? targetPath : `/${next}${targetPath}`;
 
+    // Set cookie so the middleware knows the preferred locale and doesn't
+    // redirect back (e.g. switching to ES without prefix while cookie says EN).
+    document.cookie = `NEXT_LOCALE=${next};path=/;max-age=31536000;SameSite=Lax`;
+
     // Full navigation through the middleware ensures proper i18n setup
     window.location.href = newPath + window.location.search;
   }
