@@ -188,10 +188,12 @@
   "whatsNew": {
     "title": "What's New",
     "subtitle": "See what's new in Picks4All",
-    "item1Title": "Now in 3 languages",
-    "item1Desc": "The platform is now available in Español, English, and Português. Switch languages from the menu.",
-    "item2Title": "Improved mobile experience",
-    "item2Desc": "Navigation, matches, and leaderboard optimized for your phone.",
+    "item1Title": "UCL Round of 16 Draw",
+    "item1Desc": "The Champions League Round of 16 matchups are now available. All pools have been automatically updated with the real fixtures.",
+    "item2Title": "90' or +ET score per phase",
+    "item2Desc": "You can now choose per phase whether the score counts at 90 minutes or includes extra time. Set it up when creating your pool.",
+    "item3Title": "Improved deadlines & schedules",
+    "item3Desc": "You can now see more clearly the deadline to submit your predictions and the kickoff time for each match.",
     "dismiss": "Got it"
   },
   "notFound": {

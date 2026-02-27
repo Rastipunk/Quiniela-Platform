@@ -188,10 +188,12 @@
   "whatsNew": {
     "title": "Novidades",
     "subtitle": "Veja o que há de novo no Picks4All",
-    "item1Title": "Agora em 3 idiomas",
-    "item1Desc": "A plataforma já está disponível em Español, English e Português. Mude o idioma no menu.",
-    "item2Title": "Melhor experiência mobile",
-    "item2Desc": "Navegação, partidas e placar otimizados para seu celular.",
+    "item1Title": "Sorteio das Oitavas UCL",
+    "item1Desc": "Os confrontos das oitavas de final da Champions League já estão disponíveis. Todas as pencas foram atualizadas automaticamente com os jogos reais.",
+    "item2Title": "Placar aos 90' ou +PE por fase",
+    "item2Desc": "Agora você pode escolher por fase se o resultado conta aos 90 minutos ou inclui prorrogação. Configure ao criar sua penca.",
+    "item3Title": "Prazos e horários melhorados",
+    "item3Desc": "Agora você pode ver com mais clareza o prazo para enviar suas previsões e o horário de início de cada partida.",
     "dismiss": "Entendi"
   },
   "notFound": {

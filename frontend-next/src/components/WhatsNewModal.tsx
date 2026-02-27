@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
-const WHATS_NEW_VERSION = "2026-02-22";
+const WHATS_NEW_VERSION = "2026-02-27";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
 const TOKEN_KEY = "quiniela.token";
 
@@ -80,19 +80,19 @@ export function WhatsNewModal() {
 
         {/* Items */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 28 }}>
-          {/* Item 1: Languages */}
+          {/* Item 1: UCL R16 Draw */}
           <div
             style={{
               display: "flex",
               gap: 14,
               alignItems: "flex-start",
-              background: "#f0f9ff",
-              border: "1px solid #bae6fd",
+              background: "#eef2ff",
+              border: "1px solid #c7d2fe",
               borderRadius: 12,
               padding: 16,
             }}
           >
-            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#127760;</div>
+            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#9917;</div>
             <div>
               <div style={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}>
                 {t("item1Title")}
@@ -103,7 +103,30 @@ export function WhatsNewModal() {
             </div>
           </div>
 
-          {/* Item 2: Mobile */}
+          {/* Item 2: 90 min or +ET per phase */}
+          <div
+            style={{
+              display: "flex",
+              gap: 14,
+              alignItems: "flex-start",
+              background: "#fefce8",
+              border: "1px solid #fde68a",
+              borderRadius: 12,
+              padding: 16,
+            }}
+          >
+            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#9201;</div>
+            <div>
+              <div style={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}>
+                {t("item2Title")}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4 }}>
+                {t("item2Desc")}
+              </div>
+            </div>
+          </div>
+
+          {/* Item 3: Deadline & kickoff info */}
           <div
             style={{
               display: "flex",
@@ -115,13 +138,13 @@ export function WhatsNewModal() {
               padding: 16,
             }}
           >
-            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#128241;</div>
+            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#128197;</div>
             <div>
               <div style={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}>
-                {t("item2Title")}
+                {t("item3Title")}
               </div>
               <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4 }}>
-                {t("item2Desc")}
+                {t("item3Desc")}
               </div>
             </div>
           </div>

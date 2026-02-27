@@ -188,10 +188,12 @@
   "whatsNew": {
     "title": "Novedades",
     "subtitle": "Mira lo nuevo en Picks4All",
-    "item1Title": "Ahora en 3 idiomas",
-    "item1Desc": "La plataforma ya está disponible en Español, English y Português. Cambia el idioma desde el menú.",
-    "item2Title": "Mejor experiencia móvil",
-    "item2Desc": "Navegación, partidos y leaderboard optimizados para tu celular.",
+    "item1Title": "Sorteo de Octavos UCL",
+    "item1Desc": "Los cruces de octavos de final de la Champions League ya están disponibles. Todas las pools se actualizaron automáticamente con los partidos reales.",
+    "item2Title": "Marcador al 90' o +ET por fase",
+    "item2Desc": "Ahora puedes elegir fase por fase si el resultado cuenta al minuto 90 o incluye tiempo extra. Configúralo al crear tu quiniela.",
+    "item3Title": "Deadline y horarios mejorados",
+    "item3Desc": "Ahora puedes ver con más claridad el deadline para enviar tus predicciones y la hora de inicio de cada partido.",
     "dismiss": "Entendido"
   },
   "notFound": {
