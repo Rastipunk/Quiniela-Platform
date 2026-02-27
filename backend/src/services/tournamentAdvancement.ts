@@ -1,7 +1,9 @@
 // backend/src/services/tournamentAdvancement.ts
 /**
  * Servicio para manejar el avance automático en torneos con fases de grupos y eliminatorias.
- * Específicamente diseñado para FIFA World Cup 2026 con 48 equipos.
+ * Soporta:
+ * - FIFA World Cup 2026 con 48 equipos (grupos + knockout)
+ * - UEFA Champions League 2025-26 (knockout two-legged + final single-match)
  */
 
 export type TeamStanding = {
@@ -266,6 +268,102 @@ export function resolvePlaceholders(
   }
 
   return resolved;
+}
+
+// ============================================================================
+// TWO-LEGGED TIE RESOLUTION (UCL Format)
+// ============================================================================
+
+/**
+ * Resultado de un partido individual (una leg de una llave).
+ */
+export type LegResult = {
+  matchId: string;
+  homeGoals: number;
+  awayGoals: number;
+  homePenalties?: number | null;
+  awayPenalties?: number | null;
+};
+
+/**
+ * Resultado del cálculo de una llave a dos partidos.
+ */
+export type TwoLeggedTieResult = {
+  tieNumber: number;
+  winnerId: string;
+  loserId: string;
+  teamAAgg: number;
+  teamBAgg: number;
+  decidedBy: "AGGREGATE" | "EXTRA_TIME" | "PENALTIES";
+};
+
+/**
+ * Determina el ganador de una llave a dos partidos (ida y vuelta).
+ *
+ * Reglas UEFA (desde 2021-22, sin regla de gol de visitante):
+ * 1. Se suman los goles de ambas legs (aggregate)
+ * 2. Si el aggregate está empatado después de 90 min de leg 2 → prórroga en leg 2
+ * 3. Si sigue empatado después de prórroga → penalties en leg 2
+ *
+ * Nota: leg1 siempre termina en 90 min (FT). Solo leg2 puede ir a ET/PEN.
+ * En leg2, homeGoals/awayGoals ya incluyen goles de prórroga si hubo.
+ *
+ * @param leg1 - Resultado de la ida (teamA es home, teamB es away)
+ * @param leg2 - Resultado de la vuelta (teamB es home, teamA es away)
+ * @param teamAId - ID del equipo que fue local en leg1
+ * @param teamBId - ID del equipo que fue local en leg2
+ * @param tieNumber - Número de llave (para identificación)
+ */
+export function determineTwoLeggedTieWinner(
+  leg1: LegResult,
+  leg2: LegResult,
+  teamAId: string,
+  teamBId: string,
+  tieNumber: number
+): TwoLeggedTieResult {
+  // TeamA scored: home goals in leg1 + away goals in leg2
+  const teamAAgg = leg1.homeGoals + leg2.awayGoals;
+  // TeamB scored: away goals in leg1 + home goals in leg2
+  const teamBAgg = leg1.awayGoals + leg2.homeGoals;
+
+  if (teamAAgg > teamBAgg) {
+    return { tieNumber, winnerId: teamAId, loserId: teamBId, teamAAgg, teamBAgg, decidedBy: "AGGREGATE" };
+  }
+
+  if (teamBAgg > teamAAgg) {
+    return { tieNumber, winnerId: teamBId, loserId: teamAId, teamAAgg, teamBAgg, decidedBy: "AGGREGATE" };
+  }
+
+  // Aggregate empatado: leg2 debe haber ido a ET o penalties
+  // Si leg2.homeGoals/awayGoals incluyen goles de ET (status AET),
+  // el aggregate ya refleja eso. Chequeamos penalties.
+
+  const homePens = leg2.homePenalties ?? null;
+  const awayPens = leg2.awayPenalties ?? null;
+
+  if (homePens !== null && awayPens !== null && (homePens > 0 || awayPens > 0)) {
+    // Hay penalties → decidido por penalties
+    // En leg2: home = teamB, away = teamA
+    if (homePens > awayPens) {
+      return { tieNumber, winnerId: teamBId, loserId: teamAId, teamAAgg, teamBAgg, decidedBy: "PENALTIES" };
+    }
+    if (awayPens > homePens) {
+      return { tieNumber, winnerId: teamAId, loserId: teamBId, teamAAgg, teamBAgg, decidedBy: "PENALTIES" };
+    }
+    throw new Error(
+      `Llave ${tieNumber}: penalties empatados ${homePens}-${awayPens}. Esto no debería ocurrir.`
+    );
+  }
+
+  // Si el aggregate está empatado pero los goles de leg2 no están empatados,
+  // significa que la prórroga decidió el resultado
+  // Ejemplo: leg1 1-1, leg2 (90min) 1-1, leg2 (ET) 2-1 → aggregate 2-3 pero no hay penalties
+  // Esto ya se resolvería arriba porque teamBAgg > teamAAgg después de ET
+  // Si llegamos aquí es porque el aggregate sigue empatado Y no hay penalties
+  throw new Error(
+    `Llave ${tieNumber}: aggregate empatado ${teamAAgg}-${teamBAgg} pero no hay penalties registrados. ` +
+    `Verifica que leg2 tenga el resultado completo (incluyendo ET/PEN).`
+  );
 }
 
 /**

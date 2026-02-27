@@ -21,6 +21,10 @@ import {
   isFixtureInProgress,
 } from "../apiFootball";
 import { writeAuditEvent } from "../../lib/audit";
+import {
+  advanceTwoLeggedPhase,
+  validateCanAutoAdvance,
+} from "../instanceAdvancement";
 
 // ============================================================================
 // Configuration
@@ -492,6 +496,130 @@ export class SmartSyncService {
       `[SmartSync] Published result for ${matchState.internalMatchId}: ` +
         `${parsedResult.homeGoals}-${parsedResult.awayGoals}`
     );
+
+    // Check if auto-advance should be triggered
+    await this.checkAutoAdvance(matchState, poolIds);
+  }
+
+  /**
+   * Check if a completed match triggers auto-advancement of its round.
+   *
+   * For two-legged knockout rounds (UCL format):
+   * - Determines which round the match belongs to (e.g., "r32" from "r32_leg2")
+   * - Checks if ALL matches in BOTH legs of that round are complete
+   * - If yes and auto-advance is enabled, advances to the next round
+   */
+  private async checkAutoAdvance(
+    matchState: { internalMatchId: string; tournamentInstanceId: string },
+    poolIds: string[]
+  ): Promise<void> {
+    try {
+      // Determine the round from the match ID (e.g., "r32_1_leg2" -> "r32")
+      const matchId = matchState.internalMatchId;
+      const roundMatch = matchId.match(/^(r32|r16|qf|sf)_/);
+      if (!roundMatch) return; // Not a knockout match or it's the final
+
+      const currentRound = roundMatch[1]!;
+
+      // Advancement map: which round follows which
+      const advancementMap: Record<string, string> = {
+        r32: "r16",
+        r16: "qf",
+        qf: "sf",
+        sf: "final",
+      };
+
+      const nextRound = advancementMap[currentRound];
+      if (!nextRound) return;
+
+      // Get instance data to find all matches in this round
+      const instance = await prisma.tournamentInstance.findUnique({
+        where: { id: matchState.tournamentInstanceId },
+      });
+      if (!instance) return;
+
+      const data = instance.dataJson as {
+        matches: Array<{ id: string; phaseId: string; status: string }>;
+        phases: Array<{ id: string; twoLegged?: boolean }>;
+        advancement?: { rules: Array<{ from: string; to: string; method: string }> };
+      };
+
+      // Get all match IDs for both legs of this round
+      const leg1PhaseId = `${currentRound}_leg1`;
+      const leg2PhaseId = `${currentRound}_leg2`;
+      const roundMatchIds = data.matches
+        .filter((m) => m.phaseId === leg1PhaseId || m.phaseId === leg2PhaseId)
+        .filter((m) => m.status === "SCHEDULED") // Only count real (non-placeholder) matches
+        .map((m) => m.id);
+
+      if (roundMatchIds.length === 0) return;
+
+      // For each pool, check if all results are in and auto-advance
+      for (const poolId of poolIds) {
+        // Check if auto-advance is enabled for this pool
+        const validation = await validateCanAutoAdvance(
+          matchState.tournamentInstanceId,
+          leg2PhaseId, // Use leg2 as the reference phase for validation
+          poolId
+        );
+
+        if (!validation.canAdvance) {
+          if (validation.blockType !== "INCOMPLETE") {
+            console.log(
+              `[SmartSync] Auto-advance blocked for pool ${poolId}: ${validation.reason}`
+            );
+          }
+          // INCOMPLETE is expected when not all results are in yet
+          continue;
+        }
+
+        // All results are in and auto-advance is enabled -> advance!
+        console.log(
+          `[SmartSync] Auto-advancing ${currentRound} -> ${nextRound} for pool ${poolId}`
+        );
+
+        try {
+          const result = await advanceTwoLeggedPhase(
+            matchState.tournamentInstanceId,
+            currentRound,
+            nextRound,
+            poolId
+          );
+
+          await writeAuditEvent({
+            actorUserId: null,
+            action: "AUTO_ADVANCE_TWO_LEGGED",
+            entityType: "Pool",
+            entityId: poolId,
+            dataJson: {
+              from: currentRound,
+              to: nextRound,
+              instanceId: matchState.tournamentInstanceId,
+              winners: result.winners.map((w) => ({
+                tieNumber: w.tieNumber,
+                winnerId: w.winnerId,
+                decidedBy: w.decidedBy,
+              })),
+            },
+          });
+
+          console.log(
+            `[SmartSync] Auto-advance complete: ${result.winners.length} winners resolved`
+          );
+        } catch (advanceError) {
+          console.error(
+            `[SmartSync] Auto-advance failed for pool ${poolId}:`,
+            advanceError instanceof Error ? advanceError.message : advanceError
+          );
+        }
+      }
+    } catch (error) {
+      // Don't fail the sync if auto-advance check fails
+      console.error(
+        "[SmartSync] Error in checkAutoAdvance:",
+        error instanceof Error ? error.message : error
+      );
+    }
   }
 
   /**

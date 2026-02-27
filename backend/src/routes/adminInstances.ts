@@ -8,6 +8,7 @@ import { writeAuditEvent } from "../lib/audit";
 import {
   advanceToRoundOf32,
   advanceKnockoutPhase,
+  advanceTwoLeggedPhase,
   validateGroupStageComplete,
 } from "../services/instanceAdvancement";
 import { getResultSyncService } from "../services/resultSync";
@@ -291,6 +292,85 @@ adminInstancesRouter.post("/instances/:instanceId/advance-knockout", async (req,
       data: {
         resolvedMatches: result.resolvedMatches,
       },
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      error: "ADVANCEMENT_FAILED",
+      message: error.message,
+    });
+  }
+});
+
+// POST /admin/instances/:instanceId/advance-two-legged
+// Avanza una ronda two-legged (ida + vuelta) a la siguiente
+// Body: { currentRound: "r32", nextRound: "r16", poolId?: string }
+const advanceTwoLeggedSchema = z.object({
+  currentRound: z.string(), // "r32", "r16", "qf", "sf"
+  nextRound: z.string(),    // "r16", "qf", "sf", "final"
+  poolId: z.string().uuid().optional(),
+});
+
+adminInstancesRouter.post("/instances/:instanceId/advance-two-legged", async (req, res) => {
+  const { instanceId } = req.params;
+
+  const bodyParsed = advanceTwoLeggedSchema.safeParse(req.body);
+  if (!bodyParsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+  }
+
+  const { currentRound, nextRound, poolId } = bodyParsed.data;
+
+  try {
+    // Si se especifica poolId, solo avanzar esa pool
+    // Si no, avanzar todas las pools de la instancia
+    let poolIds: string[];
+
+    if (poolId) {
+      poolIds = [poolId];
+    } else {
+      const pools = await prisma.pool.findMany({
+        where: { tournamentInstanceId: instanceId },
+        select: { id: true },
+      });
+      poolIds = pools.map((p) => p.id);
+    }
+
+    if (poolIds.length === 0) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "No pools found for this instance" });
+    }
+
+    const allResults = [];
+    for (const pid of poolIds) {
+      const result = await advanceTwoLeggedPhase(instanceId, currentRound, nextRound, pid);
+      allResults.push({ poolId: pid, ...result });
+    }
+
+    await writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "TOURNAMENT_ADVANCED_TWO_LEGGED",
+      entityType: "TournamentInstance",
+      entityId: instanceId,
+      dataJson: {
+        from: currentRound,
+        to: nextRound,
+        poolsAdvanced: poolIds.length,
+        winnersPerPool: allResults.map((r) => ({
+          poolId: r.poolId,
+          winners: r.winners.map((w) => ({
+            tieNumber: w.tieNumber,
+            winnerId: w.winnerId,
+            decidedBy: w.decidedBy,
+          })),
+        })),
+      },
+      ip: req.ip,
+      userAgent: req.get("user-agent") ?? null,
+    });
+
+    return res.json({
+      success: true,
+      message: `Avance de ${currentRound} a ${nextRound} completado para ${poolIds.length} pool(s)`,
+      data: allResults,
     });
   } catch (error: any) {
     return res.status(400).json({
