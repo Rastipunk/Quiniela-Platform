@@ -1,9 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
-import { useTransition, useState, useRef, useEffect, type ReactNode } from "react";
-import type { Locale } from "@/i18n/routing";
+import { useState, useRef, useEffect, type ReactNode } from "react";
+import { routing, type Locale } from "@/i18n/routing";
 
 /* ── SVG Flag Components ── */
 
@@ -54,14 +53,13 @@ const localeConfig: { locale: Locale; flag: (size?: number) => ReactNode; label:
 export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "light" }) {
   const t = useTranslations("language");
   const currentLocale = useLocale() as Locale;
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const current = localeConfig.find((l) => l.locale === currentLocale) ?? localeConfig[0];
   const isDark = variant === "dark";
+  const locales: Locale[] = ["es", "en", "pt"];
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -81,13 +79,41 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
       return;
     }
     setOpen(false);
-    startTransition(() => {
-      router.replace(
-        // @ts-expect-error -- runtime pathname is always valid
-        pathname,
-        { locale: next }
-      );
-    });
+    setIsPending(true);
+
+    // Use the browser's actual URL to reliably switch locale on any route,
+    // including dynamic ones like /pools/[poolId].
+    const currentPath = window.location.pathname;
+
+    // Strip existing locale prefix (e.g. /en/pools/abc → /pools/abc)
+    let basePath = currentPath;
+    for (const loc of locales) {
+      if (currentPath === `/${loc}`) {
+        basePath = "/";
+        break;
+      }
+      if (currentPath.startsWith(`/${loc}/`)) {
+        basePath = currentPath.slice(loc.length + 1);
+        break;
+      }
+    }
+
+    // Translate localized paths (e.g. /terminos → /terms for EN)
+    let targetPath = basePath;
+    for (const mapping of Object.values(routing.pathnames)) {
+      if (typeof mapping === "string") continue; // same for all locales
+      const currentExternal = mapping[currentLocale as keyof typeof mapping];
+      if (currentExternal === basePath) {
+        targetPath = mapping[next as keyof typeof mapping] as string;
+        break;
+      }
+    }
+
+    // Default locale (es) needs no prefix (localePrefix: "as-needed")
+    const newPath = next === "es" ? targetPath : `/${next}${targetPath}`;
+
+    // Full navigation through the middleware ensures proper i18n setup
+    window.location.href = newPath + window.location.search;
   }
 
   return (
