@@ -4,6 +4,7 @@
     "tagline": "Free Sports Pools with Friends"
   },
   "nav": {
+    "loading": "Loading...",
     "home": "Home",
     "myPools": "My Pools",
     "faq": "FAQ",

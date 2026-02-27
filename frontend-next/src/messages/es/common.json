@@ -4,6 +4,7 @@
     "tagline": "Quinielas Deportivas Gratis con Amigos"
   },
   "nav": {
+    "loading": "Cargando...",
     "home": "Inicio",
     "myPools": "Mis Pools",
     "faq": "FAQ",

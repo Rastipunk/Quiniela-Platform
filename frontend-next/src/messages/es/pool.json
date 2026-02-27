@@ -2,6 +2,12 @@
   "loading": "Cargando overview...",
   "poolIdMissing": "PoolId missing",
   "backToDashboard": "Dashboard",
+  "httpErrors": {
+    "FORBIDDEN": "No tienes permiso para acceder a este contenido.",
+    "NOT_FOUND": "Este recurso no fue encontrado.",
+    "UNAUTHORIZED": "Tu sesión expiró. Por favor inicia sesión de nuevo.",
+    "GENERIC": "Ocurrió un error. Intenta de nuevo."
+  },
   "members": "miembros",
   "yourRole": "Tu rol",
   "invalidScore": "Marcador inválido",

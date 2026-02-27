@@ -46,6 +46,16 @@ export default function PoolPage() {
   const isMobile = useIsMobile();
   const t = useTranslations("pool");
 
+  // Helper: translate raw API error messages to user-friendly localized text
+  function friendlyError(e: any): string {
+    const msg = e?.message ?? "";
+    if (msg === "FORBIDDEN" || e?.status === 403) return t("httpErrors.FORBIDDEN");
+    if (e?.status === 404) return t("httpErrors.NOT_FOUND");
+    if (e?.status === 401) return t("httpErrors.UNAUTHORIZED");
+    if (msg.startsWith("HTTP ")) return t("httpErrors.GENERIC");
+    return msg || t("httpErrors.GENERIC");
+  }
+
   function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
     switch (status) {
       case "DRAFT":
@@ -139,7 +149,7 @@ export default function PoolPage() {
         loadPendingMembers();
       }
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     }
   }
 
@@ -379,7 +389,7 @@ export default function PoolPage() {
         await navigator.clipboard.writeText(inv.code);
       } catch {}
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     } finally {
       setBusyKey(null);
     }
@@ -408,7 +418,7 @@ export default function PoolPage() {
       await load(verbose);
       refetchNotifications();
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     } finally {
       setBusyKey(null);
     }
@@ -423,7 +433,7 @@ export default function PoolPage() {
       await load(verbose);
       refetchNotifications();
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     } finally {
       setBusyKey(null);
     }
@@ -609,7 +619,7 @@ export default function PoolPage() {
                         console.log('[TOGGLE] Reloaded. New state:', overview.pool.autoAdvanceEnabled);
                       } catch (err: any) {
                         console.error('[TOGGLE] Error:', err);
-                        setError(err?.message ?? t("admin.autoAdvance.updateError"));
+                        setError(friendlyError(err));
                       } finally {
                         setBusyKey(null);
                       }
@@ -672,7 +682,7 @@ export default function PoolPage() {
                         await updatePoolSettings(token, poolId, { requireApproval: newValue });
                         await load(verbose);
                       } catch (err: any) {
-                        setError(err?.message ?? t("admin.autoAdvance.updateError"));
+                        setError(friendlyError(err));
                       } finally {
                         setBusyKey(null);
                       }
@@ -796,7 +806,7 @@ export default function PoolPage() {
                                   await updatePoolSettings(token, poolId, { extraTimePhases: newEtPhases });
                                   await load(verbose);
                                 } catch (err: any) {
-                                  setError(err?.message ?? t("admin.extraTime.updateError"));
+                                  setError(friendlyError(err));
                                 } finally {
                                   setBusyKey(null);
                                 }
@@ -884,7 +894,7 @@ export default function PoolPage() {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                             <span style={{ fontSize: 20 }}>{colors.icon}</span>
-                            <span style={{ fontWeight: 700, fontSize: 15, color: "#333" }}>{phase.name}</span>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: "#333" }}>{formatPhaseFullName(phase.id, t)}</span>
                             <span style={{
                               padding: "2px 8px",
                               background: colors.bg,
@@ -928,7 +938,7 @@ export default function PoolPage() {
                                     await load(verbose);
                                     alert(`✅ ${t("admin.phasePanel.advanceSuccess")}: ${result.message || ''}`);
                                   } catch (err: any) {
-                                    setError(err?.message ?? t("admin.phasePanel.advanceError"));
+                                    setError(friendlyError(err));
                                   } finally {
                                     setBusyKey(null);
                                   }
@@ -975,7 +985,7 @@ export default function PoolPage() {
                                   await load(verbose);
                                   alert(isCurrentlyLocked ? `✅ ${t("admin.phasePanel.phaseUnlocked")}` : `🔒 ${t("admin.phasePanel.phaseLocked")}`);
                                 } catch (err: any) {
-                                  setError(err?.message ?? t("admin.phasePanel.lockError"));
+                                  setError(friendlyError(err));
                                 } finally {
                                   setBusyKey(null);
                                 }
@@ -1057,7 +1067,7 @@ export default function PoolPage() {
                                 await load(verbose);
                                 refetchNotifications();
                               } catch (err: any) {
-                                setError(err?.message ?? t("admin.pendingRequests.approveError"));
+                                setError(friendlyError(err));
                               } finally {
                                 setBusyKey(null);
                               }
@@ -1091,7 +1101,7 @@ export default function PoolPage() {
                                 await loadPendingMembers();
                                 refetchNotifications();
                               } catch (err: any) {
-                                setError(err?.message ?? t("admin.pendingRequests.rejectError"));
+                                setError(friendlyError(err));
                               } finally {
                                 setBusyKey(null);
                               }
@@ -1218,7 +1228,7 @@ export default function PoolPage() {
                                       await load(verbose);
                                       alert(`✅ ${t("admin.members.promoteSuccess", { name: member.displayName })}`);
                                     } catch (err: any) {
-                                      setError(err?.message ?? t("admin.members.promoteError"));
+                                      setError(friendlyError(err));
                                     } finally {
                                       setBusyKey(null);
                                     }
@@ -1257,7 +1267,7 @@ export default function PoolPage() {
                                       await load(verbose);
                                       alert(`✅ ${t("admin.members.demoteSuccess", { name: member.displayName })}`);
                                     } catch (err: any) {
-                                      setError(err?.message ?? t("admin.members.demoteError"));
+                                      setError(friendlyError(err));
                                     } finally {
                                       setBusyKey(null);
                                     }
@@ -1357,7 +1367,7 @@ export default function PoolPage() {
                         await load(verbose);
                         alert(`✅ ${t("admin.archive.success")}`);
                       } catch (err: any) {
-                        setError(err?.message ?? t("admin.archive.error"));
+                        setError(friendlyError(err));
                       } finally {
                         setBusyKey(null);
                       }
@@ -1571,7 +1581,7 @@ export default function PoolPage() {
                       opacity: status === "PENDING" ? 0.8 : 1,
                     }}
                   >
-                    <span>{phase.name}</span>
+                    <span>{formatPhaseName(phase.id, t)}</span>
                     <span style={{ fontSize: 11, opacity: 0.85 }}>({matchCount})</span>
                     {status === "PENDING" && <span style={{ fontSize: 14 }}>🔒</span>}
                     {status === "COMPLETED" && <span style={{ fontSize: 14 }}>✅</span>}
@@ -2293,7 +2303,7 @@ export default function PoolPage() {
                           setExpulsionModalData(null);
                           alert(`✅ ${t("expulsion.kickSuccess", { name: expulsionModalData.memberName })}`);
                         } catch (err: any) {
-                          setError(err?.message ?? t("expulsion.kickError"));
+                          setError(friendlyError(err));
                         } finally {
                           setBusyKey(null);
                         }
@@ -2397,7 +2407,7 @@ export default function PoolPage() {
                           setExpulsionModalData(null);
                           alert(`✅ ${t("expulsion.banSuccess", { name: expulsionModalData.memberName })}`);
                         } catch (err: any) {
-                          setError(err?.message ?? t("expulsion.banError"));
+                          setError(friendlyError(err));
                         } finally {
                           setBusyKey(null);
                         }

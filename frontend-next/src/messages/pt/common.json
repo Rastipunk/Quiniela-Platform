@@ -4,6 +4,7 @@
     "tagline": "Pencas Esportivas Grátis com Amigos"
   },
   "nav": {
+    "loading": "Carregando...",
     "home": "Início",
     "myPools": "Minhas Pencas",
     "faq": "FAQ",
