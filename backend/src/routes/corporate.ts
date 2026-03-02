@@ -453,7 +453,8 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
 // =========================================================================
 
 corporateRouter.get("/csv-template", (_req, res) => {
-  const csv = "email,nombre\nempleado1@empresa.com,Juan Pérez\nempleado2@empresa.com,María García\n";
+  const bom = "\uFEFF";
+  const csv = bom + "email,nombre\nempleado1@empresa.com,Juan Perez\nempleado2@empresa.com,Maria Garcia\n";
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", "attachment; filename=empleados_template.csv");
   return res.send(csv);

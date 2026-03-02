@@ -572,7 +572,7 @@ export function CorporatePoolCreation() {
               </label>
 
               <a
-                href={`data:text/csv;charset=utf-8,${encodeURIComponent("email,nombre\nempleado1@empresa.com,Juan Pérez\nempleado2@empresa.com,María García\n")}`}
+                href={`data:text/csv;charset=utf-8,${encodeURIComponent("\uFEFFemail,nombre\nempleado1@empresa.com,Juan Perez\nempleado2@empresa.com,Maria Garcia\n")}`}
                 download="employees_template.csv"
                 style={{
                   fontSize: 13,

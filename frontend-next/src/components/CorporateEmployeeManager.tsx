@@ -228,7 +228,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
             <input type="file" accept=".csv,.txt" onChange={handleCsvUpload} style={{ display: "none" }} />
           </label>
           <a
-            href={`data:text/csv;charset=utf-8,${encodeURIComponent("email,nombre\nempleado1@empresa.com,Juan\nempleado2@empresa.com,María\n")}`}
+            href={`data:text/csv;charset=utf-8,${encodeURIComponent("\uFEFFemail,nombre\nempleado1@empresa.com,Juan Perez\nempleado2@empresa.com,Maria Garcia\n")}`}
             download="employees_template.csv"
             style={{ fontSize: 12, color: "#7c3aed", textDecoration: "none", fontWeight: 500 }}
           >

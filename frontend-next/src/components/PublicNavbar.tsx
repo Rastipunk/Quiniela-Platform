@@ -22,6 +22,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
     { to: "/como-funciona" as const, label: t("howItWorks") },
     { to: "/faq" as const, label: t("faq") },
     { to: "/que-es-una-quiniela" as const, label: t("whatIsQuiniela") },
+    { to: "/empresas" as const, label: t("enterprises") },
   ];
 
   const isActive = (path: string) => pathname === path;
