@@ -213,14 +213,14 @@ export function Footer() {
             {t("contact")}
           </div>
           <a
-            href="mailto:soporte@picks4all.com"
+            href={`mailto:${t("supportEmail")}`}
             style={{
               fontSize: 13,
               color: "var(--muted)",
               textDecoration: "none",
             }}
           >
-            soporte@picks4all.com
+            {t("supportEmail")}
           </a>
         </div>
       </div>

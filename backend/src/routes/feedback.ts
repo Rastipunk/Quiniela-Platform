@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { sendAdminNotification } from "../lib/email";
 import rateLimit from "express-rate-limit";
 
 export const feedbackRouter = Router();
@@ -67,6 +68,20 @@ feedbackRouter.post("/", feedbackLimiter, async (req, res) => {
       userAgent: req.get("user-agent") || null,
     },
   });
+
+  // Notificar al admin por email (fire and forget)
+  sendAdminNotification({
+    subject: `${type}: ${message.substring(0, 60)}${message.length > 60 ? "..." : ""}`,
+    type: "feedback",
+    body: `
+      <p><strong>Tipo:</strong> ${type}</p>
+      <p><strong>Mensaje:</strong> ${message}</p>
+      <p><strong>Usuario:</strong> ${userEmail || "Anónimo"}</p>
+      ${currentUrl ? `<p><strong>URL:</strong> ${currentUrl}</p>` : ""}
+      ${wantsContact ? `<p><strong>Contacto:</strong> ${contactName || "—"} / ${phoneNumber || "—"}</p>` : ""}
+      ${imageBase64 ? `<p><em>(Incluye screenshot)</em></p>` : ""}
+    `,
+  }).catch((err) => console.error("Error sending admin notification:", err));
 
   return res.status(201).json({
     success: true,

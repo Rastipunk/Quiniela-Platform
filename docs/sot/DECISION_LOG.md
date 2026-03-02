@@ -5,7 +5,7 @@
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-02-01
+> **Last Updated:** 2026-03-01
 
 ---
 
@@ -3565,6 +3565,225 @@ Migrate frontend from React SPA (Vite) to **Next.js App Router** with:
 
 ---
 
+## ADR-034: Cloudflare Email Routing for Incoming Email
+
+**Date:** 2026-03-01
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #infrastructure #email
+
+### Context
+
+The platform advertises `soporte@picks4all.com` in the Footer, FAQ, and legal documents, but no MX records exist for the domain. Emails sent to any @picks4all.com address go nowhere. Outgoing email uses Resend (transactional), but receiving email requires MX records and a mail server.
+
+Options considered:
+1. Google Workspace ($7/user/month) — full email hosting
+2. Cloudflare Email Routing (free) — forwards to existing Gmail
+3. Zoho Mail (free tier) — limited webmail
+4. Self-hosted (Postfix/Dovecot) — high maintenance
+
+### Decision
+
+Use **Cloudflare Email Routing** to forward all incoming @picks4all.com emails to the founder's personal Gmail.
+
+### Rationale
+
+- ✅ **Free:** No monthly cost
+- ✅ **Already on Cloudflare:** Domain DNS is managed in Cloudflare, so setup is 1-click
+- ✅ **Instant:** MX records auto-created, no propagation wait
+- ✅ **Catch-all support:** Forward `*@picks4all.com` to catch any address
+- ✅ **No new accounts:** Uses existing Gmail inbox
+- ✅ **Non-blocking:** Can upgrade to Google Workspace later without disruption
+
+### Consequences
+
+**Positive:**
+- ✅ soporte@picks4all.com actually receives emails
+- ✅ Zero cost, zero maintenance
+- ✅ Can reply from Gmail (with "Send As" configuration)
+
+**Negative:**
+- ⚠️ Cannot send FROM @picks4all.com via Gmail natively (need "Send As" config)
+- ⚠️ No dedicated mailbox (emails arrive in personal Gmail mixed with other mail)
+- ⚠️ Not suitable for multiple team members (all goes to one inbox)
+
+### Implementation
+
+1. Cloudflare Dashboard → Email → Email Routing → Enable
+2. Add destination: personal Gmail, verify
+3. Create route: soporte@picks4all.com → Gmail
+4. Create catch-all: *@picks4all.com → Gmail (optional)
+5. MX records auto-created by Cloudflare
+
+---
+
+## ADR-035: Corporate Pool Feature — MVP Approach
+
+**Date:** 2026-03-01
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #feature #corporate #architecture
+
+### Context
+
+Companies want to organize prediction pools for their employees as team-building activities. This requires:
+- A way for companies to discover and contact us
+- Customization (company logo on pool)
+- Bulk user creation (employees don't have accounts)
+- Organization tracking
+
+Full self-service enterprise features (dashboard, SSO, billing portal) would take 2-3 months. We need an MVP for April 1st launch.
+
+### Decision
+
+Implement a **manual-process MVP** with three components:
+
+1. **Public enterprise landing page** (`/empresas`) with a contact form that creates `OrganizationInquiry` records
+2. **Database models** (`Organization`, `OrganizationInquiry`) and **Pool fields** (`organizationId`, `logoUrl`) for corporate tracking
+3. **Admin-only endpoints** for bulk user creation and corporate pool management
+
+The workflow is: Company fills form → Admin receives email → Admin manually creates org, users, and pool via admin API.
+
+### Rationale
+
+- ✅ **Ships in 1 week:** Contact form + backend endpoints, no complex UI
+- ✅ **Validates demand:** Captures inquiries before building full dashboard
+- ✅ **Low risk:** Manual process means we control quality
+- ✅ **Extensible:** Organization model supports future self-service features
+- ✅ **Pool branding:** `logoUrl` field works for both corporate and future premium
+
+### Consequences
+
+**Positive:**
+- ✅ Companies can contact us and get set up
+- ✅ Pool branding works immediately
+- ✅ Database ready for future enterprise features
+- ✅ Admin has full control over onboarding
+
+**Negative:**
+- ⚠️ Not self-service (manual admin work per company)
+- ⚠️ No company admin role (everything goes through platform admin)
+- ⚠️ Logo must be provided as URL (no upload UI)
+
+### Future Evolution (v1.1+)
+
+- Self-service enterprise dashboard
+- Company admin role
+- Logo upload via platform
+- SSO integration (SAML/OIDC)
+- Billing portal for corporate accounts
+
+---
+
+## ADR-036: Lemon Squeezy as Merchant of Record
+
+**Date:** 2026-03-01
+**Status:** Accepted (pending approval)
+**Deciders:** Product Team
+**Tags:** #payments #business
+
+### Context
+
+The platform needs a payment system for pools exceeding 20 participants (one-time fee per pool). The founder is based in Colombia, which limits payment processor options:
+- **Stripe Direct:** Not available for Colombian residents
+- **PayPal Commerce:** Complex setup, high fees for LATAM
+- **Lemon Squeezy:** Merchant of Record model, handles taxes/compliance, supports Colombia
+
+### Decision
+
+Use **Lemon Squeezy** as Merchant of Record for all payments.
+
+**Monetization model:**
+- **Free tier:** Pools with up to 20 participants
+- **Paid tier:** One-time payment per pool for pools with >20 participants
+- Price TBD (likely $2-5 USD per pool)
+
+### Rationale
+
+- ✅ **Colombia-friendly:** LS supports merchants in Colombia
+- ✅ **MoR model:** LS handles tax collection, compliance, invoicing
+- ✅ **Simple integration:** Hosted checkout + webhooks
+- ✅ **One-time payments:** Supports single-purchase model (not just subscriptions)
+- ✅ **Multiple currencies:** Users can pay in their local currency
+
+### Consequences
+
+**Positive:**
+- ✅ No tax/compliance burden on the founder
+- ✅ Simple webhook-based integration
+- ✅ Supports global payments
+- ✅ Dashboard for revenue tracking
+
+**Negative:**
+- ⚠️ LS takes ~5-8% commission + payment processor fees
+- ⚠️ Approval not guaranteed (application pending as of 2026-03-01)
+- ⚠️ If rejected, need alternative (Paddle, manual payments)
+- ⚠️ Hosted checkout means redirect (not inline payment form)
+
+### Implementation Plan
+
+1. Create PoolPayment model in database
+2. Create Lemon Squeezy product (one-time purchase)
+3. Implement checkout URL generation endpoint
+4. Implement webhook handler for payment confirmation
+5. Wire payment gate to pool join flow
+6. DEFERRED until LS approval is confirmed
+
+---
+
+## ADR-037: Resend Domain Verification for Production Email
+
+**Date:** 2026-03-01
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #email #infrastructure
+
+### Context
+
+Outgoing emails currently use Resend's sandbox address `onboarding@resend.dev`. This:
+- Looks unprofessional (not @picks4all.com)
+- May have lower deliverability (shared sandbox reputation)
+- Confuses users who don't recognize the sender
+
+Additionally, email templates still reference the old domain `soporte@tuquiniela.com` and the old brand name "Quiniela Platform".
+
+### Decision
+
+1. **Verify `picks4all.com` domain in Resend** by adding SPF/DKIM TXT records to Cloudflare DNS
+2. **Update FROM_EMAIL** to `noreply@picks4all.com` via Railway environment variable
+3. **Fix brand references** in email code: APP_NAME → "Picks4All", supportEmail → "soporte@picks4all.com"
+
+### Rationale
+
+- ✅ **Professional:** Emails come from @picks4all.com
+- ✅ **Better deliverability:** Own domain reputation > shared sandbox
+- ✅ **Brand consistency:** All touchpoints say "Picks4All"
+- ✅ **Free:** Resend domain verification is included in free tier
+- ✅ **No conflict with Cloudflare Email Routing:** Only TXT records needed (not MX)
+
+### Consequences
+
+**Positive:**
+- ✅ Professional sender address
+- ✅ Better email deliverability
+- ✅ Consistent branding across all emails
+
+**Negative:**
+- ⚠️ Need to monitor SPF/DKIM records if DNS changes
+- ⚠️ Initial warm-up period for new domain reputation
+
+### Implementation
+
+1. Resend Dashboard → Add domain `picks4all.com`
+2. Add SPF TXT record to Cloudflare DNS
+3. Add DKIM TXT records (2-3 records) to Cloudflare DNS
+4. Wait for verification
+5. Update Railway env var: `RESEND_FROM_EMAIL=noreply@picks4all.com`
+6. Update `backend/src/lib/email.ts`: APP_NAME → "Picks4All"
+7. Update `backend/src/lib/emailTemplates.ts`: BRAND.name, supportEmail
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.3.0:**
@@ -3588,14 +3807,20 @@ Migrate frontend from React SPA (Vite) to **Next.js App Router** with:
 **v0.4.0:**
 - [x] ADR-033: Next.js Migration ✅ (2026-02-13)
 
+**v0.6.0:**
+- [x] ADR-034: Cloudflare Email Routing for Incoming Email ✅ (2026-03-01)
+- [x] ADR-035: Corporate Pool Feature — MVP Approach ✅ (2026-03-01)
+- [x] ADR-036: Lemon Squeezy as Merchant of Record ✅ (2026-03-01)
+- [x] ADR-037: Resend Domain Verification for Production Email ✅ (2026-03-01)
+
 **v1.0:**
-- [ ] ADR-034: PWA + Service Worker
-- [ ] ADR-035: Redis caching layer
+- [ ] ADR-038: PWA + Service Worker
+- [ ] ADR-039: Redis caching layer
 
 **v2.0:**
-- [ ] ADR-036: Multi-sport support architecture
-- [ ] ADR-037: WebSocket for real-time updates
-- [ ] ADR-038: Facebook/Apple OAuth providers
+- [ ] ADR-040: Multi-sport support architecture
+- [ ] ADR-041: WebSocket for real-time updates
+- [ ] ADR-042: Facebook/Apple OAuth providers
 
 ---
 

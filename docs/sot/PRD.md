@@ -2,7 +2,7 @@
 # Quiniela Platform
 
 > **Version:** 0.5.0 (i18n + SEO + Repo Cleanup)
-> **Last Updated:** 2026-02-22
+> **Last Updated:** 2026-03-01
 > **Status:** Live at picks4all.com
 > **Document Owner:** Product Team
 
@@ -63,42 +63,74 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 
 ## 2. Product Scope
 
-### 2.1 Current State (v0.1-alpha)
+### 2.1 Current State (v0.5.0)
 
 **Implemented Features:**
-- ✅ User authentication (email/password + **Google OAuth**, JWT-based)
-- ✅ **Username system** (unique identifier, separate from email and displayName)
-- ✅ **Password recovery** (forgot password flow with email tokens via Resend)
+
+**🔐 Authentication & User Management:**
+- ✅ User authentication (email/password + **Google OAuth**, JWT-based) (v0.1.4)
+- ✅ **Google OAuth login** — one-click registration/login, account linking (v0.1.4)
+- ✅ **Forgot password flow** with email tokens via Resend (v0.1.4)
+- ✅ **Email verification** on registration (v0.3.0)
+- ✅ **Username system** with change tracking (unique identifier, separate from email/displayName) (v0.2-beta)
+
+**👥 Pool & Member Management:**
 - ✅ Pool creation and join (via invite code)
-- ✅ Basic pick system (OUTCOME and SCORE picks)
+- ✅ **Co-admin system** with permissions (publish results, approve members, expel, invite) (v0.2-beta)
+- ✅ **Join approval workflow** (PENDING → APPROVED/REJECTED) (v0.2-beta)
+- ✅ **Player expulsion/ban system** (permanent ban + temporary suspension, reactivation) (v0.2-beta)
+- ✅ **Pool state machine** (DRAFT → ACTIVE → COMPLETED → ARCHIVED) (v0.2-beta)
+- ✅ **Pool fixtureSnapshot** (per-pool tournament state) (v0.2-beta)
+
+**🎯 Predictions & Scoring:**
+- ✅ **7 pick types** with cumulative scoring (EXACT_SCORE, GOAL_DIFFERENCE, MATCH_OUTCOME_90MIN, HOME_GOALS, AWAY_GOALS, PARTIAL_SCORE, TOTAL_GOALS) (v0.2-beta)
+- ✅ **Structural predictions** (group standings, knockout brackets) (v0.2-beta)
+- ✅ **Group standings predictions** per group (v0.2-beta)
+- ✅ Leaderboard with scoring presets (CUMULATIVE, BASIC, ADVANCED, SIMPLE)
+- ✅ Deadline enforcement (configurable minutes before kickoff)
+
+**📊 Results & Sync:**
 - ✅ Result publishing with errata support (versioned)
+- ✅ **Smart Sync:** Automatic results from API-Football (v0.3.4)
+- ✅ **Smart Sync:** MatchExternalMapping, MatchSyncState, ResultSyncLog (v0.3.4)
 - ✅ **Penalty shootouts in knockout phases** (penaltiesHome/penaltiesAway)
 - ✅ **Auto-advance tournament phases** (group stage → round of 32 → knockout)
 - ✅ **Phase locking mechanism** (prevents advancing incomplete phases)
 - ✅ **Placeholder system for knockout matches** (e.g., "Winner of Group A")
-- ✅ Leaderboard with scoring presets (CLASSIC, OUTCOME_ONLY, EXACT_HEAVY)
-- ✅ Deadline enforcement (configurable minutes before kickoff)
-- ✅ **Enhanced audit logging** (OAuth events, password resets, phase transitions)
+
+**📧 Notifications & Email:**
+- ✅ **Email notifications:** welcome, invitation, deadline reminder, result published, pool completed (v0.3.0)
+- ✅ **User email notification preferences** (v0.3.0)
+- ✅ **Platform-level email settings** (admin) (v0.3.0)
+- ✅ **Professional email templates** (gradient design, mobile-responsive) (v0.3.0)
+
+**⚖️ Legal & Compliance:**
+- ✅ **Legal pages:** Terms of Service v2026-01-25, Privacy Policy (v0.3.0)
+- ✅ **Legal consent tracking** on User model (v0.3.0)
+
+**🌍 Internationalization & SEO:**
+- ✅ **Internationalization:** ES/EN/PT via next-intl v4, localized URLs (v0.5.0)
+- ✅ **SEO:** hreflang, localized sitemap, regional pages, JSON-LD, OG images (v0.5.0)
+
+**🏟️ Tournaments:**
 - ✅ Tournament template/version/instance architecture
 - ✅ WC2026 sandbox (72 matches, 12 groups, 48 teams + knockout phases)
+- ✅ **UCL 2025-26 instance** live with 45+ matches (v0.4.0)
+
+**🔧 Platform & Infrastructure:**
+- ✅ **Rate limiting** (v0.3.0)
+- ✅ **Enhanced audit logging** (OAuth events, password resets, phase transitions)
 - ✅ Single-call overview endpoint (optimized UX)
 - ✅ Frontend: Dashboard, Pool Page, Leaderboard
-- ✅ **Professional email templates** (gradient design, mobile-responsive)
-
-**Recent Additions (2026-01-04):**
-- 🆕 **Google Sign In** - One-click registration/login with Google accounts
-- 🆕 **Account Linking** - Link existing email/password accounts with Google
-- 🆕 **Username Auto-Generation** - For OAuth users (from email address)
-- 🆕 **Forgot Password Flow** - Secure token-based password reset via email
-- 🆕 **Email Confirmation Field** - Reduce typos during registration
-- 🆕 **Tournament Advancement System** - Automatic phase transitions with validation
-- 🆕 **Penalty Shootout Support** - Track penalty results in knockout matches
+- ✅ **Beta feedback system** (v0.3.0)
 
 **Current Limitations:**
 - ⚠️ No Facebook/Apple login (Google only for now)
 - ⚠️ No in-pool chat system
 - ⚠️ No PWA offline mode or push notifications
-- ⚠️ Admin template creation requires code (no UI wizard yet)
+- ⚠️ No payment system yet (Lemon Squeezy approval pending)
+- ⚠️ No corporate/enterprise features yet
+- ⚠️ Email sending uses Resend sandbox (domain verification pending)
 
 ---
 
@@ -195,29 +227,24 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 **Timeline:** 8-12 weeks from now
 **Goal:** Production-ready platform for general public
 
-**On top of v0.2-beta:**
+**On top of v0.5.0:**
 
 **🔑 Authentication Enhancements:**
-- [ ] Google login (OAuth 2.0)
+- [x] Google login (OAuth 2.0) ✅ (v0.1.4)
 - [ ] Facebook login (OAuth 2.0)
-- [ ] Forgot password flow (email-based, using Resend)
-- [ ] Email verification (optional: on registration)
+- [x] Forgot password flow (email-based, using Resend) ✅ (v0.1.4)
+- [x] Email verification (on registration) ✅ (v0.3.0)
 
 **🎯 Complete Pick Rules System:**
-- [ ] 3 Additional Pick Types:
-  5. **BOTH_TEAMS_SCORE:** Predict if both teams score (Yes/No)
-  6. **TOTAL_GOALS:** Predict over/under total goals (e.g., Over 2.5)
-  7. **WINNING_MARGIN:** Predict margin of victory (+1, +2, +3+)
+- [x] 7 Pick Types implemented ✅ (v0.2-beta)
+- [x] Cumulative scoring system ✅ (v0.2-beta)
+- [x] Preset templates for quick setup (CUMULATIVE, BASIC, ADVANCED, SIMPLE) ✅ (v0.2-beta)
 - [ ] UI builder for hosts to configure scoring matrix
-- [ ] Preset templates for quick setup (e.g., "World Cup Classic")
 
 **📧 Notification System:**
-- [ ] Email notifications (via Resend):
-  - Result published
-  - Result corrected (errata)
-  - Invited to pool
-  - Join request approved/rejected
-- [ ] User can configure notification preferences
+- [x] Email notifications (via Resend): welcome, invitation, deadline reminder, result published, pool completed ✅ (v0.3.0)
+- [x] User can configure notification preferences ✅ (v0.3.0)
+- [x] Platform-level email settings (admin) ✅ (v0.3.0)
 
 **✅ Onboarding & Help:**
 - [ ] First-time user tutorial (interactive walkthrough)
@@ -226,24 +253,40 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 - [ ] Demo pool (auto-join for new users)
 
 **⚖️ Legal & Compliance:**
-- [ ] Terms of Service
-- [ ] Privacy Policy
+- [x] Terms of Service ✅ (v0.3.0 — v2026-01-25)
+- [x] Privacy Policy ✅ (v0.3.0)
+- [x] Legal consent tracking on User model ✅ (v0.3.0)
 - [ ] Cookie consent (if applicable)
 - [ ] Age gate (13+ or 18+ depending on jurisdiction)
-- [ ] Disclaimer: "No real money transactions, entertainment only"
+- [x] Disclaimer: "No real money transactions, entertainment only" ✅ (v0.3.0)
+
+**🏢 Corporate/Enterprise Pools:**
+- [ ] Enterprise landing page (/empresas, /enterprise)
+- [ ] Corporate inquiry form (public, no auth required)
+- [ ] Organization model (name, logo, contact info)
+- [ ] Admin bulk user creation from employee lists
+- [ ] Pool-level custom logo/branding (optional logoUrl)
+- [ ] Admin endpoints for organization management
+
+**💰 Monetization:**
+- [ ] Free tier: up to 20 participants per pool
+- [ ] One-time payment for pools exceeding 20 participants
+- [ ] Lemon Squeezy integration (Merchant of Record)
+- [ ] Payment gate on pool join
+- [ ] PoolPayment model for tracking transactions
 
 **🎨 UX Polish:**
 - [ ] Team flags for all WC2026 teams
-- [ ] Fully responsive (mobile, tablet, desktop)
+- [x] Fully responsive (mobile, tablet, desktop) ✅
 - [ ] Accessibility (WCAG 2.1 AA compliance)
 - [ ] Social sharing (share pool invite via link)
-- [ ] Confirmation dialogs for critical actions
-- [ ] Empty states, loading skeletons
+- [x] Confirmation dialogs for critical actions ✅
+- [x] Empty states, loading skeletons ✅
 
 **🧪 Quality Assurance:**
 - [ ] End-to-end testing with beta testers (50+ users)
-- [ ] Performance optimization (target: < 2s load time)
-- [ ] SEO optimization (meta tags, Open Graph, Twitter Cards)
+- [x] Performance optimization (target: < 2s load time) ✅
+- [x] SEO optimization (meta tags, Open Graph, JSON-LD, hreflang, localized sitemap) ✅ (v0.5.0)
 - [ ] Error tracking (Sentry or similar)
 - [ ] Analytics (basic usage metrics)
 
@@ -379,7 +422,7 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
   - Password requirements: min 8 chars, 1 uppercase, 1 number, 1 special char
   - Unique email enforcement
   - Display name (3-50 chars)
-- **Google OAuth** (v1.0)
+- **Google OAuth** ✅ (v0.1.4)
 - **Facebook OAuth** (v1.0)
 
 #### 4.1.2 Login
@@ -388,7 +431,7 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 - Remember me (optional: 30-day refresh token)
 - Auto-logout on 401 (token expiry/invalidation)
 
-#### 4.1.3 Password Recovery (v1.0)
+#### 4.1.3 Password Recovery ✅ (v0.1.4)
 - "Forgot password" link on login page
 - Email with reset token (1-hour expiry)
 - Reset password form (token validation)
@@ -1127,11 +1170,13 @@ Returns per-match breakdown:
 - **Mobile:** iOS Safari 14+, Chrome Android 90+
 - **No IE11 support** (EOL June 2022)
 
-### 6.7 Localization (v2.0+)
+### 6.7 Localization ✅ (Implemented in v0.5.0)
 
-- **Languages:** Spanish (primary), English, Portuguese
-- **Date/Time:** Locale-aware formatting
-- **Timezones:** IANA timezone support
+- **Languages:** Spanish (primary), English, Portuguese — via next-intl v4 ✅
+- **Localized URLs:** /es/, /en/, /pt/ with automatic locale detection ✅
+- **SEO:** hreflang tags, localized sitemap, regional landing pages ✅
+- **Date/Time:** Locale-aware formatting ✅
+- **Timezones:** IANA timezone support ✅
 - **Currency:** (future) If premium features added
 
 ---
@@ -1253,6 +1298,10 @@ See [GLOSSARY.md](./GLOSSARY.md) for full domain terminology.
 |------|---------|--------|---------|
 | 2026-01-02 | 1.0 | Product Team | Initial PRD based on v0.1-alpha codebase |
 | 2026-01-18 | 1.1 | Product Team | Sprint 2 complete: Cumulative scoring, Player Summary, Pick visibility |
+| 2026-01-25 | 1.2 | Product Team | v0.3.0: Legal, email notifications, rate limiting, beta feedback |
+| 2026-02-01 | 1.3 | Product Team | v0.3.4: Smart Sync, API-Football integration |
+| 2026-02-15 | 1.4 | Product Team | v0.5.0: i18n (ES/EN/PT), SEO, UCL 2025-26, repo restructure |
+| 2026-03-01 | 1.5 | Product Team | Update PRD to reflect v0.5.0 reality, add corporate roadmap |
 
 ---
 

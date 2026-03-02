@@ -23,8 +23,9 @@ if (!apiKey) {
 const resend = apiKey ? new Resend(apiKey) : null;
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-const APP_NAME = "Quiniela Platform";
+const APP_NAME = "Picks4All";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "admin@picks4all.com";
 
 // =========================================================================
 // TIPOS Y CONSTANTES
@@ -733,4 +734,62 @@ export async function getPlatformEmailSettings() {
     updatedAt: settings.updatedAt,
     updatedById: settings.updatedById,
   };
+}
+
+// =========================================================================
+// ADMIN NOTIFICATIONS
+// =========================================================================
+
+/**
+ * Envía una notificación interna al admin.
+ * Usado para: feedback/bugs, corporate inquiries, errores críticos.
+ */
+export async function sendAdminNotification(params: {
+  subject: string;
+  body: string;
+  type: "feedback" | "corporate_inquiry" | "error";
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar notificación admin: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  const typeLabels: Record<string, string> = {
+    feedback: "💬 Feedback",
+    corporate_inquiry: "🏢 Corporate Inquiry",
+    error: "🚨 Error",
+  };
+
+  const label = typeLabels[params.type] || params.type;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} Admin <${FROM_EMAIL}>`,
+      to: ADMIN_EMAIL,
+      subject: `[${label}] ${params.subject}`,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:#1F2937;border-bottom:2px solid #4F46E5;padding-bottom:8px;">${label}</h2>
+          <div style="color:#374151;font-size:15px;line-height:1.6;">
+            ${params.body}
+          </div>
+          <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+          <p style="color:#9CA3AF;font-size:12px;">
+            ${APP_NAME} Admin Notification &middot; ${new Date().toISOString()}
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar notificación admin:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Admin notification enviada (${params.type}):`, data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar notificación admin:", err);
+    return { success: false, error: String(err) };
+  }
 }

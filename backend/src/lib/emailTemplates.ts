@@ -10,21 +10,45 @@
 
 // =========================================================================
 // CONFIGURACIÓN DE MARCA
-// Actualizar cuando se defina el nombre y dominio final
 // =========================================================================
 
 const BRAND = {
-  name: "Quiniela Platform", // TODO: Actualizar con nombre final
+  name: "Picks4All",
   primaryColor: "#4F46E5", // Indigo-600
   secondaryColor: "#6366F1", // Indigo-500
   textColor: "#1F2937", // Gray-800
   mutedColor: "#6B7280", // Gray-500
   backgroundColor: "#F9FAFB", // Gray-50
   cardBackground: "#FFFFFF",
-  // TODO: Actualizar con dominio real cuando esté definido
   baseUrl: process.env.FRONTEND_URL || "http://localhost:5173",
-  supportEmail: "soporte@tuquiniela.com", // TODO: Actualizar
+  supportEmail: "soporte@picks4all.com",
 };
+
+// Emails de soporte por locale
+export const SUPPORT_EMAILS: Record<string, string> = {
+  es: "soporte@picks4all.com",
+  en: "support@picks4all.com",
+  pt: "suporte@picks4all.com",
+};
+
+// Emails de privacidad por locale
+export const PRIVACY_EMAILS: Record<string, string> = {
+  es: "privacidad@picks4all.com",
+  en: "privacy@picks4all.com",
+  pt: "privacidade@picks4all.com",
+};
+
+// Emails de empresas por locale
+export const ENTERPRISE_EMAILS: Record<string, string> = {
+  es: "empresas@picks4all.com",
+  en: "enterprise@picks4all.com",
+  pt: "empresas@picks4all.com",
+};
+
+/** Obtener email de soporte según locale */
+export function getSupportEmail(locale: string = "es"): string {
+  return SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
+}
 
 // =========================================================================
 // WRAPPER BASE - Envuelve todo el contenido del email

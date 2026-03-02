@@ -50,9 +50,16 @@ interface FAQMessages {
   items: FAQItem[];
 }
 
+const SUPPORT_EMAILS: Record<string, string> = {
+  es: "soporte@picks4all.com",
+  en: "support@picks4all.com",
+  pt: "suporte@picks4all.com",
+};
+
 export default async function FAQPage() {
   const locale = await getLocale();
   const faqMessages: FAQMessages = (await import(`@/messages/${locale}/faq.json`)).default;
+  const supportEmail = SUPPORT_EMAILS[locale] || SUPPORT_EMAILS.es;
   const baseUrl = "https://picks4all.com";
   const localePath = locale === "es" ? "" : `/${locale}`;
 
@@ -150,7 +157,7 @@ export default async function FAQPage() {
             {contact.description}
           </p>
           <a
-            href="mailto:soporte@picks4all.com"
+            href={`mailto:${supportEmail}`}
             style={{
               display: "inline-flex",
               alignItems: "center",

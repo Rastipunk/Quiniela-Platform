@@ -1,11 +1,11 @@
 # Data Model Specification
 # Quiniela Platform
 
-> **Version:** 1.1
-> **Last Updated:** 2026-01-04
-> **Status:** Production Schema (v0.1-alpha + Tournament Advancement)
+> **Version:** 2.0
+> **Last Updated:** 2026-03-01
+> **Status:** Production Schema (v0.5.0)
 > **Database:** PostgreSQL 14+
-> **ORM:** Prisma 6.19.1
+> **ORM:** Prisma 6.x
 
 ---
 
@@ -37,7 +37,11 @@ User
  ├─── 1:N ──→ PoolMember
  ├─── 1:N ──→ PoolInvite (createdBy)
  ├─── 1:N ──→ Prediction
- └─── 1:N ──→ PoolMatchResultVersion (createdBy)
+ ├─── 1:N ──→ PoolMatchResultVersion (createdBy)
+ ├─── 1:N ──→ StructuralPrediction
+ ├─── 1:N ──→ StructuralPhaseResult (createdBy)
+ ├─── 1:N ──→ GroupStandingsPrediction
+ └─── 1:N ──→ GroupStandingsResult (createdBy)
 
 TournamentTemplate
  ├─── 1:N ──→ TournamentTemplateVersion
@@ -48,19 +52,30 @@ TournamentTemplateVersion
  └─── 1:N ──→ TournamentInstance (instances based on this version)
 
 TournamentInstance
- └─── 1:N ──→ Pool
+ ├─── 1:N ──→ Pool
+ ├─── 1:N ──→ MatchExternalMapping
+ ├─── 1:N ──→ MatchSyncState
+ └─── 1:N ──→ ResultSyncLog
 
 Pool
  ├─── 1:N ──→ PoolMember
  ├─── 1:N ──→ PoolInvite
  ├─── 1:N ──→ Prediction
- └─── 1:N ──→ PoolMatchResult
+ ├─── 1:N ──→ PoolMatchResult
+ ├─── 1:N ──→ StructuralPrediction
+ ├─── 1:N ──→ StructuralPhaseResult
+ ├─── 1:N ──→ GroupStandingsPrediction
+ └─── 1:N ──→ GroupStandingsResult
 
 PoolMatchResult
  ├─── 1:N ──→ PoolMatchResultVersion
  └─── 1:1 ──→ PoolMatchResultVersion (currentVersion)
 
 AuditEvent (global, no FK constraints)
+LegalDocument (standalone)
+PlatformSettings (singleton)
+DeadlineReminderLog (standalone)
+BetaFeedback (standalone)
 ```
 
 ---
@@ -77,18 +92,50 @@ AuditEvent (global, no FK constraints)
 model User {
   id           String       @id @default(uuid())
   email        String       @unique
-  username     String       @unique           // NEW: Unique identifier (3-20 chars, alphanumeric+hyphens/underscores)
+  username     String       @unique
   displayName  String
-  passwordHash String                         // Can be empty for OAuth-only users
+  passwordHash String
   platformRole PlatformRole @default(PLAYER)
   status       UserStatus   @default(ACTIVE)
 
-  // Password reset fields (NEW: 2026-01-04)
-  resetToken          String?   @unique      // Secure random token (32 bytes hex)
-  resetTokenExpiresAt DateTime?              // Token expiration (1 hour from generation)
+  // Profile fields
+  firstName   String?
+  lastName    String?
+  dateOfBirth DateTime?
+  gender      Gender?
+  bio         String?   @db.VarChar(200)
+  country     String?   @db.VarChar(2)
+  timezone    String?
 
-  // OAuth integration (NEW: 2026-01-04)
-  googleId String? @unique                    // Google User ID (from OAuth sub claim)
+  lastUsernameChangeAt DateTime?
+
+  // Password reset
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+
+  // Google OAuth
+  googleId String? @unique
+
+  // Email verification
+  emailVerified                   Boolean   @default(false)
+  emailVerificationToken          String?   @unique
+  emailVerificationTokenExpiresAt DateTime?
+
+  // Legal consent
+  acceptedTermsAt      DateTime?
+  acceptedTermsVersion String?
+  acceptedPrivacyAt      DateTime?
+  acceptedPrivacyVersion String?
+  marketingConsent   Boolean   @default(false)
+  marketingConsentAt DateTime?
+  ageVerifiedAt DateTime?
+
+  // Email notification preferences
+  emailNotificationsEnabled Boolean @default(true)
+  emailPoolInvitations     Boolean @default(true)
+  emailDeadlineReminders   Boolean @default(true)
+  emailResultNotifications Boolean @default(true)
+  emailPoolCompletions     Boolean @default(true)
 
   createdAtUtc DateTime @default(now())
   updatedAtUtc DateTime @updatedAt
@@ -99,6 +146,10 @@ model User {
   poolInvitesCreated    PoolInvite[]
   predictions           Prediction[]
   resultVersionsCreated PoolMatchResultVersion[]
+  structuralPredictions StructuralPrediction[]
+  structuralPhaseResults StructuralPhaseResult[]
+  groupStandingsPredictions GroupStandingsPrediction[]
+  groupStandingsResults GroupStandingsResult[]
 
   // Indexes
   @@index([username])
@@ -116,29 +167,34 @@ enum UserStatus {
   ACTIVE    // Can use platform
   DISABLED  // Suspended/banned (platform-level)
 }
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
 ```
 
 **Constraints:**
 - `email` must be unique (enforced by DB)
-- `passwordHash` must never be null (authentication required)
+- `username` must be unique (3-20 chars, alphanumeric + hyphens/underscores)
+- `passwordHash` can be empty for OAuth-only users
 - `displayName` must be 3-50 characters (enforced in API)
+- `bio` max 200 characters
+- `country` ISO 3166-1 alpha-2 (2 chars)
 
 **Indexes:**
 - Primary: `id` (UUID, indexed)
-- Unique: `email`
+- Unique: `email`, `username`, `googleId`, `emailVerificationToken`
 
 **Business Rules:**
 - Users cannot be hard-deleted (set `status = DISABLED` instead)
 - Email is case-insensitive (normalized to lowercase in API)
 - `platformRole` does not enforce permissions (pools use `PoolMember.role`)
-
-**Future Fields (v0.2-beta):**
-```prisma
-username     String  @unique  // e.g., "juancho123"
-timezone     String?          // IANA timezone, e.g., "America/Mexico_City"
-avatarUrl    String?
-bio          String?
-```
+- Username changes tracked via `lastUsernameChangeAt`
+- Email verification required for full platform access
+- Legal consent (terms + privacy) tracked with version for compliance
 
 ---
 
@@ -316,11 +372,21 @@ model TournamentInstance {
 
   dataJson Json  // Frozen snapshot from templateVersion.dataJson
 
+  // Auto-results / Smart Sync fields
+  resultSourceMode      ResultSourceMode @default(MANUAL)
+  apiFootballLeagueId   Int?
+  apiFootballSeasonId   Int?
+  lastSyncAtUtc         DateTime?
+  syncEnabled           Boolean @default(false)
+
   createdAtUtc DateTime @default(now())
   updatedAtUtc DateTime @updatedAt
 
   // Relations
-  pools Pool[]
+  pools                 Pool[]
+  matchExternalMappings MatchExternalMapping[]
+  matchSyncStates       MatchSyncState[]
+  resultSyncLogs        ResultSyncLog[]
 
   @@index([templateId])
   @@index([templateVersionId])
@@ -332,11 +398,17 @@ enum TournamentInstanceStatus {
   COMPLETED  // Tournament ended
   ARCHIVED   // Hidden from catalog
 }
+
+enum ResultSourceMode {
+  MANUAL  // Results entered manually by host
+  AUTO    // Results fetched automatically via API-Football
+}
 ```
 
 **Constraints:**
 - `templateVersionId` must point to a PUBLISHED version
 - `dataJson` is a **frozen snapshot** (never changes even if template updates)
+- `apiFootballLeagueId` and `apiFootballSeasonId` required when `resultSourceMode = AUTO`
 
 **Indexes:**
 - Primary: `id`
@@ -350,6 +422,9 @@ enum TournamentInstanceStatus {
   - DRAFT → ACTIVE (manual, by admin)
   - ACTIVE → COMPLETED (manual or auto when last match ends)
   - COMPLETED → ARCHIVED (manual or auto after 90 days)
+- When `resultSourceMode = AUTO`, the Smart Sync system polls API-Football for results
+- `syncEnabled` can be toggled to pause/resume automatic syncing
+- `lastSyncAtUtc` tracks the last successful sync operation
 
 ---
 
@@ -451,6 +526,7 @@ model Pool {
 
   name        String
   description String?
+  status      PoolStatus     @default(DRAFT)
 
   visibility PoolVisibility @default(PRIVATE)
   timeZone   String         @default("UTC")  // IANA timezone
@@ -458,7 +534,14 @@ model Pool {
   deadlineMinutesBeforeKickoff Int    @default(10)
   scoringPresetKey             String @default("CLASSIC")
 
-  // Tournament progression settings (v0.1-alpha, added 2026-01-04)
+  // Join approval
+  requireApproval Boolean @default(false)
+
+  // Pick types configuration
+  pickTypesConfig  Json?  // Custom pick types config per pool
+  fixtureSnapshot  Json?  // Frozen fixture data snapshot
+
+  // Tournament progression settings
   autoAdvanceEnabled Boolean @default(true)  // Enable automatic phase advancement
   lockedPhases       Json    @default("[]")  // Array of phaseIds blocked from advancing
 
@@ -469,13 +552,24 @@ model Pool {
   updatedAtUtc DateTime @updatedAt
 
   // Relations
-  members      PoolMember[]
-  invites      PoolInvite[]
-  predictions  Prediction[]
-  matchResults PoolMatchResult[]
+  members                PoolMember[]
+  invites                PoolInvite[]
+  predictions            Prediction[]
+  matchResults           PoolMatchResult[]
+  structuralPredictions  StructuralPrediction[]
+  structuralPhaseResults StructuralPhaseResult[]
+  groupStandingsPredictions GroupStandingsPrediction[]
+  groupStandingsResults  GroupStandingsResult[]
 
   @@index([tournamentInstanceId])
   @@index([createdByUserId])
+}
+
+enum PoolStatus {
+  DRAFT      // Being configured by host
+  ACTIVE     // Open for play
+  COMPLETED  // All matches finished
+  ARCHIVED   // Hidden from listings
 }
 
 enum PoolVisibility {
@@ -496,20 +590,16 @@ enum PoolVisibility {
 
 **Business Rules:**
 - Creator automatically becomes HOST (via PoolMember record)
-- Pool cannot be hard-deleted (only archived via status field, future)
+- Pool cannot be hard-deleted (only archived via status field)
 - `timeZone` used for display purposes (all DB times in UTC)
 - Once 2nd player joins, scoring rules become immutable (enforced in API)
+- `requireApproval`: When true, new members start with PENDING_APPROVAL status
+- `pickTypesConfig`: JSON config defining which pick types are active for this pool
+- `fixtureSnapshot`: Frozen copy of fixture data for the pool
 - `autoAdvanceEnabled`: Controls automatic tournament phase progression when all matches complete
 - `lockedPhases`: JSON array of phaseIds (e.g., `["group_stage", "round_of_32"]`) that block auto/manual advancement
   - Empty array `[]` = no locks
   - Locked phases prevent both automatic and manual advancement until unlocked
-
-**Future Fields (v0.2-beta):**
-```prisma
-status               PoolStatus  @default(DRAFT)
-requireApproval      Boolean     @default(false)
-pickRulesJson        Json?       // Custom pick types & points config
-```
 
 ---
 
@@ -535,19 +625,32 @@ model PoolMember {
   joinedAtUtc DateTime  @default(now())
   leftAtUtc   DateTime?  // Nullable (only set when status = LEFT)
 
+  // Approval fields
+  approvedByUserId String?
+  approvedAtUtc    DateTime?
+  rejectionReason  String?
+
+  // Ban fields
+  bannedAt        DateTime?
+  bannedByUserId  String?
+  banReason       String?
+  banExpiresAt    DateTime?  // Null = permanent, future date = temporary
+
   @@unique([poolId, userId])
   @@index([userId])
 }
 
 enum PoolMemberRole {
-  HOST    // Pool owner
-  PLAYER  // Regular participant
+  HOST      // Pool owner
+  CO_ADMIN  // Co-administrator (can publish results, manage members)
+  PLAYER    // Regular participant
 }
 
 enum PoolMemberStatus {
-  ACTIVE  // Can participate
-  LEFT    // Voluntarily left
-  BANNED  // Expelled by host
+  PENDING_APPROVAL  // Awaiting host/co-admin approval
+  ACTIVE            // Can participate
+  LEFT              // Voluntarily left
+  BANNED            // Expelled by host/co-admin
 }
 ```
 
@@ -563,17 +666,11 @@ enum PoolMemberStatus {
 **Business Rules:**
 - Each pool must have exactly 1 HOST (enforced in API)
 - HOST cannot leave or be banned (must transfer ownership first, future)
+- CO_ADMIN can publish results, approve members, and ban players (but cannot modify pool settings)
 - `joinedAtUtc` used for leaderboard tiebreaker
 - BANNED users remain in leaderboard (marked with badge)
-
-**Future Fields (v0.2-beta):**
-```prisma
-role: HOST | CO_ADMIN | PLAYER
-status: ACTIVE | LEFT | BANNED | SUSPENDED
-bannedAtUtc     DateTime?
-bannedUntilUtc  DateTime?  // Null = permanent, future date = temporary
-bannedReason    String?
-```
+- When `Pool.requireApproval = true`, new members start with PENDING_APPROVAL status
+- `banExpiresAt = null` means permanent ban; a future date means temporary ban
 
 ---
 
@@ -779,14 +876,23 @@ model PoolMatchResultVersion {
   homeGoals Int
   awayGoals Int
 
-  // Penalty shootout scores (v0.1-alpha, added 2026-01-04)
+  // Score at 90 minutes (for extra time tracking)
+  homeGoals90 Int?  // Regular time score (before extra time)
+  awayGoals90 Int?  // Regular time score (before extra time)
+
+  // Penalty shootout scores
   homePenalties Int?  // Optional: for knockout phases that end in draw
   awayPenalties Int?  // Optional: determines winner when regular time tied
 
   reason String?  // Required for version > 1 (errata reason)
 
-  createdByUserId String
-  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+  // Result source tracking
+  source            ResultSource @default(HOST_MANUAL)
+  externalFixtureId Int?           // API-Football fixture ID (for auto results)
+  externalDataJson  Json?          // Raw API response data
+
+  createdByUserId String?  // Nullable for system-generated results (Smart Sync)
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id])
 
   publishedAtUtc DateTime @default(now())
 
@@ -803,6 +909,13 @@ model PoolMatchResultVersion {
 enum ResultVersionStatus {
   PUBLISHED  // Only valid status (no drafts for results)
 }
+
+enum ResultSource {
+  HOST_MANUAL       // Manually entered by host/co-admin
+  HOST_PROVISIONAL  // Provisional result by host (may be updated)
+  API_CONFIRMED     // Confirmed result from API-Football
+  HOST_OVERRIDE     // Host override of an API result
+}
 ```
 
 **Constraints:**
@@ -810,6 +923,7 @@ enum ResultVersionStatus {
 - `versionNumber` starts at 1 per result
 - `homeGoals >= 0`, `awayGoals >= 0`
 - `reason` required if `versionNumber > 1` (enforced in API transaction)
+- `createdByUserId` is optional (null for system-generated Smart Sync results)
 
 **Indexes:**
 - Primary: `id`
@@ -822,10 +936,15 @@ enum ResultVersionStatus {
 - Version 2+: `reason` mandatory (errata explanation)
 - `publishedAtUtc` always set to creation time
 - Audit event created for each version
+- `homeGoals90`/`awayGoals90`: Score at end of regular time (before extra time)
+  - Allows tracking whether a match went to extra time
 - `homePenalties`/`awayPenalties`: Nullable, used for knockout phases
   - Group stage: penalties usually NULL (draws allowed)
   - Knockout: if `homeGoals == awayGoals`, penalties required to determine winner
   - Winner determination: regular time first, then penalties if tied
+- `source` tracks how the result was created (manual, API, override)
+- `externalFixtureId` links to API-Football fixture for traceability
+- `externalDataJson` stores raw API response for audit purposes
 
 **Example Version History:**
 ```
@@ -836,9 +955,439 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 
 ---
 
-## 8. Indexes & Performance
+## 8. Smart Sync Models
 
-### 8.1 Current Indexes
+### 8.1 MatchExternalMapping
+
+**Purpose:** Maps internal match IDs (from tournament instance dataJson) to API-Football fixture IDs.
+
+**Schema:**
+
+```prisma
+model MatchExternalMapping {
+  id                   String @id @default(uuid())
+
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id])
+
+  internalMatchId      String
+  apiFootballFixtureId Int
+  apiFootballHomeTeamId Int?
+  apiFootballAwayTeamId Int?
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([tournamentInstanceId, internalMatchId])
+  @@unique([tournamentInstanceId, apiFootballFixtureId])
+}
+```
+
+**Constraints:**
+- `(tournamentInstanceId, internalMatchId)` must be unique
+- `(tournamentInstanceId, apiFootballFixtureId)` must be unique
+- One mapping per internal match per instance
+
+**Business Rules:**
+- Created during Smart Sync initialization (mapping internal matches to API-Football fixtures)
+- `apiFootballHomeTeamId`/`apiFootballAwayTeamId` used for validation during sync
+
+---
+
+### 8.2 MatchSyncState
+
+**Purpose:** Tracks the sync status of individual matches for the Smart Sync system.
+
+**Schema:**
+
+```prisma
+model MatchSyncState {
+  id                   String @id @default(uuid())
+
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id])
+
+  internalMatchId      String
+  syncStatus           MatchSyncStatus @default(PENDING)
+
+  kickoffUtc           DateTime
+  firstCheckAtUtc      DateTime?
+  finishCheckAtUtc     DateTime?
+  lastCheckedAtUtc     DateTime?
+  completedAtUtc       DateTime?
+  lastApiStatus        String?
+
+  @@unique([tournamentInstanceId, internalMatchId])
+}
+
+enum MatchSyncStatus {
+  PENDING        // Not yet checked
+  IN_PROGRESS    // Match is live, being monitored
+  AWAITING_FINISH // Match expected to end soon
+  COMPLETED      // Result confirmed and synced
+  SKIPPED        // Manually skipped from sync
+}
+```
+
+**Constraints:**
+- `(tournamentInstanceId, internalMatchId)` must be unique
+
+**Business Rules:**
+- State machine: PENDING -> IN_PROGRESS -> AWAITING_FINISH -> COMPLETED
+- `kickoffUtc` determines when the sync system starts checking for results
+- `lastApiStatus` stores the latest status string from API-Football (e.g., "FT", "1H", "HT")
+- SKIPPED matches are excluded from sync polling
+
+---
+
+### 8.3 ResultSyncLog
+
+**Purpose:** Audit log of Smart Sync jobs, tracking API calls and results.
+
+**Schema:**
+
+```prisma
+model ResultSyncLog {
+  id                   String @id @default(uuid())
+
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id])
+
+  startedAtUtc         DateTime
+  completedAtUtc       DateTime?
+  status               SyncStatus @default(RUNNING)
+
+  fixturesChecked      Int @default(0)
+  fixturesUpdated      Int @default(0)
+  fixturesSkipped      Int @default(0)
+
+  errors               Json?     // Array of error objects
+  apiResponseTimeMs    Int?      // API response time in ms
+  apiRateLimitRemaining Int?     // Remaining API rate limit
+
+  createdAtUtc DateTime @default(now())
+}
+
+enum SyncStatus {
+  RUNNING    // Sync job in progress
+  COMPLETED  // Sync job finished successfully
+  FAILED     // Sync job failed
+  PARTIAL    // Some fixtures updated, some failed
+}
+```
+
+**Business Rules:**
+- One log entry per sync job execution
+- `errors` stores structured error data (fixture ID, error message, etc.)
+- `apiRateLimitRemaining` helps monitor API quota usage
+- Used for diagnostics and monitoring of the Smart Sync system
+
+---
+
+## 9. Structural Predictions
+
+### 9.1 StructuralPrediction
+
+**Purpose:** Predictions for complete tournament phases (e.g., which teams advance from group stage), not individual matches.
+
+**Schema:**
+
+```prisma
+model StructuralPrediction {
+  id       String @id @default(uuid())
+
+  poolId   String
+  pool     Pool   @relation(fields: [poolId], references: [id])
+
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  phaseId  String  // References instance.dataJson.phases[].id
+  pickJson Json    // Flexible structure for structural picks
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, userId, phaseId])
+}
+```
+
+**Constraints:**
+- `(poolId, userId, phaseId)` must be unique (one structural prediction per phase per user per pool)
+
+**Business Rules:**
+- Used for predictions like "which teams advance to Round of 16" or "who wins the final"
+- `pickJson` structure varies by phase type (group advancement, bracket predictions, etc.)
+- Subject to deadline enforcement like match predictions
+
+---
+
+### 9.2 StructuralPhaseResult
+
+**Purpose:** Official results for structural predictions (e.g., actual teams that advanced).
+
+**Schema:**
+
+```prisma
+model StructuralPhaseResult {
+  id              String @id @default(uuid())
+
+  poolId          String
+  pool            Pool   @relation(fields: [poolId], references: [id])
+
+  phaseId         String  // References instance.dataJson.phases[].id
+  resultJson      Json    // Official result data
+
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, phaseId])
+}
+```
+
+**Constraints:**
+- `(poolId, phaseId)` must be unique (one official result per phase per pool)
+
+**Business Rules:**
+- Published by host or co-admin
+- `resultJson` contains the official outcome for that phase
+- Used to score structural predictions
+
+---
+
+### 9.3 GroupStandingsPrediction
+
+**Purpose:** Per-group standings predictions (ordered list of teams in a group).
+
+**Schema:**
+
+```prisma
+model GroupStandingsPrediction {
+  id      String   @id @default(uuid())
+
+  poolId  String
+  pool    Pool     @relation(fields: [poolId], references: [id])
+
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+
+  phaseId String   // References instance.dataJson.phases[].id
+  groupId String   // Group identifier (e.g., "A", "B")
+  teamIds String[] // Ordered list of team IDs (1st, 2nd, 3rd, 4th)
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, userId, phaseId, groupId])
+}
+```
+
+**Constraints:**
+- `(poolId, userId, phaseId, groupId)` must be unique
+
+**Business Rules:**
+- `teamIds` is an ordered array representing predicted standings (index 0 = 1st place)
+- Each team ID must exist in the group's team list from the instance data
+
+---
+
+### 9.4 GroupStandingsResult
+
+**Purpose:** Official group standings results.
+
+**Schema:**
+
+```prisma
+model GroupStandingsResult {
+  id              String   @id @default(uuid())
+
+  poolId          String
+  pool            Pool     @relation(fields: [poolId], references: [id])
+
+  phaseId         String   // References instance.dataJson.phases[].id
+  groupId         String   // Group identifier
+  teamIds         String[] // Official ordered standings
+  version         Int      @default(1)
+  reason          String?  // Reason for update (version > 1)
+
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([poolId, phaseId, groupId])
+}
+```
+
+**Constraints:**
+- `(poolId, phaseId, groupId)` must be unique
+
+**Business Rules:**
+- Published by host or co-admin
+- `version` increments on corrections (similar to result errata)
+- `reason` required for version > 1
+- Used to score group standings predictions
+
+---
+
+## 10. Platform Models
+
+### 10.1 LegalDocument
+
+**Purpose:** Versioned legal documents (terms of service, privacy policy) for compliance tracking.
+
+**Schema:**
+
+```prisma
+model LegalDocument {
+  id       String @id @default(uuid())
+
+  type     LegalDocumentType
+  version  String            // Semantic version (e.g., "1.0", "1.1")
+  title    String
+  content  String @db.Text   // Full document content
+  changeSummary String?      // Summary of changes from previous version
+
+  locale   String  @default("es")  // Language locale
+  isActive Boolean @default(false) // Only one active per type+locale
+
+  publishedAt DateTime?
+  effectiveAt DateTime?
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@unique([type, version, locale])
+}
+
+enum LegalDocumentType {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+}
+```
+
+**Constraints:**
+- `(type, version, locale)` must be unique
+- Only one document per type+locale can be active at a time (enforced in API)
+
+**Business Rules:**
+- Users must accept the active version of terms and privacy policy
+- Acceptance tracked via `User.acceptedTermsVersion` and `User.acceptedPrivacyVersion`
+- Old versions retained for compliance auditing
+
+---
+
+### 10.2 PlatformSettings
+
+**Purpose:** Singleton table for platform-wide configuration settings.
+
+**Schema:**
+
+```prisma
+model PlatformSettings {
+  id String @id @default("singleton")
+
+  // Email notification toggles (platform-wide)
+  emailWelcomeEnabled          Boolean @default(true)
+  emailPoolInvitationEnabled   Boolean @default(true)
+  emailDeadlineReminderEnabled Boolean @default(false)
+  emailResultPublishedEnabled  Boolean @default(true)
+  emailPoolCompletedEnabled    Boolean @default(true)
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?  // Admin who last updated
+}
+```
+
+**Business Rules:**
+- Only one row exists (id = "singleton")
+- Controls platform-wide email notification behavior
+- Individual user preferences (in User model) override platform settings
+- Only ADMIN users can modify
+
+---
+
+### 10.3 DeadlineReminderLog
+
+**Purpose:** Tracks sent deadline reminder emails to prevent duplicates.
+
+**Schema:**
+
+```prisma
+model DeadlineReminderLog {
+  id      String @id @default(uuid())
+
+  poolId  String
+  userId  String
+  matchId String
+
+  sentAt      DateTime
+  sentToEmail String
+  success     Boolean
+  error       String?
+
+  hoursBeforeDeadline Int  // How many hours before deadline the reminder was sent
+
+  @@unique([poolId, userId, matchId])
+}
+```
+
+**Constraints:**
+- `(poolId, userId, matchId)` must be unique (one reminder per user per match per pool)
+
+**Business Rules:**
+- Prevents sending duplicate reminders
+- `hoursBeforeDeadline` records the reminder tier (e.g., 24h, 6h, 1h)
+- Failed sends tracked via `success = false` and `error` message
+
+---
+
+### 10.4 BetaFeedback
+
+**Purpose:** Collects user feedback during beta testing.
+
+**Schema:**
+
+```prisma
+model BetaFeedback {
+  id           String @id @default(uuid())
+
+  type         BetaFeedbackType
+  message      String
+  imageBase64  String?           // Screenshot in base64
+
+  wantsContact Boolean @default(false)
+  contactName  String?
+  phoneNumber  String?
+
+  userId       String?  // Nullable (anonymous feedback allowed)
+  userEmail    String?
+  currentUrl   String?  // Page URL where feedback was submitted
+  userAgent    String?  // Browser info
+
+  createdAtUtc DateTime @default(now())
+}
+
+enum BetaFeedbackType {
+  BUG         // Bug report
+  SUGGESTION  // Feature suggestion
+}
+```
+
+**Business Rules:**
+- Anonymous feedback allowed (`userId` nullable)
+- `imageBase64` stores optional screenshot for bug reports
+- `wantsContact` indicates if user wants to be contacted about their feedback
+
+---
+
+## 11. Indexes & Performance
+
+### 11.1 Current Indexes
 
 | Table | Index Type | Columns | Purpose |
 |-------|------------|---------|---------|
@@ -875,7 +1424,7 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 | PoolMatchResultVersion | Unique | (resultId, versionNumber) | Version uniqueness |
 | PoolMatchResultVersion | Foreign | resultId | Result versions |
 
-### 8.2 Query Patterns & Optimization
+### 11.2 Query Patterns & Optimization
 
 **Common Queries:**
 
@@ -905,9 +1454,9 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 
 ---
 
-## 9. Invariants & Business Rules
+## 12. Invariants & Business Rules
 
-### 9.1 Data Integrity Invariants
+### 12.1 Data Integrity Invariants
 
 **Must NEVER be violated:**
 
@@ -941,7 +1490,7 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 
 ---
 
-### 9.2 Business Logic Rules
+### 12.2 Business Logic Rules
 
 **Enforced in API layer:**
 
@@ -975,7 +1524,7 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 
 ---
 
-### 9.3 Soft Delete Rules
+### 12.3 Soft Delete Rules
 
 **Entities that use status fields instead of hard deletes:**
 
@@ -985,8 +1534,8 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 | TournamentTemplate | status | DRAFT, PUBLISHED, DEPRECATED | DEPRECATED |
 | TournamentTemplateVersion | status | DRAFT, PUBLISHED, DEPRECATED | DEPRECATED |
 | TournamentInstance | status | DRAFT, ACTIVE, COMPLETED, ARCHIVED | ARCHIVED |
-| Pool | (future) status | DRAFT, ACTIVE, COMPLETED, ARCHIVED | ARCHIVED |
-| PoolMember | status | ACTIVE, LEFT, BANNED | LEFT or BANNED |
+| Pool | status | DRAFT, ACTIVE, COMPLETED, ARCHIVED | ARCHIVED |
+| PoolMember | status | PENDING_APPROVAL, ACTIVE, LEFT, BANNED | LEFT or BANNED |
 
 **Hard deletes allowed:**
 - ⚠️ TournamentTemplateVersion (DRAFT only)
@@ -1002,9 +1551,9 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 
 ---
 
-## 10. Migration History
+## 13. Migration History
 
-### 10.1 Migrations Log
+### 13.1 Migrations Log
 
 | Migration | Date | Description |
 |-----------|------|-------------|
@@ -1017,50 +1566,27 @@ Version 3: 3-0 (corrected by @host at 18:30, reason: "Additional goal in stoppag
 | `pool_preset_and_deadline10` | 2024-12-29 | Add scoringPresetKey, deadlineMinutesBeforeKickoff defaults |
 | `add_auto_advance_enabled_to_pool` | 2026-01-04 | Add autoAdvanceEnabled boolean to Pool (default: true) |
 | `add_penalties_and_locked_phases` | 2026-01-04 | Add homePenalties/awayPenalties to PoolMatchResultVersion, lockedPhases to Pool |
+| `add_username_system` | 2026-01-04 | Add username, profile fields, password reset, Google OAuth |
+| `add_co_admin_and_ban` | 2026-01-18 | CO_ADMIN role, PENDING_APPROVAL status, ban fields |
+| `add_pool_status_and_approval` | 2026-01-18 | Pool status enum, requireApproval, pickTypesConfig, fixtureSnapshot |
+| `add_structural_predictions` | 2026-01-18 | StructuralPrediction, StructuralPhaseResult, GroupStandingsPrediction, GroupStandingsResult |
+| `add_email_verification` | 2026-01-25 | Email verification fields, legal consent fields, notification prefs |
+| `add_legal_and_platform_settings` | 2026-01-25 | LegalDocument, PlatformSettings, DeadlineReminderLog |
+| `add_smart_sync` | 2026-02-01 | MatchExternalMapping, ResultSyncLog, MatchSyncState, auto-results fields |
+| `add_beta_feedback` | 2026-02-01 | BetaFeedback model |
 
-**Total Migrations:** 9
+**Total Migrations:** 17
 
-### 10.2 Pending Migrations (v0.2-beta)
+### 13.2 Planned Migrations (v1.0)
 
-**Planned additions:**
+1. **Organization/Corporate:**
+   - Add `Organization`, `OrganizationInquiry` models
+   - Add `Pool.organizationId`, `Pool.logoUrl`
 
-1. **User enhancements:**
-   - Add `username` (unique, alphanumeric)
-   - Add `timezone` (IANA string)
-   - Add `avatarUrl`, `bio` (optional)
+2. **Payment:**
+   - Add `PoolPayment` model (Lemon Squeezy integration)
 
-2. **Pool enhancements:**
-   - Add `status` enum (DRAFT, ACTIVE, COMPLETED, ARCHIVED)
-   - Add `requireApproval` boolean
-   - Add `pickRulesJson` (custom scoring config)
-
-3. **PoolMember enhancements:**
-   - Expand `role` enum: HOST | CO_ADMIN | PLAYER
-   - Expand `status` enum: ACTIVE | LEFT | BANNED | SUSPENDED
-   - Add `bannedAtUtc`, `bannedUntilUtc`, `bannedReason`
-
-4. **New table: PoolMemberRequest**
-   ```prisma
-   model PoolMemberRequest {
-     id        String @id @default(uuid())
-     poolId    String
-     userId    String
-     inviteCodeId String
-     status    RequestStatus @default(PENDING)
-     reason    String?
-     requestedAtUtc  DateTime @default(now())
-     processedAtUtc  DateTime?
-     processedByUserId String?
-   }
-
-   enum RequestStatus {
-     PENDING
-     APPROVED
-     REJECTED
-   }
-   ```
-
-### 10.3 Migration Best Practices
+### 13.3 Migration Best Practices
 
 **When creating migrations:**
 
@@ -1086,9 +1612,9 @@ npx prisma migrate reset
 
 ---
 
-## 11. Data Retention & Archival
+## 14. Data Retention & Archival
 
-### 11.1 Retention Policies
+### 14.1 Retention Policies
 
 | Entity | Retention | Archival Strategy |
 |--------|-----------|-------------------|
@@ -1099,7 +1625,7 @@ npx prisma migrate reset
 | PoolMatchResult | Forever | Transparency requirement |
 | TournamentInstance | Forever | ARCHIVED state hides from catalog |
 
-### 11.2 GDPR Compliance (Future)
+### 14.2 GDPR Compliance (Future)
 
 **User data deletion requests:**
 - Anonymize user: Replace `email`, `displayName` with hashed ID
@@ -1111,38 +1637,33 @@ npx prisma migrate reset
 
 ---
 
-## 12. Future Enhancements
+## 15. Future Enhancements
 
-### 12.1 v0.2-beta (Immediate)
+### 15.1 v1.0 (Launch -- April 2026)
 
-- [ ] Add `username` field to User (unique)
-- [ ] Add Pool `status` field (state machine)
-- [ ] Add PoolMember `role` expansion (CO_ADMIN)
-- [ ] Add PoolMember ban/suspension fields
-- [ ] Add PoolMemberRequest table (approval workflow)
-- [ ] Add `pickRulesJson` to Pool (custom scoring)
+- [ ] Add Organization/OrganizationInquiry models (corporate feature)
+- [ ] Add Pool.organizationId, Pool.logoUrl (corporate branding)
+- [ ] Add PoolPayment model (payment tracking)
 
-### 12.2 v1.0 (MVP)
+### 15.2 v1.1+ (Post-Launch)
 
-- [ ] Add `emailVerified` boolean to User
-- [ ] Add `refreshToken` table (long-lived sessions)
-- [ ] Add `Notification` table (email/in-app)
-- [ ] Add `UserSettings` table (preferences)
+- [ ] Add PoolChat table
+- [ ] Add Badge + UserBadge tables (gamification)
+- [ ] Self-service enterprise dashboard
+- [ ] Company admin role
 
-### 12.3 v2.0+ (Scale)
+### 15.3 v2.0+ (Scale)
 
-- [ ] Add `PoolChat` table (optional chat feature)
-- [ ] Add `Badge` + `UserBadge` tables (gamification)
-- [ ] Add `SubscriptionTier` enum (free/premium)
-- [ ] Partition AuditEvent by year (performance)
-- [ ] Read replicas (Postgres replication)
+- [ ] Partition AuditEvent by year
+- [ ] Read replicas
 - [ ] Materialized views for leaderboards
+- [ ] Multi-sport models
 
 ---
 
-## 13. Appendix
+## 16. Appendix
 
-### 13.1 Sample Data Sizes (WC2026 Sandbox)
+### 16.1 Sample Data Sizes (WC2026 Sandbox)
 
 | Entity | Count | Notes |
 |--------|-------|-------|
@@ -1164,7 +1685,7 @@ npx prisma migrate reset
 - Audit events: ~2M events × 500B = 1 GB
 - Total: < 2 GB (easily handled by 8GB Postgres instance)
 
-### 13.2 Related Documentation
+### 16.2 Related Documentation
 
 - [PRD.md](./PRD.md) - Product requirements & features
 - [API_SPEC.md](./API_SPEC.md) - API contracts
