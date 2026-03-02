@@ -409,7 +409,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
         activated++;
       } else {
         // Usuario no existe → enviar activation email
-        await sendCorporateActivationEmail({
+        const emailResult = await sendCorporateActivationEmail({
           to: invite.email,
           employeeName: invite.name || undefined,
           companyName,
@@ -417,12 +417,20 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
           activationToken: invite.activationToken,
         });
 
-        await prisma.corporateInvite.update({
-          where: { id: invite.id },
-          data: { status: "SENT" },
-        });
-
-        sent++;
+        if (emailResult.success) {
+          await prisma.corporateInvite.update({
+            where: { id: invite.id },
+            data: { status: "SENT" },
+          });
+          sent++;
+        } else {
+          console.error(`Email failed for ${invite.email}: ${emailResult.error}`);
+          await prisma.corporateInvite.update({
+            where: { id: invite.id },
+            data: { status: "FAILED" },
+          });
+          failed++;
+        }
       }
     } catch (err) {
       console.error(`Error processing invite ${invite.id}:`, err);

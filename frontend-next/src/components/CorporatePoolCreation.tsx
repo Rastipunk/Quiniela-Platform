@@ -22,7 +22,8 @@ function detectTz() {
   }
 }
 
-const MAX_LOGO_BYTES = 500 * 1024; // 500 KB
+const MAX_LOGO_BYTES = 500 * 1024;
+const TOTAL_STEPS = 6;
 
 export function CorporatePoolCreation() {
   const router = useRouter();
@@ -30,6 +31,10 @@ export function CorporatePoolCreation() {
   const t = useTranslations("enterprise.create");
   const tc = useTranslations("landing.tournaments");
   const token = useMemo(() => getToken(), []);
+
+  // Wizard step (1-6)
+  const [step, setStep] = useState(1);
+  const [showScoringWizard, setShowScoringWizard] = useState(false);
 
   // Instances
   const [instances, setInstances] = useState<CatalogInstance[] | null>(null);
@@ -39,24 +44,27 @@ export function CorporatePoolCreation() {
   const [companyName, setCompanyName] = useState("");
   const [logoBase64, setLogoBase64] = useState<string | undefined>();
   const [welcomeMessage, setWelcomeMessage] = useState("");
+  const [logoError, setLogoError] = useState<string | null>(null);
 
-  // Step 2: Pool config
+  // Step 2: Tournament
   const [instanceId, setInstanceId] = useState("");
+
+  // Step 3: Pool config
   const [poolName, setPoolName] = useState("");
   const [poolDesc, setPoolDesc] = useState("");
   const [deadline, setDeadline] = useState(10);
   const [timeZone, setTimeZone] = useState(detectTz());
   const [requireApproval, setRequireApproval] = useState(false);
-  const [pickTypesConfig, setPickTypesConfig] = useState<PoolPickTypesConfig | string | null>(null);
-  const [showWizard, setShowWizard] = useState(false);
 
-  // Step 3: Employees
+  // Step 4: Scoring
+  const [pickTypesConfig, setPickTypesConfig] = useState<PoolPickTypesConfig | string | null>(null);
+
+  // Step 5: Employees
   const [emailsText, setEmailsText] = useState("");
 
   // UI state
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -69,7 +77,6 @@ export function CorporatePoolCreation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Parse emails from textarea
   const validEmails = useMemo(() => {
     if (!emailsText.trim()) return [];
     const lines = emailsText
@@ -84,27 +91,21 @@ export function CorporatePoolCreation() {
     const file = e.target.files?.[0];
     if (!file) return;
     setLogoError(null);
-
     if (file.size > MAX_LOGO_BYTES) {
       setLogoError(t("imageSize"));
       return;
     }
-
     const reader = new FileReader();
-    reader.onload = () => {
-      setLogoBase64(reader.result as string);
-    };
+    reader.onload = () => setLogoBase64(reader.result as string);
     reader.readAsDataURL(file);
   }
 
   function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
-      // Extract emails from CSV (first column or any column with @)
       const emailRegex = /[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/g;
       const found = text.match(emailRegex) || [];
       const unique = [...new Set(found.map((e) => e.toLowerCase()))];
@@ -116,18 +117,40 @@ export function CorporatePoolCreation() {
     reader.readAsText(file);
   }
 
-  const canSubmit =
-    companyName.trim().length >= 2 &&
-    instanceId.length > 0 &&
-    poolName.trim().length >= 3 &&
-    pickTypesConfig !== null;
+  // Step validation
+  function canAdvance(s: number): boolean {
+    switch (s) {
+      case 1: return companyName.trim().length >= 2;
+      case 2: return instanceId.length > 0;
+      case 3: return poolName.trim().length >= 3;
+      case 4: return pickTypesConfig !== null;
+      case 5: return true; // optional
+      default: return true;
+    }
+  }
+
+  function goNext() {
+    if (step < TOTAL_STEPS && canAdvance(step)) {
+      setStep(step + 1);
+    }
+  }
+
+  function goBack() {
+    if (step > 1) setStep(step - 1);
+  }
+
+  // Get tournament name for summary
+  function getSelectedTournamentName(): string {
+    const inst = (instances ?? []).find((i) => i.id === instanceId);
+    if (!inst) return "\u2014";
+    const cat = TOURNAMENT_CATALOG.find((c) => c.templateKey === inst.template?.key);
+    return cat ? `${cat.emoji} ${inst.name || cat.key}` : inst.name || "\u2014";
+  }
 
   async function handleSubmit() {
-    if (!token || !canSubmit) return;
-
+    if (!token) return;
     setBusy(true);
     setError(null);
-
     try {
       const result = await createCorporatePool(token, {
         companyName: companyName.trim(),
@@ -142,7 +165,6 @@ export function CorporatePoolCreation() {
         pickTypesConfig,
         emails: validEmails.length > 0 ? validEmails : undefined,
       });
-
       router.push(`/pools/${result.pool.id}`);
     } catch (e: any) {
       setError(e?.message ?? t("error"));
@@ -171,81 +193,188 @@ export function CorporatePoolCreation() {
     color: "var(--text)",
   };
 
-  const sectionStyle: React.CSSProperties = {
-    padding: isMobile ? 16 : 24,
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
-  };
-
-  if (showWizard && instanceId && token) {
+  // ── If scoring wizard is open, show it full-screen ──
+  if (showScoringWizard && instanceId && token) {
     return (
       <PoolConfigWizard
         instanceId={instanceId}
         token={token}
         onComplete={(config) => {
           setPickTypesConfig(config);
-          setShowWizard(false);
+          setShowScoringWizard(false);
         }}
-        onCancel={() => setShowWizard(false)}
+        onCancel={() => setShowScoringWizard(false)}
       />
     );
   }
 
-  return (
-    <div style={{ maxWidth: 680, margin: isMobile ? "0 auto" : "24px auto", padding: isMobile ? 16 : 24 }}>
-      {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <h1 style={{ fontSize: isMobile ? "1.5rem" : "1.75rem", fontWeight: 800, color: "var(--text)", margin: 0 }}>
-          {t("title")}
-        </h1>
-        <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 8 }}>
-          {t("subtitle")}
-        </p>
+  // ── Progress bar ──
+  const stepLabels = [
+    t("step1"), t("step2"), t("step3"),
+    t("step4"), t("step5"), t("step6"),
+  ];
+
+  function renderProgressBar() {
+    return (
+      <div style={{ marginBottom: 28 }}>
+        {/* Step counter */}
+        <div style={{ textAlign: "center", fontSize: 13, color: "var(--muted)", marginBottom: 12, fontWeight: 500 }}>
+          {t("stepOf", { current: step, total: TOTAL_STEPS })}
+        </div>
+
+        {/* Progress dots + lines */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0 }}>
+          {stepLabels.map((_, i) => {
+            const stepNum = i + 1;
+            const isCompleted = stepNum < step;
+            const isCurrent = stepNum === step;
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center" }}>
+                {/* Dot */}
+                <div
+                  style={{
+                    width: isCurrent ? 36 : 28,
+                    height: isCurrent ? 36 : 28,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: isCurrent ? 14 : 12,
+                    fontWeight: 700,
+                    flexShrink: 0,
+                    background: isCompleted
+                      ? "#4f46e5"
+                      : isCurrent
+                        ? "linear-gradient(135deg, #4f46e5, #7c3aed)"
+                        : "var(--surface)",
+                    color: isCompleted || isCurrent ? "white" : "var(--muted)",
+                    border: isCompleted || isCurrent ? "2px solid #4f46e5" : "2px solid var(--border)",
+                    transition: "all 0.2s ease",
+                    cursor: isCompleted ? "pointer" : "default",
+                  }}
+                  onClick={() => { if (isCompleted) setStep(stepNum); }}
+                >
+                  {isCompleted ? "\u2713" : stepNum}
+                </div>
+                {/* Connector line */}
+                {i < stepLabels.length - 1 && (
+                  <div
+                    style={{
+                      width: isMobile ? 16 : 32,
+                      height: 2,
+                      background: stepNum < step ? "#4f46e5" : "var(--border)",
+                      transition: "background 0.2s ease",
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Current step label */}
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
+            {stepLabels[step - 1]}
+          </div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
+            {t(`step${step}Desc` as any)}
+          </div>
+        </div>
       </div>
+    );
+  }
 
-      {error && (
-        <div
-          style={{
-            padding: "12px 16px",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            borderRadius: 8,
-            color: "#b91c1c",
-            fontSize: 13,
-            marginBottom: 20,
-          }}
-        >
-          {error}
-        </div>
-      )}
+  // ── Navigation buttons ──
+  function renderNavButtons() {
+    const isLast = step === TOTAL_STEPS;
+    return (
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          marginTop: 24,
+          justifyContent: "space-between",
+        }}
+      >
+        {step > 1 ? (
+          <button
+            type="button"
+            onClick={goBack}
+            style={{
+              padding: isMobile ? "12px 20px" : "10px 20px",
+              borderRadius: 10,
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              minHeight: TOUCH_TARGET.minimum,
+              ...mobileInteractiveStyles.tapHighlight,
+            }}
+          >
+            {t("back")}
+          </button>
+        ) : (
+          <div />
+        )}
 
-      {loadError && (
-        <div
-          style={{
-            padding: "12px 16px",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            borderRadius: 8,
-            color: "#b91c1c",
-            fontSize: 13,
-            marginBottom: 20,
-          }}
-        >
-          {loadError}
-        </div>
-      )}
+        {isLast ? (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={busy}
+            style={{
+              padding: isMobile ? "14px 28px" : "12px 28px",
+              borderRadius: 10,
+              border: "none",
+              background: "#4f46e5",
+              color: "white",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: busy ? "not-allowed" : "pointer",
+              minHeight: TOUCH_TARGET.comfortable,
+              opacity: busy ? 0.7 : 1,
+              ...mobileInteractiveStyles.tapHighlight,
+            }}
+          >
+            {busy ? t("creating") : t("createButton")}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!canAdvance(step)}
+            style={{
+              padding: isMobile ? "12px 24px" : "10px 24px",
+              borderRadius: 10,
+              border: "none",
+              background: canAdvance(step) ? "#4f46e5" : "var(--border)",
+              color: canAdvance(step) ? "white" : "var(--muted)",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: canAdvance(step) ? "pointer" : "not-allowed",
+              minHeight: TOUCH_TARGET.minimum,
+              ...mobileInteractiveStyles.tapHighlight,
+            }}
+          >
+            {step === 5 && validEmails.length === 0 ? t("skipStep") : t("next")}
+          </button>
+        )}
+      </div>
+    );
+  }
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        {/* ===== SECTION 1: Company Info ===== */}
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text)", margin: "0 0 16px" }}>
-            {"\u{1F3E2}"} {t("step1")}
-          </h2>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+  // ── Step content ──
+  function renderStep() {
+    switch (step) {
+      // ════════════════════ STEP 1: Company Info ════════════════════
+      case 1:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
-              <label style={labelStyle}>{t("companyName")}</label>
+              <label style={labelStyle}>{t("companyName")} *</label>
               <input
                 type="text"
                 value={companyName}
@@ -253,6 +382,7 @@ export function CorporatePoolCreation() {
                 placeholder={t("companyNamePlaceholder")}
                 style={inputStyle}
                 maxLength={200}
+                autoFocus
               />
             </div>
 
@@ -266,14 +396,7 @@ export function CorporatePoolCreation() {
                     alt="Logo"
                     style={{ width: 48, height: 48, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)" }}
                   />
-                  <label
-                    style={{
-                      fontSize: 13,
-                      color: "#4f46e5",
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
+                  <label style={{ fontSize: 13, color: "#4f46e5", cursor: "pointer", fontWeight: 600 }}>
                     {t("logoChange")}
                     <input type="file" accept="image/png,image/jpeg" onChange={handleLogoChange} style={{ display: "none" }} />
                   </label>
@@ -294,9 +417,7 @@ export function CorporatePoolCreation() {
                   <input type="file" accept="image/png,image/jpeg" onChange={handleLogoChange} style={{ display: "none" }} />
                 </label>
               )}
-              {logoError && (
-                <p style={{ color: "#dc2626", fontSize: 12, marginTop: 4 }}>{logoError}</p>
-              )}
+              {logoError && <p style={{ color: "#dc2626", fontSize: 12, marginTop: 4 }}>{logoError}</p>}
             </div>
 
             <div>
@@ -310,100 +431,114 @@ export function CorporatePoolCreation() {
                 style={{ ...inputStyle, resize: "vertical" }}
               />
             </div>
+
+            {renderNavButtons()}
           </div>
-        </div>
+        );
 
-        {/* ===== SECTION 2: Pool Config ===== */}
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text)", margin: "0 0 16px" }}>
-            {"\u26BD"} {t("step2")}
-          </h2>
+      // ════════════════════ STEP 2: Tournament ════════════════════
+      case 2:
+        return (
+          <div>
+            <label style={labelStyle}>{t("tournament")}</label>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 10,
+                marginTop: 8,
+              }}
+            >
+              {TOURNAMENT_CATALOG.map((tournament) => {
+                const matchingInstance = (instances ?? []).find(
+                  (inst) => inst.template?.key === tournament.templateKey
+                );
+                const isAvailable = tournament.active && !!matchingInstance;
+                const isSelected = isAvailable && instanceId === matchingInstance?.id;
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Tournament grid */}
-            <div>
-              <label style={labelStyle}>{t("tournament")}</label>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: 8,
-                  marginTop: 6,
-                }}
-              >
-                {TOURNAMENT_CATALOG.map((tournament) => {
-                  const matchingInstance = (instances ?? []).find(
-                    (inst) => inst.template?.key === tournament.templateKey
-                  );
-                  const isAvailable = tournament.active && !!matchingInstance;
-                  const isSelected = isAvailable && instanceId === matchingInstance?.id;
-
-                  return (
-                    <button
-                      key={tournament.key}
-                      type="button"
-                      disabled={!isAvailable}
-                      onClick={() => {
-                        if (matchingInstance) setInstanceId(matchingInstance.id);
-                      }}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 4,
-                        padding: "12px 8px",
-                        borderRadius: 10,
-                        border: isSelected ? "2px solid #4f46e5" : "1px solid var(--border)",
-                        background: isSelected
-                          ? "linear-gradient(135deg, rgba(79,70,229,0.08), rgba(79,70,229,0.04))"
-                          : isAvailable
-                            ? "var(--bg)"
-                            : "var(--surface)",
-                        cursor: isAvailable ? "pointer" : "default",
-                        opacity: isAvailable ? 1 : 0.45,
-                        filter: isAvailable ? "none" : "grayscale(100%)",
-                        position: "relative",
-                      }}
-                    >
-                      {!isAvailable && (
-                        <span
-                          style={{
-                            position: "absolute",
-                            top: 4,
-                            right: 4,
-                            fontSize: "0.55rem",
-                            fontWeight: 600,
-                            color: "#fff",
-                            background: "#9ca3af",
-                            padding: "1px 4px",
-                            borderRadius: 3,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.3px",
-                          }}
-                        >
-                          {tc("comingSoon")}
-                        </span>
-                      )}
-                      <span style={{ fontSize: "1.5rem" }}>{tournament.emoji}</span>
+                return (
+                  <button
+                    key={tournament.key}
+                    type="button"
+                    disabled={!isAvailable}
+                    onClick={() => {
+                      if (matchingInstance) {
+                        setInstanceId(matchingInstance.id);
+                        setPickTypesConfig(null);
+                      }
+                    }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "16px 8px",
+                      borderRadius: 12,
+                      border: isSelected ? "2px solid #4f46e5" : "1px solid var(--border)",
+                      background: isSelected
+                        ? "linear-gradient(135deg, rgba(79,70,229,0.08), rgba(79,70,229,0.04))"
+                        : isAvailable
+                          ? "var(--bg)"
+                          : "var(--surface)",
+                      cursor: isAvailable ? "pointer" : "default",
+                      opacity: isAvailable ? 1 : 0.45,
+                      filter: isAvailable ? "none" : "grayscale(100%)",
+                      position: "relative",
+                      transition: "border-color 0.15s, background 0.15s",
+                    }}
+                  >
+                    {!isAvailable && (
                       <span
                         style={{
-                          fontSize: "0.72rem",
+                          position: "absolute",
+                          top: 4,
+                          right: 4,
+                          fontSize: "0.55rem",
                           fontWeight: 600,
-                          color: isAvailable ? "var(--text)" : "var(--muted)",
-                          textAlign: "center",
-                          lineHeight: 1.2,
+                          color: "#fff",
+                          background: "#9ca3af",
+                          padding: "1px 4px",
+                          borderRadius: 3,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.3px",
                         }}
                       >
-                        {tc(`items.${tournament.i18nKey}.name`)}
+                        {tc("comingSoon")}
                       </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                    <span style={{ fontSize: "2rem" }}>{tournament.emoji}</span>
+                    <span
+                      style={{
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        color: isAvailable ? "var(--text)" : "var(--muted)",
+                        textAlign: "center",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {tc(`items.${tournament.i18nKey}.name`)}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
+            {loadError && (
+              <div style={{ padding: 12, background: "#fef2f2", borderRadius: 8, color: "#b91c1c", fontSize: 13, marginTop: 12 }}>
+                {loadError}
+              </div>
+            )}
+
+            {renderNavButtons()}
+          </div>
+        );
+
+      // ════════════════════ STEP 3: Pool Details ════════════════════
+      case 3:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
-              <label style={labelStyle}>{t("poolName")}</label>
+              <label style={labelStyle}>{t("poolName")} *</label>
               <input
                 type="text"
                 value={poolName}
@@ -411,6 +546,7 @@ export function CorporatePoolCreation() {
                 placeholder={t("poolNamePlaceholder")}
                 style={inputStyle}
                 maxLength={120}
+                autoFocus
               />
             </div>
 
@@ -468,37 +604,41 @@ export function CorporatePoolCreation() {
                 style={{ width: 20, height: 20, cursor: "pointer" }}
               />
               <div>
-                <div style={{ fontSize: 14, color: "var(--text)", fontWeight: 500 }}>
-                  {t("requireApproval")}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                  {t("requireApprovalDesc")}
-                </div>
+                <div style={{ fontSize: 14, color: "var(--text)", fontWeight: 500 }}>{t("requireApproval")}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{t("requireApprovalDesc")}</div>
               </div>
             </label>
 
-            {/* Scoring */}
+            {renderNavButtons()}
+          </div>
+        );
+
+      // ════════════════════ STEP 4: Scoring ════════════════════
+      case 4:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div
               style={{
-                marginTop: 4,
-                padding: 16,
+                padding: 20,
                 border: "2px solid #4f46e5",
                 borderRadius: 12,
                 background: "linear-gradient(135deg, #312e81 0%, #4f46e5 100%)",
                 color: "white",
+                textAlign: "center",
               }}
             >
+              <div style={{ fontSize: 32, marginBottom: 8 }}>{"\u{1F4CA}"}</div>
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
-                {"\u{1F4CA}"} {t("scoring")}
+                {t("scoring")}
               </div>
-              <div style={{ fontSize: 13, marginBottom: 12, opacity: 0.9 }}>
+              <div style={{ fontSize: 13, marginBottom: 16, opacity: 0.9 }}>
                 {t("scoringDesc")}
               </div>
               <button
                 type="button"
-                onClick={() => setShowWizard(true)}
+                onClick={() => setShowScoringWizard(true)}
                 style={{
-                  padding: "12px 16px",
+                  padding: "12px 24px",
                   borderRadius: 8,
                   border: "2px solid white",
                   background: "white",
@@ -512,34 +652,51 @@ export function CorporatePoolCreation() {
               >
                 {"\u{1F9D9}\u200D\u2642\uFE0F"} {t("configWizard")}
               </button>
-              {pickTypesConfig && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: 10,
-                    background: "rgba(255,255,255,0.2)",
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontWeight: 600,
-                  }}
-                >
-                  {"\u2705"} {t("configReady", { count: (pickTypesConfig as any[]).length })}
-                </div>
-              )}
             </div>
+
+            {pickTypesConfig ? (
+              <div
+                style={{
+                  padding: 14,
+                  background: "#ecfdf5",
+                  border: "1px solid #6ee7b7",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#065f46",
+                  textAlign: "center",
+                }}
+              >
+                {"\u2705"} {t("configReady", { count: (pickTypesConfig as any[]).length })}
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: 14,
+                  background: "#fefce8",
+                  border: "1px solid #fde68a",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  color: "#92400e",
+                  textAlign: "center",
+                }}
+              >
+                {t("scoringNeeded")}
+              </div>
+            )}
+
+            {renderNavButtons()}
           </div>
-        </div>
+        );
 
-        {/* ===== SECTION 3: Employees (Optional) ===== */}
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text)", margin: "0 0 4px" }}>
-            {"\u{1F4E7}"} {t("employeesTitle")}
-          </h2>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 16px" }}>
-            {t("employeesDesc")}
-          </p>
+      // ════════════════════ STEP 5: Employees ════════════════════
+      case 5:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+              {t("employeesDesc")}
+            </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <textarea
               value={emailsText}
               onChange={(e) => setEmailsText(e.target.value)}
@@ -574,40 +731,128 @@ export function CorporatePoolCreation() {
               <a
                 href={`data:text/csv;charset=utf-8,${encodeURIComponent("\uFEFFemail,nombre\nempleado1@empresa.com,Juan Perez\nempleado2@empresa.com,Maria Garcia\n")}`}
                 download="employees_template.csv"
-                style={{
-                  fontSize: 13,
-                  color: "#4f46e5",
-                  textDecoration: "none",
-                  fontWeight: 500,
-                }}
+                style={{ fontSize: 13, color: "#4f46e5", textDecoration: "none", fontWeight: 500 }}
               >
                 {"\u{1F4E5}"} {t("csvTemplate")}
               </a>
             </div>
-          </div>
-        </div>
 
-        {/* ===== Submit ===== */}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit || busy}
-          style={{
-            padding: isMobile ? 16 : 14,
-            borderRadius: 12,
-            border: "none",
-            background: canSubmit ? "#4f46e5" : "var(--border)",
-            color: canSubmit ? "white" : "var(--muted)",
-            cursor: canSubmit ? "pointer" : "not-allowed",
-            fontSize: isMobile ? 16 : 15,
-            fontWeight: 700,
-            minHeight: TOUCH_TARGET.comfortable,
-            opacity: busy ? 0.7 : 1,
-            ...mobileInteractiveStyles.tapHighlight,
-          }}
-        >
-          {busy ? t("creating") : t("createButton")}
-        </button>
+            {renderNavButtons()}
+          </div>
+        );
+
+      // ════════════════════ STEP 6: Summary ════════════════════
+      case 6:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {/* Summary card */}
+            <div
+              style={{
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                overflow: "hidden",
+              }}
+            >
+              {[
+                { label: t("summaryCompany"), value: companyName, icon: "\u{1F3E2}" },
+                { label: t("summaryTournament"), value: getSelectedTournamentName(), icon: "\u26BD" },
+                { label: t("summaryPool"), value: poolName, icon: "\u{1F3AF}" },
+                { label: t("summaryDeadline"), value: t("summaryMinutes", { min: deadline }), icon: "\u23F0" },
+                { label: t("summaryScoring"), value: pickTypesConfig ? t("summaryConfigured") : "\u2014", icon: "\u{1F4CA}" },
+                {
+                  label: t("summaryEmployees"),
+                  value: validEmails.length > 0
+                    ? `${validEmails.length} emails`
+                    : t("summaryNone"),
+                  icon: "\u{1F4E7}",
+                },
+              ].map((row, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "14px 16px",
+                    borderBottom: i < 5 ? "1px solid var(--border)" : "none",
+                    background: i % 2 === 0 ? "var(--bg)" : "var(--surface)",
+                  }}
+                >
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{row.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>{row.label}</div>
+                    <div style={{ fontSize: 14, color: "var(--text)", fontWeight: 600 }}>{row.value}</div>
+                  </div>
+                </div>
+              ))}
+
+              {requireApproval && (
+                <div
+                  style={{
+                    padding: "10px 16px",
+                    background: "#fefce8",
+                    fontSize: 13,
+                    color: "#92400e",
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  {"\u{1F512}"} {t("summaryApproval")}
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div
+                style={{
+                  padding: "12px 16px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: 8,
+                  color: "#b91c1c",
+                  fontSize: 13,
+                  marginTop: 16,
+                }}
+              >
+                {error}
+              </div>
+            )}
+
+            {renderNavButtons()}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: 600, margin: isMobile ? "0 auto" : "24px auto", padding: isMobile ? 16 : 24 }}>
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 8 }}>
+        <h1 style={{ fontSize: isMobile ? "1.4rem" : "1.6rem", fontWeight: 800, color: "var(--text)", margin: 0 }}>
+          {t("title")}
+        </h1>
+        <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4, marginBottom: 0 }}>
+          {t("subtitle")}
+        </p>
+      </div>
+
+      {renderProgressBar()}
+
+      {/* Step content card */}
+      <div
+        style={{
+          padding: isMobile ? 16 : 24,
+          borderRadius: 12,
+          border: "1px solid var(--border)",
+          background: "var(--surface)",
+        }}
+      >
+        {renderStep()}
       </div>
     </div>
   );
