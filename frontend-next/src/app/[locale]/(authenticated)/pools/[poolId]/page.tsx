@@ -635,58 +635,87 @@ export default function PoolPage() {
 
       {overview && (
         <>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
-            {/* Company logo (corporate pools only) */}
-            {!showSplash && overview.pool.organization && (
-              overview.pool.organization.logoBase64 ? (
+          {/* Corporate header — logo + company name prominent */}
+          {!showSplash && overview.pool.organization && (
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, marginBottom: 8 }}>
+              {overview.pool.organization.logoBase64 ? (
                 <img
                   src={overview.pool.organization.logoBase64}
                   alt={overview.pool.organization.name}
                   style={{
-                    maxHeight: 32, maxWidth: 48, objectFit: "contain",
-                    borderRadius: 6, flexShrink: 0,
+                    maxHeight: 64, maxWidth: 100, objectFit: "contain",
+                    borderRadius: 10, flexShrink: 0,
                   }}
                 />
               ) : (
                 <div style={{
-                  width: 32, height: 32, borderRadius: 6, flexShrink: 0,
+                  width: 56, height: 56, borderRadius: 12, flexShrink: 0,
                   background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 14, fontWeight: 700, color: "#fff",
+                  fontSize: 24, fontWeight: 800, color: "#fff",
                 }}>
                   {overview.pool.organization.name.charAt(0).toUpperCase()}
                 </div>
-              )
-            )}
-            <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
-            {overview.pool.status && (() => {
-              const badge = getPoolStatusBadge(overview.pool.status);
-              return (
-                <span
-                  style={{
-                    fontSize: 13,
-                    padding: "4px 12px",
-                    borderRadius: 999,
-                    border: `1px solid ${badge.color}`,
-                    background: `${badge.color}20`,
-                    color: badge.color,
-                    fontWeight: 600,
-                  }}
-                >
-                  {badge.emoji} {badge.label}
-                </span>
-              );
-            })()}
-          </div>
+              )}
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1a2e", lineHeight: 1.2, letterSpacing: "-0.3px" }}>
+                  {overview.pool.name}
+                </div>
+                <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 600, marginTop: 2 }}>
+                  {t("corporate.byCompany", { company: overview.pool.organization.name })}
+                </div>
+              </div>
+              {overview.pool.status && (() => {
+                const badge = getPoolStatusBadge(overview.pool.status);
+                return (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "4px 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${badge.color}`,
+                      background: `${badge.color}20`,
+                      color: badge.color,
+                      fontWeight: 600,
+                      marginLeft: "auto",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {badge.emoji} {badge.label}
+                  </span>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Non-corporate header — standard */}
+          {!overview.pool.organization && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
+              <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
+              {overview.pool.status && (() => {
+                const badge = getPoolStatusBadge(overview.pool.status);
+                return (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "4px 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${badge.color}`,
+                      background: `${badge.color}20`,
+                      color: badge.color,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {badge.emoji} {badge.label}
+                  </span>
+                );
+              })()}
+            </div>
+          )}
 
           <div style={{ color: "#666", fontSize: 12 }}>
             {overview.tournamentInstance.name} • {overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
-          {overview.pool.organization && (
-            <div style={{ color: "#999", fontSize: 11, marginTop: 2 }}>
-              {t("corporate.byCompany", { company: overview.pool.organization.name })}
-            </div>
-          )}
 
           {/* Tabs Navigation con Notification Badges */}
           <div style={{

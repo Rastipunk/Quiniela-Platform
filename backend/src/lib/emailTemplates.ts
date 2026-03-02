@@ -625,10 +625,10 @@ export function getCorporateActivationTemplate({
   // Logo: CID inline image (works in Gmail!) or letter-initial fallback
   const initial = companyName.charAt(0).toUpperCase();
   const logoHtml = logoCid
-    ? `<img src="cid:${logoCid}" alt="${companyName}" style="max-height:60px;max-width:180px;border-radius:12px;" />`
+    ? `<img src="cid:${logoCid}" alt="${companyName}" style="max-height:100px;max-width:280px;border-radius:14px;" />`
     : `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
         <tr>
-          <td style="width:64px;height:64px;border-radius:14px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:28px;font-weight:800;color:#ffffff;line-height:64px;">
+          <td style="width:80px;height:80px;border-radius:16px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:36px;font-weight:800;color:#ffffff;line-height:80px;">
             ${initial}
           </td>
         </tr>
@@ -673,7 +673,7 @@ export function getCorporateActivationTemplate({
     @media only screen and (max-width: 600px) {
       .container { width: 100% !important; }
       .content { padding: 24px 20px !important; }
-      .hero-title { font-size: 22px !important; }
+      .hero-title { font-size: 26px !important; }
     }
   </style>
 </head>
@@ -691,20 +691,19 @@ export function getCorporateActivationTemplate({
 
           <!-- Hero banner -->
           <tr>
-            <td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 100%);border-radius:16px 16px 0 0;padding:36px 40px 32px;text-align:center;">
-              <p style="margin:0 0 14px;font-size:36px;line-height:1;">&#9917;</p>
+            <td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 100%);border-radius:16px 16px 0 0;padding:44px 40px 40px;text-align:center;">
               <!-- Company logo or initial -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom:14px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom:18px;">
                 <tr>
                   <td style="text-align:center;vertical-align:middle;">
                     ${logoHtml}
                   </td>
                 </tr>
               </table>
-              <h1 class="hero-title" style="margin:0;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">
+              <h1 class="hero-title" style="margin:0;font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
                 ${companyName}
               </h1>
-              <p style="margin:8px 0 0;font-size:15px;color:rgba(255,255,255,0.75);font-weight:500;">
+              <p style="margin:10px 0 0;font-size:16px;color:rgba(255,255,255,0.8);font-weight:600;">
                 ${t.heroSubtitle}
               </p>
             </td>
