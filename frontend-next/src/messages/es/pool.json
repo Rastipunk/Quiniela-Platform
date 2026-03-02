@@ -176,6 +176,32 @@
       "pendingJoinsPlural": "{count} solicitudes de ingreso pendientes.",
       "phasesReady": "{count} fase lista para avanzar.",
       "phasesReadyPlural": "{count} fases listas para avanzar."
+    },
+    "employees": {
+      "title": "Gestión de Empleados",
+      "subtitle": "Administra los empleados de tu quiniela corporativa.",
+      "addTitle": "Agregar empleados",
+      "emailsPlaceholder": "Pega correos electrónicos, uno por línea...",
+      "csvUpload": "Subir CSV",
+      "csvTemplate": "Descargar plantilla",
+      "addButton": "Agregar",
+      "adding": "Agregando...",
+      "addResult": "{added} agregados, {skipped} omitidos (ya existían)",
+      "sendInvitations": "Enviar invitaciones pendientes",
+      "sending": "Enviando...",
+      "sendResult": "{sent} enviados, {activated} activados directamente, {failed} fallidos",
+      "listTitle": "Lista de empleados",
+      "email": "Correo",
+      "status": "Estado",
+      "actions": "Acciones",
+      "delete": "Eliminar",
+      "deleting": "Eliminando...",
+      "noEmployees": "Aún no has agregado empleados.",
+      "activated": "{count} de {total} empleados activados",
+      "statusPending": "Pendiente",
+      "statusSent": "Enviado",
+      "statusActivated": "Activado",
+      "statusFailed": "Error"
     }
   },
 

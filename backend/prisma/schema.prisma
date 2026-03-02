@@ -276,6 +276,7 @@ enum PoolMemberRole {
   HOST
   CO_ADMIN
   PLAYER
+  CORPORATE_HOST
 }
 
 enum PoolMemberStatus {
@@ -328,11 +329,17 @@ model Pool {
   // Esto permite que cada pool tenga su propio estado de avance independiente
   fixtureSnapshot Json?
 
+  // Comentario en español: campos para pools corporativas (opcionales)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  logoUrl        String?       // URL del logo para mostrar en header del pool
+
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
   members PoolMember[]
   invites PoolInvite[]
+  corporateInvites CorporateInvite[]
 
   createdAtUtc              DateTime                   @default(now())
   updatedAtUtc              DateTime                   @updatedAt
@@ -345,6 +352,7 @@ model Pool {
 
   @@index([tournamentInstanceId])
   @@index([createdByUserId])
+  @@index([organizationId])
 }
 
 model PoolMember {
@@ -819,4 +827,99 @@ model BetaFeedback {
 
   @@index([type])
   @@index([createdAtUtc])
+}
+
+// =========================================================================
+// CORPORATE / ENTERPRISE - Organizaciones y consultas empresariales
+// =========================================================================
+
+enum OrganizationStatus {
+  INQUIRY     // Empresa contactó vía formulario
+  ONBOARDING  // Admin está configurando
+  ACTIVE      // Operacional
+  SUSPENDED   // Suspendida temporalmente
+}
+
+model Organization {
+  id            String             @id @default(uuid())
+  name          String
+  contactEmail  String
+  contactName   String
+  contactPhone  String?
+  logoUrl       String?            // URL externa al logo (admin la pone manualmente)
+  logoBase64    String?            // Logo en base64 (como BetaFeedback.imageBase64)
+  website       String?
+  employeeCount String?            // Rango: "1-50", "51-200", "201-500", "500+"
+  welcomeMessage String?           @db.Text
+  notes         String?            @db.Text
+  status        OrganizationStatus @default(INQUIRY)
+
+  inquiries OrganizationInquiry[]
+  pools     Pool[]
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@index([status])
+}
+
+model OrganizationInquiry {
+  id String @id @default(uuid())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  companyName   String
+  contactName   String
+  contactEmail  String
+  contactPhone  String?
+  employeeCount String?
+  message       String?  @db.Text
+  locale        String   @default("es")
+
+  responded   Boolean   @default(false)
+  respondedAt DateTime?
+
+  createdAtUtc DateTime @default(now())
+
+  @@index([responded])
+  @@index([createdAtUtc])
+}
+
+// =========================================================================
+// CORPORATE INVITES - Invitaciones a empleados para pools corporativas
+// =========================================================================
+
+enum CorporateInviteStatus {
+  PENDING     // Email validado, esperando envío
+  SENT        // Invitation email enviado
+  ACTIVATED   // Usuario creó cuenta y entró al pool
+  FAILED      // Error al enviar email
+}
+
+model CorporateInvite {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  email String
+  name  String? // Opcional, del CSV
+
+  // Token de activación (similar a emailVerificationToken)
+  activationToken          String   @unique
+  activationTokenExpiresAt DateTime // 30 días
+
+  status CorporateInviteStatus @default(PENDING)
+
+  // Después de activar
+  activatedUserId String?
+  activatedAt     DateTime?
+
+  createdAtUtc DateTime @default(now())
+
+  @@unique([poolId, email])
+  @@index([activationToken])
+  @@index([poolId])
+  @@index([status])
 }

@@ -1150,6 +1150,128 @@ export async function resendVerificationEmail(token: string): Promise<{ message:
    POOL INVITE BY EMAIL
    ========================= */
 
+/* =========================
+   CORPORATE
+   ========================= */
+
+export type CreateCorporatePoolInput = {
+  companyName: string;
+  logoBase64?: string;
+  welcomeMessage?: string;
+  tournamentInstanceId: string;
+  poolName: string;
+  poolDescription?: string;
+  timeZone?: string;
+  deadlineMinutesBeforeKickoff?: number;
+  requireApproval?: boolean;
+  pickTypesConfig?: any;
+  emails?: string[];
+};
+
+export type CreateCorporatePoolResponse = {
+  success: boolean;
+  pool: any;
+  organization: { id: string; name: string };
+  pendingInvites: number;
+};
+
+export async function createCorporatePool(
+  token: string,
+  input: CreateCorporatePoolInput
+): Promise<CreateCorporatePoolResponse> {
+  return requestJson<CreateCorporatePoolResponse>(
+    "/corporate/pools",
+    { method: "POST", body: JSON.stringify(input) },
+    token
+  );
+}
+
+export type CorporateInvite = {
+  id: string;
+  email: string;
+  name: string | null;
+  status: "PENDING" | "SENT" | "ACTIVATED" | "FAILED";
+  activatedAt: string | null;
+  createdAtUtc: string;
+};
+
+export type CorporateEmployeesResponse = {
+  invites: CorporateInvite[];
+  summary: { total: number; pending: number; sent: number; activated: number; failed: number };
+};
+
+export async function getCorporateEmployees(
+  token: string,
+  poolId: string
+): Promise<CorporateEmployeesResponse> {
+  return requestJson<CorporateEmployeesResponse>(
+    `/corporate/pools/${poolId}/employees`,
+    { method: "GET" },
+    token
+  );
+}
+
+export async function addCorporateEmployees(
+  token: string,
+  poolId: string,
+  emails: string[]
+): Promise<{ success: boolean; added: number; skipped: number; total: number }> {
+  return requestJson(
+    `/corporate/pools/${poolId}/employees`,
+    { method: "POST", body: JSON.stringify({ emails }) },
+    token
+  );
+}
+
+export async function sendCorporateInvitations(
+  token: string,
+  poolId: string
+): Promise<{ success: boolean; sent: number; activated: number; failed: number }> {
+  return requestJson(
+    `/corporate/pools/${poolId}/send-invitations`,
+    { method: "POST" },
+    token
+  );
+}
+
+export async function deleteCorporateEmployee(
+  token: string,
+  poolId: string,
+  inviteId: string
+): Promise<{ success: boolean }> {
+  return requestJson(
+    `/corporate/pools/${poolId}/employees/${inviteId}`,
+    { method: "DELETE" },
+    token
+  );
+}
+
+export type ActivateCorporateInput = {
+  activationToken: string;
+  displayName: string;
+  username: string;
+  password: string;
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+  acceptAge: boolean;
+};
+
+export type ActivateCorporateResponse = {
+  token: string;
+  user: any;
+  poolId: string;
+  alreadyExisted?: boolean;
+};
+
+export async function activateCorporateAccount(
+  input: ActivateCorporateInput
+): Promise<ActivateCorporateResponse> {
+  return requestJson<ActivateCorporateResponse>(
+    "/auth/activate-corporate",
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
 export async function sendPoolInviteEmail(
   token: string,
   poolId: string,

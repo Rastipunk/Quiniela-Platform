@@ -7,6 +7,8 @@ import {
   getDeadlineReminderTemplate,
   getResultPublishedTemplate,
   getPoolCompletedTemplate,
+  getCorporateInquiryConfirmationTemplate,
+  getCorporateActivationTemplate,
   WelcomeEmailParams,
   PoolInvitationEmailParams,
   DeadlineReminderEmailParams,
@@ -734,6 +736,114 @@ export async function getPlatformEmailSettings() {
     updatedAt: settings.updatedAt,
     updatedById: settings.updatedById,
   };
+}
+
+// =========================================================================
+// CORPORATE INQUIRY CONFIRMATION EMAIL
+// =========================================================================
+
+/**
+ * Envía confirmación al contacto de una empresa que envió una solicitud.
+ * Transaccional (no sujeta a PlatformSettings/User prefs).
+ */
+export async function sendCorporateInquiryConfirmationEmail(params: {
+  to: string;
+  contactName: string;
+  companyName: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  const locale = params.locale || "es";
+  const subjects: Record<string, string> = {
+    es: `Recibimos tu solicitud — ${APP_NAME}`,
+    en: `We received your request — ${APP_NAME}`,
+    pt: `Recebemos sua solicitação — ${APP_NAME}`,
+  };
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} <${FROM_EMAIL}>`,
+      to: params.to,
+      subject: subjects[locale] ?? subjects.es!,
+      html: getCorporateInquiryConfirmationTemplate({
+        contactName: params.contactName,
+        companyName: params.companyName,
+        locale,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar corporate confirmation email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Corporate confirmation email enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar corporate confirmation email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// CORPORATE ACTIVATION EMAIL
+// =========================================================================
+
+/**
+ * Envía email de activación a un empleado invitado a una pool corporativa.
+ * Transaccional (no sujeto a PlatformSettings/User prefs — el usuario aún no existe).
+ */
+export async function sendCorporateActivationEmail(params: {
+  to: string;
+  employeeName?: string;
+  companyName: string;
+  poolName: string;
+  activationToken: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  const locale = params.locale || "es";
+  const activationUrl = `${FRONTEND_URL}/activar-cuenta?token=${params.activationToken}`;
+
+  const subjects: Record<string, string> = {
+    es: `${params.companyName} te invitó a jugar — ${APP_NAME}`,
+    en: `${params.companyName} invited you to play — ${APP_NAME}`,
+    pt: `${params.companyName} convidou você para jogar — ${APP_NAME}`,
+  };
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} <${FROM_EMAIL}>`,
+      to: params.to,
+      subject: subjects[locale] ?? subjects.es!,
+      html: getCorporateActivationTemplate({
+        employeeName: params.employeeName,
+        companyName: params.companyName,
+        poolName: params.poolName,
+        activationUrl,
+        locale,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar corporate activation email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Corporate activation email enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar corporate activation email:", err);
+    return { success: false, error: String(err) };
+  }
 }
 
 // =========================================================================

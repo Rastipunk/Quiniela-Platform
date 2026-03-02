@@ -21,6 +21,8 @@ import { pickPresetsRouter } from "./routes/pickPresets";
 import legalRouter from "./routes/legal";
 import adminSettingsRouter from "./routes/adminSettings";
 import { feedbackRouter } from "./routes/feedback";
+import { corporateRouter } from "./routes/corporate";
+import { adminCorporateRouter } from "./routes/adminCorporate";
 import { apiLimiter, authLimiter, passwordResetLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob } from "./jobs/deadlineReminderJob";
@@ -86,6 +88,8 @@ app.use("/catalog", catalogRouter);
 app.use("/pick-presets", pickPresetsRouter);
 app.use("/legal", legalRouter);
 app.use("/feedback", express.json({ limit: "2mb" }), feedbackRouter);
+app.use("/corporate", corporateRouter);
+app.use("/admin/corporate", adminCorporateRouter);
 
 
 

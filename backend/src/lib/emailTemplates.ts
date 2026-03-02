@@ -485,6 +485,154 @@ export function getPoolCompletedTemplate({
 }
 
 // =========================================================================
+// TEMPLATE: CORPORATE INQUIRY CONFIRMATION
+// =========================================================================
+
+export interface CorporateInquiryConfirmationParams {
+  contactName: string;
+  companyName: string;
+  locale?: string;
+}
+
+export function getCorporateInquiryConfirmationTemplate({
+  contactName,
+  companyName,
+  locale = "es",
+}: CorporateInquiryConfirmationParams): string {
+  const enterpriseEmail = ENTERPRISE_EMAILS[locale] ?? ENTERPRISE_EMAILS.es!;
+  const enterpriseUrl = `${BRAND.baseUrl}/${locale === "en" ? "en/enterprise" : locale === "pt" ? "pt/empresas" : "empresas"}`;
+
+  const i18n: Record<string, { heading: string; greeting: string; body: string; summary: string; cta: string; ctaLabel: string; footer: string; preheader: string }> = {
+    es: {
+      heading: "Hemos recibido tu solicitud",
+      greeting: `Hola ${contactName},`,
+      body: `Gracias por tu interés en ${BRAND.name} para <strong>${companyName}</strong>. Hemos recibido tu solicitud y nuestro equipo se pondrá en contacto contigo pronto para discutir cómo podemos ayudarte a organizar quinielas corporativas.`,
+      summary: `Empresa: <strong>${companyName}</strong>`,
+      cta: enterpriseUrl,
+      ctaLabel: "Ver Plan Empresarial",
+      footer: `Si tienes preguntas mientras tanto, escríbenos a <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
+      preheader: `Recibimos tu solicitud corporativa para ${companyName}. Te contactaremos pronto.`,
+    },
+    en: {
+      heading: "We've received your request",
+      greeting: `Hi ${contactName},`,
+      body: `Thank you for your interest in ${BRAND.name} for <strong>${companyName}</strong>. We've received your request and our team will get in touch soon to discuss how we can help you organize corporate pools.`,
+      summary: `Company: <strong>${companyName}</strong>`,
+      cta: enterpriseUrl,
+      ctaLabel: "View Enterprise Plan",
+      footer: `If you have questions in the meantime, reach us at <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
+      preheader: `We received your corporate request for ${companyName}. We'll be in touch soon.`,
+    },
+    pt: {
+      heading: "Recebemos sua solicitação",
+      greeting: `Olá ${contactName},`,
+      body: `Obrigado pelo seu interesse no ${BRAND.name} para <strong>${companyName}</strong>. Recebemos sua solicitação e nossa equipe entrará em contato em breve para discutir como podemos ajudá-lo a organizar bolões corporativos.`,
+      summary: `Empresa: <strong>${companyName}</strong>`,
+      cta: enterpriseUrl,
+      ctaLabel: "Ver Plano Empresarial",
+      footer: `Se tiver dúvidas, entre em contato pelo <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
+      preheader: `Recebemos sua solicitação corporativa para ${companyName}. Entraremos em contato em breve.`,
+    },
+  };
+
+  const t = i18n[locale] ?? i18n.es!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getHighlightBox(`<p style="margin:0;font-size:16px;color:${BRAND.textColor};">${t.summary}</p>`)}
+    ${getButton(t.ctaLabel, t.cta)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.footer}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader);
+}
+
+// =========================================================================
+// TEMPLATE: CORPORATE ACTIVATION EMAIL
+// =========================================================================
+
+export interface CorporateActivationEmailParams {
+  employeeName?: string;
+  companyName: string;
+  poolName: string;
+  activationUrl: string;
+  locale?: string;
+}
+
+export function getCorporateActivationTemplate({
+  employeeName,
+  companyName,
+  poolName,
+  activationUrl,
+  locale = "es",
+}: CorporateActivationEmailParams): string {
+  const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
+
+  const i18n: Record<string, {
+    heading: string;
+    greeting: string;
+    body: string;
+    poolLabel: string;
+    ctaLabel: string;
+    instructions: string;
+    expiry: string;
+    footer: string;
+    preheader: string;
+  }> = {
+    es: {
+      heading: "Te invitaron a jugar",
+      greeting: employeeName ? `Hola ${employeeName},` : "Hola,",
+      body: `<strong>${companyName}</strong> te ha invitado a participar en una quiniela corporativa en ${BRAND.name}.`,
+      poolLabel: `Quiniela: <strong>${poolName}</strong>`,
+      ctaLabel: "Activar mi cuenta",
+      instructions: "Al hacer clic, podrás crear tu usuario y contraseña para empezar a jugar inmediatamente.",
+      expiry: "Este enlace es válido por 30 días.",
+      footer: `¿Tienes preguntas? Escríbenos a <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
+      preheader: `${companyName} te invitó a jugar en "${poolName}". Activa tu cuenta ahora.`,
+    },
+    en: {
+      heading: "You've been invited to play",
+      greeting: employeeName ? `Hi ${employeeName},` : "Hi,",
+      body: `<strong>${companyName}</strong> has invited you to join a corporate pool on ${BRAND.name}.`,
+      poolLabel: `Pool: <strong>${poolName}</strong>`,
+      ctaLabel: "Activate my account",
+      instructions: "Click the button to create your username and password and start playing right away.",
+      expiry: "This link is valid for 30 days.",
+      footer: `Questions? Reach us at <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
+      preheader: `${companyName} invited you to play in "${poolName}". Activate your account now.`,
+    },
+    pt: {
+      heading: "Você foi convidado a jogar",
+      greeting: employeeName ? `Olá ${employeeName},` : "Olá,",
+      body: `<strong>${companyName}</strong> convidou você para participar de um bolão corporativo no ${BRAND.name}.`,
+      poolLabel: `Bolão: <strong>${poolName}</strong>`,
+      ctaLabel: "Ativar minha conta",
+      instructions: "Clique no botão para criar seu usuário e senha e começar a jogar imediatamente.",
+      expiry: "Este link é válido por 30 dias.",
+      footer: `Dúvidas? Entre em contato pelo <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
+      preheader: `${companyName} convidou você para jogar em "${poolName}". Ative sua conta agora.`,
+    },
+  };
+
+  const t = i18n[locale] ?? i18n.es!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getHighlightBox(`<p style="margin:0;font-size:16px;color:${BRAND.textColor};">${t.poolLabel}</p>`)}
+    ${getButton(t.ctaLabel, activationUrl)}
+    ${getParagraph(t.instructions)}
+    <p style="margin:16px 0 0;font-size:13px;color:${BRAND.mutedColor};">${t.expiry}</p>
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.footer}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader);
+}
+
+// =========================================================================
 // EXPORT DE CONSTANTES PARA USO EXTERNO
 // =========================================================================
 

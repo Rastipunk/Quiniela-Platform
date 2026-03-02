@@ -19,6 +19,7 @@ import { NotificationBanner } from "@/components/NotificationBanner";
 import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/hooks/usePoolNotifications";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { MobileLeaderboard } from "@/components/MobileLeaderboard";
+import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 
 function fmtUtc(iso: string, userTimezone: string | null = null) {
   return formatMatchDateTime(iso, userTimezone);
@@ -1387,6 +1388,11 @@ export default function PoolPage() {
                     {busyKey === "archive" ? `⏳ ${t("admin.archive.archiving")}` : `📦 ${t("admin.archive.archiveButton")}`}
                   </button>
                 </div>
+              )}
+
+              {/* Corporate Employee Management */}
+              {overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" && token && (
+                <CorporateEmployeeManager poolId={poolId!} token={token} isMobile={isMobile} />
               )}
 
               {/* Instructions */}

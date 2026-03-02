@@ -36,7 +36,8 @@
     "footballPool": "Football Pool",
     "contact": "Contacto",
     "supportEmail": "soporte@picks4all.com",
-    "copyright": "Todos los derechos reservados."
+    "copyright": "Todos los derechos reservados.",
+    "enterprises": "Para Empresas"
   },
   "beta": {
     "message": "Beta — Tu feedback nos ayuda a mejorar",
@@ -197,6 +198,124 @@
     "item3Title": "Deadline y horarios mejorados",
     "item3Desc": "Ahora puedes ver con más claridad el deadline para enviar tus predicciones y la hora de inicio de cada partido.",
     "dismiss": "Entendido"
+  },
+  "enterprise": {
+    "meta": {
+      "title": "Quinielas Corporativas para Empresas — Picks4All",
+      "description": "Organiza quinielas corporativas en tu empresa. Crea pools entre departamentos, invita empleados y fomenta el team building con predicciones deportivas."
+    },
+    "hero": {
+      "title": "Quinielas corporativas para tu empresa",
+      "subtitle": "Fomenta el team building y la competencia sana entre tus equipos con quinielas deportivas. Configuración en minutos, sin complicaciones.",
+      "cta": "Crear pool corporativo",
+      "secondaryCta": "Conoce más"
+    },
+    "benefits": {
+      "title": "Por qué elegir Picks4All para tu empresa",
+      "teamBuilding": "Team Building",
+      "teamBuildingDesc": "Fortalece las relaciones entre equipos con una competencia divertida y accesible para todos.",
+      "easySetup": "Configuración rápida",
+      "easySetupDesc": "Crea tu pool en minutos. Sube un CSV con los correos de tus empleados y nosotros nos encargamos del resto.",
+      "engagement": "Engagement",
+      "engagementDesc": "Mantén a tu equipo motivado y conectado durante los torneos más importantes del mundo.",
+      "support": "Atención preferencial",
+      "supportDesc": "Soporte prioritario para empresas. Te ayudamos a configurar y administrar tus quinielas."
+    },
+    "howItWorks": {
+      "title": "Cómo funciona",
+      "step1Title": "Crea tu pool",
+      "step1Desc": "Elige el torneo, personaliza las reglas y sube el logo de tu empresa.",
+      "step2Title": "Invita a tu equipo",
+      "step2Desc": "Sube un CSV o agrega correos manualmente. Cada empleado recibirá un link de activación.",
+      "step3Title": "A jugar",
+      "step3Desc": "Tus empleados activan su cuenta con un clic y empiezan a hacer predicciones inmediatamente."
+    },
+    "pricing": {
+      "title": "Gratis durante la beta",
+      "subtitle": "Aprovecha el acceso completo sin costo mientras estamos en beta. Sin límite de empleados.",
+      "free": "Gratis",
+      "features": {
+        "unlimited": "Empleados ilimitados",
+        "logo": "Logo de empresa personalizado",
+        "csv": "Carga masiva de empleados por CSV",
+        "support": "Soporte prioritario por email"
+      }
+    },
+    "cta": {
+      "title": "Empieza ahora",
+      "subtitle": "Crea tu pool corporativo en menos de 5 minutos.",
+      "button": "Crear pool corporativo"
+    },
+    "badge": "Corporativo",
+    "create": {
+      "meta": {
+        "title": "Crear Pool Corporativo — Picks4All"
+      },
+      "title": "Crear pool corporativo",
+      "subtitle": "Configura tu pool empresarial en pocos minutos.",
+      "step1": "Tu empresa",
+      "step2": "Configuración del pool",
+      "step3": "Invitar empleados",
+      "companyName": "Nombre de la empresa",
+      "companyNamePlaceholder": "Ej: Acme Corp",
+      "logo": "Logo de la empresa (opcional)",
+      "logoHint": "Imagen PNG o JPG, máx. 500 KB",
+      "logoChange": "Cambiar logo",
+      "logoSelect": "Seleccionar imagen...",
+      "welcomeMessage": "Mensaje de bienvenida (opcional)",
+      "welcomeMessagePlaceholder": "Mensaje que verán tus empleados al unirse al pool...",
+      "tournament": "Selecciona el torneo",
+      "poolName": "Nombre del pool",
+      "poolNamePlaceholder": "Ej: Quiniela Acme Corp",
+      "poolDescription": "Descripción (opcional)",
+      "poolDescriptionPlaceholder": "Breve descripción de tu pool...",
+      "deadline": "Cierre antes del partido (min)",
+      "timezone": "Zona horaria",
+      "requireApproval": "Requerir aprobación para unirse",
+      "requireApprovalDesc": "Los empleados que se unan con código necesitan tu aprobación.",
+      "scoring": "Sistema de puntuación",
+      "scoringDesc": "Configura cómo se puntúan las predicciones.",
+      "configWizard": "Configurar puntuación",
+      "configReady": "Configuración lista ({count} fases)",
+      "employeesTitle": "Invitar empleados (opcional)",
+      "employeesDesc": "Puedes agregar empleados ahora o hacerlo después desde el panel de administración del pool.",
+      "emailsPlaceholder": "Pega correos electrónicos, uno por línea...",
+      "csvUpload": "O sube un archivo CSV",
+      "csvTemplate": "Descargar plantilla CSV",
+      "emailCount": "{count} correos válidos",
+      "skipStep": "Omitir este paso",
+      "creating": "Creando pool...",
+      "createButton": "Crear Pool Corporativo",
+      "error": "Error al crear el pool. Intenta de nuevo.",
+      "imageSize": "La imagen no debe exceder 500 KB."
+    }
+  },
+  "activation": {
+    "meta": {
+      "title": "Activa tu cuenta — Picks4All"
+    },
+    "title": "Activa tu cuenta",
+    "subtitle": "Crea tu usuario y contraseña para empezar a jugar.",
+    "displayName": "Nombre para mostrar",
+    "displayNamePlaceholder": "Ej: Juan Pérez",
+    "username": "Nombre de usuario",
+    "usernamePlaceholder": "Ej: juanperez",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Mínimo 8 caracteres",
+    "confirmPassword": "Confirmar contraseña",
+    "confirmPasswordPlaceholder": "Repite tu contraseña",
+    "acceptTerms": "Acepto los Términos de Servicio",
+    "acceptPrivacy": "Acepto la Política de Privacidad",
+    "acceptAge": "Confirmo que tengo al menos 13 años",
+    "activate": "Activar cuenta",
+    "activating": "Activando...",
+    "invalidToken": "El enlace de activación es inválido o ha expirado.",
+    "invalidTokenHelp": "Contacta al administrador de tu empresa para recibir una nueva invitación.",
+    "alreadyActivated": "Esta invitación ya fue activada.",
+    "alreadyActivatedHelp": "Si ya tienes cuenta, inicia sesión normalmente.",
+    "success": "Cuenta activada exitosamente",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "goToPool": "Ir a mi quiniela"
   },
   "notFound": {
     "message": "La página que buscas no existe o fue movida.",

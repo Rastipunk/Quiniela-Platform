@@ -36,7 +36,8 @@
     "footballPool": "Football Pool",
     "contact": "Contact",
     "supportEmail": "support@picks4all.com",
-    "copyright": "All rights reserved."
+    "copyright": "All rights reserved.",
+    "enterprises": "For Companies"
   },
   "beta": {
     "message": "Beta — Your feedback helps us improve",
@@ -197,6 +198,124 @@
     "item3Title": "Improved deadlines & schedules",
     "item3Desc": "You can now see more clearly the deadline to submit your predictions and the kickoff time for each match.",
     "dismiss": "Got it"
+  },
+  "enterprise": {
+    "meta": {
+      "title": "Corporate Sports Pools for Companies — Picks4All",
+      "description": "Organize corporate sports pools in your company. Create pools between departments, invite employees and foster team building with sports predictions."
+    },
+    "hero": {
+      "title": "Corporate sports pools for your company",
+      "subtitle": "Foster team building and friendly competition among your teams with sports pools. Set up in minutes, no hassle.",
+      "cta": "Create corporate pool",
+      "secondaryCta": "Learn more"
+    },
+    "benefits": {
+      "title": "Why choose Picks4All for your company",
+      "teamBuilding": "Team Building",
+      "teamBuildingDesc": "Strengthen relationships between teams with a fun and accessible competition for everyone.",
+      "easySetup": "Quick Setup",
+      "easySetupDesc": "Create your pool in minutes. Upload a CSV with your employees' emails and we take care of the rest.",
+      "engagement": "Engagement",
+      "engagementDesc": "Keep your team motivated and connected during the most important tournaments in the world.",
+      "support": "Priority Support",
+      "supportDesc": "Priority support for companies. We help you set up and manage your pools."
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "step1Title": "Create your pool",
+      "step1Desc": "Choose the tournament, customize the rules and upload your company logo.",
+      "step2Title": "Invite your team",
+      "step2Desc": "Upload a CSV or add emails manually. Each employee will receive an activation link.",
+      "step3Title": "Start playing",
+      "step3Desc": "Your employees activate their account with one click and start making predictions right away."
+    },
+    "pricing": {
+      "title": "Free during beta",
+      "subtitle": "Enjoy full access at no cost while we're in beta. No employee limit.",
+      "free": "Free",
+      "features": {
+        "unlimited": "Unlimited employees",
+        "logo": "Custom company logo",
+        "csv": "Bulk employee upload via CSV",
+        "support": "Priority email support"
+      }
+    },
+    "cta": {
+      "title": "Get started",
+      "subtitle": "Create your corporate pool in less than 5 minutes.",
+      "button": "Create corporate pool"
+    },
+    "badge": "Corporate",
+    "create": {
+      "meta": {
+        "title": "Create Corporate Pool — Picks4All"
+      },
+      "title": "Create corporate pool",
+      "subtitle": "Set up your company pool in just a few minutes.",
+      "step1": "Your company",
+      "step2": "Pool settings",
+      "step3": "Invite employees",
+      "companyName": "Company name",
+      "companyNamePlaceholder": "E.g. Acme Corp",
+      "logo": "Company logo (optional)",
+      "logoHint": "PNG or JPG image, max 500 KB",
+      "logoChange": "Change logo",
+      "logoSelect": "Select image...",
+      "welcomeMessage": "Welcome message (optional)",
+      "welcomeMessagePlaceholder": "Message your employees will see when they join the pool...",
+      "tournament": "Select tournament",
+      "poolName": "Pool name",
+      "poolNamePlaceholder": "E.g. Acme Corp Pool",
+      "poolDescription": "Description (optional)",
+      "poolDescriptionPlaceholder": "Short description of your pool...",
+      "deadline": "Deadline before match (min)",
+      "timezone": "Timezone",
+      "requireApproval": "Require approval to join",
+      "requireApprovalDesc": "Employees joining with a code will need your approval.",
+      "scoring": "Scoring system",
+      "scoringDesc": "Configure how predictions are scored.",
+      "configWizard": "Configure scoring",
+      "configReady": "Configuration ready ({count} phases)",
+      "employeesTitle": "Invite employees (optional)",
+      "employeesDesc": "You can add employees now or do it later from the pool admin panel.",
+      "emailsPlaceholder": "Paste email addresses, one per line...",
+      "csvUpload": "Or upload a CSV file",
+      "csvTemplate": "Download CSV template",
+      "emailCount": "{count} valid emails",
+      "skipStep": "Skip this step",
+      "creating": "Creating pool...",
+      "createButton": "Create Corporate Pool",
+      "error": "Error creating pool. Please try again.",
+      "imageSize": "Image must not exceed 500 KB."
+    }
+  },
+  "activation": {
+    "meta": {
+      "title": "Activate your account — Picks4All"
+    },
+    "title": "Activate your account",
+    "subtitle": "Create your username and password to start playing.",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "E.g. John Smith",
+    "username": "Username",
+    "usernamePlaceholder": "E.g. johnsmith",
+    "password": "Password",
+    "passwordPlaceholder": "Minimum 8 characters",
+    "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Repeat your password",
+    "acceptTerms": "I accept the Terms of Service",
+    "acceptPrivacy": "I accept the Privacy Policy",
+    "acceptAge": "I confirm I am at least 13 years old",
+    "activate": "Activate account",
+    "activating": "Activating...",
+    "invalidToken": "The activation link is invalid or has expired.",
+    "invalidTokenHelp": "Contact your company administrator to receive a new invitation.",
+    "alreadyActivated": "This invitation has already been activated.",
+    "alreadyActivatedHelp": "If you already have an account, log in normally.",
+    "success": "Account activated successfully",
+    "passwordMismatch": "Passwords do not match",
+    "goToPool": "Go to my pool"
   },
   "notFound": {
     "message": "The page you're looking for doesn't exist or was moved.",

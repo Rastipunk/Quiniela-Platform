@@ -719,6 +719,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       autoAdvanceEnabled: pool.autoAdvanceEnabled,
       requireApproval: pool.requireApproval,
       lockedPhases: pool.lockedPhases as string[],
+      organizationId: pool.organizationId ?? null,
     },
     myMembership: {
       id: myMembership.id,
@@ -740,8 +741,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       dataJson: pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson,
     },
     permissions: {
-      canManageResults: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN",
-      canInvite: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN",
+      canManageResults: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN" || myMembership.role === "CORPORATE_HOST",
+      canInvite: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN" || myMembership.role === "CORPORATE_HOST",
     },
     matches: matchCards,
     leaderboard: {

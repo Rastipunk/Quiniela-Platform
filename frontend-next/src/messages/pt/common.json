@@ -36,7 +36,8 @@
     "footballPool": "Football Pool",
     "contact": "Contato",
     "supportEmail": "suporte@picks4all.com",
-    "copyright": "Todos os direitos reservados."
+    "copyright": "Todos os direitos reservados.",
+    "enterprises": "Para Empresas"
   },
   "beta": {
     "message": "Beta — Seu feedback nos ajuda a melhorar",
@@ -197,6 +198,124 @@
     "item3Title": "Prazos e horários melhorados",
     "item3Desc": "Agora você pode ver com mais clareza o prazo para enviar suas previsões e o horário de início de cada partida.",
     "dismiss": "Entendi"
+  },
+  "enterprise": {
+    "meta": {
+      "title": "Bolões Corporativos para Empresas — Picks4All",
+      "description": "Organize bolões corporativos na sua empresa. Crie pencas entre departamentos, convide funcionários e promova o team building com previsões esportivas."
+    },
+    "hero": {
+      "title": "Bolões corporativos para sua empresa",
+      "subtitle": "Promova o team building e a competição saudável entre suas equipes com bolões esportivos. Configuração em minutos, sem complicações.",
+      "cta": "Criar bolão corporativo",
+      "secondaryCta": "Saiba mais"
+    },
+    "benefits": {
+      "title": "Por que escolher o Picks4All para sua empresa",
+      "teamBuilding": "Team Building",
+      "teamBuildingDesc": "Fortaleça os relacionamentos entre equipes com uma competição divertida e acessível para todos.",
+      "easySetup": "Configuração rápida",
+      "easySetupDesc": "Crie seu bolão em minutos. Envie um CSV com os emails dos seus funcionários e nós cuidamos do resto.",
+      "engagement": "Engajamento",
+      "engagementDesc": "Mantenha sua equipe motivada e conectada durante os torneios mais importantes do mundo.",
+      "support": "Atendimento prioritário",
+      "supportDesc": "Suporte prioritário para empresas. Ajudamos você a configurar e administrar seus bolões."
+    },
+    "howItWorks": {
+      "title": "Como funciona",
+      "step1Title": "Crie seu bolão",
+      "step1Desc": "Escolha o torneio, personalize as regras e envie o logo da sua empresa.",
+      "step2Title": "Convide sua equipe",
+      "step2Desc": "Envie um CSV ou adicione emails manualmente. Cada funcionário receberá um link de ativação.",
+      "step3Title": "Comece a jogar",
+      "step3Desc": "Seus funcionários ativam a conta com um clique e começam a fazer previsões imediatamente."
+    },
+    "pricing": {
+      "title": "Grátis durante o beta",
+      "subtitle": "Aproveite o acesso completo sem custo enquanto estamos em beta. Sem limite de funcionários.",
+      "free": "Grátis",
+      "features": {
+        "unlimited": "Funcionários ilimitados",
+        "logo": "Logo da empresa personalizado",
+        "csv": "Upload em massa de funcionários por CSV",
+        "support": "Suporte prioritário por email"
+      }
+    },
+    "cta": {
+      "title": "Comece agora",
+      "subtitle": "Crie seu bolão corporativo em menos de 5 minutos.",
+      "button": "Criar bolão corporativo"
+    },
+    "badge": "Corporativo",
+    "create": {
+      "meta": {
+        "title": "Criar Bolão Corporativo — Picks4All"
+      },
+      "title": "Criar bolão corporativo",
+      "subtitle": "Configure seu bolão empresarial em poucos minutos.",
+      "step1": "Sua empresa",
+      "step2": "Configuração do bolão",
+      "step3": "Convidar funcionários",
+      "companyName": "Nome da empresa",
+      "companyNamePlaceholder": "Ex: Acme Corp",
+      "logo": "Logo da empresa (opcional)",
+      "logoHint": "Imagem PNG ou JPG, máx. 500 KB",
+      "logoChange": "Mudar logo",
+      "logoSelect": "Selecionar imagem...",
+      "welcomeMessage": "Mensagem de boas-vindas (opcional)",
+      "welcomeMessagePlaceholder": "Mensagem que seus funcionários verão ao entrar no bolão...",
+      "tournament": "Selecione o torneio",
+      "poolName": "Nome do bolão",
+      "poolNamePlaceholder": "Ex: Bolão Acme Corp",
+      "poolDescription": "Descrição (opcional)",
+      "poolDescriptionPlaceholder": "Breve descrição do seu bolão...",
+      "deadline": "Encerramento antes do jogo (min)",
+      "timezone": "Fuso horário",
+      "requireApproval": "Exigir aprovação para entrar",
+      "requireApprovalDesc": "Funcionários que entrarem por código precisarão da sua aprovação.",
+      "scoring": "Sistema de pontuação",
+      "scoringDesc": "Configure como as previsões são pontuadas.",
+      "configWizard": "Configurar pontuação",
+      "configReady": "Configuração pronta ({count} fases)",
+      "employeesTitle": "Convidar funcionários (opcional)",
+      "employeesDesc": "Você pode adicionar funcionários agora ou fazer isso depois pelo painel de administração do bolão.",
+      "emailsPlaceholder": "Cole endereços de email, um por linha...",
+      "csvUpload": "Ou envie um arquivo CSV",
+      "csvTemplate": "Baixar modelo CSV",
+      "emailCount": "{count} emails válidos",
+      "skipStep": "Pular esta etapa",
+      "creating": "Criando bolão...",
+      "createButton": "Criar Bolão Corporativo",
+      "error": "Erro ao criar bolão. Tente novamente.",
+      "imageSize": "A imagem não deve exceder 500 KB."
+    }
+  },
+  "activation": {
+    "meta": {
+      "title": "Ative sua conta — Picks4All"
+    },
+    "title": "Ative sua conta",
+    "subtitle": "Crie seu usuário e senha para começar a jogar.",
+    "displayName": "Nome de exibição",
+    "displayNamePlaceholder": "Ex: João Silva",
+    "username": "Nome de usuário",
+    "usernamePlaceholder": "Ex: joaosilva",
+    "password": "Senha",
+    "passwordPlaceholder": "Mínimo 8 caracteres",
+    "confirmPassword": "Confirmar senha",
+    "confirmPasswordPlaceholder": "Repita sua senha",
+    "acceptTerms": "Aceito os Termos de Serviço",
+    "acceptPrivacy": "Aceito a Política de Privacidade",
+    "acceptAge": "Confirmo que tenho pelo menos 13 anos",
+    "activate": "Ativar conta",
+    "activating": "Ativando...",
+    "invalidToken": "O link de ativação é inválido ou expirou.",
+    "invalidTokenHelp": "Entre em contato com o administrador da sua empresa para receber um novo convite.",
+    "alreadyActivated": "Este convite já foi ativado.",
+    "alreadyActivatedHelp": "Se você já tem uma conta, faça login normalmente.",
+    "success": "Conta ativada com sucesso",
+    "passwordMismatch": "As senhas não coincidem",
+    "goToPool": "Ir para meu bolão"
   },
   "notFound": {
     "message": "A página que você procura não existe ou foi movida.",

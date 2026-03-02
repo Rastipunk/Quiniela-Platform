@@ -270,12 +270,27 @@ export default function DashboardPage() {
                         padding: "3px 8px",
                         borderRadius: 999,
                         border: "1px solid #ddd",
-                        background: r.role === "HOST" ? "#111" : "#fff",
-                        color: r.role === "HOST" ? "#fff" : "#111",
+                        background: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#111" : "#fff",
+                        color: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#fff" : "#111",
                       }}
                     >
-                      {r.role}
+                      {r.role === "CORPORATE_HOST" ? "HOST" : r.role}
                     </span>
+                    {r.pool.organizationId && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          border: "1px solid #7c3aed",
+                          background: "#ede9fe",
+                          color: "#5b21b6",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {"\u{1F3E2}"} Corporate
+                      </span>
+                    )}
                     {r.status === "PENDING_APPROVAL" && (
                       <span
                         style={{

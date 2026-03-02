@@ -37,6 +37,22 @@ export const routing = defineRouting({
     "/penca-futbol": "/penca-futbol",
     "/porra-deportiva": "/porra-deportiva",
     "/football-pool": "/football-pool",
+    // Corporate
+    "/empresas": {
+      es: "/empresas",
+      en: "/for-companies",
+      pt: "/para-empresas",
+    },
+    "/empresas/crear": {
+      es: "/empresas/crear",
+      en: "/for-companies/create",
+      pt: "/para-empresas/criar",
+    },
+    "/activar-cuenta": {
+      es: "/activar-cuenta",
+      en: "/activate-account",
+      pt: "/ativar-conta",
+    },
     // App pages
     "/dashboard": "/dashboard",
     "/profile": "/profile",

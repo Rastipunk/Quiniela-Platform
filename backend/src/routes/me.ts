@@ -46,7 +46,7 @@ meRouter.get("/pools", async (req, res) => {
         createdAtUtc: m.pool.createdAtUtc,
         updatedAtUtc: m.pool.updatedAtUtc,
         scoringPresetKey: m.pool.scoringPresetKey ?? "CLASSIC",
-
+        organizationId: m.pool.organizationId ?? null,
       },
       tournamentInstance: m.pool.tournamentInstance
         ? {

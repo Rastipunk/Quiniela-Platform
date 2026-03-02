@@ -176,6 +176,32 @@
       "pendingJoinsPlural": "{count} solicitações de ingresso pendentes.",
       "phasesReady": "{count} fase pronta para avançar.",
       "phasesReadyPlural": "{count} fases prontas para avançar."
+    },
+    "employees": {
+      "title": "Gestão de Funcionários",
+      "subtitle": "Gerencie os funcionários do seu bolão corporativo.",
+      "addTitle": "Adicionar funcionários",
+      "emailsPlaceholder": "Cole endereços de email, um por linha...",
+      "csvUpload": "Enviar CSV",
+      "csvTemplate": "Baixar modelo",
+      "addButton": "Adicionar",
+      "adding": "Adicionando...",
+      "addResult": "{added} adicionados, {skipped} ignorados (já existiam)",
+      "sendInvitations": "Enviar convites pendentes",
+      "sending": "Enviando...",
+      "sendResult": "{sent} enviados, {activated} ativados diretamente, {failed} falharam",
+      "listTitle": "Lista de funcionários",
+      "email": "Email",
+      "status": "Status",
+      "actions": "Ações",
+      "delete": "Remover",
+      "deleting": "Removendo...",
+      "noEmployees": "Nenhum funcionário adicionado ainda.",
+      "activated": "{count} de {total} funcionários ativados",
+      "statusPending": "Pendente",
+      "statusSent": "Enviado",
+      "statusActivated": "Ativado",
+      "statusFailed": "Falhou"
     }
   },
 

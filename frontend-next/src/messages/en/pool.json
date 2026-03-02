@@ -176,6 +176,32 @@
       "pendingJoinsPlural": "{count} pending join requests.",
       "phasesReady": "{count} phase ready to advance.",
       "phasesReadyPlural": "{count} phases ready to advance."
+    },
+    "employees": {
+      "title": "Employee Management",
+      "subtitle": "Manage employees in your corporate pool.",
+      "addTitle": "Add employees",
+      "emailsPlaceholder": "Paste email addresses, one per line...",
+      "csvUpload": "Upload CSV",
+      "csvTemplate": "Download template",
+      "addButton": "Add",
+      "adding": "Adding...",
+      "addResult": "{added} added, {skipped} skipped (already exist)",
+      "sendInvitations": "Send pending invitations",
+      "sending": "Sending...",
+      "sendResult": "{sent} sent, {activated} activated directly, {failed} failed",
+      "listTitle": "Employee list",
+      "email": "Email",
+      "status": "Status",
+      "actions": "Actions",
+      "delete": "Remove",
+      "deleting": "Removing...",
+      "noEmployees": "No employees added yet.",
+      "activated": "{count} of {total} employees activated",
+      "statusPending": "Pending",
+      "statusSent": "Sent",
+      "statusActivated": "Activated",
+      "statusFailed": "Failed"
     }
   },
 

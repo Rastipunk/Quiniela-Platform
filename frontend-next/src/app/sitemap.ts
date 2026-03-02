@@ -77,6 +77,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: allLocales("/privacidad", "/privacy", "/privacidade"),
     },
 
+    // Enterprise / Corporate
+    {
+      url: `${baseUrl}/empresas`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      alternates: allLocales("/empresas", "/for-companies", "/para-empresas"),
+    },
+
     // --- Regional SEO pages (each in its target language only) ---
 
     // Spanish-language regional terms (no /en or /pt alternates)

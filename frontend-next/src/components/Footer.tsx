@@ -198,6 +198,16 @@ export function Footer() {
           >
             {t("footballPool")}
           </Link>
+          <Link
+            href="/empresas"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            {t("enterprises")}
+          </Link>
         </div>
 
         {/* Contact */}

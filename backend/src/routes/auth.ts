@@ -618,6 +618,176 @@ authRouter.get("/verify-email", async (req, res) => {
   });
 });
 
+// ========== CORPORATE ACTIVATION ==========
+
+const activateCorporateSchema = z.object({
+  activationToken: z.string().min(1),
+  displayName: z.string().min(2).max(50),
+  username: z.string().min(3).max(20),
+  password: z.string().min(8).max(200),
+  acceptTerms: z.boolean().refine((v) => v === true, { message: "Debes aceptar los Términos de Servicio" }),
+  acceptPrivacy: z.boolean().refine((v) => v === true, { message: "Debes aceptar la Política de Privacidad" }),
+  acceptAge: z.boolean().refine((v) => v === true, { message: "Debes confirmar que tienes al menos 13 años" }),
+});
+
+// POST /auth/activate-corporate — Activar cuenta de empleado invitado a pool corporativa
+authRouter.post("/activate-corporate", async (req, res) => {
+  const parsed = activateCorporateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const {
+    activationToken,
+    displayName,
+    username: rawUsername,
+    password,
+    acceptTerms,
+    acceptPrivacy,
+    acceptAge,
+  } = parsed.data;
+
+  // Buscar invite por token
+  const invite = await prisma.corporateInvite.findUnique({
+    where: { activationToken },
+    include: { pool: { select: { id: true, name: true } } },
+  });
+
+  if (!invite) {
+    return res.status(400).json({ error: "INVALID_TOKEN", message: "Token de activación inválido." });
+  }
+
+  if (invite.activationTokenExpiresAt < new Date()) {
+    return res.status(400).json({ error: "TOKEN_EXPIRED", message: "El enlace de activación ha expirado. Contacta al administrador de tu empresa." });
+  }
+
+  if (invite.status === "ACTIVATED") {
+    return res.status(409).json({ error: "ALREADY_ACTIVATED", message: "Esta invitación ya fue activada." });
+  }
+
+  // Verificar que no exista ya un usuario con ese email
+  const existingUser = await prisma.user.findUnique({ where: { email: invite.email } });
+  if (existingUser) {
+    // Edge case: el usuario se registró por otra vía entre la invitación y la activación.
+    // Lo agregamos al pool directamente y marcamos como activado.
+    const existingMember = await prisma.poolMember.findUnique({
+      where: { poolId_userId: { poolId: invite.poolId, userId: existingUser.id } },
+    });
+
+    if (!existingMember) {
+      await prisma.poolMember.create({
+        data: { poolId: invite.poolId, userId: existingUser.id, role: "PLAYER", status: "ACTIVE" },
+      });
+    }
+
+    await prisma.corporateInvite.update({
+      where: { id: invite.id },
+      data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
+    });
+
+    const token = signToken({ userId: existingUser.id, platformRole: existingUser.platformRole });
+    return res.json({
+      token,
+      user: {
+        id: existingUser.id,
+        email: existingUser.email,
+        username: existingUser.username,
+        displayName: existingUser.displayName,
+        platformRole: existingUser.platformRole,
+        status: existingUser.status,
+      },
+      poolId: invite.poolId,
+      alreadyExisted: true,
+    });
+  }
+
+  // Validar username
+  const usernameValidation = validateUsername(rawUsername);
+  if (!usernameValidation.valid) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", message: usernameValidation.error });
+  }
+
+  const username = normalizeUsername(rawUsername);
+
+  // Verificar username único
+  const existingUsername = await prisma.user.findUnique({ where: { username } });
+  if (existingUsername) {
+    return res.status(409).json({ error: "CONFLICT", message: "Ese nombre de usuario ya está en uso. Elige otro." });
+  }
+
+  // Crear usuario y asignar al pool en transacción
+  const passwordHash = await hashPassword(password);
+  const now = new Date();
+
+  const result = await prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: {
+        email: invite.email,
+        username,
+        displayName,
+        passwordHash,
+        platformRole: "PLAYER",
+        status: "ACTIVE",
+        emailVerified: true, // Corporate: email pre-verificado
+        acceptedTermsAt: now,
+        acceptedTermsVersion: CURRENT_LEGAL_VERSIONS.TERMS_OF_SERVICE,
+        acceptedPrivacyAt: now,
+        acceptedPrivacyVersion: CURRENT_LEGAL_VERSIONS.PRIVACY_POLICY,
+        ageVerifiedAt: now,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        platformRole: true,
+        status: true,
+      },
+    });
+
+    await tx.poolMember.create({
+      data: {
+        poolId: invite.poolId,
+        userId: newUser.id,
+        role: "PLAYER",
+        status: "ACTIVE",
+      },
+    });
+
+    await tx.corporateInvite.update({
+      where: { id: invite.id },
+      data: { status: "ACTIVATED", activatedUserId: newUser.id, activatedAt: now },
+    });
+
+    return newUser;
+  });
+
+  await writeAuditEvent({
+    actorUserId: result.id,
+    action: "CORPORATE_ACCOUNT_ACTIVATED",
+    entityType: "User",
+    entityId: result.id,
+    dataJson: { poolId: invite.poolId, email: invite.email },
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  // Enviar welcome email (fire and forget)
+  sendWelcomeEmail({
+    to: result.email,
+    userId: result.id,
+    displayName: result.displayName,
+  }).catch((err) => console.error("Error sending welcome email:", err));
+
+  const jwtToken = signToken({ userId: result.id, platformRole: result.platformRole });
+
+  return res.status(201).json({
+    token: jwtToken,
+    user: result,
+    poolId: invite.poolId,
+  });
+});
+
 // POST /auth/resend-verification
 // Reenvía el email de verificación (requiere autenticación)
 authRouter.post("/resend-verification", requireAuth, async (req, res) => {
