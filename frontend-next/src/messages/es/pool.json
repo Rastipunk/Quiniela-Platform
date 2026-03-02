@@ -604,5 +604,10 @@
       "shortDesc": "Solo goles del visitante.",
       "example": "Ejemplo con 4 pts: Predices ?-1, sale 2-1 → GANAS 4 PTS | Sale 2-2 → 0 pts"
     }
+  },
+  "corporate": {
+    "badge": "Pool corporativo",
+    "playButton": "A jugar!",
+    "tournamentInfo": "{tournament} \u00b7 {count} jugadores"
   }
 }

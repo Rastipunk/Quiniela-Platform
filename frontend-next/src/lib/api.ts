@@ -1158,6 +1158,7 @@ export type CreateCorporatePoolInput = {
   companyName: string;
   logoBase64?: string;
   welcomeMessage?: string;
+  invitationMessage?: string;
   tournamentInstanceId: string;
   poolName: string;
   poolDescription?: string;
@@ -1260,6 +1261,8 @@ export type ActivateCorporateResponse = {
   token: string;
   user: any;
   poolId: string;
+  poolName?: string;
+  companyName?: string | null;
   alreadyExisted?: boolean;
 };
 

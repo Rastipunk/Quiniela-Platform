@@ -604,5 +604,10 @@
       "shortDesc": "Only away team goals.",
       "example": "Example with 4 pts: You predict ?-1, result is 2-1 -> WIN 4 PTS | Result 2-2 -> 0 pts"
     }
+  },
+  "corporate": {
+    "badge": "Corporate pool",
+    "playButton": "Let's play!",
+    "tournamentInfo": "{tournament} \u00b7 {count} players"
   }
 }

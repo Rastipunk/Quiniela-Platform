@@ -604,5 +604,10 @@
       "shortDesc": "Apenas gols do visitante.",
       "example": "Exemplo com 4 pts: Você prevê ?-1, resultado 2-1 → GANHA 4 PTS | Resultado 2-2 → 0 pts"
     }
+  },
+  "corporate": {
+    "badge": "Bolao corporativo",
+    "playButton": "Vamos jogar!",
+    "tournamentInfo": "{tournament} \u00b7 {count} jogadores"
   }
 }

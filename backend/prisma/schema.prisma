@@ -850,8 +850,9 @@ model Organization {
   logoBase64    String?            // Logo en base64 (como BetaFeedback.imageBase64)
   website       String?
   employeeCount String?            // Rango: "1-50", "51-200", "201-500", "500+"
-  welcomeMessage String?           @db.Text
-  notes         String?            @db.Text
+  welcomeMessage    String?           @db.Text  // Se muestra en el splash del pool
+  invitationMessage String?           @db.Text  // Se incluye en el email de invitación
+  notes             String?           @db.Text
   status        OrganizationStatus @default(INQUIRY)
 
   inquiries OrganizationInquiry[]

@@ -1,9 +1,9 @@
 # Data Model Specification
 # Quiniela Platform
 
-> **Version:** 2.0
+> **Version:** 2.1
 > **Last Updated:** 2026-03-01
-> **Status:** Production Schema (v0.5.0)
+> **Status:** Production Schema (v0.6.0)
 > **Database:** PostgreSQL 14+
 > **ORM:** Prisma 6.x
 
@@ -65,7 +65,16 @@ Pool
  ├─── 1:N ──→ StructuralPrediction
  ├─── 1:N ──→ StructuralPhaseResult
  ├─── 1:N ──→ GroupStandingsPrediction
- └─── 1:N ──→ GroupStandingsResult
+ ├─── 1:N ──→ GroupStandingsResult
+ ├─── 1:N ──→ CorporateInvite
+ └─── N:1 ──→ Organization (optional)
+
+Organization
+ ├─── 1:N ──→ Pool
+ └─── 1:N ──→ OrganizationInquiry
+
+CorporateInvite
+ └─── N:1 ──→ Pool
 
 PoolMatchResult
  ├─── 1:N ──→ PoolMatchResultVersion
@@ -76,6 +85,7 @@ LegalDocument (standalone)
 PlatformSettings (singleton)
 DeadlineReminderLog (standalone)
 BetaFeedback (standalone)
+OrganizationInquiry (standalone or linked to Organization)
 ```
 
 ---
@@ -1385,6 +1395,168 @@ enum BetaFeedbackType {
 
 ---
 
+### 10.5 Organization
+
+**Purpose:** Represents a company that hosts a corporate pool. Created during the self-service corporate pool creation wizard.
+
+**Schema:**
+
+```prisma
+enum OrganizationStatus {
+  INQUIRY     // Contacted via form, not yet onboarded
+  ONBOARDING  // Admin is configuring
+  ACTIVE      // Operational
+  SUSPENDED   // Temporarily suspended
+}
+
+model Organization {
+  id            String             @id @default(uuid())
+  name          String
+  contactEmail  String
+  contactName   String
+  contactPhone  String?
+  logoUrl       String?            // External URL (future use)
+  logoBase64    String?            // Logo in base64 (client-side compressed)
+  website       String?
+  employeeCount String?            // Range: "1-50", "51-200", "201-500", "500+"
+  welcomeMessage String?           @db.Text  // Displayed in pool splash screen
+  notes         String?            @db.Text
+  status        OrganizationStatus @default(INQUIRY)
+
+  inquiries OrganizationInquiry[]
+  pools     Pool[]
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@index([status])
+}
+```
+
+**Business Rules:**
+- Status transitions: INQUIRY → ONBOARDING → ACTIVE → SUSPENDED
+- Self-service creation sets status directly to ACTIVE
+- `logoBase64` stores the company logo as base64 data URI (compressed client-side)
+- `welcomeMessage` shown in pool splash screen on first visit per session
+- Organization is linked to Pool via `Pool.organizationId`
+
+### 10.6 OrganizationInquiry
+
+**Purpose:** Contact form submissions from companies interested in corporate pools.
+
+**Schema:**
+
+```prisma
+model OrganizationInquiry {
+  id String @id @default(uuid())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  companyName   String
+  contactName   String
+  contactEmail  String
+  contactPhone  String?
+  employeeCount String?
+  message       String?  @db.Text
+  locale        String   @default("es")
+
+  responded   Boolean   @default(false)
+  respondedAt DateTime?
+
+  createdAtUtc DateTime @default(now())
+
+  @@index([responded])
+  @@index([createdAtUtc])
+}
+```
+
+**Business Rules:**
+- Public endpoint, no authentication required
+- Rate-limited: 5 submissions per 15 minutes per IP
+- `organizationId` is optional (linked when admin creates the Organization)
+- Triggers admin email notification and confirmation email to the contact
+
+### 10.7 CorporateInvite
+
+**Purpose:** Tracks employee invitations to corporate pools. Each invite has a unique activation token.
+
+**Schema:**
+
+```prisma
+enum CorporateInviteStatus {
+  PENDING     // Email validated, awaiting send
+  SENT        // Invitation email sent
+  ACTIVATED   // User created account and joined pool
+  FAILED      // Error sending email
+}
+
+model CorporateInvite {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  email String
+  name  String?  // Optional, from CSV
+
+  activationToken          String   @unique
+  activationTokenExpiresAt DateTime // 30 days
+
+  status CorporateInviteStatus @default(PENDING)
+
+  activatedUserId String?
+  activatedAt     DateTime?
+
+  createdAtUtc DateTime @default(now())
+
+  @@unique([poolId, email])
+  @@index([activationToken])
+  @@index([poolId])
+  @@index([status])
+}
+```
+
+**Business Rules:**
+- Token: 32 bytes crypto.randomBytes, hex-encoded (64 chars)
+- Token expires after 30 days
+- Status flow: PENDING → SENT → ACTIVATED (or PENDING → FAILED)
+- If email already has a user account: auto-added to pool (PENDING → ACTIVATED, skips SENT)
+- Unique constraint on (poolId, email) prevents duplicate invitations
+- ACTIVATED invites cannot be deleted
+- `activatedUserId` links to the User created during activation
+
+### 10.8 Pool Fields (Corporate Extensions)
+
+The Pool model was extended with:
+
+```prisma
+model Pool {
+  // ... existing fields ...
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  corporateInvites CorporateInvite[]
+
+  @@index([organizationId])
+}
+```
+
+### 10.9 PoolMemberRole (Corporate Extension)
+
+```prisma
+enum PoolMemberRole {
+  HOST            // Original pool creator
+  CO_ADMIN        // Delegated admin
+  PLAYER          // Regular player
+  CORPORATE_HOST  // Company representative managing corporate pool
+}
+```
+
+**CORPORATE_HOST permissions:** Same as HOST + can manage employees (add, delete, send invitations).
+
+---
+
 ## 11. Indexes & Performance
 
 ### 11.1 Current Indexes
@@ -1423,6 +1595,17 @@ enum BetaFeedbackType {
 | PoolMatchResultVersion | Primary | id | Fast lookup |
 | PoolMatchResultVersion | Unique | (resultId, versionNumber) | Version uniqueness |
 | PoolMatchResultVersion | Foreign | resultId | Result versions |
+| Organization | Primary | id | Fast lookup |
+| Organization | Index | status | Filter by status |
+| OrganizationInquiry | Primary | id | Fast lookup |
+| OrganizationInquiry | Index | responded | Filter unresponded |
+| OrganizationInquiry | Index | createdAtUtc | Chronological queries |
+| CorporateInvite | Primary | id | Fast lookup |
+| CorporateInvite | Unique | activationToken | Token lookup (activation) |
+| CorporateInvite | Unique | (poolId, email) | Prevent duplicate invites |
+| CorporateInvite | Index | poolId | Pool's invites |
+| CorporateInvite | Index | status | Filter by status |
+| Pool | Index | organizationId | Corporate pool lookup |
 
 ### 11.2 Query Patterns & Optimization
 
@@ -1577,11 +1760,18 @@ enum BetaFeedbackType {
 
 **Total Migrations:** 17
 
-### 13.2 Planned Migrations (v1.0)
+### 13.2 Completed Migrations (v0.6.0)
 
-1. **Organization/Corporate:**
-   - Add `Organization`, `OrganizationInquiry` models
-   - Add `Pool.organizationId`, `Pool.logoUrl`
+1. **Organization/Corporate (Implemented 2026-03-01):**
+   - Added `Organization`, `OrganizationInquiry`, `CorporateInvite` models
+   - Added `Pool.organizationId` (FK to Organization)
+   - Added `CORPORATE_HOST` to PoolMemberRole enum
+   - Added `OrganizationStatus`, `CorporateInviteStatus` enums
+
+### 13.3 Planned Migrations (v1.0)
+
+1. **Organization Enhancement:**
+   - Add `invitationMessage` field to Organization (for personalized emails)
 
 2. **Payment:**
    - Add `PoolPayment` model (Lemon Squeezy integration)
@@ -1641,15 +1831,18 @@ npx prisma migrate reset
 
 ### 15.1 v1.0 (Launch -- April 2026)
 
-- [ ] Add Organization/OrganizationInquiry models (corporate feature)
-- [ ] Add Pool.organizationId, Pool.logoUrl (corporate branding)
+- [x] ~~Add Organization/OrganizationInquiry models~~ (v0.6.0)
+- [x] ~~Add Pool.organizationId~~ (v0.6.0)
+- [x] ~~Add CorporateInvite model~~ (v0.6.0)
+- [x] ~~Add CORPORATE_HOST role~~ (v0.6.0)
+- [ ] Add Organization.invitationMessage (personalized email messages)
 - [ ] Add PoolPayment model (payment tracking)
 
 ### 15.2 v1.1+ (Post-Launch)
 
 - [ ] Add PoolChat table
 - [ ] Add Badge + UserBadge tables (gamification)
-- [ ] Self-service enterprise dashboard
+- [ ] Company admin dashboard
 - [ ] Company admin role
 
 ### 15.3 v2.0+ (Scale)

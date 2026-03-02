@@ -44,6 +44,7 @@ export function CorporatePoolCreation() {
   const [companyName, setCompanyName] = useState("");
   const [logoBase64, setLogoBase64] = useState<string | undefined>();
   const [welcomeMessage, setWelcomeMessage] = useState("");
+  const [invitationMessage, setInvitationMessage] = useState("");
   const [logoError, setLogoError] = useState<string | null>(null);
 
   // Step 2: Tournament
@@ -156,6 +157,7 @@ export function CorporatePoolCreation() {
         companyName: companyName.trim(),
         logoBase64,
         welcomeMessage: welcomeMessage.trim() || undefined,
+        invitationMessage: invitationMessage.trim() || undefined,
         tournamentInstanceId: instanceId,
         poolName: poolName.trim(),
         poolDescription: poolDesc.trim() || undefined,
@@ -422,10 +424,24 @@ export function CorporatePoolCreation() {
 
             <div>
               <label style={labelStyle}>{t("welcomeMessage")}</label>
+              <p style={{ margin: "0 0 6px", fontSize: 12, color: "#6b7280" }}>{t("welcomeMessageHint")}</p>
               <textarea
                 value={welcomeMessage}
                 onChange={(e) => setWelcomeMessage(e.target.value)}
                 placeholder={t("welcomeMessagePlaceholder")}
+                maxLength={1000}
+                rows={3}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>{t("invitationMessage")}</label>
+              <p style={{ margin: "0 0 6px", fontSize: 12, color: "#6b7280" }}>{t("invitationMessageHint")}</p>
+              <textarea
+                value={invitationMessage}
+                onChange={(e) => setInvitationMessage(e.target.value)}
+                placeholder={t("invitationMessagePlaceholder")}
                 maxLength={1000}
                 rows={3}
                 style={{ ...inputStyle, resize: "vertical" }}

@@ -559,6 +559,8 @@ export interface CorporateActivationEmailParams {
   poolName: string;
   activationUrl: string;
   locale?: string;
+  logoBase64?: string | null;
+  invitationMessage?: string | null;
 }
 
 export function getCorporateActivationTemplate({
@@ -567,6 +569,8 @@ export function getCorporateActivationTemplate({
   poolName,
   activationUrl,
   locale = "es",
+  logoBase64,
+  invitationMessage,
 }: CorporateActivationEmailParams): string {
   const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
 
@@ -618,10 +622,31 @@ export function getCorporateActivationTemplate({
 
   const t = i18n[locale] ?? i18n.es!;
 
+  // Logo de la empresa (centrado encima del heading)
+  const logoHtml = logoBase64
+    ? `<div style="text-align:center;margin-bottom:24px;">
+        <img src="${logoBase64}" alt="${companyName}" style="max-width:80px;max-height:80px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);" />
+      </div>`
+    : "";
+
+  // Mensaje personalizado de invitación (bloque destacado con comillas)
+  const invitationHtml = invitationMessage
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;">
+        <tr>
+          <td style="background-color:#F5F3FF;border-left:4px solid #8B5CF6;padding:16px 20px;border-radius:0 8px 8px 0;">
+            <p style="margin:0;font-size:15px;color:${BRAND.textColor};font-style:italic;">"${invitationMessage}"</p>
+            <p style="margin:8px 0 0;font-size:13px;color:${BRAND.mutedColor};text-align:right;">— ${companyName}</p>
+          </td>
+        </tr>
+      </table>`
+    : "";
+
   const content = `
+    ${logoHtml}
     ${getHeading(t.heading)}
     ${getParagraph(t.greeting)}
     ${getParagraph(t.body)}
+    ${invitationHtml}
     ${getHighlightBox(`<p style="margin:0;font-size:16px;color:${BRAND.textColor};">${t.poolLabel}</p>`)}
     ${getButton(t.ctaLabel, activationUrl)}
     ${getParagraph(t.instructions)}

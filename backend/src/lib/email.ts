@@ -804,6 +804,8 @@ export async function sendCorporateActivationEmail(params: {
   poolName: string;
   activationToken: string;
   locale?: string;
+  logoBase64?: string | null;
+  invitationMessage?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   if (!resend) {
     console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
@@ -830,6 +832,8 @@ export async function sendCorporateActivationEmail(params: {
         poolName: params.poolName,
         activationUrl,
         locale,
+        logoBase64: params.logoBase64,
+        invitationMessage: params.invitationMessage,
       }),
     });
 

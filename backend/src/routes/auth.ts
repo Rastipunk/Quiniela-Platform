@@ -9,6 +9,7 @@ import { validateUsername, normalizeUsername } from "../lib/username";
 import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } from "../lib/email";
 import { requireAuth } from "../middleware/requireAuth";
 import { verifyGoogleToken } from "../lib/googleAuth";
+import { transitionToActive } from "../services/poolStateMachine";
 
 export const authRouter = Router();
 
@@ -650,7 +651,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
   // Buscar invite por token
   const invite = await prisma.corporateInvite.findUnique({
     where: { activationToken },
-    include: { pool: { select: { id: true, name: true } } },
+    include: { pool: { select: { id: true, name: true, organization: { select: { name: true } } } } },
   });
 
   if (!invite) {
@@ -685,6 +686,11 @@ authRouter.post("/activate-corporate", async (req, res) => {
       data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
     });
 
+    // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
+    await transitionToActive(invite.poolId, existingUser.id).catch((err) =>
+      console.error("transitionToActive error (existing user):", err)
+    );
+
     const token = signToken({ userId: existingUser.id, platformRole: existingUser.platformRole });
     return res.json({
       token,
@@ -697,6 +703,8 @@ authRouter.post("/activate-corporate", async (req, res) => {
         status: existingUser.status,
       },
       poolId: invite.poolId,
+      poolName: invite.pool.name,
+      companyName: invite.pool.organization?.name ?? null,
       alreadyExisted: true,
     });
   }
@@ -762,6 +770,11 @@ authRouter.post("/activate-corporate", async (req, res) => {
     return newUser;
   });
 
+  // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
+  await transitionToActive(invite.poolId, result.id).catch((err) =>
+    console.error("transitionToActive error (new user):", err)
+  );
+
   await writeAuditEvent({
     actorUserId: result.id,
     action: "CORPORATE_ACCOUNT_ACTIVATED",
@@ -785,6 +798,8 @@ authRouter.post("/activate-corporate", async (req, res) => {
     token: jwtToken,
     user: result,
     poolId: invite.poolId,
+    poolName: invite.pool.name,
+    companyName: invite.pool.organization?.name ?? null,
   });
 });
 

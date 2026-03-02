@@ -26,6 +26,8 @@ export function ActivationContent() {
   const [status, setStatus] = useState<Status>("form");
   const [errorMsg, setErrorMsg] = useState("");
   const [poolId, setPoolId] = useState<string | null>(null);
+  const [poolName, setPoolName] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
 
   const canSubmit =
     displayName.trim().length >= 2 &&
@@ -62,6 +64,8 @@ export function ActivationContent() {
 
       setToken(result.token);
       setPoolId(result.poolId);
+      setPoolName(result.poolName ?? null);
+      setCompanyName(result.companyName ?? null);
       setStatus("success");
     } catch (err: any) {
       setStatus("error");
@@ -94,6 +98,16 @@ export function ActivationContent() {
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 12, color: "var(--text)" }}>
           {t("success")}
         </h1>
+        {companyName && (
+          <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 4 }}>
+            {t("welcomeTo", { company: companyName })}
+          </p>
+        )}
+        {poolName && (
+          <p style={{ color: "var(--text)", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>
+            {poolName}
+          </p>
+        )}
         {poolId && (
           <button
             onClick={() => router.push(`/pools/${poolId}`)}

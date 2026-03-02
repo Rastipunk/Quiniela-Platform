@@ -78,6 +78,9 @@ export default function PoolPage() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [userTimezone, setUserTimezone] = useState<string | null>(null);
 
+  // Corporate splash state
+  const [showSplash, setShowSplash] = useState(false);
+
   // Tabs
   const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "admin">("partidos");
 
@@ -140,6 +143,14 @@ export default function PoolPage() {
     try {
       const data = await getPoolOverview(token, poolId, v);
       setOverview(data);
+
+      // Check if corporate splash should show (1x per session)
+      if (data.pool.organization && typeof sessionStorage !== "undefined") {
+        const key = `corporate-splash-${poolId}`;
+        if (!sessionStorage.getItem(key)) {
+          setShowSplash(true);
+        }
+      }
 
       // Cargar timezone del usuario
       const profileData = await getUserProfile(token);
@@ -456,8 +467,116 @@ export default function PoolPage() {
 
       {!overview && !error && <p style={{ marginTop: 16 }}>{t("loading")}</p>}
 
+      {/* Corporate Splash Screen (1x per session) */}
+      {overview && showSplash && overview.pool.organization && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%)",
+            color: "#fff",
+            padding: 32,
+            textAlign: "center",
+          }}
+        >
+          {overview.pool.organization.logoBase64 && (
+            <img
+              src={overview.pool.organization.logoBase64}
+              alt={overview.pool.organization.name}
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 16,
+                objectFit: "cover",
+                boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                marginBottom: 24,
+                border: "3px solid rgba(255,255,255,0.2)",
+              }}
+            />
+          )}
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>
+            {overview.pool.organization.name}
+          </h1>
+          <p style={{ margin: "8px 0 0", fontSize: 14, opacity: 0.7, fontWeight: 500 }}>
+            {t("corporate.badge")}
+          </p>
+          {overview.pool.organization.welcomeMessage && (
+            <p
+              style={{
+                margin: "24px auto 0",
+                maxWidth: 400,
+                fontSize: 16,
+                fontStyle: "italic",
+                opacity: 0.9,
+                lineHeight: 1.5,
+              }}
+            >
+              &ldquo;{overview.pool.organization.welcomeMessage}&rdquo;
+            </p>
+          )}
+          <button
+            onClick={() => {
+              sessionStorage.setItem(`corporate-splash-${poolId}`, "1");
+              setShowSplash(false);
+            }}
+            style={{
+              marginTop: 32,
+              padding: "14px 40px",
+              fontSize: 18,
+              fontWeight: 700,
+              background: "#fff",
+              color: "#4f46e5",
+              border: "none",
+              borderRadius: 12,
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+            }}
+          >
+            {t("corporate.playButton")}
+          </button>
+          <p style={{ marginTop: 16, fontSize: 13, opacity: 0.5 }}>
+            {overview.pool.name} &middot; {overview.counts.membersActive} {t("corporate.tournamentInfo", { tournament: overview.tournamentInstance.name, count: overview.counts.membersActive }).split("\u00b7").pop()?.trim()}
+          </p>
+        </div>
+      )}
+
       {overview && (
         <>
+          {/* Corporate compact header (always visible for corporate pools) */}
+          {!showSplash && overview.pool.organization && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 14px",
+                marginTop: 12,
+                borderRadius: 10,
+                background: "#ede9fe",
+                border: "1px solid #a78bfa",
+              }}
+            >
+              {overview.pool.organization.logoBase64 && (
+                <img
+                  src={overview.pool.organization.logoBase64}
+                  alt={overview.pool.organization.name}
+                  style={{ width: 32, height: 32, borderRadius: 8, objectFit: "cover" }}
+                />
+              )}
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#4c1d95" }}>
+                {overview.pool.organization.name}
+              </span>
+              <span style={{ fontSize: 12, color: "#7c3aed", opacity: 0.7 }}>
+                &middot; {t("corporate.badge")}
+              </span>
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
             <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
             {overview.pool.status && (() => {

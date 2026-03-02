@@ -9,6 +9,7 @@ import { sendAdminNotification, sendCorporateInquiryConfirmationEmail, sendCorpo
 import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
 import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import rateLimit from "express-rate-limit";
+import { transitionToActive } from "../services/poolStateMachine";
 
 export const corporateRouter = Router();
 
@@ -99,6 +100,7 @@ const createCorporatePoolSchema = z.object({
   companyName: z.string().min(2).max(200),
   logoBase64: z.string().max(700_000).optional(),
   welcomeMessage: z.string().max(1000).optional(),
+  invitationMessage: z.string().max(1000).optional(),
   tournamentInstanceId: z.string().min(1),
   poolName: z.string().min(3).max(120),
   poolDescription: z.string().max(500).optional(),
@@ -116,7 +118,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
   }
 
   const {
-    companyName, logoBase64, welcomeMessage,
+    companyName, logoBase64, welcomeMessage, invitationMessage,
     tournamentInstanceId, poolName, poolDescription,
     timeZone, deadlineMinutesBeforeKickoff, requireApproval,
     pickTypesConfig, emails,
@@ -170,6 +172,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
         contactName: user?.displayName || "",
         logoBase64: logoBase64 || null,
         welcomeMessage: welcomeMessage || null,
+        invitationMessage: invitationMessage || null,
         status: "ACTIVE",
       },
     });
@@ -357,11 +360,13 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
   // Obtener pool y org para datos del email
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    include: { organization: { select: { name: true } } },
+    include: { organization: { select: { name: true, logoBase64: true, invitationMessage: true } } },
   });
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
 
   const companyName = pool.organization?.name || "Empresa";
+  const orgLogoBase64 = pool.organization?.logoBase64 || null;
+  const orgInvitationMessage = pool.organization?.invitationMessage || null;
 
   // Buscar invites PENDING
   const pendingInvites = await prisma.corporateInvite.findMany({
@@ -406,6 +411,11 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
           data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
         });
 
+        // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
+        await transitionToActive(poolId, existingUser.id).catch((err) =>
+          console.error("transitionToActive error (corporate send-invitations):", err)
+        );
+
         activated++;
       } else {
         // Usuario no existe → enviar activation email
@@ -415,6 +425,8 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
           companyName,
           poolName: pool.name,
           activationToken: invite.activationToken,
+          logoBase64: orgLogoBase64,
+          invitationMessage: orgInvitationMessage,
         });
 
         if (emailResult.success) {

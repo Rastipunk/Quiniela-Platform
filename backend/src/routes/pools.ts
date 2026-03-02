@@ -249,7 +249,10 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
   // 2) Pool + instancia
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    include: { tournamentInstance: { include: { template: { select: { key: true } } } } },
+    include: {
+      tournamentInstance: { include: { template: { select: { key: true } } } },
+      organization: { select: { id: true, name: true, logoBase64: true, welcomeMessage: true } },
+    },
   });
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
   if (!pool.tournamentInstance) return res.status(409).json({ error: "CONFLICT", message: "Pool has no tournamentInstance" });
@@ -720,6 +723,14 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       requireApproval: pool.requireApproval,
       lockedPhases: pool.lockedPhases as string[],
       organizationId: pool.organizationId ?? null,
+      organization: pool.organization
+        ? {
+            id: pool.organization.id,
+            name: pool.organization.name,
+            logoBase64: pool.organization.logoBase64 ?? null,
+            welcomeMessage: pool.organization.welcomeMessage ?? null,
+          }
+        : null,
     },
     myMembership: {
       id: myMembership.id,

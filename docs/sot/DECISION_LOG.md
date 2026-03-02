@@ -3617,10 +3617,10 @@ Use **Cloudflare Email Routing** to forward all incoming @picks4all.com emails t
 
 ---
 
-## ADR-035: Corporate Pool Feature — MVP Approach
+## ADR-035: Corporate Pool Feature — Self-Service MVP
 
 **Date:** 2026-03-01
-**Status:** Accepted
+**Status:** Accepted (Implemented)
 **Deciders:** Product Team
 **Tags:** #feature #corporate #architecture
 
@@ -3631,45 +3631,61 @@ Companies want to organize prediction pools for their employees as team-building
 - Customization (company logo on pool)
 - Bulk user creation (employees don't have accounts)
 - Organization tracking
-
-Full self-service enterprise features (dashboard, SSO, billing portal) would take 2-3 months. We need an MVP for April 1st launch.
+- Self-service flow (no admin intervention)
 
 ### Decision
 
-Implement a **manual-process MVP** with three components:
+Implement a **self-service MVP** with full end-to-end flow:
 
-1. **Public enterprise landing page** (`/empresas`) with a contact form that creates `OrganizationInquiry` records
-2. **Database models** (`Organization`, `OrganizationInquiry`) and **Pool fields** (`organizationId`, `logoUrl`) for corporate tracking
-3. **Admin-only endpoints** for bulk user creation and corporate pool management
+1. **Public enterprise landing page** (`/empresas`) with CTA and contact form
+2. **Database models** — `Organization` (company info + logo + messages), `OrganizationInquiry` (contact form), `CorporateInvite` (employee invitations with activation tokens)
+3. **CORPORATE_HOST role** — New PoolMemberRole for the company representative who manages the corporate pool
+4. **6-step guided wizard** (`/empresas/crear`) — Company info → Tournament → Pool details → Scoring → Employees → Summary
+5. **Employee invitation flow** — CSV upload or manual entry → Email invitations with activation tokens (30-day expiry)
+6. **Token-based activation** (`/activar?token=...`) — Employee creates password, enters pool automatically
 
-The workflow is: Company fills form → Admin receives email → Admin manually creates org, users, and pool via admin API.
+**Workflow:** Company fills wizard → Pool created → Employees invited via email → Employees activate accounts → Pool auto-activates.
 
 ### Rationale
 
-- ✅ **Ships in 1 week:** Contact form + backend endpoints, no complex UI
-- ✅ **Validates demand:** Captures inquiries before building full dashboard
-- ✅ **Low risk:** Manual process means we control quality
-- ✅ **Extensible:** Organization model supports future self-service features
-- ✅ **Pool branding:** `logoUrl` field works for both corporate and future premium
+- ✅ **Fully self-service:** No admin intervention required
+- ✅ **Guided experience:** 6-step wizard prevents confusion
+- ✅ **CSV support:** Bulk employee import for large companies
+- ✅ **Token activation:** Employees don't need to know pool codes
+- ✅ **Extensible:** Organization model supports future premium features
 
 ### Consequences
 
 **Positive:**
-- ✅ Companies can contact us and get set up
-- ✅ Pool branding works immediately
-- ✅ Database ready for future enterprise features
-- ✅ Admin has full control over onboarding
+- ✅ Companies can set up pools independently
+- ✅ Employee onboarding is frictionless (email → click → set password → play)
+- ✅ Logo stored as base64 (no external hosting needed)
+- ✅ Database ready for branding features (splash, personalized emails)
 
 **Negative:**
-- ⚠️ Not self-service (manual admin work per company)
-- ⚠️ No company admin role (everything goes through platform admin)
-- ⚠️ Logo must be provided as URL (no upload UI)
+- ⚠️ Logo as base64 increases DB size (mitigated by client-side compression)
+- ⚠️ No company admin dashboard yet (CORPORATE_HOST manages via pool page)
+- ⚠️ Pool stays DRAFT until transitionToActive fix (known bug, planned)
 
-### Future Evolution (v1.1+)
+### Implementation (Completed)
 
-- Self-service enterprise dashboard
-- Company admin role
-- Logo upload via platform
+**Backend:**
+- `backend/src/routes/corporate.ts` — 7 endpoints (inquiry, pools, employees, invitations, CSV template)
+- `backend/src/routes/auth.ts` — POST /auth/activate-corporate
+- `backend/src/lib/email.ts` — sendCorporateActivationEmail, sendCorporateInquiryConfirmationEmail
+- `backend/prisma/schema.prisma` — Organization, OrganizationInquiry, CorporateInvite models
+
+**Frontend:**
+- `frontend-next/src/components/EnterpriseLandingContent.tsx` — Landing page
+- `frontend-next/src/components/CorporatePoolCreation.tsx` — 6-step wizard
+- `frontend-next/src/components/ActivationContent.tsx` — Employee activation
+
+### Future Evolution (v0.7+)
+
+- Pool branding: splash welcome screen + persistent logo header
+- Personalized emails with company logo + custom invitation message
+- invitationMessage field in Organization model
+- Company admin dashboard
 - SSO integration (SAML/OIDC)
 - Billing portal for corporate accounts
 
@@ -3809,7 +3825,7 @@ Additionally, email templates still reference the old domain `soporte@tuquiniela
 
 **v0.6.0:**
 - [x] ADR-034: Cloudflare Email Routing for Incoming Email ✅ (2026-03-01)
-- [x] ADR-035: Corporate Pool Feature — MVP Approach ✅ (2026-03-01)
+- [x] ADR-035: Corporate Pool Feature — Self-Service MVP ✅ (2026-03-01)
 - [x] ADR-036: Lemon Squeezy as Merchant of Record ✅ (2026-03-01)
 - [x] ADR-037: Resend Domain Verification for Production Email ✅ (2026-03-01)
 
