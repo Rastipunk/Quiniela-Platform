@@ -559,7 +559,7 @@ export interface CorporateActivationEmailParams {
   poolName: string;
   activationUrl: string;
   locale?: string;
-  logoBase64?: string | null;
+  logoCid?: string | null;
   invitationMessage?: string | null;
 }
 
@@ -569,7 +569,7 @@ export function getCorporateActivationTemplate({
   poolName,
   activationUrl,
   locale = "es",
-  logoBase64,
+  logoCid,
   invitationMessage,
 }: CorporateActivationEmailParams): string {
   const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
@@ -586,44 +586,53 @@ export function getCorporateActivationTemplate({
     preheader: string;
   }> = {
     es: {
-      heroSubtitle: "Te invita a jugar",
-      greeting: employeeName ? `Hola ${employeeName},` : "Hola,",
-      body: `Te han invitado a participar en una quiniela corporativa en <strong>${BRAND.name}</strong>. Compite con tus compañeros y demuestra quién sabe más de fútbol.`,
+      heroSubtitle: "te reta a jugar",
+      greeting: employeeName ? `Hey ${employeeName}!` : "Hey!",
+      body: `Tu equipo en <strong>${companyName}</strong> ya está armando su quiniela y necesitan que te sumes. Demuestra que eres el/la que más sabe de fútbol.`,
       poolLabel: poolName,
-      ctaLabel: "Unirme ahora",
-      instructions: "Crea tu usuario y contraseña en segundos para empezar a jugar.",
-      expiry: "Este enlace es válido por 30 días.",
-      footer: `¿Tienes preguntas? Escríbenos a <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
-      preheader: `${companyName} te invitó a jugar en "${poolName}". Activa tu cuenta ahora.`,
+      ctaLabel: "Entrar a jugar →",
+      instructions: "Solo necesitas crear usuario y clave. Toma 30 segundos.",
+      expiry: "Tienes 30 días para activar tu cuenta.",
+      footer: `¿Dudas? Escríbenos a <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
+      preheader: `${companyName} te reta! Únete a la quiniela "${poolName}" y demuestra lo que sabes.`,
     },
     en: {
-      heroSubtitle: "Invites you to play",
-      greeting: employeeName ? `Hi ${employeeName},` : "Hi,",
-      body: `You've been invited to join a corporate pool on <strong>${BRAND.name}</strong>. Compete with your colleagues and show who knows football best.`,
+      heroSubtitle: "challenges you to play",
+      greeting: employeeName ? `Hey ${employeeName}!` : "Hey!",
+      body: `Your crew at <strong>${companyName}</strong> is setting up a sports pool and they need you in. Show everyone who really knows football.`,
       poolLabel: poolName,
-      ctaLabel: "Join now",
-      instructions: "Create your username and password in seconds to start playing.",
-      expiry: "This link is valid for 30 days.",
-      footer: `Questions? Reach us at <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
-      preheader: `${companyName} invited you to play in "${poolName}". Activate your account now.`,
+      ctaLabel: "Get in the game →",
+      instructions: "Just create a username and password. Takes 30 seconds.",
+      expiry: "You have 30 days to activate your account.",
+      footer: `Questions? Hit us up at <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
+      preheader: `${companyName} challenges you! Join the pool "${poolName}" and prove what you know.`,
     },
     pt: {
-      heroSubtitle: "Convida você a jogar",
-      greeting: employeeName ? `Olá ${employeeName},` : "Olá,",
-      body: `Você foi convidado para participar de um bolão corporativo no <strong>${BRAND.name}</strong>. Dispute com seus colegas e mostre quem entende mais de futebol.`,
+      heroSubtitle: "te desafia a jogar",
+      greeting: employeeName ? `E aí ${employeeName}!` : "E aí!",
+      body: `A galera da <strong>${companyName}</strong> já está montando o bolão e precisa de você. Mostra quem realmente entende de futebol.`,
       poolLabel: poolName,
-      ctaLabel: "Participar agora",
-      instructions: "Crie seu usuário e senha em segundos para começar a jogar.",
-      expiry: "Este link é válido por 30 dias.",
-      footer: `Dúvidas? Entre em contato pelo <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
-      preheader: `${companyName} convidou você para jogar em "${poolName}". Ative sua conta agora.`,
+      ctaLabel: "Entrar no jogo →",
+      instructions: "Só criar usuário e senha. Leva 30 segundos.",
+      expiry: "Você tem 30 dias para ativar sua conta.",
+      footer: `Dúvidas? Manda pra gente em <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
+      preheader: `${companyName} te desafia! Entre no bolão "${poolName}" e mostre o que você sabe.`,
     },
   };
 
   const t = i18n[locale] ?? i18n.es!;
 
-  // Company initial letter avatar (works in ALL email clients, unlike base64 images)
+  // Logo: CID inline image (works in Gmail!) or letter-initial fallback
   const initial = companyName.charAt(0).toUpperCase();
+  const logoHtml = logoCid
+    ? `<img src="cid:${logoCid}" alt="${companyName}" style="max-height:60px;max-width:180px;border-radius:12px;" />`
+    : `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
+        <tr>
+          <td style="width:64px;height:64px;border-radius:14px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:28px;font-weight:800;color:#ffffff;line-height:64px;">
+            ${initial}
+          </td>
+        </tr>
+      </table>`;
 
   // Invitation message block
   const invitationHtml = invitationMessage
@@ -637,7 +646,7 @@ export function getCorporateActivationTemplate({
       </table>`
     : "";
 
-  // Build a custom email (bypasses getEmailWrapper for a unique corporate look)
+  // Custom corporate email
   return `
 <!DOCTYPE html>
 <html lang="${locale}">
@@ -680,22 +689,22 @@ export function getCorporateActivationTemplate({
       <td align="center" style="padding:32px 16px;">
         <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0">
 
-          <!-- Hero banner with company branding -->
+          <!-- Hero banner -->
           <tr>
-            <td style="background:linear-gradient(135deg,#1e1b4b 0%,#3730a3 50%,#4f46e5 100%);border-radius:16px 16px 0 0;padding:40px 40px 36px;text-align:center;">
-              <!-- Company logo/avatar -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom:16px;">
+            <td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 100%);border-radius:16px 16px 0 0;padding:36px 40px 32px;text-align:center;">
+              <p style="margin:0 0 14px;font-size:36px;line-height:1;">&#9917;</p>
+              <!-- Company logo or initial -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom:14px;">
                 <tr>
-                  <td style="width:72px;height:72px;border-radius:16px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:32px;font-weight:800;color:#ffffff;line-height:72px;">
-                    ${initial}
+                  <td style="text-align:center;vertical-align:middle;">
+                    ${logoHtml}
                   </td>
                 </tr>
               </table>
-              <!-- Company name -->
               <h1 class="hero-title" style="margin:0;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">
                 ${companyName}
               </h1>
-              <p style="margin:8px 0 0;font-size:15px;color:rgba(255,255,255,0.7);font-weight:500;">
+              <p style="margin:8px 0 0;font-size:15px;color:rgba(255,255,255,0.75);font-weight:500;">
                 ${t.heroSubtitle}
               </p>
             </td>
@@ -704,7 +713,7 @@ export function getCorporateActivationTemplate({
           <!-- Main content -->
           <tr>
             <td class="content" style="background-color:#ffffff;padding:36px 40px;">
-              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:${BRAND.textColor};">
+              <p style="margin:0 0 20px;font-size:17px;line-height:1.6;color:${BRAND.textColor};font-weight:600;">
                 ${t.greeting}
               </p>
               <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:${BRAND.textColor};">
@@ -713,12 +722,12 @@ export function getCorporateActivationTemplate({
 
               ${invitationHtml}
 
-              <!-- Pool name highlight -->
+              <!-- Pool name -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
                 <tr>
                   <td style="background-color:#EEF2FF;border-radius:12px;padding:16px 20px;text-align:center;">
-                    <p style="margin:0;font-size:12px;color:#6366f1;font-weight:600;text-transform:uppercase;letter-spacing:1px;">⚽</p>
-                    <p style="margin:4px 0 0;font-size:18px;font-weight:700;color:#1e1b4b;">${t.poolLabel}</p>
+                    <p style="margin:0;font-size:20px;line-height:1;">&#9917;&#127942;</p>
+                    <p style="margin:6px 0 0;font-size:18px;font-weight:700;color:#1e1b4b;">${t.poolLabel}</p>
                   </td>
                 </tr>
               </table>
@@ -726,8 +735,8 @@ export function getCorporateActivationTemplate({
               <!-- CTA Button -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px 0 24px;">
                 <tr>
-                  <td style="border-radius:12px;background:linear-gradient(135deg,#4f46e5 0%,#6366f1 100%);">
-                    <a href="${activationUrl}" style="display:inline-block;padding:16px 44px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.3px;">
+                  <td style="border-radius:14px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);box-shadow:0 4px 14px rgba(99,102,241,0.3);">
+                    <a href="${activationUrl}" style="display:inline-block;padding:18px 52px;font-size:18px;font-weight:800;color:#ffffff;text-decoration:none;letter-spacing:0.5px;">
                       ${t.ctaLabel}
                     </a>
                   </td>

@@ -821,6 +821,26 @@ export async function sendCorporateActivationEmail(params: {
     pt: `${params.companyName} convidou você para jogar — ${APP_NAME}`,
   };
 
+  // Parse logo data URI into CID inline attachment (base64 data URIs are blocked by Gmail)
+  let logoAttachment: { filename: string; content: Buffer; contentType: string; contentId: string } | null = null;
+  let logoCid: string | null = null;
+
+  if (params.logoBase64) {
+    const match = params.logoBase64.match(/^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/);
+    if (match) {
+      logoCid = "company-logo";
+      const mimeType = match[1]!;
+      const ext = match[2]!;
+      const base64Data = match[3]!;
+      logoAttachment = {
+        filename: `logo.${ext === "jpg" ? "jpeg" : ext}`,
+        content: Buffer.from(base64Data, "base64"),
+        contentType: mimeType,
+        contentId: logoCid,
+      };
+    }
+  }
+
   try {
     const { data, error } = await resend.emails.send({
       from: `${APP_NAME} <${FROM_EMAIL}>`,
@@ -832,9 +852,10 @@ export async function sendCorporateActivationEmail(params: {
         poolName: params.poolName,
         activationUrl,
         locale,
-        logoBase64: params.logoBase64,
+        logoCid,
         invitationMessage: params.invitationMessage,
       }),
+      ...(logoAttachment ? { attachments: [logoAttachment] } : {}),
     });
 
     if (error) {
