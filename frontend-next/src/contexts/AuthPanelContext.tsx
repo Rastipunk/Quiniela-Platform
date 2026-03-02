@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 
 interface AuthPanelContextType {
-  openAuthPanel: (mode?: "login" | "register") => void;
+  openAuthPanel: (mode?: "login" | "register", redirectTo?: string) => void;
 }
 
 export const AuthPanelContext = createContext<AuthPanelContextType>({

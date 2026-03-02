@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const isMobile = useIsMobile();
   const t = useTranslations("dashboard");
   const tc = useTranslations("landing.tournaments");
+  const te = useTranslations("enterprise");
 
   function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
     const labels: Record<string, { color: string; emoji: string }> = {
@@ -288,7 +289,7 @@ export default function DashboardPage() {
                           fontWeight: 600,
                         }}
                       >
-                        {"\u{1F3E2}"} Corporate
+                        {"\u{1F3E2}"} {te("badge")}
                       </span>
                     )}
                     {r.status === "PENDING_APPROVAL" && (

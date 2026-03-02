@@ -17,7 +17,7 @@ export function EnterpriseLandingContent() {
     if (isAuthenticated) {
       router.push("/empresas/crear");
     } else {
-      openAuthPanel("register");
+      openAuthPanel("register", "/empresas/crear");
     }
   };
 

@@ -136,6 +136,18 @@ export function NavBar() {
             {t("faq")}
           </Link>
 
+          <Link
+            href="/empresas"
+            style={{
+              color: "rgba(255,255,255,0.7)",
+              textDecoration: "none",
+              fontSize: "1rem",
+              fontWeight: 500,
+            }}
+          >
+            {t("enterprises")}
+          </Link>
+
           <LanguageSelector />
 
           {/* User Menu */}
@@ -519,6 +531,25 @@ export function NavBar() {
                 }}
               >
                 {t("faq")}
+              </Link>
+
+              <Link
+                href="/empresas"
+                onClick={() => setShowMobileMenu(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  padding: "1rem",
+                  color: "rgba(255,255,255,0.7)",
+                  textDecoration: "none",
+                  fontSize: "1rem",
+                  minHeight: TOUCH_TARGET.comfortable,
+                  borderLeft: "3px solid transparent",
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {"\u{1F3E2}"} {t("enterprises")}
               </Link>
 
               {/* Admin Panel */}
