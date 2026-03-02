@@ -575,7 +575,7 @@ export function getCorporateActivationTemplate({
   const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
 
   const i18n: Record<string, {
-    heading: string;
+    heroSubtitle: string;
     greeting: string;
     body: string;
     poolLabel: string;
@@ -586,34 +586,34 @@ export function getCorporateActivationTemplate({
     preheader: string;
   }> = {
     es: {
-      heading: "Te invitaron a jugar",
+      heroSubtitle: "Te invita a jugar",
       greeting: employeeName ? `Hola ${employeeName},` : "Hola,",
-      body: `<strong>${companyName}</strong> te ha invitado a participar en una quiniela corporativa en ${BRAND.name}.`,
-      poolLabel: `Quiniela: <strong>${poolName}</strong>`,
-      ctaLabel: "Activar mi cuenta",
-      instructions: "Al hacer clic, podrás crear tu usuario y contraseña para empezar a jugar inmediatamente.",
+      body: `Te han invitado a participar en una quiniela corporativa en <strong>${BRAND.name}</strong>. Compite con tus compañeros y demuestra quién sabe más de fútbol.`,
+      poolLabel: poolName,
+      ctaLabel: "Unirme ahora",
+      instructions: "Crea tu usuario y contraseña en segundos para empezar a jugar.",
       expiry: "Este enlace es válido por 30 días.",
       footer: `¿Tienes preguntas? Escríbenos a <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
       preheader: `${companyName} te invitó a jugar en "${poolName}". Activa tu cuenta ahora.`,
     },
     en: {
-      heading: "You've been invited to play",
+      heroSubtitle: "Invites you to play",
       greeting: employeeName ? `Hi ${employeeName},` : "Hi,",
-      body: `<strong>${companyName}</strong> has invited you to join a corporate pool on ${BRAND.name}.`,
-      poolLabel: `Pool: <strong>${poolName}</strong>`,
-      ctaLabel: "Activate my account",
-      instructions: "Click the button to create your username and password and start playing right away.",
+      body: `You've been invited to join a corporate pool on <strong>${BRAND.name}</strong>. Compete with your colleagues and show who knows football best.`,
+      poolLabel: poolName,
+      ctaLabel: "Join now",
+      instructions: "Create your username and password in seconds to start playing.",
       expiry: "This link is valid for 30 days.",
       footer: `Questions? Reach us at <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
       preheader: `${companyName} invited you to play in "${poolName}". Activate your account now.`,
     },
     pt: {
-      heading: "Você foi convidado a jogar",
+      heroSubtitle: "Convida você a jogar",
       greeting: employeeName ? `Olá ${employeeName},` : "Olá,",
-      body: `<strong>${companyName}</strong> convidou você para participar de um bolão corporativo no ${BRAND.name}.`,
-      poolLabel: `Bolão: <strong>${poolName}</strong>`,
-      ctaLabel: "Ativar minha conta",
-      instructions: "Clique no botão para criar seu usuário e senha e começar a jogar imediatamente.",
+      body: `Você foi convidado para participar de um bolão corporativo no <strong>${BRAND.name}</strong>. Dispute com seus colegas e mostre quem entende mais de futebol.`,
+      poolLabel: poolName,
+      ctaLabel: "Participar agora",
+      instructions: "Crie seu usuário e senha em segundos para começar a jogar.",
       expiry: "Este link é válido por 30 dias.",
       footer: `Dúvidas? Entre em contato pelo <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
       preheader: `${companyName} convidou você para jogar em "${poolName}". Ative sua conta agora.`,
@@ -622,39 +622,151 @@ export function getCorporateActivationTemplate({
 
   const t = i18n[locale] ?? i18n.es!;
 
-  // Logo de la empresa (centrado encima del heading)
-  const logoHtml = logoBase64
-    ? `<div style="text-align:center;margin-bottom:24px;">
-        <img src="${logoBase64}" alt="${companyName}" style="max-width:80px;max-height:80px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);" />
-      </div>`
-    : "";
+  // Company initial letter avatar (works in ALL email clients, unlike base64 images)
+  const initial = companyName.charAt(0).toUpperCase();
 
-  // Mensaje personalizado de invitación (bloque destacado con comillas)
+  // Invitation message block
   const invitationHtml = invitationMessage
-    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;">
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 8px;">
         <tr>
-          <td style="background-color:#F5F3FF;border-left:4px solid #8B5CF6;padding:16px 20px;border-radius:0 8px 8px 0;">
-            <p style="margin:0;font-size:15px;color:${BRAND.textColor};font-style:italic;">"${invitationMessage}"</p>
-            <p style="margin:8px 0 0;font-size:13px;color:${BRAND.mutedColor};text-align:right;">— ${companyName}</p>
+          <td style="background-color:#F5F3FF;border-radius:12px;padding:20px 24px;">
+            <p style="margin:0;font-size:15px;line-height:1.6;color:#4c1d95;font-style:italic;">&ldquo;${invitationMessage}&rdquo;</p>
+            <p style="margin:10px 0 0;font-size:13px;color:#7c3aed;text-align:right;font-weight:600;">— ${companyName}</p>
           </td>
         </tr>
       </table>`
     : "";
 
-  const content = `
-    ${logoHtml}
-    ${getHeading(t.heading)}
-    ${getParagraph(t.greeting)}
-    ${getParagraph(t.body)}
-    ${invitationHtml}
-    ${getHighlightBox(`<p style="margin:0;font-size:16px;color:${BRAND.textColor};">${t.poolLabel}</p>`)}
-    ${getButton(t.ctaLabel, activationUrl)}
-    ${getParagraph(t.instructions)}
-    <p style="margin:16px 0 0;font-size:13px;color:${BRAND.mutedColor};">${t.expiry}</p>
-    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.footer}</p>
-  `;
+  // Build a custom email (bypasses getEmailWrapper for a unique corporate look)
+  return `
+<!DOCTYPE html>
+<html lang="${locale}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>${companyName} - ${BRAND.name}</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table {border-collapse:collapse;border-spacing:0;margin:0;}
+    div, td {padding:0;}
+    div {margin:0 !important;}
+  </style>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .content { padding: 24px 20px !important; }
+      .hero-title { font-size: 22px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f0edf6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <!--[if !mso]><!-->
+  <span style="display:none;font-size:1px;color:#f0edf6;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    ${t.preheader}
+  </span>
+  <!--<![endif]-->
 
-  return getEmailWrapper(content, t.preheader);
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f0edf6;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0">
+
+          <!-- Hero banner with company branding -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1e1b4b 0%,#3730a3 50%,#4f46e5 100%);border-radius:16px 16px 0 0;padding:40px 40px 36px;text-align:center;">
+              <!-- Company logo/avatar -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom:16px;">
+                <tr>
+                  <td style="width:72px;height:72px;border-radius:16px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:32px;font-weight:800;color:#ffffff;line-height:72px;">
+                    ${initial}
+                  </td>
+                </tr>
+              </table>
+              <!-- Company name -->
+              <h1 class="hero-title" style="margin:0;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.3px;">
+                ${companyName}
+              </h1>
+              <p style="margin:8px 0 0;font-size:15px;color:rgba(255,255,255,0.7);font-weight:500;">
+                ${t.heroSubtitle}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main content -->
+          <tr>
+            <td class="content" style="background-color:#ffffff;padding:36px 40px;">
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:${BRAND.textColor};">
+                ${t.greeting}
+              </p>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:${BRAND.textColor};">
+                ${t.body}
+              </p>
+
+              ${invitationHtml}
+
+              <!-- Pool name highlight -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
+                <tr>
+                  <td style="background-color:#EEF2FF;border-radius:12px;padding:16px 20px;text-align:center;">
+                    <p style="margin:0;font-size:12px;color:#6366f1;font-weight:600;text-transform:uppercase;letter-spacing:1px;">⚽</p>
+                    <p style="margin:4px 0 0;font-size:18px;font-weight:700;color:#1e1b4b;">${t.poolLabel}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px 0 24px;">
+                <tr>
+                  <td style="border-radius:12px;background:linear-gradient(135deg,#4f46e5 0%,#6366f1 100%);">
+                    <a href="${activationUrl}" style="display:inline-block;padding:16px 44px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.3px;">
+                      ${t.ctaLabel}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:${BRAND.mutedColor};text-align:center;">
+                ${t.instructions}
+              </p>
+              <p style="margin:0;font-size:13px;color:#9CA3AF;text-align:center;">
+                ${t.expiry}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f8f7fc;border-radius:0 0 16px 16px;padding:24px 40px;">
+              <p style="margin:0 0 12px;font-size:13px;color:${BRAND.mutedColor};text-align:center;">
+                ${t.footer}
+              </p>
+              <p style="margin:0;font-size:12px;color:#9CA3AF;text-align:center;">
+                <a href="${BRAND.baseUrl}/terms" style="color:#9CA3AF;text-decoration:underline;">Términos</a>
+                &nbsp;·&nbsp;
+                <a href="${BRAND.baseUrl}/privacy" style="color:#9CA3AF;text-decoration:underline;">Privacidad</a>
+              </p>
+              <p style="margin:12px 0 0;font-size:11px;color:#c4b5fd;text-align:center;font-weight:500;">
+                ${BRAND.name}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
 }
 
 // =========================================================================

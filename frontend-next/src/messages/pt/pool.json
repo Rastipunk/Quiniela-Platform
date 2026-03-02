@@ -608,6 +608,8 @@
   "corporate": {
     "badge": "Bolao corporativo",
     "playButton": "Vamos jogar!",
+    "players": "jogadores",
+    "byCompany": "por {company}",
     "tournamentInfo": "{tournament} \u00b7 {count} jogadores"
   }
 }

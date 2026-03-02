@@ -468,115 +468,231 @@ export default function PoolPage() {
       {!overview && !error && <p style={{ marginTop: 16 }}>{t("loading")}</p>}
 
       {/* Corporate Splash Screen (1x per session) */}
-      {overview && showSplash && overview.pool.organization && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%)",
-            color: "#fff",
-            padding: 32,
-            textAlign: "center",
-          }}
-        >
-          {overview.pool.organization.logoBase64 && (
-            <img
-              src={overview.pool.organization.logoBase64}
-              alt={overview.pool.organization.name}
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 16,
-                objectFit: "cover",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-                marginBottom: 24,
-                border: "3px solid rgba(255,255,255,0.2)",
-              }}
-            />
-          )}
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>
-            {overview.pool.organization.name}
-          </h1>
-          <p style={{ margin: "8px 0 0", fontSize: 14, opacity: 0.7, fontWeight: 500 }}>
-            {t("corporate.badge")}
-          </p>
-          {overview.pool.organization.welcomeMessage && (
-            <p
-              style={{
-                margin: "24px auto 0",
-                maxWidth: 400,
-                fontSize: 16,
-                fontStyle: "italic",
-                opacity: 0.9,
-                lineHeight: 1.5,
-              }}
-            >
-              &ldquo;{overview.pool.organization.welcomeMessage}&rdquo;
-            </p>
-          )}
-          <button
-            onClick={() => {
-              sessionStorage.setItem(`corporate-splash-${poolId}`, "1");
-              setShowSplash(false);
-            }}
+      {overview && showSplash && overview.pool.organization && (() => {
+        const org = overview.pool.organization;
+        return (
+          <div
             style={{
-              marginTop: 32,
-              padding: "14px 40px",
-              fontSize: 18,
-              fontWeight: 700,
-              background: "#fff",
-              color: "#4f46e5",
-              border: "none",
-              borderRadius: 12,
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)",
+              padding: 24,
+              overflow: "hidden",
             }}
           >
-            {t("corporate.playButton")}
-          </button>
-          <p style={{ marginTop: 16, fontSize: 13, opacity: 0.5 }}>
-            {overview.pool.name} &middot; {overview.counts.membersActive} {t("corporate.tournamentInfo", { tournament: overview.tournamentInstance.name, count: overview.counts.membersActive }).split("\u00b7").pop()?.trim()}
-          </p>
-        </div>
-      )}
+            {/* Decorative background orbs */}
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+              <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", top: "-5%", right: "-5%" }} />
+              <div style={{ position: "absolute", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)", bottom: "-10%", left: "-10%" }} />
+              <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,70,229,0.12) 0%, transparent 70%)", top: "40%", left: "60%" }} />
+            </div>
+
+            {/* Content card */}
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                maxWidth: 420,
+                width: "100%",
+                padding: "48px 36px 40px",
+                borderRadius: 24,
+                background: "rgba(255,255,255,0.06)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+              }}
+            >
+              {/* Logo */}
+              {org.logoBase64 ? (
+                <div style={{ position: "relative", marginBottom: 28 }}>
+                  <div style={{
+                    position: "absolute", inset: -6, borderRadius: 24,
+                    background: "linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4))",
+                    filter: "blur(12px)",
+                  }} />
+                  <img
+                    src={org.logoBase64}
+                    alt={org.name}
+                    style={{
+                      position: "relative",
+                      width: 100,
+                      height: 100,
+                      borderRadius: 20,
+                      objectFit: "cover",
+                      border: "3px solid rgba(255,255,255,0.15)",
+                      boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{
+                  width: 100, height: 100, borderRadius: 20, marginBottom: 28,
+                  background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 40, fontWeight: 800, color: "#fff",
+                  border: "3px solid rgba(255,255,255,0.15)",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                }}>
+                  {org.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              {/* Company name */}
+              <h1 style={{
+                margin: 0, fontSize: 32, fontWeight: 800, color: "#fff",
+                letterSpacing: -0.5, lineHeight: 1.2,
+                textShadow: "0 2px 8px rgba(0,0,0,0.3)",
+              }}>
+                {org.name}
+              </h1>
+
+              {/* Badge */}
+              <span style={{
+                display: "inline-block",
+                marginTop: 12,
+                padding: "5px 16px",
+                borderRadius: 999,
+                background: "rgba(139,92,246,0.2)",
+                border: "1px solid rgba(139,92,246,0.3)",
+                color: "#c4b5fd",
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+              }}>
+                {t("corporate.badge")}
+              </span>
+
+              {/* Welcome message */}
+              {org.welcomeMessage && (
+                <div style={{
+                  marginTop: 28,
+                  padding: "16px 20px",
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}>
+                  <p style={{
+                    margin: 0, fontSize: 15, lineHeight: 1.6,
+                    color: "rgba(255,255,255,0.85)",
+                    fontStyle: "italic",
+                  }}>
+                    &ldquo;{org.welcomeMessage}&rdquo;
+                  </p>
+                </div>
+              )}
+
+              {/* CTA Button */}
+              <button
+                onClick={() => {
+                  sessionStorage.setItem(`corporate-splash-${poolId}`, "1");
+                  setShowSplash(false);
+                }}
+                style={{
+                  marginTop: 32,
+                  padding: "16px 48px",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  background: "linear-gradient(135deg, #fff 0%, #e0e7ff 100%)",
+                  color: "#3730a3",
+                  border: "none",
+                  borderRadius: 14,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)",
+                  transition: "transform 0.15s, box-shadow 0.15s",
+                  letterSpacing: 0.3,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 8px 30px rgba(99,102,241,0.4), 0 0 0 1px rgba(255,255,255,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)";
+                }}
+              >
+                {t("corporate.playButton")}
+              </button>
+
+              {/* Pool info */}
+              <p style={{
+                marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)",
+                fontWeight: 500, letterSpacing: 0.3,
+              }}>
+                {overview.pool.name} &middot; {overview.counts.membersActive} {t("corporate.players")}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {overview && (
         <>
-          {/* Corporate compact header (always visible for corporate pools) */}
-          {!showSplash && overview.pool.organization && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "10px 14px",
-                marginTop: 12,
-                borderRadius: 10,
-                background: "#ede9fe",
-                border: "1px solid #a78bfa",
-              }}
-            >
-              {overview.pool.organization.logoBase64 && (
-                <img
-                  src={overview.pool.organization.logoBase64}
-                  alt={overview.pool.organization.name}
-                  style={{ width: 32, height: 32, borderRadius: 8, objectFit: "cover" }}
-                />
-              )}
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#4c1d95" }}>
-                {overview.pool.organization.name}
-              </span>
-              <span style={{ fontSize: 12, color: "#7c3aed", opacity: 0.7 }}>
-                &middot; {t("corporate.badge")}
-              </span>
+          {/* Corporate pool header — integrated */}
+          {!showSplash && overview.pool.organization ? (
+            <div style={{
+              marginTop: 12,
+              padding: "16px 18px 14px",
+              borderRadius: 14,
+              background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
+              border: "1px solid #ddd6fe",
+              marginBottom: 6,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                {overview.pool.organization.logoBase64 ? (
+                  <img
+                    src={overview.pool.organization.logoBase64}
+                    alt={overview.pool.organization.name}
+                    style={{
+                      width: 40, height: 40, borderRadius: 10, objectFit: "cover",
+                      border: "2px solid #c4b5fd",
+                      boxShadow: "0 2px 8px rgba(139,92,246,0.15)",
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 18, fontWeight: 700, color: "#fff",
+                    border: "2px solid #c4b5fd",
+                  }}>
+                    {overview.pool.organization.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1e1b4b" }}>
+                      {overview.pool.name}
+                    </h2>
+                    {overview.pool.status && (() => {
+                      const badge = getPoolStatusBadge(overview.pool.status);
+                      return (
+                        <span style={{
+                          fontSize: 12, padding: "3px 10px", borderRadius: 999,
+                          border: `1px solid ${badge.color}`, background: `${badge.color}20`,
+                          color: badge.color, fontWeight: 600,
+                        }}>
+                          {badge.emoji} {badge.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6d28d9", fontWeight: 500 }}>
+                    {t("corporate.byCompany", { company: overview.pool.organization.name })}
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-
+          ) : (
+          <>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
             <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
             {overview.pool.status && (() => {
@@ -602,6 +718,15 @@ export default function PoolPage() {
           <div style={{ color: "#666", fontSize: 12 }}>
             {overview.tournamentInstance.name} • {overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
+          </>
+          )}
+
+          {/* Tournament info for corporate pools */}
+          {overview.pool.organization && (
+            <div style={{ color: "#666", fontSize: 12, marginBottom: 2 }}>
+              {overview.tournamentInstance.name} • {overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
+            </div>
+          )}
 
           {/* Tabs Navigation con Notification Badges */}
           <div style={{

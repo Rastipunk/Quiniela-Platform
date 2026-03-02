@@ -608,6 +608,8 @@
   "corporate": {
     "badge": "Corporate pool",
     "playButton": "Let's play!",
+    "players": "players",
+    "byCompany": "by {company}",
     "tournamentInfo": "{tournament} \u00b7 {count} players"
   }
 }
