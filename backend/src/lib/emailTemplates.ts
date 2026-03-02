@@ -625,10 +625,10 @@ export function getCorporateActivationTemplate({
   // Logo: CID inline image (works in Gmail!) or letter-initial fallback
   const initial = companyName.charAt(0).toUpperCase();
   const logoHtml = logoCid
-    ? `<img src="cid:${logoCid}" alt="${companyName}" style="max-height:100px;max-width:280px;border-radius:14px;" />`
+    ? `<img src="cid:${logoCid}" alt="${companyName}" style="max-height:200px;max-width:400px;border-radius:16px;" />`
     : `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
         <tr>
-          <td style="width:80px;height:80px;border-radius:16px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:36px;font-weight:800;color:#ffffff;line-height:80px;">
+          <td style="width:120px;height:120px;border-radius:20px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:52px;font-weight:800;color:#ffffff;line-height:120px;">
             ${initial}
           </td>
         </tr>

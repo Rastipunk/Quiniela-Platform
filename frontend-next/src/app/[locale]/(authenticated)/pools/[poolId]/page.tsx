@@ -523,8 +523,8 @@ export default function PoolPage() {
                     alt={org.name}
                     style={{
                       position: "relative",
-                      maxHeight: 100,
-                      maxWidth: 160,
+                      maxHeight: 200,
+                      maxWidth: 320,
                       borderRadius: 16,
                       objectFit: "contain",
                       border: "3px solid rgba(255,255,255,0.15)",
@@ -534,10 +534,10 @@ export default function PoolPage() {
                 </div>
               ) : (
                 <div style={{
-                  width: 100, height: 100, borderRadius: 20, marginBottom: 28,
+                  width: 180, height: 180, borderRadius: 24, marginBottom: 28,
                   background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 40, fontWeight: 800, color: "#fff",
+                  fontSize: 72, fontWeight: 800, color: "#fff",
                   border: "3px solid rgba(255,255,255,0.15)",
                   boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
                 }}>
@@ -643,22 +643,22 @@ export default function PoolPage() {
                   src={overview.pool.organization.logoBase64}
                   alt={overview.pool.organization.name}
                   style={{
-                    maxHeight: 64, maxWidth: 100, objectFit: "contain",
-                    borderRadius: 10, flexShrink: 0,
+                    maxHeight: 128, maxWidth: 200, objectFit: "contain",
+                    borderRadius: 12, flexShrink: 0,
                   }}
                 />
               ) : (
                 <div style={{
-                  width: 56, height: 56, borderRadius: 12, flexShrink: 0,
+                  width: 100, height: 100, borderRadius: 14, flexShrink: 0,
                   background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 24, fontWeight: 800, color: "#fff",
+                  fontSize: 42, fontWeight: 800, color: "#fff",
                 }}>
                   {overview.pool.organization.name.charAt(0).toUpperCase()}
                 </div>
               )}
               <div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1a2e", lineHeight: 1.2, letterSpacing: "-0.3px" }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: "#1a1a2e", lineHeight: 1.2, letterSpacing: "-0.5px" }}>
                   {overview.pool.name}
                 </div>
                 <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 600, marginTop: 2 }}>
