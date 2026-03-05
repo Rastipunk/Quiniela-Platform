@@ -147,6 +147,48 @@
       "subtitle": "Participe grátis e comece a competir com seus amigos.",
       "hint": "Crie sua penca grátis em menos de 1 minuto.",
       "cta": "Começar agora — É grátis"
+    },
+    "pricing": {
+      "title": "Planos e Precos",
+      "subtitle": "Comece gratis. Sem cartao de credito.",
+      "seeAllPlans": "Ver todos os planos →",
+      "personal": {
+        "title": "Pessoal",
+        "badge": "Gratis",
+        "subtitle": "Ate 20 jogadores",
+        "cta": "Criar pool gratis"
+      },
+      "personalPro": {
+        "title": "Pessoal Pro",
+        "badge": "A partir de $6.99",
+        "subtitle": "Ate 300+ jogadores",
+        "includesBase": "Tudo do plano gratis",
+        "extraPlayers": "Ate 300+ jogadores"
+      },
+      "corporate": {
+        "title": "Corporativo",
+        "badge": "Teste gratuito",
+        "subtitle": "Ate 100 jogadores incluidos",
+        "includesPersonal": "Tudo do Pessoal",
+        "cta": "Criar pool corporativo"
+      },
+      "features": {
+        "leaderboard": "Leaderboard em tempo real",
+        "scoringModes": "Multiplos modos de pontuacao",
+        "autoResults": "Atualizacao automatica de resultados",
+        "emailNotifications": "Notificacoes por email aos jogadores",
+        "multiTournament": "Suporte multi-torneio",
+        "inviteByLink": "Convide por link",
+        "mobileOptimized": "Otimizado para celular"
+      },
+      "corporateFeatures": {
+        "companyLogo": "Logo e marca da sua empresa",
+        "emailInvites": "Convites personalizados por email",
+        "csvImport": "Importacao CSV de funcionarios",
+        "employeeDashboard": "Painel de gestao de funcionarios",
+        "brandedExperience": "Pool com marca empresarial"
+      },
+      "comingSoon": "Em breve"
     }
   },
   "feedback": {

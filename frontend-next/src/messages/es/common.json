@@ -147,6 +147,48 @@
       "subtitle": "Únete gratis y comienza a competir con tus amigos.",
       "hint": "Crea tu quiniela gratis en menos de 1 minuto.",
       "cta": "Comenzar ahora — Es gratis"
+    },
+    "pricing": {
+      "title": "Planes y Precios",
+      "subtitle": "Comienza gratis. Sin tarjeta de crédito.",
+      "seeAllPlans": "Ver todos los planes →",
+      "personal": {
+        "title": "Personal",
+        "badge": "Gratis",
+        "subtitle": "Hasta 20 jugadores",
+        "cta": "Crear pool gratis"
+      },
+      "personalPro": {
+        "title": "Personal Pro",
+        "badge": "Desde $6.99",
+        "subtitle": "Hasta 300+ jugadores",
+        "includesBase": "Todo lo del plan gratis",
+        "extraPlayers": "Hasta 300+ jugadores"
+      },
+      "corporate": {
+        "title": "Corporativo",
+        "badge": "Prueba gratuita",
+        "subtitle": "Hasta 100 jugadores incluidos",
+        "includesPersonal": "Todo lo de Personal",
+        "cta": "Crear pool corporativo"
+      },
+      "features": {
+        "leaderboard": "Leaderboard en tiempo real",
+        "scoringModes": "Múltiples modos de puntuación",
+        "autoResults": "Actualización automática de resultados",
+        "emailNotifications": "Notificaciones por email a jugadores",
+        "multiTournament": "Soporte multi-torneo",
+        "inviteByLink": "Invita por link",
+        "mobileOptimized": "Optimizado para móvil"
+      },
+      "corporateFeatures": {
+        "companyLogo": "Logo y marca de tu empresa",
+        "emailInvites": "Invitaciones personalizadas por email",
+        "csvImport": "Importación CSV de empleados",
+        "employeeDashboard": "Panel de gestión de empleados",
+        "brandedExperience": "Pool con marca empresarial"
+      },
+      "comingSoon": "Próximamente"
     }
   },
   "feedback": {

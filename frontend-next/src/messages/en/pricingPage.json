@@ -19,5 +19,7 @@
   "cta": "Create free pool",
   "refundNote": "Refund policy available.",
   "corporateBase": "${price}",
-  "perIncrement": "${price}/+50 players"
+  "perIncrement": "${price}/+50 players",
+  "featuresTitle": "What's included?",
+  "corporateExclusive": "Corporate exclusive"
 }

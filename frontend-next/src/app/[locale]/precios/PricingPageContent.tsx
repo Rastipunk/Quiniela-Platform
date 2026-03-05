@@ -10,10 +10,47 @@ import {
   CORPORATE_BASE_PRICE,
 } from "@/lib/pricing";
 
+function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+      <span style={{ color: "#22c55e", fontSize: 15, lineHeight: 1.3, flexShrink: 0 }}>&#10003;</span>
+      <span
+        style={{
+          fontSize: 14,
+          color: highlight ? "var(--text)" : "var(--muted)",
+          fontWeight: highlight ? 600 : 400,
+          lineHeight: 1.4,
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export function PricingPageContent() {
   const t = useTranslations("pricingPage");
+  const f = useTranslations("landing");
   const personalTiers = getPersonalTiers(300);
   const corporateTiers = getCorporateTiers(300);
+
+  const baseFeatures = [
+    f("pricing.features.leaderboard"),
+    f("pricing.features.scoringModes"),
+    f("pricing.features.autoResults"),
+    f("pricing.features.emailNotifications"),
+    f("pricing.features.multiTournament"),
+    f("pricing.features.inviteByLink"),
+    f("pricing.features.mobileOptimized"),
+  ];
+
+  const corporateExtraFeatures = [
+    f("pricing.corporateFeatures.companyLogo"),
+    f("pricing.corporateFeatures.emailInvites"),
+    f("pricing.corporateFeatures.csvImport"),
+    f("pricing.corporateFeatures.employeeDashboard"),
+    f("pricing.corporateFeatures.brandedExperience"),
+  ];
 
   return (
     <PublicPageWrapper>
@@ -45,9 +82,29 @@ export function PricingPageContent() {
           <h2 style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
             {t("personalTitle")}
           </h2>
-          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 20 }}>
+          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 16 }}>
             {t("personalDesc")}
           </p>
+
+          {/* Features included */}
+          <div
+            style={{
+              padding: "16px 20px",
+              borderRadius: 12,
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#15803d", marginBottom: 12 }}>
+              {t("featuresTitle")}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px" }}>
+              {baseFeatures.map((feat) => (
+                <FeatureCheck key={feat} label={feat} />
+              ))}
+            </div>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {personalTiers.map((tier) => (
@@ -148,9 +205,32 @@ export function PricingPageContent() {
           <h2 style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
             {t("corporateTitle")}
           </h2>
-          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 20 }}>
+          <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 16 }}>
             {t("corporateDesc")}
           </p>
+
+          {/* Features included */}
+          <div
+            style={{
+              padding: "16px 20px",
+              borderRadius: 12,
+              background: "#eef2ff",
+              border: "1px solid #c7d2fe",
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#3730a3", marginBottom: 12 }}>
+              {t("featuresTitle")}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 24px" }}>
+              {baseFeatures.map((feat) => (
+                <FeatureCheck key={feat} label={feat} />
+              ))}
+              {corporateExtraFeatures.map((feat) => (
+                <FeatureCheck key={feat} label={feat} highlight />
+              ))}
+            </div>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {corporateTiers.map((tier) => {

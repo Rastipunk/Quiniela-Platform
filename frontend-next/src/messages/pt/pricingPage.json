@@ -19,5 +19,7 @@
   "cta": "Criar bolão grátis",
   "refundNote": "Política de reembolso disponível.",
   "corporateBase": "${price}",
-  "perIncrement": "${price}/+50 jogadores"
+  "perIncrement": "${price}/+50 jogadores",
+  "featuresTitle": "O que inclui?",
+  "corporateExclusive": "Exclusivo corporativo"
 }

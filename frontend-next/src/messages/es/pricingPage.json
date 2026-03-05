@@ -19,5 +19,7 @@
   "cta": "Crear pool gratis",
   "refundNote": "Política de reembolso disponible.",
   "corporateBase": "${price}",
-  "perIncrement": "${price}/+50 jugadores"
+  "perIncrement": "${price}/+50 jugadores",
+  "featuresTitle": "¿Qué incluye?",
+  "corporateExclusive": "Exclusivo corporativo"
 }

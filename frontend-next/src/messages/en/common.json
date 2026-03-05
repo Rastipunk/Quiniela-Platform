@@ -147,6 +147,48 @@
       "subtitle": "Join for free and start competing with your friends.",
       "hint": "Create your free pool in less than 1 minute.",
       "cta": "Start now — It's free"
+    },
+    "pricing": {
+      "title": "Plans & Pricing",
+      "subtitle": "Start for free. No credit card required.",
+      "seeAllPlans": "See all plans →",
+      "personal": {
+        "title": "Personal",
+        "badge": "Free",
+        "subtitle": "Up to 20 players",
+        "cta": "Create free pool"
+      },
+      "personalPro": {
+        "title": "Personal Pro",
+        "badge": "From $6.99",
+        "subtitle": "Up to 300+ players",
+        "includesBase": "Everything in the free plan",
+        "extraPlayers": "Up to 300+ players"
+      },
+      "corporate": {
+        "title": "Corporate",
+        "badge": "Free trial",
+        "subtitle": "Up to 100 players included",
+        "includesPersonal": "Everything in Personal",
+        "cta": "Create corporate pool"
+      },
+      "features": {
+        "leaderboard": "Real-time leaderboard",
+        "scoringModes": "Multiple scoring modes",
+        "autoResults": "Automatic match result updates",
+        "emailNotifications": "Email notifications to players",
+        "multiTournament": "Multi-tournament support",
+        "inviteByLink": "Invite by link",
+        "mobileOptimized": "Mobile optimized"
+      },
+      "corporateFeatures": {
+        "companyLogo": "Your company logo & branding",
+        "emailInvites": "Personalized email invitations",
+        "csvImport": "CSV employee import",
+        "employeeDashboard": "Employee management dashboard",
+        "brandedExperience": "Branded pool experience"
+      },
+      "comingSoon": "Coming soon"
     }
   },
   "feedback": {
