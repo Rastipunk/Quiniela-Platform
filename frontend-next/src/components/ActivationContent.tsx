@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { activateCorporateAccount } from "@/lib/api";
+import { activateCorporateAccount, checkCorporateInvite } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 
 type Status = "form" | "submitting" | "success" | "error";
+type CheckStatus = "loading" | "new_user" | "existing_user" | "error";
 
 export function ActivationContent() {
   const t = useTranslations("activation");
@@ -15,6 +16,13 @@ export function ActivationContent() {
   const router = useRouter();
   const tokenParam = searchParams.get("token") || "";
 
+  // Check status
+  const [checkStatus, setCheckStatus] = useState<CheckStatus>("loading");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [poolName, setPoolName] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  // Form fields (new user)
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -23,11 +31,38 @@ export function ActivationContent() {
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [acceptAge, setAcceptAge] = useState(false);
 
+  // Shared state
   const [status, setStatus] = useState<Status>("form");
   const [errorMsg, setErrorMsg] = useState("");
   const [poolId, setPoolId] = useState<string | null>(null);
-  const [poolName, setPoolName] = useState<string | null>(null);
-  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  // Check invite on mount
+  useEffect(() => {
+    if (!tokenParam) {
+      setCheckStatus("error");
+      setErrorMsg(t("invalidToken"));
+      return;
+    }
+
+    checkCorporateInvite(tokenParam)
+      .then((data) => {
+        setInviteEmail(data.email);
+        setPoolName(data.poolName);
+        setCompanyName(data.companyName);
+        setCheckStatus(data.alreadyExists ? "existing_user" : "new_user");
+      })
+      .catch((err: any) => {
+        const code = err?.payload?.error;
+        if (code === "INVALID_TOKEN" || code === "TOKEN_EXPIRED") {
+          setErrorMsg(t("invalidToken"));
+        } else if (code === "ALREADY_ACTIVATED") {
+          setErrorMsg(t("alreadyActivated"));
+        } else {
+          setErrorMsg(err?.payload?.message || err.message || "Error");
+        }
+        setCheckStatus("error");
+      });
+  }, [tokenParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canSubmit =
     displayName.trim().length >= 2 &&
@@ -39,6 +74,7 @@ export function ActivationContent() {
     acceptAge &&
     tokenParam.length > 0;
 
+  // New user: full form submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
@@ -80,17 +116,58 @@ export function ActivationContent() {
     }
   };
 
-  if (!tokenParam) {
+  // Existing user: join pool directly
+  const handleExistingUserJoin = async () => {
+    setStatus("submitting");
+    setErrorMsg("");
+
+    try {
+      const result = await activateCorporateAccount({
+        activationToken: tokenParam,
+      });
+
+      setToken(result.token);
+      setPoolId(result.poolId);
+      setPoolName(result.poolName ?? null);
+      setCompanyName(result.companyName ?? null);
+      setStatus("success");
+    } catch (err: any) {
+      setStatus("form");
+      const payload = err?.payload;
+      if (payload?.error === "POOL_FULL") {
+        setErrorMsg(t("invalidToken")); // pool full treated as generic error
+      } else if (payload?.error === "ALREADY_ACTIVATED") {
+        setErrorMsg(t("alreadyActivated"));
+      } else {
+        setErrorMsg(payload?.message || err.message || "Error");
+      }
+    }
+  };
+
+  // ---- Loading state ----
+  if (checkStatus === "loading") {
+    return (
+      <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 20px", textAlign: "center" }}>
+        <div style={{ fontSize: 32, marginBottom: 16, animation: "spin 1s linear infinite" }}>&#9696;</div>
+        <p style={{ color: "var(--muted)", fontSize: 14 }}>{t("checking")}</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    );
+  }
+
+  // ---- Error state (no valid token) ----
+  if (checkStatus === "error" && status !== "success") {
     return (
       <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 20px", textAlign: "center" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 12, color: "var(--text)" }}>
-          {t("invalidToken")}
+          {errorMsg || t("invalidToken")}
         </h1>
         <p style={{ color: "var(--muted)", fontSize: 14 }}>{t("invalidTokenHelp")}</p>
       </div>
     );
   }
 
+  // ---- Success state ----
   if (status === "success") {
     return (
       <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 20px", textAlign: "center" }}>
@@ -130,6 +207,60 @@ export function ActivationContent() {
     );
   }
 
+  // ---- Existing user: simplified join UI ----
+  if (checkStatus === "existing_user") {
+    return (
+      <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 20px", textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>{"\u{1F44B}"}</div>
+        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 12, color: "var(--text)" }}>
+          {t("existingUserTitle")}
+        </h1>
+        <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+          {t("existingUserDesc", {
+            email: inviteEmail,
+            poolName: poolName ?? "",
+            companyName: companyName ?? "",
+          })}
+        </p>
+
+        {errorMsg && (
+          <div
+            style={{
+              padding: "12px 16px",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: 8,
+              color: "#b91c1c",
+              fontSize: 13,
+              marginBottom: 20,
+            }}
+          >
+            {errorMsg}
+          </div>
+        )}
+
+        <button
+          onClick={handleExistingUserJoin}
+          disabled={status === "submitting"}
+          style={{
+            padding: "14px 32px",
+            borderRadius: 10,
+            border: "none",
+            background: "#4f46e5",
+            color: "white",
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: status === "submitting" ? "not-allowed" : "pointer",
+            opacity: status === "submitting" ? 0.7 : 1,
+          }}
+        >
+          {status === "submitting" ? t("joining") : t("joinPool")}
+        </button>
+      </div>
+    );
+  }
+
+  // ---- New user: full registration form ----
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "10px 12px",

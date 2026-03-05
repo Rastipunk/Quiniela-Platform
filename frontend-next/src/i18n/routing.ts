@@ -31,6 +31,16 @@ export const routing = defineRouting({
       en: "/privacy",
       pt: "/privacidade",
     },
+    "/precios": {
+      es: "/precios",
+      en: "/pricing",
+      pt: "/precos",
+    },
+    "/reembolsos": {
+      es: "/reembolsos",
+      en: "/refunds",
+      pt: "/reembolsos",
+    },
     // Regional SEO pages (locale-specific, handled with notFound in page)
     "/polla-futbolera": "/polla-futbolera",
     "/prode-deportivo": "/prode-deportivo",

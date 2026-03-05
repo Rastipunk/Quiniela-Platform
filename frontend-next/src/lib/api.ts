@@ -1251,12 +1251,12 @@ export async function deleteCorporateEmployee(
 
 export type ActivateCorporateInput = {
   activationToken: string;
-  displayName: string;
-  username: string;
-  password: string;
-  acceptTerms: boolean;
-  acceptPrivacy: boolean;
-  acceptAge: boolean;
+  displayName?: string;
+  username?: string;
+  password?: string;
+  acceptTerms?: boolean;
+  acceptPrivacy?: boolean;
+  acceptAge?: boolean;
 };
 
 export type ActivateCorporateResponse = {
@@ -1267,6 +1267,21 @@ export type ActivateCorporateResponse = {
   companyName?: string | null;
   alreadyExisted?: boolean;
 };
+
+export type CheckCorporateInviteResponse = {
+  email: string;
+  alreadyExists: boolean;
+  poolName: string;
+  companyName: string | null;
+};
+
+export async function checkCorporateInvite(
+  token: string
+): Promise<CheckCorporateInviteResponse> {
+  return requestJson<CheckCorporateInviteResponse>(
+    `/auth/check-corporate-invite?token=${encodeURIComponent(token)}`
+  );
+}
 
 export async function activateCorporateAccount(
   input: ActivateCorporateInput

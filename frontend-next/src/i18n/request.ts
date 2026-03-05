@@ -11,7 +11,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   // Load and merge all message files
   const [
     common, auth, dashboard, profile, pool, legal,
-    penca, polla, prode, porra, footballPool, seo, pricing,
+    penca, polla, prode, porra, footballPool, seo, pricing, pricingPage,
   ] = await Promise.all([
     import(`../messages/${locale}/common.json`).then((m) => m.default),
     import(`../messages/${locale}/auth.json`).then((m) => m.default),
@@ -26,6 +26,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
     import(`../messages/${locale}/footballPool.json`).then((m) => m.default),
     import(`../messages/${locale}/seo.json`).then((m) => m.default),
     import(`../messages/${locale}/pricing.json`).then((m) => m.default),
+    import(`../messages/${locale}/pricingPage.json`).then((m) => m.default),
   ]);
 
   return {
@@ -33,7 +34,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
     messages: {
       ...common,
       auth, dashboard, profile, pool, legal,
-      penca, polla, prode, porra, footballPool, seo, pricing,
+      penca, polla, prode, porra, footballPool, seo, pricing, pricingPage,
     },
   };
 });

@@ -38,7 +38,9 @@
     "contact": "Contato",
     "supportEmail": "suporte@picks4all.com",
     "copyright": "Todos os direitos reservados.",
-    "enterprises": "Para Empresas"
+    "enterprises": "Para Empresas",
+    "pricing": "Preços",
+    "refundPolicy": "Política de Reembolso"
   },
   "beta": {
     "message": "Beta — Seu feedback nos ajuda a melhorar",
@@ -320,7 +322,8 @@
       "summaryConfigured": "Configurada",
       "summaryDeadline": "Encerramento",
       "summaryMinutes": "{min} min antes do jogo",
-      "summaryApproval": "Aprovação necessária"
+      "summaryApproval": "Aprovação necessária",
+      "employeesLaterNotice": "Você também pode adicionar jogadores depois pela aba \"Jogadores\" na página do bolão."
     }
   },
   "activation": {
@@ -349,7 +352,12 @@
     "success": "Conta ativada com sucesso",
     "welcomeTo": "Convidado por {company}",
     "passwordMismatch": "As senhas não coincidem",
-    "goToPool": "Ir para meu bolão"
+    "goToPool": "Ir para meu bolão",
+    "checking": "Verificando...",
+    "existingUserTitle": "Você já tem uma conta",
+    "existingUserDesc": "Sua conta com {email} será vinculada ao bolão {poolName} de {companyName}.",
+    "joinPool": "Entrar no bolão",
+    "joining": "Entrando..."
   },
   "notFound": {
     "message": "A página que você procura não existe ou foi movida.",

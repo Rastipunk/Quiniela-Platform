@@ -621,14 +621,60 @@ authRouter.get("/verify-email", async (req, res) => {
 
 // ========== CORPORATE ACTIVATION ==========
 
+// GET /auth/check-corporate-invite — Verify token and check if user already exists
+authRouter.get("/check-corporate-invite", async (req, res) => {
+  const { token: activationToken } = req.query;
+
+  if (!activationToken || typeof activationToken !== "string") {
+    return res.status(400).json({ error: "MISSING_TOKEN" });
+  }
+
+  const invite = await prisma.corporateInvite.findUnique({
+    where: { activationToken },
+    include: {
+      pool: {
+        select: {
+          id: true,
+          name: true,
+          organization: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  if (!invite) {
+    return res.status(400).json({ error: "INVALID_TOKEN" });
+  }
+
+  if (invite.activationTokenExpiresAt < new Date()) {
+    return res.status(400).json({ error: "TOKEN_EXPIRED" });
+  }
+
+  if (invite.status === "ACTIVATED") {
+    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: invite.email },
+    select: { id: true },
+  });
+
+  return res.json({
+    email: invite.email,
+    alreadyExists: !!existingUser,
+    poolName: invite.pool.name,
+    companyName: invite.pool.organization?.name ?? null,
+  });
+});
+
 const activateCorporateSchema = z.object({
   activationToken: z.string().min(1),
-  displayName: z.string().min(2).max(50),
-  username: z.string().min(3).max(20),
-  password: z.string().min(8).max(200),
-  acceptTerms: z.boolean().refine((v) => v === true, { message: "Debes aceptar los Términos de Servicio" }),
-  acceptPrivacy: z.boolean().refine((v) => v === true, { message: "Debes aceptar la Política de Privacidad" }),
-  acceptAge: z.boolean().refine((v) => v === true, { message: "Debes confirmar que tienes al menos 13 años" }),
+  displayName: z.string().min(2).max(50).optional(),
+  username: z.string().min(3).max(20).optional(),
+  password: z.string().min(8).max(200).optional(),
+  acceptTerms: z.boolean().optional(),
+  acceptPrivacy: z.boolean().optional(),
+  acceptAge: z.boolean().optional(),
 });
 
 // POST /auth/activate-corporate — Activar cuenta de empleado invitado a pool corporativa
@@ -666,7 +712,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
     return res.status(409).json({ error: "ALREADY_ACTIVATED", message: "Esta invitación ya fue activada." });
   }
 
-  // Verificar que no exista ya un usuario con ese email
+  // Verificar si ya existe un usuario con ese email
   const existingUser = await prisma.user.findUnique({ where: { email: invite.email } });
   if (existingUser) {
     // Edge case: el usuario se registró por otra vía entre la invitación y la activación.
@@ -733,6 +779,14 @@ authRouter.post("/activate-corporate", async (req, res) => {
       companyName: invite.pool.organization?.name ?? null,
       alreadyExisted: true,
     });
+  }
+
+  // Nuevo usuario: campos de registro son obligatorios
+  if (!displayName || !rawUsername || !password) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", message: "displayName, username y password son requeridos para nuevos usuarios." });
+  }
+  if (!acceptTerms || !acceptPrivacy || !acceptAge) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Debes aceptar los términos, la privacidad y confirmar tu edad." });
   }
 
   // Validar username

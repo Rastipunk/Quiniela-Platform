@@ -98,6 +98,26 @@ export function Footer() {
           >
             {t("privacy")}
           </Link>
+          <Link
+            href="/precios"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            {t("pricing")}
+          </Link>
+          <Link
+            href="/reembolsos"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            {t("refundPolicy")}
+          </Link>
         </div>
 
         {/* Explore (Resources + Regional merged) */}

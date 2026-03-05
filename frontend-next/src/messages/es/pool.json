@@ -80,7 +80,8 @@
     "leaderboard": "Leaderboard",
     "summary": "Mi Resumen",
     "rules": "Reglas",
-    "admin": "Administración"
+    "admin": "Administración",
+    "players": "Jugadores"
   },
 
   "admin": {

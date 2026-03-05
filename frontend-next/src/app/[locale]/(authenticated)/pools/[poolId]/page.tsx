@@ -86,7 +86,7 @@ export default function PoolPage() {
   const [showCapacityPopup, setShowCapacityPopup] = useState(false);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "admin">("partidos");
+  const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "jugadores" | "admin">("partidos");
 
   // Phase navigation (new for WC2026)
   const [activePhase, setActivePhase] = useState<string | null>(null);
@@ -840,16 +840,17 @@ export default function PoolPage() {
             msOverflowStyle: "none",
             ...mobileInteractiveStyles.tapHighlight,
           }}>
-            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {
+            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" ? ["jugadores" as const] : []), ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {
               const badgeCount = tabBadges[tab] || 0;
               const isUrgent = tab === "partidos" && hasUrgent;
 
               // Nombres cortos para móvil
-              const tabLabels = {
+              const tabLabels: Record<string, string> = {
                 partidos: isMobile ? "⚽" : `⚽ ${t("tabs.matches")}`,
                 leaderboard: isMobile ? "📊" : `📊 ${t("tabs.leaderboard")}`,
                 resumen: isMobile ? "📈" : `📈 ${t("tabs.summary")}`,
                 reglas: isMobile ? "📋" : `📋 ${t("tabs.rules")}`,
+                jugadores: isMobile ? "👥" : `👥 ${t("tabs.players")}`,
                 admin: isMobile ? "⚙️" : `⚙️ ${t("tabs.admin")}`,
               };
 
@@ -899,7 +900,15 @@ export default function PoolPage() {
               {activeTab === "leaderboard" && t("tabs.leaderboard")}
               {activeTab === "resumen" && t("tabs.summary")}
               {activeTab === "reglas" && t("tabs.rules")}
+              {activeTab === "jugadores" && t("tabs.players")}
               {activeTab === "admin" && t("tabs.admin")}
+            </div>
+          )}
+
+          {/* Tab Content: Jugadores (solo CORPORATE_HOST en pools corporativos) */}
+          {activeTab === "jugadores" && overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" && token && (
+            <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+              <CorporateEmployeeManager poolId={poolId!} token={token} isMobile={isMobile} />
             </div>
           )}
 
@@ -1762,11 +1771,6 @@ export default function PoolPage() {
                     {busyKey === "archive" ? `⏳ ${t("admin.archive.archiving")}` : `📦 ${t("admin.archive.archiveButton")}`}
                   </button>
                 </div>
-              )}
-
-              {/* Corporate Employee Management */}
-              {overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" && token && (
-                <CorporateEmployeeManager poolId={poolId!} token={token} isMobile={isMobile} />
               )}
 
               {/* Instructions */}

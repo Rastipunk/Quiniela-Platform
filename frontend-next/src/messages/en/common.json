@@ -38,7 +38,9 @@
     "contact": "Contact",
     "supportEmail": "support@picks4all.com",
     "copyright": "All rights reserved.",
-    "enterprises": "For Companies"
+    "enterprises": "For Companies",
+    "pricing": "Pricing",
+    "refundPolicy": "Refund Policy"
   },
   "beta": {
     "message": "Beta — Your feedback helps us improve",
@@ -320,7 +322,8 @@
       "summaryConfigured": "Configured",
       "summaryDeadline": "Deadline",
       "summaryMinutes": "{min} min before match",
-      "summaryApproval": "Approval required"
+      "summaryApproval": "Approval required",
+      "employeesLaterNotice": "You can also add players later from the \"Players\" tab on the pool page."
     }
   },
   "activation": {
@@ -349,7 +352,12 @@
     "success": "Account activated successfully",
     "welcomeTo": "Invited by {company}",
     "passwordMismatch": "Passwords do not match",
-    "goToPool": "Go to my pool"
+    "goToPool": "Go to my pool",
+    "checking": "Verifying...",
+    "existingUserTitle": "You already have an account",
+    "existingUserDesc": "Your account with {email} will be linked to the {poolName} pool by {companyName}.",
+    "joinPool": "Join the pool",
+    "joining": "Joining..."
   },
   "notFound": {
     "message": "The page you're looking for doesn't exist or was moved.",

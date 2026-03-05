@@ -742,6 +742,22 @@ export function CorporatePoolCreation() {
       case 6:
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{
+              padding: "12px 16px",
+              borderRadius: 10,
+              background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+              border: "1px solid #93c5fd",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              fontSize: 13,
+              color: "#1e40af",
+              lineHeight: 1.6,
+            }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>&#8505;&#65039;</span>
+              <span>{t("employeesLaterNotice")}</span>
+            </div>
+
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
               {t("employeesDesc")}
             </p>

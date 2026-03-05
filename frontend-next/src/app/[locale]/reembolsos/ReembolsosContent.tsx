@@ -5,9 +5,9 @@ import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { parseMarkdown } from "@/lib/parseMarkdown";
 
-export function TerminosContent() {
+export function ReembolsosContent() {
   const t = useTranslations("legal");
-  const content = t("termsContent");
+  const content = t("refundsContent");
 
   return (
     <PublicPageWrapper>
