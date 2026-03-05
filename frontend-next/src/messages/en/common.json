@@ -16,13 +16,14 @@
     "logout": "Log Out",
     "login": "Log In",
     "enterprises": "For Companies",
+    "pricing": "Pricing",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "menu": "Menu"
   },
   "footer": {
-    "tagline": "Free sports prediction platform to play with friends.",
-    "disclaimer": "Football pools, picks, and brackets — 100% free, no real money or gambling.",
+    "tagline": "Sports prediction platform to play with friends.",
+    "disclaimer": "Football pools, picks, and brackets — free for up to 20 players, no real money or gambling.",
     "legal": "Legal",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
@@ -64,7 +65,7 @@
     "whatIs": {
       "title": "What is Picks4All?",
       "p1": "Picks4All is the free platform to create <strong>sports pools</strong> online and compete with friends, family, or coworkers by predicting football results. Known as <strong>polla futbolera</strong> in Colombia, <strong>prode</strong> in Argentina, <strong>penca</strong> in Uruguay, or <strong>porra</strong> in Spain.",
-      "p2": "Create your pool for free, invite anyone with a code, make your predictions and compete on the leaderboard. <strong>100% free with no gambling</strong> — just fun and friendly rivalry."
+      "p2": "Create your pool for free (up to 20 players), invite anyone with a code, make your predictions and compete on the leaderboard. <strong>Free and with no gambling</strong> — just fun and friendly rivalry."
     },
     "features": {
       "title": "Everything you need to compete",
@@ -161,8 +162,8 @@
     },
     "final": {
       "title": "Ready to prove you know football?",
-      "subtitle": "Join for free and start competing with your friends.",
-      "hint": "Create your free pool in less than 1 minute.",
+      "subtitle": "Create your pool for free and start competing with your friends.",
+      "hint": "Free for pools up to 20 players. Create your pool in less than 1 minute.",
       "cta": "Start now — It's free"
     },
     "pricing": {

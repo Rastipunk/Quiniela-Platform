@@ -16,13 +16,14 @@
     "logout": "Cerrar Sesión",
     "login": "Ingresar",
     "enterprises": "Empresas",
+    "pricing": "Precios",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "menu": "Menú"
   },
   "footer": {
     "tagline": "Plataforma gratuita de predicciones deportivas entre amigos.",
-    "disclaimer": "Quinielas, pollas, prodes y pencas — 100% gratis, sin dinero real ni apuestas.",
+    "disclaimer": "Quinielas, pollas, prodes y pencas — gratis hasta 20 jugadores, sin dinero real ni apuestas.",
     "legal": "Legal",
     "terms": "Términos de Servicio",
     "privacy": "Política de Privacidad",
@@ -64,7 +65,7 @@
     "whatIs": {
       "title": "¿Qué es Picks4All?",
       "p1": "Picks4All es la plataforma gratuita para crear <strong>quinielas deportivas</strong> online y competir con amigos, familia o compañeros de trabajo prediciendo resultados de fútbol. También conocida como <strong>polla futbolera</strong> en Colombia, Chile y Venezuela, <strong>prode</strong> en Argentina, <strong>penca</strong> en Uruguay, o <strong>porra</strong> en España.",
-      "p2": "Crea tu quiniela gratis, invita a quien quieras con un código, haz tus predicciones y compite en el leaderboard. <strong>100% gratis y sin apuestas</strong> — solo diversión y rivalidad sana."
+      "p2": "Crea tu quiniela gratis para hasta 20 jugadores, invita a quien quieras con un código, haz tus predicciones y compite en el leaderboard. <strong>Gratis y sin apuestas</strong> — solo diversión y rivalidad sana."
     },
     "features": {
       "title": "Todo lo que necesitas para competir",
@@ -160,8 +161,8 @@
     },
     "final": {
       "title": "¿Listo para demostrar que sabes de fútbol?",
-      "subtitle": "Únete gratis y comienza a competir con tus amigos.",
-      "hint": "Crea tu quiniela gratis en menos de 1 minuto.",
+      "subtitle": "Crea tu pool gratis y comienza a competir con tus amigos.",
+      "hint": "Gratis para pools de hasta 20 jugadores. Crea tu quiniela en menos de 1 minuto.",
       "cta": "Comenzar ahora — Es gratis"
     },
     "pricing": {

@@ -16,13 +16,14 @@
     "logout": "Sair",
     "login": "Entrar",
     "enterprises": "Para Empresas",
+    "pricing": "Preços",
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu",
     "menu": "Menu"
   },
   "footer": {
     "tagline": "Plataforma gratuita de previsões esportivas para jogar com amigos.",
-    "disclaimer": "Pencas, bolões e previsões — 100% grátis, sem dinheiro real nem apostas.",
+    "disclaimer": "Pencas, bolões e previsões — grátis até 20 jogadores, sem dinheiro real nem apostas.",
     "legal": "Legal",
     "terms": "Termos de Serviço",
     "privacy": "Política de Privacidade",
@@ -64,7 +65,7 @@
     "whatIs": {
       "title": "O que é o Picks4All?",
       "p1": "O Picks4All é a plataforma gratuita para criar <strong>pencas esportivas</strong> online e competir com amigos, família ou colegas de trabalho prevendo resultados de futebol. Também conhecida como <strong>polla</strong> na Colômbia, <strong>prode</strong> na Argentina, <strong>quiniela</strong> no México, ou <strong>porra</strong> na Espanha.",
-      "p2": "Crie sua penca grátis, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>100% grátis e sem apostas</strong> — só diversão e rivalidade saudável."
+      "p2": "Crie sua penca grátis para até 20 jogadores, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>Grátis e sem apostas</strong> — só diversão e rivalidade saudável."
     },
     "features": {
       "title": "Tudo o que você precisa para competir",
@@ -161,8 +162,8 @@
     },
     "final": {
       "title": "Pronto para provar que entende de futebol?",
-      "subtitle": "Participe grátis e comece a competir com seus amigos.",
-      "hint": "Crie sua penca grátis em menos de 1 minuto.",
+      "subtitle": "Crie seu pool grátis e comece a competir com seus amigos.",
+      "hint": "Grátis para pools de até 20 jogadores. Crie sua penca em menos de 1 minuto.",
       "cta": "Começar agora — É grátis"
     },
     "pricing": {
