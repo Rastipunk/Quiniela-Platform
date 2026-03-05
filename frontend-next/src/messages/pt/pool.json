@@ -1,7 +1,7 @@
 {
   "loading": "Carregando overview...",
   "poolIdMissing": "PoolId ausente",
-  "backToDashboard": "Dashboard",
+  "backToDashboard": "← Meus Pools",
   "httpErrors": {
     "FORBIDDEN": "Você não tem permissão para acessar este conteúdo.",
     "NOT_FOUND": "Este recurso não foi encontrado.",

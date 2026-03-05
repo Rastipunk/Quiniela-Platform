@@ -473,7 +473,25 @@ export default function PoolPage() {
   return (
     <div style={{ maxWidth: 1180, margin: "18px auto", padding: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <Link href="/dashboard">&larr; {t("backToDashboard")}</Link>
+        <Link
+          href="/dashboard"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: "#007bff",
+            textDecoration: "none",
+            fontWeight: 600,
+            fontSize: 14,
+            padding: "6px 12px",
+            borderRadius: 8,
+            background: "#f0f7ff",
+            border: "1px solid #007bff30",
+            transition: "background 0.15s ease",
+          }}
+        >
+          {t("backToDashboard")}
+        </Link>
       </div>
 
       {error && (

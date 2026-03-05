@@ -581,7 +581,16 @@ export default function DashboardPage() {
             <div style={{ fontWeight: 800, fontSize: isMobile ? 16 : 15, marginBottom: 8 }}>
               {leaveModal.pool.name}
             </div>
-            <div style={{ color: "#666", fontSize: isMobile ? 14 : 13, lineHeight: 1.5, marginBottom: 20 }}>
+            <div style={{
+              background: "#fef2f2",
+              border: "1px solid #fca5a5",
+              borderRadius: 10,
+              padding: isMobile ? 14 : 12,
+              color: "#991b1b",
+              fontSize: isMobile ? 14 : 13,
+              lineHeight: 1.5,
+              marginBottom: 20,
+            }}>
               {t("leaveConfirmMessage")}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
