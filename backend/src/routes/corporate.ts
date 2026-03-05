@@ -5,9 +5,9 @@ import crypto from "crypto";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
-import { sendAdminNotification, sendCorporateInquiryConfirmationEmail, sendCorporateActivationEmail, sendWelcomeEmail } from "../lib/email";
+import { sendAdminNotification, sendCorporateInquiryConfirmationEmail, sendCorporateActivationEmail, sendWelcomeEmail, escapeHtml } from "../lib/email";
 import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
-import { validatePoolPickTypesConfig } from "../validation/pickConfig";
+import { validatePoolPickTypesConfig, PoolPickTypesConfigSchema } from "../validation/pickConfig";
 import rateLimit from "express-rate-limit";
 import { transitionToActive } from "../services/poolStateMachine";
 
@@ -66,15 +66,15 @@ corporateRouter.post("/inquiry", inquiryLimiter, async (req, res) => {
   });
 
   sendAdminNotification({
-    subject: `${companyName} — ${contactName}`,
+    subject: `${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
     type: "corporate_inquiry",
     body: `
-      <p><strong>Empresa:</strong> ${companyName}</p>
-      <p><strong>Contacto:</strong> ${contactName} &lt;${contactEmail}&gt;</p>
-      ${contactPhone ? `<p><strong>Teléfono:</strong> ${contactPhone}</p>` : ""}
+      <p><strong>Empresa:</strong> ${escapeHtml(companyName)}</p>
+      <p><strong>Contacto:</strong> ${escapeHtml(contactName)} &lt;${escapeHtml(contactEmail)}&gt;</p>
+      ${contactPhone ? `<p><strong>Teléfono:</strong> ${escapeHtml(contactPhone)}</p>` : ""}
       ${employeeCount ? `<p><strong>Empleados:</strong> ${employeeCount}</p>` : ""}
-      ${message ? `<p><strong>Mensaje:</strong> ${message}</p>` : ""}
-      <p><strong>Idioma:</strong> ${locale}</p>
+      ${message ? `<p><strong>Mensaje:</strong> ${escapeHtml(message)}</p>` : ""}
+      <p><strong>Idioma:</strong> ${escapeHtml(locale)}</p>
     `,
   }).catch((err) => console.error("Error sending admin notification:", err));
 
@@ -107,7 +107,10 @@ const createCorporatePoolSchema = z.object({
   timeZone: z.string().optional(),
   deadlineMinutesBeforeKickoff: z.number().min(0).max(1440).optional(),
   requireApproval: z.boolean().optional(),
-  pickTypesConfig: z.any().optional(),
+  pickTypesConfig: z.union([
+    z.enum(["BASIC", "SIMPLE", "CUMULATIVE"]),
+    PoolPickTypesConfigSchema,
+  ]).optional(),
   maxParticipants: z.number().int().min(100).max(10000).optional(),
   emails: z.array(z.string().email()).max(500).optional(),
 });

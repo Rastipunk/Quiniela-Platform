@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { sendResultPublishedEmail } from "../lib/email";
+import { getScoringPreset } from "../lib/scoringPresets";
 import {
   validateCanAutoAdvance,
   advanceToRoundOf32,
@@ -237,26 +238,25 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           where: { poolId, matchId: { in: allMatches.map(m => m.id) } }
         });
 
-        // Calcular puntos por usuario
+        // Calcular puntos por usuario usando el preset de la pool
+        const preset = getScoringPreset(pool.scoringPresetKey);
         const userPoints = new Map<string, number>();
         for (const pred of allPredictions) {
           const result = resultByMatchId.get(pred.matchId);
           if (!result) continue;
           const pick = pred.pickJson as any;
+          const actualOutcomeForPred = result.homeGoals > result.awayGoals ? "HOME" :
+                        result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
           let pts = 0;
           if (pick?.type === "OUTCOME") {
-            const actual = result.homeGoals > result.awayGoals ? "HOME" :
-                          result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-            if (pick.outcome === actual) pts = 3;
+            if (pick.outcome === actualOutcomeForPred) pts = preset.outcomePoints;
           } else if (pick?.type === "SCORE") {
-            const actual = result.homeGoals > result.awayGoals ? "HOME" :
-                          result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
             const predicted = pick.homeGoals > pick.awayGoals ? "HOME" :
                              pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
-            if (predicted === actual) {
-              pts = 3;
-              if (pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
-                pts = 5;
+            if (predicted === actualOutcomeForPred) {
+              pts = preset.outcomePoints;
+              if (preset.allowScorePick && pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
+                pts += preset.exactScoreBonus;
               }
             }
           }
@@ -282,14 +282,14 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           if (pick) {
             const pickJson = pick.pickJson as any;
             if (pickJson?.type === "OUTCOME" && pickJson.outcome === actualOutcome) {
-              pointsEarned = 3;
+              pointsEarned = preset.outcomePoints;
             } else if (pickJson?.type === "SCORE") {
               const predicted = pickJson.homeGoals > pickJson.awayGoals ? "HOME" :
                                pickJson.homeGoals < pickJson.awayGoals ? "AWAY" : "DRAW";
               if (predicted === actualOutcome) {
-                pointsEarned = 3;
-                if (pickJson.homeGoals === homeGoals && pickJson.awayGoals === awayGoals) {
-                  pointsEarned = 5;
+                pointsEarned = preset.outcomePoints;
+                if (preset.allowScorePick && pickJson.homeGoals === homeGoals && pickJson.awayGoals === awayGoals) {
+                  pointsEarned += preset.exactScoreBonus;
                 }
               }
             }

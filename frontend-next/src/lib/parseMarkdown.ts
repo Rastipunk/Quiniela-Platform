@@ -13,10 +13,15 @@ export function parseMarkdown(md: string): string {
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     // Italic
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    // Links
+    // Links (only allow safe protocols)
     .replace(
       /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" target="_blank" rel="noopener">$1</a>'
+      (_m, text, url) => {
+        if (/^https?:\/\/|^mailto:/i.test(url)) {
+          return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        }
+        return text;
+      }
     )
     // Horizontal rule
     .replace(/^---$/gim, "<hr />")

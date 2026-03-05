@@ -114,7 +114,7 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
 
     // Set cookie so the middleware knows the preferred locale and doesn't
     // redirect back (e.g. switching to ES without prefix while cookie says EN).
-    document.cookie = `NEXT_LOCALE=${next};path=/;max-age=31536000;SameSite=Lax`;
+    document.cookie = `NEXT_LOCALE=${next};path=/;max-age=31536000;SameSite=Lax;Secure`;
 
     // Full navigation through the middleware ensures proper i18n setup
     window.location.href = newPath + window.location.search;

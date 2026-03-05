@@ -11,7 +11,7 @@ export function JsonLd({ data }: JsonLdProps) {
     <div
       hidden
       dangerouslySetInnerHTML={{
-        __html: `<script type="application/ld+json">${JSON.stringify(data)}</script>`,
+        __html: `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`,
       }}
     />
   );

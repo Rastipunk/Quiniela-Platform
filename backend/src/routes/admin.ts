@@ -3,7 +3,6 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { prisma } from "../db";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
-import { hashPassword } from "../lib/password";
 
 export const adminRouter = Router();
 
@@ -40,43 +39,9 @@ adminRouter.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
   });
 });
 
-// Endpoint público para crear admin inicial (solo funciona si no hay admins)
-// NOTA: Este endpoint NO tiene requireAuth - es público intencionalmente
-adminRouter.post("/bootstrap-admin", async (req, res) => {
-  try {
-    // Only works if no admin exists yet (first-time setup)
-    const existingAdmin = await prisma.user.findFirst({
-      where: { platformRole: "ADMIN" },
-    });
-
-    if (existingAdmin) {
-      return res.status(403).json({ ok: false, error: "Admin already exists. This endpoint is disabled." });
-    }
-
-    const { email, password, displayName, username } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ ok: false, error: "Email and password are required" });
-    }
-
-    const passwordHashed = await hashPassword(password);
-    const adminUsername = username || email.split("@")[0] + "_admin";
-
-    const admin = await prisma.user.create({
-      data: {
-        email,
-        username: adminUsername,
-        displayName: displayName || "Admin",
-        passwordHash: passwordHashed,
-        platformRole: "ADMIN",
-      },
-    });
-
-    res.json({ ok: true, message: "Admin created", userId: admin.id });
-  } catch (error: any) {
-    console.error("[bootstrap-admin] Error:", error.message);
-    res.status(500).json({ ok: false, error: "Internal error" });
-  }
+// Bootstrap-admin disabled in production — use seed script for admin creation
+adminRouter.post("/bootstrap-admin", (_req, res) => {
+  res.status(404).json({ ok: false, error: "Not found" });
 });
 
 // Endpoint para seedear WC2026 en producción (solo admin)

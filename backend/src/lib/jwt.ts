@@ -12,7 +12,7 @@ export function signToken(payload: AuthTokenPayload): string {
   if (!secret) {
     throw new Error("JWT_SECRET is missing in environment variables");
   }
-  return jwt.sign(payload, secret, { expiresIn: "4h" });
+  return jwt.sign(payload, secret, { expiresIn: "4h", algorithm: "HS256" });
 }
 
 // Valida y decodifica el JWT
@@ -21,5 +21,5 @@ export function verifyToken(token: string): AuthTokenPayload {
   if (!secret) {
     throw new Error("JWT_SECRET is missing in environment variables");
   }
-  return jwt.verify(token, secret) as AuthTokenPayload;
+  return jwt.verify(token, secret, { algorithms: ["HS256"] }) as AuthTokenPayload;
 }

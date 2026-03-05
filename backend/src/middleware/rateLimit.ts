@@ -44,6 +44,32 @@ export const passwordResetLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiter para reenvío de verificación de email
+// 3 solicitudes por hora por IP
+export const verificationResendLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: {
+    error: "TOO_MANY_RESEND_REQUESTS",
+    message: "Demasiadas solicitudes de reenvío. Intenta de nuevo en 1 hora.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter para envío de invitaciones corporativas
+// 5 solicitudes por hora por IP
+export const corporateInviteLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: {
+    error: "TOO_MANY_INVITE_REQUESTS",
+    message: "Demasiadas solicitudes de invitación. Intenta de nuevo en 1 hora.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Rate limiter para creación de recursos (pools, invites)
 // 20 creaciones por hora por IP
 export const createResourceLimiter = rateLimit({

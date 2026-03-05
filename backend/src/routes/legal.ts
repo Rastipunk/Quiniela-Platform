@@ -10,6 +10,7 @@
  */
 
 import { Router, Request, Response } from "express";
+import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { LegalDocumentType, PlatformRole } from "@prisma/client";
@@ -208,7 +209,19 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.auth!.userId;
-      const { acceptTerms, acceptPrivacy, acceptAge, acceptMarketing } = req.body;
+
+      const acceptSchema = z.object({
+        acceptTerms: z.boolean().optional(),
+        acceptPrivacy: z.boolean().optional(),
+        acceptAge: z.boolean().optional(),
+        acceptMarketing: z.boolean().optional(),
+      });
+      const parsed = acceptSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+      }
+
+      const { acceptTerms, acceptPrivacy, acceptAge, acceptMarketing } = parsed.data;
 
       // Validar que al menos se está aceptando algo
       if (!acceptTerms && !acceptPrivacy && acceptAge === undefined) {

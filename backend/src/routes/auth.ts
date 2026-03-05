@@ -39,7 +39,7 @@ authRouter.post("/register", async (req, res) => {
   }
 
   const {
-    email,
+    email: rawEmail,
     username: rawUsername,
     displayName,
     password,
@@ -49,6 +49,7 @@ authRouter.post("/register", async (req, res) => {
     acceptAge,
     acceptMarketing,
   } = parsed.data;
+  const email = rawEmail.trim().toLowerCase();
 
   // Validar consentimiento legal obligatorio
   if (!acceptTerms) {
@@ -174,7 +175,8 @@ authRouter.post("/login", async (req, res) => {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
   }
 
-  const { email, password } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password } = parsed.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.status !== "ACTIVE") {
@@ -222,7 +224,7 @@ authRouter.post("/forgot-password", async (req, res) => {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
   }
 
-  const { email } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
 
   // Buscar usuario
   const user = await prisma.user.findUnique({ where: { email } });
@@ -363,10 +365,13 @@ authRouter.post("/google", async (req, res) => {
     return res.status(401).json({ error: "INVALID_TOKEN", message: "Token de Google inválido" });
   }
 
+  // Normalize Google email for consistent matching
+  const normalizedGoogleEmail = googleUser.email.trim().toLowerCase();
+
   // Buscar usuario existente por email o googleId
   let user = await prisma.user.findFirst({
     where: {
-      OR: [{ email: googleUser.email }, { googleId: googleUser.googleId }],
+      OR: [{ email: normalizedGoogleEmail }, { googleId: googleUser.googleId }],
     },
     select: {
       id: true,
@@ -493,7 +498,7 @@ authRouter.post("/google", async (req, res) => {
   const registrationTime = new Date();
   const newUser = await prisma.user.create({
     data: {
-      email: googleUser.email,
+      email: normalizedGoogleEmail,
       username,
       displayName: googleUser.name || username,
       passwordHash: "", // OAuth users no tienen password
@@ -717,26 +722,35 @@ authRouter.post("/activate-corporate", async (req, res) => {
   if (existingUser) {
     // Edge case: el usuario se registró por otra vía entre la invitación y la activación.
     // Lo agregamos al pool directamente y marcamos como activado.
-    const existingMember = await prisma.poolMember.findUnique({
-      where: { poolId_userId: { poolId: invite.poolId, userId: existingUser.id } },
-    });
-
-    if (!existingMember) {
-      if (invite.pool.maxParticipants) {
-        const count = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
-        if (count >= invite.pool.maxParticipants) {
-          return res.status(409).json({ error: "POOL_FULL", message: "Este pool ha alcanzado su capacidad máxima." });
-        }
-      }
-      await prisma.poolMember.create({
-        data: { poolId: invite.poolId, userId: existingUser.id, role: "PLAYER", status: "ACTIVE" },
+    await prisma.$transaction(async (tx) => {
+      const existingMember = await tx.poolMember.findUnique({
+        where: { poolId_userId: { poolId: invite.poolId, userId: existingUser.id } },
       });
-    }
 
-    await prisma.corporateInvite.update({
-      where: { id: invite.id },
-      data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
+      if (!existingMember) {
+        if (invite.pool.maxParticipants) {
+          const count = await tx.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+          if (count >= invite.pool.maxParticipants) {
+            throw new Error("POOL_FULL");
+          }
+        }
+        await tx.poolMember.create({
+          data: { poolId: invite.poolId, userId: existingUser.id, role: "PLAYER", status: "ACTIVE" },
+        });
+      }
+
+      await tx.corporateInvite.update({
+        where: { id: invite.id },
+        data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
+      });
+    }).catch((err) => {
+      if (err.message === "POOL_FULL") {
+        return res.status(409).json({ error: "POOL_FULL", message: "Este pool ha alcanzado su capacidad máxima." });
+      }
+      throw err;
     });
+
+    if (res.headersSent) return;
 
     // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
     await transitionToActive(invite.poolId, existingUser.id).catch((err) =>

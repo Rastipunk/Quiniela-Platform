@@ -1223,28 +1223,26 @@ poolsRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
     });
   }
 
-  // Si deletePicks = true, eliminar los picks del usuario en este pool
+  // Operación atómica: eliminar picks (si aplica) + banear miembro
   let picksDeleted = 0;
-  if (deletePicks) {
-    const deleteResult = await prisma.prediction.deleteMany({
-      where: {
-        poolId,
-        userId: member.userId,
+  await prisma.$transaction(async (tx) => {
+    if (deletePicks) {
+      const deleteResult = await tx.prediction.deleteMany({
+        where: { poolId, userId: member.userId },
+      });
+      picksDeleted = deleteResult.count;
+    }
+
+    await tx.poolMember.update({
+      where: { id: memberId },
+      data: {
+        status: "BANNED",
+        bannedAt: new Date(),
+        bannedByUserId: actorUserId,
+        banReason: reason,
+        banExpiresAt: null, // Siempre permanente
       },
     });
-    picksDeleted = deleteResult.count;
-  }
-
-  // Actualizar el miembro a BANNED
-  await prisma.poolMember.update({
-    where: { id: memberId },
-    data: {
-      status: "BANNED",
-      bannedAt: new Date(),
-      bannedByUserId: actorUserId,
-      banReason: reason,
-      banExpiresAt: null, // Siempre permanente
-    },
   });
 
   // Auditoría

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
 
 import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
@@ -22,7 +23,7 @@ import adminSettingsRouter from "./routes/adminSettings";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
 import { adminCorporateRouter } from "./routes/adminCorporate";
-import { apiLimiter, authLimiter, passwordResetLimiter } from "./middleware/rateLimit";
+import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 
@@ -52,6 +53,7 @@ app.use(
   })
 );
 
+app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
 
 // Global rate limiting
@@ -75,6 +77,8 @@ app.use("/auth/login", authLimiter);
 app.use("/auth/register", authLimiter);
 app.use("/auth/forgot-password", passwordResetLimiter);
 app.use("/auth/reset-password", passwordResetLimiter);
+app.use("/auth/resend-verification", verificationResendLimiter);
+app.use("/corporate/pools", corporateInviteLimiter);
 
 // Routes
 app.use("/auth", authRouter);

@@ -1,4 +1,13 @@
 // backend/src/lib/email.ts
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 import { Resend } from "resend";
 import { prisma } from "../db";
 import {
