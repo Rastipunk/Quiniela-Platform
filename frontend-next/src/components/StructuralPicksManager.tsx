@@ -3,7 +3,7 @@
 // Gestor principal de picks estructurales (preset SIMPLE)
 // Sprint 2 - Advanced Pick Types System
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { GroupStandingsCard } from "./GroupStandingsCard";
 import { KnockoutMatchCard } from "./KnockoutMatchCard";
@@ -93,6 +93,11 @@ export function StructuralPicksManager({
   void _saving; // For future use with batch save
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
 
   // Estado para GROUP_STANDINGS
   const [groupPicks, setGroupPicks] = useState<Map<string, string[]>>(new Map());
@@ -207,8 +212,6 @@ export function StructuralPicksManager({
         }
       }
 
-      console.log("💾 Guardando picks:", pickData);
-
       if (isHost) {
         // HOST publicando resultado oficial
         await publishStructuralResult(token, poolId, phaseId, pickData);
@@ -220,7 +223,8 @@ export function StructuralPicksManager({
       }
 
       // Auto-hide success message despues de 3 segundos
-      setTimeout(() => setSuccessMessage(null), 3000);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error("❌ Error al guardar:", err);
       setError(err?.message || t("structuralManager.errorSaving"));

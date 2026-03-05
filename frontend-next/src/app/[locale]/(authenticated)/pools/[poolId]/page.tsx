@@ -995,16 +995,12 @@ export default function PoolPage() {
                   <div
                     onClick={async () => {
                       if (busyKey === "auto-advance-toggle" || !token || !poolId) return;
-                      console.log('[TOGGLE] Clicked. Current state:', overview.pool.autoAdvanceEnabled);
                       setBusyKey("auto-advance-toggle");
                       setError(null);
                       try {
                         const newValue = !overview.pool.autoAdvanceEnabled;
-                        console.log('[TOGGLE] Sending update to:', newValue);
-                        const result = await updatePoolSettings(token, poolId, { autoAdvanceEnabled: newValue });
-                        console.log('[TOGGLE] Update result:', result);
+                        await updatePoolSettings(token, poolId, { autoAdvanceEnabled: newValue });
                         await load(verbose);
-                        console.log('[TOGGLE] Reloaded. New state:', overview.pool.autoAdvanceEnabled);
                       } catch (err: any) {
                         console.error('[TOGGLE] Error:', err);
                         setError(friendlyError(err));

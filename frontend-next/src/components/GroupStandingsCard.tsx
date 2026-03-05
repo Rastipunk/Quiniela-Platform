@@ -4,7 +4,8 @@
 // HOST: Ingresa resultados de 6 partidos -> genera posiciones automaticamente
 // PLAYER: Arrastra equipos para predecir orden -> ve resultado oficial cuando este
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useTranslations } from "next-intl";
 import {
   DndContext,
   closestCenter,
@@ -88,6 +89,12 @@ export function GroupStandingsCard({
 }: GroupStandingsCardProps) {
   const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const isMobile = useIsMobile();
+  const t = useTranslations("pool");
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
 
   // Player pick state
   const [playerPick, setPlayerPick] = useState<string[]>([]);
@@ -165,7 +172,7 @@ export function GroupStandingsCard({
         setMatchResults(newMatchResults);
       }
     } catch (err: any) {
-      setError(err?.message || "Error al cargar datos");
+      setError(err?.message || t("groupStandings.errorLoading"));
     } finally {
       setLoading(false);
     }
@@ -188,10 +195,11 @@ export function GroupStandingsCard({
       await saveGroupStandingsPick(token, poolId, phaseId, groupId, playerPick);
       setPlayerPickSaved(true);
       setIsEditingPick(false);
-      setSuccessMessage("Predicción guardada");
-      setTimeout(() => setSuccessMessage(null), 2000);
+      setSuccessMessage(t("groupStandings.pickSaved"));
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
     } catch (err: any) {
-      setError(err?.message || "Error al guardar");
+      setError(err?.message || t("groupStandings.errorSaving"));
     } finally {
       setSavingPick(false);
     }
@@ -207,7 +215,7 @@ export function GroupStandingsCard({
     const awayGoals = parseInt(state.awayGoals);
 
     if (isNaN(homeGoals) || isNaN(awayGoals) || homeGoals < 0 || awayGoals < 0) {
-      setError("Marcador inválido");
+      setError(t("invalidScore"));
       return;
     }
 
@@ -215,7 +223,7 @@ export function GroupStandingsCard({
     // existsInDb nos dice si ya habia un resultado guardado antes
     const needsReason = state.existsInDb;
     if (needsReason && !reason?.trim()) {
-      setError("Se requiere una razón para corregir un resultado ya publicado");
+      setError(t("groupStandings.reasonRequired"));
       return;
     }
 
@@ -235,10 +243,11 @@ export function GroupStandingsCard({
         return newMap;
       });
 
-      setSuccessMessage("Resultado guardado");
-      setTimeout(() => setSuccessMessage(null), 1500);
+      setSuccessMessage(t("groupStandings.resultSaved"));
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 1500);
     } catch (err: any) {
-      setError(err?.message || "Error al guardar resultado");
+      setError(err?.message || t("groupStandings.errorSavingResult"));
     } finally {
       setSavingMatch(null);
     }
@@ -255,10 +264,11 @@ export function GroupStandingsCard({
       setOfficialStandings(standings);
       setIsEditingMatches(false); // Salir de modo edicion
       setErrataReason(""); // Limpiar razon
-      setSuccessMessage(officialResult ? "Posiciones actualizadas" : "Posiciones generadas");
-      setTimeout(() => setSuccessMessage(null), 2000);
+      setSuccessMessage(officialResult ? t("groupStandings.standingsUpdated") : t("groupStandings.standingsGenerated"));
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
     } catch (err: any) {
-      setError(err?.message || "Error al generar posiciones");
+      setError(err?.message || t("groupStandings.errorGenerating"));
     } finally {
       setGeneratingStandings(false);
     }
@@ -287,7 +297,7 @@ export function GroupStandingsCard({
       const { breakdown } = await getGroupBreakdown(token, poolId, groupId);
       setBreakdownData(breakdown);
     } catch (err: any) {
-      setError(err?.message || "Error al cargar desglose");
+      setError(err?.message || t("groupStandings.errorLoadingBreakdown"));
       setShowBreakdown(false);
     } finally {
       setLoadingBreakdown(false);
@@ -306,7 +316,7 @@ export function GroupStandingsCard({
   if (loading) {
     return (
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: "#fff", textAlign: "center" }}>
-        Cargando...
+        {t("groupStandings.loading")}
       </div>
     );
   }
@@ -322,7 +332,7 @@ export function GroupStandingsCard({
         {/* LEFT: Player Pick */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: "#6b7280" }}>
-            Tu predicción {playerPickSaved && !isEditingPick && <span style={{ color: "#10b981" }}>✓</span>}
+            {t("groupStandings.yourPrediction")} {playerPickSaved && !isEditingPick && <span style={{ color: "#10b981" }}>✓</span>}
           </div>
 
           {isEditingPick ? (
@@ -353,7 +363,7 @@ export function GroupStandingsCard({
                     ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
-                  {savingPick ? "Guardando..." : "Guardar"}
+                  {savingPick ? t("groupStandings.saving") : t("groupStandings.save")}
                 </button>
               )}
             </>
@@ -378,7 +388,7 @@ export function GroupStandingsCard({
                     ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
-                  Editar
+                  {t("groupStandings.edit")}
                 </button>
               )}
             </>
@@ -388,7 +398,7 @@ export function GroupStandingsCard({
         {/* RIGHT: Official Result or HOST Match Input */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: "#6b7280" }}>
-            Resultado oficial {officialResult && <span style={{ color: "#f59e0b" }}>★</span>}
+            {t("groupStandings.officialResult")} {officialResult && <span style={{ color: "#f59e0b" }}>★</span>}
           </div>
 
           {officialResult && !isEditingMatches ? (
@@ -412,7 +422,7 @@ export function GroupStandingsCard({
                       ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
-                    {showMatchDetails ? "Ocultar partidos" : "Ver partidos"}
+                    {showMatchDetails ? t("groupStandings.hideMatches") : t("groupStandings.showMatches")}
                   </button>
                   <button
                     onClick={handleEnterEditMode}
@@ -429,7 +439,7 @@ export function GroupStandingsCard({
                       ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
-                    Editar partidos
+                    {t("groupStandings.editMatches")}
                   </button>
                 </div>
               )}
@@ -447,12 +457,12 @@ export function GroupStandingsCard({
                   fontSize: 11,
                   color: "#92400e"
                 }}>
-                  <strong>Modo corrección:</strong> Los cambios requerirán regenerar las posiciones.
+                  <strong>{t("groupStandings.correctionMode")}</strong> {t("groupStandings.correctionModeDesc")}
                 </div>
               )}
 
               <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: "0.5rem" }}>
-                {savedMatchCount}/{matches.length} partidos
+                {t("groupStandings.matchesCount", { saved: savedMatchCount, total: matches.length })}
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "0.5rem" : "0.35rem" }}>
@@ -506,7 +516,7 @@ export function GroupStandingsCard({
                       <button
                         onClick={() => handleSaveMatchResult(match.id, needsReason ? errataReason : undefined)}
                         disabled={isSaving || !state.homeGoals || !state.awayGoals || (needsReason && !errataReason.trim())}
-                        title={needsReason && !errataReason.trim() ? "Escribe una razón abajo" : undefined}
+                        title={needsReason && !errataReason.trim() ? t("groupStandings.needsReasonTooltip") : undefined}
                         style={{
                           padding: isMobile ? "0.4rem 0.6rem" : "0.15rem 0.3rem",
                           fontSize: isMobile ? 13 : 10,
@@ -534,13 +544,13 @@ export function GroupStandingsCard({
               {Array.from(matchResults.values()).some(s => s.existsInDb) && (
                 <div style={{ marginTop: "0.75rem" }}>
                   <label style={{ display: "block", fontSize: isMobile ? 13 : 11, color: "#6b7280", marginBottom: "0.25rem" }}>
-                    Razón de corrección (requerido):
+                    {t("groupStandings.correctionReasonLabel")}
                   </label>
                   <input
                     type="text"
                     value={errataReason}
                     onChange={(e) => setErrataReason(e.target.value)}
-                    placeholder="Ej: Error de tipeo, resultado oficial corregido..."
+                    placeholder={t("groupStandings.correctionReasonPlaceholder")}
                     style={{
                       width: "100%",
                       padding: isMobile ? "0.6rem" : "0.4rem",
@@ -572,7 +582,7 @@ export function GroupStandingsCard({
                       ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
-                    Cancelar
+                    {t("groupStandings.cancel")}
                   </button>
                 )}
                 {allMatchesSaved && (
@@ -593,7 +603,7 @@ export function GroupStandingsCard({
                       ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
-                    {generatingStandings ? "Generando..." : officialResult ? "Regenerar posiciones" : "Generar posiciones"}
+                    {generatingStandings ? t("groupStandings.generating") : officialResult ? t("groupStandings.regenerateStandings") : t("groupStandings.generateStandings")}
                   </button>
                 )}
               </div>
@@ -601,7 +611,7 @@ export function GroupStandingsCard({
           ) : (
             // PLAYER: Show pending message
             <div style={{ padding: "2rem 1rem", textAlign: "center", background: "#f9fafb", borderRadius: 8, color: "#9ca3af", fontSize: 13 }}>
-              Pendiente de publicar
+              {t("groupStandings.pendingPublish")}
             </div>
           )}
         </div>
@@ -611,7 +621,7 @@ export function GroupStandingsCard({
       {isHost && showMatchDetails && officialResult && !isEditingMatches && (
         <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#f9fafb", borderRadius: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
-            Resultados de partidos
+            {t("groupStandings.matchResultsTitle")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {matches.map((match) => {
@@ -636,7 +646,7 @@ export function GroupStandingsCard({
                   {/* Equipo local */}
                   <div style={{ flex: 1, textAlign: "right", paddingRight: "0.75rem" }}>
                     <span style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>
-                      {homeTeam?.name || "Desconocido"}
+                      {homeTeam?.name || t("groupStandings.unknownTeam")}
                     </span>
                     {homeTeam?.code && (
                       <span style={{ fontSize: 10, color: "#9ca3af", marginLeft: "0.25rem" }}>
@@ -664,7 +674,7 @@ export function GroupStandingsCard({
                   {/* Equipo visitante */}
                   <div style={{ flex: 1, textAlign: "left", paddingLeft: "0.75rem" }}>
                     <span style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>
-                      {awayTeam?.name || "Desconocido"}
+                      {awayTeam?.name || t("groupStandings.unknownTeam")}
                     </span>
                     {awayTeam?.code && (
                       <span style={{ fontSize: 10, color: "#9ca3af", marginLeft: "0.25rem" }}>
@@ -699,7 +709,7 @@ export function GroupStandingsCard({
               ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            {loadingBreakdown ? "Cargando..." : "Ver desglose de puntos"}
+            {loadingBreakdown ? t("groupStandings.loading") : t("groupStandings.viewBreakdown")}
           </button>
         </div>
       )}
@@ -759,7 +769,7 @@ export function GroupStandingsCard({
                 justifyContent: "space-between",
               }}
             >
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Desglose - {groupName}</h3>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{t("groupStandings.breakdownTitle", { name: groupName })}</h3>
               <button
                 onClick={() => { setShowBreakdown(false); setBreakdownData(null); }}
                 style={{
@@ -785,7 +795,7 @@ export function GroupStandingsCard({
             <div style={{ padding: "1.25rem", overflowY: "auto", flex: 1 }}>
               {loadingBreakdown && (
                 <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
-                  Cargando desglose...
+                  {t("groupStandings.loadingBreakdown")}
                 </div>
               )}
 
@@ -810,7 +820,7 @@ export function GroupStandingsCard({
                     <div style={{ fontSize: 32, fontWeight: 900 }}>
                       {breakdownData.totalPointsEarned} / {breakdownData.totalPointsMax}
                     </div>
-                    <div style={{ fontSize: 13, opacity: 0.9 }}>puntos obtenidos</div>
+                    <div style={{ fontSize: 13, opacity: 0.9 }}>{t("groupStandings.pointsEarned")}</div>
                   </div>
 
                   {/* Config info */}
@@ -824,9 +834,9 @@ export function GroupStandingsCard({
                       color: "#004085",
                     }}
                   >
-                    <strong>{breakdownData.config.pointsPerExactPosition} pts</strong> por posición exacta
+                    <strong>{breakdownData.config.pointsPerExactPosition} {t("points")}</strong> {t("groupStandings.perExactPosition")}
                     {breakdownData.config.bonusPerfectGroup && (
-                      <> | <strong>+{breakdownData.config.bonusPerfectGroup} pts</strong> bonus grupo perfecto</>
+                      <> | <strong>+{breakdownData.config.bonusPerfectGroup} {t("points")}</strong> {t("groupStandings.bonusPerfectGroupConfig")}</>
                     )}
                   </div>
 
@@ -834,7 +844,7 @@ export function GroupStandingsCard({
                   {!breakdownData.hasPick && (
                     <div style={{ textAlign: "center", padding: "1.5rem", color: "#dc3545" }}>
                       <div style={{ fontSize: 48, marginBottom: "0.5rem" }}>🚫</div>
-                      <div style={{ fontWeight: 600 }}>No hiciste predicción para este grupo</div>
+                      <div style={{ fontWeight: 600 }}>{t("groupStandings.noPrediction")}</div>
                     </div>
                   )}
 
@@ -858,7 +868,7 @@ export function GroupStandingsCard({
                           <span style={{ flex: 1, fontSize: 13 }}>{pos.teamName || pos.teamId}</span>
                           {pos.predictedPosition !== null && pos.predictedPosition !== pos.position && (
                             <span style={{ color: "#6c757d", fontSize: 11 }}>
-                              (tú: {pos.predictedPosition}°)
+                              {t("groupStandings.yourPosition", { position: pos.predictedPosition })}
                             </span>
                           )}
                           <span style={{ fontSize: 18 }}>{pos.matched ? "✅" : "❌"}</span>
@@ -892,7 +902,7 @@ export function GroupStandingsCard({
                         >
                           <span style={{ fontSize: 13 }}>
                             {breakdownData.bonusPerfectGroup.achieved ? "🌟 " : ""}
-                            Bonus grupo perfecto
+                            {t("groupStandings.bonusPerfectGroupLabel")}
                           </span>
                           <span
                             style={{

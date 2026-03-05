@@ -5,7 +5,8 @@
 // PLAYER: Elige quien avanza
 // Sprint 2 - Advanced Pick Types System - Preset SIMPLE
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import {
   upsertResult,
   upsertStructuralPick,
@@ -59,6 +60,12 @@ export function KnockoutMatchCard({
 }: KnockoutMatchCardProps) {
   void _kickoffUtc; // Reserved for future deadline display
   const isMobile = useIsMobile();
+  const t = useTranslations("pool");
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
 
   // Player pick state
   const [selectedWinner, setSelectedWinner] = useState<string | null>(existingPick || null);
@@ -131,7 +138,7 @@ export function KnockoutMatchCard({
   // Save player pick
   async function handleSavePick() {
     if (!selectedWinner) {
-      setError("Selecciona un equipo");
+      setError(t("knockoutCard.selectTeam"));
       return;
     }
 
@@ -146,11 +153,12 @@ export function KnockoutMatchCard({
       await upsertStructuralPick(token, poolId, phaseId, pickData);
 
       setPickSaved(true);
-      setSuccessMessage("Predicción guardada");
-      setTimeout(() => setSuccessMessage(null), 2000);
+      setSuccessMessage(t("knockoutCard.pickSaved"));
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
       onPickSaved?.();
     } catch (err: any) {
-      setError(err?.message || "Error al guardar predicción");
+      setError(err?.message || t("knockoutCard.errorSavingPick"));
     } finally {
       setSavingPick(false);
     }
@@ -162,7 +170,7 @@ export function KnockoutMatchCard({
     const ag = parseInt(awayGoals);
 
     if (isNaN(hg) || isNaN(ag) || hg < 0 || ag < 0) {
-      setError("Marcador inválido");
+      setError(t("invalidScore"));
       return;
     }
 
@@ -172,19 +180,19 @@ export function KnockoutMatchCard({
       const ap = parseInt(awayPenalties);
 
       if (isNaN(hp) || isNaN(ap) || hp < 0 || ap < 0) {
-        setError("Empate en 90 min - ingresa resultado de penales");
+        setError(t("knockoutCard.penaltiesNeeded"));
         return;
       }
 
       if (hp === ap) {
-        setError("Los penales no pueden terminar en empate");
+        setError(t("knockoutCard.penaltiesCantDraw"));
         return;
       }
     }
 
     // Si es errata (resultado ya existia), requiere razon
     if (resultSaved && !errataReason.trim()) {
-      setError("Se requiere una razón para corregir el resultado");
+      setError(t("knockoutCard.reasonRequired"));
       return;
     }
 
@@ -202,11 +210,12 @@ export function KnockoutMatchCard({
 
       setResultSaved(true);
       setErrataReason("");
-      setSuccessMessage("Resultado publicado");
-      setTimeout(() => setSuccessMessage(null), 2000);
+      setSuccessMessage(t("knockoutCard.resultPublished"));
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
       onResultSaved?.();
     } catch (err: any) {
-      setError(err?.message || "Error al publicar resultado");
+      setError(err?.message || t("knockoutCard.errorPublishing"));
     } finally {
       setSavingResult(false);
     }
@@ -243,7 +252,7 @@ export function KnockoutMatchCard({
             fontWeight: 600,
             color: "#16a34a"
           }}>
-            Avanza: {winnerTeam.name}
+            {t("knockoutCard.advances", { team: winnerTeam.name })}
           </div>
         )}
       </div>
@@ -253,7 +262,7 @@ export function KnockoutMatchCard({
         {/* LEFT: Player Pick */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
-            Tu predicción {pickSaved && <span style={{ color: "#10b981" }}>✓</span>}
+            {t("knockoutCard.yourPrediction")} {pickSaved && <span style={{ color: "#10b981" }}>✓</span>}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -290,7 +299,7 @@ export function KnockoutMatchCard({
                 ...mobileInteractiveStyles.tapHighlight,
               }}
             >
-              {savingPick ? "Guardando..." : "Guardar"}
+              {savingPick ? t("knockoutCard.saving") : t("knockoutCard.save")}
             </button>
           )}
 
@@ -312,7 +321,7 @@ export function KnockoutMatchCard({
                 ...mobileInteractiveStyles.tapHighlight,
               }}
             >
-              Editar
+              {t("knockoutCard.edit")}
             </button>
           )}
         </div>
@@ -320,7 +329,7 @@ export function KnockoutMatchCard({
         {/* RIGHT: Official Result */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
-            Resultado oficial {resultSaved && <span style={{ color: "#f59e0b" }}>★</span>}
+            {t("knockoutCard.officialResult")} {resultSaved && <span style={{ color: "#f59e0b" }}>★</span>}
           </div>
 
           {resultSaved && !isHost ? (
@@ -336,7 +345,7 @@ export function KnockoutMatchCard({
               </div>
               {needsPenalties() && homePenalties && awayPenalties && (
                 <div style={{ fontSize: 13, color: "#6b7280", marginTop: "0.25rem" }}>
-                  ({homePenalties} - {awayPenalties} pen.)
+                  ({homePenalties} - {awayPenalties} {t("knockoutCard.pen")})
                 </div>
               )}
               {winnerTeam && (
@@ -349,7 +358,7 @@ export function KnockoutMatchCard({
                   fontWeight: 600,
                   color: "#16a34a"
                 }}>
-                  🏆 {winnerTeam.name} avanza
+                  🏆 {t("knockoutCard.teamAdvancesResult", { team: winnerTeam.name })}
                 </div>
               )}
             </div>
@@ -363,7 +372,7 @@ export function KnockoutMatchCard({
                 gap: isMobile ? "0.75rem" : "0.5rem",
                 marginBottom: "0.75rem"
               }}>
-                <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: isMobile ? 50 : 60, flexShrink: 0 }}>90 min:</span>
+                <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: isMobile ? 50 : 60, flexShrink: 0 }}>{t("knockoutCard.ninetyMin")}</span>
                 <input
                   type="number"
                   min="0"
@@ -412,7 +421,7 @@ export function KnockoutMatchCard({
                   background: "#fef3c7",
                   borderRadius: 6
                 }}>
-                  <span style={{ fontSize: isMobile ? 13 : 12, color: "#92400e", width: isMobile ? 50 : 60, flexShrink: 0 }}>Penales:</span>
+                  <span style={{ fontSize: isMobile ? 13 : 12, color: "#92400e", width: isMobile ? 50 : 60, flexShrink: 0 }}>{t("knockoutCard.penalties")}</span>
                   <input
                     type="number"
                     min="0"
@@ -462,8 +471,8 @@ export function KnockoutMatchCard({
                   color: "#16a34a",
                   textAlign: "center"
                 }}>
-                  Avanza: <strong>{winnerTeam?.name}</strong>
-                  {needsPenalties() && " (por penales)"}
+                  {t("knockoutCard.advancesPreview")} <strong>{winnerTeam?.name}</strong>
+                  {needsPenalties() && ` ${t("knockoutCard.byPenalties")}`}
                 </div>
               )}
 
@@ -474,7 +483,7 @@ export function KnockoutMatchCard({
                     type="text"
                     value={errataReason}
                     onChange={(e) => setErrataReason(e.target.value)}
-                    placeholder="Razón de corrección..."
+                    placeholder={t("knockoutCard.correctionPlaceholder")}
                     style={{
                       width: "100%",
                       padding: isMobile ? "0.6rem" : "0.4rem",
@@ -506,7 +515,7 @@ export function KnockoutMatchCard({
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                {savingResult ? "Guardando..." : resultSaved ? "Actualizar resultado" : "Publicar resultado"}
+                {savingResult ? t("knockoutCard.saving") : resultSaved ? t("knockoutCard.updateResult") : t("knockoutCard.publishResult")}
               </button>
             </div>
           ) : (
@@ -519,7 +528,7 @@ export function KnockoutMatchCard({
               color: "#9ca3af",
               fontSize: 13
             }}>
-              Pendiente de resultado
+              {t("knockoutCard.pendingResult")}
             </div>
           )}
         </div>
@@ -568,6 +577,7 @@ function TeamPickButton({
   onClick: () => void;
   disabled: boolean;
 }) {
+  const t = useTranslations("pool");
   return (
     <button
       onClick={onClick}
@@ -606,7 +616,7 @@ function TeamPickButton({
           padding: "0.15rem 0.5rem",
           borderRadius: 10
         }}>
-          avanza
+          {t("knockoutCard.advancesBadge")}
         </span>
       )}
     </button>

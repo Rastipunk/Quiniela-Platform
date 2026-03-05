@@ -128,6 +128,9 @@ model AuditEvent {
   dataJson  Json?
   ip        String?
   userAgent String?
+
+  @@index([actorUserId])
+  @@index([createdAtUtc])
 }
 
 enum TemplateStatus {
@@ -355,6 +358,7 @@ model Pool {
   @@index([tournamentInstanceId])
   @@index([createdByUserId])
   @@index([organizationId])
+  @@index([status])
 }
 
 model PoolMember {
