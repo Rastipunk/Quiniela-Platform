@@ -733,6 +733,8 @@ export function CorporatePoolCreation() {
             }}>
               {t("aprilNotice")}
             </div>
+
+            {renderNavButtons()}
           </div>
         );
 

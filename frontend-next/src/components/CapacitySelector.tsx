@@ -67,34 +67,53 @@ export default function CapacitySelector({
         {t("description")}
       </p>
 
-      {/* Trial banner */}
-      <div style={{
-        padding: "14px 16px",
-        borderRadius: 10,
-        background: "linear-gradient(135deg, #dcfce7, #d1fae5)",
-        border: "2px solid #86efac",
-        marginBottom: 16,
-      }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: "#166534", marginBottom: 6 }}>
-          {t("trialTitle")}
-        </div>
-        <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
-          &#10003; {t("trialNoCreditCard")}<br />
-          &#10003; {t("trialPlayersJoin")}<br />
-          &#10003; {t("trialNotifyEmail")}
-        </div>
+      {/* Info banner — different for personal vs corporate */}
+      {mode === "creation" && type === "personal" && (
         <div style={{
-          marginTop: 8,
-          padding: "8px 12px",
-          borderRadius: 8,
-          background: "rgba(255,255,255,0.7)",
-          fontSize: 12,
-          color: "#065f46",
-          lineHeight: 1.5,
+          padding: "14px 16px",
+          borderRadius: 10,
+          background: "linear-gradient(135deg, #dcfce7, #d1fae5)",
+          border: "2px solid #86efac",
+          marginBottom: 16,
         }}>
-          <strong>{t("trialModeLabel")}:</strong> {t("trialModeDesc")}
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#166534", marginBottom: 6 }}>
+            {t("personalFreeTitle")}
+          </div>
+          <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
+            &#10003; {t("personalFreeDesc")}<br />
+            &#10003; {t("personalExpandNotice")}
+          </div>
         </div>
-      </div>
+      )}
+      {mode === "creation" && type === "corporate" && (
+        <div style={{
+          padding: "14px 16px",
+          borderRadius: 10,
+          background: "linear-gradient(135deg, #dcfce7, #d1fae5)",
+          border: "2px solid #86efac",
+          marginBottom: 16,
+        }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#166534", marginBottom: 6 }}>
+            {t("trialTitle")}
+          </div>
+          <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
+            &#10003; {t("trialNoCreditCard")}<br />
+            &#10003; {t("trialPlayersJoin")}<br />
+            &#10003; {t("trialNotifyEmail")}
+          </div>
+          <div style={{
+            marginTop: 8,
+            padding: "8px 12px",
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.7)",
+            fontSize: 12,
+            color: "#065f46",
+            lineHeight: 1.5,
+          }}>
+            <strong>{t("trialModeLabel")}:</strong> {t("trialModeDesc")}
+          </div>
+        </div>
+      )}
 
       {/* Tier list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -118,6 +137,7 @@ export default function CapacitySelector({
                 cursor: isLocked ? "default" : "pointer",
                 overflow: "hidden",
                 transition: "border-color 0.15s, background 0.15s",
+                minHeight: isLocked ? 64 : undefined,
               }}
             >
               {/* Content */}
