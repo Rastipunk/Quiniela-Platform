@@ -307,6 +307,8 @@ model Pool {
 
   // Comentario en español: cierre de pronósticos X minutos antes del kickoff
   deadlineMinutesBeforeKickoff Int    @default(10)
+  // Comentario en español: capacidad máxima de participantes (null = sin límite para pools legacy)
+  maxParticipants              Int?
   scoringPresetKey             String @default("CLASSIC")
 
   // Comentario en español: habilita avance automático de fases cuando se completan resultados

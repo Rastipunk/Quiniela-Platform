@@ -1,0 +1,23 @@
+{
+  "title": "Capacidad de jugadores",
+  "description": "Elige cuántos jugadores podrán unirse a tu pool.",
+  "upTo": "Hasta {count} jugadores",
+  "free": "Gratis",
+  "save": "-{percent}%",
+  "per50": "por +50 jugadores",
+  "comingSoon": "Próximamente",
+  "comingSoonDesc": "Métodos de pago se habilitarán pronto.",
+  "corporateIncludes": "Incluye {count} jugadores",
+  "corporateAprilNotice": "La página estará lista al 100% el 1ro de abril. Puedes crear tu pool desde ya y el 1ro de abril te notificaremos para completar el pago.",
+  "customTitle": "¿Necesitas más de 300 jugadores?",
+  "customPlaceholder": "Ej: 420",
+  "customFreeCovered": "El plan gratuito ya cubre hasta {limit} jugadores.",
+  "customInList": "Ese número ya está cubierto en la lista de arriba.",
+  "customResult": "Para {requested} jugadores, el plan más pequeño que te cubre es de {offered} jugadores.",
+  "customSaving": "Ahorras {percent}% (${amount})",
+  "customReason": "Necesitas {requested}, y los planes van en bloques de {increment}. El de {offered} es el más pequeño que cubre tu necesidad.",
+  "adminTitle": "Capacidad del Pool",
+  "adminCurrent": "{current} de {max} jugadores",
+  "adminExpand": "Ampliar capacidad",
+  "poolFull": "Este pool ha alcanzado su capacidad máxima."
+}

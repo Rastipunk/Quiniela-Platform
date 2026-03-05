@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
 import { PoolConfigWizard } from "@/components/PoolConfigWizard";
+import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
@@ -61,6 +62,7 @@ export default function DashboardPage() {
   const [deadline, setDeadline] = useState<number>(10);
   const [timeZone, setTimeZone] = useState<string>(detectTz());
   const [requireApproval, setRequireApproval] = useState<boolean>(false);
+  const [maxParticipants, setMaxParticipants] = useState<number>(20);
   const [pickTypesConfig, setPickTypesConfig] = useState<PoolPickTypesConfig | string | null>(null);
 
   // Join form
@@ -106,6 +108,7 @@ export default function DashboardPage() {
         deadlineMinutesBeforeKickoff: deadline,
         pickTypesConfig: pickTypesConfig,
         requireApproval,
+        maxParticipants,
       });
 
       setPanel("NONE");
@@ -616,6 +619,16 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </label>
+
+                {/* Player Capacity */}
+                <div style={{ marginTop: 12 }}>
+                  <CapacitySelector
+                    type="personal"
+                    selectedCapacity={maxParticipants}
+                    onSelect={setMaxParticipants}
+                    mode="creation"
+                  />
+                </div>
 
                 {/* Scoring Configuration */}
                 <div

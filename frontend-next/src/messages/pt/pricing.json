@@ -1,0 +1,23 @@
+{
+  "title": "Capacidade de jogadores",
+  "description": "Escolha quantos jogadores podem entrar no seu bolão.",
+  "upTo": "Até {count} jogadores",
+  "free": "Grátis",
+  "save": "-{percent}%",
+  "per50": "por +50 jogadores",
+  "comingSoon": "Em breve",
+  "comingSoonDesc": "Métodos de pagamento serão habilitados em breve.",
+  "corporateIncludes": "Inclui {count} jogadores",
+  "corporateAprilNotice": "A plataforma estará 100% pronta em 1º de abril. Você pode criar seu bolão agora e no dia 1º de abril te notificaremos para completar o pagamento.",
+  "customTitle": "Precisa de mais de 300 jogadores?",
+  "customPlaceholder": "Ex: 420",
+  "customFreeCovered": "O plano gratuito já cobre até {limit} jogadores.",
+  "customInList": "Esse número já está coberto na lista acima.",
+  "customResult": "Para {requested} jogadores, o menor plano que te cobre é de {offered} jogadores.",
+  "customSaving": "Economize {percent}% (${amount})",
+  "customReason": "Você precisa de {requested}, e os planos vêm em blocos de {increment}. O de {offered} jogadores é o menor que cobre sua necessidade.",
+  "adminTitle": "Capacidade do Bolão",
+  "adminCurrent": "{current} de {max} jogadores",
+  "adminExpand": "Ampliar Capacidade",
+  "poolFull": "Este bolão atingiu sua capacidade máxima."
+}

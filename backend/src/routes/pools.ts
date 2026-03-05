@@ -81,6 +81,7 @@ const createPoolSchema = z.object({
   deadlineMinutesBeforeKickoff: z.number().int().min(0).max(1440).optional(),
   scoringPresetKey: z.enum(["CLASSIC", "OUTCOME_ONLY", "EXACT_HEAVY"]).optional(),
   requireApproval: z.boolean().optional(),
+  maxParticipants: z.number().int().min(20).max(10000).optional(),
 
   // Comentario en español: configuración de tipos de picks
   // Puede ser: preset key ("BASIC", "SIMPLE", "CUMULATIVE") o configuración custom
@@ -118,6 +119,7 @@ poolsRouter.post("/", async (req, res) => {
     deadlineMinutesBeforeKickoff,
     scoringPresetKey,
     requireApproval,
+    maxParticipants,
     pickTypesConfig
   } = parsed.data;
 
@@ -199,6 +201,7 @@ poolsRouter.post("/", async (req, res) => {
         createdByUserId: req.auth!.userId,
         scoringPresetKey: scoringPresetKey ?? "CLASSIC",
         requireApproval: requireApproval ?? false,
+        maxParticipants: maxParticipants ?? 20,
         pickTypesConfig: finalPickTypesConfig,
         // CRÍTICO: Copiar el fixture del torneo para que cada pool tenga su propia copia
         fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
@@ -721,6 +724,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       pickTypesConfig: pool.pickTypesConfig, // Configuración avanzada de tipos de picks
       autoAdvanceEnabled: pool.autoAdvanceEnabled,
       requireApproval: pool.requireApproval,
+      maxParticipants: pool.maxParticipants,
       lockedPhases: pool.lockedPhases as string[],
       organizationId: pool.organizationId ?? null,
       organization: pool.organization
@@ -1414,6 +1418,15 @@ poolsRouter.post("/join", async (req, res) => {
       }
 
     if (!existing) {
+      // Verificar capacidad del pool antes de agregar miembro
+      if (invite.pool.maxParticipants) {
+        const memberCount = await tx.poolMember.count({
+          where: { poolId: invite.poolId, status: { in: ["ACTIVE", "PENDING_APPROVAL"] } },
+        });
+        if (memberCount >= invite.pool.maxParticipants) {
+          throw new Error("POOL_FULL");
+        }
+      }
       await tx.poolMember.create({
         data: {
           poolId: invite.poolId,
@@ -1454,6 +1467,12 @@ poolsRouter.post("/join", async (req, res) => {
       return res.status(403).json({
         error: "BANNED_FROM_POOL",
         message: "Has sido expulsado permanentemente de este pool y no puedes volver a unirte."
+      });
+    }
+    if (err.message === "POOL_FULL") {
+      return res.status(409).json({
+        error: "POOL_FULL",
+        message: "Este pool ha alcanzado su capacidad máxima de participantes."
       });
     }
     throw err; // Re-throw if it's another error

@@ -108,6 +108,7 @@ const createCorporatePoolSchema = z.object({
   deadlineMinutesBeforeKickoff: z.number().min(0).max(1440).optional(),
   requireApproval: z.boolean().optional(),
   pickTypesConfig: z.any().optional(),
+  maxParticipants: z.number().int().min(100).max(10000).optional(),
   emails: z.array(z.string().email()).max(500).optional(),
 });
 
@@ -121,7 +122,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
     companyName, logoBase64, welcomeMessage, invitationMessage,
     tournamentInstanceId, poolName, poolDescription,
     timeZone, deadlineMinutesBeforeKickoff, requireApproval,
-    pickTypesConfig, emails,
+    pickTypesConfig, maxParticipants, emails,
   } = parsed.data;
 
   // Verificar que la instancia existe
@@ -191,6 +192,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
         pickTypesConfig: finalPickTypesConfig,
         fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
         organizationId: org.id,
+        maxParticipants: maxParticipants ?? 100,
       },
     });
 

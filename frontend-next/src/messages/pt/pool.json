@@ -85,6 +85,10 @@
 
   "admin": {
     "title": "Painel de Administração do Host",
+    "capacity": {
+      "title": "Capacidade do Bolão",
+      "current": "{current} de {max} jogadores"
+    },
     "autoAdvance": {
       "title": "Avanço Automático de Fases",
       "description": "Quando habilitado, o sistema avançará automaticamente para a próxima fase quando todos os jogos da fase atual forem completados.",

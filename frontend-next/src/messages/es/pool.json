@@ -85,6 +85,10 @@
 
   "admin": {
     "title": "Panel de Administración del Host",
+    "capacity": {
+      "title": "Capacidad del Pool",
+      "current": "{current} de {max} jugadores"
+    },
     "autoAdvance": {
       "title": "Avance Automático de Fases",
       "description": "Cuando está habilitado, el sistema avanzará automáticamente a la siguiente fase cuando se completen todos los partidos de la fase actual.",

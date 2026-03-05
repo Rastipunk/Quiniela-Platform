@@ -85,6 +85,10 @@
 
   "admin": {
     "title": "Host Admin Panel",
+    "capacity": {
+      "title": "Pool Capacity",
+      "current": "{current} of {max} players"
+    },
     "autoAdvance": {
       "title": "Auto-Advance Phases",
       "description": "When enabled, the system will automatically advance to the next phase when all matches in the current phase are completed.",

@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { PoolConfigWizard } from "@/components/PoolConfigWizard";
+import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
@@ -23,7 +24,7 @@ function detectTz() {
 }
 
 const MAX_LOGO_BYTES = 500 * 1024;
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 export function CorporatePoolCreation() {
   const router = useRouter();
@@ -60,7 +61,10 @@ export function CorporatePoolCreation() {
   // Step 4: Scoring
   const [pickTypesConfig, setPickTypesConfig] = useState<PoolPickTypesConfig | string | null>(null);
 
-  // Step 5: Employees
+  // Step 5: Capacity
+  const [maxParticipants, setMaxParticipants] = useState<number>(100);
+
+  // Step 6: Employees
   const [emailsText, setEmailsText] = useState("");
 
   // UI state
@@ -125,7 +129,8 @@ export function CorporatePoolCreation() {
       case 2: return instanceId.length > 0;
       case 3: return poolName.trim().length >= 3;
       case 4: return pickTypesConfig !== null;
-      case 5: return true; // optional
+      case 5: return true; // capacity — always valid (default 100)
+      case 6: return true; // employees — optional
       default: return true;
     }
   }
@@ -165,6 +170,7 @@ export function CorporatePoolCreation() {
         deadlineMinutesBeforeKickoff: deadline,
         requireApproval,
         pickTypesConfig,
+        maxParticipants,
         emails: validEmails.length > 0 ? validEmails : undefined,
       });
       router.push(`/pools/${result.pool.id}`);
@@ -213,7 +219,7 @@ export function CorporatePoolCreation() {
   // ── Progress bar ──
   const stepLabels = [
     t("step1"), t("step2"), t("step3"),
-    t("step4"), t("step5"), t("step6"),
+    t("step4"), t("step5"), t("step6"), t("step7"),
   ];
 
   function renderProgressBar() {
@@ -361,7 +367,7 @@ export function CorporatePoolCreation() {
               ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            {step === 5 && validEmails.length === 0 ? t("skipStep") : t("next")}
+            {step === 6 && validEmails.length === 0 ? t("skipStep") : t("next")}
           </button>
         )}
       </div>
@@ -705,8 +711,33 @@ export function CorporatePoolCreation() {
           </div>
         );
 
-      // ════════════════════ STEP 5: Employees ════════════════════
+      // ════════════════════ STEP 5: Capacity & Pricing ════════════════════
       case 5:
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <CapacitySelector
+              type="corporate"
+              selectedCapacity={maxParticipants}
+              onSelect={setMaxParticipants}
+              mode="creation"
+            />
+            {/* April 1st notice */}
+            <div style={{
+              padding: "14px 16px",
+              borderRadius: 12,
+              background: "#FFF7ED",
+              border: "1px solid #FED7AA",
+              fontSize: 13,
+              color: "#92400E",
+              lineHeight: 1.6,
+            }}>
+              {t("aprilNotice")}
+            </div>
+          </div>
+        );
+
+      // ════════════════════ STEP 6: Employees ════════════════════
+      case 6:
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
@@ -757,8 +788,8 @@ export function CorporatePoolCreation() {
           </div>
         );
 
-      // ════════════════════ STEP 6: Summary ════════════════════
-      case 6:
+      // ════════════════════ STEP 7: Summary ════════════════════
+      case 7:
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {/* Summary card */}
@@ -775,6 +806,7 @@ export function CorporatePoolCreation() {
                 { label: t("summaryPool"), value: poolName, icon: "\u{1F3AF}" },
                 { label: t("summaryDeadline"), value: t("summaryMinutes", { min: deadline }), icon: "\u23F0" },
                 { label: t("summaryScoring"), value: pickTypesConfig ? t("summaryConfigured") : "\u2014", icon: "\u{1F4CA}" },
+                { label: t("summaryCapacity"), value: `${maxParticipants} ${t("summaryPlayers")}`, icon: "\u{1F465}" },
                 {
                   label: t("summaryEmployees"),
                   value: validEmails.length > 0
@@ -790,7 +822,7 @@ export function CorporatePoolCreation() {
                     alignItems: "center",
                     gap: 12,
                     padding: "14px 16px",
-                    borderBottom: i < 5 ? "1px solid var(--border)" : "none",
+                    borderBottom: i < 6 ? "1px solid var(--border)" : "none",
                     background: i % 2 === 0 ? "var(--bg)" : "var(--surface)",
                   }}
                 >

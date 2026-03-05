@@ -651,7 +651,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
   // Buscar invite por token
   const invite = await prisma.corporateInvite.findUnique({
     where: { activationToken },
-    include: { pool: { select: { id: true, name: true, organization: { select: { name: true } } } } },
+    include: { pool: { select: { id: true, name: true, maxParticipants: true, organization: { select: { name: true } } } } },
   });
 
   if (!invite) {
@@ -676,6 +676,12 @@ authRouter.post("/activate-corporate", async (req, res) => {
     });
 
     if (!existingMember) {
+      if (invite.pool.maxParticipants) {
+        const count = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+        if (count >= invite.pool.maxParticipants) {
+          return res.status(409).json({ error: "POOL_FULL", message: "Este pool ha alcanzado su capacidad máxima." });
+        }
+      }
       await prisma.poolMember.create({
         data: { poolId: invite.poolId, userId: existingUser.id, role: "PLAYER", status: "ACTIVE" },
       });
@@ -727,7 +733,9 @@ authRouter.post("/activate-corporate", async (req, res) => {
   const passwordHash = await hashPassword(password);
   const now = new Date();
 
-  const result = await prisma.$transaction(async (tx) => {
+  let result;
+  try {
+  result = await prisma.$transaction(async (tx) => {
     const newUser = await tx.user.create({
       data: {
         email: invite.email,
@@ -753,6 +761,13 @@ authRouter.post("/activate-corporate", async (req, res) => {
       },
     });
 
+    // Verificar capacidad antes de agregar miembro
+    if (invite.pool.maxParticipants) {
+      const count = await tx.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+      if (count >= invite.pool.maxParticipants) {
+        throw new Error("POOL_FULL");
+      }
+    }
     await tx.poolMember.create({
       data: {
         poolId: invite.poolId,
@@ -769,6 +784,12 @@ authRouter.post("/activate-corporate", async (req, res) => {
 
     return newUser;
   });
+  } catch (err: any) {
+    if (err.message === "POOL_FULL") {
+      return res.status(409).json({ error: "POOL_FULL", message: "Este pool ha alcanzado su capacidad máxima." });
+    }
+    throw err;
+  }
 
   // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
   await transitionToActive(invite.poolId, result.id).catch((err) =>

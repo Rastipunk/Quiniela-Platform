@@ -268,6 +268,7 @@ export type CreatePoolInput = {
   scoringPresetKey?: string;
   pickTypesConfig?: any;
   requireApproval?: boolean;
+  maxParticipants?: number;
 };
 
 export async function createPool(token: string, input: CreatePoolInput): Promise<any> {
@@ -1166,6 +1167,7 @@ export type CreateCorporatePoolInput = {
   deadlineMinutesBeforeKickoff?: number;
   requireApproval?: boolean;
   pickTypesConfig?: any;
+  maxParticipants?: number;
   emails?: string[];
 };
 

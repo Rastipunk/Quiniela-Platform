@@ -18,6 +18,7 @@ import { NotificationBadge } from "@/components/NotificationBadge";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/hooks/usePoolNotifications";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import CapacitySelector from "@/components/CapacitySelector";
 import { MobileLeaderboard } from "@/components/MobileLeaderboard";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 
@@ -714,7 +715,7 @@ export default function PoolPage() {
           )}
 
           <div style={{ color: "#666", fontSize: 12 }}>
-            {overview.tournamentInstance.name} • {overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
+            {overview.tournamentInstance.name} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
 
           {/* Tabs Navigation con Notification Badges */}
@@ -1573,6 +1574,38 @@ export default function PoolPage() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Pool Capacity Section */}
+              {overview.pool.maxParticipants && (
+                <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
+                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#4f46e5" }}>
+                    {t("admin.capacity.title")}
+                  </h4>
+                  <div style={{ fontSize: 14, color: "#666", marginBottom: 8 }}>
+                    {t("admin.capacity.current", {
+                      current: overview.counts.membersActive,
+                      max: overview.pool.maxParticipants,
+                    })}
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{ height: 8, background: "#e9ecef", borderRadius: 4, marginBottom: 16 }}>
+                    <div style={{
+                      height: "100%",
+                      borderRadius: 4,
+                      width: `${Math.min(100, (overview.counts.membersActive / overview.pool.maxParticipants) * 100)}%`,
+                      background: (overview.counts.membersActive / overview.pool.maxParticipants) > 0.8 ? "#dc3545" : "#28a745",
+                      transition: "width 0.3s ease",
+                    }} />
+                  </div>
+                  <CapacitySelector
+                    type={overview.pool.organizationId ? "corporate" : "personal"}
+                    currentCapacity={overview.pool.maxParticipants}
+                    selectedCapacity={overview.pool.maxParticipants}
+                    onSelect={() => {}}
+                    mode="expansion"
+                  />
                 </div>
               )}
 
