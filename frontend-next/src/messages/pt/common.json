@@ -71,20 +71,37 @@
       "subtitle": "Uma plataforma completa para organizar pencas com amigos, família ou colegas de trabalho."
     },
     "feature1": {
-      "title": "Crie sua penca",
-      "description": "Personalize as regras, o sistema de pontos e os prazos. Você decide como sua penca funciona."
+      "title": "Crie sua penca em minutos",
+      "description": "Personalize as regras, o sistema de pontos e os prazos. Escolha entre placar exato, resultado, diferença de gols e mais. Você decide como sua penca funciona."
     },
     "feature2": {
-      "title": "Placar ao vivo",
-      "description": "Ranking atualizado automaticamente após cada jogo. Sempre saiba quem está ganhando."
+      "title": "Placar em tempo real",
+      "description": "Ranking atualizado automaticamente após cada jogo. Veja quem lidera, compare sua posição e acompanhe a competição ao vivo com estatísticas detalhadas."
     },
     "feature3": {
-      "title": "Previsões flexíveis",
-      "description": "Placar exato, resultado, diferença de gols. Múltiplas formas de pontuar com seus palpites."
+      "title": "Múltiplos modos de pontuação",
+      "description": "Placar exato, resultado correto, diferença de gols, bônus por sequência. Configure o sistema de pontos que melhor se adapta ao seu grupo."
     },
     "feature4": {
-      "title": "Convide amigos facilmente",
-      "description": "Compartilhe um código de convite pelo WhatsApp e pronto. Entre em segundos, sem complicação."
+      "title": "Convide por link ou WhatsApp",
+      "description": "Compartilhe um código de convite pelo WhatsApp, Telegram ou qualquer rede social. Seus amigos entram em segundos, sem precisar criar conta antes."
+    },
+    "feature5": {
+      "title": "Resultados automáticos",
+      "description": "Os placares são atualizados automaticamente ao final de cada jogo. Não precisa inserir resultados manualmente — nós cuidamos disso."
+    },
+    "feature6": {
+      "title": "Notificações por email",
+      "description": "Lembretes antes de cada prazo, resumos de resultados e atualizações do ranking. Seus jogadores estão sempre informados."
+    },
+    "feature7": {
+      "title": "Multi-torneio",
+      "description": "Copa do Mundo, Champions League, Copa América, ligas locais e mais. Crie pencas para qualquer competição e gerencie vários torneios ao mesmo tempo."
+    },
+    "feature8": {
+      "title": "Otimizado para celular",
+      "description": "Projetado para funcionar perfeitamente no seu celular. Faça previsões, confira o ranking e gerencie sua penca de qualquer lugar."
+    }
     },
     "howItWorks": {
       "title": "Como funciona"

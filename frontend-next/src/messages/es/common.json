@@ -71,20 +71,36 @@
       "subtitle": "Una plataforma completa para organizar tus quinielas con amigos, familia o compañeros de trabajo."
     },
     "feature1": {
-      "title": "Crea tu quiniela",
-      "description": "Personaliza las reglas, el sistema de puntos y los plazos. Tú decides cómo se juega tu polla, prode o penca."
+      "title": "Crea tu quiniela en minutos",
+      "description": "Personaliza las reglas, el sistema de puntos y los plazos. Elige entre marcador exacto, resultado, diferencia de goles y más. Tú decides cómo se juega tu polla, prode o penca."
     },
     "feature2": {
-      "title": "Leaderboard en vivo",
-      "description": "Ranking actualizado automáticamente después de cada partido. Siempre sabes quién va ganando."
+      "title": "Leaderboard en tiempo real",
+      "description": "Ranking actualizado automáticamente después de cada partido. Ve quién lidera, compara tu posición y sigue la competencia en vivo con estadísticas detalladas."
     },
     "feature3": {
-      "title": "Predicciones flexibles",
-      "description": "Marcador exacto, resultado, diferencia de goles. Múltiples formas de sumar puntos con tus pronósticos."
+      "title": "Múltiples modos de puntuación",
+      "description": "Marcador exacto, resultado correcto, diferencia de goles, bonus por racha. Configura el sistema de puntos que más se adapte a tu grupo."
     },
     "feature4": {
-      "title": "Invita amigos fácilmente",
-      "description": "Comparte un código de invitación por WhatsApp y listo. Únete en segundos, sin complicaciones."
+      "title": "Invita por link o WhatsApp",
+      "description": "Comparte un código de invitación por WhatsApp, Telegram o cualquier red social. Tus amigos se unen en segundos, sin necesidad de crear cuenta previamente."
+    },
+    "feature5": {
+      "title": "Resultados automáticos",
+      "description": "Los marcadores se actualizan automáticamente al finalizar cada partido. No tienes que ingresar resultados manualmente — nosotros nos encargamos."
+    },
+    "feature6": {
+      "title": "Notificaciones por email",
+      "description": "Recordatorios antes de cada fecha límite, resúmenes de resultados y actualizaciones del ranking. Tus jugadores siempre están informados."
+    },
+    "feature7": {
+      "title": "Multi-torneo",
+      "description": "Copa del Mundo, Champions League, Copa América, ligas locales y más. Crea quinielas para cualquier competencia y maneja varios torneos a la vez."
+    },
+    "feature8": {
+      "title": "Optimizado para móvil",
+      "description": "Diseñado para funcionar perfectamente en tu celular. Haz predicciones, revisa el ranking y administra tu pool desde cualquier lugar."
     },
     "howItWorks": {
       "title": "Cómo funciona"

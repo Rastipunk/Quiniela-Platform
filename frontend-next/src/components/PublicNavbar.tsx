@@ -20,6 +20,7 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
   const navLinks = [
     { to: "/" as const, label: t("home") },
     { to: "/como-funciona" as const, label: t("howItWorks") },
+    { to: "/precios" as const, label: t("pricing") },
     { to: "/faq" as const, label: t("faq") },
     { to: "/que-es-una-quiniela" as const, label: t("whatIsQuiniela") },
     { to: "/empresas" as const, label: t("enterprises") },

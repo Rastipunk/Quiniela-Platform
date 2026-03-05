@@ -200,6 +200,26 @@ export function LandingContent() {
             title={t("feature4.title")}
             description={t("feature4.description")}
           />
+          <FeatureCard
+            icon={"\u26A1"}
+            title={t("feature5.title")}
+            description={t("feature5.description")}
+          />
+          <FeatureCard
+            icon={"\uD83D\uDCE7"}
+            title={t("feature6.title")}
+            description={t("feature6.description")}
+          />
+          <FeatureCard
+            icon={"\uD83C\uDFC6"}
+            title={t("feature7.title")}
+            description={t("feature7.description")}
+          />
+          <FeatureCard
+            icon={"\uD83D\uDCF1"}
+            title={t("feature8.title")}
+            description={t("feature8.description")}
+          />
         </div>
       </section>
 
