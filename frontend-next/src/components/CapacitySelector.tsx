@@ -196,6 +196,20 @@ export default function CapacitySelector({
                     >
                       {t("free")}
                     </span>
+                  ) : isFreeTier && type === "corporate" ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 13, color: "#9ca3af", textDecoration: "line-through" }}>
+                          ${tier.totalPrice.toFixed(2)}
+                        </span>
+                        <span style={{ fontSize: 16, fontWeight: 800, color: "#16a34a" }}>
+                          $0
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#16a34a" }}>
+                        {t("corporateFreeTrial")}
+                      </span>
+                    </div>
                   ) : (
                     <div>
                       <span style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>

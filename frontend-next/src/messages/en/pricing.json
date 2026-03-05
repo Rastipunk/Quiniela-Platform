@@ -8,6 +8,7 @@
   "comingSoon": "Coming Soon",
   "comingSoonDesc": "Payment methods will be enabled soon.",
   "corporateIncludes": "Includes {count} players",
+  "corporateFreeTrial": "Free access for testing",
   "customTitle": "Need more than 300 players?",
   "customPlaceholder": "E.g.: 420",
   "customFreeCovered": "The free plan already covers up to {limit} players.",
