@@ -928,3 +928,83 @@ export async function sendAdminNotification(params: {
     return { success: false, error: String(err) };
   }
 }
+
+/**
+ * Envía notificación al host cuando su pool alcanza la capacidad máxima.
+ */
+export async function sendPoolFullNotificationEmail(params: {
+  to: string;
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  maxParticipants: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar email pool full: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  type Locale = "es" | "en" | "pt";
+  const loc: Locale = (["es", "en", "pt"].includes(params.locale || "") ? params.locale : "es") as Locale;
+  const subjects: Record<Locale, string> = {
+    es: `Tu pool "${params.poolName}" está lleno`,
+    en: `Your pool "${params.poolName}" is full`,
+    pt: `Seu bolão "${params.poolName}" está lotado`,
+  };
+  const headings: Record<Locale, string> = {
+    es: "Tu pool alcanzó su capacidad máxima",
+    en: "Your pool has reached maximum capacity",
+    pt: "Seu bolão atingiu a capacidade máxima",
+  };
+  const messages: Record<Locale, string> = {
+    es: `Tu pool <strong>"${params.poolName}"</strong> ha alcanzado su capacidad máxima de <strong>${params.maxParticipants} jugadores</strong>. Para recibir más participantes, necesitas ampliar la capacidad de tu pool.`,
+    en: `Your pool <strong>"${params.poolName}"</strong> has reached its maximum capacity of <strong>${params.maxParticipants} players</strong>. To accept more participants, you need to expand your pool's capacity.`,
+    pt: `Seu bolão <strong>"${params.poolName}"</strong> atingiu a capacidade máxima de <strong>${params.maxParticipants} jogadores</strong>. Para receber mais participantes, você precisa ampliar a capacidade do seu bolão.`,
+  };
+  const ctas: Record<Locale, string> = {
+    es: "Ir a mi pool",
+    en: "Go to my pool",
+    pt: "Ir ao meu bolão",
+  };
+
+  const poolUrl = `${FRONTEND_URL}/pools/${params.poolId}`;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} <${FROM_EMAIL}>`,
+      to: params.to,
+      subject: subjects[loc],
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:#DC2626;margin-bottom:16px;">
+            &#128680; ${headings[loc]}
+          </h2>
+          <p style="color:#374151;font-size:15px;line-height:1.6;">
+            ${messages[loc]}
+          </p>
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:#4F46E5;color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
+              ${ctas[loc]}
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+          <p style="color:#9CA3AF;font-size:12px;text-align:center;">
+            ${APP_NAME} &middot; picks4all.com
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar email pool full:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Pool full notification enviada a ${params.to}:`, data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar email pool full:", err);
+    return { success: false, error: String(err) };
+  }
+}

@@ -721,15 +721,15 @@ export function CorporatePoolCreation() {
               onSelect={setMaxParticipants}
               mode="creation"
             />
-            {/* April 1st notice */}
+            {/* Emphatic trial notice */}
             <div style={{
-              padding: "14px 16px",
+              padding: "16px 18px",
               borderRadius: 12,
-              background: "#FFF7ED",
-              border: "1px solid #FED7AA",
+              background: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
+              border: "2px solid #34d399",
               fontSize: 13,
-              color: "#92400E",
-              lineHeight: 1.6,
+              color: "#065f46",
+              lineHeight: 1.7,
             }}>
               {t("aprilNotice")}
             </div>

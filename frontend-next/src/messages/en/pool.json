@@ -87,7 +87,11 @@
     "title": "Host Admin Panel",
     "capacity": {
       "title": "Pool Capacity",
-      "current": "{current} of {max} players"
+      "current": "{current} of {max} players",
+      "fullTitle": "Your pool is full",
+      "fullMessage": "Your pool has reached its maximum capacity of {max} players. To accept more participants, expand your capacity.",
+      "fullDismiss": "Got it",
+      "fullDontShow": "Don't show again"
     },
     "autoAdvance": {
       "title": "Auto-Advance Phases",

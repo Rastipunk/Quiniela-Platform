@@ -32,7 +32,11 @@
     "configWizard": "Asistente de Configuración",
     "configReady": "Configuración lista ({count} fases)",
     "creating": "Creando...",
-    "createButton": "Crear pool"
+    "createButton": "Crear pool",
+    "nextStep": "Siguiente",
+    "backStep": "Atrás",
+    "stepIndicator": "Paso {current} de {total}",
+    "capacityStepTitle": "Capacidad de jugadores"
   },
   "joinPanel": {
     "title": "Unirme a una pool",

@@ -63,9 +63,38 @@ export default function CapacitySelector({
       <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>
         {t("title")}
       </h4>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: "#666" }}>
+      <p style={{ margin: "0 0 12px", fontSize: 13, color: "#666" }}>
         {t("description")}
       </p>
+
+      {/* Trial banner */}
+      <div style={{
+        padding: "14px 16px",
+        borderRadius: 10,
+        background: "linear-gradient(135deg, #dcfce7, #d1fae5)",
+        border: "2px solid #86efac",
+        marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "#166534", marginBottom: 6 }}>
+          {t("trialTitle")}
+        </div>
+        <div style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>
+          &#10003; {t("trialNoCreditCard")}<br />
+          &#10003; {t("trialPlayersJoin")}<br />
+          &#10003; {t("trialNotifyEmail")}
+        </div>
+        <div style={{
+          marginTop: 8,
+          padding: "8px 12px",
+          borderRadius: 8,
+          background: "rgba(255,255,255,0.7)",
+          fontSize: 12,
+          color: "#065f46",
+          lineHeight: 1.5,
+        }}>
+          <strong>{t("trialModeLabel")}:</strong> {t("trialModeDesc")}
+        </div>
+      </div>
 
       {/* Tier list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

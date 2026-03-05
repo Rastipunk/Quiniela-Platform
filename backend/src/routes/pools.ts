@@ -21,7 +21,7 @@ import {
   canCreateInvites
 } from "../services/poolStateMachine";
 import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
-import { sendPoolInvitationEmail } from "../lib/email";
+import { sendPoolInvitationEmail, sendPoolFullNotificationEmail } from "../lib/email";
 import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
@@ -1502,6 +1502,28 @@ poolsRouter.post("/join", async (req, res) => {
 
     // Trigger transición DRAFT → ACTIVE solo si el join fue directo
     await transitionToActive(joined.poolId, req.auth!.userId);
+  }
+
+  // Notificar al host si el pool acaba de llenarse
+  if (joined.status === "ACTIVE" && invite.pool.maxParticipants) {
+    const currentCount = await prisma.poolMember.count({
+      where: { poolId: invite.poolId, status: "ACTIVE" },
+    });
+    if (currentCount >= invite.pool.maxParticipants) {
+      const host = await prisma.poolMember.findFirst({
+        where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+        include: { user: { select: { email: true, displayName: true } } },
+      });
+      if (host?.user?.email) {
+        sendPoolFullNotificationEmail({
+          to: host.user.email,
+          hostName: host.user.displayName || "Host",
+          poolName: invite.pool.name,
+          poolId: invite.poolId,
+          maxParticipants: invite.pool.maxParticipants,
+        }).catch(() => {}); // fire and forget
+      }
+    }
   }
 
   return res.json({

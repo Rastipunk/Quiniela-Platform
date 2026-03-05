@@ -6,7 +6,7 @@ import { hashPassword, verifyPassword } from "../lib/password";
 import { signToken } from "../lib/jwt";
 import { writeAuditEvent } from "../lib/audit";
 import { validateUsername, normalizeUsername } from "../lib/username";
-import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } from "../lib/email";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail, sendPoolFullNotificationEmail } from "../lib/email";
 import { requireAuth } from "../middleware/requireAuth";
 import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "../services/poolStateMachine";
@@ -697,6 +697,26 @@ authRouter.post("/activate-corporate", async (req, res) => {
       console.error("transitionToActive error (existing user):", err)
     );
 
+    // Notificar al host si el pool acaba de llenarse
+    if (invite.pool.maxParticipants) {
+      const curCount = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+      if (curCount >= invite.pool.maxParticipants) {
+        const host = await prisma.poolMember.findFirst({
+          where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+          include: { user: { select: { email: true, displayName: true } } },
+        });
+        if (host?.user?.email) {
+          sendPoolFullNotificationEmail({
+            to: host.user.email,
+            hostName: host.user.displayName || "Host",
+            poolName: invite.pool.name,
+            poolId: invite.poolId,
+            maxParticipants: invite.pool.maxParticipants,
+          }).catch(() => {});
+        }
+      }
+    }
+
     const token = signToken({ userId: existingUser.id, platformRole: existingUser.platformRole });
     return res.json({
       token,
@@ -795,6 +815,26 @@ authRouter.post("/activate-corporate", async (req, res) => {
   await transitionToActive(invite.poolId, result.id).catch((err) =>
     console.error("transitionToActive error (new user):", err)
   );
+
+  // Notificar al host si el pool acaba de llenarse
+  if (invite.pool.maxParticipants) {
+    const curCount = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+    if (curCount >= invite.pool.maxParticipants) {
+      const host = await prisma.poolMember.findFirst({
+        where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+        include: { user: { select: { email: true, displayName: true } } },
+      });
+      if (host?.user?.email) {
+        sendPoolFullNotificationEmail({
+          to: host.user.email,
+          hostName: host.user.displayName || "Host",
+          poolName: invite.pool.name,
+          poolId: invite.poolId,
+          maxParticipants: invite.pool.maxParticipants,
+        }).catch(() => {});
+      }
+    }
+  }
 
   await writeAuditEvent({
     actorUserId: result.id,

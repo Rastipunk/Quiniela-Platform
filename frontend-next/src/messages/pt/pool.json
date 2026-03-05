@@ -87,7 +87,11 @@
     "title": "Painel de Administração do Host",
     "capacity": {
       "title": "Capacidade do Bolão",
-      "current": "{current} de {max} jogadores"
+      "current": "{current} de {max} jogadores",
+      "fullTitle": "Seu bolão está lotado",
+      "fullMessage": "Seu bolão atingiu a capacidade máxima de {max} jogadores. Para receber mais participantes, amplie sua capacidade.",
+      "fullDismiss": "Entendido",
+      "fullDontShow": "Não mostrar novamente"
     },
     "autoAdvance": {
       "title": "Avanço Automático de Fases",

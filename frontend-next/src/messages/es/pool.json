@@ -87,7 +87,11 @@
     "title": "Panel de Administración del Host",
     "capacity": {
       "title": "Capacidad del Pool",
-      "current": "{current} de {max} jugadores"
+      "current": "{current} de {max} jugadores",
+      "fullTitle": "Tu pool está lleno",
+      "fullMessage": "Tu pool alcanzó su capacidad máxima de {max} jugadores. Para recibir más participantes, amplía tu capacidad.",
+      "fullDismiss": "Entendido",
+      "fullDontShow": "No volver a mostrar"
     },
     "autoAdvance": {
       "title": "Avance Automático de Fases",

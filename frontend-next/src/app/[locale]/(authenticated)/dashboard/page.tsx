@@ -54,6 +54,7 @@ export default function DashboardPage() {
 
   const [panel, setPanel] = useState<"NONE" | "CREATE" | "JOIN">("NONE");
   const [showWizard, setShowWizard] = useState(false);
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
 
   // Create form
   const [instanceId, setInstanceId] = useState<string>("");
@@ -90,11 +91,21 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function validateCreate(): boolean {
+    if (!instanceId) { setError(t("errors.selectInstance")); return false; }
+    if (poolName.trim().length < 3) { setError(t("errors.poolNameMin")); return false; }
+    if (!pickTypesConfig) { setError(t("errors.configRequired")); return false; }
+    setError(null);
+    return true;
+  }
+
+  function goToCapacityStep() {
+    if (validateCreate()) setCreateStep(2);
+  }
+
   async function onCreate() {
     if (!token) return;
-    if (!instanceId) return setError(t("errors.selectInstance"));
-    if (poolName.trim().length < 3) return setError(t("errors.poolNameMin"));
-    if (!pickTypesConfig) return setError(t("errors.configRequired"));
+    if (!validateCreate()) return;
 
     setBusy(true);
     setError(null);
@@ -113,6 +124,7 @@ export default function DashboardPage() {
 
       setPanel("NONE");
       setShowWizard(false);
+      setCreateStep(1);
       setPickTypesConfig(null);
       await loadAll();
       router.push(`/pools/${created.id}`);
@@ -410,7 +422,7 @@ export default function DashboardPage() {
             padding: isMobile ? 0 : 16,
             zIndex: 1000,
           }}
-          onClick={() => setPanel("NONE")}
+          onClick={() => { setPanel("NONE"); setCreateStep(1); }}
         >
           <div
             style={{
@@ -437,10 +449,12 @@ export default function DashboardPage() {
               }}
             >
               <div style={{ fontWeight: 900, fontSize: isMobile ? 20 : 18 }}>
-                {panel === "CREATE" ? t("createPanel.title") : t("joinPanel.title")}
+                {panel === "CREATE"
+                  ? (createStep === 2 ? t("createPanel.capacityStepTitle") : t("createPanel.title"))
+                  : t("joinPanel.title")}
               </div>
               <button
-                onClick={() => setPanel("NONE")}
+                onClick={() => { setPanel("NONE"); setCreateStep(1); }}
                 style={{
                   width: TOUCH_TARGET.minimum,
                   height: TOUCH_TARGET.minimum,
@@ -461,7 +475,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {panel === "CREATE" && !showWizard && (
+            {panel === "CREATE" && !showWizard && createStep === 1 && (
               <div style={{ display: "grid", gap: 14 }}>
                 <div style={{ display: "grid", gap: 6 }}>
                   <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.tournamentLabel")}</span>
@@ -620,16 +634,6 @@ export default function DashboardPage() {
                   </div>
                 </label>
 
-                {/* Player Capacity */}
-                <div style={{ marginTop: 12 }}>
-                  <CapacitySelector
-                    type="personal"
-                    selectedCapacity={maxParticipants}
-                    onSelect={setMaxParticipants}
-                    mode="creation"
-                  />
-                </div>
-
                 {/* Scoring Configuration */}
                 <div
                   style={{
@@ -681,8 +685,7 @@ export default function DashboardPage() {
                 </div>
 
                 <button
-                  onClick={onCreate}
-                  disabled={busy}
+                  onClick={goToCapacityStep}
                   style={{
                     marginTop: 8,
                     padding: isMobile ? 16 : 12,
@@ -697,8 +700,65 @@ export default function DashboardPage() {
                     ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
-                  {busy ? t("createPanel.creating") : t("createPanel.createButton")}
+                  {t("createPanel.nextStep")}
                 </button>
+              </div>
+            )}
+
+            {/* Step 2: Capacity Selection */}
+            {panel === "CREATE" && !showWizard && createStep === 2 && (
+              <div style={{ display: "grid", gap: 14 }}>
+                {/* Step indicator */}
+                <div style={{ fontSize: 13, color: "#666", fontWeight: 500, textAlign: "center" }}>
+                  {t("createPanel.stepIndicator", { current: 2, total: 2 })}
+                </div>
+
+                <CapacitySelector
+                  type="personal"
+                  selectedCapacity={maxParticipants}
+                  onSelect={setMaxParticipants}
+                  mode="creation"
+                />
+
+                <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                  <button
+                    onClick={() => setCreateStep(1)}
+                    style={{
+                      flex: 1,
+                      padding: isMobile ? 14 : 10,
+                      borderRadius: 12,
+                      border: "1px solid #ddd",
+                      background: "#fff",
+                      color: "#333",
+                      cursor: "pointer",
+                      fontSize: isMobile ? 15 : 14,
+                      fontWeight: 600,
+                      minHeight: TOUCH_TARGET.comfortable,
+                      ...mobileInteractiveStyles.tapHighlight,
+                    }}
+                  >
+                    {t("createPanel.backStep")}
+                  </button>
+                  <button
+                    onClick={onCreate}
+                    disabled={busy}
+                    style={{
+                      flex: 2,
+                      padding: isMobile ? 14 : 10,
+                      borderRadius: 12,
+                      border: "none",
+                      background: "#111",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: isMobile ? 15 : 14,
+                      fontWeight: 600,
+                      minHeight: TOUCH_TARGET.comfortable,
+                      ...mobileInteractiveStyles.tapHighlight,
+                    }}
+                  >
+                    {busy ? t("createPanel.creating") : t("createPanel.createButton")}
+                  </button>
+                </div>
               </div>
             )}
 

@@ -82,6 +82,9 @@ export default function PoolPage() {
   // Corporate splash state
   const [showSplash, setShowSplash] = useState(false);
 
+  // Capacity full popup
+  const [showCapacityPopup, setShowCapacityPopup] = useState(false);
+
   // Tabs
   const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "admin">("partidos");
 
@@ -150,6 +153,19 @@ export default function PoolPage() {
         const key = `corporate-splash-${poolId}`;
         if (!sessionStorage.getItem(key)) {
           setShowSplash(true);
+        }
+      }
+
+      // Check if pool is full and user is HOST — show popup
+      if (
+        data.pool.maxParticipants &&
+        data.counts.membersActive >= data.pool.maxParticipants &&
+        (data.myMembership.role === "HOST" || data.myMembership.role === "CORPORATE_HOST") &&
+        typeof localStorage !== "undefined"
+      ) {
+        const dismissKey = `pool-capacity-full-dismissed-${poolId}`;
+        if (!localStorage.getItem(dismissKey)) {
+          setShowCapacityPopup(true);
         }
       }
 
@@ -467,6 +483,98 @@ export default function PoolPage() {
       )}
 
       {!overview && !error && <p style={{ marginTop: 16 }}>{t("loading")}</p>}
+
+      {/* Capacity Full Popup */}
+      {showCapacityPopup && overview?.pool.maxParticipants && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9998,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.5)",
+            padding: 16,
+          }}
+          onClick={() => setShowCapacityPopup(false)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 420,
+              width: "100%",
+              textAlign: "center",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 48, marginBottom: 12 }}>&#128680;</div>
+            <h3 style={{ margin: "0 0 12px", fontSize: 20, fontWeight: 800, color: "#DC2626" }}>
+              {t("admin.capacity.fullTitle")}
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+              {t("admin.capacity.fullMessage", { max: overview.pool.maxParticipants })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={() => {
+                  setShowCapacityPopup(false);
+                  setActiveTab("admin");
+                }}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#4f46e5",
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {t("admin.capacity.title")}
+              </button>
+              <button
+                onClick={() => setShowCapacityPopup(false)}
+                style={{
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  border: "1px solid #d1d5db",
+                  background: "transparent",
+                  color: "#374151",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("admin.capacity.fullDismiss")}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCapacityPopup(false);
+                  if (typeof localStorage !== "undefined") {
+                    localStorage.setItem(`pool-capacity-full-dismissed-${poolId}`, "true");
+                  }
+                }}
+                style={{
+                  padding: "8px 24px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "transparent",
+                  color: "#9ca3af",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                {t("admin.capacity.fullDontShow")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Corporate Splash Screen (1x per session) */}
       {overview && showSplash && overview.pool.organization && (() => {
