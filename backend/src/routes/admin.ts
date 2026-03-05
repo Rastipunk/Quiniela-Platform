@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { prisma } from "../db";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
+import { hashPassword } from "../lib/password";
 
 export const adminRouter = Router();
 
@@ -42,28 +43,23 @@ adminRouter.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
 // Endpoint público para crear admin inicial (solo funciona si no hay admins)
 // NOTA: Este endpoint NO tiene requireAuth - es público intencionalmente
 adminRouter.post("/bootstrap-admin", async (req, res) => {
-  console.log("[bootstrap-admin] Request received");
   try {
-    // Check if any admin exists
+    // Only works if no admin exists yet (first-time setup)
     const existingAdmin = await prisma.user.findFirst({
       where: { platformRole: "ADMIN" },
     });
 
     if (existingAdmin) {
-      return res.status(400).json({ ok: false, error: "Ya existe un admin. Este endpoint está deshabilitado." });
+      return res.status(403).json({ ok: false, error: "Admin already exists. This endpoint is disabled." });
     }
 
     const { email, password, displayName, username } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ ok: false, error: "Email y password son requeridos" });
+      return res.status(400).json({ ok: false, error: "Email and password are required" });
     }
 
-    // Import hash function
-    const { hash } = await import("bcrypt");
-    const passwordHash = await hash(password, 10);
-
-    // Generate username from email if not provided
+    const passwordHashed = await hashPassword(password);
     const adminUsername = username || email.split("@")[0] + "_admin";
 
     const admin = await prisma.user.create({
@@ -71,15 +67,15 @@ adminRouter.post("/bootstrap-admin", async (req, res) => {
         email,
         username: adminUsername,
         displayName: displayName || "Admin",
-        passwordHash,
+        passwordHash: passwordHashed,
         platformRole: "ADMIN",
       },
     });
 
-    res.json({ ok: true, message: "Admin creado", userId: admin.id });
+    res.json({ ok: true, message: "Admin created", userId: admin.id });
   } catch (error: any) {
-    console.error("Error creating admin:", error);
-    res.status(500).json({ ok: false, error: error.message });
+    console.error("[bootstrap-admin] Error:", error.message);
+    res.status(500).json({ ok: false, error: "Internal error" });
   }
 });
 
