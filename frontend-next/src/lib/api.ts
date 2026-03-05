@@ -218,6 +218,7 @@ export type MePoolRow = {
   poolId: string;
   role: string;
   status: string;
+  leftAtUtc?: string | null;
   pool: {
     id: string;
     name: string;
@@ -505,6 +506,10 @@ export async function rejectMember(
     },
     token
   );
+}
+
+export async function leavePool(token: string, poolId: string): Promise<any> {
+  return requestJson<any>(`/pools/${poolId}/leave`, { method: "POST" }, token);
 }
 
 export async function kickMember(

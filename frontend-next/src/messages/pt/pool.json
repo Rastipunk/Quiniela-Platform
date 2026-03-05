@@ -529,7 +529,8 @@
     "emptyState": "Ainda não há dados na classificação",
     "scrollHint": "Deslize para ver mais fases",
     "host": "HOST",
-    "coAdmin": "CO-ADMIN"
+    "coAdmin": "CO-ADMIN",
+    "retired": "APOSENTADO"
   },
   "phaseConfig": {
     "fundamentalDecision": "Decisão Fundamental",
@@ -620,5 +621,6 @@
     "players": "jogadores",
     "byCompany": "por {company}",
     "tournamentInfo": "{tournament} \u00b7 {count} jogadores"
-  }
+  },
+  "retiredBanner": "Você saiu deste pool. Pode ver os resultados mas não pode fazer palpites."
 }

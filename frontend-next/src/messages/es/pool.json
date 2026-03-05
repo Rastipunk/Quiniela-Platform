@@ -529,7 +529,8 @@
     "emptyState": "Aún no hay datos en el leaderboard",
     "scrollHint": "Desliza para ver más fases",
     "host": "HOST",
-    "coAdmin": "CO-ADMIN"
+    "coAdmin": "CO-ADMIN",
+    "retired": "RETIRADO"
   },
   "phaseConfig": {
     "fundamentalDecision": "Decisión Fundamental",
@@ -620,5 +621,6 @@
     "players": "jugadores",
     "byCompany": "por {company}",
     "tournamentInfo": "{tournament} \u00b7 {count} jugadores"
-  }
+  },
+  "retiredBanner": "Te retiraste de esta pool. Puedes ver los resultados pero no hacer predicciones."
 }

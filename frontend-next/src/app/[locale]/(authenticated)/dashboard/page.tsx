@@ -8,6 +8,7 @@ import {
   createPool,
   getMePools,
   joinPool,
+  leavePool,
   listCatalogInstances,
   type CatalogInstance,
   type MePoolRow,
@@ -52,6 +53,10 @@ export default function DashboardPage() {
   const [instances, setInstances] = useState<CatalogInstance[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [activeTab, setActiveTab] = useState<"active" | "finished">("active");
+  const [leaveModal, setLeaveModal] = useState<MePoolRow | null>(null);
+  const [leaveBusy, setLeaveBusy] = useState(false);
+
   const [panel, setPanel] = useState<"NONE" | "CREATE" | "JOIN">("NONE");
   const [showWizard, setShowWizard] = useState(false);
   const [createStep, setCreateStep] = useState<1 | 2>(1);
@@ -70,6 +75,43 @@ export default function DashboardPage() {
   const [inviteCode, setInviteCode] = useState("");
 
   const [busy, setBusy] = useState(false);
+
+  // Filter pools into active vs finished tabs
+  const activePools = useMemo(() => {
+    if (!rows) return [];
+    return rows.filter(
+      (r) =>
+        (r.status === "ACTIVE" || r.status === "PENDING_APPROVAL") &&
+        r.pool.status !== "COMPLETED" &&
+        r.pool.status !== "ARCHIVED"
+    );
+  }, [rows]);
+
+  const finishedPools = useMemo(() => {
+    if (!rows) return [];
+    return rows.filter(
+      (r) =>
+        r.status === "LEFT" ||
+        r.pool.status === "COMPLETED" ||
+        r.pool.status === "ARCHIVED"
+    );
+  }, [rows]);
+
+  const displayedPools = activeTab === "active" ? activePools : finishedPools;
+
+  async function onLeavePool(poolRow: MePoolRow) {
+    if (!token) return;
+    setLeaveBusy(true);
+    try {
+      await leavePool(token, poolRow.poolId);
+      setLeaveModal(null);
+      await loadAll();
+    } catch (e: any) {
+      setError(e?.message ?? "Error");
+    } finally {
+      setLeaveBusy(false);
+    }
+  }
 
   async function loadAll() {
     if (!token) return;
@@ -248,164 +290,341 @@ export default function DashboardPage() {
       {!rows && !error && <p style={{ marginTop: 18 }}>{t("loading")}</p>}
 
       {rows && (
-        <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
-          {rows.map((r) => (
-            <div
-              key={r.poolId}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 14,
-                padding: isMobile ? 16 : 14,
-                background: "#fff",
-              }}
-            >
-              <div
+        <>
+          {/* Tabs */}
+          <div
+            style={{
+              display: "flex",
+              gap: 0,
+              marginTop: 16,
+              borderBottom: "2px solid #e5e7eb",
+            }}
+          >
+            {(["active", "finished"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
                 style={{
-                  display: "flex",
-                  flexDirection: isMobile ? "column" : "row",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  alignItems: isMobile ? "stretch" : "flex-start",
+                  padding: isMobile ? "12px 16px" : "10px 20px",
+                  fontSize: isMobile ? 15 : 14,
+                  fontWeight: activeTab === tab ? 700 : 500,
+                  color: activeTab === tab ? "#111" : "#888",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: activeTab === tab ? "2px solid #111" : "2px solid transparent",
+                  marginBottom: -2,
+                  cursor: "pointer",
+                  ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  {/* Pool Name + Badges */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, fontSize: isMobile ? 17 : 16 }}>{r.pool.name}</div>
-                    <span
+                {tab === "active" ? t("tabActive") : t("tabFinished")}
+                <span
+                  style={{
+                    marginLeft: 6,
+                    fontSize: 12,
+                    padding: "2px 6px",
+                    borderRadius: 999,
+                    background: activeTab === tab ? "#111" : "#e5e7eb",
+                    color: activeTab === tab ? "#fff" : "#666",
+                  }}
+                >
+                  {tab === "active" ? activePools.length : finishedPools.length}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Pool cards */}
+          <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+            {displayedPools.map((r) => (
+              <div
+                key={r.poolId}
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: 14,
+                  padding: isMobile ? 16 : 14,
+                  background: "#fff",
+                  opacity: r.status === "LEFT" ? 0.75 : 1,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    alignItems: isMobile ? "stretch" : "flex-start",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    {/* Pool Name + Badges */}
+                    <div
                       style={{
-                        fontSize: 11,
-                        padding: "3px 8px",
-                        borderRadius: 999,
-                        border: "1px solid #ddd",
-                        background: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#111" : "#fff",
-                        color: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#fff" : "#111",
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        marginBottom: 8,
                       }}
                     >
-                      {r.role === "CORPORATE_HOST" ? "HOST" : r.role}
-                    </span>
-                    {r.pool.organizationId && (
+                      <div style={{ fontWeight: 800, fontSize: isMobile ? 17 : 16 }}>{r.pool.name}</div>
                       <span
                         style={{
                           fontSize: 11,
                           padding: "3px 8px",
                           borderRadius: 999,
-                          border: "1px solid #7c3aed",
-                          background: "#ede9fe",
-                          color: "#5b21b6",
-                          fontWeight: 600,
+                          border: "1px solid #ddd",
+                          background: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#111" : "#fff",
+                          color: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#fff" : "#111",
                         }}
                       >
-                        {"\u{1F3E2}"} {te("badge")}
+                        {r.role === "CORPORATE_HOST" ? "HOST" : r.role}
                       </span>
-                    )}
-                    {r.status === "PENDING_APPROVAL" && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          padding: "3px 8px",
-                          borderRadius: 999,
-                          border: "1px solid #ffc107",
-                          background: "#fff3cd",
-                          color: "#856404",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {"\u23F3"} {t("pendingBadge")}
-                      </span>
-                    )}
-                    {r.pool.status && (() => {
-                      const badge = getPoolStatusBadge(r.pool.status);
-                      return (
+                      {r.pool.organizationId && (
                         <span
                           style={{
                             fontSize: 11,
                             padding: "3px 8px",
                             borderRadius: 999,
-                            border: `1px solid ${badge.color}`,
-                            background: `${badge.color}20`,
-                            color: badge.color,
+                            border: "1px solid #7c3aed",
+                            background: "#ede9fe",
+                            color: "#5b21b6",
                             fontWeight: 600,
                           }}
                         >
-                          {badge.emoji} {badge.label}
+                          {"\u{1F3E2}"} {te("badge")}
                         </span>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Meta info */}
-                  <div style={{ color: "#666", fontSize: isMobile ? 13 : 12, marginTop: 4 }}>
-                    {t("poolCard.timezone")}: {r.pool.timeZone} {"\u2022"} {t("poolCard.deadline")}: {r.pool.deadlineMinutesBeforeKickoff}m
-                  </div>
-
-                  {r.tournamentInstance && (
-                    <div style={{ marginTop: 6, color: "#666", fontSize: isMobile ? 13 : 12 }}>
-                      {t("poolCard.tournament")}: {r.tournamentInstance.name}
+                      )}
+                      {r.status === "PENDING_APPROVAL" && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            borderRadius: 999,
+                            border: "1px solid #ffc107",
+                            background: "#fff3cd",
+                            color: "#856404",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {"\u23F3"} {t("pendingBadge")}
+                        </span>
+                      )}
+                      {r.status === "LEFT" && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            borderRadius: 999,
+                            border: "1px solid #ef4444",
+                            background: "#fef2f2",
+                            color: "#dc2626",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {t("retired")}
+                        </span>
+                      )}
+                      {r.pool.status && (() => {
+                        const badge = getPoolStatusBadge(r.pool.status);
+                        return (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              padding: "3px 8px",
+                              borderRadius: 999,
+                              border: `1px solid ${badge.color}`,
+                              background: `${badge.color}20`,
+                              color: badge.color,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {badge.emoji} {badge.label}
+                          </span>
+                        );
+                      })()}
                     </div>
-                  )}
-                </div>
 
-                {/* Action */}
-                {r.status === "PENDING_APPROVAL" ? (
-                  <span
+                    {/* Meta info */}
+                    <div style={{ color: "#666", fontSize: isMobile ? 13 : 12, marginTop: 4 }}>
+                      {t("poolCard.timezone")}: {r.pool.timeZone} {"\u2022"} {t("poolCard.deadline")}: {r.pool.deadlineMinutesBeforeKickoff}m
+                    </div>
+
+                    {r.tournamentInstance && (
+                      <div style={{ marginTop: 6, color: "#666", fontSize: isMobile ? 13 : 12 }}>
+                        {t("poolCard.tournament")}: {r.tournamentInstance.name}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div
                     style={{
-                      color: "#999",
-                      fontSize: 14,
-                      fontStyle: "italic",
-                      padding: isMobile ? "12px 0" : 0,
-                      textAlign: isMobile ? "center" : "left",
-                    }}
-                  >
-                    {t("waitingApproval")}
-                  </span>
-                ) : (
-                  <Link
-                    href={{ pathname: "/pools/[poolId]", params: { poolId: r.poolId } }}
-                    style={{
-                      textDecoration: "none",
-                      padding: isMobile ? 14 : 8,
-                      background: "#007bff",
-                      color: "#fff",
-                      borderRadius: 8,
-                      fontWeight: 600,
-                      textAlign: "center",
-                      minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      ...mobileInteractiveStyles.tapHighlight,
+                      flexDirection: isMobile ? "row" : "column",
+                      gap: 8,
+                      alignItems: isMobile ? "stretch" : "flex-end",
                     }}
                   >
-                    {t("openPool")}
-                  </Link>
-                )}
+                    {r.status === "PENDING_APPROVAL" ? (
+                      <span
+                        style={{
+                          color: "#999",
+                          fontSize: 14,
+                          fontStyle: "italic",
+                          padding: isMobile ? "12px 0" : 0,
+                          textAlign: "center",
+                        }}
+                      >
+                        {t("waitingApproval")}
+                      </span>
+                    ) : (
+                      <Link
+                        href={{ pathname: "/pools/[poolId]", params: { poolId: r.poolId } }}
+                        style={{
+                          textDecoration: "none",
+                          padding: isMobile ? 14 : 8,
+                          background: "#007bff",
+                          color: "#fff",
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          textAlign: "center",
+                          minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flex: isMobile ? 1 : undefined,
+                          ...mobileInteractiveStyles.tapHighlight,
+                        }}
+                      >
+                        {t("openPool")}
+                      </Link>
+                    )}
+                    {/* Leave button: only for active players who are not hosts */}
+                    {r.status === "ACTIVE" &&
+                      r.role !== "HOST" &&
+                      r.role !== "CORPORATE_HOST" &&
+                      r.pool.status !== "COMPLETED" &&
+                      r.pool.status !== "ARCHIVED" && (
+                        <button
+                          onClick={() => setLeaveModal(r)}
+                          style={{
+                            padding: isMobile ? 14 : 8,
+                            background: "#fff",
+                            color: "#dc2626",
+                            border: "1px solid #fca5a5",
+                            borderRadius: 8,
+                            fontWeight: 600,
+                            fontSize: isMobile ? 14 : 13,
+                            cursor: "pointer",
+                            textAlign: "center",
+                            minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            ...mobileInteractiveStyles.tapHighlight,
+                          }}
+                        >
+                          {t("leavePool")}
+                        </button>
+                      )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {rows.length === 0 && (
-            <div
-              style={{
-                padding: isMobile ? 24 : 14,
-                border: "1px dashed #ccc",
-                borderRadius: 14,
-                color: "#666",
-                textAlign: "center",
-                fontSize: isMobile ? 15 : 14,
-              }}
-            >
-              {t("emptyState")}
+            {displayedPools.length === 0 && (
+              <div
+                style={{
+                  padding: isMobile ? 24 : 14,
+                  border: "1px dashed #ccc",
+                  borderRadius: 14,
+                  color: "#666",
+                  textAlign: "center",
+                  fontSize: isMobile ? 15 : 14,
+                }}
+              >
+                {activeTab === "active" ? t("emptyState") : t("noFinishedPools")}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Leave Pool Confirmation Modal */}
+      {leaveModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 1001,
+          }}
+          onClick={() => !leaveBusy && setLeaveModal(null)}
+        >
+          <div
+            style={{
+              width: isMobile ? "100%" : "min(420px, 100%)",
+              background: "#fff",
+              borderRadius: 16,
+              padding: isMobile ? 24 : 20,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 700, fontSize: isMobile ? 18 : 16, marginBottom: 12 }}>
+              {t("leaveConfirmTitle")}
             </div>
-          )}
+            <div style={{ fontWeight: 800, fontSize: isMobile ? 16 : 15, marginBottom: 8 }}>
+              {leaveModal.pool.name}
+            </div>
+            <div style={{ color: "#666", fontSize: isMobile ? 14 : 13, lineHeight: 1.5, marginBottom: 20 }}>
+              {t("leaveConfirmMessage")}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setLeaveModal(null)}
+                disabled={leaveBusy}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? 14 : 10,
+                  borderRadius: 10,
+                  border: "1px solid #ddd",
+                  background: "#fff",
+                  color: "#333",
+                  fontSize: isMobile ? 15 : 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  minHeight: TOUCH_TARGET.minimum,
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {t("leaveCancel")}
+              </button>
+              <button
+                onClick={() => onLeavePool(leaveModal)}
+                disabled={leaveBusy}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? 14 : 10,
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#dc2626",
+                  color: "#fff",
+                  fontSize: isMobile ? 15 : 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  minHeight: TOUCH_TARGET.minimum,
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {leaveBusy ? t("leaving") : t("leaveConfirmButton")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

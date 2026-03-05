@@ -55,6 +55,18 @@
     "alertTitle": "Solicitud enviada exitosamente",
     "alertMessage": "Tu solicitud aparecerá en el Dashboard con estado 'Pendiente de aprobación'."
   },
+  "tabActive": "En curso",
+  "tabFinished": "Finalizadas",
+  "noFinishedPools": "No tienes pools finalizadas",
+  "leavePool": "Salirme",
+  "leaveConfirmTitle": "Salirte de la pool",
+  "leaveConfirmMessage": "Si te sales, conservarás tus puntos pero no podrás hacer más predicciones. Esta acción no se puede deshacer.",
+  "leaveConfirmButton": "Salirme",
+  "leaveCancel": "Cancelar",
+  "leftSuccess": "Te has salido de la pool",
+  "retired": "Retirado",
+  "retiredBanner": "Te retiraste de esta pool. Puedes ver los resultados pero no hacer predicciones.",
+  "leaving": "Saliendo...",
   "poolCard": {
     "timezone": "TZ",
     "deadline": "Deadline",

@@ -55,6 +55,18 @@
     "alertTitle": "Request sent successfully",
     "alertMessage": "Your request will appear on the Dashboard with 'Pending approval' status."
   },
+  "tabActive": "Active",
+  "tabFinished": "Finished",
+  "noFinishedPools": "You have no finished pools",
+  "leavePool": "Leave",
+  "leaveConfirmTitle": "Leave pool",
+  "leaveConfirmMessage": "If you leave, you will keep your points but won't be able to make more predictions. This action cannot be undone.",
+  "leaveConfirmButton": "Leave",
+  "leaveCancel": "Cancel",
+  "leftSuccess": "You have left the pool",
+  "retired": "Retired",
+  "retiredBanner": "You left this pool. You can view results but cannot make predictions.",
+  "leaving": "Leaving...",
   "poolCard": {
     "timezone": "TZ",
     "deadline": "Deadline",

@@ -826,6 +826,24 @@ export default function PoolPage() {
             {overview.tournamentInstance.name} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
 
+          {/* Banner for LEFT members */}
+          {overview.myMembership.status === "LEFT" && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: "10px 14px",
+                borderRadius: 8,
+                background: "#fef2f2",
+                border: "1px solid #fca5a5",
+                color: "#dc2626",
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
+              {t("retiredBanner")}
+            </div>
+          )}
+
           {/* Tabs Navigation con Notification Badges */}
           <div style={{
             marginTop: isMobile ? 12 : 16,
@@ -1554,6 +1572,19 @@ export default function PoolPage() {
                                   PLAYER
                                 </span>
                               )}
+                              {member.memberStatus === "LEFT" && (
+                                <span style={{
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 4,
+                                  background: "#ef444420",
+                                  border: "1px solid #ef4444",
+                                  color: "#ef4444",
+                                  fontWeight: 600
+                                }}>
+                                  {t("mobileLeaderboard.retired")}
+                                </span>
+                              )}
                               <span style={{ fontSize: 12, color: "#999" }}>
                                 {member.points} {t("admin.members.pts")}
                               </span>
@@ -2112,7 +2143,7 @@ export default function PoolPage() {
                 tournamentData={(overview.tournamentInstance as any).dataJson}
                 token={token!}
                 isHost={overview.permissions.canManageResults}
-                isLocked={getPhaseStatus(activePhase!) === "COMPLETED"}
+                isLocked={getPhaseStatus(activePhase!) === "COMPLETED" || overview.myMembership.status === "LEFT"}
                 matchResults={phaseMatchResults}
                 onDataChanged={() => load(verbose)}
                 onShowBreakdown={() => setBreakdownModalData({
@@ -2325,7 +2356,7 @@ export default function PoolPage() {
                               {/* Pick */}
                               <PickSection
                                 pick={m.myPick}
-                                isLocked={m.isLocked}
+                                isLocked={m.isLocked || overview.myMembership.status === "LEFT"}
                                 allowScorePick={allowScorePick}
                                 onSave={(pick: any) => savePick(m.id, pick)}
                                 disabled={busyPick}
@@ -2552,6 +2583,19 @@ export default function PoolPage() {
                                   fontWeight: 600
                                 }}>
                                   PLAYER
+                                </span>
+                              )}
+                              {r.memberStatus === "LEFT" && (
+                                <span style={{
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 3,
+                                  background: "#ef444420",
+                                  border: "1px solid #ef4444",
+                                  color: "#ef4444",
+                                  fontWeight: 600
+                                }}>
+                                  {t("mobileLeaderboard.retired")}
                                 </span>
                               )}
                             </div>

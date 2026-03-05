@@ -55,6 +55,18 @@
     "alertTitle": "Solicitação enviada com sucesso",
     "alertMessage": "Sua solicitação aparecerá no Dashboard com status 'Pendente de aprovação'."
   },
+  "tabActive": "Em andamento",
+  "tabFinished": "Finalizados",
+  "noFinishedPools": "Você não tem pools finalizados",
+  "leavePool": "Sair",
+  "leaveConfirmTitle": "Sair do pool",
+  "leaveConfirmMessage": "Se sair, você manterá seus pontos mas não poderá fazer mais palpites. Esta ação não pode ser desfeita.",
+  "leaveConfirmButton": "Sair",
+  "leaveCancel": "Cancelar",
+  "leftSuccess": "Você saiu do pool",
+  "retired": "Aposentado",
+  "retiredBanner": "Você saiu deste pool. Pode ver os resultados mas não pode fazer palpites.",
+  "leaving": "Saindo...",
   "poolCard": {
     "timezone": "Fuso",
     "deadline": "Deadline",

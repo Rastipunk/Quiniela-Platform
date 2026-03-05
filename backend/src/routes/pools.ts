@@ -243,9 +243,9 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
 
   const leaderboardVerbose = req.query.leaderboardVerbose === "1" || req.query.leaderboardVerbose === "true";
 
-  // 1) Permiso: debe ser miembro ACTIVO
+  // 1) Permiso: debe ser miembro ACTIVO o LEFT (LEFT = read-only)
   const myMembership = await prisma.poolMember.findFirst({
-    where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
+    where: { poolId, userId: req.auth!.userId, status: { in: ["ACTIVE", "LEFT"] } },
   });
   if (!myMembership) return res.status(403).json({ error: "FORBIDDEN" });
 
@@ -341,9 +341,9 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     };
   });
 
-  // 7) Leaderboard (mismo scoring MVP)
+  // 7) Leaderboard (incluye miembros LEFT para que conserven su posicion)
   const members = await prisma.poolMember.findMany({
-    where: { poolId, status: "ACTIVE" },
+    where: { poolId, status: { in: ["ACTIVE", "LEFT"] } },
     include: { user: true },
     orderBy: { joinedAtUtc: "asc" },
   });
@@ -688,6 +688,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       memberId: m.id,
       displayName: m.user.displayName,
       role: m.role,
+      memberStatus: m.status,
       points: points + structuralPoints, // Total: match picks + structural picks
       matchPickPoints: points, // Desglose para debugging
       structuralPickPoints: structuralPoints,
@@ -776,6 +777,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
         memberId: r.memberId,
         displayName: r.displayName,
         role: r.role,
+        memberStatus: r.memberStatus,
         points: r.points,
         pointsByPhase: r.pointsByPhase, // Puntos por cada fase
         scoredMatches: r.scoredMatches,
@@ -1119,6 +1121,47 @@ poolsRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
     ok: true,
     message: "Member kicked successfully"
   });
+});
+
+// POST /pools/:poolId/leave — Player voluntarily leaves a pool
+// Hosts and Corporate Hosts cannot leave their own pools.
+// The member keeps accumulated points but can no longer submit predictions.
+poolsRouter.post("/:poolId/leave", async (req, res) => {
+  const { poolId } = req.params;
+  const userId = req.auth!.userId;
+
+  // Find active membership
+  const member = await prisma.poolMember.findFirst({
+    where: { poolId, userId, status: "ACTIVE" },
+  });
+  if (!member) {
+    return res.status(404).json({ error: "NOT_FOUND", message: "Not an active member of this pool" });
+  }
+
+  // Hosts and corporate hosts cannot leave
+  if (member.role === "HOST" || member.role === "CORPORATE_HOST") {
+    return res.status(403).json({ error: "HOST_CANNOT_LEAVE", message: "Hosts cannot leave their own pool" });
+  }
+
+  // Set status to LEFT
+  await prisma.poolMember.update({
+    where: { id: member.id },
+    data: { status: "LEFT", leftAtUtc: new Date() },
+  });
+
+  // Audit
+  await writeAuditEvent({
+    actorUserId: userId,
+    action: "MEMBER_LEFT",
+    entityType: "PoolMember",
+    entityId: member.id,
+    poolId,
+    dataJson: { reason: "Voluntary leave" },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({ ok: true, message: "Left pool successfully" });
 });
 
 const banMemberSchema = z.object({
