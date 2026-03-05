@@ -11,10 +11,6 @@ Create free football prediction pools and compete with friends, family, or cowor
 
 Known as **quiniela** in Mexico, **polla futbolera** in Colombia, **prode** in Argentina, **penca** in Uruguay, and **porra** in Spain.
 
-![Landing Page](docs/images/landing.png)
-
-![Pool Page — Matches & Predictions](docs/images/pool.png)
-
 ## Features
 
 - **Create pools** — Set up your own prediction pool with custom scoring rules and deadlines
@@ -25,7 +21,8 @@ Known as **quiniela** in Mexico, **polla futbolera** in Colombia, **prode** in A
 - **Multi-language** — Available in Spanish, English, and Portuguese
 - **Google Sign-In** — One-click login with your Google account
 - **Smart Sync** — Automatic score updates from live football data
-- **100% free** — No real money, no gambling, just fun
+- **Corporate pools** — Enterprise self-service for company-wide prediction pools
+- **100% free** — Up to 20 participants per pool at no cost
 
 ## Tech Stack
 

@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
-# Quiniela Platform
+# Picks4All
 
-> **Version:** 0.5.0 (i18n + SEO + Repo Cleanup)
+> **Version:** 0.6.0 (Corporate Self-Service MVP)
 > **Last Updated:** 2026-03-01
 > **Status:** Live at picks4all.com
 > **Document Owner:** Product Team

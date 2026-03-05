@@ -1,5 +1,5 @@
 # Data Model Specification
-# Quiniela Platform
+# Picks4All
 
 > **Version:** 2.1
 > **Last Updated:** 2026-03-01
@@ -11,7 +11,7 @@
 
 ## 1. Overview
 
-This document defines the complete data model for the Quiniela Platform, including:
+This document defines the complete data model for Picks4All, including:
 - Entity schemas
 - Relationships & cardinality
 - Constraints & indexes

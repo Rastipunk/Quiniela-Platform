@@ -1,7 +1,7 @@
 # Technical Architecture
-# Quiniela Platform (Picks4All)
+# Picks4All
 
-> **Version:** 2.0 (v0.3-beta implementation)
+> **Version:** 2.1 (v0.6.0 — Corporate Self-Service MVP)
 > **Last Updated:** 2026-02-22
 > **Status:** Production (Railway)
 > **Domain:** picks4all.com | api.picks4all.com

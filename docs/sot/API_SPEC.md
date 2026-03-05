@@ -1,5 +1,5 @@
 # API Specification
-# Quiniela Platform
+# Picks4All
 
 > **Version:** 2.1 (v0.6.0 — Corporate Self-Service MVP)
 > **Last Updated:** 2026-03-01
@@ -48,7 +48,7 @@ Authorization: Bearer <jwt-token>
 **Token Details:**
 - **Algorithm:** HS256 (HMAC SHA-256)
 - **Expiry:** 4 hours from issuance
-- **Issuer:** Quiniela Platform
+- **Issuer:** Picks4All
 - **Payload:**
   ```json
   {

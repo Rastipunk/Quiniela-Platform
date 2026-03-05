@@ -1,4 +1,4 @@
-# Current State - Quiniela Platform
+# Current State - Picks4All
 
 > **Ultima actualizacion:** 2026-03-01 | **Version:** v0.6.0 (Corporate Self-Service MVP)
 
@@ -367,7 +367,7 @@ frontend-next/
     lib/             # api.ts, auth.ts, timezone.ts
     hooks/           # useIsMobile, useAuth, usePoolNotifications
     data/            # Static data (teamFlags)
-    middleware.ts    # www → non-www redirect
+    proxy.ts        # www → non-www redirect + locale routing
 ```
 
 > **Nota:** El frontend antiguo (`/frontend` — Vite SPA) fue eliminado en v0.5.0. El servicio "Frontend" antiguo en Railway debería eliminarse.

@@ -16,7 +16,7 @@ Esta guía explica cómo configurar Google OAuth para permitir que los usuarios 
 1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
 2. Haz clic en el selector de proyectos (parte superior izquierda)
 3. Haz clic en **"Nuevo proyecto"**
-4. Nombre sugerido: `Quiniela Platform` (o el que prefieras)
+4. Nombre sugerido: `Picks4All` (o el que prefieras)
 5. Haz clic en **"Crear"**
 6. Espera a que se cree el proyecto y selecciónalo
 
@@ -38,7 +38,7 @@ Esta guía explica cómo configurar Google OAuth para permitir que los usuarios 
 #### 3.1. Información de la App
 
 Completa los campos obligatorios:
-- **Nombre de la aplicación:** `Quiniela Platform`
+- **Nombre de la aplicación:** `Picks4All`
 - **Correo de asistencia al usuario:** Tu email de Gmail
 - **Logo de la aplicación:** (Opcional) Puedes subirlo después
 - **Correo electrónico del desarrollador:** Tu email de Gmail
@@ -78,15 +78,15 @@ Revisa la información y haz clic en **"Volver al panel"**
 #### 4.1. Configurar el Cliente OAuth
 
 1. **Tipo de aplicación:** Selecciona **"Aplicación web"**
-2. **Nombre:** `Quiniela Web Client` (o el que prefieras)
+2. **Nombre:** `Picks4All Web Client` (o el que prefieras)
 
 3. **Orígenes de JavaScript autorizados:**
-   - Para desarrollo local: `http://localhost:5173`
-   - Para producción: `https://tudominio.com`
+   - Para desarrollo local: `http://localhost:3000`
+   - Para producción: `https://picks4all.com`
 
 4. **URIs de redirección autorizados:**
-   - Para desarrollo: `http://localhost:5173`
-   - Para producción: `https://tudominio.com`
+   - Para desarrollo: `http://localhost:3000`
+   - Para producción: `https://picks4all.com`
 
    > **Nota:** Google Sign In no requiere URIs de redirección específicos como `/callback`, solo el origen.
 
@@ -119,15 +119,15 @@ GOOGLE_CLIENT_ID=123456789-abc123def456.apps.googleusercontent.com
 
 ### Frontend (.env)
 
-Crea o actualiza `frontend/.env`:
+Crea o actualiza `frontend-next/.env.local`:
 
 ```env
-VITE_GOOGLE_CLIENT_ID=TU_CLIENT_ID_AQUI.apps.googleusercontent.com
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=TU_CLIENT_ID_AQUI.apps.googleusercontent.com
 ```
 
 **Ejemplo:**
 ```env
-VITE_GOOGLE_CLIENT_ID=123456789-abc123def456.apps.googleusercontent.com
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=123456789-abc123def456.apps.googleusercontent.com
 ```
 
 > **IMPORTANTE:** El mismo Client ID se usa en backend y frontend.
@@ -153,11 +153,11 @@ Deberías ver en los logs que **NO** aparece el warning:
 
 Reinicia el servidor frontend:
 ```bash
-cd frontend
+cd frontend-next
 npm run dev
 ```
 
-Ve a `http://localhost:5173` y deberías ver:
+Ve a `http://localhost:3000` y deberías ver:
 - El formulario de login normal
 - Una línea divisoria que dice "o continúa con"
 - El **botón de Google Sign In** (azul con el logo de Google)
@@ -212,7 +212,7 @@ Para MVP, quédate en modo "Externo" con usuarios de prueba.
 **Solución:**
 1. Ve a Google Cloud Console → Credenciales
 2. Edita tu OAuth 2.0 Client ID
-3. Agrega `http://localhost:5173` a "Orígenes de JavaScript autorizados"
+3. Agrega `http://localhost:3000` a "Orígenes de JavaScript autorizados"
 4. Guarda y espera 5 minutos para que se propague
 
 ### Error: "redirect_uri_mismatch"
@@ -226,7 +226,7 @@ Para MVP, quédate en modo "Externo" con usuarios de prueba.
 ### Botón de Google no aparece
 
 **Verifica:**
-1. Que `VITE_GOOGLE_CLIENT_ID` esté en `frontend/.env`
+1. Que `NEXT_PUBLIC_GOOGLE_CLIENT_ID` esté en `frontend-next/.env.local`
 2. Que reiniciaste el servidor frontend (`npm run dev`)
 3. Que el script de Google esté cargado (abre DevTools → Network → busca `gsi/client`)
 4. Revisa la consola del navegador por errores
@@ -239,6 +239,23 @@ Para MVP, quédate en modo "Externo" con usuarios de prueba.
 - Usa el navegador en modo normal (no incógnito)
 - Habilita cookies de terceros (temporalmente para pruebas)
 - En producción, configura dominios apropiados
+
+### Google Sign In no funciona en Safari / navegadores con FedCM
+
+**Causa:** FedCM (Federated Credential Management) no es compatible con todos los navegadores, especialmente Safari.
+
+**Solución:**
+Al inicializar Google Sign In, deshabilita FedCM con el parámetro `use_fedcm_for_prompt: false`:
+
+```javascript
+google.accounts.id.initialize({
+  client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  callback: handleCredentialResponse,
+  use_fedcm_for_prompt: false, // Requerido para compatibilidad con Safari
+});
+```
+
+> **Nota:** Sin esta opción, Google Sign In puede fallar silenciosamente en Safari y otros navegadores que no soportan FedCM.
 
 ---
 

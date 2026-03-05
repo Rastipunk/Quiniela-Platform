@@ -1,5 +1,5 @@
 # Architectural Decision Log (ADL)
-# Quiniela Platform
+# Picks4All
 
 > **Purpose:** Record all significant architectural, technical, and product decisions with context and rationale.
 >
@@ -97,6 +97,12 @@ How to implement this decision (if applicable)
 | [029](#adr-029-internal-notification-system-badges) | Internal Notification System (Badges) | Accepted | 2026-01-18 |
 | [030](#adr-030-slide-in-auth-panel) | Slide-in Auth Panel | Accepted | 2026-02-01 |
 | [031](#adr-031-automatic-results-via-api-football) | Automatic Results via API-Football | Accepted | 2026-02-04 |
+| [032](#adr-032-smart-sync---optimized-api-polling-strategy) | Smart Sync - Optimized API Polling Strategy | Accepted | 2026-02-04 |
+| [033](#adr-033-nextjs-migration-ssr--seo) | Next.js Migration (SSR + SEO) | Accepted | 2026-02-13 |
+| [034](#adr-034-cloudflare-email-routing-for-incoming-email) | Cloudflare Email Routing for Incoming Email | Accepted | 2026-03-01 |
+| [035](#adr-035-corporate-pool-feature--self-service-mvp) | Corporate Pool Feature — Self-Service MVP | Accepted | 2026-03-01 |
+| [036](#adr-036-lemon-squeezy-as-merchant-of-record) | Lemon Squeezy as Merchant of Record | Accepted | 2026-03-01 |
+| [037](#adr-037-resend-domain-verification-for-production-email) | Resend Domain Verification for Production Email | Accepted | 2026-03-01 |
 
 ---
 
@@ -1352,7 +1358,7 @@ Implement a **Read/Edit Mode Pattern** for both Picks and Results with the follo
 - `ResultEditor` - Input fields + reason field
 
 **File Modified:**
-- `frontend/src/pages/PoolPage.tsx` (~807 lines)
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx`
 
 **Key UX Patterns:**
 ```tsx
@@ -1468,7 +1474,7 @@ ALTER TABLE "PoolMatchResultVersion"
 - `backend/prisma/schema.prisma` - Added fields
 - `backend/src/routes/results.ts` - Accept penalties in request body
 - `backend/src/services/instanceAdvancement.ts` - Use penalties for winner determination
-- `frontend/src/pages/PoolPage.tsx` - Penalty input UI for draws
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx` - Penalty input UI for draws
 
 **Migration:**
 - `20260104161019_add_penalties_and_locked_phases`
@@ -1577,7 +1583,7 @@ ALTER TABLE "Pool" ADD COLUMN "autoAdvanceEnabled" BOOLEAN NOT NULL DEFAULT true
 **Files Modified:**
 - `backend/src/routes/results.ts` - Auto-advance after result publish
 - `backend/src/routes/pools.ts` - Manual advance endpoint + settings toggle
-- `frontend/src/pages/PoolPage.tsx` - Toggle UI in admin panel
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx` - Toggle UI in admin panel
 
 ### Related Decisions
 
@@ -1688,7 +1694,7 @@ POST /pools/:poolId/lock-phase
 - `backend/prisma/schema.prisma` - Added `lockedPhases` JSONB column
 - `backend/src/routes/pools.ts` - Lock/unlock endpoint
 - `backend/src/services/instanceAdvancement.ts` - Check locks before advancing
-- `frontend/src/pages/PoolPage.tsx` - Lock/unlock buttons in admin panel
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx` - Lock/unlock buttons in admin panel
 
 **UI Components:**
 ```tsx
@@ -2639,7 +2645,7 @@ authRouter.post("/google", async (req, res) => {
 });
 ```
 
-**Frontend ([LoginPage.tsx](../../frontend/src/pages/LoginPage.tsx)):**
+**Frontend ([login/page.tsx](../../frontend-next/src/app/[locale]/login/page.tsx)):**
 ```tsx
 // Load Google Identity Services SDK in index.html
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2812,9 +2818,9 @@ function isCumulativeScoring(config: PhasePickConfig): boolean {
 - `backend/src/lib/scoringBreakdown.ts` - Generación de breakdown
 
 **Frontend Files:**
-- `frontend/src/components/PoolConfigWizard.tsx` - Preset cards
-- `frontend/src/components/PickRulesDisplay.tsx` - Explicación por modo
-- `frontend/src/components/PlayerSummary.tsx` - Breakdown visual
+- `frontend-next/src/components/PoolConfigWizard.tsx` - Preset cards
+- `frontend-next/src/components/PickRulesDisplay.tsx` - Explicación por modo
+- `frontend-next/src/components/PlayerSummary.tsx` - Breakdown visual
 
 **Key Algorithm:**
 ```typescript
@@ -3097,12 +3103,12 @@ Implementar un **Slide-in Auth Panel** que desliza desde la derecha con las sigu
 ### Implementation
 
 **Componentes creados:**
-- `frontend/src/components/AuthSlidePanel.tsx` - Panel principal con toda la lógica
+- `frontend-next/src/components/AuthSlidePanel.tsx` - Panel principal con toda la lógica
 
 **Componentes modificados:**
-- `frontend/src/components/PublicNavbar.tsx` - Botón "Ingresar" abre panel
-- `frontend/src/components/PublicLayout.tsx` - Maneja estado del panel
-- `frontend/src/App.tsx` - Pasa `onLoggedIn` callback
+- `frontend-next/src/components/PublicNavbar.tsx` - Botón "Ingresar" abre panel
+- `frontend-next/src/components/PublicLayout.tsx` - Maneja estado del panel
+- `frontend-next/src/app/[locale]/layout.tsx` - Root layout con auth state
 
 **CSS Animations:**
 ```css

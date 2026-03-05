@@ -11,7 +11,57 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 ### Pendiente
 - PWA completo (offline mode, push notifications)
 - Chat del pool
-- Session Management (Remember Me)
+- Payment integration (Lemon Squeezy)
+- WC 2026 template preparation
+
+---
+
+## [0.6.0] - 2026-03-01
+
+### Corporate Self-Service MVP + Leave Pool + Pricing
+
+#### Added
+- **Corporate Self-Service System**
+  - Organization model with inquiry → approval → pool creation flow
+  - Corporate pool creation wizard (6-step guided flow at `/empresas/crear`)
+  - Enterprise landing page (`/empresas`) with feature showcase
+  - Employee management: CSV upload, individual invites, bulk operations
+  - Token-based employee activation flow (`/activar`) with 30-day expiry
+  - `CORPORATE_HOST` role with dedicated permissions
+  - Corporate invitation emails + inquiry confirmation emails
+  - Admin corporate management endpoints
+
+- **Leave Pool Feature**
+  - `POST /pools/:poolId/leave` — players voluntarily leave pools
+  - Hosts/Corporate hosts cannot leave their own pools
+  - LEFT members keep points, appear as "Retirado" in leaderboard
+  - LEFT members get read-only access (can view but not make picks)
+  - Dashboard tabs: "En curso" (active) and "Finalizadas" (finished)
+  - Confirmation modal with irreversibility warning
+  - Badge "Retirado" on leaderboard (desktop + mobile)
+
+- **Pricing Section**
+  - `/precios` page with feature comparison
+  - Pricing cards on landing page
+  - Free tier (up to 20 participants) + paid tiers
+
+- **Locale-Aware Emails**
+  - Footer, FAQ links, legal links change based on user locale
+  - Admin notification system (`sendAdminNotification`)
+  - Corporate activation + inquiry confirmation templates
+
+#### Changed
+- Dashboard pool cards show pool status badges (DRAFT, ACTIVE, COMPLETED, ARCHIVED)
+- `GET /me/pools` now includes LEFT members (for Finalizadas tab)
+- `GET /pools/:poolId/overview` includes LEFT members in leaderboard with `memberStatus`
+- NavBar includes "Empresas" link for corporate access
+- Pool page back link changed from "Dashboard" to "← Mis Pools" with styled pill
+
+#### Technical
+- New models: Organization, OrganizationInquiry, CorporateInvite
+- New routes: `corporate.ts`, `adminCorporate.ts`
+- New components: CorporatePoolCreation, EnterpriseLandingContent, ActivationContent
+- AuthPanelContext extended with `redirectTo` parameter
 
 ---
 
