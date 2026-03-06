@@ -124,18 +124,22 @@ export default async function LocaleLayout({
           {children}
         </NextIntlClientProvider>
         {/* Google Analytics (GA4) — lazyOnload: analytics can wait for idle time */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-8JG2YTDLPH"
-          strategy="lazyOnload"
-        />
-        <Script id="google-analytics" strategy="lazyOnload">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-8JG2YTDLPH');
-          `}
-        </Script>
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
+              strategy="lazyOnload"
+            />
+            <Script id="google-analytics" strategy="lazyOnload">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
+              `}
+            </Script>
+          </>
+        )}
         {/* Google Identity Services — lazyOnload: only needed on login page */}
         <Script
           src="https://accounts.google.com/gsi/client"

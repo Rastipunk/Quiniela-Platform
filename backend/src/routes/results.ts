@@ -312,7 +312,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
         });
 
         await Promise.allSettled(emailPromises);
-        console.log(`📧 Result notification emails sent for pool ${poolId}, match ${matchId}`);
+        // Email notifications sent successfully
       } catch (emailError) {
         console.error("Error sending result notification emails:", emailError);
       }
@@ -480,7 +480,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
 
   const members = await prisma.poolMember.findMany({
     where: { poolId, status: "ACTIVE" },
-    include: { user: true },
+    include: { user: { select: { id: true, email: true, username: true, displayName: true } } },
     orderBy: { joinedAtUtc: "asc" },
   });
 

@@ -52,7 +52,7 @@ adminCorporateRouter.patch("/inquiries/:id", async (req, res) => {
 
   const inquiry = await prisma.organizationInquiry.findUnique({ where: { id } });
   if (!inquiry) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Inquiry no encontrada" });
+    return res.status(404).json({ error: "NOT_FOUND" });
   }
 
   const updated = await prisma.organizationInquiry.update({
@@ -62,7 +62,7 @@ adminCorporateRouter.patch("/inquiries/:id", async (req, res) => {
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
-    action: "corporate.inquiry.responded",
+    action: "CORPORATE_INQUIRY_RESPONDED",
     entityType: "OrganizationInquiry",
     entityId: id,
     ip: req.ip,
@@ -121,7 +121,7 @@ adminCorporateRouter.post("/organizations", async (req, res) => {
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
-    action: "corporate.organization.created",
+    action: "CORPORATE_ORGANIZATION_CREATED",
     entityType: "Organization",
     entityId: org.id,
     dataJson: { name: org.name, inquiryId },
@@ -182,7 +182,7 @@ adminCorporateRouter.patch("/organizations/:id", async (req, res) => {
 
   const org = await prisma.organization.findUnique({ where: { id } });
   if (!org) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Organización no encontrada" });
+    return res.status(404).json({ error: "NOT_FOUND" });
   }
 
   const parsed = updateOrgSchema.safeParse(req.body);
@@ -197,7 +197,7 @@ adminCorporateRouter.patch("/organizations/:id", async (req, res) => {
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
-    action: "corporate.organization.updated",
+    action: "CORPORATE_ORGANIZATION_UPDATED",
     entityType: "Organization",
     entityId: id,
     dataJson: parsed.data,
@@ -225,7 +225,7 @@ adminCorporateRouter.post("/organizations/:orgId/pools", async (req, res) => {
 
   const org = await prisma.organization.findUnique({ where: { id: orgId } });
   if (!org) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Organización no encontrada" });
+    return res.status(404).json({ error: "NOT_FOUND" });
   }
 
   const parsed = createPoolSchema.safeParse(req.body);
@@ -241,7 +241,7 @@ adminCorporateRouter.post("/organizations/:orgId/pools", async (req, res) => {
     select: { id: true, dataJson: true },
   });
   if (!instance) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Tournament instance no encontrada" });
+    return res.status(404).json({ error: "NOT_FOUND" });
   }
 
   const pool = await prisma.pool.create({
@@ -269,7 +269,7 @@ adminCorporateRouter.post("/organizations/:orgId/pools", async (req, res) => {
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
-    action: "corporate.pool.created",
+    action: "CORPORATE_POOL_CREATED",
     entityType: "Pool",
     entityId: pool.id,
     poolId: pool.id,
@@ -303,7 +303,7 @@ adminCorporateRouter.post("/bulk-create-users", async (req, res) => {
   if (poolId) {
     const pool = await prisma.pool.findUnique({ where: { id: poolId }, select: { id: true } });
     if (!pool) {
-      return res.status(404).json({ error: "NOT_FOUND", message: "Pool no encontrada" });
+      return res.status(404).json({ error: "NOT_FOUND" });
     }
   }
 
@@ -381,7 +381,7 @@ adminCorporateRouter.post("/bulk-create-users", async (req, res) => {
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
-    action: "corporate.bulk_users.created",
+    action: "CORPORATE_BULK_USERS_CREATED",
     entityType: "User",
     dataJson: {
       emailCount: emails.length,

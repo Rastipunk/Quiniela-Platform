@@ -32,7 +32,7 @@ async function requireCorporateHost(userId: string, poolId: string) {
 const inquiryLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: { error: "RATE_LIMITED", message: "Demasiados envíos. Intenta en unos minutos." },
+  message: { error: "RATE_LIMITED" },
 });
 
 const inquirySchema = z.object({
@@ -130,9 +130,9 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
 
   // Verificar que la instancia existe
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: tournamentInstanceId } });
-  if (!instance) return res.status(404).json({ error: "NOT_FOUND", message: "Tournament instance no encontrada" });
+  if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
   if (instance.status === "ARCHIVED") {
-    return res.status(409).json({ error: "CONFLICT", message: "No se puede crear pool sobre instancia archivada" });
+    return res.status(409).json({ error: "INSTANCE_ARCHIVED" });
   }
 
   // Procesar pickTypesConfig (misma lógica que pools.ts)
@@ -244,7 +244,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
-    action: "corporate.pool.created",
+    action: "CORPORATE_POOL_CREATED",
     entityType: "Pool",
     entityId: result.pool.id,
     poolId: result.pool.id,
@@ -273,7 +273,7 @@ corporateRouter.post("/pools/:poolId/employees", requireAuth, async (req, res) =
   const poolId = req.params.poolId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el Corporate Host puede gestionar empleados" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
   }
 
   const parsed = addEmployeesSchema.safeParse(req.body);
@@ -324,7 +324,7 @@ corporateRouter.get("/pools/:poolId/employees", requireAuth, async (req, res) =>
   const poolId = req.params.poolId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el Corporate Host puede ver empleados" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
   }
 
   const invites = await prisma.corporateInvite.findMany({
@@ -359,7 +359,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
   const poolId = req.params.poolId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el Corporate Host puede enviar invitaciones" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
   }
 
   // Obtener pool y org para datos del email
@@ -379,7 +379,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
   });
 
   if (pendingInvites.length === 0) {
-    return res.json({ success: true, sent: 0, activated: 0, failed: 0, message: "No hay invitaciones pendientes" });
+    return res.json({ success: true, sent: 0, activated: 0, failed: 0 });
   }
 
   let sent = 0;
@@ -461,7 +461,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
-    action: "corporate.invitations.sent",
+    action: "CORPORATE_INVITATIONS_SENT",
     entityType: "Pool",
     entityId: poolId,
     poolId,
@@ -494,7 +494,7 @@ corporateRouter.delete("/pools/:poolId/employees/:inviteId", requireAuth, async 
   const inviteId = req.params.inviteId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el Corporate Host puede eliminar empleados" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
   }
 
   const invite = await prisma.corporateInvite.findUnique({ where: { id: inviteId } });
@@ -503,7 +503,7 @@ corporateRouter.delete("/pools/:poolId/employees/:inviteId", requireAuth, async 
   }
 
   if (invite.status === "ACTIVATED") {
-    return res.status(409).json({ error: "CONFLICT", message: "No se puede eliminar un empleado ya activado" });
+    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
   }
 
   await prisma.corporateInvite.delete({ where: { id: inviteId } });

@@ -53,7 +53,6 @@ router.get("/documents/:type", async (req: Request, res: Response) => {
     if (!documentType) {
       return res.status(400).json({
         error: "INVALID_TYPE",
-        message: "Tipo de documento inválido. Use 'terms', 'privacy', 'TERMS_OF_SERVICE' o 'PRIVACY_POLICY'.",
       });
     }
 
@@ -227,7 +226,7 @@ router.post(
       if (!acceptTerms && !acceptPrivacy && acceptAge === undefined) {
         return res.status(400).json({
           error: "VALIDATION_ERROR",
-          message: "Debe especificar qué documentos acepta.",
+          reason: "NO_DOCUMENTS_SPECIFIED",
         });
       }
 

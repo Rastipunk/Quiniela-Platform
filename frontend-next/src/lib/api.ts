@@ -46,7 +46,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
 
   if (!res.ok) {
     const msg =
-      (data && typeof data === "object" && (data.message || data.error)) ||
+      (data && typeof data === "object" && (data.error || data.message)) ||
       (typeof data === "string" && data) ||
       `HTTP ${res.status}`;
 

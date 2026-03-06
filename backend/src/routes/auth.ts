@@ -10,14 +10,9 @@ import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail, sendPo
 import { requireAuth } from "../middleware/requireAuth";
 import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "../services/poolStateMachine";
+import { CURRENT_LEGAL_VERSIONS } from "./legal";
 
 export const authRouter = Router();
-
-// Versiones actuales de documentos legales (importadas desde legal.ts)
-const CURRENT_LEGAL_VERSIONS = {
-  TERMS_OF_SERVICE: "2026-01-25",
-  PRIVACY_POLICY: "2026-01-25",
-} as const;
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -55,28 +50,27 @@ authRouter.post("/register", async (req, res) => {
   if (!acceptTerms) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar los Términos de Servicio para crear una cuenta.",
+      reason: "TERMS_REQUIRED",
     });
   }
 
   if (!acceptPrivacy) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar la Política de Privacidad para crear una cuenta.",
+      reason: "PRIVACY_REQUIRED",
     });
   }
 
   if (!acceptAge) {
     return res.status(400).json({
       error: "AGE_VERIFICATION_REQUIRED",
-      message: "Debes confirmar que tienes al menos 13 años de edad.",
     });
   }
 
   // Validar username
   const usernameValidation = validateUsername(rawUsername);
   if (!usernameValidation.valid) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: usernameValidation.error });
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: usernameValidation.error });
   }
 
   const username = normalizeUsername(rawUsername);
@@ -84,13 +78,13 @@ authRouter.post("/register", async (req, res) => {
   // Verificar email único
   const existingEmail = await prisma.user.findUnique({ where: { email } });
   if (existingEmail) {
-    return res.status(409).json({ error: "CONFLICT", message: "Email already exists" });
+    return res.status(409).json({ error: "EMAIL_TAKEN" });
   }
 
   // Verificar username único
   const existingUsername = await prisma.user.findUnique({ where: { username } });
   if (existingUsername) {
-    return res.status(409).json({ error: "CONFLICT", message: "Username already exists" });
+    return res.status(409).json({ error: "USERNAME_TAKEN" });
   }
 
   const passwordHash = await hashPassword(password);
@@ -160,7 +154,6 @@ authRouter.post("/register", async (req, res) => {
     token,
     user,
     emailVerificationSent: true,
-    message: "Te hemos enviado un email de verificación. Por favor revisa tu bandeja de entrada."
   });
 });
 
@@ -231,7 +224,7 @@ authRouter.post("/forgot-password", async (req, res) => {
 
   // Por seguridad, siempre retornamos éxito (no revelamos si el email existe)
   if (!user || user.status !== "ACTIVE") {
-    return res.json({ message: "Si el email existe, recibirás un enlace para restablecer tu contraseña" });
+    return res.json({ ok: true });
   }
 
   // Verificar si es cuenta de Google sin contraseña local
@@ -244,7 +237,6 @@ authRouter.post("/forgot-password", async (req, res) => {
     // y las cuentas de Google ya son "públicas" por naturaleza
     return res.status(400).json({
       error: "GOOGLE_ACCOUNT",
-      message: "Esta cuenta utiliza Google para iniciar sesión. Por favor, usa el botón 'Iniciar con Google' en la página de login.",
     });
   }
 
@@ -282,7 +274,7 @@ authRouter.post("/forgot-password", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ message: "Si el email existe, recibirás un enlace para restablecer tu contraseña" });
+  return res.json({ ok: true });
 });
 
 // ========== RESET PASSWORD ==========
@@ -310,7 +302,7 @@ authRouter.post("/reset-password", async (req, res) => {
   });
 
   if (!user) {
-    return res.status(400).json({ error: "INVALID_TOKEN", message: "Token inválido o expirado" });
+    return res.status(400).json({ error: "INVALID_TOKEN" });
   }
 
   // Hash nueva password
@@ -335,7 +327,7 @@ authRouter.post("/reset-password", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ message: "Contraseña actualizada exitosamente" });
+  return res.json({ ok: true });
 });
 
 // ========== GOOGLE OAUTH ==========
@@ -362,7 +354,7 @@ authRouter.post("/google", async (req, res) => {
   const googleUser = await verifyGoogleToken(idToken);
 
   if (!googleUser) {
-    return res.status(401).json({ error: "INVALID_TOKEN", message: "Token de Google inválido" });
+    return res.status(401).json({ error: "INVALID_TOKEN" });
   }
 
   // Normalize Google email for consistent matching
@@ -388,7 +380,7 @@ authRouter.post("/google", async (req, res) => {
   if (user) {
     // Verificar que esté activo
     if (user.status !== "ACTIVE") {
-      return res.status(403).json({ error: "FORBIDDEN", message: "User account is not active" });
+      return res.status(403).json({ error: "ACCOUNT_INACTIVE" });
     }
 
     // Si existe por email pero no tiene googleId, vincular cuenta
@@ -447,7 +439,7 @@ authRouter.post("/google", async (req, res) => {
   if (!acceptTerms) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar los Términos de Servicio para crear una cuenta.",
+      reason: "TERMS_REQUIRED",
       requiresConsent: true,
     });
   }
@@ -455,7 +447,7 @@ authRouter.post("/google", async (req, res) => {
   if (!acceptPrivacy) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar la Política de Privacidad para crear una cuenta.",
+      reason: "PRIVACY_REQUIRED",
       requiresConsent: true,
     });
   }
@@ -463,7 +455,6 @@ authRouter.post("/google", async (req, res) => {
   if (!acceptAge) {
     return res.status(400).json({
       error: "AGE_VERIFICATION_REQUIRED",
-      message: "Debes confirmar que tienes al menos 13 años de edad.",
       requiresConsent: true,
     });
   }
@@ -571,7 +562,7 @@ const verifyEmailSchema = z.object({
 authRouter.get("/verify-email", async (req, res) => {
   const parsed = verifyEmailSchema.safeParse(req.query);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Token requerido" });
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "TOKEN_REQUIRED" });
   }
 
   const { token } = parsed.data;
@@ -587,15 +578,13 @@ authRouter.get("/verify-email", async (req, res) => {
   if (!user) {
     return res.status(400).json({
       error: "INVALID_TOKEN",
-      message: "El enlace de verificación es inválido o ha expirado. Solicita un nuevo enlace desde tu perfil."
     });
   }
 
   // Ya está verificado
   if (user.emailVerified) {
     return res.json({
-      message: "Tu email ya estaba verificado.",
-      alreadyVerified: true
+      alreadyVerified: true,
     });
   }
 
@@ -619,8 +608,7 @@ authRouter.get("/verify-email", async (req, res) => {
   });
 
   return res.json({
-    message: "¡Email verificado exitosamente! Ya puedes disfrutar de todas las funciones.",
-    verified: true
+    verified: true,
   });
 });
 
@@ -706,15 +694,15 @@ authRouter.post("/activate-corporate", async (req, res) => {
   });
 
   if (!invite) {
-    return res.status(400).json({ error: "INVALID_TOKEN", message: "Token de activación inválido." });
+    return res.status(400).json({ error: "INVALID_TOKEN" });
   }
 
   if (invite.activationTokenExpiresAt < new Date()) {
-    return res.status(400).json({ error: "TOKEN_EXPIRED", message: "El enlace de activación ha expirado. Contacta al administrador de tu empresa." });
+    return res.status(400).json({ error: "TOKEN_EXPIRED" });
   }
 
   if (invite.status === "ACTIVATED") {
-    return res.status(409).json({ error: "ALREADY_ACTIVATED", message: "Esta invitación ya fue activada." });
+    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
   }
 
   // Verificar si ya existe un usuario con ese email
@@ -745,7 +733,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
       });
     }).catch((err) => {
       if (err.message === "POOL_FULL") {
-        return res.status(409).json({ error: "POOL_FULL", message: "Este pool ha alcanzado su capacidad máxima." });
+        return res.status(409).json({ error: "POOL_FULL" });
       }
       throw err;
     });
@@ -797,16 +785,16 @@ authRouter.post("/activate-corporate", async (req, res) => {
 
   // Nuevo usuario: campos de registro son obligatorios
   if (!displayName || !rawUsername || !password) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: "displayName, username y password son requeridos para nuevos usuarios." });
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "MISSING_REQUIRED_FIELDS" });
   }
   if (!acceptTerms || !acceptPrivacy || !acceptAge) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Debes aceptar los términos, la privacidad y confirmar tu edad." });
+    return res.status(400).json({ error: "CONSENT_REQUIRED" });
   }
 
   // Validar username
   const usernameValidation = validateUsername(rawUsername);
   if (!usernameValidation.valid) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: usernameValidation.error });
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: usernameValidation.error });
   }
 
   const username = normalizeUsername(rawUsername);
@@ -814,7 +802,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
   // Verificar username único
   const existingUsername = await prisma.user.findUnique({ where: { username } });
   if (existingUsername) {
-    return res.status(409).json({ error: "CONFLICT", message: "Ese nombre de usuario ya está en uso. Elige otro." });
+    return res.status(409).json({ error: "USERNAME_TAKEN" });
   }
 
   // Crear usuario y asignar al pool en transacción
@@ -874,7 +862,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
   });
   } catch (err: any) {
     if (err.message === "POOL_FULL") {
-      return res.status(409).json({ error: "POOL_FULL", message: "Este pool ha alcanzado su capacidad máxima." });
+      return res.status(409).json({ error: "POOL_FULL" });
     }
     throw err;
   }
@@ -948,13 +936,12 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ error: "USER_NOT_FOUND", message: "Usuario no encontrado" });
+    return res.status(404).json({ error: "USER_NOT_FOUND" });
   }
 
   if (user.emailVerified) {
     return res.status(400).json({
       error: "ALREADY_VERIFIED",
-      message: "Tu email ya está verificado."
     });
   }
 
@@ -982,7 +969,6 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
     console.error("Error sending verification email:", emailResult.error);
     return res.status(500).json({
       error: "EMAIL_SEND_FAILED",
-      message: "No se pudo enviar el email de verificación. Intenta de nuevo más tarde."
     });
   }
 
@@ -995,7 +981,5 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({
-    message: "Email de verificación enviado. Revisa tu bandeja de entrada (y spam)."
-  });
+  return res.json({ ok: true });
 });

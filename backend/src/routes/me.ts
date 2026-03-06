@@ -153,7 +153,6 @@ meRouter.put("/email-preferences", async (req, res) => {
   if (!parseResult.success) {
     return res.status(400).json({
       error: "VALIDATION_ERROR",
-      message: "Datos inválidos.",
       details: parseResult.error.flatten().fieldErrors,
     });
   }

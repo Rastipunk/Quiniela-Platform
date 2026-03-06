@@ -48,3 +48,23 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ error: "UNAUTHENTICATED", reason: "INTERNAL_ERROR" });
   }
 }
+
+// Like requireAuth but does not fail if no token — sets req.auth if valid, otherwise proceeds anonymously
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  try {
+    const header = req.header("Authorization");
+    if (!header?.startsWith("Bearer ")) return next();
+
+    const token = header.slice("Bearer ".length).trim();
+    if (!token) return next();
+
+    const payload = verifyToken(token);
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (user?.status === "ACTIVE") {
+      req.auth = { userId: user.id, platformRole: user.platformRole };
+    }
+  } catch {
+    // Invalid token — proceed as anonymous
+  }
+  return next();
+}

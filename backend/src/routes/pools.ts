@@ -274,17 +274,17 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
 
   const now = new Date();
 
-  // 4) Mis picks
-  const myPredictions = await prisma.prediction.findMany({
-    where: { poolId, userId: req.auth!.userId, matchId: { in: matchIds } },
-  });
+  // 4+5) Mis picks y resultados en paralelo (queries independientes)
+  const [myPredictions, results] = await Promise.all([
+    prisma.prediction.findMany({
+      where: { poolId, userId: req.auth!.userId, matchId: { in: matchIds } },
+    }),
+    prisma.poolMatchResult.findMany({
+      where: { poolId, matchId: { in: matchIds } },
+      include: { currentVersion: true },
+    }),
+  ]);
   const myPickByMatchId = new Map(myPredictions.map((p) => [p.matchId, p.pickJson as any]));
-
-  // 5) Resultados actuales (currentVersion)
-  const results = await prisma.poolMatchResult.findMany({
-    where: { poolId, matchId: { in: matchIds } },
-    include: { currentVersion: true },
-  });
 
   const resultByMatchId = new Map<string, {
     homeGoals: number;
@@ -341,16 +341,17 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     };
   });
 
-  // 7) Leaderboard (incluye miembros LEFT para que conserven su posicion)
-  const members = await prisma.poolMember.findMany({
-    where: { poolId, status: { in: ["ACTIVE", "LEFT"] } },
-    include: { user: true },
-    orderBy: { joinedAtUtc: "asc" },
-  });
-
-  const allPredictions = await prisma.prediction.findMany({
-    where: { poolId, matchId: { in: matchIds } },
-  });
+  // 7) Leaderboard — members + allPredictions en paralelo
+  const [members, allPredictions] = await Promise.all([
+    prisma.poolMember.findMany({
+      where: { poolId, status: { in: ["ACTIVE", "LEFT"] } },
+      include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
+      orderBy: { joinedAtUtc: "asc" },
+    }),
+    prisma.prediction.findMany({
+      where: { poolId, matchId: { in: matchIds } },
+    }),
+  ]);
 
   const predsByUserMatch = new Map<string, Map<string, any>>();
   for (const p of allPredictions) {
@@ -359,10 +360,13 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     predsByUserMatch.set(p.userId, byMatch);
   }
 
-  // ✅ Cargar picks y resultados estructurales (Sprint 2 - Preset SIMPLE)
-  const allStructuralPicks = await prisma.structuralPrediction.findMany({
-    where: { poolId },
-  });
+  // ✅ Cargar picks y resultados estructurales en paralelo
+  const [allStructuralPicks, allGroupStandingsPicks, allStructuralResults, allGroupStandingsResults] = await Promise.all([
+    prisma.structuralPrediction.findMany({ where: { poolId } }),
+    prisma.groupStandingsPrediction.findMany({ where: { poolId } }),
+    prisma.structuralPhaseResult.findMany({ where: { poolId } }),
+    prisma.groupStandingsResult.findMany({ where: { poolId } }),
+  ]);
 
   const structuralPicksByUser = new Map<string, Array<{ phaseId: string; pickJson: any }>>();
   for (const sp of allStructuralPicks) {
@@ -370,11 +374,6 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     userPicks.push({ phaseId: sp.phaseId, pickJson: sp.pickJson as any });
     structuralPicksByUser.set(sp.userId, userPicks);
   }
-
-  // ✅ Cargar picks granulares de grupos (GroupStandingsPrediction)
-  const allGroupStandingsPicks = await prisma.groupStandingsPrediction.findMany({
-    where: { poolId },
-  });
 
   // Agrupar por usuario y fase, convertir al formato esperado por scoreUserStructuralPicks
   for (const gsp of allGroupStandingsPicks) {
@@ -398,21 +397,12 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     });
   }
 
-  const allStructuralResults = await prisma.structuralPhaseResult.findMany({
-    where: { poolId },
-  });
-
   const structuralResults = allStructuralResults.map((sr) => ({
     phaseId: sr.phaseId,
     resultJson: sr.resultJson as any,
   }));
 
-  // ✅ Cargar resultados granulares de grupos (GroupStandingsResult)
-  const allGroupStandingsResults = await prisma.groupStandingsResult.findMany({
-    where: { poolId },
-  });
-
-  // Agrupar por fase y convertir al formato esperado por el scoring
+  // Agrupar resultados de grupos por fase
   const groupResultsByPhase = new Map<string, any[]>();
   for (const gsr of allGroupStandingsResults) {
     const groups = groupResultsByPhase.get(gsr.phaseId) ?? [];
@@ -871,7 +861,7 @@ poolsRouter.get("/:poolId/members", async (req, res) => {
 
   const members = await prisma.poolMember.findMany({
     where: { poolId },
-    include: { user: true },
+    include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
     orderBy: { joinedAtUtc: "asc" },
   });
 
@@ -932,7 +922,7 @@ poolsRouter.post("/:poolId/members/:memberId/approve", async (req, res) => {
 
   const member = await prisma.poolMember.findUnique({
     where: { id: memberId },
-    include: { user: true }
+    include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } }
   });
 
   if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
@@ -995,7 +985,7 @@ poolsRouter.post("/:poolId/members/:memberId/reject", async (req, res) => {
 
   const member = await prisma.poolMember.findUnique({
     where: { id: memberId },
-    include: { user: true }
+    include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } }
   });
 
   if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
@@ -1385,7 +1375,6 @@ poolsRouter.post("/:poolId/send-invite-email", async (req, res) => {
     console.error("Error sending pool invitation email:", emailResult.error);
     return res.status(500).json({
       error: "EMAIL_SEND_FAILED",
-      message: "No se pudo enviar el email de invitación. Intenta de nuevo más tarde."
     });
   }
 
@@ -1507,13 +1496,11 @@ poolsRouter.post("/join", async (req, res) => {
     if (err.message === "BANNED_FROM_POOL") {
       return res.status(403).json({
         error: "BANNED_FROM_POOL",
-        message: "Has sido expulsado permanentemente de este pool y no puedes volver a unirte."
       });
     }
     if (err.message === "POOL_FULL") {
       return res.status(409).json({
         error: "POOL_FULL",
-        message: "Este pool ha alcanzado su capacidad máxima de participantes."
       });
     }
     throw err; // Re-throw if it's another error
@@ -1595,7 +1582,7 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
   });
 
   if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede avanzar fases manualmente" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
   }
 
   const parsed = advancePhaseSchema.safeParse(req.body);
@@ -1611,7 +1598,7 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Pool no encontrada" });
+    return res.status(404).json({ error: "NOT_FOUND" });
   }
 
   try {
@@ -1674,7 +1661,6 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
       if (!actualNextPhaseId) {
         return res.status(400).json({
           error: "INVALID_PHASE",
-          message: `No se puede determinar la siguiente fase después de ${currentPhaseId}`,
         });
       }
 
@@ -1738,7 +1724,7 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
   });
 
   if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede modificar configuraciones de la pool" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
   }
 
   const { autoAdvanceEnabled, requireApproval, extraTimePhases } = parsed.data;
@@ -1885,7 +1871,7 @@ poolsRouter.post("/:poolId/lock-phase", async (req, res) => {
   });
 
   if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede bloquear/desbloquear fases" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
   }
 
   const { phaseId, locked } = parsed.data;
@@ -1943,7 +1929,7 @@ poolsRouter.post("/:poolId/archive", async (req, res) => {
   });
 
   if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", message: "Solo el HOST puede archivar el pool" });
+    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
   }
 
   try {
@@ -1977,7 +1963,7 @@ poolsRouter.post("/:poolId/members/:memberId/promote", async (req, res) => {
   if (!actorMembership || actorMembership.role !== "HOST") {
     return res.status(403).json({
       error: "FORBIDDEN",
-      message: "Solo el HOST puede promover miembros a Co-Admin"
+      reason: "HOST_ONLY",
     });
   }
 
@@ -1988,20 +1974,18 @@ poolsRouter.post("/:poolId/members/:memberId/promote", async (req, res) => {
   });
 
   if (!targetMember || targetMember.poolId !== poolId) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Miembro no encontrado" });
+    return res.status(404).json({ error: "NOT_FOUND" });
   }
 
   if (targetMember.status !== "ACTIVE") {
     return res.status(409).json({
-      error: "CONFLICT",
-      message: "Solo se pueden promover miembros activos"
+      error: "MEMBER_NOT_ACTIVE",
     });
   }
 
   if (targetMember.role !== "PLAYER") {
     return res.status(409).json({
-      error: "CONFLICT",
-      message: "Solo se pueden promover PLAYERs a Co-Admin"
+      error: "INVALID_ROLE",
     });
   }
 
@@ -2009,7 +1993,7 @@ poolsRouter.post("/:poolId/members/:memberId/promote", async (req, res) => {
   const updated = await prisma.poolMember.update({
     where: { id: memberId },
     data: { role: "CO_ADMIN" },
-    include: { user: true },
+    include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
   });
 
   // Auditoría
@@ -2054,7 +2038,7 @@ poolsRouter.post("/:poolId/members/:memberId/demote", async (req, res) => {
   if (!actorMembership || actorMembership.role !== "HOST") {
     return res.status(403).json({
       error: "FORBIDDEN",
-      message: "Solo el HOST puede degradar Co-Admins"
+      reason: "HOST_ONLY",
     });
   }
 
@@ -2065,20 +2049,18 @@ poolsRouter.post("/:poolId/members/:memberId/demote", async (req, res) => {
   });
 
   if (!targetMember || targetMember.poolId !== poolId) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Miembro no encontrado" });
+    return res.status(404).json({ error: "NOT_FOUND" });
   }
 
   if (targetMember.status !== "ACTIVE") {
     return res.status(409).json({
-      error: "CONFLICT",
-      message: "Solo se pueden degradar miembros activos"
+      error: "MEMBER_NOT_ACTIVE",
     });
   }
 
   if (targetMember.role !== "CO_ADMIN") {
     return res.status(409).json({
-      error: "CONFLICT",
-      message: "Solo se pueden degradar Co-Admins"
+      error: "INVALID_ROLE",
     });
   }
 
@@ -2086,7 +2068,7 @@ poolsRouter.post("/:poolId/members/:memberId/demote", async (req, res) => {
   const updated = await prisma.poolMember.update({
     where: { id: memberId },
     data: { role: "PLAYER" },
-    include: { user: true },
+    include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
   });
 
   // Auditoría
@@ -2141,12 +2123,12 @@ poolsRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
     });
 
     if (!pool) {
-      return res.status(404).json({ error: "Pool no encontrada" });
+      return res.status(404).json({ error: "NOT_FOUND" });
     }
 
     // Verificar que el usuario es miembro
     if (pool.members.length === 0) {
-      return res.status(403).json({ error: "No eres miembro de esta pool" });
+      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
     }
 
     // Obtener datos del fixture
@@ -2155,13 +2137,13 @@ poolsRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
     const match = matches.find((m: any) => m.id === matchId);
 
     if (!match) {
-      return res.status(404).json({ error: "Partido no encontrado" });
+      return res.status(404).json({ error: "NOT_FOUND" });
     }
 
     // Obtener configuracion de la fase
     const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
     if (!pickTypesConfig) {
-      return res.status(400).json({ error: "Pool sin configuracion de picks" });
+      return res.status(400).json({ error: "NO_PICK_CONFIG" });
     }
 
     const phaseConfig = pickTypesConfig.find(p => p.phaseId === match.phaseId);
@@ -2262,18 +2244,18 @@ poolsRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
     });
 
     if (!pool) {
-      return res.status(404).json({ error: "Pool no encontrada" });
+      return res.status(404).json({ error: "NOT_FOUND" });
     }
 
     // Verificar que el usuario es miembro
     if (pool.members.length === 0) {
-      return res.status(403).json({ error: "No eres miembro de esta pool" });
+      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
     }
 
     // Obtener configuracion de la fase
     const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
     if (!pickTypesConfig) {
-      return res.status(400).json({ error: "Pool sin configuracion de picks" });
+      return res.status(400).json({ error: "NO_PICK_CONFIG" });
     }
 
     const phaseConfig = pickTypesConfig.find(p => p.phaseId === phaseId);
@@ -2367,10 +2349,6 @@ poolsRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
         });
       }
 
-      console.log(`[Breakdown] GROUP_STANDINGS - Found ${groupsInfo.length} groups`);
-      console.log(`[Breakdown] User pick:`, userPick?.pickJson);
-      console.log(`[Breakdown] Result:`, result?.resultJson);
-
       const breakdown = generateGroupStandingsBreakdown(
         userPick?.pickJson as any,
         result?.resultJson as any,
@@ -2428,9 +2406,6 @@ poolsRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
         }
       }
 
-      console.log(`[Breakdown] KNOCKOUT_WINNER - Found ${phaseMatches.length} matches, ${knockoutResultData.matches.length} with results`);
-      console.log(`[Breakdown] User pick:`, userPick?.pickJson);
-
       const breakdown = generateKnockoutWinnerBreakdown(
         userPick?.pickJson as any,
         knockoutResultData.matches.length > 0 ? knockoutResultData : null,
@@ -2470,18 +2445,18 @@ poolsRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     });
 
     if (!pool) {
-      return res.status(404).json({ error: "Pool no encontrada" });
+      return res.status(404).json({ error: "NOT_FOUND" });
     }
 
     // Verificar que el usuario es miembro
     if (pool.members.length === 0) {
-      return res.status(403).json({ error: "No eres miembro de esta pool" });
+      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
     }
 
     // Buscar la fase de grupos en pickTypesConfig
     const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
     if (!pickTypesConfig) {
-      return res.status(400).json({ error: "Pool sin configuracion de picks" });
+      return res.status(400).json({ error: "NO_PICK_CONFIG" });
     }
 
     // Encontrar la fase que tiene GROUP_STANDINGS
@@ -2660,16 +2635,16 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
       where: { poolId, userId: requestingUserId, status: "ACTIVE" },
     });
     if (!myMembership) {
-      return res.status(403).json({ error: "FORBIDDEN", message: "No eres miembro de esta pool" });
+      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
     }
 
     // 2) Verificar que el usuario objetivo es miembro activo del pool
     const targetMembership = await prisma.poolMember.findFirst({
       where: { poolId, userId: targetUserId, status: "ACTIVE" },
-      include: { user: true },
+      include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
     });
     if (!targetMembership) {
-      return res.status(404).json({ error: "NOT_FOUND", message: "Usuario no encontrado en esta pool" });
+      return res.status(404).json({ error: "NOT_FOUND" });
     }
 
     // 3) Cargar pool con instancia
@@ -2678,7 +2653,7 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
       include: { tournamentInstance: true },
     });
     if (!pool || !pool.tournamentInstance) {
-      return res.status(404).json({ error: "NOT_FOUND", message: "Pool no encontrada" });
+      return res.status(404).json({ error: "NOT_FOUND" });
     }
 
     const isViewingSelf = targetUserId === requestingUserId;
@@ -2892,7 +2867,7 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     // 10) Calcular totales y rank
     const allMembers = await prisma.poolMember.findMany({
       where: { poolId, status: "ACTIVE" },
-      include: { user: true },
+      include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
     });
 
     // Calcular puntos de todos para determinar rank
@@ -3004,7 +2979,7 @@ poolsRouter.get("/:poolId/notifications", async (req, res) => {
     });
 
     if (!membership) {
-      return res.status(403).json({ error: "FORBIDDEN", message: "No eres miembro activo de esta pool" });
+      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
     }
 
     const isHostOrCoAdmin = membership.role === "HOST" || membership.role === "CO_ADMIN";

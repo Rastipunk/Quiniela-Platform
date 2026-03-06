@@ -10,7 +10,6 @@ export const apiLimiter = rateLimit({
   max: 100, // Máximo 100 requests por ventana
   message: {
     error: "RATE_LIMIT_EXCEEDED",
-    message: "Demasiadas solicitudes. Intenta de nuevo en 1 minuto.",
   },
   standardHeaders: true, // Retorna rate limit info en headers `RateLimit-*`
   legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
@@ -25,7 +24,6 @@ export const authLimiter = rateLimit({
   max: 10, // Máximo 10 intentos por ventana
   message: {
     error: "TOO_MANY_LOGIN_ATTEMPTS",
-    message: "Demasiados intentos de inicio de sesión. Intenta de nuevo en 15 minutos.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -38,7 +36,6 @@ export const passwordResetLimiter = rateLimit({
   max: 5, // Máximo 5 solicitudes por hora
   message: {
     error: "TOO_MANY_RESET_REQUESTS",
-    message: "Demasiadas solicitudes de recuperación. Intenta de nuevo en 1 hora.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -51,7 +48,6 @@ export const verificationResendLimiter = rateLimit({
   max: 3,
   message: {
     error: "TOO_MANY_RESEND_REQUESTS",
-    message: "Demasiadas solicitudes de reenvío. Intenta de nuevo en 1 hora.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -64,7 +60,6 @@ export const corporateInviteLimiter = rateLimit({
   max: 5,
   message: {
     error: "TOO_MANY_INVITE_REQUESTS",
-    message: "Demasiadas solicitudes de invitación. Intenta de nuevo en 1 hora.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -77,7 +72,6 @@ export const createResourceLimiter = rateLimit({
   max: 20, // Máximo 20 creaciones por hora
   message: {
     error: "TOO_MANY_CREATIONS",
-    message: "Has creado demasiados recursos. Intenta de nuevo más tarde.",
   },
   standardHeaders: true,
   legacyHeaders: false,
