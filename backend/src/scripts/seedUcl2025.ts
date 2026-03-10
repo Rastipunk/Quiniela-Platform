@@ -3,7 +3,8 @@
  *
  * Estructura: Dieciseisavos → Octavos → Cuartos → Semifinales → Final
  * - Dieciseisavos: equipos y fixture IDs reales de API-Football (Feb 17-25)
- * - Octavos a Final: placeholders (sorteo el 27 Feb 2026)
+ * - Octavos: equipos reales (sorteo 27 Feb 2026), fixture IDs pendientes (Mar 10-18)
+ * - Cuartos a Final: placeholders
  * - Todas las rondas son ida y vuelta EXCEPTO la Final (partido único)
  * - Final: 30 May 2026, Puskás Aréna, Budapest
  *
@@ -87,8 +88,8 @@ interface TieData {
   tieNumber: number;
   teamA: string; // home in leg 1
   teamB: string; // away in leg 1 (home in leg 2)
-  leg1: { fixtureId: number; kickoffUtc: string };
-  leg2: { fixtureId: number; kickoffUtc: string };
+  leg1: { fixtureId?: number; kickoffUtc: string };
+  leg2: { fixtureId?: number; kickoffUtc: string };
 }
 
 const R32_TIES: TieData[] = [
@@ -131,6 +132,57 @@ const R32_TIES: TieData[] = [
     tieNumber: 8, teamA: "t_BRU", teamB: "t_ATM",
     leg1: { fixtureId: 1515520, kickoffUtc: "2026-02-18T20:00:00Z" },
     leg2: { fixtureId: 1515522, kickoffUtc: "2026-02-24T17:45:00Z" },
+  },
+];
+
+// ============================================================================
+// R16 TIES — Sorteo 27 Feb 2026. Equipos reales, fixture IDs pendientes.
+// Unseeded (play-off winners) host leg 1, seeded (top 8) host leg 2.
+// UEFA cross-schedule: Tue leg 1 → Wed leg 2, Wed leg 1 → Tue leg 2.
+// ============================================================================
+
+const R16_TIES: TieData[] = [
+  // --- Tuesday 10 Mar (Leg 1) → Wednesday 18 Mar (Leg 2) ---
+  {
+    tieNumber: 1, teamA: "t_GAL", teamB: "t_LIV",
+    leg1: { kickoffUtc: "2026-03-10T17:45:00Z" },  // 18:45 CET (early)
+    leg2: { kickoffUtc: "2026-03-18T20:00:00Z" },   // 21:00 CET
+  },
+  {
+    tieNumber: 2, teamA: "t_NEW", teamB: "t_BAR",
+    leg1: { kickoffUtc: "2026-03-10T20:00:00Z" },   // 21:00 CET
+    leg2: { kickoffUtc: "2026-03-18T17:45:00Z" },   // 18:45 CET (early)
+  },
+  {
+    tieNumber: 3, teamA: "t_ATM", teamB: "t_TOT",
+    leg1: { kickoffUtc: "2026-03-10T20:00:00Z" },   // 21:00 CET
+    leg2: { kickoffUtc: "2026-03-18T20:00:00Z" },   // 21:00 CET
+  },
+  {
+    tieNumber: 4, teamA: "t_ATA", teamB: "t_BAY",
+    leg1: { kickoffUtc: "2026-03-10T20:00:00Z" },   // 21:00 CET
+    leg2: { kickoffUtc: "2026-03-18T20:00:00Z" },   // 21:00 CET
+  },
+  // --- Wednesday 11 Mar (Leg 1) → Tuesday 17 Mar (Leg 2) ---
+  {
+    tieNumber: 5, teamA: "t_LEV", teamB: "t_ARS",
+    leg1: { kickoffUtc: "2026-03-11T17:45:00Z" },   // 18:45 CET (early)
+    leg2: { kickoffUtc: "2026-03-17T20:00:00Z" },   // 21:00 CET
+  },
+  {
+    tieNumber: 6, teamA: "t_PSG", teamB: "t_CHE",
+    leg1: { kickoffUtc: "2026-03-11T20:00:00Z" },   // 21:00 CET
+    leg2: { kickoffUtc: "2026-03-17T20:00:00Z" },   // 21:00 CET
+  },
+  {
+    tieNumber: 7, teamA: "t_BOD", teamB: "t_SPO",
+    leg1: { kickoffUtc: "2026-03-11T20:00:00Z" },   // 21:00 CET
+    leg2: { kickoffUtc: "2026-03-17T17:45:00Z" },   // 18:45 CET (early)
+  },
+  {
+    tieNumber: 8, teamA: "t_RMA", teamB: "t_MCI",
+    leg1: { kickoffUtc: "2026-03-11T20:00:00Z" },   // 21:00 CET
+    leg2: { kickoffUtc: "2026-03-17T20:00:00Z" },   // 21:00 CET
   },
 ];
 
@@ -199,38 +251,33 @@ function buildTemplateData() {
     });
   }
 
-  // ---- R16 placeholder matches (8 ties × 2 legs) ----
-  // Draw: Feb 27, 2026. Seeded (top 8) vs Dieciseisavos winners.
-  // Dates: Leg 1 Mar 3-4, Leg 2 Mar 10-11
-  const r16Leg1Dates = [
-    "2026-03-03T20:00:00Z", "2026-03-03T20:00:00Z",
-    "2026-03-03T20:00:00Z", "2026-03-03T20:00:00Z",
-    "2026-03-04T20:00:00Z", "2026-03-04T20:00:00Z",
-    "2026-03-04T20:00:00Z", "2026-03-04T20:00:00Z",
-  ];
-  const r16Leg2Dates = [
-    "2026-03-10T20:00:00Z", "2026-03-10T20:00:00Z",
-    "2026-03-10T20:00:00Z", "2026-03-10T20:00:00Z",
-    "2026-03-11T20:00:00Z", "2026-03-11T20:00:00Z",
-    "2026-03-11T20:00:00Z", "2026-03-11T20:00:00Z",
-  ];
-
-  for (let i = 1; i <= 8; i++) {
+  // ---- R16 matches (sorteo 27 Feb 2026 — equipos reales) ----
+  // Unseeded (play-off winners) host leg 1, seeded (top 8) host leg 2.
+  // Dates: Leg 1 Mar 10-11, Leg 2 Mar 17-18 (cross-schedule)
+  for (const tie of R16_TIES) {
     matches.push({
-      id: `r16_${i}_leg1`, phaseId: "r16_leg1",
-      kickoffUtc: r16Leg1Dates[i - 1],
-      homeTeamId: "t_TBD", awayTeamId: "t_TBD",
+      id: `r16_${tie.tieNumber}_leg1`,
+      phaseId: "r16_leg1",
+      kickoffUtc: new Date(tie.leg1.kickoffUtc).toISOString(),
+      homeTeamId: tie.teamA,
+      awayTeamId: tie.teamB,
       matchNumber: seq++,
-      label: `Octavos - Llave ${i} (Ida)`,
-      tieNumber: i, leg: 1, status: "PLACEHOLDER",
+      label: `${teamName(tie.teamA)} vs ${teamName(tie.teamB)}`,
+      tieNumber: tie.tieNumber,
+      leg: 1,
+      status: "SCHEDULED",
     });
     matches.push({
-      id: `r16_${i}_leg2`, phaseId: "r16_leg2",
-      kickoffUtc: r16Leg2Dates[i - 1],
-      homeTeamId: "t_TBD", awayTeamId: "t_TBD",
+      id: `r16_${tie.tieNumber}_leg2`,
+      phaseId: "r16_leg2",
+      kickoffUtc: new Date(tie.leg2.kickoffUtc).toISOString(),
+      homeTeamId: tie.teamB,
+      awayTeamId: tie.teamA,
       matchNumber: seq++,
-      label: `Octavos - Llave ${i} (Vuelta)`,
-      tieNumber: i, leg: 2, status: "PLACEHOLDER",
+      label: `${teamName(tie.teamB)} vs ${teamName(tie.teamA)}`,
+      tieNumber: tie.tieNumber,
+      leg: 2,
+      status: "SCHEDULED",
     });
   }
 
@@ -421,34 +468,45 @@ async function seedUcl2025() {
   });
   console.log(`   ✓ ${instance.name} (AUTO, League: 2, Season: 2025)`);
 
-  // 4. Fixture mappings (Dieciseisavos)
-  console.log("🔗 Mapeos de fixtures (Dieciseisavos)...");
+  // 4. Fixture mappings (all rounds with fixtureIds)
+  console.log("🔗 Mapeos de fixtures...");
   await prisma.matchExternalMapping.deleteMany({
     where: { tournamentInstanceId: INSTANCE_ID },
   });
 
   let mappingCount = 0;
-  for (const tie of R32_TIES) {
-    await prisma.matchExternalMapping.create({
-      data: {
-        tournamentInstanceId: INSTANCE_ID,
-        internalMatchId: `r32_${tie.tieNumber}_leg1`,
-        apiFootballFixtureId: tie.leg1.fixtureId,
-      },
-    });
-    await prisma.matchExternalMapping.create({
-      data: {
-        tournamentInstanceId: INSTANCE_ID,
-        internalMatchId: `r32_${tie.tieNumber}_leg2`,
-        apiFootballFixtureId: tie.leg2.fixtureId,
-      },
-    });
-    mappingCount += 2;
+  const allTiesWithPrefix: Array<{ prefix: string; ties: TieData[] }> = [
+    { prefix: "r32", ties: R32_TIES },
+    { prefix: "r16", ties: R16_TIES },
+  ];
+  for (const { prefix, ties } of allTiesWithPrefix) {
+    for (const tie of ties) {
+      if (tie.leg1.fixtureId) {
+        await prisma.matchExternalMapping.create({
+          data: {
+            tournamentInstanceId: INSTANCE_ID,
+            internalMatchId: `${prefix}_${tie.tieNumber}_leg1`,
+            apiFootballFixtureId: tie.leg1.fixtureId,
+          },
+        });
+        mappingCount++;
+      }
+      if (tie.leg2.fixtureId) {
+        await prisma.matchExternalMapping.create({
+          data: {
+            tournamentInstanceId: INSTANCE_ID,
+            internalMatchId: `${prefix}_${tie.tieNumber}_leg2`,
+            apiFootballFixtureId: tie.leg2.fixtureId,
+          },
+        });
+        mappingCount++;
+      }
+    }
   }
-  console.log(`   ✓ ${mappingCount} mapeos (8 llaves × 2 legs)`);
+  console.log(`   ✓ ${mappingCount} mapeos`);
 
-  // 5. Smart Sync states (Dieciseisavos)
-  console.log("🔄 Sync states (Dieciseisavos)...");
+  // 5. Smart Sync states (all SCHEDULED matches)
+  console.log("🔄 Sync states (partidos programados)...");
   await prisma.matchSyncState.deleteMany({
     where: { tournamentInstanceId: INSTANCE_ID },
   });
@@ -502,9 +560,21 @@ async function seedUcl2025() {
     console.log(`   ${b.name} vs ${a.name} | ${d.toISOString().slice(0, 16)} UTC | #${tie.leg2.fixtureId}`);
   }
 
-  console.log(`\n🏟️ CABEZAS DE SERIE (directo a Octavos):`);
-  for (const t of TOP8_TEAMS) {
-    console.log(`   ${t.flag} ${t.name}`);
+  console.log(`\n📅 OCTAVOS DE FINAL - IDA:`);
+  for (const tie of R16_TIES) {
+    const a = ALL_TEAMS.find((t) => t.id === tie.teamA)!;
+    const b = ALL_TEAMS.find((t) => t.id === tie.teamB)!;
+    const d = new Date(tie.leg1.kickoffUtc);
+    const fid = tie.leg1.fixtureId ? `#${tie.leg1.fixtureId}` : "(sin fixture ID)";
+    console.log(`   ${a.name} vs ${b.name} | ${d.toISOString().slice(0, 16)} UTC | ${fid}`);
+  }
+  console.log(`\n📅 OCTAVOS DE FINAL - VUELTA:`);
+  for (const tie of R16_TIES) {
+    const a = ALL_TEAMS.find((t) => t.id === tie.teamA)!;
+    const b = ALL_TEAMS.find((t) => t.id === tie.teamB)!;
+    const d = new Date(tie.leg2.kickoffUtc);
+    const fid = tie.leg2.fixtureId ? `#${tie.leg2.fixtureId}` : "(sin fixture ID)";
+    console.log(`   ${b.name} vs ${a.name} | ${d.toISOString().slice(0, 16)} UTC | ${fid}`);
   }
 
   console.log(`\n🔑 Instance ID: ${INSTANCE_ID}`);
