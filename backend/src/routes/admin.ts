@@ -245,7 +245,27 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     log(`Current R16 matches: ${r16Before.length}, Placeholders: ${placeholders.length}`);
 
     if (placeholders.length === 0) {
-      return res.json({ ok: true, message: "All R16 matches already SCHEDULED. Nothing to update.", logs });
+      // Instance already updated, but pools may still need syncing
+      log("Instance already up-to-date. Syncing pool snapshots...");
+      const pools = await prisma.pool.findMany({
+        where: { tournamentInstanceId: UCL_INSTANCE_ID },
+        select: { id: true, name: true, fixtureSnapshot: true },
+      });
+      let poolsUpdated = 0;
+      for (const pool of pools) {
+        const poolData = pool.fixtureSnapshot as unknown as UclTemplateData | null;
+        const poolR16 = poolData?.matches?.filter((m) => m.phaseId.startsWith("r16_")) ?? [];
+        const poolPlaceholders = poolR16.filter((m) => m.status === "PLACEHOLDER");
+        if (poolPlaceholders.length > 0 || !poolData) {
+          // Pool still has old data — sync from instance
+          await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: currentData as any } });
+          log(`Synced pool: ${pool.name} (${pool.id}) — had ${poolPlaceholders.length} placeholders`);
+          poolsUpdated++;
+        } else {
+          log(`Pool already current: ${pool.name} (${pool.id})`);
+        }
+      }
+      return res.json({ ok: true, message: `R16 already SCHEDULED. Synced ${poolsUpdated}/${pools.length} pools.`, logs });
     }
 
     // 3. Update instance
