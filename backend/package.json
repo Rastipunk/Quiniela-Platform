@@ -26,6 +26,7 @@
     "seed:legal": "ts-node-dev --transpile-only src/scripts/seedLegalDocuments.ts",
     "seed:wc2022-autotest": "ts-node-dev --transpile-only src/scripts/seedWc2022AutoTest.ts",
     "init:smart-sync": "ts-node-dev --transpile-only src/scripts/initSmartSyncStates.ts",
+    "sync:r16": "ts-node-dev --transpile-only src/scripts/syncR16FromApi.ts",
     "add:knockout": "ts-node-dev --transpile-only src/scripts/addKnockoutPhases.ts",
     "test": "vitest run",
     "test:watch": "vitest",
