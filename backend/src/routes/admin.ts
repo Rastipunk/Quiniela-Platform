@@ -1150,6 +1150,258 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
   }
 });
 
+// ================================================================
+// POST /admin/migrate-r16-picks?dryRun=true (default: dryRun=true)
+// Optional: ?poolName=AON&userName=honny (filters for preview)
+//
+// The original updateUclR16Draw.ts script assigned tieNumbers based on
+// JavaScript Map iteration order (insertion order from API-Football response),
+// which didn't match the actual UCL R16 draw seed order.
+//
+// The fix-r16-integrity endpoint corrected the TEAMS on each matchId,
+// but picks still reference the OLD matchId. This endpoint moves picks
+// to the matchId that NOW has the teams the user originally saw.
+// ================================================================
+
+adminRouter.post("/migrate-r16-picks", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const dryRun = req.query.dryRun !== "false";
+    const filterPoolName = req.query.poolName as string | undefined;
+    const filterUserName = req.query.userName as string | undefined;
+    const logs: string[] = [];
+    const log = (msg: string) => { console.log(msg); logs.push(msg); };
+
+    log(`=== R16 Pick Migration (dryRun=${dryRun}) ===`);
+
+    // OLD mapping: what tieNum the script assigned (by API fixture ID order)
+    // This is what users SAW when they made their picks
+    const OLD_MATCH_TEAMS: Record<string, [string, string]> = {
+      "r16_1_leg1": ["t_RMA","t_MCI"], "r16_1_leg2": ["t_MCI","t_RMA"],
+      "r16_2_leg1": ["t_NEW","t_BAR"], "r16_2_leg2": ["t_BAR","t_NEW"],
+      "r16_3_leg1": ["t_PSG","t_CHE"], "r16_3_leg2": ["t_CHE","t_PSG"],
+      "r16_4_leg1": ["t_GAL","t_LIV"], "r16_4_leg2": ["t_LIV","t_GAL"],
+      "r16_5_leg1": ["t_LEV","t_ARS"], "r16_5_leg2": ["t_ARS","t_LEV"],
+      "r16_6_leg1": ["t_ATM","t_TOT"], "r16_6_leg2": ["t_TOT","t_ATM"],
+      "r16_7_leg1": ["t_ATA","t_BAY"], "r16_7_leg2": ["t_BAY","t_ATA"],
+      "r16_8_leg1": ["t_BOD","t_SPO"], "r16_8_leg2": ["t_SPO","t_BOD"],
+    };
+
+    // NEW mapping: correct SEED_R16 (what matchIds have NOW after fix)
+    const NEW_MATCH_TEAMS: Record<string, [string, string]> = {
+      "r16_1_leg1": ["t_GAL","t_LIV"], "r16_1_leg2": ["t_LIV","t_GAL"],
+      "r16_2_leg1": ["t_NEW","t_BAR"], "r16_2_leg2": ["t_BAR","t_NEW"],
+      "r16_3_leg1": ["t_ATM","t_TOT"], "r16_3_leg2": ["t_TOT","t_ATM"],
+      "r16_4_leg1": ["t_ATA","t_BAY"], "r16_4_leg2": ["t_BAY","t_ATA"],
+      "r16_5_leg1": ["t_LEV","t_ARS"], "r16_5_leg2": ["t_ARS","t_LEV"],
+      "r16_6_leg1": ["t_PSG","t_CHE"], "r16_6_leg2": ["t_CHE","t_PSG"],
+      "r16_7_leg1": ["t_BOD","t_SPO"], "r16_7_leg2": ["t_SPO","t_BOD"],
+      "r16_8_leg1": ["t_RMA","t_MCI"], "r16_8_leg2": ["t_MCI","t_RMA"],
+    };
+
+    // Build migration map: oldMatchId → newMatchId (where those teams now live)
+    const migrationMap: Record<string, string> = {};
+    for (const [oldId, oldTeams] of Object.entries(OLD_MATCH_TEAMS)) {
+      for (const [newId, newTeams] of Object.entries(NEW_MATCH_TEAMS)) {
+        if (oldTeams[0] === newTeams[0] && oldTeams[1] === newTeams[1]) {
+          migrationMap[oldId] = newId;
+          break;
+        }
+      }
+    }
+
+    // Log the migration map
+    log("Migration map (only changed):");
+    for (const [from, to] of Object.entries(migrationMap)) {
+      if (from !== to) {
+        const oldEntry = OLD_MATCH_TEAMS[from];
+        if (oldEntry) log(`  ${from} → ${to} (teams: ${oldEntry.join(" vs ")})`);
+      }
+    }
+
+    // Get all UCL pools
+    const poolWhere: any = { tournamentInstanceId: UCL_INSTANCE_ID };
+    if (filterPoolName) {
+      poolWhere.name = { contains: filterPoolName, mode: "insensitive" };
+    }
+    const pools = await prisma.pool.findMany({
+      where: poolWhere,
+      select: { id: true, name: true, fixtureSnapshot: true },
+    });
+    log(`\nFound ${pools.length} UCL pool(s)`);
+
+    // Get team names from first pool's snapshot
+    const teamNames: Record<string, string> = {};
+    if (pools.length > 0) {
+      const snap = (pools[0] as any).fixtureSnapshot as any;
+      if (snap?.teams) {
+        for (const t of snap.teams) teamNames[t.id] = t.name;
+      }
+    }
+    const tn = (id: string) => teamNames[id] ?? id;
+
+    // Affected matchIds (only those that changed)
+    const affectedMatchIds = Object.keys(migrationMap).filter(k => migrationMap[k] !== k);
+
+    // Get all R16 picks across affected pools
+    const userWhere: any = {};
+    if (filterUserName) {
+      userWhere.displayName = { contains: filterUserName, mode: "insensitive" };
+    }
+
+    const predictions = await prisma.prediction.findMany({
+      where: {
+        poolId: { in: pools.map(p => p.id) },
+        matchId: { startsWith: "r16_" },
+        ...(filterUserName ? { user: userWhere } : {}),
+      },
+      include: {
+        user: { select: { id: true, displayName: true } },
+        pool: { select: { id: true, name: true } },
+      },
+      orderBy: [{ pool: { name: "asc" } }, { userId: "asc" }, { matchId: "asc" }],
+    });
+
+    log(`Found ${predictions.length} R16 pick(s)\n`);
+
+    // Analyze migrations needed
+    const migrations: {
+      predictionId: string;
+      poolName: string;
+      userName: string;
+      oldMatchId: string;
+      newMatchId: string;
+      oldTeams: string;
+      newTeamsDisplay: string;
+      pickJson: any;
+    }[] = [];
+
+    const noChange: typeof migrations = [];
+
+    for (const pred of predictions) {
+      const target = migrationMap[pred.matchId];
+      if (!target || target === pred.matchId) {
+        noChange.push({
+          predictionId: pred.id,
+          poolName: pred.pool.name,
+          userName: pred.user.displayName ?? "?",
+          oldMatchId: pred.matchId,
+          newMatchId: pred.matchId,
+          oldTeams: `${tn(OLD_MATCH_TEAMS[pred.matchId]?.[0] ?? "?")} vs ${tn(OLD_MATCH_TEAMS[pred.matchId]?.[1] ?? "?")}`,
+          newTeamsDisplay: "",
+          pickJson: pred.pickJson,
+        });
+        continue;
+      }
+
+      const p = pred.pickJson as any;
+      const oldTeams = OLD_MATCH_TEAMS[pred.matchId]!;
+      const newTeams = NEW_MATCH_TEAMS[target]!;
+      const curTeams = NEW_MATCH_TEAMS[pred.matchId]!;
+
+      migrations.push({
+        predictionId: pred.id,
+        poolName: pred.pool.name,
+        userName: pred.user.displayName ?? "?",
+        oldMatchId: pred.matchId,
+        newMatchId: target,
+        oldTeams: `${tn(oldTeams[0])} vs ${tn(oldTeams[1])}`,
+        newTeamsDisplay: `${tn(newTeams[0])} vs ${tn(newTeams[1])}`,
+        pickJson: p,
+      });
+
+      if (p.type === "SCORE") {
+        log(`[${pred.pool.name}] ${pred.user.displayName}: ${pred.matchId} → ${target}`);
+        log(`  Intención: ${tn(oldTeams[0])} ${p.homeGoals}-${p.awayGoals} ${tn(oldTeams[1])}`);
+        log(`  Ahora muestra: ${tn(curTeams[0])} ${p.homeGoals}-${p.awayGoals} ${tn(curTeams[1])}`);
+        log(`  ✅ Migrar → ${target} (${tn(newTeams[0])} ${p.homeGoals}-${p.awayGoals} ${tn(newTeams[1])})`);
+      } else {
+        log(`[${pred.pool.name}] ${pred.user.displayName}: ${pred.matchId} → ${target} (${JSON.stringify(p)})`);
+      }
+    }
+
+    log(`\n=== RESUMEN ===`);
+    log(`Total picks R16: ${predictions.length}`);
+    log(`Picks que necesitan migración: ${migrations.length}`);
+    log(`Picks que NO cambian (r16_2, r16_5): ${noChange.length}`);
+
+    // APPLY MIGRATIONS
+    if (!dryRun && migrations.length > 0) {
+      log(`\nAPLICANDO MIGRACIONES...`);
+
+      // Group migrations by pool to handle potential conflicts
+      // (two picks swapping matchIds within same pool+user)
+      const byPoolUser = new Map<string, typeof migrations>();
+      for (const m of migrations) {
+        const key = `${m.poolName}::${m.userName}`;
+        if (!byPoolUser.has(key)) byPoolUser.set(key, []);
+        byPoolUser.get(key)!.push(m);
+      }
+
+      let applied = 0;
+      let errors = 0;
+
+      for (const [key, userMigrations] of byPoolUser.entries()) {
+        // Use a transaction with temp matchIds to avoid unique constraint violations
+        // (since two picks might swap: r16_1 → r16_4 and r16_4 → r16_1)
+        try {
+          await prisma.$transaction(async (tx) => {
+            // Step 1: Move all to temp matchIds
+            for (const m of userMigrations) {
+              await tx.prediction.update({
+                where: { id: m.predictionId },
+                data: { matchId: `_temp_${m.oldMatchId}` },
+              });
+            }
+            // Step 2: Move from temp to final
+            for (const m of userMigrations) {
+              await tx.prediction.update({
+                where: { id: m.predictionId },
+                data: { matchId: m.newMatchId },
+              });
+            }
+          });
+          applied += userMigrations.length;
+          log(`  ✅ [${key}]: ${userMigrations.length} picks migrated`);
+        } catch (err: any) {
+          errors += userMigrations.length;
+          log(`  ❌ [${key}]: Error: ${err.message}`);
+        }
+      }
+
+      log(`\nResultado: ${applied} migrados, ${errors} errores`);
+    } else if (!dryRun) {
+      log("\nNo hay migraciones que aplicar.");
+    } else {
+      log("\nDRY RUN — no se aplicaron cambios. Usa ?dryRun=false para aplicar.");
+    }
+
+    res.json({
+      ok: true,
+      dryRun,
+      summary: {
+        totalPicks: predictions.length,
+        needsMigration: migrations.length,
+        unchanged: noChange.length,
+      },
+      migrationMap: Object.fromEntries(
+        Object.entries(migrationMap).filter(([k, v]) => k !== v)
+      ),
+      migrations: migrations.map(m => ({
+        pool: m.poolName,
+        user: m.userName,
+        from: m.oldMatchId,
+        to: m.newMatchId,
+        teams: m.oldTeams,
+        pick: m.pickJson,
+      })),
+      logs,
+    });
+  } catch (error: any) {
+    console.error("Error in R16 pick migration:", error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // ========== WC2026 Data Builder (copied from seed script) ==========
 
 type Team = {
