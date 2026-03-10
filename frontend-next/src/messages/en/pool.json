@@ -1,7 +1,13 @@
 {
   "loading": "Loading overview...",
   "poolIdMissing": "PoolId missing",
-  "backToDashboard": "Dashboard",
+  "backToDashboard": "← My Pools",
+  "httpErrors": {
+    "FORBIDDEN": "You don't have permission to access this content.",
+    "NOT_FOUND": "This resource was not found.",
+    "UNAUTHORIZED": "Your session expired. Please log in again.",
+    "GENERIC": "An error occurred. Please try again."
+  },
   "members": "members",
   "yourRole": "Your role",
   "invalidScore": "Invalid score",
@@ -74,11 +80,20 @@
     "leaderboard": "Leaderboard",
     "summary": "My Summary",
     "rules": "Rules",
-    "admin": "Admin"
+    "admin": "Admin",
+    "players": "Players"
   },
 
   "admin": {
     "title": "Host Admin Panel",
+    "capacity": {
+      "title": "Pool Capacity",
+      "current": "{current} of {max} players",
+      "fullTitle": "Your pool is full",
+      "fullMessage": "Your pool has reached its maximum capacity of {max} players. To accept more participants, expand your capacity.",
+      "fullDismiss": "Got it",
+      "fullDontShow": "Don't show again"
+    },
     "autoAdvance": {
       "title": "Auto-Advance Phases",
       "description": "When enabled, the system will automatically advance to the next phase when all matches in the current phase are completed.",
@@ -95,6 +110,16 @@
       "direct": "DIRECT join",
       "requiredDesc": "Players will need your approval to join",
       "directDesc": "Players can join directly with the invite code"
+    },
+    "extraTime": {
+      "title": "Result Measurement",
+      "description": "Choose whether picks are scored against the 90-minute result or including extra time. Penalties are never counted.",
+      "label90": "90 minutes only",
+      "labelET": "Include extra time",
+      "lockedOldResults": "Fixed — phase with prior results",
+      "lockedCompleted": "Fixed — phase completed",
+      "lockedDeadline": "Locked — less than 48h until first match",
+      "updateError": "Error updating extra time settings"
     },
     "phasePanel": {
       "title": "Tournament Phase Status",
@@ -160,6 +185,32 @@
       "pendingJoinsPlural": "{count} pending join requests.",
       "phasesReady": "{count} phase ready to advance.",
       "phasesReadyPlural": "{count} phases ready to advance."
+    },
+    "employees": {
+      "title": "Employee Management",
+      "subtitle": "Manage employees in your corporate pool.",
+      "addTitle": "Add employees",
+      "emailsPlaceholder": "Paste email addresses, one per line...",
+      "csvUpload": "Upload CSV",
+      "csvTemplate": "Download template",
+      "addButton": "Add",
+      "adding": "Adding...",
+      "addResult": "{added} added, {skipped} skipped (already exist)",
+      "sendInvitations": "Send pending invitations",
+      "sending": "Sending...",
+      "sendResult": "{sent} sent, {activated} activated directly, {failed} failed",
+      "listTitle": "Employee list",
+      "email": "Email",
+      "status": "Status",
+      "actions": "Actions",
+      "delete": "Remove",
+      "deleting": "Removing...",
+      "noEmployees": "No employees added yet.",
+      "activated": "{count} of {total} employees activated",
+      "statusPending": "Pending",
+      "statusSent": "Sent",
+      "statusActivated": "Activated",
+      "statusFailed": "Failed"
     }
   },
 
@@ -191,6 +242,8 @@
     "locked": "LOCKED",
     "open": "OPEN",
     "matchLabel": "Match {id}",
+    "kickoff": "Kickoff",
+    "deadline": "Picks close",
     "pendingTitle": "Pending Match",
     "pendingDesc": "This match will be enabled when the participating teams are determined.",
     "viewBreakdown": "View breakdown",
@@ -476,7 +529,8 @@
     "emptyState": "No leaderboard data yet",
     "scrollHint": "Swipe to see more phases",
     "host": "HOST",
-    "coAdmin": "CO-ADMIN"
+    "coAdmin": "CO-ADMIN",
+    "retired": "RETIRED"
   },
   "phaseConfig": {
     "fundamentalDecision": "Fundamental Decision",
@@ -560,5 +614,85 @@
       "shortDesc": "Only away team goals.",
       "example": "Example with 4 pts: You predict ?-1, result is 2-1 -> WIN 4 PTS | Result 2-2 -> 0 pts"
     }
+  },
+  "corporate": {
+    "badge": "Corporate pool",
+    "playButton": "Let's play!",
+    "players": "players",
+    "byCompany": "by {company}",
+    "tournamentInfo": "{tournament} \u00b7 {count} players"
+  },
+  "retiredBanner": "You left this pool. You can view results but cannot make predictions.",
+
+  "groupStandings": {
+    "loading": "Loading...",
+    "errorLoading": "Error loading data",
+    "yourPrediction": "Your prediction",
+    "officialResult": "Official result",
+    "pickSaved": "Prediction saved",
+    "errorSaving": "Error saving",
+    "resultSaved": "Result saved",
+    "errorSavingResult": "Error saving result",
+    "standingsUpdated": "Standings updated",
+    "standingsGenerated": "Standings generated",
+    "errorGenerating": "Error generating standings",
+    "errorLoadingBreakdown": "Error loading breakdown",
+    "saving": "Saving...",
+    "save": "Save",
+    "edit": "Edit",
+    "hideMatches": "Hide matches",
+    "showMatches": "View matches",
+    "editMatches": "Edit matches",
+    "correctionMode": "Correction mode:",
+    "correctionModeDesc": "Changes will require regenerating the standings.",
+    "matchesCount": "{saved}/{total} matches",
+    "correctionReasonLabel": "Correction reason (required):",
+    "correctionReasonPlaceholder": "E.g.: Typo, official result corrected...",
+    "needsReasonTooltip": "Enter a reason below",
+    "cancel": "Cancel",
+    "generating": "Generating...",
+    "regenerateStandings": "Regenerate standings",
+    "generateStandings": "Generate standings",
+    "pendingPublish": "Pending publication",
+    "matchResultsTitle": "Match results",
+    "unknownTeam": "Unknown",
+    "viewBreakdown": "View points breakdown",
+    "loadingBreakdown": "Loading breakdown...",
+    "breakdownTitle": "Breakdown - {name}",
+    "pointsEarned": "points earned",
+    "perExactPosition": "per exact position",
+    "bonusPerfectGroupConfig": "perfect group bonus",
+    "noPrediction": "You didn't make a prediction for this group",
+    "yourPosition": "(yours: {position})",
+    "bonusPerfectGroupLabel": "Perfect group bonus",
+    "reasonRequired": "A reason is required to correct an already published result"
+  },
+
+  "knockoutCard": {
+    "selectTeam": "Select a team",
+    "pickSaved": "Prediction saved",
+    "errorSavingPick": "Error saving prediction",
+    "penaltiesNeeded": "Draw at 90 min - enter penalty result",
+    "penaltiesCantDraw": "Penalties cannot end in a draw",
+    "reasonRequired": "A reason is required to correct the result",
+    "resultPublished": "Result published",
+    "errorPublishing": "Error publishing result",
+    "advances": "Advances: {team}",
+    "yourPrediction": "Your prediction",
+    "saving": "Saving...",
+    "save": "Save",
+    "edit": "Edit",
+    "officialResult": "Official result",
+    "pen": "pen.",
+    "teamAdvancesResult": "{team} advances",
+    "ninetyMin": "90 min:",
+    "penalties": "Penalties:",
+    "advancesPreview": "Advances:",
+    "byPenalties": "(by penalties)",
+    "correctionPlaceholder": "Correction reason...",
+    "updateResult": "Update result",
+    "publishResult": "Publish result",
+    "pendingResult": "Pending result",
+    "advancesBadge": "advances"
   }
 }

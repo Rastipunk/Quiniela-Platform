@@ -218,7 +218,7 @@ Response:
 }
 ```
 
-**Nota**: Para MVP, las eliminatorias requieren que el resultado tenga un ganador claro. En el futuro se implementará soporte para penales.
+**Nota**: Las eliminatorias soportan definición por penales. Si un partido termina empatado, el resultado debe incluir los goles en penales para determinar al ganador.
 
 ## Auditoría
 
@@ -243,24 +243,22 @@ Todos los avances de torneo se registran en `AuditLog`:
 ### MVP Simplificaciones
 
 1. **Una Pool por Instancia**: El sistema busca resultados de la primera pool asociada a la instancia
-2. **Sin Penales**: Las eliminatorias requieren ganador en tiempo reglamentario/extra
-3. **Sin Fair Play Automático**: `fairPlayPoints` es opcional y debe calcularse manualmente
-4. **Sin Sorteo**: En caso de empate total, el orden se mantiene (requiere intervención manual)
+2. **Sin Fair Play Automático**: `fairPlayPoints` es opcional y debe calcularse manualmente
+3. **Sin Sorteo**: En caso de empate total, el orden se mantiene (requiere intervención manual)
 
 ### Futuras Mejoras
 
 1. **Multi-Pool Support**: Especificar poolId para resultados "oficiales"
-2. **Penalty Shootouts**: Soporte para definición por penales
-3. **Fair Play Calculation**: Cálculo automático basado en tarjetas
-4. **Tie-Breaking UI**: Interface para resolver empates manualmente
-5. **Real-time Updates**: WebSocket para notificar avances a usuarios conectados
+2. **Fair Play Calculation**: Cálculo automático basado en tarjetas
+3. **Tie-Breaking UI**: Interface para resolver empates manualmente
+4. **Real-time Updates**: WebSocket para notificar avances a usuarios conectados
 
 ## Testing
 
-Ver [backend/src/scripts/testTournamentAdvancement.ts](../backend/src/scripts/testTournamentAdvancement.ts) para script de prueba end-to-end.
+Las funciones de avance de torneo se prueban a través de los endpoints de API documentados arriba. Utiliza las herramientas de desarrollo (curl, Postman, etc.) para ejecutar flujos end-to-end contra instancias de prueba.
 
 ## Referencias
 
 - [FIFA World Cup 2026 Tournament Structure](./WC2026_TOURNAMENT_STRUCTURE.md)
-- [PRD - Tournament Progression](./sot/PRD.md#tournament-progression)
-- [API Spec - Admin Endpoints](./sot/API_SPEC.md#admin-endpoints)
+- [PRD - Tournament Progression](../sot/PRD.md#tournament-progression)
+- [API Spec - Admin Endpoints](../sot/API_SPEC.md#admin-endpoints)

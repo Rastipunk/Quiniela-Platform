@@ -124,6 +124,11 @@ export type PhasePickConfig = {
   // DECISIÓN FUNDAMENTAL
   requiresScore: boolean;
 
+  // Si true: scoring usa el resultado al final del tiempo extra (si lo hubo)
+  // Si false (default): scoring usa el resultado al minuto 90
+  // Penalties NUNCA se cuentan para el scoring
+  includeExtraTime?: boolean;
+
   // RAMA A: Structural Picks (requiresScore = false)
   structuralPicks?: StructuralPicksConfig;
 

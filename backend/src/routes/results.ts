@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { sendResultPublishedEmail } from "../lib/email";
+import { getScoringPreset } from "../lib/scoringPresets";
 import {
   validateCanAutoAdvance,
   advanceToRoundOf32,
@@ -18,6 +19,9 @@ resultsRouter.use(requireAuth);
 const upsertResultSchema = z.object({
   homeGoals: z.number().int().min(0).max(99),
   awayGoals: z.number().int().min(0).max(99),
+  // Score al minuto 90 (opcional — solo necesario si el partido fue a tiempo extra)
+  homeGoals90: z.number().int().min(0).max(99).optional(),
+  awayGoals90: z.number().int().min(0).max(99).optional(),
   // Comentario en español: penalties opcionales (solo fases eliminatorias con empate)
   homePenalties: z.number().int().min(0).max(99).optional(),
   awayPenalties: z.number().int().min(0).max(99).optional(),
@@ -60,12 +64,6 @@ async function requirePoolHostOrCoAdmin(userId: string, poolId: string) {
   return m?.role === "HOST" || m?.role === "CO_ADMIN";
 }
 
-function outcomeFromScore(homeGoals: number, awayGoals: number): "HOME" | "DRAW" | "AWAY" {
-  if (homeGoals > awayGoals) return "HOME";
-  if (homeGoals < awayGoals) return "AWAY";
-  return "DRAW";
-}
-
 // PUT /pools/:poolId/results/:matchId  (HOST o CO_ADMIN)
 resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   const { poolId, matchId } = req.params;
@@ -100,7 +98,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   const match = matches.find((m) => m.id === matchId);
   if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
 
-  const { homeGoals, awayGoals, homePenalties, awayPenalties, reason } = parsed.data;
+  const { homeGoals, awayGoals, homeGoals90, awayGoals90, homePenalties, awayPenalties, reason } = parsed.data;
 
   // Determinar el modo de fuente de resultados de la instancia
   const instanceResultSourceMode = pool.tournamentInstance.resultSourceMode as ResultSourceMode;
@@ -163,6 +161,8 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           status: "PUBLISHED",
           homeGoals,
           awayGoals,
+          homeGoals90: homeGoals90 ?? null,
+          awayGoals90: awayGoals90 ?? null,
           homePenalties: homePenalties ?? null,
           awayPenalties: awayPenalties ?? null,
           reason: reason ?? null,
@@ -238,26 +238,25 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           where: { poolId, matchId: { in: allMatches.map(m => m.id) } }
         });
 
-        // Calcular puntos por usuario
+        // Calcular puntos por usuario usando el preset de la pool
+        const preset = getScoringPreset(pool.scoringPresetKey);
         const userPoints = new Map<string, number>();
         for (const pred of allPredictions) {
           const result = resultByMatchId.get(pred.matchId);
           if (!result) continue;
           const pick = pred.pickJson as any;
+          const actualOutcomeForPred = result.homeGoals > result.awayGoals ? "HOME" :
+                        result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
           let pts = 0;
           if (pick?.type === "OUTCOME") {
-            const actual = result.homeGoals > result.awayGoals ? "HOME" :
-                          result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-            if (pick.outcome === actual) pts = 3;
+            if (pick.outcome === actualOutcomeForPred) pts = preset.outcomePoints;
           } else if (pick?.type === "SCORE") {
-            const actual = result.homeGoals > result.awayGoals ? "HOME" :
-                          result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
             const predicted = pick.homeGoals > pick.awayGoals ? "HOME" :
                              pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
-            if (predicted === actual) {
-              pts = 3;
-              if (pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
-                pts = 5;
+            if (predicted === actualOutcomeForPred) {
+              pts = preset.outcomePoints;
+              if (preset.allowScorePick && pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
+                pts += preset.exactScoreBonus;
               }
             }
           }
@@ -283,14 +282,14 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           if (pick) {
             const pickJson = pick.pickJson as any;
             if (pickJson?.type === "OUTCOME" && pickJson.outcome === actualOutcome) {
-              pointsEarned = 3;
+              pointsEarned = preset.outcomePoints;
             } else if (pickJson?.type === "SCORE") {
               const predicted = pickJson.homeGoals > pickJson.awayGoals ? "HOME" :
                                pickJson.homeGoals < pickJson.awayGoals ? "AWAY" : "DRAW";
               if (predicted === actualOutcome) {
-                pointsEarned = 3;
-                if (pickJson.homeGoals === homeGoals && pickJson.awayGoals === awayGoals) {
-                  pointsEarned = 5;
+                pointsEarned = preset.outcomePoints;
+                if (preset.allowScorePick && pickJson.homeGoals === homeGoals && pickJson.awayGoals === awayGoals) {
+                  pointsEarned += preset.exactScoreBonus;
                 }
               }
             }
@@ -313,7 +312,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
         });
 
         await Promise.allSettled(emailPromises);
-        console.log(`📧 Result notification emails sent for pool ${poolId}, match ${matchId}`);
+        // Email notifications sent successfully
       } catch (emailError) {
         console.error("Error sending result notification emails:", emailError);
       }
@@ -481,7 +480,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
 
   const members = await prisma.poolMember.findMany({
     where: { poolId, status: "ACTIVE" },
-    include: { user: true },
+    include: { user: { select: { id: true, email: true, username: true, displayName: true } } },
     orderBy: { joinedAtUtc: "asc" },
   });
 
@@ -662,109 +661,3 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
 });
 
 
-// GET /pools/:poolId/leaderboard  (miembros)
-// Scoring fijo MVP:
-// - OUTCOME correcto: +3
-// - SCORE exacto: +2 extra (total 5)
-// - tiebreaker MVP: puntos desc, joinedAt asc
-resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
-  const { poolId } = req.params;
-
-  const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
-  if (!isMember) return res.status(403).json({ error: "FORBIDDEN" });
-
-  const pool = await prisma.pool.findUnique({
-    where: { id: poolId },
-    include: { tournamentInstance: true },
-  });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
-
-  const matches = extractMatches(pool.tournamentInstance.dataJson);
-  const matchIds = matches.map((m) => m.id);
-
-  const results = await prisma.poolMatchResult.findMany({
-    where: { poolId },
-    include: { currentVersion: true },
-  });
-
-  const resultByMatchId = new Map<string, { homeGoals: number; awayGoals: number }>();
-  for (const r of results) {
-    if (r.currentVersion) {
-      resultByMatchId.set(r.matchId, { homeGoals: r.currentVersion.homeGoals, awayGoals: r.currentVersion.awayGoals });
-    }
-  }
-
-  const members = await prisma.poolMember.findMany({
-    where: { poolId, status: "ACTIVE" },
-    include: { user: true },
-    orderBy: { joinedAtUtc: "asc" },
-  });
-
-  const predictions = await prisma.prediction.findMany({
-    where: { poolId, matchId: { in: matchIds } },
-  });
-
-  const predsByUser = new Map<string, typeof predictions>();
-  for (const p of predictions) {
-    const arr = predsByUser.get(p.userId) ?? [];
-    arr.push(p);
-    predsByUser.set(p.userId, arr);
-  }
-
-  function scorePick(pick: any, homeGoals: number, awayGoals: number): number {
-    const actualOutcome = outcomeFromScore(homeGoals, awayGoals);
-
-    if (pick?.type === "OUTCOME") {
-      return pick.outcome === actualOutcome ? 3 : 0;
-    }
-
-    if (pick?.type === "SCORE") {
-      const predOutcome = outcomeFromScore(pick.homeGoals, pick.awayGoals);
-      const outcomePts = predOutcome === actualOutcome ? 3 : 0;
-      const exact = pick.homeGoals === homeGoals && pick.awayGoals === awayGoals;
-      return outcomePts + (exact && outcomePts > 0 ? 2 : 0);
-    }
-
-    // WINNER lo dejamos para luego; MVP usa OUTCOME/SCORE
-    return 0;
-  }
-
-  const rows = members.map((m) => {
-    let points = 0;
-    let scoredMatches = 0;
-
-    const userPreds = predsByUser.get(m.userId) ?? [];
-    for (const pred of userPreds) {
-      const r = resultByMatchId.get(pred.matchId);
-      if (!r) continue;
-      points += scorePick(pred.pickJson as any, r.homeGoals, r.awayGoals);
-      scoredMatches += 1;
-    }
-
-    return {
-      userId: m.userId,
-      displayName: m.user.displayName,
-      role: m.role,
-      points,
-      scoredMatches,
-      joinedAtUtc: m.joinedAtUtc,
-    };
-  });
-
-    rows.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-
-    const aTime = a.joinedAtUtc instanceof Date ? a.joinedAtUtc.getTime() : new Date(a.joinedAtUtc).getTime();
-    const bTime = b.joinedAtUtc instanceof Date ? b.joinedAtUtc.getTime() : new Date(b.joinedAtUtc).getTime();
-
-    return aTime - bTime; // Comentario en español: el que llegó primero queda arriba si empatan en puntos
-    });
-
-
-  return res.json({
-    pool: { id: pool.id, name: pool.name },
-    scoring: { outcomePoints: 3, exactScoreBonus: 2 },
-    updatedAtUtc: new Date().toISOString(),
-    leaderboard: rows.map((r, idx) => ({ rank: idx + 1, ...r })),
-  });
-});

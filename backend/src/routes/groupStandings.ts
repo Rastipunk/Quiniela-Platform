@@ -211,7 +211,7 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
   if (isErrata && !parsed.data.reason?.trim()) {
     return res.status(400).json({
       error: "VALIDATION_ERROR",
-      message: "Se requiere una razón para corregir un resultado ya publicado",
+      reason: "ERRATA_REASON_REQUIRED",
     });
   }
 

@@ -33,6 +33,9 @@ Funciones principales:
 - `sendDeadlineReminderEmail()` - Verifica configuración de plataforma y usuario
 - `sendResultPublishedEmail()` - Verifica configuración de plataforma y usuario
 - `sendPoolCompletedEmail()` - Verifica configuración de plataforma y usuario
+- `sendCorporateActivationEmail()` - Envía invitación corporativa con token de activación (30 días)
+- `sendCorporateInquiryConfirmationEmail()` - Confirma recepción de solicitud empresarial
+- `sendAdminNotification()` - Notifica al admin de eventos importantes (ej. nuevo feedback)
 
 Cada función:
 1. Verifica si el email está habilitado a nivel de plataforma
@@ -73,7 +76,7 @@ Requiere: `requireAuth` + `requireAdmin`
 ### Frontend
 
 #### Panel de Admin
-**Archivo**: `frontend/src/pages/AdminEmailSettingsPage.tsx`
+**Archivo**: `frontend-next/src/app/[locale]/(authenticated)/admin/settings/email/page.tsx`
 **Ruta**: `/admin/settings/email`
 
 Características:
@@ -83,7 +86,7 @@ Características:
 - Solo visible para usuarios con `platformRole === "ADMIN"`
 
 #### Preferencias de Usuario
-**Archivo**: `frontend/src/components/EmailPreferencesSection.tsx`
+**Archivo**: `frontend-next/src/components/EmailPreferencesSection.tsx`
 **Ubicación**: Página de perfil (`/profile`)
 
 Características:
@@ -93,7 +96,7 @@ Características:
 - Mensaje informativo si hay opciones desactivadas por admin
 
 #### Navegación
-**Archivo**: `frontend/src/components/NavBar.tsx`
+**Archivo**: `frontend-next/src/components/NavBar.tsx`
 
 - Link "⚙️ Panel Admin" visible solo para `platformRole === "ADMIN"`
 - Disponible en menú desktop y mobile
@@ -222,6 +225,17 @@ emailVerificationTokenExpiresAt DateTime?
   - Parámetros: `hoursBeforeDeadline` (default: 24), `dryRun` (default: false)
 - **Tracking**: Tabla `DeadlineReminderLog` evita duplicados
 - **Por defecto desactivado**: El admin debe habilitarlo manualmente en el panel
+
+#### Emails Corporativos
+- **Corporate Activation**: En `corporate.ts` - Envía invitación con token de activación a empleados
+  - Token de 48 bytes, expira en 30 días
+  - Template: `getCorporateActivationTemplate` en `emailTemplates.ts`
+- **Corporate Inquiry Confirmation**: En `corporate.ts` - Confirma al solicitante que se recibió su formulario empresarial
+
+#### Notificaciones Admin
+- **Admin Notification**: `sendAdminNotification()` en `email.ts`
+  - Se usa en `feedback.ts` para notificar al admin cuando se recibe nuevo feedback de usuarios
+  - Envía a la dirección configurada en `SUPPORT_EMAIL`
 
 ### Pendiente de Integrar 🔄
 - **Cron Job**: Automatizar ejecución periódica de recordatorios (si se requiere)

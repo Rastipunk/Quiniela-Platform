@@ -1,7 +1,13 @@
 {
   "loading": "Cargando overview...",
   "poolIdMissing": "PoolId missing",
-  "backToDashboard": "Dashboard",
+  "backToDashboard": "← Mis Pools",
+  "httpErrors": {
+    "FORBIDDEN": "No tienes permiso para acceder a este contenido.",
+    "NOT_FOUND": "Este recurso no fue encontrado.",
+    "UNAUTHORIZED": "Tu sesión expiró. Por favor inicia sesión de nuevo.",
+    "GENERIC": "Ocurrió un error. Intenta de nuevo."
+  },
   "members": "miembros",
   "yourRole": "Tu rol",
   "invalidScore": "Marcador inválido",
@@ -74,11 +80,20 @@
     "leaderboard": "Leaderboard",
     "summary": "Mi Resumen",
     "rules": "Reglas",
-    "admin": "Administración"
+    "admin": "Administración",
+    "players": "Jugadores"
   },
 
   "admin": {
     "title": "Panel de Administración del Host",
+    "capacity": {
+      "title": "Capacidad del Pool",
+      "current": "{current} de {max} jugadores",
+      "fullTitle": "Tu pool está lleno",
+      "fullMessage": "Tu pool alcanzó su capacidad máxima de {max} jugadores. Para recibir más participantes, amplía tu capacidad.",
+      "fullDismiss": "Entendido",
+      "fullDontShow": "No volver a mostrar"
+    },
     "autoAdvance": {
       "title": "Avance Automático de Fases",
       "description": "Cuando está habilitado, el sistema avanzará automáticamente a la siguiente fase cuando se completen todos los partidos de la fase actual.",
@@ -95,6 +110,16 @@
       "direct": "Ingreso DIRECTO",
       "requiredDesc": "Los jugadores deberán esperar tu aprobación para unirse",
       "directDesc": "Los jugadores pueden unirse directamente con el código de invitación"
+    },
+    "extraTime": {
+      "title": "Medición del Resultado",
+      "description": "Elige si los pronósticos se evalúan con el marcador al minuto 90 o incluyendo el tiempo extra. Los penales nunca se cuentan.",
+      "label90": "Solo 90 minutos",
+      "labelET": "Incluir tiempo extra",
+      "lockedOldResults": "Fijo — fase con resultados previos",
+      "lockedCompleted": "Fijo — fase completada",
+      "lockedDeadline": "Bloqueado — menos de 48h para el primer partido",
+      "updateError": "Error al actualizar configuración de tiempo extra"
     },
     "phasePanel": {
       "title": "Estado de las Fases del Torneo",
@@ -160,6 +185,32 @@
       "pendingJoinsPlural": "{count} solicitudes de ingreso pendientes.",
       "phasesReady": "{count} fase lista para avanzar.",
       "phasesReadyPlural": "{count} fases listas para avanzar."
+    },
+    "employees": {
+      "title": "Gestión de Empleados",
+      "subtitle": "Administra los empleados de tu quiniela corporativa.",
+      "addTitle": "Agregar empleados",
+      "emailsPlaceholder": "Pega correos electrónicos, uno por línea...",
+      "csvUpload": "Subir CSV",
+      "csvTemplate": "Descargar plantilla",
+      "addButton": "Agregar",
+      "adding": "Agregando...",
+      "addResult": "{added} agregados, {skipped} omitidos (ya existían)",
+      "sendInvitations": "Enviar invitaciones pendientes",
+      "sending": "Enviando...",
+      "sendResult": "{sent} enviados, {activated} activados directamente, {failed} fallidos",
+      "listTitle": "Lista de empleados",
+      "email": "Correo",
+      "status": "Estado",
+      "actions": "Acciones",
+      "delete": "Eliminar",
+      "deleting": "Eliminando...",
+      "noEmployees": "Aún no has agregado empleados.",
+      "activated": "{count} de {total} empleados activados",
+      "statusPending": "Pendiente",
+      "statusSent": "Enviado",
+      "statusActivated": "Activado",
+      "statusFailed": "Error"
     }
   },
 
@@ -191,6 +242,8 @@
     "locked": "LOCKED",
     "open": "OPEN",
     "matchLabel": "Partido {id}",
+    "kickoff": "Inicio",
+    "deadline": "Cierre de picks",
     "pendingTitle": "Partido Pendiente",
     "pendingDesc": "Este partido se habilitará cuando se definan los equipos participantes.",
     "viewBreakdown": "Ver desglose",
@@ -476,7 +529,8 @@
     "emptyState": "Aún no hay datos en el leaderboard",
     "scrollHint": "Desliza para ver más fases",
     "host": "HOST",
-    "coAdmin": "CO-ADMIN"
+    "coAdmin": "CO-ADMIN",
+    "retired": "RETIRADO"
   },
   "phaseConfig": {
     "fundamentalDecision": "Decisión Fundamental",
@@ -560,5 +614,85 @@
       "shortDesc": "Solo goles del visitante.",
       "example": "Ejemplo con 4 pts: Predices ?-1, sale 2-1 → GANAS 4 PTS | Sale 2-2 → 0 pts"
     }
+  },
+  "corporate": {
+    "badge": "Pool corporativo",
+    "playButton": "A jugar!",
+    "players": "jugadores",
+    "byCompany": "por {company}",
+    "tournamentInfo": "{tournament} \u00b7 {count} jugadores"
+  },
+  "retiredBanner": "Te retiraste de esta pool. Puedes ver los resultados pero no hacer predicciones.",
+
+  "groupStandings": {
+    "loading": "Cargando...",
+    "errorLoading": "Error al cargar datos",
+    "yourPrediction": "Tu predicción",
+    "officialResult": "Resultado oficial",
+    "pickSaved": "Predicción guardada",
+    "errorSaving": "Error al guardar",
+    "resultSaved": "Resultado guardado",
+    "errorSavingResult": "Error al guardar resultado",
+    "standingsUpdated": "Posiciones actualizadas",
+    "standingsGenerated": "Posiciones generadas",
+    "errorGenerating": "Error al generar posiciones",
+    "errorLoadingBreakdown": "Error al cargar desglose",
+    "saving": "Guardando...",
+    "save": "Guardar",
+    "edit": "Editar",
+    "hideMatches": "Ocultar partidos",
+    "showMatches": "Ver partidos",
+    "editMatches": "Editar partidos",
+    "correctionMode": "Modo corrección:",
+    "correctionModeDesc": "Los cambios requerirán regenerar las posiciones.",
+    "matchesCount": "{saved}/{total} partidos",
+    "correctionReasonLabel": "Razón de corrección (requerido):",
+    "correctionReasonPlaceholder": "Ej: Error de tipeo, resultado oficial corregido...",
+    "needsReasonTooltip": "Escribe una razón abajo",
+    "cancel": "Cancelar",
+    "generating": "Generando...",
+    "regenerateStandings": "Regenerar posiciones",
+    "generateStandings": "Generar posiciones",
+    "pendingPublish": "Pendiente de publicar",
+    "matchResultsTitle": "Resultados de partidos",
+    "unknownTeam": "Desconocido",
+    "viewBreakdown": "Ver desglose de puntos",
+    "loadingBreakdown": "Cargando desglose...",
+    "breakdownTitle": "Desglose - {name}",
+    "pointsEarned": "puntos obtenidos",
+    "perExactPosition": "por posición exacta",
+    "bonusPerfectGroupConfig": "bonus grupo perfecto",
+    "noPrediction": "No hiciste predicción para este grupo",
+    "yourPosition": "(tú: {position}°)",
+    "bonusPerfectGroupLabel": "Bonus grupo perfecto",
+    "reasonRequired": "Se requiere una razón para corregir un resultado ya publicado"
+  },
+
+  "knockoutCard": {
+    "selectTeam": "Selecciona un equipo",
+    "pickSaved": "Predicción guardada",
+    "errorSavingPick": "Error al guardar predicción",
+    "penaltiesNeeded": "Empate en 90 min - ingresa resultado de penales",
+    "penaltiesCantDraw": "Los penales no pueden terminar en empate",
+    "reasonRequired": "Se requiere una razón para corregir el resultado",
+    "resultPublished": "Resultado publicado",
+    "errorPublishing": "Error al publicar resultado",
+    "advances": "Avanza: {team}",
+    "yourPrediction": "Tu predicción",
+    "saving": "Guardando...",
+    "save": "Guardar",
+    "edit": "Editar",
+    "officialResult": "Resultado oficial",
+    "pen": "pen.",
+    "teamAdvancesResult": "{team} avanza",
+    "ninetyMin": "90 min:",
+    "penalties": "Penales:",
+    "advancesPreview": "Avanza:",
+    "byPenalties": "(por penales)",
+    "correctionPlaceholder": "Razón de corrección...",
+    "updateResult": "Actualizar resultado",
+    "publishResult": "Publicar resultado",
+    "pendingResult": "Pendiente de resultado",
+    "advancesBadge": "avanza"
   }
 }

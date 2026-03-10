@@ -18,7 +18,9 @@ import { NotificationBadge } from "@/components/NotificationBadge";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/hooks/usePoolNotifications";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import CapacitySelector from "@/components/CapacitySelector";
 import { MobileLeaderboard } from "@/components/MobileLeaderboard";
+import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 
 function fmtUtc(iso: string, userTimezone: string | null = null) {
   return formatMatchDateTime(iso, userTimezone);
@@ -46,6 +48,16 @@ export default function PoolPage() {
   const isMobile = useIsMobile();
   const t = useTranslations("pool");
 
+  // Helper: translate raw API error messages to user-friendly localized text
+  function friendlyError(e: any): string {
+    const msg = e?.message ?? "";
+    if (msg === "FORBIDDEN" || e?.status === 403) return t("httpErrors.FORBIDDEN");
+    if (e?.status === 404) return t("httpErrors.NOT_FOUND");
+    if (e?.status === 401) return t("httpErrors.UNAUTHORIZED");
+    if (msg.startsWith("HTTP ")) return t("httpErrors.GENERIC");
+    return msg || t("httpErrors.GENERIC");
+  }
+
   function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
     switch (status) {
       case "DRAFT":
@@ -67,8 +79,14 @@ export default function PoolPage() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [userTimezone, setUserTimezone] = useState<string | null>(null);
 
+  // Corporate splash state
+  const [showSplash, setShowSplash] = useState(false);
+
+  // Capacity full popup
+  const [showCapacityPopup, setShowCapacityPopup] = useState(false);
+
   // Tabs
-  const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "admin">("partidos");
+  const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "jugadores" | "admin">("partidos");
 
   // Phase navigation (new for WC2026)
   const [activePhase, setActivePhase] = useState<string | null>(null);
@@ -130,6 +148,27 @@ export default function PoolPage() {
       const data = await getPoolOverview(token, poolId, v);
       setOverview(data);
 
+      // Check if corporate splash should show (1x per session)
+      if (data.pool.organization && typeof sessionStorage !== "undefined") {
+        const key = `corporate-splash-${poolId}`;
+        if (!sessionStorage.getItem(key)) {
+          setShowSplash(true);
+        }
+      }
+
+      // Check if pool is full and user is HOST — show popup
+      if (
+        data.pool.maxParticipants &&
+        data.counts.membersActive >= data.pool.maxParticipants &&
+        (data.myMembership.role === "HOST" || data.myMembership.role === "CORPORATE_HOST") &&
+        typeof localStorage !== "undefined"
+      ) {
+        const dismissKey = `pool-capacity-full-dismissed-${poolId}`;
+        if (!localStorage.getItem(dismissKey)) {
+          setShowCapacityPopup(true);
+        }
+      }
+
       // Cargar timezone del usuario
       const profileData = await getUserProfile(token);
       setUserTimezone(profileData.user.timezone);
@@ -139,7 +178,7 @@ export default function PoolPage() {
         loadPendingMembers();
       }
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     }
   }
 
@@ -379,7 +418,7 @@ export default function PoolPage() {
         await navigator.clipboard.writeText(inv.code);
       } catch {}
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     } finally {
       setBusyKey(null);
     }
@@ -408,7 +447,7 @@ export default function PoolPage() {
       await load(verbose);
       refetchNotifications();
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     } finally {
       setBusyKey(null);
     }
@@ -423,7 +462,7 @@ export default function PoolPage() {
       await load(verbose);
       refetchNotifications();
     } catch (e: any) {
-      setError(e?.message ?? "Error");
+      setError(friendlyError(e));
     } finally {
       setBusyKey(null);
     }
@@ -434,7 +473,25 @@ export default function PoolPage() {
   return (
     <div style={{ maxWidth: 1180, margin: "18px auto", padding: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <Link href="/dashboard">&larr; {t("backToDashboard")}</Link>
+        <Link
+          href="/dashboard"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: "#007bff",
+            textDecoration: "none",
+            fontWeight: 600,
+            fontSize: 14,
+            padding: "6px 12px",
+            borderRadius: 8,
+            background: "#f0f7ff",
+            border: "1px solid #007bff30",
+            transition: "background 0.15s ease",
+          }}
+        >
+          {t("backToDashboard")}
+        </Link>
       </div>
 
       {error && (
@@ -445,33 +502,365 @@ export default function PoolPage() {
 
       {!overview && !error && <p style={{ marginTop: 16 }}>{t("loading")}</p>}
 
+      {/* Capacity Full Popup */}
+      {showCapacityPopup && overview?.pool.maxParticipants && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9998,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.5)",
+            padding: 16,
+          }}
+          onClick={() => setShowCapacityPopup(false)}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 420,
+              width: "100%",
+              textAlign: "center",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 48, marginBottom: 12 }}>&#128680;</div>
+            <h3 style={{ margin: "0 0 12px", fontSize: 20, fontWeight: 800, color: "#DC2626" }}>
+              {t("admin.capacity.fullTitle")}
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+              {t("admin.capacity.fullMessage", { max: overview.pool.maxParticipants })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={() => {
+                  setShowCapacityPopup(false);
+                  setActiveTab("admin");
+                }}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "#4f46e5",
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {t("admin.capacity.title")}
+              </button>
+              <button
+                onClick={() => setShowCapacityPopup(false)}
+                style={{
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  border: "1px solid #d1d5db",
+                  background: "transparent",
+                  color: "#374151",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("admin.capacity.fullDismiss")}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCapacityPopup(false);
+                  if (typeof localStorage !== "undefined") {
+                    localStorage.setItem(`pool-capacity-full-dismissed-${poolId}`, "true");
+                  }
+                }}
+                style={{
+                  padding: "8px 24px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "transparent",
+                  color: "#9ca3af",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                {t("admin.capacity.fullDontShow")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Corporate Splash Screen (1x per session) */}
+      {overview && showSplash && overview.pool.organization && (() => {
+        const org = overview.pool.organization;
+        return (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)",
+              padding: 24,
+              overflow: "hidden",
+            }}
+          >
+            {/* Decorative background orbs */}
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+              <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", top: "-5%", right: "-5%" }} />
+              <div style={{ position: "absolute", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%)", bottom: "-10%", left: "-10%" }} />
+              <div style={{ position: "absolute", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,70,229,0.12) 0%, transparent 70%)", top: "40%", left: "60%" }} />
+            </div>
+
+            {/* Content card */}
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                maxWidth: 420,
+                width: "100%",
+                padding: "48px 36px 40px",
+                borderRadius: 24,
+                background: "rgba(255,255,255,0.06)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+              }}
+            >
+              {/* Logo */}
+              {org.logoBase64 ? (
+                <div style={{ position: "relative", marginBottom: 28 }}>
+                  <div style={{
+                    position: "absolute", inset: -6, borderRadius: 24,
+                    background: "linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4))",
+                    filter: "blur(12px)",
+                  }} />
+                  <img
+                    src={org.logoBase64}
+                    alt={org.name}
+                    style={{
+                      position: "relative",
+                      maxHeight: 200,
+                      maxWidth: 320,
+                      borderRadius: 16,
+                      objectFit: "contain",
+                      border: "3px solid rgba(255,255,255,0.15)",
+                      boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{
+                  width: 180, height: 180, borderRadius: 24, marginBottom: 28,
+                  background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 72, fontWeight: 800, color: "#fff",
+                  border: "3px solid rgba(255,255,255,0.15)",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                }}>
+                  {org.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              {/* Company name */}
+              <h1 style={{
+                margin: 0, fontSize: 32, fontWeight: 800, color: "#fff",
+                letterSpacing: -0.5, lineHeight: 1.2,
+                textShadow: "0 2px 8px rgba(0,0,0,0.3)",
+              }}>
+                {org.name}
+              </h1>
+
+              {/* Badge */}
+              <span style={{
+                display: "inline-block",
+                marginTop: 12,
+                padding: "5px 16px",
+                borderRadius: 999,
+                background: "rgba(139,92,246,0.2)",
+                border: "1px solid rgba(139,92,246,0.3)",
+                color: "#c4b5fd",
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+              }}>
+                {t("corporate.badge")}
+              </span>
+
+              {/* Welcome message */}
+              {org.welcomeMessage && (
+                <div style={{
+                  marginTop: 28,
+                  padding: "16px 20px",
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}>
+                  <p style={{
+                    margin: 0, fontSize: 15, lineHeight: 1.6,
+                    color: "rgba(255,255,255,0.85)",
+                    fontStyle: "italic",
+                  }}>
+                    &ldquo;{org.welcomeMessage}&rdquo;
+                  </p>
+                </div>
+              )}
+
+              {/* CTA Button */}
+              <button
+                onClick={() => {
+                  sessionStorage.setItem(`corporate-splash-${poolId}`, "1");
+                  setShowSplash(false);
+                }}
+                style={{
+                  marginTop: 32,
+                  padding: "16px 48px",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  background: "linear-gradient(135deg, #fff 0%, #e0e7ff 100%)",
+                  color: "#3730a3",
+                  border: "none",
+                  borderRadius: 14,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)",
+                  transition: "transform 0.15s, box-shadow 0.15s",
+                  letterSpacing: 0.3,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 8px 30px rgba(99,102,241,0.4), 0 0 0 1px rgba(255,255,255,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)";
+                }}
+              >
+                {t("corporate.playButton")}
+              </button>
+
+              {/* Pool info */}
+              <p style={{
+                marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)",
+                fontWeight: 500, letterSpacing: 0.3,
+              }}>
+                {overview.pool.name} &middot; {overview.counts.membersActive} {t("corporate.players")}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {overview && (
         <>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
-            <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
-            {overview.pool.status && (() => {
-              const badge = getPoolStatusBadge(overview.pool.status);
-              return (
-                <span
+          {/* Corporate header — logo + company name prominent */}
+          {!showSplash && overview.pool.organization && (
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, marginBottom: 8 }}>
+              {overview.pool.organization.logoBase64 ? (
+                <img
+                  src={overview.pool.organization.logoBase64}
+                  alt={overview.pool.organization.name}
                   style={{
-                    fontSize: 13,
-                    padding: "4px 12px",
-                    borderRadius: 999,
-                    border: `1px solid ${badge.color}`,
-                    background: `${badge.color}20`,
-                    color: badge.color,
-                    fontWeight: 600,
+                    maxHeight: 128, maxWidth: 200, objectFit: "contain",
+                    borderRadius: 12, flexShrink: 0,
                   }}
-                >
-                  {badge.emoji} {badge.label}
-                </span>
-              );
-            })()}
-          </div>
+                />
+              ) : (
+                <div style={{
+                  width: 100, height: 100, borderRadius: 14, flexShrink: 0,
+                  background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 42, fontWeight: 800, color: "#fff",
+                }}>
+                  {overview.pool.organization.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: "#1a1a2e", lineHeight: 1.2, letterSpacing: "-0.5px" }}>
+                  {overview.pool.name}
+                </div>
+                <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 600, marginTop: 2 }}>
+                  {t("corporate.byCompany", { company: overview.pool.organization.name })}
+                </div>
+              </div>
+              {overview.pool.status && (() => {
+                const badge = getPoolStatusBadge(overview.pool.status);
+                return (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "4px 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${badge.color}`,
+                      background: `${badge.color}20`,
+                      color: badge.color,
+                      fontWeight: 600,
+                      marginLeft: "auto",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {badge.emoji} {badge.label}
+                  </span>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Non-corporate header — standard */}
+          {!overview.pool.organization && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
+              <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
+              {overview.pool.status && (() => {
+                const badge = getPoolStatusBadge(overview.pool.status);
+                return (
+                  <span
+                    style={{
+                      fontSize: 13,
+                      padding: "4px 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${badge.color}`,
+                      background: `${badge.color}20`,
+                      color: badge.color,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {badge.emoji} {badge.label}
+                  </span>
+                );
+              })()}
+            </div>
+          )}
 
           <div style={{ color: "#666", fontSize: 12 }}>
-            {overview.tournamentInstance.name} • {overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
+            {overview.tournamentInstance.name} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
+
+          {/* Banner for LEFT members */}
+          {overview.myMembership.status === "LEFT" && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: "10px 14px",
+                borderRadius: 8,
+                background: "#fef2f2",
+                border: "1px solid #fca5a5",
+                color: "#dc2626",
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
+              {t("retiredBanner")}
+            </div>
+          )}
 
           {/* Tabs Navigation con Notification Badges */}
           <div style={{
@@ -487,16 +876,17 @@ export default function PoolPage() {
             msOverflowStyle: "none",
             ...mobileInteractiveStyles.tapHighlight,
           }}>
-            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {
+            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" ? ["jugadores" as const] : []), ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {
               const badgeCount = tabBadges[tab] || 0;
               const isUrgent = tab === "partidos" && hasUrgent;
 
               // Nombres cortos para móvil
-              const tabLabels = {
+              const tabLabels: Record<string, string> = {
                 partidos: isMobile ? "⚽" : `⚽ ${t("tabs.matches")}`,
                 leaderboard: isMobile ? "📊" : `📊 ${t("tabs.leaderboard")}`,
                 resumen: isMobile ? "📈" : `📈 ${t("tabs.summary")}`,
                 reglas: isMobile ? "📋" : `📋 ${t("tabs.rules")}`,
+                jugadores: isMobile ? "👥" : `👥 ${t("tabs.players")}`,
                 admin: isMobile ? "⚙️" : `⚙️ ${t("tabs.admin")}`,
               };
 
@@ -546,7 +936,15 @@ export default function PoolPage() {
               {activeTab === "leaderboard" && t("tabs.leaderboard")}
               {activeTab === "resumen" && t("tabs.summary")}
               {activeTab === "reglas" && t("tabs.rules")}
+              {activeTab === "jugadores" && t("tabs.players")}
               {activeTab === "admin" && t("tabs.admin")}
+            </div>
+          )}
+
+          {/* Tab Content: Jugadores (solo CORPORATE_HOST en pools corporativos) */}
+          {activeTab === "jugadores" && overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" && token && (
+            <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+              <CorporateEmployeeManager poolId={poolId!} token={token} isMobile={isMobile} />
             </div>
           )}
 
@@ -597,19 +995,15 @@ export default function PoolPage() {
                   <div
                     onClick={async () => {
                       if (busyKey === "auto-advance-toggle" || !token || !poolId) return;
-                      console.log('[TOGGLE] Clicked. Current state:', overview.pool.autoAdvanceEnabled);
                       setBusyKey("auto-advance-toggle");
                       setError(null);
                       try {
                         const newValue = !overview.pool.autoAdvanceEnabled;
-                        console.log('[TOGGLE] Sending update to:', newValue);
-                        const result = await updatePoolSettings(token, poolId, { autoAdvanceEnabled: newValue });
-                        console.log('[TOGGLE] Update result:', result);
+                        await updatePoolSettings(token, poolId, { autoAdvanceEnabled: newValue });
                         await load(verbose);
-                        console.log('[TOGGLE] Reloaded. New state:', overview.pool.autoAdvanceEnabled);
                       } catch (err: any) {
                         console.error('[TOGGLE] Error:', err);
-                        setError(err?.message ?? t("admin.autoAdvance.updateError"));
+                        setError(friendlyError(err));
                       } finally {
                         setBusyKey(null);
                       }
@@ -672,7 +1066,7 @@ export default function PoolPage() {
                         await updatePoolSettings(token, poolId, { requireApproval: newValue });
                         await load(verbose);
                       } catch (err: any) {
-                        setError(err?.message ?? t("admin.autoAdvance.updateError"));
+                        setError(friendlyError(err));
                       } finally {
                         setBusyKey(null);
                       }
@@ -715,6 +1109,137 @@ export default function PoolPage() {
                 </label>
               </div>
 
+              {/* Extra Time Configuration */}
+              {overview.pool.pickTypesConfig && (() => {
+                const ptc = overview.pool.pickTypesConfig as any[];
+                const scoringPhases = ptc.filter((pc: any) => pc.requiresScore);
+                if (scoringPhases.length === 0) return null;
+
+                const now = Date.now();
+                const deadlineMinutes = overview.pool.deadlineMinutesBeforeKickoff ?? 10;
+
+                return (
+                  <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
+                    <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 8, color: "#007bff" }}>
+                      {"⏱️"} {t("admin.extraTime.title")}
+                    </h4>
+                    <div style={{ fontSize: 13, lineHeight: 1.6, color: "#666", marginBottom: 14 }}>
+                      {t("admin.extraTime.description")}
+                    </div>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {scoringPhases.map((pc: any) => {
+                        const phase = phases.find((p: any) => p.id === pc.phaseId);
+                        const phaseName = phase ? formatPhaseFullName(pc.phaseId, t) : pc.phaseName;
+                        const phaseMatches = overview.matches.filter((m: any) => m.phaseId === pc.phaseId);
+                        const matchesWithResult = phaseMatches.filter((m: any) => m.result);
+                        const includeET = pc.includeExtraTime ?? false;
+
+                        // Lock logic
+                        let locked = false;
+                        let lockReason = "";
+
+                        // 1. Old results without homeGoals90 data → locked
+                        if (matchesWithResult.length > 0) {
+                          locked = true;
+                          lockReason = matchesWithResult.length === phaseMatches.length
+                            ? t("admin.extraTime.lockedCompleted")
+                            : t("admin.extraTime.lockedOldResults");
+                        }
+
+                        // 2. First deadline < 48h
+                        if (!locked && phaseMatches.length > 0) {
+                          const kickoffs = phaseMatches
+                            .filter((m: any) => m.kickoffUtc)
+                            .map((m: any) => new Date(m.kickoffUtc).getTime() - deadlineMinutes * 60_000);
+                          if (kickoffs.length > 0) {
+                            const firstDeadline = Math.min(...kickoffs);
+                            const hoursUntil = (firstDeadline - now) / (1000 * 60 * 60);
+                            if (hoursUntil < 48) {
+                              locked = true;
+                              lockReason = t("admin.extraTime.lockedDeadline");
+                            }
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={pc.phaseId}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              padding: "10px 12px",
+                              background: "#fff",
+                              borderRadius: 8,
+                              border: "1px solid #dee2e6",
+                              opacity: locked ? 0.7 : 1,
+                            }}
+                          >
+                            <div
+                              onClick={async () => {
+                                if (locked || busyKey === `et-${pc.phaseId}` || !token || !poolId) return;
+                                setBusyKey(`et-${pc.phaseId}`);
+                                setError(null);
+                                try {
+                                  const currentEtPhases = (overview.pool.pickTypesConfig as any[])
+                                    .filter((p: any) => p.includeExtraTime)
+                                    .map((p: any) => p.phaseId);
+                                  const newEtPhases = includeET
+                                    ? currentEtPhases.filter((id: string) => id !== pc.phaseId)
+                                    : [...currentEtPhases, pc.phaseId];
+                                  await updatePoolSettings(token, poolId, { extraTimePhases: newEtPhases });
+                                  await load(verbose);
+                                } catch (err: any) {
+                                  setError(friendlyError(err));
+                                } finally {
+                                  setBusyKey(null);
+                                }
+                              }}
+                              style={{
+                                position: "relative",
+                                width: 40,
+                                height: 20,
+                                borderRadius: 10,
+                                background: locked ? "#aaa" : includeET ? "#007bff" : "#ccc",
+                                cursor: locked ? "not-allowed" : busyKey === `et-${pc.phaseId}` ? "wait" : "pointer",
+                                transition: "background 0.3s ease",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 2,
+                                  left: includeET ? 22 : 2,
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: "50%",
+                                  background: "#fff",
+                                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                                  transition: "left 0.3s ease",
+                                }}
+                              />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: "#333" }}>
+                                {phaseName}
+                              </div>
+                              <div style={{ fontSize: 11, color: locked ? "#999" : "#666", marginTop: 1 }}>
+                                {locked
+                                  ? lockReason
+                                  : includeET
+                                    ? t("admin.extraTime.labelET")
+                                    : t("admin.extraTime.label90")}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Phase Status Panel */}
               <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
                 <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>
@@ -753,7 +1278,7 @@ export default function PoolPage() {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                             <span style={{ fontSize: 20 }}>{colors.icon}</span>
-                            <span style={{ fontWeight: 700, fontSize: 15, color: "#333" }}>{phase.name}</span>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: "#333" }}>{formatPhaseFullName(phase.id, t)}</span>
                             <span style={{
                               padding: "2px 8px",
                               background: colors.bg,
@@ -797,7 +1322,7 @@ export default function PoolPage() {
                                     await load(verbose);
                                     alert(`✅ ${t("admin.phasePanel.advanceSuccess")}: ${result.message || ''}`);
                                   } catch (err: any) {
-                                    setError(err?.message ?? t("admin.phasePanel.advanceError"));
+                                    setError(friendlyError(err));
                                   } finally {
                                     setBusyKey(null);
                                   }
@@ -844,7 +1369,7 @@ export default function PoolPage() {
                                   await load(verbose);
                                   alert(isCurrentlyLocked ? `✅ ${t("admin.phasePanel.phaseUnlocked")}` : `🔒 ${t("admin.phasePanel.phaseLocked")}`);
                                 } catch (err: any) {
-                                  setError(err?.message ?? t("admin.phasePanel.lockError"));
+                                  setError(friendlyError(err));
                                 } finally {
                                   setBusyKey(null);
                                 }
@@ -926,7 +1451,7 @@ export default function PoolPage() {
                                 await load(verbose);
                                 refetchNotifications();
                               } catch (err: any) {
-                                setError(err?.message ?? t("admin.pendingRequests.approveError"));
+                                setError(friendlyError(err));
                               } finally {
                                 setBusyKey(null);
                               }
@@ -960,7 +1485,7 @@ export default function PoolPage() {
                                 await loadPendingMembers();
                                 refetchNotifications();
                               } catch (err: any) {
-                                setError(err?.message ?? t("admin.pendingRequests.rejectError"));
+                                setError(friendlyError(err));
                               } finally {
                                 setBusyKey(null);
                               }
@@ -1061,6 +1586,19 @@ export default function PoolPage() {
                                   PLAYER
                                 </span>
                               )}
+                              {member.memberStatus === "LEFT" && (
+                                <span style={{
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 4,
+                                  background: "#ef444420",
+                                  border: "1px solid #ef4444",
+                                  color: "#ef4444",
+                                  fontWeight: 600
+                                }}>
+                                  {t("mobileLeaderboard.retired")}
+                                </span>
+                              )}
                               <span style={{ fontSize: 12, color: "#999" }}>
                                 {member.points} {t("admin.members.pts")}
                               </span>
@@ -1087,7 +1625,7 @@ export default function PoolPage() {
                                       await load(verbose);
                                       alert(`✅ ${t("admin.members.promoteSuccess", { name: member.displayName })}`);
                                     } catch (err: any) {
-                                      setError(err?.message ?? t("admin.members.promoteError"));
+                                      setError(friendlyError(err));
                                     } finally {
                                       setBusyKey(null);
                                     }
@@ -1126,7 +1664,7 @@ export default function PoolPage() {
                                       await load(verbose);
                                       alert(`✅ ${t("admin.members.demoteSuccess", { name: member.displayName })}`);
                                     } catch (err: any) {
-                                      setError(err?.message ?? t("admin.members.demoteError"));
+                                      setError(friendlyError(err));
                                     } finally {
                                       setBusyKey(null);
                                     }
@@ -1201,6 +1739,38 @@ export default function PoolPage() {
                 </div>
               )}
 
+              {/* Pool Capacity Section */}
+              {overview.pool.maxParticipants && (
+                <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
+                  <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#4f46e5" }}>
+                    {t("admin.capacity.title")}
+                  </h4>
+                  <div style={{ fontSize: 14, color: "#666", marginBottom: 8 }}>
+                    {t("admin.capacity.current", {
+                      current: overview.counts.membersActive,
+                      max: overview.pool.maxParticipants,
+                    })}
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{ height: 8, background: "#e9ecef", borderRadius: 4, marginBottom: 16 }}>
+                    <div style={{
+                      height: "100%",
+                      borderRadius: 4,
+                      width: `${Math.min(100, (overview.counts.membersActive / overview.pool.maxParticipants) * 100)}%`,
+                      background: (overview.counts.membersActive / overview.pool.maxParticipants) > 0.8 ? "#dc3545" : "#28a745",
+                      transition: "width 0.3s ease",
+                    }} />
+                  </div>
+                  <CapacitySelector
+                    type={overview.pool.organizationId ? "corporate" : "personal"}
+                    currentCapacity={overview.pool.maxParticipants}
+                    selectedCapacity={overview.pool.maxParticipants}
+                    onSelect={() => {}}
+                    mode="expansion"
+                  />
+                </div>
+              )}
+
               {/* Archive Pool Section (only if COMPLETED) */}
               {overview.pool.status === "COMPLETED" && (
                 <div style={{ marginBottom: 24, padding: 16, background: "#fff3cd", borderRadius: 12, border: "1px solid #ffc107" }}>
@@ -1226,7 +1796,7 @@ export default function PoolPage() {
                         await load(verbose);
                         alert(`✅ ${t("admin.archive.success")}`);
                       } catch (err: any) {
-                        setError(err?.message ?? t("admin.archive.error"));
+                        setError(friendlyError(err));
                       } finally {
                         setBusyKey(null);
                       }
@@ -1440,7 +2010,7 @@ export default function PoolPage() {
                       opacity: status === "PENDING" ? 0.8 : 1,
                     }}
                   >
-                    <span>{phase.name}</span>
+                    <span>{formatPhaseName(phase.id, t)}</span>
                     <span style={{ fontSize: 11, opacity: 0.85 }}>({matchCount})</span>
                     {status === "PENDING" && <span style={{ fontSize: 14 }}>🔒</span>}
                     {status === "COMPLETED" && <span style={{ fontSize: 14 }}>✅</span>}
@@ -1587,7 +2157,7 @@ export default function PoolPage() {
                 tournamentData={(overview.tournamentInstance as any).dataJson}
                 token={token!}
                 isHost={overview.permissions.canManageResults}
-                isLocked={getPhaseStatus(activePhase!) === "COMPLETED"}
+                isLocked={getPhaseStatus(activePhase!) === "COMPLETED" || overview.myMembership.status === "LEFT"}
                 matchResults={phaseMatchResults}
                 onDataChanged={() => load(verbose)}
                 onShowBreakdown={() => setBreakdownModalData({
@@ -1768,9 +2338,14 @@ export default function PoolPage() {
                             </div>
                           </div>
 
-                          {/* Match Info */}
-                          <div style={{ color: "#666", fontSize: 12, marginBottom: 12, paddingLeft: 4 }}>
-                            {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {fmtUtc(m.kickoffUtc, userTimezone)}
+                          {/* Match Info: kickoff + deadline */}
+                          <div style={{ color: "#666", fontSize: 12, marginBottom: 12, paddingLeft: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+                            <div>
+                              {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone)}
+                            </div>
+                            <div style={{ color: m.isLocked ? "#999" : "#c0392b" }}>
+                              {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone)}
+                            </div>
                           </div>
 
                           {/* Content: Picks and Results OR Placeholder Message */}
@@ -1795,7 +2370,7 @@ export default function PoolPage() {
                               {/* Pick */}
                               <PickSection
                                 pick={m.myPick}
-                                isLocked={m.isLocked}
+                                isLocked={m.isLocked || overview.myMembership.status === "LEFT"}
                                 allowScorePick={allowScorePick}
                                 onSave={(pick: any) => savePick(m.id, pick)}
                                 disabled={busyPick}
@@ -2024,6 +2599,19 @@ export default function PoolPage() {
                                   PLAYER
                                 </span>
                               )}
+                              {r.memberStatus === "LEFT" && (
+                                <span style={{
+                                  fontSize: 10,
+                                  padding: "2px 6px",
+                                  borderRadius: 3,
+                                  background: "#ef444420",
+                                  border: "1px solid #ef4444",
+                                  color: "#ef4444",
+                                  fontWeight: 600
+                                }}>
+                                  {t("mobileLeaderboard.retired")}
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td style={{ padding: "14px 8px", textAlign: "center", fontWeight: 900, fontSize: 18, color: "#007bff", background: "#f8fbff" }}>
@@ -2157,7 +2745,7 @@ export default function PoolPage() {
                           setExpulsionModalData(null);
                           alert(`✅ ${t("expulsion.kickSuccess", { name: expulsionModalData.memberName })}`);
                         } catch (err: any) {
-                          setError(err?.message ?? t("expulsion.kickError"));
+                          setError(friendlyError(err));
                         } finally {
                           setBusyKey(null);
                         }
@@ -2261,7 +2849,7 @@ export default function PoolPage() {
                           setExpulsionModalData(null);
                           alert(`✅ ${t("expulsion.banSuccess", { name: expulsionModalData.memberName })}`);
                         } catch (err: any) {
-                          setError(err?.message ?? t("expulsion.banError"));
+                          setError(friendlyError(err));
                         } finally {
                           setBusyKey(null);
                         }

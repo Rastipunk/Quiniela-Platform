@@ -1,7 +1,13 @@
 {
   "loading": "Carregando overview...",
   "poolIdMissing": "PoolId ausente",
-  "backToDashboard": "Dashboard",
+  "backToDashboard": "← Meus Pools",
+  "httpErrors": {
+    "FORBIDDEN": "Você não tem permissão para acessar este conteúdo.",
+    "NOT_FOUND": "Este recurso não foi encontrado.",
+    "UNAUTHORIZED": "Sua sessão expirou. Faça login novamente.",
+    "GENERIC": "Ocorreu um erro. Tente novamente."
+  },
   "members": "membros",
   "yourRole": "Seu papel",
   "invalidScore": "Placar inválido",
@@ -74,11 +80,20 @@
     "leaderboard": "Classificação",
     "summary": "Meu Resumo",
     "rules": "Regras",
-    "admin": "Administração"
+    "admin": "Administração",
+    "players": "Jogadores"
   },
 
   "admin": {
     "title": "Painel de Administração do Host",
+    "capacity": {
+      "title": "Capacidade do Bolão",
+      "current": "{current} de {max} jogadores",
+      "fullTitle": "Seu bolão está lotado",
+      "fullMessage": "Seu bolão atingiu a capacidade máxima de {max} jogadores. Para receber mais participantes, amplie sua capacidade.",
+      "fullDismiss": "Entendido",
+      "fullDontShow": "Não mostrar novamente"
+    },
     "autoAdvance": {
       "title": "Avanço Automático de Fases",
       "description": "Quando habilitado, o sistema avançará automaticamente para a próxima fase quando todos os jogos da fase atual forem completados.",
@@ -95,6 +110,16 @@
       "direct": "Ingresso DIRETO",
       "requiredDesc": "Os jogadores precisarão da sua aprovação para entrar",
       "directDesc": "Os jogadores podem entrar diretamente com o código de convite"
+    },
+    "extraTime": {
+      "title": "Medição do Resultado",
+      "description": "Escolha se os palpites são avaliados pelo placar aos 90 minutos ou incluindo a prorrogação. Os pênaltis nunca são contados.",
+      "label90": "Apenas 90 minutos",
+      "labelET": "Incluir prorrogação",
+      "lockedOldResults": "Fixo — fase com resultados anteriores",
+      "lockedCompleted": "Fixo — fase concluída",
+      "lockedDeadline": "Bloqueado — menos de 48h para o primeiro jogo",
+      "updateError": "Erro ao atualizar configuração de prorrogação"
     },
     "phasePanel": {
       "title": "Status das Fases do Torneio",
@@ -160,6 +185,32 @@
       "pendingJoinsPlural": "{count} solicitações de ingresso pendentes.",
       "phasesReady": "{count} fase pronta para avançar.",
       "phasesReadyPlural": "{count} fases prontas para avançar."
+    },
+    "employees": {
+      "title": "Gestão de Funcionários",
+      "subtitle": "Gerencie os funcionários do seu bolão corporativo.",
+      "addTitle": "Adicionar funcionários",
+      "emailsPlaceholder": "Cole endereços de email, um por linha...",
+      "csvUpload": "Enviar CSV",
+      "csvTemplate": "Baixar modelo",
+      "addButton": "Adicionar",
+      "adding": "Adicionando...",
+      "addResult": "{added} adicionados, {skipped} ignorados (já existiam)",
+      "sendInvitations": "Enviar convites pendentes",
+      "sending": "Enviando...",
+      "sendResult": "{sent} enviados, {activated} ativados diretamente, {failed} falharam",
+      "listTitle": "Lista de funcionários",
+      "email": "Email",
+      "status": "Status",
+      "actions": "Ações",
+      "delete": "Remover",
+      "deleting": "Removendo...",
+      "noEmployees": "Nenhum funcionário adicionado ainda.",
+      "activated": "{count} de {total} funcionários ativados",
+      "statusPending": "Pendente",
+      "statusSent": "Enviado",
+      "statusActivated": "Ativado",
+      "statusFailed": "Falhou"
     }
   },
 
@@ -191,6 +242,8 @@
     "locked": "BLOQUEADO",
     "open": "ABERTO",
     "matchLabel": "Jogo {id}",
+    "kickoff": "Início",
+    "deadline": "Encerramento dos palpites",
     "pendingTitle": "Jogo Pendente",
     "pendingDesc": "Este jogo será habilitado quando os times participantes forem definidos.",
     "viewBreakdown": "Ver detalhamento",
@@ -476,7 +529,8 @@
     "emptyState": "Ainda não há dados na classificação",
     "scrollHint": "Deslize para ver mais fases",
     "host": "HOST",
-    "coAdmin": "CO-ADMIN"
+    "coAdmin": "CO-ADMIN",
+    "retired": "APOSENTADO"
   },
   "phaseConfig": {
     "fundamentalDecision": "Decisão Fundamental",
@@ -560,5 +614,85 @@
       "shortDesc": "Apenas gols do visitante.",
       "example": "Exemplo com 4 pts: Você prevê ?-1, resultado 2-1 → GANHA 4 PTS | Resultado 2-2 → 0 pts"
     }
+  },
+  "corporate": {
+    "badge": "Bolao corporativo",
+    "playButton": "Vamos jogar!",
+    "players": "jogadores",
+    "byCompany": "por {company}",
+    "tournamentInfo": "{tournament} \u00b7 {count} jogadores"
+  },
+  "retiredBanner": "Você saiu deste pool. Pode ver os resultados mas não pode fazer palpites.",
+
+  "groupStandings": {
+    "loading": "Carregando...",
+    "errorLoading": "Erro ao carregar dados",
+    "yourPrediction": "Sua previsão",
+    "officialResult": "Resultado oficial",
+    "pickSaved": "Previsão salva",
+    "errorSaving": "Erro ao salvar",
+    "resultSaved": "Resultado salvo",
+    "errorSavingResult": "Erro ao salvar resultado",
+    "standingsUpdated": "Posições atualizadas",
+    "standingsGenerated": "Posições geradas",
+    "errorGenerating": "Erro ao gerar posições",
+    "errorLoadingBreakdown": "Erro ao carregar detalhamento",
+    "saving": "Salvando...",
+    "save": "Salvar",
+    "edit": "Editar",
+    "hideMatches": "Ocultar jogos",
+    "showMatches": "Ver jogos",
+    "editMatches": "Editar jogos",
+    "correctionMode": "Modo correção:",
+    "correctionModeDesc": "As alterações exigirão regenerar as posições.",
+    "matchesCount": "{saved}/{total} jogos",
+    "correctionReasonLabel": "Motivo da correção (obrigatório):",
+    "correctionReasonPlaceholder": "Ex: Erro de digitação, resultado oficial corrigido...",
+    "needsReasonTooltip": "Escreva um motivo abaixo",
+    "cancel": "Cancelar",
+    "generating": "Gerando...",
+    "regenerateStandings": "Regenerar posições",
+    "generateStandings": "Gerar posições",
+    "pendingPublish": "Pendente de publicação",
+    "matchResultsTitle": "Resultados dos jogos",
+    "unknownTeam": "Desconhecido",
+    "viewBreakdown": "Ver detalhamento de pontos",
+    "loadingBreakdown": "Carregando detalhamento...",
+    "breakdownTitle": "Detalhamento - {name}",
+    "pointsEarned": "pontos obtidos",
+    "perExactPosition": "por posição exata",
+    "bonusPerfectGroupConfig": "bônus grupo perfeito",
+    "noPrediction": "Você não fez previsão para este grupo",
+    "yourPosition": "(seu: {position}°)",
+    "bonusPerfectGroupLabel": "Bônus grupo perfeito",
+    "reasonRequired": "É necessário um motivo para corrigir um resultado já publicado"
+  },
+
+  "knockoutCard": {
+    "selectTeam": "Selecione um time",
+    "pickSaved": "Previsão salva",
+    "errorSavingPick": "Erro ao salvar previsão",
+    "penaltiesNeeded": "Empate nos 90 min - insira resultado dos pênaltis",
+    "penaltiesCantDraw": "Os pênaltis não podem terminar em empate",
+    "reasonRequired": "É necessário um motivo para corrigir o resultado",
+    "resultPublished": "Resultado publicado",
+    "errorPublishing": "Erro ao publicar resultado",
+    "advances": "Avança: {team}",
+    "yourPrediction": "Sua previsão",
+    "saving": "Salvando...",
+    "save": "Salvar",
+    "edit": "Editar",
+    "officialResult": "Resultado oficial",
+    "pen": "pen.",
+    "teamAdvancesResult": "{team} avança",
+    "ninetyMin": "90 min:",
+    "penalties": "Pênaltis:",
+    "advancesPreview": "Avança:",
+    "byPenalties": "(nos pênaltis)",
+    "correctionPlaceholder": "Motivo da correção...",
+    "updateResult": "Atualizar resultado",
+    "publishResult": "Publicar resultado",
+    "pendingResult": "Aguardando resultado",
+    "advancesBadge": "avança"
   }
 }

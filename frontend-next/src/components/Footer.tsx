@@ -98,6 +98,26 @@ export function Footer() {
           >
             {t("privacy")}
           </Link>
+          <Link
+            href="/precios"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            {t("pricing")}
+          </Link>
+          <Link
+            href="/reembolsos"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            {t("refundPolicy")}
+          </Link>
         </div>
 
         {/* Explore (Resources + Regional merged) */}
@@ -198,6 +218,16 @@ export function Footer() {
           >
             {t("footballPool")}
           </Link>
+          <Link
+            href="/empresas"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+            }}
+          >
+            {t("enterprises")}
+          </Link>
         </div>
 
         {/* Contact */}
@@ -213,14 +243,14 @@ export function Footer() {
             {t("contact")}
           </div>
           <a
-            href="mailto:soporte@picks4all.com"
+            href={`mailto:${t("supportEmail")}`}
             style={{
               fontSize: 13,
               color: "var(--muted)",
               textDecoration: "none",
             }}
           >
-            soporte@picks4all.com
+            {t("supportEmail")}
           </a>
         </div>
       </div>

@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAuth, optionalAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { sendAdminNotification, escapeHtml } from "../lib/email";
 import rateLimit from "express-rate-limit";
 
 export const feedbackRouter = Router();
@@ -11,7 +12,7 @@ export const feedbackRouter = Router();
 const feedbackLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5,
-  message: { error: "RATE_LIMITED", message: "Demasiados envíos. Intenta en un minuto." },
+  message: { error: "RATE_LIMITED" },
 });
 
 const submitFeedbackSchema = z.object({
@@ -25,7 +26,7 @@ const submitFeedbackSchema = z.object({
 });
 
 // POST /feedback — submit feedback (auth optional)
-feedbackRouter.post("/", feedbackLimiter, async (req, res) => {
+feedbackRouter.post("/", feedbackLimiter, optionalAuth, async (req, res) => {
   const parsed = submitFeedbackSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
@@ -33,24 +34,15 @@ feedbackRouter.post("/", feedbackLimiter, async (req, res) => {
 
   const { type, message, imageBase64, wantsContact, contactName, phoneNumber, currentUrl } = parsed.data;
 
-  // Try to extract user info from optional auth header
-  let userId: string | null = null;
+  // Get user info from optionalAuth middleware
+  let userId: string | null = req.auth?.userId ?? null;
   let userEmail: string | null = null;
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith("Bearer ")) {
-    try {
-      const { verifyToken } = await import("../lib/jwt");
-      const payload = verifyToken(authHeader.slice(7));
-      userId = payload.userId;
-      // Get email from DB
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
-        select: { email: true },
-      });
-      userEmail = user?.email ?? null;
-    } catch {
-      // Invalid token — proceed as anonymous
-    }
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    userEmail = user?.email ?? null;
   }
 
   const feedback = await prisma.betaFeedback.create({
@@ -67,6 +59,20 @@ feedbackRouter.post("/", feedbackLimiter, async (req, res) => {
       userAgent: req.get("user-agent") || null,
     },
   });
+
+  // Notificar al admin por email (fire and forget)
+  sendAdminNotification({
+    subject: `${escapeHtml(type)}: ${escapeHtml(message.substring(0, 60))}${message.length > 60 ? "..." : ""}`,
+    type: "feedback",
+    body: `
+      <p><strong>Tipo:</strong> ${escapeHtml(type)}</p>
+      <p><strong>Mensaje:</strong> ${escapeHtml(message)}</p>
+      <p><strong>Usuario:</strong> ${escapeHtml(userEmail || "Anónimo")}</p>
+      ${currentUrl ? `<p><strong>URL:</strong> ${escapeHtml(currentUrl)}</p>` : ""}
+      ${wantsContact ? `<p><strong>Contacto:</strong> ${escapeHtml(contactName || "—")} / ${escapeHtml(phoneNumber || "—")}</p>` : ""}
+      ${imageBase64 ? `<p><em>(Incluye screenshot)</em></p>` : ""}
+    `,
+  }).catch((err) => console.error("Error sending admin notification:", err));
 
   return res.status(201).json({
     success: true,

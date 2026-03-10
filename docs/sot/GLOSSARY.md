@@ -1,11 +1,11 @@
 # Glossary of Terms
-# Quiniela Platform
+# Picks4All
 
-> **Purpose:** Centralized definition of all domain-specific terminology, concepts, and jargon used in the Quiniela Platform.
+> **Purpose:** Centralized definition of all domain-specific terminology, concepts, and jargon used in Picks4All.
 >
 > **Audience:** Developers, product managers, stakeholders, and new team members.
 >
-> **Last Updated:** 2026-01-02
+> **Last Updated:** 2026-03-05
 
 ---
 
@@ -148,6 +148,18 @@
 
 ---
 
+### CORPORATE_HOST
+
+**Definition:** A pool role similar to HOST but specifically for corporate pools created via the enterprise flow (`/empresas/crear`).
+
+**Context:** When an organization creates a corporate pool, the creating user is assigned the CORPORATE_HOST role within that pool.
+
+**Permissions:** Same as HOST (full control over the pool).
+
+**Example:** "Maria created a corporate pool for Acme Corp and was assigned the CORPORATE_HOST role."
+
+---
+
 ### Active Member
 
 **Definition:** User with `PoolMember.status = ACTIVE` (can participate).
@@ -155,6 +167,21 @@
 **Contrast:** BANNED, SUSPENDED, or LEFT members cannot submit picks.
 
 **Example:** "This pool has 20 active members and 2 banned members."
+
+---
+
+### LEFT
+
+**Definition:** A `PoolMember.status` indicating the player voluntarily left the pool.
+
+**Behavior:**
+- Player retains their accumulated points on the leaderboard
+- Displayed as "Retirado" (retired) on the leaderboard
+- Cannot submit new picks (read-only access)
+- `leftAtUtc` timestamp is recorded
+- HOST and CORPORATE_HOST cannot leave their own pools
+
+**Example:** "Carlos left the pool mid-tournament. His 32 points remain on the leaderboard but he can no longer make picks."
 
 ---
 
@@ -207,6 +234,20 @@
 
 ---
 
+### ResultSourceMode
+
+**Definition:** Configuration on a `TournamentInstance` that determines how match results are obtained.
+
+**Values:**
+- **MANUAL:** The pool host (or co-admin) manually enters match results
+- **AUTO:** Smart Sync automatically fetches results from API-Football
+
+**Technical:** Stored as a field on the `TournamentInstance` model.
+
+**Example:** "The UCL 2025-26 instance uses AUTO mode, so results are fetched automatically via Smart Sync."
+
+---
+
 ### Match (Partido)
 
 **Definition:** A single game between two teams within a tournament instance.
@@ -254,6 +295,42 @@
 ---
 
 ## Pool Management
+
+### Activation Token (Token de Activación)
+
+**Definition:** A secure token sent to corporate employees via email for pool activation.
+
+**Generation:** 48 bytes via `crypto.randomBytes`, encoded as hex string.
+
+**Expiry:** 30 days from creation.
+
+**Flow:**
+1. CORPORATE_HOST uploads employee list (CSV or manual)
+2. System generates unique activation token per employee
+3. Employee receives email with activation link (`/activar?token=...`)
+4. Employee sets password and joins the corporate pool
+
+**Technical:** Stored in the `CorporateInvite` model.
+
+**Example:** "Employee received an activation token via email and used it to join the corporate pool and set their password."
+
+---
+
+### Corporate Pool (Pool Corporativo)
+
+**Definition:** A pool created through the enterprise flow (`/empresas/crear`), managed by a CORPORATE_HOST, with employee invitations and organization branding.
+
+**Characteristics:**
+- Created via the 6-step corporate pool creation wizard
+- Associated with an Organization entity
+- Members are invited via activation tokens (not invite codes)
+- Managed by a user with CORPORATE_HOST role
+
+**Technical:** Uses `Organization`, `CorporateInvite`, and `Pool` models in a transaction.
+
+**Example:** "Acme Corp created a corporate pool for the World Cup 2026 with 50 employees."
+
+---
 
 ### Invite Code (Código de Invitación)
 
@@ -330,6 +407,21 @@ deadlineUtc = match.kickoffUtc - pool.deadlineMinutesBeforeKickoff
 
 ---
 
+### Organization (Organización)
+
+**Definition:** An entity representing a company or organization that creates corporate pools for their employees.
+
+**Technical:** Stored in the `Organization` model. Created as part of the corporate pool creation transaction.
+
+**Key Attributes:**
+- Name (company name)
+- Associated corporate pools
+- Employee list (via `CorporateInvite` records)
+
+**Example:** "Organization 'Acme Corp' has 2 corporate pools: one for the World Cup and one for the UCL."
+
+---
+
 ## Predictions & Scoring
 
 ### Pick Type
@@ -377,15 +469,16 @@ return "DRAW";
 
 **Definition:** Pre-configured scoring rule defining points awarded per pick type.
 
-**v0.1-alpha Presets:**
+**Current Presets:**
 
-| Preset | Outcome Points | Exact Score Bonus |
-|--------|----------------|-------------------|
-| **CLASSIC** | 3 | 2 |
-| **OUTCOME_ONLY** | 3 | 0 |
-| **EXACT_HEAVY** | 2 | 3 |
+| Preset | Description |
+|--------|-------------|
+| **CUMULATIVE** | Points stack: outcome + exact score + goal difference (most rewarding) |
+| **BASIC** | Outcome points + exact score bonus (balanced) |
+| **SIMPLE** | Outcome-only scoring (simplest) |
+| **CUSTOM** | Host defines custom point values per pick type |
 
-**Example:** "In CLASSIC preset, correct outcome = 3pts, exact score bonus = 2pts (total 5pts)."
+**Example:** "In CUMULATIVE preset, a correct exact score earns outcome + exact + goal difference points (cumulative)."
 
 ---
 
@@ -451,6 +544,20 @@ return "DRAW";
 ---
 
 ## Technical Terms
+
+### API-Football
+
+**Definition:** Third-party API service used for automatic match result fetching (Smart Sync).
+
+**Provider:** api-football.com (via RapidAPI)
+
+**Usage:** When a `TournamentInstance` has `ResultSourceMode = AUTO`, Smart Sync queries API-Football to retrieve live and final match scores.
+
+**Technical:** Client implementation in `backend/src/services/apiFootball/client.ts`.
+
+**Example:** "API-Football provides live scores for the UCL 2025-26, enabling Smart Sync to auto-publish results."
+
+---
 
 ### Audit Event (Evento de Auditoría)
 
@@ -581,6 +688,23 @@ await prisma.prediction.upsert({
 
 ---
 
+### Locale
+
+**Definition:** A language/region setting that determines the user interface language and content localization.
+
+**Supported Locales:**
+- **ES:** Spanish (default locale, no URL prefix)
+- **EN:** English (URL prefix `/en/`)
+- **PT:** Portuguese (URL prefix `/pt/`)
+
+**Technical:** Managed by next-intl v4. Locale is determined by URL prefix, `NEXT_LOCALE` cookie, or browser `Accept-Language` header.
+
+**Configuration:** `frontend-next/src/i18n/routing.ts`
+
+**Example:** "A user visiting `/en/pools` sees the English interface, while `/pools` shows Spanish (default)."
+
+---
+
 ### Soft Delete (Borrado Suave)
 
 **Definition:** Marking a record as deleted (e.g., `status = ARCHIVED`) instead of physically removing it from the database.
@@ -595,6 +719,23 @@ await prisma.prediction.upsert({
 **Contrast:** Hard delete (permanent removal from database).
 
 **Example:** "Pool is ARCHIVED (soft delete), not deleted. Data remains for historical purposes."
+
+---
+
+### Smart Sync (Sincronización Automática)
+
+**Definition:** The automatic result syncing system that fetches match results from API-Football and publishes them to pools.
+
+**How it works:**
+1. Periodically checks for matches that have ended (via API-Football)
+2. Fetches final scores for completed matches
+3. Automatically publishes results to all pools using the relevant tournament instance
+
+**Configuration:** Enabled per `TournamentInstance` when `ResultSourceMode = AUTO`.
+
+**Technical:** Implementation in `backend/src/services/smartSync/service.ts`.
+
+**Example:** "Smart Sync detected that the UCL semifinal ended 3-1 and automatically published the result to all active pools."
 
 ---
 
@@ -651,6 +792,18 @@ await prisma.prediction.upsert({
 **Definition:** Database constraint enforcing referential integrity between tables.
 
 **Example:** "`Pool.tournamentInstanceId` is a foreign key to `TournamentInstance.id`."
+
+---
+
+### i18n
+
+**Full Form:** Internationalization
+
+**Definition:** The system's support for multiple languages and regional content. Picks4All supports Spanish (ES), English (EN), and Portuguese (PT).
+
+**Technical:** Implemented with next-intl v4 in the frontend. Messages are stored in `frontend-next/src/messages/{es,en,pt}/`. Backend emails are also locale-aware.
+
+**Example:** "i18n allows users in Brazil to see the platform in Portuguese while Colombian users see it in Spanish."
 
 ---
 
@@ -720,7 +873,9 @@ await prisma.prediction.upsert({
 
 **Definition:** Web app that loads once and dynamically updates (no full page reloads).
 
-**Example:** "Quiniela frontend is an SPA built with React."
+**Note:** The Picks4All frontend is NOT an SPA. It is a Next.js 16 App Router application with SSR (server-side rendering) for public pages and CSR (client-side rendering) for authenticated pages.
+
+**Example:** "Traditional SPAs load once and update dynamically. Picks4All uses a hybrid SSR/CSR approach instead."
 
 ---
 

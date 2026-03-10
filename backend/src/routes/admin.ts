@@ -39,48 +39,9 @@ adminRouter.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
   });
 });
 
-// Endpoint público para crear admin inicial (solo funciona si no hay admins)
-// NOTA: Este endpoint NO tiene requireAuth - es público intencionalmente
-adminRouter.post("/bootstrap-admin", async (req, res) => {
-  console.log("[bootstrap-admin] Request received");
-  try {
-    // Check if any admin exists
-    const existingAdmin = await prisma.user.findFirst({
-      where: { platformRole: "ADMIN" },
-    });
-
-    if (existingAdmin) {
-      return res.status(400).json({ ok: false, error: "Ya existe un admin. Este endpoint está deshabilitado." });
-    }
-
-    const { email, password, displayName, username } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ ok: false, error: "Email y password son requeridos" });
-    }
-
-    // Import hash function
-    const { hash } = await import("bcrypt");
-    const passwordHash = await hash(password, 10);
-
-    // Generate username from email if not provided
-    const adminUsername = username || email.split("@")[0] + "_admin";
-
-    const admin = await prisma.user.create({
-      data: {
-        email,
-        username: adminUsername,
-        displayName: displayName || "Admin",
-        passwordHash,
-        platformRole: "ADMIN",
-      },
-    });
-
-    res.json({ ok: true, message: "Admin creado", userId: admin.id });
-  } catch (error: any) {
-    console.error("Error creating admin:", error);
-    res.status(500).json({ ok: false, error: error.message });
-  }
+// Bootstrap-admin disabled in production — use seed script for admin creation
+adminRouter.post("/bootstrap-admin", (_req, res) => {
+  res.status(404).json({ ok: false, error: "Not found" });
 });
 
 // Endpoint para seedear WC2026 en producción (solo admin)

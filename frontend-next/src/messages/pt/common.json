@@ -4,6 +4,7 @@
     "tagline": "Pencas Esportivas Grátis com Amigos"
   },
   "nav": {
+    "loading": "Carregando...",
     "home": "Início",
     "myPools": "Minhas Pencas",
     "faq": "FAQ",
@@ -14,13 +15,15 @@
     "viewFeedback": "Ver Feedback",
     "logout": "Sair",
     "login": "Entrar",
+    "enterprises": "Para Empresas",
+    "pricing": "Preços",
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu",
     "menu": "Menu"
   },
   "footer": {
     "tagline": "Plataforma gratuita de previsões esportivas para jogar com amigos.",
-    "disclaimer": "Pencas, bolões e previsões — 100% grátis, sem dinheiro real nem apostas.",
+    "disclaimer": "Pencas, bolões e previsões — grátis até 20 jogadores, sem dinheiro real nem apostas.",
     "legal": "Legal",
     "terms": "Termos de Serviço",
     "privacy": "Política de Privacidade",
@@ -34,7 +37,11 @@
     "porraDeportiva": "Porra Esportiva (Espanha)",
     "footballPool": "Football Pool",
     "contact": "Contato",
-    "copyright": "Todos os direitos reservados."
+    "supportEmail": "suporte@picks4all.com",
+    "copyright": "Todos os direitos reservados.",
+    "enterprises": "Para Empresas",
+    "pricing": "Preços",
+    "refundPolicy": "Política de Reembolso"
   },
   "beta": {
     "message": "Beta — Seu feedback nos ajuda a melhorar",
@@ -58,27 +65,43 @@
     "whatIs": {
       "title": "O que é o Picks4All?",
       "p1": "O Picks4All é a plataforma gratuita para criar <strong>pencas esportivas</strong> online e competir com amigos, família ou colegas de trabalho prevendo resultados de futebol. Também conhecida como <strong>polla</strong> na Colômbia, <strong>prode</strong> na Argentina, <strong>quiniela</strong> no México, ou <strong>porra</strong> na Espanha.",
-      "p2": "Crie sua penca grátis, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>100% grátis e sem apostas</strong> — só diversão e rivalidade saudável."
+      "p2": "Crie sua penca grátis para até 20 jogadores, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>Grátis e sem apostas</strong> — só diversão e rivalidade saudável."
     },
     "features": {
       "title": "Tudo o que você precisa para competir",
       "subtitle": "Uma plataforma completa para organizar pencas com amigos, família ou colegas de trabalho."
     },
     "feature1": {
-      "title": "Crie sua penca",
-      "description": "Personalize as regras, o sistema de pontos e os prazos. Você decide como sua penca funciona."
+      "title": "Crie sua penca em minutos",
+      "description": "Personalize as regras, o sistema de pontos e os prazos. Escolha entre placar exato, resultado, diferença de gols e mais. Você decide como sua penca funciona."
     },
     "feature2": {
-      "title": "Placar ao vivo",
-      "description": "Ranking atualizado automaticamente após cada jogo. Sempre saiba quem está ganhando."
+      "title": "Placar em tempo real",
+      "description": "Ranking atualizado automaticamente após cada jogo. Veja quem lidera, compare sua posição e acompanhe a competição ao vivo com estatísticas detalhadas."
     },
     "feature3": {
-      "title": "Previsões flexíveis",
-      "description": "Placar exato, resultado, diferença de gols. Múltiplas formas de pontuar com seus palpites."
+      "title": "Múltiplos modos de pontuação",
+      "description": "Placar exato, resultado correto, diferença de gols, bônus por sequência. Configure o sistema de pontos que melhor se adapta ao seu grupo."
     },
     "feature4": {
-      "title": "Convide amigos facilmente",
-      "description": "Compartilhe um código de convite pelo WhatsApp e pronto. Entre em segundos, sem complicação."
+      "title": "Convide por link ou WhatsApp",
+      "description": "Compartilhe um código de convite pelo WhatsApp, Telegram ou qualquer rede social. Seus amigos entram em segundos, sem precisar criar conta antes."
+    },
+    "feature5": {
+      "title": "Resultados automáticos",
+      "description": "Os placares são atualizados automaticamente ao final de cada jogo. Não precisa inserir resultados manualmente — nós cuidamos disso."
+    },
+    "feature6": {
+      "title": "Notificações por email",
+      "description": "Lembretes antes de cada prazo, resumos de resultados e atualizações do ranking. Seus jogadores estão sempre informados."
+    },
+    "feature7": {
+      "title": "Multi-torneio",
+      "description": "Copa do Mundo, Champions League, Copa América, ligas locais e mais. Crie pencas para qualquer competição e gerencie vários torneios ao mesmo tempo."
+    },
+    "feature8": {
+      "title": "Otimizado para celular",
+      "description": "Projetado para funcionar perfeitamente no seu celular. Faça previsões, confira o ranking e gerencie sua penca de qualquer lugar."
     },
     "howItWorks": {
       "title": "Como funciona"
@@ -138,9 +161,51 @@
     },
     "final": {
       "title": "Pronto para provar que entende de futebol?",
-      "subtitle": "Participe grátis e comece a competir com seus amigos.",
-      "hint": "Crie sua penca grátis em menos de 1 minuto.",
+      "subtitle": "Crie seu pool grátis e comece a competir com seus amigos.",
+      "hint": "Grátis para pools de até 20 jogadores. Crie sua penca em menos de 1 minuto.",
       "cta": "Começar agora — É grátis"
+    },
+    "pricing": {
+      "title": "Planos e Precos",
+      "subtitle": "Comece gratis. Sem cartao de credito.",
+      "seeAllPlans": "Ver todos os planos →",
+      "personal": {
+        "title": "Pessoal",
+        "badge": "Gratis",
+        "subtitle": "Ate 20 jogadores",
+        "cta": "Criar pool gratis"
+      },
+      "personalPro": {
+        "title": "Pessoal Pro",
+        "badge": "A partir de $6.99",
+        "subtitle": "Ate 300+ jogadores",
+        "includesBase": "Tudo do plano gratis",
+        "extraPlayers": "Ate 300+ jogadores"
+      },
+      "corporate": {
+        "title": "Corporativo",
+        "badge": "Teste gratuito",
+        "subtitle": "Ate 100 jogadores incluidos",
+        "includesPersonal": "Tudo do Pessoal",
+        "cta": "Criar pool corporativo"
+      },
+      "features": {
+        "leaderboard": "Leaderboard em tempo real",
+        "scoringModes": "Multiplos modos de pontuacao",
+        "autoResults": "Atualizacao automatica de resultados",
+        "emailNotifications": "Notificacoes por email aos jogadores",
+        "multiTournament": "Suporte multi-torneio",
+        "inviteByLink": "Convide por link",
+        "mobileOptimized": "Otimizado para celular"
+      },
+      "corporateFeatures": {
+        "companyLogo": "Logo e marca da sua empresa",
+        "emailInvites": "Convites personalizados por email",
+        "csvImport": "Importacao CSV de funcionarios",
+        "employeeDashboard": "Painel de gestao de funcionarios",
+        "brandedExperience": "Pool com marca empresarial"
+      },
+      "comingSoon": "Em breve"
     }
   },
   "feedback": {
@@ -167,7 +232,7 @@
   },
   "seo": {
     "home": {
-      "title": "Picks4All — Pencas Esportivas Grátis com Amigos",
+      "title": "Previsões Esportivas Grátis com Amigos - Picks4All",
       "description": "Crie pencas e previsões de futebol grátis. Preveja resultados da Copa do Mundo 2026, Champions League e mais. Sem dinheiro real, só diversão entre amigos.",
       "ogDescription": "A plataforma gratuita para criar pencas e previsões de futebol. Compita com amigos prevendo resultados de partidas."
     }
@@ -188,11 +253,170 @@
   "whatsNew": {
     "title": "Novidades",
     "subtitle": "Veja o que há de novo no Picks4All",
-    "item1Title": "Agora em 3 idiomas",
-    "item1Desc": "A plataforma já está disponível em Español, English e Português. Mude o idioma no menu.",
-    "item2Title": "Melhor experiência mobile",
-    "item2Desc": "Navegação, partidas e placar otimizados para seu celular.",
+    "item1Title": "Sorteio das Oitavas UCL",
+    "item1Desc": "Os confrontos das oitavas de final da Champions League já estão disponíveis. Todas as pencas foram atualizadas automaticamente com os jogos reais.",
+    "item2Title": "Placar aos 90' ou +PE por fase",
+    "item2Desc": "Agora você pode escolher por fase se o resultado conta aos 90 minutos ou inclui prorrogação. Configure ao criar sua penca.",
+    "item3Title": "Prazos e horários melhorados",
+    "item3Desc": "Agora você pode ver com mais clareza o prazo para enviar suas previsões e o horário de início de cada partida.",
     "dismiss": "Entendi"
+  },
+  "enterprise": {
+    "meta": {
+      "title": "Bolões Corporativos para Empresas — Picks4All",
+      "description": "Organize bolões corporativos na sua empresa. Crie pencas entre departamentos, convide funcionários e promova o team building com previsões esportivas."
+    },
+    "hero": {
+      "title": "Bolões corporativos para sua empresa",
+      "subtitle": "Promova o team building e a competição saudável entre suas equipes com bolões esportivos. Configuração em minutos, sem complicações.",
+      "cta": "Criar bolão corporativo",
+      "secondaryCta": "Saiba mais"
+    },
+    "benefits": {
+      "title": "Por que escolher o Picks4All para sua empresa",
+      "teamBuilding": "Team Building",
+      "teamBuildingDesc": "Fortaleça os relacionamentos entre equipes com uma competição divertida e acessível para todos.",
+      "easySetup": "Configuração rápida",
+      "easySetupDesc": "Crie seu bolão em minutos. Envie um CSV com os emails dos seus funcionários e nós cuidamos do resto.",
+      "engagement": "Engajamento",
+      "engagementDesc": "Mantenha sua equipe motivada e conectada durante os torneios mais importantes do mundo.",
+      "support": "Atendimento prioritário",
+      "supportDesc": "Suporte prioritário para empresas. Ajudamos você a configurar e administrar seus bolões."
+    },
+    "howItWorks": {
+      "title": "Como funciona",
+      "step1Title": "Crie seu bolão",
+      "step1Desc": "Escolha o torneio, personalize as regras e envie o logo da sua empresa.",
+      "step2Title": "Convide sua equipe",
+      "step2Desc": "Envie um CSV ou adicione emails manualmente. Cada funcionário receberá um link de ativação.",
+      "step3Title": "Comece a jogar",
+      "step3Desc": "Seus funcionários ativam a conta com um clique e começam a fazer previsões imediatamente."
+    },
+    "pricing": {
+      "title": "Grátis durante o beta",
+      "subtitle": "Aproveite o acesso completo sem custo enquanto estamos em beta. Sem limite de funcionários.",
+      "free": "Grátis",
+      "features": {
+        "unlimited": "Funcionários ilimitados",
+        "logo": "Logo da empresa personalizado",
+        "csv": "Upload em massa de funcionários por CSV",
+        "support": "Suporte prioritário por email"
+      }
+    },
+    "cta": {
+      "title": "Comece agora",
+      "subtitle": "Crie seu bolão corporativo em menos de 5 minutos.",
+      "button": "Criar bolão corporativo"
+    },
+    "badge": "Corporativo",
+    "create": {
+      "meta": {
+        "title": "Criar Bolão Corporativo — Picks4All"
+      },
+      "title": "Criar bolão corporativo",
+      "subtitle": "Siga estes passos para configurar seu bolão empresarial.",
+      "stepOf": "Passo {current} de {total}",
+      "next": "Próximo",
+      "back": "Voltar",
+      "step1": "Sua empresa",
+      "step1Desc": "Conte-nos sobre sua empresa.",
+      "step2": "Escolha o torneio",
+      "step2Desc": "Selecione o torneio para seu bolão.",
+      "step3": "Detalhes do bolão",
+      "step3Desc": "Configure os detalhes do seu bolão.",
+      "step4": "Pontuação",
+      "step4Desc": "Escolha como as previsões são pontuadas.",
+      "step5": "Capacidade",
+      "step5Desc": "Escolha a capacidade de jogadores do seu bolão.",
+      "step6": "Convidar funcionários",
+      "step6Desc": "Convide sua equipe. Pode fazer depois também.",
+      "step7": "Resumo",
+      "step7Desc": "Revise tudo antes de criar seu bolão.",
+      "aprilNotice": "Crie seu bolão corporativo GRÁTIS para testar todas as funcionalidades. Sem cartão de crédito. Em 1º de abril te notificaremos por e-mail para completar o pagamento. Até lá, tudo funciona em modo teste: os jogadores entram e fazem palpites, mas os resultados não se atualizam até completar o pagamento.",
+      "summaryCapacity": "Capacidade",
+      "summaryPlayers": "jogadores",
+      "companyName": "Nome da empresa",
+      "companyNamePlaceholder": "Ex: Acme Corp",
+      "logo": "Logo da empresa (opcional)",
+      "logoHint": "Imagem PNG ou JPG, máx. 500 KB",
+      "logoChange": "Mudar logo",
+      "logoSelect": "Selecionar imagem...",
+      "welcomeMessage": "Mensagem de boas-vindas (opcional)",
+      "welcomeMessageHint": "Exibida ao entrar no bolão corporativo",
+      "welcomeMessagePlaceholder": "Mensagem que seus funcionários verão ao entrar no bolão...",
+      "invitationMessage": "Mensagem de convite (opcional)",
+      "invitationMessageHint": "Incluída no email de convite enviado aos seus funcionários",
+      "invitationMessagePlaceholder": "Mensagem personalizada que seus funcionários receberão no email...",
+      "tournament": "Selecione o torneio",
+      "poolName": "Nome do bolão",
+      "poolNamePlaceholder": "Ex: Bolão Acme Corp",
+      "poolDescription": "Descrição (opcional)",
+      "poolDescriptionPlaceholder": "Breve descrição do seu bolão...",
+      "deadline": "Encerramento antes do jogo (min)",
+      "timezone": "Fuso horário",
+      "requireApproval": "Exigir aprovação para entrar",
+      "requireApprovalDesc": "Funcionários que entrarem por código precisarão da sua aprovação.",
+      "scoring": "Sistema de pontuação",
+      "scoringDesc": "Configure como as previsões são pontuadas.",
+      "configWizard": "Configurar pontuação",
+      "configReady": "Configuração pronta ({count} fases)",
+      "scoringNeeded": "Clique no botão para configurar a pontuação.",
+      "employeesTitle": "Convidar funcionários (opcional)",
+      "employeesDesc": "Você pode adicionar funcionários agora ou fazer isso depois pelo painel de administração do bolão.",
+      "emailsPlaceholder": "Cole endereços de email, um por linha...",
+      "csvUpload": "Ou envie um arquivo CSV",
+      "csvTemplate": "Baixar modelo CSV",
+      "emailCount": "{count} emails válidos",
+      "skipStep": "Pular e continuar",
+      "creating": "Criando bolão...",
+      "createButton": "Criar Bolão Corporativo",
+      "error": "Erro ao criar bolão. Tente novamente.",
+      "imageSize": "A imagem não deve exceder 500 KB.",
+      "summaryCompany": "Empresa",
+      "summaryTournament": "Torneio",
+      "summaryPool": "Bolão",
+      "summaryScoring": "Pontuação",
+      "summaryEmployees": "Funcionários a convidar",
+      "summaryNone": "Nenhum (pode adicionar depois)",
+      "summaryConfigured": "Configurada",
+      "summaryDeadline": "Encerramento",
+      "summaryMinutes": "{min} min antes do jogo",
+      "summaryApproval": "Aprovação necessária",
+      "employeesLaterNotice": "Você também pode adicionar jogadores depois pela aba \"Jogadores\" na página do bolão."
+    }
+  },
+  "activation": {
+    "meta": {
+      "title": "Ative sua conta — Picks4All"
+    },
+    "title": "Ative sua conta",
+    "subtitle": "Crie seu usuário e senha para começar a jogar.",
+    "displayName": "Nome de exibição",
+    "displayNamePlaceholder": "Ex: João Silva",
+    "username": "Nome de usuário",
+    "usernamePlaceholder": "Ex: joaosilva",
+    "password": "Senha",
+    "passwordPlaceholder": "Mínimo 8 caracteres",
+    "confirmPassword": "Confirmar senha",
+    "confirmPasswordPlaceholder": "Repita sua senha",
+    "acceptTerms": "Aceito os Termos de Serviço",
+    "acceptPrivacy": "Aceito a Política de Privacidade",
+    "acceptAge": "Confirmo que tenho pelo menos 13 anos",
+    "activate": "Ativar conta",
+    "activating": "Ativando...",
+    "invalidToken": "O link de ativação é inválido ou expirou.",
+    "invalidTokenHelp": "Entre em contato com o administrador da sua empresa para receber um novo convite.",
+    "alreadyActivated": "Este convite já foi ativado.",
+    "alreadyActivatedHelp": "Se você já tem uma conta, faça login normalmente.",
+    "success": "Conta ativada com sucesso",
+    "welcomeTo": "Convidado por {company}",
+    "passwordMismatch": "As senhas não coincidem",
+    "goToPool": "Ir para meu bolão",
+    "checking": "Verificando...",
+    "existingUserTitle": "Você já tem uma conta",
+    "existingUserDesc": "Sua conta com {email} será vinculada ao bolão {poolName} de {companyName}.",
+    "joinPool": "Entrar no bolão",
+    "joining": "Entrando..."
   },
   "notFound": {
     "message": "A página que você procura não existe ou foi movida.",

@@ -10,6 +10,7 @@ type LeaderboardRow = {
   userId: string;
   displayName: string;
   role: string;
+  memberStatus?: string;
   points: number;
   rank: number;
   pointsByPhase?: Record<string, number>;
@@ -133,6 +134,21 @@ export function MobileLeaderboard({
                       }}
                     >
                       ⭐ {t("mobileLeaderboard.coAdmin")}
+                    </span>
+                  )}
+                  {r.memberStatus === "LEFT" && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        background: "#ef444420",
+                        border: "1px solid #ef4444",
+                        color: "#ef4444",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {t("mobileLeaderboard.retired")}
                     </span>
                   )}
                 </div>

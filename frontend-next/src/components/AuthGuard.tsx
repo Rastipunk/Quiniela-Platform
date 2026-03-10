@@ -2,11 +2,13 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "../hooks/useAuth";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const t = useTranslations("nav");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -26,7 +28,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           fontSize: "1rem",
         }}
       >
-        Cargando...
+        {t("loading")}
       </div>
     );
   }

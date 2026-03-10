@@ -1,8 +1,8 @@
 # API Specification
-# Quiniela Platform
+# Picks4All
 
-> **Version:** 2.0 (v0.4.0 — Next.js Migration + SEO)
-> **Last Updated:** 2026-02-22
+> **Version:** 2.1 (v0.6.0 — Corporate Self-Service MVP)
+> **Last Updated:** 2026-03-01
 > **Base URL:** `http://localhost:3000` (development) | `https://api.picks4all.com` (production)
 > **Protocol:** REST over HTTP/HTTPS
 > **Authentication:** JWT Bearer Token
@@ -31,6 +31,7 @@
 18. [Admin Instance Endpoints](#18-admin-instance-endpoints)
 19. [Admin Sync Endpoints](#19-admin-sync-endpoints)
 20. [Admin Settings Endpoints](#20-admin-settings-endpoints)
+21. [Corporate Endpoints](#21-corporate-endpoints)
 
 ---
 
@@ -47,7 +48,7 @@ Authorization: Bearer <jwt-token>
 **Token Details:**
 - **Algorithm:** HS256 (HMAC SHA-256)
 - **Expiry:** 4 hours from issuance
-- **Issuer:** Quiniela Platform
+- **Issuer:** Picks4All
 - **Payload:**
   ```json
   {
@@ -2938,6 +2939,201 @@ Or `{ "pick": null }` if no pick exists.
 - `result.published`
 - `result.corrected`
 - `leaderboard.updated`
+
+---
+
+## 21. Corporate Endpoints
+
+> **Router:** `/corporate` | **Source:** `backend/src/routes/corporate.ts`
+
+### 21.1 POST /corporate/inquiry
+
+**Authentication:** None (public, rate-limited: 5 req / 15 min)
+
+Submit a corporate contact form. Creates an OrganizationInquiry record and sends admin notification + confirmation email to the contact.
+
+**Request Body:**
+```json
+{
+  "companyName": "Acme Corp",
+  "contactName": "John Doe",
+  "contactEmail": "john@acme.com",
+  "contactPhone": "+57 300 1234567",   // optional
+  "employeeCount": "51-200",           // optional: "1-50" | "51-200" | "201-500" | "500+"
+  "message": "We're interested...",    // optional
+  "locale": "es"                       // optional, default "es": "es" | "en" | "pt"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Solicitud enviada exitosamente.",
+  "id": "uuid"
+}
+```
+
+### 21.2 POST /corporate/pools
+
+**Authentication:** Required (JWT)
+
+Create a corporate pool. Creates Organization + Pool + PoolMember(CORPORATE_HOST) in a single transaction. Optionally creates CorporateInvite records for provided emails.
+
+**Request Body:**
+```json
+{
+  "companyName": "Acme Corp",
+  "logoBase64": "data:image/png;base64,...",  // optional, max 700KB
+  "welcomeMessage": "Welcome to our pool!",   // optional, max 1000 chars
+  "tournamentInstanceId": "ucl-2025-instance",
+  "poolName": "Acme Premier Cup",
+  "poolDescription": "Company pool",          // optional
+  "timeZone": "America/Bogota",               // optional
+  "deadlineMinutesBeforeKickoff": 10,          // optional
+  "requireApproval": false,                    // optional
+  "pickTypesConfig": "CUMULATIVE",             // optional: preset key string or custom config object
+  "emails": ["emp1@acme.com", "emp2@acme.com"] // optional: pre-create CorporateInvite records
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "pool": { "id": "...", "name": "Acme Premier Cup", ... },
+  "organization": { "id": "...", "name": "Acme Corp" },
+  "pendingInvites": 2
+}
+```
+
+### 21.3 POST /corporate/pools/:poolId/employees
+
+**Authentication:** Required (must be CORPORATE_HOST of the pool)
+
+Add employee emails to the pool as CorporateInvite records (status: PENDING). Duplicates are skipped.
+
+**Request Body:**
+```json
+{
+  "emails": ["emp3@acme.com", "emp4@acme.com"]
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "added": 2,
+  "skipped": 0,
+  "total": 4
+}
+```
+
+### 21.4 GET /corporate/pools/:poolId/employees
+
+**Authentication:** Required (must be CORPORATE_HOST of the pool)
+
+List all employee invitations with status summary.
+
+**Response (200):**
+```json
+{
+  "invites": [
+    {
+      "id": "uuid",
+      "email": "emp1@acme.com",
+      "name": "Juan Perez",
+      "status": "SENT",
+      "activatedAt": null,
+      "createdAtUtc": "2026-03-01T..."
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "pending": 1,
+    "sent": 2,
+    "activated": 1,
+    "failed": 0
+  }
+}
+```
+
+### 21.5 POST /corporate/pools/:poolId/send-invitations
+
+**Authentication:** Required (must be CORPORATE_HOST of the pool)
+
+Process all PENDING invitations: if the employee already has an account, add them directly to the pool (status → ACTIVATED); otherwise send an activation email (status → SENT or FAILED).
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "sent": 2,
+  "activated": 1,
+  "failed": 0
+}
+```
+
+### 21.6 GET /corporate/csv-template
+
+**Authentication:** None (public)
+
+Download a CSV template file for bulk employee upload (UTF-8 with BOM for Excel compatibility).
+
+**Response:** `text/csv` attachment: `empleados_template.csv`
+```csv
+email,nombre
+empleado1@empresa.com,Juan Perez
+empleado2@empresa.com,Maria Garcia
+```
+
+### 21.7 DELETE /corporate/pools/:poolId/employees/:inviteId
+
+**Authentication:** Required (must be CORPORATE_HOST of the pool)
+
+Delete a pending/sent invitation. Cannot delete ACTIVATED invitations.
+
+**Response (200):**
+```json
+{ "success": true }
+```
+
+**Error (409):** `{ "error": "CONFLICT", "message": "No se puede eliminar un empleado ya activado" }`
+
+### 21.8 POST /auth/activate-corporate
+
+**Authentication:** None (public, token-based)
+
+Activate an employee account from a corporate invitation. Creates user, verifies email, joins pool, marks invite as ACTIVATED.
+
+> **Note:** This endpoint is in `auth.ts`, not `corporate.ts`, because it creates a user account.
+
+**Request Body:**
+```json
+{
+  "token": "hex-activation-token",
+  "username": "juanperez",
+  "password": "SecurePass123",
+  "displayName": "Juan Perez",          // optional
+  "acceptedTermsVersion": "1.0",
+  "acceptedPrivacyVersion": "1.0"
+}
+```
+
+**Response (201):**
+```json
+{
+  "token": "jwt-token",
+  "user": { "id": "...", "email": "...", "username": "...", "displayName": "...", "role": "USER" },
+  "poolId": "pool-uuid"
+}
+```
+
+**Errors:**
+- `400 INVALID_TOKEN` — Token not found or expired (30-day expiry)
+- `400 ALREADY_ACTIVATED` — Token already used
+- `409 USERNAME_TAKEN` — Username already exists
 
 ---
 

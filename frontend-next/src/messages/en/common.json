@@ -4,6 +4,7 @@
     "tagline": "Free Sports Pools with Friends"
   },
   "nav": {
+    "loading": "Loading...",
     "home": "Home",
     "myPools": "My Pools",
     "faq": "FAQ",
@@ -14,13 +15,15 @@
     "viewFeedback": "View Feedback",
     "logout": "Log Out",
     "login": "Log In",
+    "enterprises": "For Companies",
+    "pricing": "Pricing",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "menu": "Menu"
   },
   "footer": {
-    "tagline": "Free sports prediction platform to play with friends.",
-    "disclaimer": "Football pools, picks, and brackets — 100% free, no real money or gambling.",
+    "tagline": "Sports prediction platform to play with friends.",
+    "disclaimer": "Football pools, picks, and brackets — free for up to 20 players, no real money or gambling.",
     "legal": "Legal",
     "terms": "Terms of Service",
     "privacy": "Privacy Policy",
@@ -34,7 +37,11 @@
     "porraDeportiva": "Porra Deportiva (Spain)",
     "footballPool": "Football Pool",
     "contact": "Contact",
-    "copyright": "All rights reserved."
+    "supportEmail": "support@picks4all.com",
+    "copyright": "All rights reserved.",
+    "enterprises": "For Companies",
+    "pricing": "Pricing",
+    "refundPolicy": "Refund Policy"
   },
   "beta": {
     "message": "Beta — Your feedback helps us improve",
@@ -58,27 +65,43 @@
     "whatIs": {
       "title": "What is Picks4All?",
       "p1": "Picks4All is the free platform to create <strong>sports pools</strong> online and compete with friends, family, or coworkers by predicting football results. Known as <strong>polla futbolera</strong> in Colombia, <strong>prode</strong> in Argentina, <strong>penca</strong> in Uruguay, or <strong>porra</strong> in Spain.",
-      "p2": "Create your pool for free, invite anyone with a code, make your predictions and compete on the leaderboard. <strong>100% free with no gambling</strong> — just fun and friendly rivalry."
+      "p2": "Create your pool for free (up to 20 players), invite anyone with a code, make your predictions and compete on the leaderboard. <strong>Free and with no gambling</strong> — just fun and friendly rivalry."
     },
     "features": {
       "title": "Everything you need to compete",
       "subtitle": "A complete platform to organize sports pools with friends, family, or coworkers."
     },
     "feature1": {
-      "title": "Create your pool",
-      "description": "Customize rules, scoring system, and deadlines. You decide how your pool is played."
+      "title": "Create your pool in minutes",
+      "description": "Customize rules, scoring system, and deadlines. Choose between exact score, match result, goal difference, and more. You decide how your pool is played."
     },
     "feature2": {
-      "title": "Live leaderboard",
-      "description": "Rankings automatically updated after every match. Always know who's winning."
+      "title": "Real-time leaderboard",
+      "description": "Rankings automatically updated after every match. See who's leading, compare your position, and follow the competition live with detailed stats."
     },
     "feature3": {
-      "title": "Flexible predictions",
-      "description": "Exact score, match result, goal difference. Multiple ways to earn points with your picks."
+      "title": "Multiple scoring modes",
+      "description": "Exact score, correct result, goal difference, streak bonus. Configure the scoring system that best fits your group."
     },
     "feature4": {
-      "title": "Invite friends easily",
-      "description": "Share an invitation code via WhatsApp and done. Join in seconds, no hassle."
+      "title": "Invite by link or WhatsApp",
+      "description": "Share an invitation code via WhatsApp, Telegram, or any social network. Your friends join in seconds, no need to create an account beforehand."
+    },
+    "feature5": {
+      "title": "Automatic results",
+      "description": "Scores are automatically updated when each match ends. No need to enter results manually — we take care of it."
+    },
+    "feature6": {
+      "title": "Email notifications",
+      "description": "Reminders before each deadline, result summaries, and ranking updates. Your players are always in the loop."
+    },
+    "feature7": {
+      "title": "Multi-tournament",
+      "description": "World Cup, Champions League, Copa América, local leagues, and more. Create pools for any competition and manage multiple tournaments at once."
+    },
+    "feature8": {
+      "title": "Mobile optimized",
+      "description": "Designed to work perfectly on your phone. Make predictions, check the leaderboard, and manage your pool from anywhere."
     },
     "howItWorks": {
       "title": "How it works"
@@ -138,9 +161,51 @@
     },
     "final": {
       "title": "Ready to prove you know football?",
-      "subtitle": "Join for free and start competing with your friends.",
-      "hint": "Create your free pool in less than 1 minute.",
+      "subtitle": "Create your pool for free and start competing with your friends.",
+      "hint": "Free for pools up to 20 players. Create your pool in less than 1 minute.",
       "cta": "Start now — It's free"
+    },
+    "pricing": {
+      "title": "Plans & Pricing",
+      "subtitle": "Start for free. No credit card required.",
+      "seeAllPlans": "See all plans →",
+      "personal": {
+        "title": "Personal",
+        "badge": "Free",
+        "subtitle": "Up to 20 players",
+        "cta": "Create free pool"
+      },
+      "personalPro": {
+        "title": "Personal Pro",
+        "badge": "From $6.99",
+        "subtitle": "Up to 300+ players",
+        "includesBase": "Everything in the free plan",
+        "extraPlayers": "Up to 300+ players"
+      },
+      "corporate": {
+        "title": "Corporate",
+        "badge": "Free trial",
+        "subtitle": "Up to 100 players included",
+        "includesPersonal": "Everything in Personal",
+        "cta": "Create corporate pool"
+      },
+      "features": {
+        "leaderboard": "Real-time leaderboard",
+        "scoringModes": "Multiple scoring modes",
+        "autoResults": "Automatic match result updates",
+        "emailNotifications": "Email notifications to players",
+        "multiTournament": "Multi-tournament support",
+        "inviteByLink": "Invite by link",
+        "mobileOptimized": "Mobile optimized"
+      },
+      "corporateFeatures": {
+        "companyLogo": "Your company logo & branding",
+        "emailInvites": "Personalized email invitations",
+        "csvImport": "CSV employee import",
+        "employeeDashboard": "Employee management dashboard",
+        "brandedExperience": "Branded pool experience"
+      },
+      "comingSoon": "Coming soon"
     }
   },
   "feedback": {
@@ -167,7 +232,7 @@
   },
   "seo": {
     "home": {
-      "title": "Picks4All — Free Sports Pools with Friends",
+      "title": "Free Sports Predictions with Friends - Picks4All",
       "description": "Create free football pools and predictions. Predict World Cup 2026, Champions League results and more. No real money, just fun with friends.",
       "ogDescription": "The free platform to create football pools and predictions. Compete with friends by predicting match results."
     }
@@ -188,11 +253,170 @@
   "whatsNew": {
     "title": "What's New",
     "subtitle": "See what's new in Picks4All",
-    "item1Title": "Now in 3 languages",
-    "item1Desc": "The platform is now available in Español, English, and Português. Switch languages from the menu.",
-    "item2Title": "Improved mobile experience",
-    "item2Desc": "Navigation, matches, and leaderboard optimized for your phone.",
+    "item1Title": "UCL Round of 16 Draw",
+    "item1Desc": "The Champions League Round of 16 matchups are now available. All pools have been automatically updated with the real fixtures.",
+    "item2Title": "90' or +ET score per phase",
+    "item2Desc": "You can now choose per phase whether the score counts at 90 minutes or includes extra time. Set it up when creating your pool.",
+    "item3Title": "Improved deadlines & schedules",
+    "item3Desc": "You can now see more clearly the deadline to submit your predictions and the kickoff time for each match.",
     "dismiss": "Got it"
+  },
+  "enterprise": {
+    "meta": {
+      "title": "Corporate Sports Pools for Companies — Picks4All",
+      "description": "Organize corporate sports pools in your company. Create pools between departments, invite employees and foster team building with sports predictions."
+    },
+    "hero": {
+      "title": "Corporate sports pools for your company",
+      "subtitle": "Foster team building and friendly competition among your teams with sports pools. Set up in minutes, no hassle.",
+      "cta": "Create corporate pool",
+      "secondaryCta": "Learn more"
+    },
+    "benefits": {
+      "title": "Why choose Picks4All for your company",
+      "teamBuilding": "Team Building",
+      "teamBuildingDesc": "Strengthen relationships between teams with a fun and accessible competition for everyone.",
+      "easySetup": "Quick Setup",
+      "easySetupDesc": "Create your pool in minutes. Upload a CSV with your employees' emails and we take care of the rest.",
+      "engagement": "Engagement",
+      "engagementDesc": "Keep your team motivated and connected during the most important tournaments in the world.",
+      "support": "Priority Support",
+      "supportDesc": "Priority support for companies. We help you set up and manage your pools."
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "step1Title": "Create your pool",
+      "step1Desc": "Choose the tournament, customize the rules and upload your company logo.",
+      "step2Title": "Invite your team",
+      "step2Desc": "Upload a CSV or add emails manually. Each employee will receive an activation link.",
+      "step3Title": "Start playing",
+      "step3Desc": "Your employees activate their account with one click and start making predictions right away."
+    },
+    "pricing": {
+      "title": "Free during beta",
+      "subtitle": "Enjoy full access at no cost while we're in beta. No employee limit.",
+      "free": "Free",
+      "features": {
+        "unlimited": "Unlimited employees",
+        "logo": "Custom company logo",
+        "csv": "Bulk employee upload via CSV",
+        "support": "Priority email support"
+      }
+    },
+    "cta": {
+      "title": "Get started",
+      "subtitle": "Create your corporate pool in less than 5 minutes.",
+      "button": "Create corporate pool"
+    },
+    "badge": "Corporate",
+    "create": {
+      "meta": {
+        "title": "Create Corporate Pool — Picks4All"
+      },
+      "title": "Create corporate pool",
+      "subtitle": "Follow these steps to set up your company pool.",
+      "stepOf": "Step {current} of {total}",
+      "next": "Next",
+      "back": "Back",
+      "step1": "Your company",
+      "step1Desc": "Tell us about your company.",
+      "step2": "Choose tournament",
+      "step2Desc": "Select the tournament for your pool.",
+      "step3": "Pool details",
+      "step3Desc": "Configure your pool settings.",
+      "step4": "Scoring",
+      "step4Desc": "Choose how predictions are scored.",
+      "step5": "Capacity",
+      "step5Desc": "Choose the player capacity for your pool.",
+      "step6": "Invite employees",
+      "step6Desc": "Invite your team. You can also do this later.",
+      "step7": "Summary",
+      "step7Desc": "Review everything before creating your pool.",
+      "aprilNotice": "Create your corporate pool FOR FREE to test all features. No credit card needed. On April 1st, we'll notify you by email to complete the payment. Until then, everything works in trial mode: players can join and make predictions, but match results won't update until payment is completed.",
+      "summaryCapacity": "Capacity",
+      "summaryPlayers": "players",
+      "companyName": "Company name",
+      "companyNamePlaceholder": "E.g. Acme Corp",
+      "logo": "Company logo (optional)",
+      "logoHint": "PNG or JPG image, max 500 KB",
+      "logoChange": "Change logo",
+      "logoSelect": "Select image...",
+      "welcomeMessage": "Welcome message (optional)",
+      "welcomeMessageHint": "Shown when entering the corporate pool",
+      "welcomeMessagePlaceholder": "Message your employees will see when they enter the pool...",
+      "invitationMessage": "Invitation message (optional)",
+      "invitationMessageHint": "Included in the invitation email sent to your employees",
+      "invitationMessagePlaceholder": "Personalized message your employees will receive in the email...",
+      "tournament": "Select tournament",
+      "poolName": "Pool name",
+      "poolNamePlaceholder": "E.g. Acme Corp Pool",
+      "poolDescription": "Description (optional)",
+      "poolDescriptionPlaceholder": "Short description of your pool...",
+      "deadline": "Deadline before match (min)",
+      "timezone": "Timezone",
+      "requireApproval": "Require approval to join",
+      "requireApprovalDesc": "Employees joining with a code will need your approval.",
+      "scoring": "Scoring system",
+      "scoringDesc": "Configure how predictions are scored.",
+      "configWizard": "Configure scoring",
+      "configReady": "Configuration ready ({count} phases)",
+      "scoringNeeded": "Click the button to configure scoring.",
+      "employeesTitle": "Invite employees (optional)",
+      "employeesDesc": "You can add employees now or do it later from the pool admin panel.",
+      "emailsPlaceholder": "Paste email addresses, one per line...",
+      "csvUpload": "Or upload a CSV file",
+      "csvTemplate": "Download CSV template",
+      "emailCount": "{count} valid emails",
+      "skipStep": "Skip and continue",
+      "creating": "Creating pool...",
+      "createButton": "Create Corporate Pool",
+      "error": "Error creating pool. Please try again.",
+      "imageSize": "Image must not exceed 500 KB.",
+      "summaryCompany": "Company",
+      "summaryTournament": "Tournament",
+      "summaryPool": "Pool",
+      "summaryScoring": "Scoring",
+      "summaryEmployees": "Employees to invite",
+      "summaryNone": "None (you can add later)",
+      "summaryConfigured": "Configured",
+      "summaryDeadline": "Deadline",
+      "summaryMinutes": "{min} min before match",
+      "summaryApproval": "Approval required",
+      "employeesLaterNotice": "You can also add players later from the \"Players\" tab on the pool page."
+    }
+  },
+  "activation": {
+    "meta": {
+      "title": "Activate your account — Picks4All"
+    },
+    "title": "Activate your account",
+    "subtitle": "Create your username and password to start playing.",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "E.g. John Smith",
+    "username": "Username",
+    "usernamePlaceholder": "E.g. johnsmith",
+    "password": "Password",
+    "passwordPlaceholder": "Minimum 8 characters",
+    "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Repeat your password",
+    "acceptTerms": "I accept the Terms of Service",
+    "acceptPrivacy": "I accept the Privacy Policy",
+    "acceptAge": "I confirm I am at least 13 years old",
+    "activate": "Activate account",
+    "activating": "Activating...",
+    "invalidToken": "The activation link is invalid or has expired.",
+    "invalidTokenHelp": "Contact your company administrator to receive a new invitation.",
+    "alreadyActivated": "This invitation has already been activated.",
+    "alreadyActivatedHelp": "If you already have an account, log in normally.",
+    "success": "Account activated successfully",
+    "welcomeTo": "Invited by {company}",
+    "passwordMismatch": "Passwords do not match",
+    "goToPool": "Go to my pool",
+    "checking": "Verifying...",
+    "existingUserTitle": "You already have an account",
+    "existingUserDesc": "Your account with {email} will be linked to the {poolName} pool by {companyName}.",
+    "joinPool": "Join the pool",
+    "joining": "Joining..."
   },
   "notFound": {
     "message": "The page you're looking for doesn't exist or was moved.",

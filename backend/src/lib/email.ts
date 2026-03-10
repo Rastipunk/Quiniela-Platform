@@ -1,4 +1,13 @@
 // backend/src/lib/email.ts
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 import { Resend } from "resend";
 import { prisma } from "../db";
 import {
@@ -7,6 +16,8 @@ import {
   getDeadlineReminderTemplate,
   getResultPublishedTemplate,
   getPoolCompletedTemplate,
+  getCorporateInquiryConfirmationTemplate,
+  getCorporateActivationTemplate,
   WelcomeEmailParams,
   PoolInvitationEmailParams,
   DeadlineReminderEmailParams,
@@ -23,8 +34,9 @@ if (!apiKey) {
 const resend = apiKey ? new Resend(apiKey) : null;
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-const APP_NAME = "Quiniela Platform";
+const APP_NAME = "Picks4All";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "admin@picks4all.com";
 
 // =========================================================================
 // TIPOS Y CONSTANTES
@@ -733,4 +745,275 @@ export async function getPlatformEmailSettings() {
     updatedAt: settings.updatedAt,
     updatedById: settings.updatedById,
   };
+}
+
+// =========================================================================
+// CORPORATE INQUIRY CONFIRMATION EMAIL
+// =========================================================================
+
+/**
+ * Envía confirmación al contacto de una empresa que envió una solicitud.
+ * Transaccional (no sujeta a PlatformSettings/User prefs).
+ */
+export async function sendCorporateInquiryConfirmationEmail(params: {
+  to: string;
+  contactName: string;
+  companyName: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  const locale = params.locale || "es";
+  const subjects: Record<string, string> = {
+    es: `Recibimos tu solicitud — ${APP_NAME}`,
+    en: `We received your request — ${APP_NAME}`,
+    pt: `Recebemos sua solicitação — ${APP_NAME}`,
+  };
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} <${FROM_EMAIL}>`,
+      to: params.to,
+      subject: subjects[locale] ?? subjects.es!,
+      html: getCorporateInquiryConfirmationTemplate({
+        contactName: params.contactName,
+        companyName: params.companyName,
+        locale,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar corporate confirmation email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Corporate confirmation email enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar corporate confirmation email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// CORPORATE ACTIVATION EMAIL
+// =========================================================================
+
+/**
+ * Envía email de activación a un empleado invitado a una pool corporativa.
+ * Transaccional (no sujeto a PlatformSettings/User prefs — el usuario aún no existe).
+ */
+export async function sendCorporateActivationEmail(params: {
+  to: string;
+  employeeName?: string;
+  companyName: string;
+  poolName: string;
+  activationToken: string;
+  locale?: string;
+  logoBase64?: string | null;
+  invitationMessage?: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  const locale = params.locale || "es";
+  const activationUrl = `${FRONTEND_URL}/activar-cuenta?token=${params.activationToken}`;
+
+  const subjects: Record<string, string> = {
+    es: `${params.companyName} te invitó a jugar — ${APP_NAME}`,
+    en: `${params.companyName} invited you to play — ${APP_NAME}`,
+    pt: `${params.companyName} convidou você para jogar — ${APP_NAME}`,
+  };
+
+  // Parse logo data URI into CID inline attachment (base64 data URIs are blocked by Gmail)
+  let logoAttachment: { filename: string; content: Buffer; contentType: string; contentId: string } | null = null;
+  let logoCid: string | null = null;
+
+  if (params.logoBase64) {
+    const match = params.logoBase64.match(/^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/);
+    if (match) {
+      logoCid = "company-logo";
+      const mimeType = match[1]!;
+      const ext = match[2]!;
+      const base64Data = match[3]!;
+      logoAttachment = {
+        filename: `logo.${ext === "jpg" ? "jpeg" : ext}`,
+        content: Buffer.from(base64Data, "base64"),
+        contentType: mimeType,
+        contentId: logoCid,
+      };
+    }
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} <${FROM_EMAIL}>`,
+      to: params.to,
+      subject: subjects[locale] ?? subjects.es!,
+      html: getCorporateActivationTemplate({
+        employeeName: params.employeeName,
+        companyName: params.companyName,
+        poolName: params.poolName,
+        activationUrl,
+        locale,
+        logoCid,
+        invitationMessage: params.invitationMessage,
+      }),
+      ...(logoAttachment ? { attachments: [logoAttachment] } : {}),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar corporate activation email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Corporate activation email enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar corporate activation email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// ADMIN NOTIFICATIONS
+// =========================================================================
+
+/**
+ * Envía una notificación interna al admin.
+ * Usado para: feedback/bugs, corporate inquiries, errores críticos.
+ */
+export async function sendAdminNotification(params: {
+  subject: string;
+  body: string;
+  type: "feedback" | "corporate_inquiry" | "error";
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar notificación admin: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  const typeLabels: Record<string, string> = {
+    feedback: "💬 Feedback",
+    corporate_inquiry: "🏢 Corporate Inquiry",
+    error: "🚨 Error",
+  };
+
+  const label = typeLabels[params.type] || params.type;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} Admin <${FROM_EMAIL}>`,
+      to: ADMIN_EMAIL,
+      subject: `[${label}] ${params.subject}`,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:#1F2937;border-bottom:2px solid #4F46E5;padding-bottom:8px;">${label}</h2>
+          <div style="color:#374151;font-size:15px;line-height:1.6;">
+            ${params.body}
+          </div>
+          <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+          <p style="color:#9CA3AF;font-size:12px;">
+            ${APP_NAME} Admin Notification &middot; ${new Date().toISOString()}
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar notificación admin:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Admin notification enviada (${params.type}):`, data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar notificación admin:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Envía notificación al host cuando su pool alcanza la capacidad máxima.
+ */
+export async function sendPoolFullNotificationEmail(params: {
+  to: string;
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  maxParticipants: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!resend) {
+    console.error("❌ No se puede enviar email pool full: RESEND_API_KEY no configurada");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  type Locale = "es" | "en" | "pt";
+  const loc: Locale = (["es", "en", "pt"].includes(params.locale || "") ? params.locale : "es") as Locale;
+  const subjects: Record<Locale, string> = {
+    es: `Tu pool "${params.poolName}" está lleno`,
+    en: `Your pool "${params.poolName}" is full`,
+    pt: `Seu bolão "${params.poolName}" está lotado`,
+  };
+  const headings: Record<Locale, string> = {
+    es: "Tu pool alcanzó su capacidad máxima",
+    en: "Your pool has reached maximum capacity",
+    pt: "Seu bolão atingiu a capacidade máxima",
+  };
+  const messages: Record<Locale, string> = {
+    es: `Tu pool <strong>"${params.poolName}"</strong> ha alcanzado su capacidad máxima de <strong>${params.maxParticipants} jugadores</strong>. Para recibir más participantes, necesitas ampliar la capacidad de tu pool.`,
+    en: `Your pool <strong>"${params.poolName}"</strong> has reached its maximum capacity of <strong>${params.maxParticipants} players</strong>. To accept more participants, you need to expand your pool's capacity.`,
+    pt: `Seu bolão <strong>"${params.poolName}"</strong> atingiu a capacidade máxima de <strong>${params.maxParticipants} jogadores</strong>. Para receber mais participantes, você precisa ampliar a capacidade do seu bolão.`,
+  };
+  const ctas: Record<Locale, string> = {
+    es: "Ir a mi pool",
+    en: "Go to my pool",
+    pt: "Ir ao meu bolão",
+  };
+
+  const poolUrl = `${FRONTEND_URL}/pools/${params.poolId}`;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: `${APP_NAME} <${FROM_EMAIL}>`,
+      to: params.to,
+      subject: subjects[loc],
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <h2 style="color:#DC2626;margin-bottom:16px;">
+            &#128680; ${headings[loc]}
+          </h2>
+          <p style="color:#374151;font-size:15px;line-height:1.6;">
+            ${messages[loc]}
+          </p>
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:#4F46E5;color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
+              ${ctas[loc]}
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+          <p style="color:#9CA3AF;font-size:12px;text-align:center;">
+            ${APP_NAME} &middot; picks4all.com
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar email pool full:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Pool full notification enviada a ${params.to}:`, data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar email pool full:", err);
+    return { success: false, error: String(err) };
+  }
 }

@@ -124,7 +124,6 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         error: "USERNAME_TAKEN",
-        message: "Este nombre de usuario ya está en uso",
       });
     }
 
@@ -138,7 +137,6 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
         const daysRemaining = Math.ceil(30 - daysSinceLastChange);
         return res.status(400).json({
           error: "USERNAME_CHANGE_TOO_SOON",
-          message: `Puedes cambiar tu nombre de usuario en ${daysRemaining} días`,
           daysRemaining,
         });
       }
@@ -160,7 +158,6 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
     if (actualAge < 13) {
       return res.status(400).json({
         error: "AGE_TOO_YOUNG",
-        message: "Debes tener al menos 13 años para usar esta plataforma",
       });
     }
 

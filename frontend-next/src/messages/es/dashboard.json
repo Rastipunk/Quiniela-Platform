@@ -32,7 +32,11 @@
     "configWizard": "Asistente de Configuración",
     "configReady": "Configuración lista ({count} fases)",
     "creating": "Creando...",
-    "createButton": "Crear pool"
+    "createButton": "Crear pool",
+    "nextStep": "Siguiente",
+    "backStep": "Atrás",
+    "stepIndicator": "Paso {current} de {total}",
+    "capacityStepTitle": "Capacidad de jugadores"
   },
   "joinPanel": {
     "title": "Unirme a una pool",
@@ -51,6 +55,18 @@
     "alertTitle": "Solicitud enviada exitosamente",
     "alertMessage": "Tu solicitud aparecerá en el Dashboard con estado 'Pendiente de aprobación'."
   },
+  "tabActive": "En curso",
+  "tabFinished": "Finalizadas",
+  "noFinishedPools": "No tienes pools finalizadas",
+  "leavePool": "🚪 Salir",
+  "leaveConfirmTitle": "⚠️ ¿Salir de la pool?",
+  "leaveConfirmMessage": "Si sales, conservarás tus puntos pero no podrás hacer más predicciones. Esta acción es irreversible.",
+  "leaveConfirmButton": "Sí, salir",
+  "leaveCancel": "Cancelar",
+  "leftSuccess": "Te has salido de la pool",
+  "retired": "Retirado",
+  "retiredBanner": "Te retiraste de esta pool. Puedes ver los resultados pero no hacer predicciones.",
+  "leaving": "Saliendo...",
   "poolCard": {
     "timezone": "TZ",
     "deadline": "Deadline",

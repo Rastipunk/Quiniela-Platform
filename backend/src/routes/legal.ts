@@ -10,6 +10,7 @@
  */
 
 import { Router, Request, Response } from "express";
+import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { LegalDocumentType, PlatformRole } from "@prisma/client";
@@ -52,7 +53,6 @@ router.get("/documents/:type", async (req: Request, res: Response) => {
     if (!documentType) {
       return res.status(400).json({
         error: "INVALID_TYPE",
-        message: "Tipo de documento inválido. Use 'terms', 'privacy', 'TERMS_OF_SERVICE' o 'PRIVACY_POLICY'.",
       });
     }
 
@@ -208,13 +208,25 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.auth!.userId;
-      const { acceptTerms, acceptPrivacy, acceptAge, acceptMarketing } = req.body;
+
+      const acceptSchema = z.object({
+        acceptTerms: z.boolean().optional(),
+        acceptPrivacy: z.boolean().optional(),
+        acceptAge: z.boolean().optional(),
+        acceptMarketing: z.boolean().optional(),
+      });
+      const parsed = acceptSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+      }
+
+      const { acceptTerms, acceptPrivacy, acceptAge, acceptMarketing } = parsed.data;
 
       // Validar que al menos se está aceptando algo
       if (!acceptTerms && !acceptPrivacy && acceptAge === undefined) {
         return res.status(400).json({
           error: "VALIDATION_ERROR",
-          message: "Debe especificar qué documentos acepta.",
+          reason: "NO_DOCUMENTS_SPECIFIED",
         });
       }
 

@@ -6,17 +6,13 @@ import { hashPassword, verifyPassword } from "../lib/password";
 import { signToken } from "../lib/jwt";
 import { writeAuditEvent } from "../lib/audit";
 import { validateUsername, normalizeUsername } from "../lib/username";
-import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail } from "../lib/email";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail, sendPoolFullNotificationEmail } from "../lib/email";
 import { requireAuth } from "../middleware/requireAuth";
 import { verifyGoogleToken } from "../lib/googleAuth";
+import { transitionToActive } from "../services/poolStateMachine";
+import { CURRENT_LEGAL_VERSIONS } from "./legal";
 
 export const authRouter = Router();
-
-// Versiones actuales de documentos legales (importadas desde legal.ts)
-const CURRENT_LEGAL_VERSIONS = {
-  TERMS_OF_SERVICE: "2026-01-25",
-  PRIVACY_POLICY: "2026-01-25",
-} as const;
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -38,7 +34,7 @@ authRouter.post("/register", async (req, res) => {
   }
 
   const {
-    email,
+    email: rawEmail,
     username: rawUsername,
     displayName,
     password,
@@ -48,33 +44,33 @@ authRouter.post("/register", async (req, res) => {
     acceptAge,
     acceptMarketing,
   } = parsed.data;
+  const email = rawEmail.trim().toLowerCase();
 
   // Validar consentimiento legal obligatorio
   if (!acceptTerms) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar los Términos de Servicio para crear una cuenta.",
+      reason: "TERMS_REQUIRED",
     });
   }
 
   if (!acceptPrivacy) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar la Política de Privacidad para crear una cuenta.",
+      reason: "PRIVACY_REQUIRED",
     });
   }
 
   if (!acceptAge) {
     return res.status(400).json({
       error: "AGE_VERIFICATION_REQUIRED",
-      message: "Debes confirmar que tienes al menos 13 años de edad.",
     });
   }
 
   // Validar username
   const usernameValidation = validateUsername(rawUsername);
   if (!usernameValidation.valid) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: usernameValidation.error });
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: usernameValidation.error });
   }
 
   const username = normalizeUsername(rawUsername);
@@ -82,13 +78,13 @@ authRouter.post("/register", async (req, res) => {
   // Verificar email único
   const existingEmail = await prisma.user.findUnique({ where: { email } });
   if (existingEmail) {
-    return res.status(409).json({ error: "CONFLICT", message: "Email already exists" });
+    return res.status(409).json({ error: "EMAIL_TAKEN" });
   }
 
   // Verificar username único
   const existingUsername = await prisma.user.findUnique({ where: { username } });
   if (existingUsername) {
-    return res.status(409).json({ error: "CONFLICT", message: "Username already exists" });
+    return res.status(409).json({ error: "USERNAME_TAKEN" });
   }
 
   const passwordHash = await hashPassword(password);
@@ -158,7 +154,6 @@ authRouter.post("/register", async (req, res) => {
     token,
     user,
     emailVerificationSent: true,
-    message: "Te hemos enviado un email de verificación. Por favor revisa tu bandeja de entrada."
   });
 });
 
@@ -173,7 +168,8 @@ authRouter.post("/login", async (req, res) => {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
   }
 
-  const { email, password } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
+  const { password } = parsed.data;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.status !== "ACTIVE") {
@@ -221,14 +217,14 @@ authRouter.post("/forgot-password", async (req, res) => {
     return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
   }
 
-  const { email } = parsed.data;
+  const email = parsed.data.email.trim().toLowerCase();
 
   // Buscar usuario
   const user = await prisma.user.findUnique({ where: { email } });
 
   // Por seguridad, siempre retornamos éxito (no revelamos si el email existe)
   if (!user || user.status !== "ACTIVE") {
-    return res.json({ message: "Si el email existe, recibirás un enlace para restablecer tu contraseña" });
+    return res.json({ ok: true });
   }
 
   // Verificar si es cuenta de Google sin contraseña local
@@ -241,7 +237,6 @@ authRouter.post("/forgot-password", async (req, res) => {
     // y las cuentas de Google ya son "públicas" por naturaleza
     return res.status(400).json({
       error: "GOOGLE_ACCOUNT",
-      message: "Esta cuenta utiliza Google para iniciar sesión. Por favor, usa el botón 'Iniciar con Google' en la página de login.",
     });
   }
 
@@ -279,7 +274,7 @@ authRouter.post("/forgot-password", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ message: "Si el email existe, recibirás un enlace para restablecer tu contraseña" });
+  return res.json({ ok: true });
 });
 
 // ========== RESET PASSWORD ==========
@@ -307,7 +302,7 @@ authRouter.post("/reset-password", async (req, res) => {
   });
 
   if (!user) {
-    return res.status(400).json({ error: "INVALID_TOKEN", message: "Token inválido o expirado" });
+    return res.status(400).json({ error: "INVALID_TOKEN" });
   }
 
   // Hash nueva password
@@ -332,7 +327,7 @@ authRouter.post("/reset-password", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ message: "Contraseña actualizada exitosamente" });
+  return res.json({ ok: true });
 });
 
 // ========== GOOGLE OAUTH ==========
@@ -359,13 +354,16 @@ authRouter.post("/google", async (req, res) => {
   const googleUser = await verifyGoogleToken(idToken);
 
   if (!googleUser) {
-    return res.status(401).json({ error: "INVALID_TOKEN", message: "Token de Google inválido" });
+    return res.status(401).json({ error: "INVALID_TOKEN" });
   }
+
+  // Normalize Google email for consistent matching
+  const normalizedGoogleEmail = googleUser.email.trim().toLowerCase();
 
   // Buscar usuario existente por email o googleId
   let user = await prisma.user.findFirst({
     where: {
-      OR: [{ email: googleUser.email }, { googleId: googleUser.googleId }],
+      OR: [{ email: normalizedGoogleEmail }, { googleId: googleUser.googleId }],
     },
     select: {
       id: true,
@@ -382,7 +380,7 @@ authRouter.post("/google", async (req, res) => {
   if (user) {
     // Verificar que esté activo
     if (user.status !== "ACTIVE") {
-      return res.status(403).json({ error: "FORBIDDEN", message: "User account is not active" });
+      return res.status(403).json({ error: "ACCOUNT_INACTIVE" });
     }
 
     // Si existe por email pero no tiene googleId, vincular cuenta
@@ -441,7 +439,7 @@ authRouter.post("/google", async (req, res) => {
   if (!acceptTerms) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar los Términos de Servicio para crear una cuenta.",
+      reason: "TERMS_REQUIRED",
       requiresConsent: true,
     });
   }
@@ -449,7 +447,7 @@ authRouter.post("/google", async (req, res) => {
   if (!acceptPrivacy) {
     return res.status(400).json({
       error: "CONSENT_REQUIRED",
-      message: "Debes aceptar la Política de Privacidad para crear una cuenta.",
+      reason: "PRIVACY_REQUIRED",
       requiresConsent: true,
     });
   }
@@ -457,7 +455,6 @@ authRouter.post("/google", async (req, res) => {
   if (!acceptAge) {
     return res.status(400).json({
       error: "AGE_VERIFICATION_REQUIRED",
-      message: "Debes confirmar que tienes al menos 13 años de edad.",
       requiresConsent: true,
     });
   }
@@ -492,7 +489,7 @@ authRouter.post("/google", async (req, res) => {
   const registrationTime = new Date();
   const newUser = await prisma.user.create({
     data: {
-      email: googleUser.email,
+      email: normalizedGoogleEmail,
       username,
       displayName: googleUser.name || username,
       passwordHash: "", // OAuth users no tienen password
@@ -565,7 +562,7 @@ const verifyEmailSchema = z.object({
 authRouter.get("/verify-email", async (req, res) => {
   const parsed = verifyEmailSchema.safeParse(req.query);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Token requerido" });
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "TOKEN_REQUIRED" });
   }
 
   const { token } = parsed.data;
@@ -581,15 +578,13 @@ authRouter.get("/verify-email", async (req, res) => {
   if (!user) {
     return res.status(400).json({
       error: "INVALID_TOKEN",
-      message: "El enlace de verificación es inválido o ha expirado. Solicita un nuevo enlace desde tu perfil."
     });
   }
 
   // Ya está verificado
   if (user.emailVerified) {
     return res.json({
-      message: "Tu email ya estaba verificado.",
-      alreadyVerified: true
+      alreadyVerified: true,
     });
   }
 
@@ -613,8 +608,315 @@ authRouter.get("/verify-email", async (req, res) => {
   });
 
   return res.json({
-    message: "¡Email verificado exitosamente! Ya puedes disfrutar de todas las funciones.",
-    verified: true
+    verified: true,
+  });
+});
+
+// ========== CORPORATE ACTIVATION ==========
+
+// GET /auth/check-corporate-invite — Verify token and check if user already exists
+authRouter.get("/check-corporate-invite", async (req, res) => {
+  const { token: activationToken } = req.query;
+
+  if (!activationToken || typeof activationToken !== "string") {
+    return res.status(400).json({ error: "MISSING_TOKEN" });
+  }
+
+  const invite = await prisma.corporateInvite.findUnique({
+    where: { activationToken },
+    include: {
+      pool: {
+        select: {
+          id: true,
+          name: true,
+          organization: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  if (!invite) {
+    return res.status(400).json({ error: "INVALID_TOKEN" });
+  }
+
+  if (invite.activationTokenExpiresAt < new Date()) {
+    return res.status(400).json({ error: "TOKEN_EXPIRED" });
+  }
+
+  if (invite.status === "ACTIVATED") {
+    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: invite.email },
+    select: { id: true },
+  });
+
+  return res.json({
+    email: invite.email,
+    alreadyExists: !!existingUser,
+    poolName: invite.pool.name,
+    companyName: invite.pool.organization?.name ?? null,
+  });
+});
+
+const activateCorporateSchema = z.object({
+  activationToken: z.string().min(1),
+  displayName: z.string().min(2).max(50).optional(),
+  username: z.string().min(3).max(20).optional(),
+  password: z.string().min(8).max(200).optional(),
+  acceptTerms: z.boolean().optional(),
+  acceptPrivacy: z.boolean().optional(),
+  acceptAge: z.boolean().optional(),
+});
+
+// POST /auth/activate-corporate — Activar cuenta de empleado invitado a pool corporativa
+authRouter.post("/activate-corporate", async (req, res) => {
+  const parsed = activateCorporateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const {
+    activationToken,
+    displayName,
+    username: rawUsername,
+    password,
+    acceptTerms,
+    acceptPrivacy,
+    acceptAge,
+  } = parsed.data;
+
+  // Buscar invite por token
+  const invite = await prisma.corporateInvite.findUnique({
+    where: { activationToken },
+    include: { pool: { select: { id: true, name: true, maxParticipants: true, organization: { select: { name: true } } } } },
+  });
+
+  if (!invite) {
+    return res.status(400).json({ error: "INVALID_TOKEN" });
+  }
+
+  if (invite.activationTokenExpiresAt < new Date()) {
+    return res.status(400).json({ error: "TOKEN_EXPIRED" });
+  }
+
+  if (invite.status === "ACTIVATED") {
+    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+  }
+
+  // Verificar si ya existe un usuario con ese email
+  const existingUser = await prisma.user.findUnique({ where: { email: invite.email } });
+  if (existingUser) {
+    // Edge case: el usuario se registró por otra vía entre la invitación y la activación.
+    // Lo agregamos al pool directamente y marcamos como activado.
+    await prisma.$transaction(async (tx) => {
+      const existingMember = await tx.poolMember.findUnique({
+        where: { poolId_userId: { poolId: invite.poolId, userId: existingUser.id } },
+      });
+
+      if (!existingMember) {
+        if (invite.pool.maxParticipants) {
+          const count = await tx.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+          if (count >= invite.pool.maxParticipants) {
+            throw new Error("POOL_FULL");
+          }
+        }
+        await tx.poolMember.create({
+          data: { poolId: invite.poolId, userId: existingUser.id, role: "PLAYER", status: "ACTIVE" },
+        });
+      }
+
+      await tx.corporateInvite.update({
+        where: { id: invite.id },
+        data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
+      });
+    }).catch((err) => {
+      if (err.message === "POOL_FULL") {
+        return res.status(409).json({ error: "POOL_FULL" });
+      }
+      throw err;
+    });
+
+    if (res.headersSent) return;
+
+    // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
+    await transitionToActive(invite.poolId, existingUser.id).catch((err) =>
+      console.error("transitionToActive error (existing user):", err)
+    );
+
+    // Notificar al host si el pool acaba de llenarse
+    if (invite.pool.maxParticipants) {
+      const curCount = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+      if (curCount >= invite.pool.maxParticipants) {
+        const host = await prisma.poolMember.findFirst({
+          where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+          include: { user: { select: { email: true, displayName: true } } },
+        });
+        if (host?.user?.email) {
+          sendPoolFullNotificationEmail({
+            to: host.user.email,
+            hostName: host.user.displayName || "Host",
+            poolName: invite.pool.name,
+            poolId: invite.poolId,
+            maxParticipants: invite.pool.maxParticipants,
+          }).catch(() => {});
+        }
+      }
+    }
+
+    const token = signToken({ userId: existingUser.id, platformRole: existingUser.platformRole });
+    return res.json({
+      token,
+      user: {
+        id: existingUser.id,
+        email: existingUser.email,
+        username: existingUser.username,
+        displayName: existingUser.displayName,
+        platformRole: existingUser.platformRole,
+        status: existingUser.status,
+      },
+      poolId: invite.poolId,
+      poolName: invite.pool.name,
+      companyName: invite.pool.organization?.name ?? null,
+      alreadyExisted: true,
+    });
+  }
+
+  // Nuevo usuario: campos de registro son obligatorios
+  if (!displayName || !rawUsername || !password) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "MISSING_REQUIRED_FIELDS" });
+  }
+  if (!acceptTerms || !acceptPrivacy || !acceptAge) {
+    return res.status(400).json({ error: "CONSENT_REQUIRED" });
+  }
+
+  // Validar username
+  const usernameValidation = validateUsername(rawUsername);
+  if (!usernameValidation.valid) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: usernameValidation.error });
+  }
+
+  const username = normalizeUsername(rawUsername);
+
+  // Verificar username único
+  const existingUsername = await prisma.user.findUnique({ where: { username } });
+  if (existingUsername) {
+    return res.status(409).json({ error: "USERNAME_TAKEN" });
+  }
+
+  // Crear usuario y asignar al pool en transacción
+  const passwordHash = await hashPassword(password);
+  const now = new Date();
+
+  let result;
+  try {
+  result = await prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: {
+        email: invite.email,
+        username,
+        displayName,
+        passwordHash,
+        platformRole: "PLAYER",
+        status: "ACTIVE",
+        emailVerified: true, // Corporate: email pre-verificado
+        acceptedTermsAt: now,
+        acceptedTermsVersion: CURRENT_LEGAL_VERSIONS.TERMS_OF_SERVICE,
+        acceptedPrivacyAt: now,
+        acceptedPrivacyVersion: CURRENT_LEGAL_VERSIONS.PRIVACY_POLICY,
+        ageVerifiedAt: now,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        platformRole: true,
+        status: true,
+      },
+    });
+
+    // Verificar capacidad antes de agregar miembro
+    if (invite.pool.maxParticipants) {
+      const count = await tx.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+      if (count >= invite.pool.maxParticipants) {
+        throw new Error("POOL_FULL");
+      }
+    }
+    await tx.poolMember.create({
+      data: {
+        poolId: invite.poolId,
+        userId: newUser.id,
+        role: "PLAYER",
+        status: "ACTIVE",
+      },
+    });
+
+    await tx.corporateInvite.update({
+      where: { id: invite.id },
+      data: { status: "ACTIVATED", activatedUserId: newUser.id, activatedAt: now },
+    });
+
+    return newUser;
+  });
+  } catch (err: any) {
+    if (err.message === "POOL_FULL") {
+      return res.status(409).json({ error: "POOL_FULL" });
+    }
+    throw err;
+  }
+
+  // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
+  await transitionToActive(invite.poolId, result.id).catch((err) =>
+    console.error("transitionToActive error (new user):", err)
+  );
+
+  // Notificar al host si el pool acaba de llenarse
+  if (invite.pool.maxParticipants) {
+    const curCount = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
+    if (curCount >= invite.pool.maxParticipants) {
+      const host = await prisma.poolMember.findFirst({
+        where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+        include: { user: { select: { email: true, displayName: true } } },
+      });
+      if (host?.user?.email) {
+        sendPoolFullNotificationEmail({
+          to: host.user.email,
+          hostName: host.user.displayName || "Host",
+          poolName: invite.pool.name,
+          poolId: invite.poolId,
+          maxParticipants: invite.pool.maxParticipants,
+        }).catch(() => {});
+      }
+    }
+  }
+
+  await writeAuditEvent({
+    actorUserId: result.id,
+    action: "CORPORATE_ACCOUNT_ACTIVATED",
+    entityType: "User",
+    entityId: result.id,
+    dataJson: { poolId: invite.poolId, email: invite.email },
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  // Enviar welcome email (fire and forget)
+  sendWelcomeEmail({
+    to: result.email,
+    userId: result.id,
+    displayName: result.displayName,
+  }).catch((err) => console.error("Error sending welcome email:", err));
+
+  const jwtToken = signToken({ userId: result.id, platformRole: result.platformRole });
+
+  return res.status(201).json({
+    token: jwtToken,
+    user: result,
+    poolId: invite.poolId,
+    poolName: invite.pool.name,
+    companyName: invite.pool.organization?.name ?? null,
   });
 });
 
@@ -634,13 +936,12 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ error: "USER_NOT_FOUND", message: "Usuario no encontrado" });
+    return res.status(404).json({ error: "USER_NOT_FOUND" });
   }
 
   if (user.emailVerified) {
     return res.status(400).json({
       error: "ALREADY_VERIFIED",
-      message: "Tu email ya está verificado."
     });
   }
 
@@ -668,7 +969,6 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
     console.error("Error sending verification email:", emailResult.error);
     return res.status(500).json({
       error: "EMAIL_SEND_FAILED",
-      message: "No se pudo enviar el email de verificación. Intenta de nuevo más tarde."
     });
   }
 
@@ -681,7 +981,5 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({
-    message: "Email de verificación enviado. Revisa tu bandeja de entrada (y spam)."
-  });
+  return res.json({ ok: true });
 });

@@ -48,6 +48,7 @@ backend/prisma/migrations/*_temp/
 *.orig
 .cache/
 nul
+tmp_*.js
 
 # Next.js
 .next/

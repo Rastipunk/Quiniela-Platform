@@ -249,6 +249,8 @@ export interface ParsedFixtureResult {
   isFinished: boolean;
   homeGoals: number;
   awayGoals: number;
+  fulltimeHome: number | null;  // Score at 90 minutes (from score.fulltime)
+  fulltimeAway: number | null;
   halftimeHome: number | null;
   halftimeAway: number | null;
   extratimeHome: number | null;
@@ -293,6 +295,8 @@ export function parseFixtureResult(fixture: ApiFootballFixture): ParsedFixtureRe
     isFinished,
     homeGoals: fixture.goals.home ?? 0,
     awayGoals: fixture.goals.away ?? 0,
+    fulltimeHome: fixture.score.fulltime.home,
+    fulltimeAway: fixture.score.fulltime.away,
     halftimeHome: fixture.score.halftime.home,
     halftimeAway: fixture.score.halftime.away,
     extratimeHome: fixture.score.extratime.home,

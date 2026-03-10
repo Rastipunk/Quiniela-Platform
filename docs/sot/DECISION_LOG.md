@@ -1,11 +1,11 @@
 # Architectural Decision Log (ADL)
-# Quiniela Platform
+# Picks4All
 
 > **Purpose:** Record all significant architectural, technical, and product decisions with context and rationale.
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-02-01
+> **Last Updated:** 2026-03-01
 
 ---
 
@@ -97,6 +97,12 @@ How to implement this decision (if applicable)
 | [029](#adr-029-internal-notification-system-badges) | Internal Notification System (Badges) | Accepted | 2026-01-18 |
 | [030](#adr-030-slide-in-auth-panel) | Slide-in Auth Panel | Accepted | 2026-02-01 |
 | [031](#adr-031-automatic-results-via-api-football) | Automatic Results via API-Football | Accepted | 2026-02-04 |
+| [032](#adr-032-smart-sync---optimized-api-polling-strategy) | Smart Sync - Optimized API Polling Strategy | Accepted | 2026-02-04 |
+| [033](#adr-033-nextjs-migration-ssr--seo) | Next.js Migration (SSR + SEO) | Accepted | 2026-02-13 |
+| [034](#adr-034-cloudflare-email-routing-for-incoming-email) | Cloudflare Email Routing for Incoming Email | Accepted | 2026-03-01 |
+| [035](#adr-035-corporate-pool-feature--self-service-mvp) | Corporate Pool Feature — Self-Service MVP | Accepted | 2026-03-01 |
+| [036](#adr-036-lemon-squeezy-as-merchant-of-record) | Lemon Squeezy as Merchant of Record | Accepted | 2026-03-01 |
+| [037](#adr-037-resend-domain-verification-for-production-email) | Resend Domain Verification for Production Email | Accepted | 2026-03-01 |
 
 ---
 
@@ -1352,7 +1358,7 @@ Implement a **Read/Edit Mode Pattern** for both Picks and Results with the follo
 - `ResultEditor` - Input fields + reason field
 
 **File Modified:**
-- `frontend/src/pages/PoolPage.tsx` (~807 lines)
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx`
 
 **Key UX Patterns:**
 ```tsx
@@ -1468,7 +1474,7 @@ ALTER TABLE "PoolMatchResultVersion"
 - `backend/prisma/schema.prisma` - Added fields
 - `backend/src/routes/results.ts` - Accept penalties in request body
 - `backend/src/services/instanceAdvancement.ts` - Use penalties for winner determination
-- `frontend/src/pages/PoolPage.tsx` - Penalty input UI for draws
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx` - Penalty input UI for draws
 
 **Migration:**
 - `20260104161019_add_penalties_and_locked_phases`
@@ -1577,7 +1583,7 @@ ALTER TABLE "Pool" ADD COLUMN "autoAdvanceEnabled" BOOLEAN NOT NULL DEFAULT true
 **Files Modified:**
 - `backend/src/routes/results.ts` - Auto-advance after result publish
 - `backend/src/routes/pools.ts` - Manual advance endpoint + settings toggle
-- `frontend/src/pages/PoolPage.tsx` - Toggle UI in admin panel
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx` - Toggle UI in admin panel
 
 ### Related Decisions
 
@@ -1688,7 +1694,7 @@ POST /pools/:poolId/lock-phase
 - `backend/prisma/schema.prisma` - Added `lockedPhases` JSONB column
 - `backend/src/routes/pools.ts` - Lock/unlock endpoint
 - `backend/src/services/instanceAdvancement.ts` - Check locks before advancing
-- `frontend/src/pages/PoolPage.tsx` - Lock/unlock buttons in admin panel
+- `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx` - Lock/unlock buttons in admin panel
 
 **UI Components:**
 ```tsx
@@ -2639,7 +2645,7 @@ authRouter.post("/google", async (req, res) => {
 });
 ```
 
-**Frontend ([LoginPage.tsx](../../frontend/src/pages/LoginPage.tsx)):**
+**Frontend ([login/page.tsx](../../frontend-next/src/app/[locale]/login/page.tsx)):**
 ```tsx
 // Load Google Identity Services SDK in index.html
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -2812,9 +2818,9 @@ function isCumulativeScoring(config: PhasePickConfig): boolean {
 - `backend/src/lib/scoringBreakdown.ts` - Generación de breakdown
 
 **Frontend Files:**
-- `frontend/src/components/PoolConfigWizard.tsx` - Preset cards
-- `frontend/src/components/PickRulesDisplay.tsx` - Explicación por modo
-- `frontend/src/components/PlayerSummary.tsx` - Breakdown visual
+- `frontend-next/src/components/PoolConfigWizard.tsx` - Preset cards
+- `frontend-next/src/components/PickRulesDisplay.tsx` - Explicación por modo
+- `frontend-next/src/components/PlayerSummary.tsx` - Breakdown visual
 
 **Key Algorithm:**
 ```typescript
@@ -3097,12 +3103,12 @@ Implementar un **Slide-in Auth Panel** que desliza desde la derecha con las sigu
 ### Implementation
 
 **Componentes creados:**
-- `frontend/src/components/AuthSlidePanel.tsx` - Panel principal con toda la lógica
+- `frontend-next/src/components/AuthSlidePanel.tsx` - Panel principal con toda la lógica
 
 **Componentes modificados:**
-- `frontend/src/components/PublicNavbar.tsx` - Botón "Ingresar" abre panel
-- `frontend/src/components/PublicLayout.tsx` - Maneja estado del panel
-- `frontend/src/App.tsx` - Pasa `onLoggedIn` callback
+- `frontend-next/src/components/PublicNavbar.tsx` - Botón "Ingresar" abre panel
+- `frontend-next/src/components/PublicLayout.tsx` - Maneja estado del panel
+- `frontend-next/src/app/[locale]/layout.tsx` - Root layout con auth state
 
 **CSS Animations:**
 ```css
@@ -3565,6 +3571,241 @@ Migrate frontend from React SPA (Vite) to **Next.js App Router** with:
 
 ---
 
+## ADR-034: Cloudflare Email Routing for Incoming Email
+
+**Date:** 2026-03-01
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #infrastructure #email
+
+### Context
+
+The platform advertises `soporte@picks4all.com` in the Footer, FAQ, and legal documents, but no MX records exist for the domain. Emails sent to any @picks4all.com address go nowhere. Outgoing email uses Resend (transactional), but receiving email requires MX records and a mail server.
+
+Options considered:
+1. Google Workspace ($7/user/month) — full email hosting
+2. Cloudflare Email Routing (free) — forwards to existing Gmail
+3. Zoho Mail (free tier) — limited webmail
+4. Self-hosted (Postfix/Dovecot) — high maintenance
+
+### Decision
+
+Use **Cloudflare Email Routing** to forward all incoming @picks4all.com emails to the founder's personal Gmail.
+
+### Rationale
+
+- ✅ **Free:** No monthly cost
+- ✅ **Already on Cloudflare:** Domain DNS is managed in Cloudflare, so setup is 1-click
+- ✅ **Instant:** MX records auto-created, no propagation wait
+- ✅ **Catch-all support:** Forward `*@picks4all.com` to catch any address
+- ✅ **No new accounts:** Uses existing Gmail inbox
+- ✅ **Non-blocking:** Can upgrade to Google Workspace later without disruption
+
+### Consequences
+
+**Positive:**
+- ✅ soporte@picks4all.com actually receives emails
+- ✅ Zero cost, zero maintenance
+- ✅ Can reply from Gmail (with "Send As" configuration)
+
+**Negative:**
+- ⚠️ Cannot send FROM @picks4all.com via Gmail natively (need "Send As" config)
+- ⚠️ No dedicated mailbox (emails arrive in personal Gmail mixed with other mail)
+- ⚠️ Not suitable for multiple team members (all goes to one inbox)
+
+### Implementation
+
+1. Cloudflare Dashboard → Email → Email Routing → Enable
+2. Add destination: personal Gmail, verify
+3. Create route: soporte@picks4all.com → Gmail
+4. Create catch-all: *@picks4all.com → Gmail (optional)
+5. MX records auto-created by Cloudflare
+
+---
+
+## ADR-035: Corporate Pool Feature — Self-Service MVP
+
+**Date:** 2026-03-01
+**Status:** Accepted (Implemented)
+**Deciders:** Product Team
+**Tags:** #feature #corporate #architecture
+
+### Context
+
+Companies want to organize prediction pools for their employees as team-building activities. This requires:
+- A way for companies to discover and contact us
+- Customization (company logo on pool)
+- Bulk user creation (employees don't have accounts)
+- Organization tracking
+- Self-service flow (no admin intervention)
+
+### Decision
+
+Implement a **self-service MVP** with full end-to-end flow:
+
+1. **Public enterprise landing page** (`/empresas`) with CTA and contact form
+2. **Database models** — `Organization` (company info + logo + messages), `OrganizationInquiry` (contact form), `CorporateInvite` (employee invitations with activation tokens)
+3. **CORPORATE_HOST role** — New PoolMemberRole for the company representative who manages the corporate pool
+4. **6-step guided wizard** (`/empresas/crear`) — Company info → Tournament → Pool details → Scoring → Employees → Summary
+5. **Employee invitation flow** — CSV upload or manual entry → Email invitations with activation tokens (30-day expiry)
+6. **Token-based activation** (`/activar?token=...`) — Employee creates password, enters pool automatically
+
+**Workflow:** Company fills wizard → Pool created → Employees invited via email → Employees activate accounts → Pool auto-activates.
+
+### Rationale
+
+- ✅ **Fully self-service:** No admin intervention required
+- ✅ **Guided experience:** 6-step wizard prevents confusion
+- ✅ **CSV support:** Bulk employee import for large companies
+- ✅ **Token activation:** Employees don't need to know pool codes
+- ✅ **Extensible:** Organization model supports future premium features
+
+### Consequences
+
+**Positive:**
+- ✅ Companies can set up pools independently
+- ✅ Employee onboarding is frictionless (email → click → set password → play)
+- ✅ Logo stored as base64 (no external hosting needed)
+- ✅ Database ready for branding features (splash, personalized emails)
+
+**Negative:**
+- ⚠️ Logo as base64 increases DB size (mitigated by client-side compression)
+- ⚠️ No company admin dashboard yet (CORPORATE_HOST manages via pool page)
+- ⚠️ Pool stays DRAFT until transitionToActive fix (known bug, planned)
+
+### Implementation (Completed)
+
+**Backend:**
+- `backend/src/routes/corporate.ts` — 7 endpoints (inquiry, pools, employees, invitations, CSV template)
+- `backend/src/routes/auth.ts` — POST /auth/activate-corporate
+- `backend/src/lib/email.ts` — sendCorporateActivationEmail, sendCorporateInquiryConfirmationEmail
+- `backend/prisma/schema.prisma` — Organization, OrganizationInquiry, CorporateInvite models
+
+**Frontend:**
+- `frontend-next/src/components/EnterpriseLandingContent.tsx` — Landing page
+- `frontend-next/src/components/CorporatePoolCreation.tsx` — 6-step wizard
+- `frontend-next/src/components/ActivationContent.tsx` — Employee activation
+
+### Future Evolution (v0.7+)
+
+- Pool branding: splash welcome screen + persistent logo header
+- Personalized emails with company logo + custom invitation message
+- invitationMessage field in Organization model
+- Company admin dashboard
+- SSO integration (SAML/OIDC)
+- Billing portal for corporate accounts
+
+---
+
+## ADR-036: Lemon Squeezy as Merchant of Record
+
+**Date:** 2026-03-01
+**Status:** Accepted (pending approval)
+**Deciders:** Product Team
+**Tags:** #payments #business
+
+### Context
+
+The platform needs a payment system for pools exceeding 20 participants (one-time fee per pool). The founder is based in Colombia, which limits payment processor options:
+- **Stripe Direct:** Not available for Colombian residents
+- **PayPal Commerce:** Complex setup, high fees for LATAM
+- **Lemon Squeezy:** Merchant of Record model, handles taxes/compliance, supports Colombia
+
+### Decision
+
+Use **Lemon Squeezy** as Merchant of Record for all payments.
+
+**Monetization model:**
+- **Free tier:** Pools with up to 20 participants
+- **Paid tier:** One-time payment per pool for pools with >20 participants
+- Price TBD (likely $2-5 USD per pool)
+
+### Rationale
+
+- ✅ **Colombia-friendly:** LS supports merchants in Colombia
+- ✅ **MoR model:** LS handles tax collection, compliance, invoicing
+- ✅ **Simple integration:** Hosted checkout + webhooks
+- ✅ **One-time payments:** Supports single-purchase model (not just subscriptions)
+- ✅ **Multiple currencies:** Users can pay in their local currency
+
+### Consequences
+
+**Positive:**
+- ✅ No tax/compliance burden on the founder
+- ✅ Simple webhook-based integration
+- ✅ Supports global payments
+- ✅ Dashboard for revenue tracking
+
+**Negative:**
+- ⚠️ LS takes ~5-8% commission + payment processor fees
+- ⚠️ Approval not guaranteed (application pending as of 2026-03-01)
+- ⚠️ If rejected, need alternative (Paddle, manual payments)
+- ⚠️ Hosted checkout means redirect (not inline payment form)
+
+### Implementation Plan
+
+1. Create PoolPayment model in database
+2. Create Lemon Squeezy product (one-time purchase)
+3. Implement checkout URL generation endpoint
+4. Implement webhook handler for payment confirmation
+5. Wire payment gate to pool join flow
+6. DEFERRED until LS approval is confirmed
+
+---
+
+## ADR-037: Resend Domain Verification for Production Email
+
+**Date:** 2026-03-01
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #email #infrastructure
+
+### Context
+
+Outgoing emails currently use Resend's sandbox address `onboarding@resend.dev`. This:
+- Looks unprofessional (not @picks4all.com)
+- May have lower deliverability (shared sandbox reputation)
+- Confuses users who don't recognize the sender
+
+Additionally, email templates still reference the old domain `soporte@tuquiniela.com` and the old brand name "Quiniela Platform".
+
+### Decision
+
+1. **Verify `picks4all.com` domain in Resend** by adding SPF/DKIM TXT records to Cloudflare DNS
+2. **Update FROM_EMAIL** to `noreply@picks4all.com` via Railway environment variable
+3. **Fix brand references** in email code: APP_NAME → "Picks4All", supportEmail → "soporte@picks4all.com"
+
+### Rationale
+
+- ✅ **Professional:** Emails come from @picks4all.com
+- ✅ **Better deliverability:** Own domain reputation > shared sandbox
+- ✅ **Brand consistency:** All touchpoints say "Picks4All"
+- ✅ **Free:** Resend domain verification is included in free tier
+- ✅ **No conflict with Cloudflare Email Routing:** Only TXT records needed (not MX)
+
+### Consequences
+
+**Positive:**
+- ✅ Professional sender address
+- ✅ Better email deliverability
+- ✅ Consistent branding across all emails
+
+**Negative:**
+- ⚠️ Need to monitor SPF/DKIM records if DNS changes
+- ⚠️ Initial warm-up period for new domain reputation
+
+### Implementation
+
+1. Resend Dashboard → Add domain `picks4all.com`
+2. Add SPF TXT record to Cloudflare DNS
+3. Add DKIM TXT records (2-3 records) to Cloudflare DNS
+4. Wait for verification
+5. Update Railway env var: `RESEND_FROM_EMAIL=noreply@picks4all.com`
+6. Update `backend/src/lib/email.ts`: APP_NAME → "Picks4All"
+7. Update `backend/src/lib/emailTemplates.ts`: BRAND.name, supportEmail
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.3.0:**
@@ -3588,14 +3829,20 @@ Migrate frontend from React SPA (Vite) to **Next.js App Router** with:
 **v0.4.0:**
 - [x] ADR-033: Next.js Migration ✅ (2026-02-13)
 
+**v0.6.0:**
+- [x] ADR-034: Cloudflare Email Routing for Incoming Email ✅ (2026-03-01)
+- [x] ADR-035: Corporate Pool Feature — Self-Service MVP ✅ (2026-03-01)
+- [x] ADR-036: Lemon Squeezy as Merchant of Record ✅ (2026-03-01)
+- [x] ADR-037: Resend Domain Verification for Production Email ✅ (2026-03-01)
+
 **v1.0:**
-- [ ] ADR-034: PWA + Service Worker
-- [ ] ADR-035: Redis caching layer
+- [ ] ADR-038: PWA + Service Worker
+- [ ] ADR-039: Redis caching layer
 
 **v2.0:**
-- [ ] ADR-036: Multi-sport support architecture
-- [ ] ADR-037: WebSocket for real-time updates
-- [ ] ADR-038: Facebook/Apple OAuth providers
+- [ ] ADR-040: Multi-sport support architecture
+- [ ] ADR-041: WebSocket for real-time updates
+- [ ] ADR-042: Facebook/Apple OAuth providers
 
 ---
 

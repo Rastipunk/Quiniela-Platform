@@ -18,15 +18,18 @@ export function PublicPageWrapper({ children }: PublicPageWrapperProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const [showAuthPanel, setShowAuthPanel] = useState(false);
   const [authPanelMode, setAuthPanelMode] = useState<"login" | "register">("login");
+  const [authRedirectTo, setAuthRedirectTo] = useState<string | null>(null);
 
-  const openAuthPanel = (mode: "login" | "register" = "login") => {
+  const openAuthPanel = (mode: "login" | "register" = "login", redirectTo?: string) => {
     setAuthPanelMode(mode);
+    setAuthRedirectTo(redirectTo ?? null);
     setShowAuthPanel(true);
   };
 
   const handleLoggedIn = () => {
     setShowAuthPanel(false);
-    router.push("/dashboard");
+    router.push(authRedirectTo || "/dashboard");
+    setAuthRedirectTo(null);
   };
 
   return (

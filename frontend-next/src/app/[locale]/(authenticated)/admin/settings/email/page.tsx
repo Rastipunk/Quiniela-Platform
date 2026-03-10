@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
 import {
@@ -59,6 +59,12 @@ export default function AdminEmailSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
+
   const [metadata, setMetadata] = useState<{
     updatedAt: string;
     updatedBy: { displayName: string; email: string } | null;
@@ -116,7 +122,8 @@ export default function AdminEmailSettingsPage() {
       const result = await updateAdminEmailSettings(token, { [key]: newValue });
       setSettings(result.settings);
       setSuccess("Configuración guardada correctamente");
-      setTimeout(() => setSuccess(null), 3000);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(null), 3000);
 
       // Refetch para actualizar metadata
       const data = await getAdminEmailSettings(token);

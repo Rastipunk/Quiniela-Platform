@@ -1,14 +1,49 @@
-# Current State - Quiniela Platform
+# Current State - Picks4All
 
-> **Ultima actualizacion:** 2026-02-22 | **Version:** v0.5.0 (i18n + SEO + Repo Cleanup)
+> **Ultima actualizacion:** 2026-03-01 | **Version:** v0.6.0 (Corporate Self-Service MVP)
 
 ---
 
 ## Estado General
 
-**Resumen ejecutivo:** La plataforma está en estado v0.5.0. Frontend en **Next.js App Router** con SSR, **i18n completo (ES/EN/PT)** via next-intl v4, SEO profesional con hreflang/sitemap multi-locale, páginas regionales para todo el mercado hispanohablante + EN/PT, y repo limpio listo para open source. PageSpeed Insights: Performance 93, Accessibility 95, Best Practices 96, **SEO 100**.
+**Resumen ejecutivo:** La plataforma está en estado v0.6.0. Frontend en **Next.js App Router** con SSR, **i18n completo (ES/EN/PT)** via next-intl v4, SEO profesional, y ahora con **sistema corporativo self-service completo**: landing page empresarial, wizard de creación de pool corporativo en 6 pasos, invitaciones por CSV/email, y activación de cuentas para empleados. PageSpeed Insights: Performance 93, Accessibility 95, Best Practices 96, **SEO 100**.
 
-### Cambios Recientes (v0.5.0 - 2026-02-22)
+### Cambios Recientes (v0.6.0 - 2026-03-01)
+
+1. **Corporate Self-Service MVP (ADR-035)**
+   - **Backend**: Nuevas rutas corporativas (7 endpoints en `corporate.ts`)
+     - `POST /corporate/inquiry` — Formulario de contacto empresarial (público, rate-limited)
+     - `POST /corporate/pools` — Crear pool corporativa (Organization + Pool + CORPORATE_HOST en transacción)
+     - `POST /corporate/pools/:id/employees` — Agregar empleados (manual o CSV upload)
+     - `GET /corporate/pools/:id/employees` — Listar empleados/invitaciones
+     - `POST /corporate/pools/:id/send-invitations` — Enviar emails de activación
+     - `GET /corporate/csv-template` — Descargar plantilla CSV
+     - `DELETE /corporate/pools/:id/employees/:inviteId` — Eliminar invitación
+   - **Auth**: `POST /auth/activate-corporate` — Activación de empleado con token (30 días)
+   - **Schema**: Organization, OrganizationInquiry, CorporateInvite models + CORPORATE_HOST role
+   - **Email**: Templates dedicados para invitación corporativa y confirmación de consulta
+
+2. **Corporate Frontend**
+   - Enterprise landing page: `/empresas` (pública, con CTA que redirige a auth si necesario)
+   - Wizard de creación: `/empresas/crear` (6 pasos: empresa, torneo, pool, scoring, empleados, resumen)
+   - Página de activación: `/activar?token=...` (empleado crea contraseña y entra al pool)
+   - "Empresas" link en NavBar autenticado (desktop + mobile)
+   - Badge corporativo internacionalizado en dashboard
+   - AuthPanelContext extendido con soporte de `redirectTo`
+
+3. **UX Fixes**
+   - Email sending: Verificación del resultado de `sendCorporateActivationEmail`
+   - CSV: UTF-8 BOM para compatibilidad con Excel
+   - Auth redirect: Post-registro redirige a `/empresas/crear` en vez de `/dashboard`
+
+4. **Known Issues (plan para próxima sesión)**
+   - Pool se queda en DRAFT: `transitionToActive()` no se llama desde flujos corporativos
+   - Organization data no incluida en pool overview API
+   - Sin branding corporativo visible en la pool (logo, splash, header)
+   - Email sin logo de empresa ni mensaje personalizado
+   - Campo `invitationMessage` pendiente en schema
+
+### Cambios v0.5.0 (2026-02-22)
 
 1. **i18n (ES/EN/PT)** — next-intl v4
    - `localePrefix: 'as-needed'` (Spanish no prefix, EN/PT with prefix)
@@ -192,6 +227,25 @@
 | **Repo Cleanup** | ✅ COMPLETO | Eliminados 120+ archivos obsoletos |
 | **README.md** | ✅ COMPLETO | Para GitHub público |
 
+### Sprint 7 - Corporate Self-Service (v0.6.0)
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| **Corporate Backend Routes** | ✅ COMPLETO | 7 endpoints en corporate.ts |
+| **Organization/CorporateInvite Models** | ✅ COMPLETO | Schema con Prisma |
+| **CORPORATE_HOST Role** | ✅ COMPLETO | Nuevo PoolMemberRole |
+| **Employee Activation Flow** | ✅ COMPLETO | Token-based, 30-day expiry |
+| **Corporate Email Templates** | ✅ COMPLETO | Invitación + confirmación consulta |
+| **Enterprise Landing Page** | ✅ COMPLETO | /empresas, pública |
+| **Corporate Pool Wizard** | ✅ COMPLETO | 6 pasos guiados |
+| **Employee Activation Page** | ✅ COMPLETO | /activar, crea cuenta + entra pool |
+| **NavBar Empresas Link** | ✅ COMPLETO | Desktop + mobile |
+| **Corporate Badge i18n** | ✅ COMPLETO | Dashboard badge internacionalizado |
+| **Auth Redirect Support** | ✅ COMPLETO | AuthPanelContext + redirectTo |
+| **CSV Upload Employees** | ✅ COMPLETO | Con UTF-8 BOM para Excel |
+| **Pool Branding (splash/logo)** | ⏳ PENDIENTE | Planificado, aún no implementado |
+| **Personalized Email w/ Logo** | ⏳ PENDIENTE | Planificado, aún no implementado |
+| **DRAFT→ACTIVE Fix (corporate)** | ⏳ PENDIENTE | Bug conocido, planificado |
+
 ### Advanced Pick Types System
 
 El sistema soporta dos modos de picks:
@@ -291,10 +345,12 @@ frontend-next/
     │ ├── layout.tsx           # Root layout (metadata, GA4, Google Identity)
     │ ├── page.tsx             # Landing page (SSR)
     │ ├── login/page.tsx       # Login/Register
+    │ ├── activar/page.tsx     # Corporate employee activation
     │ ├── (authenticated)/     # Route group with AuthGuard
     │ │ ├── dashboard/page.tsx
     │ │ ├── pools/[poolId]/page.tsx
     │ │ ├── profile/page.tsx
+    │ │ ├── empresas/          # Corporate (landing + pool wizard)
     │ │ └── admin/...
     │ ├── como-funciona/       # Public SSR pages
     │ ├── faq/
@@ -311,13 +367,19 @@ frontend-next/
     lib/             # api.ts, auth.ts, timezone.ts
     hooks/           # useIsMobile, useAuth, usePoolNotifications
     data/            # Static data (teamFlags)
-    middleware.ts    # www → non-www redirect
+    proxy.ts        # www → non-www redirect + locale routing
 ```
 
 > **Nota:** El frontend antiguo (`/frontend` — Vite SPA) fue eliminado en v0.5.0. El servicio "Frontend" antiguo en Railway debería eliminarse.
 
 ### Base de Datos (PostgreSQL)
-- 30+ modelos Prisma
+- 35+ modelos Prisma
+- Nuevos modelos Sprint 7 (Corporate):
+  - Organization (empresa, logo, welcome message, status)
+  - OrganizationInquiry (consultas empresariales)
+  - CorporateInvite (invitaciones con token de activación)
+  - New enum: PoolMemberRole.CORPORATE_HOST
+  - New enums: OrganizationStatus, CorporateInviteStatus
 - Nuevos modelos Sprint 4:
   - MatchExternalMapping (mapeo interno ↔ API-Football)
   - ResultSyncLog (logs de sincronización)
@@ -340,6 +402,7 @@ frontend-next/
 - `POST /auth/reset-password` - Resetear password
 - `POST /auth/verify-email` - Verificar email con token
 - `POST /auth/resend-verification` - Reenviar email de verificación
+- `POST /auth/activate-corporate` - Activar cuenta de empleado corporativo
 
 ### Pools
 - `POST /pools` - Crear pool
@@ -366,6 +429,15 @@ frontend-next/
 - `PATCH /me/profile` - Actualizar perfil
 - `GET /me/email-preferences` - Preferencias de email
 - `PUT /me/email-preferences` - Actualizar preferencias de email
+
+### Corporate
+- `POST /corporate/inquiry` - Formulario de contacto empresarial (público)
+- `POST /corporate/pools` - Crear pool corporativa (con Organization)
+- `POST /corporate/pools/:id/employees` - Agregar empleados (manual/CSV)
+- `GET /corporate/pools/:id/employees` - Listar empleados e invitaciones
+- `POST /corporate/pools/:id/send-invitations` - Enviar emails de activación
+- `GET /corporate/csv-template` - Descargar plantilla CSV
+- `DELETE /corporate/pools/:id/employees/:inviteId` - Eliminar invitación
 
 ### Admin (Platform Admin only)
 - `GET /admin/settings/email` - Obtener configuración de emails
@@ -606,6 +678,9 @@ useEffect(() => {
 - [x] ~~Email notifications transaccionales~~ (v0.3.2)
 - [x] ~~Dominio personalizado~~ (picks4all.com - 2026-01-31)
 - [x] ~~Ingesta de resultados por API externa~~ (v0.3.4 - Smart Sync)
+- [x] ~~Corporate self-service MVP~~ (v0.6.0)
+- [ ] Corporate pool branding (splash, logo, personalized email)
+- [ ] Payment integration (Lemon Squeezy)
 - [ ] Chat del pool
 - [ ] Session Management (Remember Me)
 - [ ] PWA completo (offline mode, push notifications)
@@ -642,7 +717,7 @@ Las cuentas se crean con `npm run seed:test-accounts`:
 - [API_SPEC.md](API_SPEC.md) - Contratos de API
 - [BUSINESS_RULES.md](BUSINESS_RULES.md) - Reglas de negocio
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Arquitectura tecnica
-- [DECISION_LOG.md](DECISION_LOG.md) - ADRs (33 documentados)
+- [DECISION_LOG.md](DECISION_LOG.md) - ADRs (37+ documentados)
 
 ---
 

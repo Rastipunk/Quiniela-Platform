@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getToken } from "@/lib/auth";
 import {
   getUserEmailPreferences,
@@ -74,6 +74,11 @@ export function EmailPreferencesSection() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
 
   const fetchPreferences = useCallback(async () => {
     const token = getToken();
@@ -118,7 +123,8 @@ export function EmailPreferencesSection() {
       const result = await updateUserEmailPreferences(token, { [key]: newValue });
       setPreferences(result.preferences);
       setSuccess(t("emailPrefs.saved"));
-      setTimeout(() => setSuccess(null), 2000);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(null), 2000);
     } catch (err: any) {
       // Revert on error
       setPreferences((prev) => (prev ? { ...prev, [key]: !newValue } : prev));

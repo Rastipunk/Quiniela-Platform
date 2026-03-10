@@ -1,6 +1,6 @@
 {
   "home": {
-    "title": "Picks4All — Free Sports Pools with Friends",
+    "title": "Free Sports Predictions with Friends - Picks4All",
     "description": "Create free football prediction pools. Predict World Cup 2026, Champions League results and more. No real money, just fun with friends."
   },
   "faq": {
@@ -22,6 +22,14 @@
   "privacy": {
     "title": "Privacy Policy — Picks4All",
     "description": "How Picks4All protects your personal information and user data on our sports prediction platform."
+  },
+  "pricing": {
+    "title": "Pricing — Picks4All",
+    "description": "Free and paid plans for sports prediction pools. Up to 20 players free. Expand your pool for larger groups."
+  },
+  "refunds": {
+    "title": "Refund Policy — Picks4All",
+    "description": "Our refund policy for Picks4All payments. 7-day satisfaction guarantee for unused capacity."
   },
   "login": {
     "title": "Sign In — Picks4All",

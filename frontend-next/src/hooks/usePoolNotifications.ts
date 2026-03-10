@@ -80,6 +80,7 @@ export function calculateTabBadges(notifications: PoolNotifications | null) {
       leaderboard: 0,
       reglas: 0,
       resumen: 0,
+      jugadores: 0,
       admin: 0,
     };
   }
@@ -96,6 +97,9 @@ export function calculateTabBadges(notifications: PoolNotifications | null) {
 
     // Tab Resumen: sin badges
     resumen: 0,
+
+    // Tab Jugadores: sin badges por ahora
+    jugadores: 0,
 
     // Tab Admin: solicitudes pendientes + fases listas
     admin: notifications.pendingJoins + notifications.phasesReadyToAdvance.length,

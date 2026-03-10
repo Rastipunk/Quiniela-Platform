@@ -77,51 +77,49 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: allLocales("/privacidad", "/privacy", "/privacidade"),
     },
 
-    // Login
+    // Enterprise / Corporate
     {
-      url: `${baseUrl}/login`,
+      url: `${baseUrl}/empresas`,
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.6,
-      alternates: samePath("/login"),
+      priority: 0.8,
+      alternates: allLocales("/empresas", "/for-companies", "/para-empresas"),
     },
 
-    // --- Regional pages (all 3 locales) ---
+    // --- Regional SEO pages (each in its target language only) ---
 
+    // Spanish-language regional terms (no /en or /pt alternates)
     {
       url: `${baseUrl}/polla-futbolera`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
-      alternates: samePath("/polla-futbolera"),
     },
     {
       url: `${baseUrl}/prode-deportivo`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
-      alternates: samePath("/prode-deportivo"),
     },
     {
       url: `${baseUrl}/porra-deportiva`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
-      alternates: samePath("/porra-deportiva"),
     },
     {
       url: `${baseUrl}/penca-futbol`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
-      alternates: samePath("/penca-futbol"),
     },
+
+    // English-language regional term
     {
-      url: `${baseUrl}/football-pool`,
+      url: `${baseUrl}/en/football-pool`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
-      alternates: samePath("/football-pool"),
     },
   ];
 }

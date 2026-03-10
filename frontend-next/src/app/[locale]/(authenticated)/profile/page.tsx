@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getUserProfile, updateUserProfile, type UserProfile, type UpdateProfileInput } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { EmailPreferencesSection } from "@/components/EmailPreferencesSection";
@@ -16,6 +16,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
 
   const [formData, setFormData] = useState({
     displayName: "",
@@ -127,7 +132,8 @@ export default function ProfilePage() {
       }
 
       // Limpiar mensaje de éxito después de 3 segundos
-      setTimeout(() => setSuccessMessage(null), 3000);
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -9,14 +9,14 @@ export const meRouter = Router();
 meRouter.use(requireAuth);
 
 // GET /me/pools
-// Comentario en español: lista pools donde el usuario es miembro ACTIVO o PENDING_APPROVAL (para dashboard)
+// Comentario en español: lista pools donde el usuario es miembro ACTIVO, PENDING_APPROVAL o LEFT (para dashboard tabs)
 meRouter.get("/pools", async (req, res) => {
   const userId = req.auth!.userId;
 
   const memberships = await prisma.poolMember.findMany({
     where: {
       userId,
-      status: { in: ["ACTIVE", "PENDING_APPROVAL"] as any }
+      status: { in: ["ACTIVE", "PENDING_APPROVAL", "LEFT"] as any }
     },
     orderBy: { joinedAtUtc: "desc" },
     include: {
@@ -34,6 +34,7 @@ meRouter.get("/pools", async (req, res) => {
       role: m.role,
       status: m.status,
       joinedAtUtc: m.joinedAtUtc,
+      leftAtUtc: m.leftAtUtc,
       pool: {
         id: m.pool.id,
         name: m.pool.name,
@@ -46,7 +47,7 @@ meRouter.get("/pools", async (req, res) => {
         createdAtUtc: m.pool.createdAtUtc,
         updatedAtUtc: m.pool.updatedAtUtc,
         scoringPresetKey: m.pool.scoringPresetKey ?? "CLASSIC",
-
+        organizationId: m.pool.organizationId ?? null,
       },
       tournamentInstance: m.pool.tournamentInstance
         ? {
@@ -152,7 +153,6 @@ meRouter.put("/email-preferences", async (req, res) => {
   if (!parseResult.success) {
     return res.status(400).json({
       error: "VALIDATION_ERROR",
-      message: "Datos inválidos.",
       details: parseResult.error.flatten().fieldErrors,
     });
   }

@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
+import { CORPORATE_BASE_PRICE } from "@/lib/pricing";
 
 export function LandingContent() {
   const t = useTranslations("landing");
@@ -199,6 +200,26 @@ export function LandingContent() {
             title={t("feature4.title")}
             description={t("feature4.description")}
           />
+          <FeatureCard
+            icon={"\u26A1"}
+            title={t("feature5.title")}
+            description={t("feature5.description")}
+          />
+          <FeatureCard
+            icon={"\uD83D\uDCE7"}
+            title={t("feature6.title")}
+            description={t("feature6.description")}
+          />
+          <FeatureCard
+            icon={"\uD83C\uDFC6"}
+            title={t("feature7.title")}
+            description={t("feature7.description")}
+          />
+          <FeatureCard
+            icon={"\uD83D\uDCF1"}
+            title={t("feature8.title")}
+            description={t("feature8.description")}
+          />
         </div>
       </section>
 
@@ -262,6 +283,254 @@ export function LandingContent() {
               {t("seeMore")}
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section
+        style={{
+          padding: isMobile ? "60px 20px" : "80px 40px",
+          maxWidth: 1100,
+          margin: "0 auto",
+        }}
+      >
+        <h2
+          style={{
+            textAlign: "center",
+            fontSize: isMobile ? "1.75rem" : "2.25rem",
+            fontWeight: 700,
+            marginBottom: 12,
+            color: "var(--text)",
+          }}
+        >
+          {t("pricing.title")}
+        </h2>
+        <p
+          style={{
+            textAlign: "center",
+            color: "var(--muted)",
+            marginBottom: 48,
+            fontSize: isMobile ? "1rem" : "1.1rem",
+          }}
+        >
+          {t("pricing.subtitle")}
+        </p>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+            gap: 24,
+            alignItems: "stretch",
+          }}
+        >
+          {/* Personal Free Card */}
+          <div
+            style={{
+              border: "2px solid #86efac",
+              borderRadius: 16,
+              padding: 28,
+              background: "var(--surface)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                {t("pricing.personal.title")}
+              </h3>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#16a34a",
+                  background: "#dcfce7",
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                }}
+              >
+                {t("pricing.personal.badge")}
+              </span>
+            </div>
+            <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 20px" }}>
+              {t("pricing.personal.subtitle")}
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+              <FeatureCheck label={t("pricing.features.leaderboard")} />
+              <FeatureCheck label={t("pricing.features.scoringModes")} />
+              <FeatureCheck label={t("pricing.features.autoResults")} />
+              <FeatureCheck label={t("pricing.features.emailNotifications")} />
+              <FeatureCheck label={t("pricing.features.multiTournament")} />
+              <FeatureCheck label={t("pricing.features.inviteByLink")} />
+              <FeatureCheck label={t("pricing.features.mobileOptimized")} />
+            </div>
+
+            <button
+              onClick={() => openAuthPanel("register")}
+              style={{
+                marginTop: 24,
+                background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                color: "white",
+                border: "none",
+                borderRadius: 10,
+                padding: "14px 24px",
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              {t("pricing.personal.cta")}
+            </button>
+          </div>
+
+          {/* Personal Pro Card */}
+          <div
+            style={{
+              position: "relative",
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              padding: 28,
+              background: "var(--surface)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                {t("pricing.personalPro.title")}
+              </h3>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#4f46e5",
+                  background: "#e0e7ff",
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                }}
+              >
+                {t("pricing.personalPro.badge")}
+              </span>
+            </div>
+            <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 20px" }}>
+              {t("pricing.personalPro.subtitle")}
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+              <FeatureCheck label={t("pricing.personalPro.includesBase")} />
+              <FeatureCheck label={t("pricing.personalPro.extraPlayers")} highlight />
+            </div>
+
+            {/* Coming Soon Overlay */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: 14,
+                background: "rgba(255, 255, 255, 0.78)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                zIndex: 2,
+                backdropFilter: "blur(1px)",
+              }}
+            >
+              <span style={{ fontSize: 18 }}>&#128274;</span>
+              <span style={{ fontWeight: 700, fontSize: 15, color: "#4f46e5" }}>
+                {t("pricing.comingSoon")}
+              </span>
+            </div>
+          </div>
+
+          {/* Corporate Card */}
+          <div
+            style={{
+              border: "2px solid #818cf8",
+              borderRadius: 16,
+              padding: 28,
+              background: "var(--surface)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
+              <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text)", margin: 0 }}>
+                {t("pricing.corporate.title")}
+              </h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13, color: "var(--muted)", textDecoration: "line-through" }}>
+                  ${CORPORATE_BASE_PRICE.toFixed(2)}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#16a34a",
+                    background: "#dcfce7",
+                    padding: "3px 10px",
+                    borderRadius: 999,
+                  }}
+                >
+                  $0 — {t("pricing.corporate.badge")}
+                </span>
+              </div>
+            </div>
+            <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 20px" }}>
+              {t("pricing.corporate.subtitle")}
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+              <FeatureCheck label={t("pricing.corporate.includesPersonal")} />
+              <FeatureCheck label={t("pricing.corporateFeatures.companyLogo")} highlight />
+              <FeatureCheck label={t("pricing.corporateFeatures.emailInvites")} highlight />
+              <FeatureCheck label={t("pricing.corporateFeatures.csvImport")} highlight />
+              <FeatureCheck label={t("pricing.corporateFeatures.employeeDashboard")} highlight />
+              <FeatureCheck label={t("pricing.corporateFeatures.brandedExperience")} highlight />
+            </div>
+
+            <Link
+              href="/empresas"
+              style={{
+                marginTop: 24,
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                color: "white",
+                border: "none",
+                borderRadius: 10,
+                padding: "14px 24px",
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: "pointer",
+                width: "100%",
+                textDecoration: "none",
+                textAlign: "center",
+                display: "block",
+                boxSizing: "border-box",
+              }}
+            >
+              {t("pricing.corporate.cta")}
+            </Link>
+          </div>
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 32 }}>
+          <Link
+            href="/precios"
+            style={{
+              color: "var(--text)",
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: "1rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {t("pricing.seeAllPlans")}
+          </Link>
         </div>
       </section>
 
@@ -455,6 +724,24 @@ function StepCard({
       <p style={{ color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>
         {description}
       </p>
+    </div>
+  );
+}
+
+function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+      <span style={{ color: "#22c55e", fontSize: 16, lineHeight: 1.3, flexShrink: 0 }}>&#10003;</span>
+      <span
+        style={{
+          fontSize: 14,
+          color: highlight ? "var(--text)" : "var(--muted)",
+          fontWeight: highlight ? 600 : 400,
+          lineHeight: 1.4,
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
