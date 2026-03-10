@@ -701,9 +701,9 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
       );
 
       // Leg 1: teamA (unseeded) hosts → home=teamA, away=teamB
-      const leg1Fixture = tieFixtures[0];
+      const leg1Fixture = tieFixtures[0]!;
       // Leg 2: teamB (seeded) hosts → home=teamB, away=teamA
-      const leg2Fixture = tieFixtures[1];
+      const leg2Fixture = tieFixtures[1]!;
 
       // Verify leg 1 home/away matches expectation
       const leg1HomeInternal = API_TO_INTERNAL[leg1Fixture.teams.home.id];
