@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { prisma } from "../db";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
+import { ApiFootballClient } from "../services/apiFootball/client";
 
 export const adminRouter = Router();
 
@@ -118,6 +119,218 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
     });
   } catch (error: any) {
     console.error("Error seeding WC2026:", error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ========== UCL R16 Update (from updateUclR16Draw script) ==========
+
+const UCL_INSTANCE_ID = "ucl-2025-instance";
+const UCL_VERSION_ID = "ucl-2025-version";
+
+const API_TO_INTERNAL: Record<number, string> = {
+  645: "t_GAL", 496: "t_JUV", 91: "t_MON", 85: "t_PSG",
+  165: "t_BVB", 499: "t_ATA", 211: "t_BEN", 541: "t_RMA",
+  556: "t_QAR", 34: "t_NEW", 327: "t_BOD", 505: "t_INT",
+  553: "t_OLY", 168: "t_LEV", 569: "t_BRU", 530: "t_ATM",
+  42: "t_ARS", 157: "t_BAY", 40: "t_LIV", 47: "t_TOT",
+  529: "t_BAR", 49: "t_CHE", 228: "t_SPO", 50: "t_MCI",
+};
+
+interface UclMatchData {
+  id: string; phaseId: string; kickoffUtc: string;
+  homeTeamId: string; awayTeamId: string; matchNumber: number;
+  label: string; tieNumber?: number; leg?: number;
+  status: "SCHEDULED" | "PLACEHOLDER";
+}
+
+interface UclTemplateData {
+  meta: any; teams: any[]; phases: any[]; matches: UclMatchData[]; advancement: any;
+}
+
+interface R16TieData {
+  tieNumber: number; teamA: string; teamB: string;
+  leg1: { fixtureId: number; kickoffUtc: string };
+  leg2: { fixtureId: number; kickoffUtc: string };
+}
+
+function updateMatchesWithR16Data(data: UclTemplateData, r16Ties: R16TieData[]): UclTemplateData {
+  const teamName = (id: string) => data.teams.find((t: any) => t.id === id)?.name ?? id;
+
+  const updatedMatches = data.matches.map((match) => {
+    if (match.status !== "PLACEHOLDER") return match;
+    if (!match.phaseId.startsWith("r16_")) return match;
+    const originalTieNumber = match.tieNumber;
+    if (!originalTieNumber) return match;
+    const tie = r16Ties.find((t) => t.tieNumber === originalTieNumber);
+    if (!tie) return match;
+
+    if (match.phaseId === "r16_leg1") {
+      return { ...match, homeTeamId: tie.teamA, awayTeamId: tie.teamB,
+        kickoffUtc: tie.leg1.kickoffUtc, label: `${teamName(tie.teamA)} vs ${teamName(tie.teamB)}`, status: "SCHEDULED" as const };
+    }
+    if (match.phaseId === "r16_leg2") {
+      return { ...match, homeTeamId: tie.teamB, awayTeamId: tie.teamA,
+        kickoffUtc: tie.leg2.kickoffUtc, label: `${teamName(tie.teamB)} vs ${teamName(tie.teamA)}`, status: "SCHEDULED" as const };
+    }
+    return match;
+  });
+
+  return { ...data, matches: updatedMatches };
+}
+
+adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const logs: string[] = [];
+    const log = (msg: string) => { console.log(msg); logs.push(msg); };
+
+    log("UCL 2025-26: Updating R16 with Draw Results");
+
+    // 1. Fetch R16 data from API-Football
+    log("1. Fetching R16 fixtures from API-Football...");
+    const client = new ApiFootballClient();
+    const allFixtures = await client.getFixtures({ league: 2, season: 2025 });
+    const r16Fixtures = allFixtures.filter((f: any) => f.league.round === "Round of 16");
+    log(`Found ${r16Fixtures.length} R16 fixtures`);
+
+    if (r16Fixtures.length !== 16) {
+      return res.status(400).json({ ok: false, error: `Expected 16 R16 fixtures, got ${r16Fixtures.length}`, logs });
+    }
+
+    // Group into ties
+    const tieMap = new Map<string, any[]>();
+    for (const f of r16Fixtures) {
+      const homeApiId = f.teams.home.id;
+      const awayApiId = f.teams.away.id;
+      const key = [Math.min(homeApiId, awayApiId), Math.max(homeApiId, awayApiId)].join("-");
+      if (!tieMap.has(key)) tieMap.set(key, []);
+      tieMap.get(key)!.push(f);
+    }
+
+    if (tieMap.size !== 8) {
+      return res.status(400).json({ ok: false, error: `Expected 8 R16 ties, got ${tieMap.size}`, logs });
+    }
+
+    const r16Ties: R16TieData[] = [];
+    let tieNum = 1;
+    for (const [, legs] of tieMap.entries()) {
+      legs.sort((a: any, b: any) => new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime());
+      const leg1 = legs[0]; const leg2 = legs[1];
+      const teamA = API_TO_INTERNAL[leg1.teams.home.id];
+      const teamB = API_TO_INTERNAL[leg1.teams.away.id];
+      if (!teamA || !teamB) {
+        return res.status(400).json({ ok: false, error: `Unknown API team ID: home=${leg1.teams.home.id} away=${leg1.teams.away.id}`, logs });
+      }
+      r16Ties.push({
+        tieNumber: tieNum++, teamA, teamB,
+        leg1: { fixtureId: leg1.fixture.id, kickoffUtc: new Date(leg1.fixture.date).toISOString() },
+        leg2: { fixtureId: leg2.fixture.id, kickoffUtc: new Date(leg2.fixture.date).toISOString() },
+      });
+    }
+
+    for (const tie of r16Ties) {
+      log(`Tie ${tie.tieNumber}: ${tie.teamA} vs ${tie.teamB} | Leg1: #${tie.leg1.fixtureId} | Leg2: #${tie.leg2.fixtureId}`);
+    }
+
+    // 2. Load and update instance
+    log("2. Loading tournament instance...");
+    const instance = await prisma.tournamentInstance.findUnique({ where: { id: UCL_INSTANCE_ID } });
+    if (!instance) {
+      return res.status(404).json({ ok: false, error: `Instance ${UCL_INSTANCE_ID} not found`, logs });
+    }
+
+    const currentData = instance.dataJson as UclTemplateData;
+    const r16Before = currentData.matches.filter((m) => m.phaseId.startsWith("r16_"));
+    const placeholders = r16Before.filter((m) => m.status === "PLACEHOLDER");
+    log(`Current R16 matches: ${r16Before.length}, Placeholders: ${placeholders.length}`);
+
+    if (placeholders.length === 0) {
+      return res.json({ ok: true, message: "All R16 matches already SCHEDULED. Nothing to update.", logs });
+    }
+
+    // 3. Update instance
+    log("3. Updating instance dataJson...");
+    const updatedData = updateMatchesWithR16Data(currentData, r16Ties);
+    await prisma.tournamentInstance.update({ where: { id: UCL_INSTANCE_ID }, data: { dataJson: updatedData as any } });
+
+    // 4. Update template version
+    log("4. Updating template version...");
+    const version = await prisma.tournamentTemplateVersion.findUnique({ where: { id: UCL_VERSION_ID } });
+    if (version) {
+      const versionData = version.dataJson as UclTemplateData;
+      const updatedVersionData = updateMatchesWithR16Data(versionData, r16Ties);
+      await prisma.tournamentTemplateVersion.update({ where: { id: UCL_VERSION_ID }, data: { dataJson: updatedVersionData as any } });
+      log("Template version updated");
+    }
+
+    // 5. Create MatchExternalMapping
+    log("5. Creating R16 fixture mappings...");
+    let mappingCount = 0;
+    for (const tie of r16Ties) {
+      for (const [legLabel, legData] of [["leg1", tie.leg1], ["leg2", tie.leg2]] as const) {
+        await prisma.matchExternalMapping.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: `r16_${tie.tieNumber}_${legLabel}` } },
+          create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: `r16_${tie.tieNumber}_${legLabel}`, apiFootballFixtureId: legData.fixtureId },
+          update: { apiFootballFixtureId: legData.fixtureId },
+        });
+        mappingCount++;
+      }
+    }
+    log(`Created/updated ${mappingCount} fixture mappings`);
+
+    // 6. Create MatchSyncState
+    log("6. Creating R16 sync states...");
+    let syncCount = 0;
+    for (const tie of r16Ties) {
+      for (const leg of [
+        { matchId: `r16_${tie.tieNumber}_leg1`, kickoff: tie.leg1.kickoffUtc },
+        { matchId: `r16_${tie.tieNumber}_leg2`, kickoff: tie.leg2.kickoffUtc },
+      ]) {
+        const kickoffUtc = new Date(leg.kickoff);
+        await prisma.matchSyncState.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId } },
+          create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId, syncStatus: "PENDING", kickoffUtc,
+            firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+          update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+        });
+        syncCount++;
+      }
+    }
+    log(`Created/updated ${syncCount} sync states`);
+
+    // 7. Update ALL existing pools
+    log("7. Updating existing pools...");
+    const pools = await prisma.pool.findMany({
+      where: { tournamentInstanceId: UCL_INSTANCE_ID },
+      select: { id: true, name: true, fixtureSnapshot: true },
+    });
+    log(`Found ${pools.length} pool(s) to update`);
+
+    for (const pool of pools) {
+      const poolData = (pool.fixtureSnapshot ?? currentData) as UclTemplateData;
+      const updatedPoolData = updateMatchesWithR16Data(poolData, r16Ties);
+      await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: updatedPoolData as any } });
+      log(`Updated pool: ${pool.name} (${pool.id})`);
+    }
+
+    // Verify
+    const verifyInstance = await prisma.tournamentInstance.findUnique({ where: { id: UCL_INSTANCE_ID } });
+    const verifyData = verifyInstance!.dataJson as UclTemplateData;
+    const r16After = verifyData.matches.filter((m) => m.phaseId.startsWith("r16_"));
+    const scheduled = r16After.filter((m) => m.status === "SCHEDULED");
+    const stillPlaceholder = r16After.filter((m) => m.status === "PLACEHOLDER");
+
+    log(`Verification: SCHEDULED=${scheduled.length}/16, PLACEHOLDER=${stillPlaceholder.length}/16`);
+
+    res.json({
+      ok: true,
+      message: "UCL R16 update complete",
+      stats: { mappings: mappingCount, syncStates: syncCount, poolsUpdated: pools.length,
+        scheduled: scheduled.length, stillPlaceholder: stillPlaceholder.length },
+      logs,
+    });
+  } catch (error: any) {
+    console.error("Error updating UCL R16:", error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });
