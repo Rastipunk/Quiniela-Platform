@@ -270,7 +270,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
       // Extract tieNumber from match ID: "r16_3_leg1" → 3
       const extractTieNumber = (matchId: string): number | null => {
         const m = matchId.match(/^r16_(\d+)_leg[12]$/);
-        return m ? parseInt(m[1], 10) : null;
+        return m?.[1] ? parseInt(m[1], 10) : null;
       };
 
       const teamName = (id: string) => currentData.teams.find((t: any) => t.id === id)?.name ?? id;
