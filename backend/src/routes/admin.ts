@@ -239,7 +239,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
       return res.status(404).json({ ok: false, error: `Instance ${UCL_INSTANCE_ID} not found`, logs });
     }
 
-    const currentData = instance.dataJson as UclTemplateData;
+    const currentData = instance.dataJson as unknown as UclTemplateData;
     const r16Before = currentData.matches.filter((m) => m.phaseId.startsWith("r16_"));
     const placeholders = r16Before.filter((m) => m.status === "PLACEHOLDER");
     log(`Current R16 matches: ${r16Before.length}, Placeholders: ${placeholders.length}`);
@@ -257,7 +257,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     log("4. Updating template version...");
     const version = await prisma.tournamentTemplateVersion.findUnique({ where: { id: UCL_VERSION_ID } });
     if (version) {
-      const versionData = version.dataJson as UclTemplateData;
+      const versionData = version.dataJson as unknown as UclTemplateData;
       const updatedVersionData = updateMatchesWithR16Data(versionData, r16Ties);
       await prisma.tournamentTemplateVersion.update({ where: { id: UCL_VERSION_ID }, data: { dataJson: updatedVersionData as any } });
       log("Template version updated");
@@ -307,7 +307,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     log(`Found ${pools.length} pool(s) to update`);
 
     for (const pool of pools) {
-      const poolData = (pool.fixtureSnapshot ?? currentData) as UclTemplateData;
+      const poolData = (pool.fixtureSnapshot ?? currentData) as unknown as UclTemplateData;
       const updatedPoolData = updateMatchesWithR16Data(poolData, r16Ties);
       await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: updatedPoolData as any } });
       log(`Updated pool: ${pool.name} (${pool.id})`);
@@ -315,7 +315,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
 
     // Verify
     const verifyInstance = await prisma.tournamentInstance.findUnique({ where: { id: UCL_INSTANCE_ID } });
-    const verifyData = verifyInstance!.dataJson as UclTemplateData;
+    const verifyData = verifyInstance!.dataJson as unknown as UclTemplateData;
     const r16After = verifyData.matches.filter((m) => m.phaseId.startsWith("r16_"));
     const scheduled = r16After.filter((m) => m.status === "SCHEDULED");
     const stillPlaceholder = r16After.filter((m) => m.status === "PLACEHOLDER");
