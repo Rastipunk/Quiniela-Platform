@@ -462,6 +462,132 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
   }
 });
 
+// ========== UCL R16 Audit: late picks ==========
+
+// Real kickoff times from API-Football for R16 Leg 1
+const R16_LEG1_KICKOFFS: Record<string, string> = {
+  "r16_1_leg1": "2026-03-10T17:45:00Z", // GAL vs LIV
+  "r16_2_leg1": "2026-03-10T20:00:00Z", // NEW vs BAR
+  "r16_3_leg1": "2026-03-10T20:00:00Z", // ATM vs TOT
+  "r16_4_leg1": "2026-03-10T20:00:00Z", // ATA vs BAY
+  "r16_5_leg1": "2026-03-11T17:45:00Z", // LEV vs ARS
+  "r16_6_leg1": "2026-03-11T20:00:00Z", // PSG vs CHE
+  "r16_7_leg1": "2026-03-11T20:00:00Z", // BOD vs SPO
+  "r16_8_leg1": "2026-03-11T20:00:00Z", // RMA vs MCI
+};
+
+const R16_LEG1_LABELS: Record<string, string> = {
+  "r16_1_leg1": "Galatasaray vs Liverpool",
+  "r16_2_leg1": "Newcastle vs Barcelona",
+  "r16_3_leg1": "Atlético Madrid vs Tottenham",
+  "r16_4_leg1": "Atalanta vs Bayern",
+  "r16_5_leg1": "Bayer Leverkusen vs Arsenal",
+  "r16_6_leg1": "PSG vs Chelsea",
+  "r16_7_leg1": "Bodø/Glimt vs Sporting",
+  "r16_8_leg1": "Real Madrid vs Man City",
+};
+
+adminRouter.get("/audit/r16-late-picks", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    // Get all UCL pools
+    const pools = await prisma.pool.findMany({
+      where: { tournamentInstanceId: UCL_INSTANCE_ID },
+      select: { id: true, name: true, deadlineMinutesBeforeKickoff: true },
+    });
+
+    const r16Leg1MatchIds = Object.keys(R16_LEG1_KICKOFFS);
+
+    // Get all R16 leg1 predictions across all UCL pools
+    const predictions = await prisma.prediction.findMany({
+      where: {
+        poolId: { in: pools.map((p) => p.id) },
+        matchId: { in: r16Leg1MatchIds },
+      },
+      include: {
+        user: { select: { id: true, displayName: true, email: true } },
+        pool: { select: { id: true, name: true, deadlineMinutesBeforeKickoff: true } },
+      },
+      orderBy: { updatedAtUtc: "desc" },
+    });
+
+    const violations: {
+      poolName: string;
+      poolId: string;
+      userName: string;
+      userEmail: string;
+      matchId: string;
+      matchLabel: string;
+      kickoffUtc: string;
+      deadlineUtc: string;
+      createdAtUtc: string;
+      updatedAtUtc: string;
+      minutesAfterDeadline: number;
+      minutesAfterKickoff: number;
+      pickJson: any;
+    }[] = [];
+
+    for (const pred of predictions) {
+      const kickoffStr = R16_LEG1_KICKOFFS[pred.matchId];
+      if (!kickoffStr) continue;
+
+      const kickoff = new Date(kickoffStr);
+      const deadlineMinutes = pred.pool.deadlineMinutesBeforeKickoff ?? 10;
+      const deadline = new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000);
+      const updatedAt = new Date(pred.updatedAtUtc);
+
+      if (updatedAt > deadline) {
+        violations.push({
+          poolName: pred.pool.name,
+          poolId: pred.pool.id,
+          userName: pred.user.displayName ?? "Sin nombre",
+          userEmail: pred.user.email,
+          matchId: pred.matchId,
+          matchLabel: R16_LEG1_LABELS[pred.matchId] ?? pred.matchId,
+          kickoffUtc: kickoff.toISOString(),
+          deadlineUtc: deadline.toISOString(),
+          createdAtUtc: pred.createdAtUtc.toISOString(),
+          updatedAtUtc: updatedAt.toISOString(),
+          minutesAfterDeadline: Math.round((updatedAt.getTime() - deadline.getTime()) / 60000),
+          minutesAfterKickoff: Math.round((updatedAt.getTime() - kickoff.getTime()) / 60000),
+          pickJson: pred.pickJson,
+        });
+      }
+    }
+
+    // Sort by most egregious first
+    violations.sort((a, b) => b.minutesAfterDeadline - a.minutesAfterDeadline);
+
+    // Summary per pool
+    const poolSummary = pools.map((p) => {
+      const poolViolations = violations.filter((v) => v.poolId === p.id);
+      const totalPicks = predictions.filter((pred) => pred.poolId === p.id).length;
+      return {
+        poolName: p.name,
+        poolId: p.id,
+        deadlineMinutes: p.deadlineMinutesBeforeKickoff ?? 10,
+        totalR16Leg1Picks: totalPicks,
+        latePicksCount: poolViolations.length,
+        lateUsers: [...new Set(poolViolations.map((v) => v.userName))],
+      };
+    });
+
+    res.json({
+      ok: true,
+      summary: {
+        totalPools: pools.length,
+        totalR16Leg1Predictions: predictions.length,
+        totalViolations: violations.length,
+        uniqueUsersWithViolations: [...new Set(violations.map((v) => v.userEmail))].length,
+      },
+      poolSummary,
+      violations,
+    });
+  } catch (error: any) {
+    console.error("Error in R16 audit:", error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // ========== WC2026 Data Builder (copied from seed script) ==========
 
 type Team = {
