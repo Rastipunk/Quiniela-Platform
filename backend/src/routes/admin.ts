@@ -180,9 +180,9 @@ function updateMatchesWithR16Data(data: UclTemplateData, r16Ties: R16TieData[]):
 }
 
 adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res) => {
+  const logs: string[] = [];
+  const log = (msg: string) => { console.log(msg); logs.push(msg); };
   try {
-    const logs: string[] = [];
-    const log = (msg: string) => { console.log(msg); logs.push(msg); };
 
     log("UCL 2025-26: Updating R16 with Draw Results");
 
@@ -301,6 +301,13 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
         log("Template version dates updated");
       }
 
+      // Clear stale R16 mappings first (previous runs may have created wrong assignments)
+      log("Clearing stale R16 external mappings...");
+      const deletedMappings = await prisma.matchExternalMapping.deleteMany({
+        where: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: { startsWith: "r16_" } },
+      });
+      log(`Deleted ${deletedMappings.count} old R16 mappings`);
+
       // Update MatchSyncState + MatchExternalMapping using SEED match IDs
       log("Updating MatchSyncState and fixture mappings...");
       for (const { matchId, leg, tie } of matchTieMap) {
@@ -418,7 +425,8 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     });
   } catch (error: any) {
     console.error("Error updating UCL R16:", error);
-    res.status(500).json({ ok: false, error: error.message });
+    log(`ERROR: ${error.message}`);
+    res.status(500).json({ ok: false, error: error.message, logs });
   }
 });
 
