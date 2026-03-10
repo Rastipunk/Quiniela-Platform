@@ -245,27 +245,87 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     log(`Current R16 matches: ${r16Before.length}, Placeholders: ${placeholders.length}`);
 
     if (placeholders.length === 0) {
-      // Instance already updated, but pools may still need syncing
-      log("Instance already up-to-date. Syncing pool snapshots...");
-      const pools = await prisma.pool.findMany({
-        where: { tournamentInstanceId: UCL_INSTANCE_ID },
-        select: { id: true, name: true, fixtureSnapshot: true },
+      // Instance already SCHEDULED but dates may be stale (from seed).
+      // Force-update kickoff times from API-Football data we already fetched.
+      log("Instance already SCHEDULED. Updating kickoff dates from API-Football...");
+
+      const updatedMatches = currentData.matches.map((match) => {
+        if (!match.phaseId.startsWith("r16_")) return match;
+        const tie = r16Ties.find((t) => t.tieNumber === match.tieNumber);
+        if (!tie) return match;
+        if (match.phaseId === "r16_leg1" && match.kickoffUtc !== tie.leg1.kickoffUtc) {
+          log(`Match ${match.id}: ${match.kickoffUtc} → ${tie.leg1.kickoffUtc}`);
+          return { ...match, kickoffUtc: tie.leg1.kickoffUtc, homeTeamId: tie.teamA, awayTeamId: tie.teamB, status: "SCHEDULED" as const };
+        }
+        if (match.phaseId === "r16_leg2" && match.kickoffUtc !== tie.leg2.kickoffUtc) {
+          log(`Match ${match.id}: ${match.kickoffUtc} → ${tie.leg2.kickoffUtc}`);
+          return { ...match, kickoffUtc: tie.leg2.kickoffUtc, homeTeamId: tie.teamB, awayTeamId: tie.teamA, status: "SCHEDULED" as const };
+        }
+        return match;
       });
-      let poolsUpdated = 0;
-      for (const pool of pools) {
-        const poolData = pool.fixtureSnapshot as unknown as UclTemplateData | null;
-        const poolR16 = poolData?.matches?.filter((m) => m.phaseId.startsWith("r16_")) ?? [];
-        const poolPlaceholders = poolR16.filter((m) => m.status === "PLACEHOLDER");
-        if (poolPlaceholders.length > 0 || !poolData) {
-          // Pool still has old data — sync from instance
-          await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: currentData as any } });
-          log(`Synced pool: ${pool.name} (${pool.id}) — had ${poolPlaceholders.length} placeholders`);
-          poolsUpdated++;
-        } else {
-          log(`Pool already current: ${pool.name} (${pool.id})`);
+
+      const updatedData = { ...currentData, matches: updatedMatches };
+      await prisma.tournamentInstance.update({ where: { id: UCL_INSTANCE_ID }, data: { dataJson: updatedData as any } });
+      log("Instance dates updated from API-Football");
+
+      // Also update template version
+      const version = await prisma.tournamentTemplateVersion.findUnique({ where: { id: UCL_VERSION_ID } });
+      if (version) {
+        const versionData = version.dataJson as unknown as UclTemplateData;
+        const updatedVersionMatches = versionData.matches.map((match) => {
+          if (!match.phaseId.startsWith("r16_")) return match;
+          const tie = r16Ties.find((t) => t.tieNumber === match.tieNumber);
+          if (!tie) return match;
+          if (match.phaseId === "r16_leg1") return { ...match, kickoffUtc: tie.leg1.kickoffUtc, homeTeamId: tie.teamA, awayTeamId: tie.teamB, status: "SCHEDULED" as const };
+          if (match.phaseId === "r16_leg2") return { ...match, kickoffUtc: tie.leg2.kickoffUtc, homeTeamId: tie.teamB, awayTeamId: tie.teamA, status: "SCHEDULED" as const };
+          return match;
+        });
+        await prisma.tournamentTemplateVersion.update({ where: { id: UCL_VERSION_ID }, data: { dataJson: { ...versionData, matches: updatedVersionMatches } as any } });
+        log("Template version dates updated");
+      }
+
+      // Update MatchSyncState kickoff times
+      log("Updating MatchSyncState kickoff times...");
+      for (const tie of r16Ties) {
+        for (const leg of [
+          { matchId: `r16_${tie.tieNumber}_leg1`, kickoff: tie.leg1.kickoffUtc },
+          { matchId: `r16_${tie.tieNumber}_leg2`, kickoff: tie.leg2.kickoffUtc },
+        ]) {
+          const kickoffUtc = new Date(leg.kickoff);
+          await prisma.matchSyncState.upsert({
+            where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId } },
+            create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId, syncStatus: "PENDING", kickoffUtc,
+              firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+            update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+          });
         }
       }
-      return res.json({ ok: true, message: `R16 already SCHEDULED. Synced ${poolsUpdated}/${pools.length} pools.`, logs });
+      log("MatchSyncState kickoff times updated");
+
+      // Update MatchExternalMapping
+      log("Updating fixture mappings...");
+      for (const tie of r16Ties) {
+        for (const [legLabel, legData] of [["leg1", tie.leg1], ["leg2", tie.leg2]] as const) {
+          await prisma.matchExternalMapping.upsert({
+            where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: `r16_${tie.tieNumber}_${legLabel}` } },
+            create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: `r16_${tie.tieNumber}_${legLabel}`, apiFootballFixtureId: legData.fixtureId },
+            update: { apiFootballFixtureId: legData.fixtureId },
+          });
+        }
+      }
+      log("Fixture mappings updated");
+
+      // Sync all pools
+      const pools = await prisma.pool.findMany({
+        where: { tournamentInstanceId: UCL_INSTANCE_ID },
+        select: { id: true, name: true },
+      });
+      for (const pool of pools) {
+        await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: updatedData as any } });
+        log(`Synced pool: ${pool.name} (${pool.id})`);
+      }
+
+      return res.json({ ok: true, message: `R16 dates updated from API-Football. Synced ${pools.length} pools.`, logs });
     }
 
     // 3. Update instance
