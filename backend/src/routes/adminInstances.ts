@@ -727,6 +727,217 @@ adminInstancesRouter.post("/sync/trigger-all", async (req, res) => {
   }
 });
 
+// POST /admin/instances/:instanceId/update-r16-draw
+// Fetch R16 fixtures from API-Football and update instance data + mappings + sync states
+// This replaces running the updateUclR16Draw.ts script manually
+adminInstancesRouter.post("/instances/:instanceId/update-r16-draw", async (req, res) => {
+  const { instanceId } = req.params;
+  const logs: string[] = [];
+  const log = (msg: string) => { logs.push(msg); console.log(`[update-r16-draw] ${msg}`); };
+
+  try {
+    const { ApiFootballClient } = await import("../services/apiFootball/client");
+
+    // 1. Load instance
+    const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
+    if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const currentData = instance.dataJson as any;
+
+    // Build API team ID → internal team ID mapping from teams array
+    const apiToInternal: Record<number, string> = {};
+    for (const team of currentData.teams || []) {
+      if (team.apiFootballId) apiToInternal[team.apiFootballId] = team.id;
+    }
+    log(`Loaded ${Object.keys(apiToInternal).length} team mappings`);
+
+    // 2. Fetch R16 fixtures from API-Football
+    const client = new ApiFootballClient();
+    const leagueId = instance.apiFootballLeagueId ?? 2;
+    const season = instance.apiFootballSeasonId ?? 2025;
+    log(`Fetching Round of 16 fixtures (league=${leagueId}, season=${season})...`);
+
+    const r16Fixtures = await client.getFixtures({ league: leagueId, season, round: "Round of 16" });
+    log(`Found ${r16Fixtures.length} R16 fixtures from API-Football`);
+
+    if (r16Fixtures.length === 0) {
+      return res.json({ success: false, message: "No R16 fixtures found in API-Football yet", logs });
+    }
+    if (r16Fixtures.length !== 16) {
+      return res.json({ success: false, message: `Expected 16 R16 fixtures, got ${r16Fixtures.length}`, logs });
+    }
+
+    // 3. Group into ties
+    const tieMap = new Map<string, any[]>();
+    for (const f of r16Fixtures) {
+      const homeId = f.teams.home.id;
+      const awayId = f.teams.away.id;
+      const key = [Math.min(homeId, awayId), Math.max(homeId, awayId)].join("-");
+      if (!tieMap.has(key)) tieMap.set(key, []);
+      tieMap.get(key)!.push(f);
+    }
+
+    interface R16Tie {
+      tieNumber: number; teamA: string; teamB: string;
+      leg1: { fixtureId: number; kickoffUtc: string };
+      leg2: { fixtureId: number; kickoffUtc: string };
+    }
+
+    const ties: R16Tie[] = [];
+    let tieNum = 1;
+    for (const [, legs] of tieMap.entries()) {
+      legs.sort((a: any, b: any) => new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime());
+      const leg1 = legs[0]; const leg2 = legs[1];
+      const teamA = apiToInternal[leg1.teams.home.id];
+      const teamB = apiToInternal[leg1.teams.away.id];
+      if (!teamA || !teamB) {
+        log(`WARNING: Unknown team mapping for ${leg1.teams.home.name} or ${leg1.teams.away.name}`);
+        continue;
+      }
+      ties.push({
+        tieNumber: tieNum++, teamA, teamB,
+        leg1: { fixtureId: leg1.fixture.id, kickoffUtc: new Date(leg1.fixture.date).toISOString() },
+        leg2: { fixtureId: leg2.fixture.id, kickoffUtc: new Date(leg2.fixture.date).toISOString() },
+      });
+    }
+    log(`Grouped into ${ties.length} ties`);
+
+    for (const tie of ties) {
+      const nameA = currentData.teams.find((t: any) => t.id === tie.teamA)?.name ?? tie.teamA;
+      const nameB = currentData.teams.find((t: any) => t.id === tie.teamB)?.name ?? tie.teamB;
+      log(`  Tie ${tie.tieNumber}: ${nameA} vs ${nameB} | L1:#${tie.leg1.fixtureId} ${tie.leg1.kickoffUtc.slice(0,16)} | L2:#${tie.leg2.fixtureId} ${tie.leg2.kickoffUtc.slice(0,16)}`);
+    }
+
+    // 4. Update dataJson matches
+    const teamName = (id: string) => currentData.teams.find((t: any) => t.id === id)?.name ?? id;
+    let matchesUpdated = 0;
+
+    for (const tie of ties) {
+      for (const match of currentData.matches) {
+        if (!match.phaseId?.startsWith("r16_")) continue;
+        if (match.tieNumber !== tie.tieNumber) continue;
+
+        if (match.phaseId === "r16_leg1") {
+          match.homeTeamId = tie.teamA; match.awayTeamId = tie.teamB;
+          match.kickoffUtc = tie.leg1.kickoffUtc;
+          match.label = `${teamName(tie.teamA)} vs ${teamName(tie.teamB)}`;
+          match.status = "SCHEDULED"; matchesUpdated++;
+        } else if (match.phaseId === "r16_leg2") {
+          match.homeTeamId = tie.teamB; match.awayTeamId = tie.teamA;
+          match.kickoffUtc = tie.leg2.kickoffUtc;
+          match.label = `${teamName(tie.teamB)} vs ${teamName(tie.teamA)}`;
+          match.status = "SCHEDULED"; matchesUpdated++;
+        }
+      }
+    }
+    log(`Updated ${matchesUpdated} matches in dataJson`);
+
+    // Save instance
+    await prisma.tournamentInstance.update({
+      where: { id: instanceId },
+      data: { dataJson: currentData },
+    });
+
+    // Also update template version
+    if (instance.templateVersionId) {
+      await prisma.tournamentTemplateVersion.update({
+        where: { id: instance.templateVersionId },
+        data: { dataJson: currentData },
+      });
+      log("Template version updated");
+    }
+
+    // 5. Create MatchExternalMapping
+    let mappingCount = 0;
+    for (const tie of ties) {
+      for (const leg of [
+        { matchId: `r16_${tie.tieNumber}_leg1`, fixtureId: tie.leg1.fixtureId },
+        { matchId: `r16_${tie.tieNumber}_leg2`, fixtureId: tie.leg2.fixtureId },
+      ]) {
+        await prisma.matchExternalMapping.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId } },
+          create: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId, apiFootballFixtureId: leg.fixtureId },
+          update: { apiFootballFixtureId: leg.fixtureId },
+        });
+        mappingCount++;
+      }
+    }
+    log(`Created/updated ${mappingCount} fixture mappings`);
+
+    // 6. Create MatchSyncState
+    let syncCount = 0;
+    for (const tie of ties) {
+      for (const leg of [
+        { matchId: `r16_${tie.tieNumber}_leg1`, kickoff: tie.leg1.kickoffUtc },
+        { matchId: `r16_${tie.tieNumber}_leg2`, kickoff: tie.leg2.kickoffUtc },
+      ]) {
+        const kickoffUtc = new Date(leg.kickoff);
+        await prisma.matchSyncState.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId } },
+          create: {
+            tournamentInstanceId: instanceId, internalMatchId: leg.matchId, syncStatus: "PENDING",
+            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+          },
+          update: {
+            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+          },
+        });
+        syncCount++;
+      }
+    }
+    log(`Created/updated ${syncCount} sync states`);
+
+    // 7. Update existing pools' fixtureSnapshot
+    const pools = await prisma.pool.findMany({
+      where: { tournamentInstanceId: instanceId },
+      select: { id: true, name: true, fixtureSnapshot: true },
+    });
+    for (const pool of pools) {
+      const poolData = (pool.fixtureSnapshot ?? currentData) as any;
+      for (const tie of ties) {
+        for (const match of poolData.matches || []) {
+          if (!match.phaseId?.startsWith("r16_")) continue;
+          if (match.tieNumber !== tie.tieNumber) continue;
+          if (match.status !== "PLACEHOLDER") continue;
+          if (match.phaseId === "r16_leg1") {
+            match.homeTeamId = tie.teamA; match.awayTeamId = tie.teamB;
+            match.kickoffUtc = tie.leg1.kickoffUtc;
+            match.label = `${teamName(tie.teamA)} vs ${teamName(tie.teamB)}`;
+            match.status = "SCHEDULED";
+          } else if (match.phaseId === "r16_leg2") {
+            match.homeTeamId = tie.teamB; match.awayTeamId = tie.teamA;
+            match.kickoffUtc = tie.leg2.kickoffUtc;
+            match.label = `${teamName(tie.teamB)} vs ${teamName(tie.teamA)}`;
+            match.status = "SCHEDULED";
+          }
+        }
+      }
+      await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: poolData } });
+      log(`Updated pool: ${pool.name}`);
+    }
+
+    await writeAuditEvent({
+      actorUserId: (req as any).user?.id ?? null,
+      action: "UPDATE_R16_DRAW",
+      entityType: "TournamentInstance",
+      entityId: instanceId,
+      dataJson: { ties: ties.length, mappings: mappingCount, syncStates: syncCount, poolsUpdated: pools.length },
+    });
+
+    log("DONE");
+    return res.json({
+      success: true,
+      summary: { ties: ties.length, matchesUpdated, mappings: mappingCount, syncStates: syncCount, poolsUpdated: pools.length },
+      logs,
+    });
+  } catch (error: any) {
+    log(`ERROR: ${error.message}`);
+    return res.status(500).json({ error: error.message, logs });
+  }
+});
+
 // GET /admin/sync/status
 // Ver estado global del sistema de sincronización
 adminInstancesRouter.get("/sync/status", async (_req, res) => {
