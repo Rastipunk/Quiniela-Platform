@@ -588,6 +588,188 @@ adminRouter.get("/audit/r16-late-picks", requireAuth, requireAdmin, async (_req,
   }
 });
 
+// ========== UCL R16 Audit: mappings & wrong results ==========
+
+adminRouter.get("/audit/r16-mappings", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const logs: string[] = [];
+    const log = (msg: string) => { console.log(msg); logs.push(msg); };
+
+    log("=== UCL R16 Mapping & Results Audit ===");
+
+    // 1. Fetch current R16 fixtures from API-Football to get ground truth
+    log("1. Fetching R16 fixtures from API-Football...");
+    const client = new ApiFootballClient();
+    const allFixtures = await client.getFixtures({ league: 2, season: 2025 });
+    const r16Fixtures = allFixtures.filter((f: any) => f.league.round === "Round of 16");
+    log(`Found ${r16Fixtures.length} R16 fixtures from API`);
+
+    // Build ground truth: fixtureId → { homeTeam, awayTeam, status, score, date }
+    const fixtureInfo: Record<number, {
+      homeTeamApiId: number; awayTeamApiId: number;
+      homeTeamName: string; awayTeamName: string;
+      homeInternal: string; awayInternal: string;
+      status: string; statusShort: string;
+      homeGoals: number | null; awayGoals: number | null;
+      date: string;
+    }> = {};
+    for (const f of r16Fixtures) {
+      fixtureInfo[f.fixture.id] = {
+        homeTeamApiId: f.teams.home.id,
+        awayTeamApiId: f.teams.away.id,
+        homeTeamName: f.teams.home.name,
+        awayTeamName: f.teams.away.name,
+        homeInternal: API_TO_INTERNAL[f.teams.home.id] ?? `UNKNOWN(${f.teams.home.id})`,
+        awayInternal: API_TO_INTERNAL[f.teams.away.id] ?? `UNKNOWN(${f.teams.away.id})`,
+        status: f.fixture.status.long,
+        statusShort: f.fixture.status.short,
+        homeGoals: f.goals.home,
+        awayGoals: f.goals.away,
+        date: f.fixture.date,
+      };
+    }
+
+    // 2. Get current mappings from DB
+    log("2. Loading current MatchExternalMapping...");
+    const mappings = await prisma.matchExternalMapping.findMany({
+      where: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: { startsWith: "r16_" } },
+      orderBy: { internalMatchId: "asc" },
+    });
+    log(`Found ${mappings.length} R16 mappings`);
+
+    // 3. Get instance data for expected teams
+    const instance = await prisma.tournamentInstance.findUnique({ where: { id: UCL_INSTANCE_ID } });
+    const instanceData = instance?.dataJson as unknown as UclTemplateData | undefined;
+    const instanceMatches = instanceData?.matches ?? [];
+
+    // 4. Verify each mapping
+    log("3. Verifying mappings...");
+    const mappingAudit: any[] = [];
+    for (const mapping of mappings) {
+      const fixture = fixtureInfo[mapping.apiFootballFixtureId];
+      const instanceMatch = instanceMatches.find((m) => m.id === mapping.internalMatchId);
+
+      const seedTieNumMatch = mapping.internalMatchId.match(/^r16_(\d+)_leg([12])$/);
+      const seedTieNum = seedTieNumMatch?.[1] ? parseInt(seedTieNumMatch[1], 10) : null;
+      const legNum = seedTieNumMatch?.[2] ?? "?";
+
+      // Expected teams from seed
+      const SEED_R16: Record<number, { teamA: string; teamB: string }> = {
+        1: { teamA: "t_GAL", teamB: "t_LIV" }, 2: { teamA: "t_NEW", teamB: "t_BAR" },
+        3: { teamA: "t_ATM", teamB: "t_TOT" }, 4: { teamA: "t_ATA", teamB: "t_BAY" },
+        5: { teamA: "t_LEV", teamB: "t_ARS" }, 6: { teamA: "t_PSG", teamB: "t_CHE" },
+        7: { teamA: "t_BOD", teamB: "t_SPO" }, 8: { teamA: "t_RMA", teamB: "t_MCI" },
+      };
+      const seedTeams = seedTieNum ? SEED_R16[seedTieNum] : null;
+
+      // For leg1: home=teamA, away=teamB. For leg2: home=teamB, away=teamA
+      const expectedHome = seedTeams ? (legNum === "1" ? seedTeams.teamA : seedTeams.teamB) : "?";
+      const expectedAway = seedTeams ? (legNum === "1" ? seedTeams.teamB : seedTeams.teamA) : "?";
+
+      let teamMatch = "UNKNOWN";
+      if (fixture) {
+        const correctDirect = fixture.homeInternal === expectedHome && fixture.awayInternal === expectedAway;
+        const correctSwapped = fixture.homeInternal === expectedAway && fixture.awayInternal === expectedHome;
+        teamMatch = correctDirect ? "CORRECT" : correctSwapped ? "SWAPPED" : "WRONG";
+      }
+
+      const entry: any = {
+        internalMatchId: mapping.internalMatchId,
+        fixtureId: mapping.apiFootballFixtureId,
+        expectedTeams: `${expectedHome} vs ${expectedAway}`,
+        apiTeams: fixture ? `${fixture.homeInternal} (${fixture.homeTeamName}) vs ${fixture.awayInternal} (${fixture.awayTeamName})` : "FIXTURE NOT FOUND",
+        teamMatch,
+        fixtureStatus: fixture?.status ?? "N/A",
+        fixtureStatusShort: fixture?.statusShort ?? "N/A",
+        fixtureDate: fixture?.date ?? "N/A",
+        fixtureScore: fixture ? `${fixture.homeGoals}-${fixture.awayGoals}` : "N/A",
+        instanceTeams: instanceMatch ? `${instanceMatch.homeTeamId} vs ${instanceMatch.awayTeamId}` : "NOT IN INSTANCE",
+      };
+
+      if (teamMatch === "WRONG") {
+        log(`❌ ${mapping.internalMatchId} → fixture #${mapping.apiFootballFixtureId}: Expected ${expectedHome} vs ${expectedAway}, got ${fixture!.homeInternal} vs ${fixture!.awayInternal}`);
+      } else if (teamMatch === "CORRECT") {
+        log(`✅ ${mapping.internalMatchId} → fixture #${mapping.apiFootballFixtureId}: ${fixture!.homeTeamName} vs ${fixture!.awayTeamName} (${fixture!.statusShort})`);
+      }
+
+      mappingAudit.push(entry);
+    }
+
+    // 5. Check for wrong results in pools
+    log("4. Checking for published results on R16 matches...");
+    const pools = await prisma.pool.findMany({
+      where: { tournamentInstanceId: UCL_INSTANCE_ID },
+      select: { id: true, name: true },
+    });
+
+    const r16MatchIds = mappings.map((m) => m.internalMatchId);
+    const existingResults = await prisma.poolMatchResult.findMany({
+      where: {
+        poolId: { in: pools.map((p) => p.id) },
+        matchId: { in: r16MatchIds },
+      },
+      include: {
+        currentVersion: true,
+        pool: { select: { name: true } },
+      },
+    });
+
+    const resultsAudit: any[] = [];
+    for (const result of existingResults) {
+      const mapping = mappings.find((m) => m.internalMatchId === result.matchId);
+      const fixture = mapping ? fixtureInfo[mapping.apiFootballFixtureId] : null;
+      const cv = result.currentVersion;
+
+      resultsAudit.push({
+        poolName: result.pool.name,
+        matchId: result.matchId,
+        resultScore: cv ? `${cv.homeGoals}-${cv.awayGoals}` : "NO VERSION",
+        source: cv?.source ?? "N/A",
+        fixtureId: mapping?.apiFootballFixtureId ?? "NO MAPPING",
+        fixtureStatus: fixture?.statusShort ?? "N/A",
+        fixtureRealTeams: fixture ? `${fixture.homeTeamName} vs ${fixture.awayTeamName}` : "N/A",
+        publishedAt: cv?.createdAtUtc ?? "N/A",
+        versionNumber: cv?.versionNumber ?? 0,
+      });
+
+      log(`⚠️ Result exists: [${result.pool.name}] ${result.matchId} = ${cv ? `${cv.homeGoals}-${cv.awayGoals}` : "?"} (source: ${cv?.source}, fixture status: ${fixture?.statusShort ?? "?"})`);
+    }
+
+    // 6. Check MatchSyncState for R16
+    log("5. Checking MatchSyncState...");
+    const syncStates = await prisma.matchSyncState.findMany({
+      where: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: { startsWith: "r16_" } },
+      orderBy: { internalMatchId: "asc" },
+    });
+
+    const syncAudit = syncStates.map((s) => ({
+      matchId: s.internalMatchId,
+      syncStatus: s.syncStatus,
+      kickoffUtc: s.kickoffUtc.toISOString(),
+      lastCheckedAt: s.lastCheckedAtUtc?.toISOString() ?? null,
+    }));
+
+    res.json({
+      ok: true,
+      summary: {
+        totalMappings: mappings.length,
+        correctMappings: mappingAudit.filter((m) => m.teamMatch === "CORRECT").length,
+        wrongMappings: mappingAudit.filter((m) => m.teamMatch === "WRONG").length,
+        swappedMappings: mappingAudit.filter((m) => m.teamMatch === "SWAPPED").length,
+        unknownMappings: mappingAudit.filter((m) => m.teamMatch === "UNKNOWN").length,
+        publishedResults: existingResults.length,
+      },
+      mappings: mappingAudit,
+      results: resultsAudit,
+      syncStates: syncAudit,
+      logs,
+    });
+  } catch (error: any) {
+    console.error("Error in R16 mapping audit:", error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // ========== WC2026 Data Builder (copied from seed script) ==========
 
 type Team = {
