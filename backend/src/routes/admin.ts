@@ -588,184 +588,564 @@ adminRouter.get("/audit/r16-late-picks", requireAuth, requireAdmin, async (_req,
   }
 });
 
-// ========== UCL R16 Audit: mappings & wrong results ==========
+// ========== UCL R16 Integrity Fix — Comprehensive ==========
+// POST /admin/fix-r16-integrity?dryRun=true (default: dryRun=true)
+//
+// 1. Fetches R16 fixtures from API-Football
+// 2. Matches each fixture to the correct internal match BY TEAMS (not tieNumber)
+// 3. Fixes: MatchExternalMapping, kickoff times, MatchSyncState
+// 4. Detects & removes wrong PoolMatchResults (results for fixtures that don't match)
+// 5. Re-publishes correct results for fixtures that ARE finished
 
-adminRouter.get("/audit/r16-mappings", requireAuth, requireAdmin, async (_req, res) => {
+adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, res) => {
   try {
+    const dryRun = req.query.dryRun !== "false"; // default true
     const logs: string[] = [];
     const log = (msg: string) => { console.log(msg); logs.push(msg); };
 
-    log("=== UCL R16 Mapping & Results Audit ===");
+    log(`=== UCL R16 Integrity Fix (dryRun=${dryRun}) ===`);
 
-    // 1. Fetch current R16 fixtures from API-Football to get ground truth
-    log("1. Fetching R16 fixtures from API-Football...");
+    // ================================================================
+    // SEED TRUTH: The definitive team assignments per match ID
+    // These come from the actual UCL R16 draw (Feb 27, 2026)
+    // Unseeded (R32 winner) hosts leg 1, seeded (top 8) hosts leg 2
+    // ================================================================
+    const SEED_R16: Record<number, { teamA: string; teamB: string }> = {
+      1: { teamA: "t_GAL", teamB: "t_LIV" },
+      2: { teamA: "t_NEW", teamB: "t_BAR" },
+      3: { teamA: "t_ATM", teamB: "t_TOT" },
+      4: { teamA: "t_ATA", teamB: "t_BAY" },
+      5: { teamA: "t_LEV", teamB: "t_ARS" },
+      6: { teamA: "t_PSG", teamB: "t_CHE" },
+      7: { teamA: "t_BOD", teamB: "t_SPO" },
+      8: { teamA: "t_RMA", teamB: "t_MCI" },
+    };
+
+    // Reverse lookup: internal team ID → API-Football team ID
+    const INTERNAL_TO_API: Record<string, number> = {};
+    for (const [apiId, internalId] of Object.entries(API_TO_INTERNAL)) {
+      INTERNAL_TO_API[internalId] = parseInt(apiId, 10);
+    }
+
+    // ================================================================
+    // STEP 1: Fetch ALL R16 fixtures from API-Football
+    // ================================================================
+    log("STEP 1: Fetching R16 fixtures from API-Football...");
     const client = new ApiFootballClient();
     const allFixtures = await client.getFixtures({ league: 2, season: 2025 });
     const r16Fixtures = allFixtures.filter((f: any) => f.league.round === "Round of 16");
-    log(`Found ${r16Fixtures.length} R16 fixtures from API`);
+    log(`  Found ${r16Fixtures.length} R16 fixtures`);
 
-    // Build ground truth: fixtureId → { homeTeam, awayTeam, status, score, date }
-    const fixtureInfo: Record<number, {
-      homeTeamApiId: number; awayTeamApiId: number;
-      homeTeamName: string; awayTeamName: string;
-      homeInternal: string; awayInternal: string;
-      status: string; statusShort: string;
-      homeGoals: number | null; awayGoals: number | null;
-      date: string;
-    }> = {};
+    if (r16Fixtures.length !== 16) {
+      return res.status(400).json({ ok: false, error: `Expected 16 R16 fixtures, got ${r16Fixtures.length}` });
+    }
+
+    // Build fixture lookup: fixtureId → full fixture data
+    const fixtureById: Record<number, any> = {};
     for (const f of r16Fixtures) {
-      fixtureInfo[f.fixture.id] = {
-        homeTeamApiId: f.teams.home.id,
-        awayTeamApiId: f.teams.away.id,
-        homeTeamName: f.teams.home.name,
-        awayTeamName: f.teams.away.name,
-        homeInternal: API_TO_INTERNAL[f.teams.home.id] ?? `UNKNOWN(${f.teams.home.id})`,
-        awayInternal: API_TO_INTERNAL[f.teams.away.id] ?? `UNKNOWN(${f.teams.away.id})`,
-        status: f.fixture.status.long,
-        statusShort: f.fixture.status.short,
-        homeGoals: f.goals.home,
-        awayGoals: f.goals.away,
-        date: f.fixture.date,
-      };
+      fixtureById[f.fixture.id] = f;
     }
 
-    // 2. Get current mappings from DB
-    log("2. Loading current MatchExternalMapping...");
-    const mappings = await prisma.matchExternalMapping.findMany({
+    // ================================================================
+    // STEP 2: Match each internal match to the CORRECT API fixture BY TEAMS
+    // ================================================================
+    log("STEP 2: Matching internal matches to API fixtures by team...");
+
+    interface CorrectMapping {
+      internalMatchId: string;
+      tieNumber: number;
+      leg: 1 | 2;
+      expectedHomeInternal: string;
+      expectedAwayInternal: string;
+      fixtureId: number;
+      fixtureHomeApiId: number;
+      fixtureAwayApiId: number;
+      fixtureHomeName: string;
+      fixtureAwayName: string;
+      fixtureDate: string;
+      fixtureStatus: string;
+      fixtureStatusShort: string;
+      fixtureHomeGoals: number | null;
+      fixtureAwayGoals: number | null;
+    }
+
+    const correctMappings: CorrectMapping[] = [];
+    const errors: string[] = [];
+
+    for (const [tieNumStr, teams] of Object.entries(SEED_R16)) {
+      const tieNum = parseInt(tieNumStr, 10);
+      const teamAApiId = INTERNAL_TO_API[teams.teamA];
+      const teamBApiId = INTERNAL_TO_API[teams.teamB];
+
+      if (!teamAApiId || !teamBApiId) {
+        errors.push(`Missing API ID for ${teams.teamA} or ${teams.teamB}`);
+        continue;
+      }
+
+      // Find the two fixtures for this tie (same team pair, different legs)
+      const tieFixtures = r16Fixtures.filter((f: any) => {
+        const hId = f.teams.home.id;
+        const aId = f.teams.away.id;
+        return (hId === teamAApiId && aId === teamBApiId) ||
+               (hId === teamBApiId && aId === teamAApiId);
+      });
+
+      if (tieFixtures.length !== 2) {
+        errors.push(`Tie ${tieNum} (${teams.teamA} vs ${teams.teamB}): Expected 2 fixtures, found ${tieFixtures.length}`);
+        continue;
+      }
+
+      // Sort by date → first is leg 1
+      tieFixtures.sort((a: any, b: any) =>
+        new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime()
+      );
+
+      // Leg 1: teamA (unseeded) hosts → home=teamA, away=teamB
+      const leg1Fixture = tieFixtures[0];
+      // Leg 2: teamB (seeded) hosts → home=teamB, away=teamA
+      const leg2Fixture = tieFixtures[1];
+
+      // Verify leg 1 home/away matches expectation
+      const leg1HomeInternal = API_TO_INTERNAL[leg1Fixture.teams.home.id];
+      const leg1AwayInternal = API_TO_INTERNAL[leg1Fixture.teams.away.id];
+
+      if (leg1HomeInternal !== teams.teamA || leg1AwayInternal !== teams.teamB) {
+        log(`  ⚠️ Tie ${tieNum} Leg1: API has ${leg1HomeInternal}(H) vs ${leg1AwayInternal}(A), expected ${teams.teamA}(H) vs ${teams.teamB}(A). Using API order.`);
+      }
+
+      for (const [legNum, fixture, expHome, expAway] of [
+        [1, leg1Fixture, teams.teamA, teams.teamB],
+        [2, leg2Fixture, teams.teamB, teams.teamA],
+      ] as [number, any, string, string][]) {
+        const matchId = `r16_${tieNum}_leg${legNum}`;
+        const mapping: CorrectMapping = {
+          internalMatchId: matchId,
+          tieNumber: tieNum,
+          leg: legNum as 1 | 2,
+          expectedHomeInternal: expHome,
+          expectedAwayInternal: expAway,
+          fixtureId: fixture.fixture.id,
+          fixtureHomeApiId: fixture.teams.home.id,
+          fixtureAwayApiId: fixture.teams.away.id,
+          fixtureHomeName: fixture.teams.home.name,
+          fixtureAwayName: fixture.teams.away.name,
+          fixtureDate: fixture.fixture.date,
+          fixtureStatus: fixture.fixture.status.long,
+          fixtureStatusShort: fixture.fixture.status.short,
+          fixtureHomeGoals: fixture.goals.home,
+          fixtureAwayGoals: fixture.goals.away,
+        };
+        correctMappings.push(mapping);
+        log(`  ✅ ${matchId} → #${fixture.fixture.id} ${fixture.teams.home.name} vs ${fixture.teams.away.name} | ${fixture.fixture.date.slice(0, 16)} | ${fixture.fixture.status.short} ${fixture.goals.home ?? "-"}-${fixture.goals.away ?? "-"}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ ok: false, errors, logs });
+    }
+
+    // ================================================================
+    // STEP 3: Compare with current DB state
+    // ================================================================
+    log("STEP 3: Comparing with current DB state...");
+
+    const currentMappings = await prisma.matchExternalMapping.findMany({
       where: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: { startsWith: "r16_" } },
-      orderBy: { internalMatchId: "asc" },
     });
-    log(`Found ${mappings.length} R16 mappings`);
+    const currentMappingMap = new Map(currentMappings.map(m => [m.internalMatchId, m]));
 
-    // 3. Get instance data for expected teams
     const instance = await prisma.tournamentInstance.findUnique({ where: { id: UCL_INSTANCE_ID } });
-    const instanceData = instance?.dataJson as unknown as UclTemplateData | undefined;
-    const instanceMatches = instanceData?.matches ?? [];
+    if (!instance) {
+      return res.status(404).json({ ok: false, error: "Instance not found" });
+    }
+    const instanceData = instance.dataJson as unknown as UclTemplateData;
+    const teamName = (id: string) => instanceData.teams.find((t: any) => t.id === id)?.name ?? id;
 
-    // 4. Verify each mapping
-    log("3. Verifying mappings...");
-    const mappingAudit: any[] = [];
-    for (const mapping of mappings) {
-      const fixture = fixtureInfo[mapping.apiFootballFixtureId];
-      const instanceMatch = instanceMatches.find((m) => m.id === mapping.internalMatchId);
+    const mappingFixes: { matchId: string; oldFixtureId: number | null; newFixtureId: number }[] = [];
+    const kickoffFixes: { matchId: string; oldKickoff: string; newKickoff: string }[] = [];
+    const teamFixes: { matchId: string; oldTeams: string; newTeams: string }[] = [];
 
-      const seedTieNumMatch = mapping.internalMatchId.match(/^r16_(\d+)_leg([12])$/);
-      const seedTieNum = seedTieNumMatch?.[1] ? parseInt(seedTieNumMatch[1], 10) : null;
-      const legNum = seedTieNumMatch?.[2] ?? "?";
-
-      // Expected teams from seed
-      const SEED_R16: Record<number, { teamA: string; teamB: string }> = {
-        1: { teamA: "t_GAL", teamB: "t_LIV" }, 2: { teamA: "t_NEW", teamB: "t_BAR" },
-        3: { teamA: "t_ATM", teamB: "t_TOT" }, 4: { teamA: "t_ATA", teamB: "t_BAY" },
-        5: { teamA: "t_LEV", teamB: "t_ARS" }, 6: { teamA: "t_PSG", teamB: "t_CHE" },
-        7: { teamA: "t_BOD", teamB: "t_SPO" }, 8: { teamA: "t_RMA", teamB: "t_MCI" },
-      };
-      const seedTeams = seedTieNum ? SEED_R16[seedTieNum] : null;
-
-      // For leg1: home=teamA, away=teamB. For leg2: home=teamB, away=teamA
-      const expectedHome = seedTeams ? (legNum === "1" ? seedTeams.teamA : seedTeams.teamB) : "?";
-      const expectedAway = seedTeams ? (legNum === "1" ? seedTeams.teamB : seedTeams.teamA) : "?";
-
-      let teamMatch = "UNKNOWN";
-      if (fixture) {
-        const correctDirect = fixture.homeInternal === expectedHome && fixture.awayInternal === expectedAway;
-        const correctSwapped = fixture.homeInternal === expectedAway && fixture.awayInternal === expectedHome;
-        teamMatch = correctDirect ? "CORRECT" : correctSwapped ? "SWAPPED" : "WRONG";
+    for (const cm of correctMappings) {
+      // Check mapping
+      const existing = currentMappingMap.get(cm.internalMatchId);
+      if (!existing || existing.apiFootballFixtureId !== cm.fixtureId) {
+        mappingFixes.push({
+          matchId: cm.internalMatchId,
+          oldFixtureId: existing?.apiFootballFixtureId ?? null,
+          newFixtureId: cm.fixtureId,
+        });
+        log(`  🔧 MAPPING FIX: ${cm.internalMatchId} → old #${existing?.apiFootballFixtureId ?? "NONE"} → new #${cm.fixtureId}`);
       }
 
-      const entry: any = {
-        internalMatchId: mapping.internalMatchId,
-        fixtureId: mapping.apiFootballFixtureId,
-        expectedTeams: `${expectedHome} vs ${expectedAway}`,
-        apiTeams: fixture ? `${fixture.homeInternal} (${fixture.homeTeamName}) vs ${fixture.awayInternal} (${fixture.awayTeamName})` : "FIXTURE NOT FOUND",
-        teamMatch,
-        fixtureStatus: fixture?.status ?? "N/A",
-        fixtureStatusShort: fixture?.statusShort ?? "N/A",
-        fixtureDate: fixture?.date ?? "N/A",
-        fixtureScore: fixture ? `${fixture.homeGoals}-${fixture.awayGoals}` : "N/A",
-        instanceTeams: instanceMatch ? `${instanceMatch.homeTeamId} vs ${instanceMatch.awayTeamId}` : "NOT IN INSTANCE",
-      };
+      // Check kickoff time in instance dataJson
+      const instanceMatch = instanceData.matches.find(m => m.id === cm.internalMatchId);
+      if (instanceMatch) {
+        const correctKickoff = new Date(cm.fixtureDate).toISOString();
+        if (instanceMatch.kickoffUtc !== correctKickoff) {
+          kickoffFixes.push({
+            matchId: cm.internalMatchId,
+            oldKickoff: instanceMatch.kickoffUtc,
+            newKickoff: correctKickoff,
+          });
+          log(`  🔧 KICKOFF FIX: ${cm.internalMatchId} → old ${instanceMatch.kickoffUtc} → new ${correctKickoff}`);
+        }
 
-      if (teamMatch === "WRONG") {
-        log(`❌ ${mapping.internalMatchId} → fixture #${mapping.apiFootballFixtureId}: Expected ${expectedHome} vs ${expectedAway}, got ${fixture!.homeInternal} vs ${fixture!.awayInternal}`);
-      } else if (teamMatch === "CORRECT") {
-        log(`✅ ${mapping.internalMatchId} → fixture #${mapping.apiFootballFixtureId}: ${fixture!.homeTeamName} vs ${fixture!.awayTeamName} (${fixture!.statusShort})`);
+        // Check teams
+        if (instanceMatch.homeTeamId !== cm.expectedHomeInternal || instanceMatch.awayTeamId !== cm.expectedAwayInternal) {
+          teamFixes.push({
+            matchId: cm.internalMatchId,
+            oldTeams: `${instanceMatch.homeTeamId} vs ${instanceMatch.awayTeamId}`,
+            newTeams: `${cm.expectedHomeInternal} vs ${cm.expectedAwayInternal}`,
+          });
+          log(`  🔧 TEAM FIX: ${cm.internalMatchId} → old ${instanceMatch.homeTeamId} vs ${instanceMatch.awayTeamId} → new ${cm.expectedHomeInternal} vs ${cm.expectedAwayInternal}`);
+        }
       }
-
-      mappingAudit.push(entry);
     }
 
-    // 5. Check for wrong results in pools
-    log("4. Checking for published results on R16 matches...");
+    // ================================================================
+    // STEP 4: Check for wrong/orphan results
+    // ================================================================
+    log("STEP 4: Checking published results...");
+
     const pools = await prisma.pool.findMany({
       where: { tournamentInstanceId: UCL_INSTANCE_ID },
       select: { id: true, name: true },
     });
 
-    const r16MatchIds = mappings.map((m) => m.internalMatchId);
+    const allR16MatchIds = correctMappings.map(cm => cm.internalMatchId);
     const existingResults = await prisma.poolMatchResult.findMany({
       where: {
-        poolId: { in: pools.map((p) => p.id) },
-        matchId: { in: r16MatchIds },
+        poolId: { in: pools.map(p => p.id) },
+        matchId: { in: allR16MatchIds },
       },
       include: {
         currentVersion: true,
+        versions: true,
         pool: { select: { name: true } },
       },
     });
 
-    const resultsAudit: any[] = [];
+    // A result is WRONG if:
+    // - It was sourced from API_CONFIRMED but the fixtureId in the version doesn't match the CORRECT fixture
+    // - OR the correct fixture for this match hasn't actually finished yet (status not FT/AET/PEN)
+    const FINISHED_STATUSES = ["FT", "AET", "PEN"];
+    const resultsToDelete: { id: string; matchId: string; poolName: string; reason: string; score: string }[] = [];
+    const resultsCorrect: { matchId: string; poolName: string; score: string }[] = [];
+
     for (const result of existingResults) {
-      const mapping = mappings.find((m) => m.internalMatchId === result.matchId);
-      const fixture = mapping ? fixtureInfo[mapping.apiFootballFixtureId] : null;
       const cv = result.currentVersion;
+      if (!cv) continue;
 
-      resultsAudit.push({
-        poolName: result.pool.name,
-        matchId: result.matchId,
-        resultScore: cv ? `${cv.homeGoals}-${cv.awayGoals}` : "NO VERSION",
-        source: cv?.source ?? "N/A",
-        fixtureId: mapping?.apiFootballFixtureId ?? "NO MAPPING",
-        fixtureStatus: fixture?.statusShort ?? "N/A",
-        fixtureRealTeams: fixture ? `${fixture.homeTeamName} vs ${fixture.awayTeamName}` : "N/A",
-        publishedAt: cv?.createdAtUtc ?? "N/A",
-        versionNumber: cv?.versionNumber ?? 0,
-      });
+      const cm = correctMappings.find(m => m.internalMatchId === result.matchId);
+      if (!cm) continue;
 
-      log(`⚠️ Result exists: [${result.pool.name}] ${result.matchId} = ${cv ? `${cv.homeGoals}-${cv.awayGoals}` : "?"} (source: ${cv?.source}, fixture status: ${fixture?.statusShort ?? "?"})`);
+      const correctFixture = fixtureById[cm.fixtureId];
+      const isFinished = FINISHED_STATUSES.includes(cm.fixtureStatusShort);
+
+      // Check if source fixture matches the correct one
+      const sourceFixtureId = cv.externalFixtureId;
+      const wrongFixture = sourceFixtureId && sourceFixtureId !== cm.fixtureId;
+      const matchNotFinished = !isFinished;
+
+      if (wrongFixture) {
+        resultsToDelete.push({
+          id: result.id,
+          matchId: result.matchId,
+          poolName: result.pool.name,
+          reason: `Result from wrong fixture #${sourceFixtureId} (correct is #${cm.fixtureId})`,
+          score: `${cv.homeGoals}-${cv.awayGoals}`,
+        });
+        log(`  ❌ DELETE: [${result.pool.name}] ${result.matchId} = ${cv.homeGoals}-${cv.awayGoals} (from fixture #${sourceFixtureId}, should be #${cm.fixtureId})`);
+      } else if (matchNotFinished && cv.source === "API_CONFIRMED") {
+        resultsToDelete.push({
+          id: result.id,
+          matchId: result.matchId,
+          poolName: result.pool.name,
+          reason: `Fixture #${cm.fixtureId} status is ${cm.fixtureStatusShort}, not finished`,
+          score: `${cv.homeGoals}-${cv.awayGoals}`,
+        });
+        log(`  ❌ DELETE: [${result.pool.name}] ${result.matchId} = ${cv.homeGoals}-${cv.awayGoals} (fixture not finished: ${cm.fixtureStatusShort})`);
+      } else if (isFinished) {
+        resultsCorrect.push({
+          matchId: result.matchId,
+          poolName: result.pool.name,
+          score: `${cv.homeGoals}-${cv.awayGoals}`,
+        });
+        log(`  ✅ KEEP: [${result.pool.name}] ${result.matchId} = ${cv.homeGoals}-${cv.awayGoals}`);
+      }
     }
 
-    // 6. Check MatchSyncState for R16
-    log("5. Checking MatchSyncState...");
-    const syncStates = await prisma.matchSyncState.findMany({
-      where: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: { startsWith: "r16_" } },
-      orderBy: { internalMatchId: "asc" },
-    });
+    // ================================================================
+    // STEP 5: Check which finished fixtures DON'T have results yet
+    // ================================================================
+    log("STEP 5: Checking for missing results...");
 
-    const syncAudit = syncStates.map((s) => ({
-      matchId: s.internalMatchId,
-      syncStatus: s.syncStatus,
-      kickoffUtc: s.kickoffUtc.toISOString(),
-      lastCheckedAt: s.lastCheckedAtUtc?.toISOString() ?? null,
-    }));
+    const finishedMappings = correctMappings.filter(cm => FINISHED_STATUSES.includes(cm.fixtureStatusShort));
+    const missingResults: { matchId: string; poolName: string; fixtureId: number; score: string }[] = [];
 
+    for (const cm of finishedMappings) {
+      for (const pool of pools) {
+        const hasResult = existingResults.some(
+          r => r.matchId === cm.internalMatchId && r.poolId === pool.id &&
+               !resultsToDelete.some(d => d.id === r.id)
+        );
+        if (!hasResult) {
+          missingResults.push({
+            matchId: cm.internalMatchId,
+            poolName: pool.name,
+            fixtureId: cm.fixtureId,
+            score: `${cm.fixtureHomeGoals}-${cm.fixtureAwayGoals}`,
+          });
+          log(`  📝 MISSING: [${pool.name}] ${cm.internalMatchId} needs result ${cm.fixtureHomeGoals}-${cm.fixtureAwayGoals} from fixture #${cm.fixtureId}`);
+        }
+      }
+    }
+
+    // ================================================================
+    // STEP 6: APPLY FIXES (if not dry run)
+    // ================================================================
+    if (!dryRun) {
+      log("STEP 6: APPLYING FIXES...");
+
+      // 6a. Fix mappings
+      if (mappingFixes.length > 0) {
+        log("  6a. Fixing MatchExternalMapping...");
+        // Delete all R16 mappings and recreate
+        await prisma.matchExternalMapping.deleteMany({
+          where: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: { startsWith: "r16_" } },
+        });
+        for (const cm of correctMappings) {
+          await prisma.matchExternalMapping.create({
+            data: {
+              tournamentInstanceId: UCL_INSTANCE_ID,
+              internalMatchId: cm.internalMatchId,
+              apiFootballFixtureId: cm.fixtureId,
+            },
+          });
+        }
+        log(`  ✅ Recreated ${correctMappings.length} correct mappings`);
+      } else {
+        log("  6a. Mappings already correct, no changes needed");
+      }
+
+      // 6b. Fix instance dataJson (teams + kickoffs)
+      if (teamFixes.length > 0 || kickoffFixes.length > 0) {
+        log("  6b. Fixing instance dataJson...");
+        const updatedMatches = instanceData.matches.map(match => {
+          const cm = correctMappings.find(m => m.internalMatchId === match.id);
+          if (!cm) return match;
+          return {
+            ...match,
+            homeTeamId: cm.expectedHomeInternal,
+            awayTeamId: cm.expectedAwayInternal,
+            kickoffUtc: new Date(cm.fixtureDate).toISOString(),
+            label: `${teamName(cm.expectedHomeInternal)} vs ${teamName(cm.expectedAwayInternal)}`,
+            status: "SCHEDULED" as const,
+          };
+        });
+        const updatedData = { ...instanceData, matches: updatedMatches };
+        await prisma.tournamentInstance.update({
+          where: { id: UCL_INSTANCE_ID },
+          data: { dataJson: updatedData as any },
+        });
+        log("  ✅ Instance dataJson updated");
+
+        // Also update template version
+        const version = await prisma.tournamentTemplateVersion.findUnique({ where: { id: UCL_VERSION_ID } });
+        if (version) {
+          const versionData = version.dataJson as unknown as UclTemplateData;
+          const updatedVersionMatches = versionData.matches.map(match => {
+            const cm = correctMappings.find(m => m.internalMatchId === match.id);
+            if (!cm) return match;
+            const vTeamName = (id: string) => versionData.teams.find((t: any) => t.id === id)?.name ?? id;
+            return {
+              ...match,
+              homeTeamId: cm.expectedHomeInternal,
+              awayTeamId: cm.expectedAwayInternal,
+              kickoffUtc: new Date(cm.fixtureDate).toISOString(),
+              label: `${vTeamName(cm.expectedHomeInternal)} vs ${vTeamName(cm.expectedAwayInternal)}`,
+              status: "SCHEDULED" as const,
+            };
+          });
+          await prisma.tournamentTemplateVersion.update({
+            where: { id: UCL_VERSION_ID },
+            data: { dataJson: { ...versionData, matches: updatedVersionMatches } as any },
+          });
+          log("  ✅ Template version updated");
+        }
+
+        // Update all pool fixtureSnapshots
+        const poolsWithSnapshot = await prisma.pool.findMany({
+          where: { tournamentInstanceId: UCL_INSTANCE_ID },
+          select: { id: true, name: true, fixtureSnapshot: true },
+        });
+        for (const pool of poolsWithSnapshot) {
+          const poolData = (pool.fixtureSnapshot ?? instanceData) as unknown as UclTemplateData;
+          const updatedPoolMatches = poolData.matches.map(match => {
+            const cm = correctMappings.find(m => m.internalMatchId === match.id);
+            if (!cm) return match;
+            const pTeamName = (id: string) => poolData.teams.find((t: any) => t.id === id)?.name ?? id;
+            return {
+              ...match,
+              homeTeamId: cm.expectedHomeInternal,
+              awayTeamId: cm.expectedAwayInternal,
+              kickoffUtc: new Date(cm.fixtureDate).toISOString(),
+              label: `${pTeamName(cm.expectedHomeInternal)} vs ${pTeamName(cm.expectedAwayInternal)}`,
+              status: "SCHEDULED" as const,
+            };
+          });
+          await prisma.pool.update({
+            where: { id: pool.id },
+            data: { fixtureSnapshot: { ...poolData, matches: updatedPoolMatches } as any },
+          });
+          log(`  ✅ Pool "${pool.name}" snapshot updated`);
+        }
+      } else {
+        log("  6b. Teams and kickoffs already correct");
+      }
+
+      // 6c. Fix MatchSyncState
+      log("  6c. Fixing MatchSyncState...");
+      for (const cm of correctMappings) {
+        const kickoffUtc = new Date(cm.fixtureDate);
+        const isFinished = FINISHED_STATUSES.includes(cm.fixtureStatusShort);
+
+        await prisma.matchSyncState.upsert({
+          where: {
+            tournamentInstanceId_internalMatchId: {
+              tournamentInstanceId: UCL_INSTANCE_ID,
+              internalMatchId: cm.internalMatchId,
+            },
+          },
+          create: {
+            tournamentInstanceId: UCL_INSTANCE_ID,
+            internalMatchId: cm.internalMatchId,
+            syncStatus: isFinished ? "COMPLETED" : "PENDING",
+            kickoffUtc,
+            firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000),
+            completedAtUtc: isFinished ? new Date() : null,
+            lastApiStatus: cm.fixtureStatusShort,
+          },
+          update: {
+            kickoffUtc,
+            syncStatus: isFinished ? "COMPLETED" : "PENDING",
+            firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000),
+            completedAtUtc: isFinished ? new Date() : null,
+            lastApiStatus: cm.fixtureStatusShort,
+            // Reset lastCheckedAtUtc for non-finished so Smart Sync picks them up fresh
+            lastCheckedAtUtc: isFinished ? new Date() : null,
+          },
+        });
+      }
+      log(`  ✅ ${correctMappings.length} sync states updated`);
+
+      // 6d. Delete wrong results
+      if (resultsToDelete.length > 0) {
+        log("  6d. Deleting wrong results...");
+        for (const rd of resultsToDelete) {
+          // Delete versions first (FK constraint), then the header
+          await prisma.poolMatchResultVersion.deleteMany({
+            where: { resultId: rd.id },
+          });
+          await prisma.poolMatchResult.delete({
+            where: { id: rd.id },
+          });
+          log(`  ✅ Deleted: [${rd.poolName}] ${rd.matchId} = ${rd.score} (${rd.reason})`);
+        }
+      } else {
+        log("  6d. No wrong results to delete");
+      }
+
+      // 6e. Publish correct results for finished fixtures that are missing
+      if (missingResults.length > 0) {
+        log("  6e. Publishing missing results...");
+        const { parseFixtureResult, isFixtureFinished } = await import("../services/apiFootball");
+        for (const mr of missingResults) {
+          const fixture = fixtureById[mr.fixtureId];
+          const parsedResult = parseFixtureResult(fixture);
+          if (!parsedResult || !parsedResult.isFinished) {
+            log(`  ⚠️ Could not parse result for fixture #${mr.fixtureId}`);
+            continue;
+          }
+
+          const pool = pools.find(p => p.name === mr.poolName);
+          if (!pool) continue;
+
+          const wentToExtraTime = parsedResult.status === "AET" || parsedResult.status === "PEN";
+
+          await prisma.$transaction(async (tx) => {
+            const header = await tx.poolMatchResult.create({
+              data: { poolId: pool.id, matchId: mr.matchId },
+            });
+            const version = await tx.poolMatchResultVersion.create({
+              data: {
+                resultId: header.id,
+                versionNumber: 1,
+                status: "PUBLISHED",
+                homeGoals: parsedResult.homeGoals,
+                awayGoals: parsedResult.awayGoals,
+                homeGoals90: wentToExtraTime ? parsedResult.fulltimeHome : null,
+                awayGoals90: wentToExtraTime ? parsedResult.fulltimeAway : null,
+                homePenalties: parsedResult.penaltyHome,
+                awayPenalties: parsedResult.penaltyAway,
+                source: "API_CONFIRMED",
+                externalFixtureId: fixture.fixture.id,
+                externalDataJson: fixture,
+                createdByUserId: null,
+              },
+            });
+            await tx.poolMatchResult.update({
+              where: { id: header.id },
+              data: { currentVersionId: version.id },
+            });
+          });
+          log(`  ✅ Published: [${mr.poolName}] ${mr.matchId} = ${parsedResult.homeGoals}-${parsedResult.awayGoals}`);
+        }
+      } else {
+        log("  6e. No missing results to publish");
+      }
+
+      log("STEP 6: ALL FIXES APPLIED ✅");
+    } else {
+      log("STEP 6: DRY RUN — no changes applied. Call with ?dryRun=false to apply.");
+    }
+
+    // ================================================================
+    // RESPONSE
+    // ================================================================
     res.json({
       ok: true,
+      dryRun,
       summary: {
-        totalMappings: mappings.length,
-        correctMappings: mappingAudit.filter((m) => m.teamMatch === "CORRECT").length,
-        wrongMappings: mappingAudit.filter((m) => m.teamMatch === "WRONG").length,
-        swappedMappings: mappingAudit.filter((m) => m.teamMatch === "SWAPPED").length,
-        unknownMappings: mappingAudit.filter((m) => m.teamMatch === "UNKNOWN").length,
-        publishedResults: existingResults.length,
+        mappingFixes: mappingFixes.length,
+        kickoffFixes: kickoffFixes.length,
+        teamFixes: teamFixes.length,
+        resultsToDelete: resultsToDelete.length,
+        missingResults: missingResults.length,
+        correctResults: resultsCorrect.length,
       },
-      mappings: mappingAudit,
-      results: resultsAudit,
-      syncStates: syncAudit,
+      correctMappings: correctMappings.map(cm => ({
+        matchId: cm.internalMatchId,
+        fixtureId: cm.fixtureId,
+        teams: `${cm.fixtureHomeName} vs ${cm.fixtureAwayName}`,
+        date: cm.fixtureDate,
+        status: cm.fixtureStatusShort,
+        score: `${cm.fixtureHomeGoals ?? "-"}-${cm.fixtureAwayGoals ?? "-"}`,
+      })),
+      fixes: {
+        mappings: mappingFixes,
+        kickoffs: kickoffFixes,
+        teams: teamFixes,
+        resultsToDelete: resultsToDelete.map(r => ({ ...r })),
+        missingResults,
+        correctResults: resultsCorrect,
+      },
       logs,
     });
   } catch (error: any) {
-    console.error("Error in R16 mapping audit:", error);
+    console.error("Error in R16 integrity fix:", error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });
