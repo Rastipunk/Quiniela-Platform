@@ -246,19 +246,36 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
 
     if (placeholders.length === 0) {
       // Instance already SCHEDULED but dates may be stale (from seed).
-      // Force-update kickoff times from API-Football data we already fetched.
+      // Force-update kickoff times from API-Football data, matching by TEAM IDs.
       log("Instance already SCHEDULED. Updating kickoff dates from API-Football...");
+
+      // Helper: find API tie by team pair (order-independent)
+      const findTieByTeams = (teamHome: string, teamAway: string) =>
+        r16Ties.find((t) =>
+          (t.teamA === teamHome && t.teamB === teamAway) ||
+          (t.teamA === teamAway && t.teamB === teamHome));
+
+      // Track match ID → API tie for mappings/sync later
+      const matchTieMap: { matchId: string; leg: "leg1" | "leg2"; tie: R16TieData }[] = [];
 
       const updatedMatches = currentData.matches.map((match) => {
         if (!match.phaseId.startsWith("r16_")) return match;
-        const tie = r16Ties.find((t) => t.tieNumber === match.tieNumber);
-        if (!tie) return match;
-        if (match.phaseId === "r16_leg1" && match.kickoffUtc !== tie.leg1.kickoffUtc) {
-          log(`Match ${match.id}: ${match.kickoffUtc} → ${tie.leg1.kickoffUtc}`);
+        const tie = findTieByTeams(match.homeTeamId, match.awayTeamId);
+        if (!tie) {
+          log(`WARNING: No API tie found for match ${match.id} (${match.homeTeamId} vs ${match.awayTeamId})`);
+          return match;
+        }
+
+        if (match.phaseId === "r16_leg1") {
+          matchTieMap.push({ matchId: match.id, leg: "leg1", tie });
+          const changed = match.kickoffUtc !== tie.leg1.kickoffUtc;
+          if (changed) log(`Match ${match.id}: ${match.kickoffUtc} → ${tie.leg1.kickoffUtc}`);
           return { ...match, kickoffUtc: tie.leg1.kickoffUtc, homeTeamId: tie.teamA, awayTeamId: tie.teamB, status: "SCHEDULED" as const };
         }
-        if (match.phaseId === "r16_leg2" && match.kickoffUtc !== tie.leg2.kickoffUtc) {
-          log(`Match ${match.id}: ${match.kickoffUtc} → ${tie.leg2.kickoffUtc}`);
+        if (match.phaseId === "r16_leg2") {
+          matchTieMap.push({ matchId: match.id, leg: "leg2", tie });
+          const changed = match.kickoffUtc !== tie.leg2.kickoffUtc;
+          if (changed) log(`Match ${match.id}: ${match.kickoffUtc} → ${tie.leg2.kickoffUtc}`);
           return { ...match, kickoffUtc: tie.leg2.kickoffUtc, homeTeamId: tie.teamB, awayTeamId: tie.teamA, status: "SCHEDULED" as const };
         }
         return match;
@@ -274,7 +291,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
         const versionData = version.dataJson as unknown as UclTemplateData;
         const updatedVersionMatches = versionData.matches.map((match) => {
           if (!match.phaseId.startsWith("r16_")) return match;
-          const tie = r16Ties.find((t) => t.tieNumber === match.tieNumber);
+          const tie = findTieByTeams(match.homeTeamId, match.awayTeamId);
           if (!tie) return match;
           if (match.phaseId === "r16_leg1") return { ...match, kickoffUtc: tie.leg1.kickoffUtc, homeTeamId: tie.teamA, awayTeamId: tie.teamB, status: "SCHEDULED" as const };
           if (match.phaseId === "r16_leg2") return { ...match, kickoffUtc: tie.leg2.kickoffUtc, homeTeamId: tie.teamB, awayTeamId: tie.teamA, status: "SCHEDULED" as const };
@@ -284,36 +301,26 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
         log("Template version dates updated");
       }
 
-      // Update MatchSyncState kickoff times
-      log("Updating MatchSyncState kickoff times...");
-      for (const tie of r16Ties) {
-        for (const leg of [
-          { matchId: `r16_${tie.tieNumber}_leg1`, kickoff: tie.leg1.kickoffUtc },
-          { matchId: `r16_${tie.tieNumber}_leg2`, kickoff: tie.leg2.kickoffUtc },
-        ]) {
-          const kickoffUtc = new Date(leg.kickoff);
-          await prisma.matchSyncState.upsert({
-            where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId } },
-            create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId, syncStatus: "PENDING", kickoffUtc,
-              firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
-            update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
-          });
-        }
-      }
-      log("MatchSyncState kickoff times updated");
+      // Update MatchSyncState + MatchExternalMapping using SEED match IDs
+      log("Updating MatchSyncState and fixture mappings...");
+      for (const { matchId, leg, tie } of matchTieMap) {
+        const legData = leg === "leg1" ? tie.leg1 : tie.leg2;
+        const kickoffUtc = new Date(legData.kickoffUtc);
 
-      // Update MatchExternalMapping
-      log("Updating fixture mappings...");
-      for (const tie of r16Ties) {
-        for (const [legLabel, legData] of [["leg1", tie.leg1], ["leg2", tie.leg2]] as const) {
-          await prisma.matchExternalMapping.upsert({
-            where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: `r16_${tie.tieNumber}_${legLabel}` } },
-            create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: `r16_${tie.tieNumber}_${legLabel}`, apiFootballFixtureId: legData.fixtureId },
-            update: { apiFootballFixtureId: legData.fixtureId },
-          });
-        }
+        await prisma.matchSyncState.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: matchId } },
+          create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: matchId, syncStatus: "PENDING", kickoffUtc,
+            firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+          update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+        });
+
+        await prisma.matchExternalMapping.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: matchId } },
+          create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: matchId, apiFootballFixtureId: legData.fixtureId },
+          update: { apiFootballFixtureId: legData.fixtureId },
+        });
       }
-      log("Fixture mappings updated");
+      log(`Updated ${matchTieMap.length} sync states + mappings`);
 
       // Sync all pools
       const pools = await prisma.pool.findMany({
