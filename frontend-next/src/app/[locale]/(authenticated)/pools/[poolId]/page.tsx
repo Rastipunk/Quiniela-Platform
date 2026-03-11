@@ -124,6 +124,12 @@ export default function PoolPage() {
     error: string | null;
   } | null>(null);
 
+  // UCL incident banner (show once per pool)
+  const [uclBannerDismissed, setUclBannerDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem(`ucl_incident_banner_${poolId}`) === "1";
+  });
+
   // Scoring override modal state
   const [scoringOverrideModal, setScoringOverrideModal] = useState<{
     matchId: string;
@@ -787,6 +793,51 @@ export default function PoolPage() {
 
       {overview && (
         <>
+          {/* UCL incident banner — one-time per pool */}
+          {!uclBannerDismissed && overview.tournamentInstance?.templateKey === "ucl-2025" && (
+            <div style={{
+              marginTop: 12,
+              marginBottom: 12,
+              padding: "16px 20px",
+              background: "linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%)",
+              borderRadius: 14,
+              border: "1px solid #2d5a8e",
+              color: "#e0eaf5",
+              position: "relative",
+            }}>
+              <button
+                onClick={() => {
+                  localStorage.setItem(`ucl_incident_banner_${poolId}`, "1");
+                  setUclBannerDismissed(true);
+                }}
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 12,
+                  background: "none",
+                  border: "none",
+                  color: "#8ba8c8",
+                  fontSize: 20,
+                  cursor: "pointer",
+                  padding: "2px 6px",
+                  lineHeight: 1,
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: "#fff" }}>
+                {t("uclIncidentBanner.title")}
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+                {t("uclIncidentBanner.body")}
+              </div>
+              <div style={{ fontSize: 13, marginTop: 10, color: "#93c5fd", fontWeight: 600 }}>
+                {t("uclIncidentBanner.thanks")}
+              </div>
+            </div>
+          )}
+
           {/* Corporate header — logo + company name prominent */}
           {!showSplash && overview.pool.organization && (
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, marginBottom: 8 }}>

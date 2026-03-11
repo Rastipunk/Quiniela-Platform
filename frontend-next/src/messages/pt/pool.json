@@ -21,6 +21,12 @@
   "scoringDisabledBadge": "Excluído",
   "scoringDisabledByHost": "O anfitrião excluiu este jogo da pontuação",
 
+  "uclIncidentBanner": {
+    "title": "Atualização importante sobre a pontuação",
+    "body": "Devido a problemas técnicos na terça-feira, 10 de março, habilitamos a opção para que o anfitrião possa excluir jogos da pontuação. Se você acredita que algum jogo não deveria contar, comunique ao anfitrião do seu pool. Os problemas já foram resolvidos e tudo deve funcionar corretamente daqui em diante.",
+    "thanks": "Agradecemos sua paciência e feedback enquanto continuamos melhorando esta plataforma em beta."
+  },
+
   "phases": {
     "group_stage": "Grupos",
     "round_of_32": "R32",

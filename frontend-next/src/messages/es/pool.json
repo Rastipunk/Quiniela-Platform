@@ -21,6 +21,12 @@
   "scoringDisabledBadge": "Excluido",
   "scoringDisabledByHost": "El host excluyó este partido de la puntuación",
 
+  "uclIncidentBanner": {
+    "title": "Actualización importante sobre la puntuación",
+    "body": "Debido a inconvenientes técnicos el martes 10 de marzo, hemos activado la opción para que el host pueda excluir partidos de la puntuación. Si consideras que algún partido no debería contar, comunícalo al host de tu pool. Los problemas ya fueron solucionados y todo debería funcionar correctamente de aquí en adelante.",
+    "thanks": "Agradecemos tu paciencia y feedback mientras seguimos mejorando esta plataforma en beta."
+  },
+
   "phases": {
     "group_stage": "Grupos",
     "round_of_32": "R32",

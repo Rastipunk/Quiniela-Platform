@@ -21,6 +21,12 @@
   "scoringDisabledBadge": "Excluded",
   "scoringDisabledByHost": "The host excluded this match from scoring",
 
+  "uclIncidentBanner": {
+    "title": "Important scoring update",
+    "body": "Due to technical issues on Tuesday, March 10th, we have enabled an option for the host to exclude matches from scoring. If you believe a match shouldn't count, let your pool host know. The issues have been resolved and everything should work correctly from now on.",
+    "thanks": "We appreciate your patience and feedback as we continue improving this platform in beta."
+  },
+
   "phases": {
     "group_stage": "Groups",
     "round_of_32": "R32",
