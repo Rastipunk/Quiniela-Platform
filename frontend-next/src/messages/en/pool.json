@@ -11,6 +11,15 @@
   "members": "members",
   "yourRole": "Your role",
   "invalidScore": "Invalid score",
+  "cancel": "Cancel",
+  "scoringEnabled": "Scoring on",
+  "scoringDisabled": "Scoring off",
+  "scoringToggle": "Match scoring",
+  "scoringDisableConfirm": "Disable scoring for this match? Points from this match won't count for anyone.",
+  "scoringEnableConfirm": "Re-enable scoring for this match?",
+  "scoringDisableReason": "Reason (optional)",
+  "scoringDisabledBadge": "Excluded",
+  "scoringDisabledByHost": "The host excluded this match from scoring",
 
   "phases": {
     "group_stage": "Groups",

@@ -545,6 +545,23 @@ export async function banMember(
   );
 }
 
+export async function setScoringOverride(
+  token: string,
+  poolId: string,
+  matchId: string,
+  scoringEnabled: boolean,
+  reason?: string
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/matches/${matchId}/scoring-override`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ scoringEnabled, reason }),
+    },
+    token
+  );
+}
+
 /* =========================
    STRUCTURAL PICKS
    ========================= */

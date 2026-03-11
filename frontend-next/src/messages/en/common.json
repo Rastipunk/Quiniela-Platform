@@ -261,6 +261,16 @@
     "item3Desc": "You can now see more clearly the deadline to submit your predictions and the kickoff time for each match.",
     "dismiss": "Got it"
   },
+  "pool": {
+    "scoringEnabled": "Scoring on",
+    "scoringDisabled": "Scoring off",
+    "scoringToggle": "Scoring",
+    "scoringDisableConfirm": "Disable scoring for this match?",
+    "scoringEnableConfirm": "Re-enable scoring for this match?",
+    "scoringDisableReason": "Reason (optional)",
+    "scoringDisabledBadge": "Excluded",
+    "scoringDisabledByHost": "The host excluded this match from scoring"
+  },
   "enterprise": {
     "meta": {
       "title": "Corporate Sports Pools for Companies — Picks4All",

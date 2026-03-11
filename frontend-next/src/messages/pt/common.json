@@ -261,6 +261,16 @@
     "item3Desc": "Agora você pode ver com mais clareza o prazo para enviar suas previsões e o horário de início de cada partida.",
     "dismiss": "Entendi"
   },
+  "pool": {
+    "scoringEnabled": "Pontua",
+    "scoringDisabled": "Não pontua",
+    "scoringToggle": "Pontuação",
+    "scoringDisableConfirm": "Desativar pontuação para este jogo?",
+    "scoringEnableConfirm": "Reativar pontuação para este jogo?",
+    "scoringDisableReason": "Motivo (opcional)",
+    "scoringDisabledBadge": "Excluído",
+    "scoringDisabledByHost": "O anfitrião excluiu este jogo da pontuação"
+  },
   "enterprise": {
     "meta": {
       "title": "Bolões Corporativos para Empresas — Picks4All",

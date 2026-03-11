@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { createInvite, getPoolOverview, upsertPick, upsertResult, updatePoolSettings, manualAdvancePhase, lockPhase, archivePool, promoteMemberToCoAdmin, demoteMemberFromCoAdmin, getPendingMembers, approveMember, rejectMember, kickMember, banMember, getUserProfile, getMatchPicks, type PoolOverview, type MatchPicksResponse } from "@/lib/api";
+import { createInvite, getPoolOverview, upsertPick, upsertResult, updatePoolSettings, manualAdvancePhase, lockPhase, archivePool, promoteMemberToCoAdmin, demoteMemberFromCoAdmin, getPendingMembers, approveMember, rejectMember, kickMember, banMember, getUserProfile, getMatchPicks, setScoringOverride, type PoolOverview, type MatchPicksResponse } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { TeamFlag } from "@/components/TeamFlag";
 import { getTeamFlag, getCountryName } from "@/data/teamFlags";
@@ -123,6 +123,15 @@ export default function PoolPage() {
     loading: boolean;
     error: string | null;
   } | null>(null);
+
+  // Scoring override modal state
+  const [scoringOverrideModal, setScoringOverrideModal] = useState<{
+    matchId: string;
+    matchTitle: string;
+    currentEnabled: boolean;
+  } | null>(null);
+  const [scoringOverrideReason, setScoringOverrideReason] = useState("");
+  const [scoringOverrideBusy, setScoringOverrideBusy] = useState(false);
 
   // UX filtros (volumen)
   const [onlyOpen, setOnlyOpen] = useState(false);
@@ -465,6 +474,22 @@ export default function PoolPage() {
       setError(friendlyError(e));
     } finally {
       setBusyKey(null);
+    }
+  }
+
+  async function toggleScoringOverride() {
+    if (!token || !poolId || !scoringOverrideModal) return;
+    setScoringOverrideBusy(true);
+    try {
+      const newEnabled = !scoringOverrideModal.currentEnabled;
+      await setScoringOverride(token, poolId, scoringOverrideModal.matchId, newEnabled, scoringOverrideReason || undefined);
+      setScoringOverrideModal(null);
+      setScoringOverrideReason("");
+      await load(verbose);
+    } catch (e: any) {
+      setError(friendlyError(e));
+    } finally {
+      setScoringOverrideBusy(false);
     }
   }
 
@@ -2325,7 +2350,7 @@ export default function PoolPage() {
                               </div>
                             </div>
 
-                            <div style={{ fontSize: 12 }}>
+                            <div style={{ fontSize: 12, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                               {m.isLocked ? (
                                 <span style={{ padding: "4px 10px", border: "1px solid #f99", borderRadius: 999, background: "#fee" }}>
                                   🔒 {t("matchCard.locked")}
@@ -2333,6 +2358,11 @@ export default function PoolPage() {
                               ) : (
                                 <span style={{ padding: "4px 10px", border: "1px solid #9f9", borderRadius: 999, background: "#efe" }}>
                                   ✅ {t("matchCard.open")}
+                                </span>
+                              )}
+                              {m.scoringEnabled === false && (
+                                <span style={{ padding: "4px 10px", border: "1px solid #fbbf24", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontWeight: 600 }}>
+                                  ⚠️ {t("scoringDisabledBadge")}
                                 </span>
                               )}
                             </div>
@@ -2347,6 +2377,24 @@ export default function PoolPage() {
                               {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone)}
                             </div>
                           </div>
+
+                          {/* Scoring disabled banner */}
+                          {m.scoringEnabled === false && (
+                            <div style={{
+                              padding: "8px 12px",
+                              background: "#fef3c7",
+                              border: "1px solid #fbbf24",
+                              borderRadius: 8,
+                              marginBottom: 10,
+                              fontSize: 13,
+                              color: "#92400e",
+                            }}>
+                              ⚠️ {t("scoringDisabledByHost")}
+                              {m.scoringOverrideReason && (
+                                <span style={{ fontStyle: "italic" }}> — {m.scoringOverrideReason}</span>
+                              )}
+                            </div>
+                          )}
 
                           {/* Content: Picks and Results OR Placeholder Message */}
                           {hasAnyPlaceholder ? (
@@ -2454,6 +2502,35 @@ export default function PoolPage() {
                               >
                                 {t("matchCard.viewOtherPicks")}
                               </button>
+
+                              {/* Host: Toggle scoring for this match */}
+                              {isHost && (
+                                <button
+                                  onClick={() => {
+                                    const matchTitle = `${getCountryName(m.homeTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")} vs ${getCountryName(m.awayTeam?.id, overview.tournamentInstance.templateKey ?? "wc_2026_sandbox")}`;
+                                    setScoringOverrideModal({
+                                      matchId: m.id,
+                                      matchTitle,
+                                      currentEnabled: m.scoringEnabled !== false,
+                                    });
+                                    setScoringOverrideReason("");
+                                  }}
+                                  style={{
+                                    padding: isMobile ? "10px 16px" : "6px 12px",
+                                    borderRadius: 6,
+                                    border: `1px solid ${m.scoringEnabled !== false ? "#fbbf24" : "#10b981"}`,
+                                    background: m.scoringEnabled !== false ? "#fef9c3" : "#d1fae5",
+                                    color: m.scoringEnabled !== false ? "#92400e" : "#065f46",
+                                    cursor: "pointer",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+                                    ...mobileInteractiveStyles.tapHighlight,
+                                  }}
+                                >
+                                  {m.scoringEnabled !== false ? t("scoringDisabled") : t("scoringEnabled")}
+                                </button>
+                              )}
                             </div>
                           )}
 
@@ -3019,6 +3096,101 @@ export default function PoolPage() {
           )}
 
           {/* Match Picks Modal (ver picks de otros jugadores) */}
+          {/* Scoring Override Confirmation Modal */}
+          {scoringOverrideModal && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1000,
+                padding: 20,
+              }}
+              onClick={() => { setScoringOverrideModal(null); setScoringOverrideReason(""); }}
+            >
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  maxWidth: 440,
+                  width: "100%",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                  padding: 24,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: "0 0 12px", fontSize: 18 }}>
+                  {t("scoringToggle")}
+                </h3>
+                <p style={{ margin: "0 0 8px", fontSize: 14, color: "#555" }}>
+                  <strong>{scoringOverrideModal.matchTitle}</strong>
+                </p>
+                <p style={{ margin: "0 0 16px", fontSize: 14, color: "#666" }}>
+                  {scoringOverrideModal.currentEnabled
+                    ? t("scoringDisableConfirm")
+                    : t("scoringEnableConfirm")}
+                </p>
+                {scoringOverrideModal.currentEnabled && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ fontSize: 13, color: "#666", display: "block", marginBottom: 4 }}>
+                      {t("scoringDisableReason")}
+                    </label>
+                    <input
+                      type="text"
+                      value={scoringOverrideReason}
+                      onChange={(e) => setScoringOverrideReason(e.target.value)}
+                      maxLength={500}
+                      style={{
+                        width: "100%",
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #ddd",
+                        fontSize: 14,
+                        boxSizing: "border-box",
+                      }}
+                      placeholder={t("scoringDisableReason")}
+                    />
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => { setScoringOverrideModal(null); setScoringOverrideReason(""); }}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "1px solid #ddd",
+                      background: "#fff",
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    {t("cancel")}
+                  </button>
+                  <button
+                    onClick={toggleScoringOverride}
+                    disabled={scoringOverrideBusy}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: scoringOverrideModal.currentEnabled ? "#f59e0b" : "#10b981",
+                      color: "#fff",
+                      cursor: scoringOverrideBusy ? "wait" : "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      opacity: scoringOverrideBusy ? 0.7 : 1,
+                    }}
+                  >
+                    {scoringOverrideBusy ? "..." : scoringOverrideModal.currentEnabled ? t("scoringDisabled") : t("scoringEnabled")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {matchPicksModal && (
             <div
               style={{

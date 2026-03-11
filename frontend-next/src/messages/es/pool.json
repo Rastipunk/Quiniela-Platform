@@ -11,6 +11,15 @@
   "members": "miembros",
   "yourRole": "Tu rol",
   "invalidScore": "Marcador inválido",
+  "cancel": "Cancelar",
+  "scoringEnabled": "Puntúa",
+  "scoringDisabled": "No puntúa",
+  "scoringToggle": "Puntuación del partido",
+  "scoringDisableConfirm": "¿Desactivar puntuación para este partido? Los puntos de este partido no contarán para nadie.",
+  "scoringEnableConfirm": "¿Reactivar puntuación para este partido?",
+  "scoringDisableReason": "Razón (opcional)",
+  "scoringDisabledBadge": "Excluido",
+  "scoringDisabledByHost": "El host excluyó este partido de la puntuación",
 
   "phases": {
     "group_stage": "Grupos",

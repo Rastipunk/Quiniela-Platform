@@ -261,6 +261,16 @@
     "item3Desc": "Ahora puedes ver con más claridad el deadline para enviar tus predicciones y la hora de inicio de cada partido.",
     "dismiss": "Entendido"
   },
+  "pool": {
+    "scoringEnabled": "Puntúa",
+    "scoringDisabled": "No puntúa",
+    "scoringToggle": "Puntuación",
+    "scoringDisableConfirm": "¿Desactivar puntuación para este partido?",
+    "scoringEnableConfirm": "¿Reactivar puntuación para este partido?",
+    "scoringDisableReason": "Razón (opcional)",
+    "scoringDisabledBadge": "Excluido",
+    "scoringDisabledByHost": "El host excluyó este partido de la puntuación"
+  },
   "enterprise": {
     "meta": {
       "title": "Quinielas Corporativas para Empresas — Picks4All",

@@ -274,8 +274,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
 
   const now = new Date();
 
-  // 4+5) Mis picks y resultados en paralelo (queries independientes)
-  const [myPredictions, results] = await Promise.all([
+  // 4+5) Mis picks, resultados y overrides en paralelo (queries independientes)
+  const [myPredictions, results, matchOverrides] = await Promise.all([
     prisma.prediction.findMany({
       where: { poolId, userId: req.auth!.userId, matchId: { in: matchIds } },
     }),
@@ -283,7 +283,11 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       where: { poolId, matchId: { in: matchIds } },
       include: { currentVersion: true },
     }),
+    prisma.poolMatchOverride.findMany({
+      where: { poolId },
+    }),
   ]);
+  const overrideByMatchId = new Map(matchOverrides.map((o) => [o.matchId, o]));
   const myPickByMatchId = new Map(myPredictions.map((p) => [p.matchId, p.pickJson as any]));
 
   const resultByMatchId = new Map<string, {
@@ -322,6 +326,7 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
 
     const myPick = myPickByMatchId.get(m.id) ?? null;
     const result = resultByMatchId.get(m.id) ?? null;
+    const override = overrideByMatchId.get(m.id);
 
     return {
       id: m.id,
@@ -338,6 +343,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       awayTeam: { id: m.awayTeamId, name: awayTeam?.name ?? null, code: awayTeam?.code ?? null },
       myPick,
       result,
+      scoringEnabled: override ? override.scoringEnabled : true,
+      scoringOverrideReason: override?.reason ?? null,
     };
   });
 
@@ -564,6 +571,15 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
     for (const match of matches) {
       const pick = byMatch.get(match.id);
       const r = resultByMatchId.get(match.id);
+
+      // Check if scoring is disabled for this match
+      const matchOverride = overrideByMatchId.get(match.id);
+      if (matchOverride && !matchOverride.scoringEnabled) {
+        if (leaderboardVerbose) {
+          breakdown.push({ matchId: match.id, status: "SCORING_DISABLED", reason: matchOverride.reason });
+        }
+        continue;
+      }
 
       if (!r) {
         if (leaderboardVerbose) {
@@ -1152,6 +1168,52 @@ poolsRouter.post("/:poolId/leave", async (req, res) => {
   });
 
   return res.json({ ok: true, message: "Left pool successfully" });
+});
+
+// PUT /pools/:poolId/matches/:matchId/scoring-override — Host toggles scoring for a match
+const scoringOverrideSchema = z.object({
+  scoringEnabled: z.boolean(),
+  reason: z.string().max(500).optional(),
+});
+
+poolsRouter.put("/:poolId/matches/:matchId/scoring-override", async (req, res) => {
+  const { poolId, matchId } = req.params;
+  const userId = req.auth!.userId;
+
+  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(userId, poolId);
+  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+
+  const parsed = scoringOverrideSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const { scoringEnabled, reason } = parsed.data;
+
+  if (scoringEnabled) {
+    // Re-enable scoring: delete the override record
+    await prisma.poolMatchOverride.deleteMany({ where: { poolId, matchId } });
+  } else {
+    // Disable scoring: upsert the override record
+    await prisma.poolMatchOverride.upsert({
+      where: { poolId_matchId: { poolId, matchId } },
+      create: { poolId, matchId, scoringEnabled: false, reason: reason || null, setByUserId: userId },
+      update: { scoringEnabled: false, reason: reason || null, setByUserId: userId, setAtUtc: new Date() },
+    });
+  }
+
+  await writeAuditEvent({
+    actorUserId: userId,
+    action: scoringEnabled ? "MATCH_SCORING_ENABLED" : "MATCH_SCORING_DISABLED",
+    entityType: "PoolMatchOverride",
+    entityId: `${poolId}:${matchId}`,
+    poolId,
+    dataJson: { matchId, scoringEnabled, reason },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({ ok: true, scoringEnabled, matchId });
 });
 
 const banMemberSchema = z.object({
@@ -2671,11 +2733,15 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     });
     const pickByMatchId = new Map(predictions.map((p) => [p.matchId, p.pickJson as any]));
 
-    // 6) Cargar resultados
-    const resultsRaw = await prisma.poolMatchResult.findMany({
-      where: { poolId },
-      include: { currentVersion: true },
-    });
+    // 6) Cargar resultados y overrides
+    const [resultsRaw, playerSummaryOverrides] = await Promise.all([
+      prisma.poolMatchResult.findMany({
+        where: { poolId },
+        include: { currentVersion: true },
+      }),
+      prisma.poolMatchOverride.findMany({ where: { poolId } }),
+    ]);
+    const playerSummaryOverrideMap = new Map(playerSummaryOverrides.map((o) => [o.matchId, o]));
     const resultByMatchId = new Map(
       resultsRaw
         .filter((r) => r.currentVersion)
@@ -2743,6 +2809,20 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
 
         const homeTeam = teamById.get(match.homeTeamId);
         const awayTeam = teamById.get(match.awayTeamId);
+
+        // Check scoring override
+        const pOverride = playerSummaryOverrideMap.get(match.id);
+        if (pOverride && !pOverride.scoringEnabled) {
+          matchDetails.push({
+            matchId: match.id,
+            homeTeam: { id: match.homeTeamId, name: homeTeam?.name ?? null, code: homeTeam?.code ?? null },
+            awayTeam: { id: match.awayTeamId, name: awayTeam?.name ?? null, code: awayTeam?.code ?? null },
+            kickoffUtc: match.kickoffUtc,
+            status: "SCORING_DISABLED",
+            scoringOverrideReason: pOverride.reason ?? null,
+          });
+          continue;
+        }
 
         let pointsEarned = 0;
         let pointsMax = 0;

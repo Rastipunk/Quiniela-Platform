@@ -108,6 +108,7 @@ model User {
   structuralPhaseResults    StructuralPhaseResult[]
   groupStandingsPredictions GroupStandingsPrediction[]
   groupStandingsResults     GroupStandingsResult[]
+  poolMatchOverrides        PoolMatchOverride[]
 
   @@index([username])
   @@index([resetToken])
@@ -354,6 +355,7 @@ model Pool {
   structuralPhaseResults    StructuralPhaseResult[]
   groupStandingsPredictions GroupStandingsPrediction[]
   groupStandingsResults     GroupStandingsResult[]
+  matchOverrides            PoolMatchOverride[]
 
   @@index([tournamentInstanceId])
   @@index([createdByUserId])
@@ -534,6 +536,30 @@ model PoolMatchResultVersion {
   @@unique([resultId, versionNumber])
   @@index([resultId])
   @@index([source])
+}
+
+// Comentario en español: override de scoring por partido — permite al host excluir partidos de la puntuación
+model PoolMatchOverride {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  matchId String
+
+  // Comentario en español: si false, este partido no suma ni resta puntos en el leaderboard
+  scoringEnabled Boolean @default(true)
+
+  // Comentario en español: razón opcional para la exclusión (visible para todos los miembros)
+  reason String?
+
+  setByUserId String
+  setBy       User   @relation(fields: [setByUserId], references: [id])
+
+  setAtUtc DateTime @default(now())
+
+  @@unique([poolId, matchId])
+  @@index([poolId])
 }
 
 // Sprint 2 - Advanced Pick Types: Resultados estructurales (publicados por HOST)
