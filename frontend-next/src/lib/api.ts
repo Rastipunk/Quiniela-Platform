@@ -23,7 +23,7 @@ const API_BASE = getApiBase();
 
 export { API_BASE };
 
-async function requestJson<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
+async function requestJson<T>(path: string, init: RequestInit = {}, _token?: string): Promise<T> {
   const headers = new Headers(init.headers);
 
   headers.set("Accept", "application/json");
@@ -33,9 +33,9 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
     headers.set("Content-Type", "application/json");
   }
 
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  // Auth is handled via httpOnly cookies — no Authorization header needed.
+  // credentials: "include" ensures the browser sends cookies cross-origin.
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" as const });
 
   const text = await res.text();
   let data: unknown = null;
@@ -72,7 +72,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
    ========================= */
 
 export type LoginResponse = {
-  token: string;
+  token?: string; // Deprecated — auth now uses httpOnly cookies
   user?: { id: string; email: string; username: string; displayName: string; role: string };
 };
 
@@ -1156,10 +1156,15 @@ export type VerifyEmailResponse = {
 };
 
 export async function verifyEmail(verificationToken: string): Promise<VerifyEmailResponse> {
+  // HI-02: Use POST with token in body instead of GET with token in URL
   return requestJson<VerifyEmailResponse>(
-    `/auth/verify-email?token=${encodeURIComponent(verificationToken)}`,
-    { method: "GET" }
+    "/auth/verify-email",
+    { method: "POST", body: JSON.stringify({ token: verificationToken }) }
   );
+}
+
+export async function logout(): Promise<{ ok: boolean }> {
+  return requestJson<{ ok: boolean }>("/auth/logout", { method: "POST" });
 }
 
 export async function resendVerificationEmail(token: string): Promise<{ message: string }> {

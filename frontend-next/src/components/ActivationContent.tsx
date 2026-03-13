@@ -44,6 +44,11 @@ export function ActivationContent() {
       return;
     }
 
+    // HI-02: Clean token from URL to prevent logging/leaking
+    if (typeof window !== "undefined" && window.location.search.includes("token=")) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     checkCorporateInvite(tokenParam)
       .then((data) => {
         setInviteEmail(data.email);

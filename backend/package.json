@@ -33,7 +33,14 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.1",
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.0.10",
+    "@types/node-cron": "^3.0.11",
     "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
@@ -45,15 +52,10 @@
     "prisma": "^6.19.1",
     "resend": "^6.6.0",
     "typescript": "^5.9.3",
-    "zod": "^4.2.1",
-    "@types/bcrypt": "^6.0.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^25.0.10",
-    "@types/node-cron": "^3.0.11"
+    "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "ts-node-dev": "^2.0.0",
     "vitest": "^4.0.18"
   }

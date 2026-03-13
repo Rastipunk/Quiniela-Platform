@@ -33,6 +33,11 @@ function VerifyEmailInner() {
       return;
     }
 
+    // HI-02: Clean token from URL to prevent logging/leaking
+    if (typeof window !== "undefined" && window.location.search.includes("token=")) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     try {
       const result = await verifyEmail(token);
 

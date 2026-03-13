@@ -13,6 +13,7 @@ import { transitionToActive } from "../services/poolStateMachine";
 import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "./legal";
 import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
+import { setAuthCookies, clearAuthCookies } from "../lib/authCookies";
 
 export const authRouter = Router();
 
@@ -151,9 +152,9 @@ authRouter.post("/register", async (req, res) => {
   });
 
   const token = signToken({ userId: user.id, platformRole: user.platformRole });
+  setAuthCookies(res, token);
 
   return res.status(201).json({
-    token,
     user,
     emailVerificationSent: true,
   });
@@ -193,9 +194,9 @@ authRouter.post("/login", async (req, res) => {
   });
 
   const token = signToken({ userId: user.id, platformRole: user.platformRole });
+  setAuthCookies(res, token);
 
   return res.json({
-    token,
     user: {
       id: user.id,
       email: user.email,
@@ -422,9 +423,9 @@ authRouter.post("/google", async (req, res) => {
     });
 
     const token = signToken({ userId: user.id, platformRole: user.platformRole });
+    setAuthCookies(res, token);
 
     return res.json({
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -539,9 +540,9 @@ authRouter.post("/google", async (req, res) => {
   });
 
   const token = signToken({ userId: newUser.id, platformRole: newUser.platformRole });
+  setAuthCookies(res, token);
 
   return res.json({
-    token,
     user: {
       id: newUser.id,
       email: newUser.email,
@@ -612,6 +613,51 @@ authRouter.get("/verify-email", async (req, res) => {
   return res.json({
     verified: true,
   });
+});
+
+// POST /auth/verify-email — HI-02: Accept token in body instead of URL query params
+authRouter.post("/verify-email", async (req, res) => {
+  const parsed = verifyEmailSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "TOKEN_REQUIRED" });
+  }
+
+  const { token } = parsed.data;
+
+  const user = await prisma.user.findFirst({
+    where: {
+      emailVerificationToken: token,
+      emailVerificationTokenExpiresAt: { gte: new Date() },
+    },
+  });
+
+  if (!user) {
+    return res.status(400).json({ error: "INVALID_TOKEN" });
+  }
+
+  if (user.emailVerified) {
+    return res.json({ alreadyVerified: true });
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationTokenExpiresAt: null,
+    },
+  });
+
+  await writeAuditEvent({
+    actorUserId: user.id,
+    action: "EMAIL_VERIFIED",
+    entityType: "User",
+    entityId: user.id,
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return res.json({ verified: true });
 });
 
 // ========== CORPORATE ACTIVATION ==========
@@ -772,8 +818,8 @@ authRouter.post("/activate-corporate", async (req, res) => {
     }
 
     const token = signToken({ userId: existingUser.id, platformRole: existingUser.platformRole });
+    setAuthCookies(res, token);
     return res.json({
-      token,
       user: {
         id: existingUser.id,
         email: existingUser.email,
@@ -924,9 +970,9 @@ authRouter.post("/activate-corporate", async (req, res) => {
   }).catch((err) => console.error("Error sending welcome email:", err));
 
   const jwtToken = signToken({ userId: result.id, platformRole: result.platformRole });
+  setAuthCookies(res, jwtToken);
 
   return res.status(201).json({
-    token: jwtToken,
     user: result,
     poolId: invite.poolId,
     poolName: invite.pool.name,
@@ -995,5 +1041,13 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
+  return res.json({ ok: true });
+});
+
+// ========== LOGOUT ==========
+
+// POST /auth/logout — Clear auth cookies
+authRouter.post("/logout", (_req, res) => {
+  clearAuthCookies(res);
   return res.json({ ok: true });
 });

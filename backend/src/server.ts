@@ -5,6 +5,7 @@ validateEnv();
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 
 import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
@@ -57,6 +58,7 @@ app.use(
 );
 
 app.use(helmet());
+app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 
 // Global rate limiting

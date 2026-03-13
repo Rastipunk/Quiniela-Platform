@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useRouter } from "next/navigation";
 import { clearToken, getToken } from "@/lib/auth";
-import { getUserProfile, type UserProfile } from "@/lib/api";
+import { getUserProfile, logout as apiLogout, type UserProfile } from "@/lib/api";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { BrandLogo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
@@ -59,6 +59,7 @@ export function NavBar() {
   }
 
   function handleLogout() {
+    apiLogout().catch(() => {}); // Clear server-side cookie
     clearToken();
     router.push("/");
     window.location.reload();

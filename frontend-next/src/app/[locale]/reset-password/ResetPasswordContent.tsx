@@ -6,6 +6,7 @@ import { resetPassword } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getToken, clearToken } from "@/lib/auth";
+import { logout as apiLogout } from "@/lib/api";
 
 /**
  * Página de restablecimiento de contraseña.
@@ -63,6 +64,7 @@ function ResetPasswordInner() {
       // Si había sesión activa, cerrarla por seguridad
       // (la contraseña cambió, el usuario debe re-autenticarse)
       if (hasActiveSession) {
+        apiLogout().catch(() => {});
         clearToken();
       }
 
@@ -82,6 +84,7 @@ function ResetPasswordInner() {
   }
 
   function handleLogoutAndContinue() {
+    apiLogout().catch(() => {});
     clearToken();
     // Forzar re-render para actualizar hasActiveSession
     window.location.reload();

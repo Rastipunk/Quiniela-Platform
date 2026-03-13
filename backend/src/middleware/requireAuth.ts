@@ -1,22 +1,24 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../lib/jwt";
 import { prisma } from "../db";
+import { getTokenFromCookies } from "../lib/authCookies";
+
+/** Extract Bearer token from Authorization header */
+function extractBearerToken(req: Request): string | null {
+  const header = req.header("Authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  const token = header.slice("Bearer ".length).trim();
+  return token || null;
+}
 
 // Middleware que requiere JWT válido y usuario activo
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    const header = req.header("Authorization");
-    if (!header) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", reason: "NO_AUTH_HEADER" });
-    }
+    // Read token from httpOnly cookie first, fall back to Authorization header
+    const token = getTokenFromCookies(req.cookies) || extractBearerToken(req);
 
-    if (!header.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", reason: "INVALID_AUTH_FORMAT" });
-    }
-
-    const token = header.slice("Bearer ".length).trim();
     if (!token) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", reason: "EMPTY_TOKEN" });
+      return res.status(401).json({ error: "UNAUTHENTICATED", reason: "NO_AUTH_TOKEN" });
     }
 
     let payload;
@@ -52,10 +54,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 // Like requireAuth but does not fail if no token — sets req.auth if valid, otherwise proceeds anonymously
 export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   try {
-    const header = req.header("Authorization");
-    if (!header?.startsWith("Bearer ")) return next();
-
-    const token = header.slice("Bearer ".length).trim();
+    const token = getTokenFromCookies(req.cookies) || extractBearerToken(req);
     if (!token) return next();
 
     const payload = verifyToken(token);

@@ -15,6 +15,7 @@ import {
   type MePoolRow,
 } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
+import { logout as apiLogout } from "@/lib/api";
 const PoolConfigWizard = dynamic(() => import("@/components/PoolConfigWizard").then(m => ({ default: m.PoolConfigWizard })), {
   loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
 });
@@ -275,6 +276,7 @@ export default function DashboardPage() {
           {!isMobile && (
             <button
               onClick={() => {
+                apiLogout().catch(() => {});
                 clearToken();
                 window.location.href = "/";
               }}
