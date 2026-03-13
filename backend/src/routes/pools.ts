@@ -33,34 +33,8 @@ import {
 } from "../lib/scoringBreakdown";
 import type { PhasePickConfig } from "../types/pickConfig";
 import { requirePoolAdmin, requirePoolOwner, isPoolAdmin, isPoolOwner, HOST_NOTIFICATION_ROLES, NON_LEAVABLE_ROLES } from "../lib/roles";
+import { extractMatches, extractTeams, extractPhases, parseFixtureData, type FixtureMatch, type FixtureTeam, type FixturePhase } from "../lib/fixture";
 
-
-type SnapshotMatch = {
-  id: string;
-  phaseId: string;
-  kickoffUtc: string;
-  homeTeamId: string;
-  awayTeamId: string;
-  matchNumber?: number;
-  roundLabel?: string;
-  label?: string;
-  venue?: string;
-  groupId?: string;
-};
-
-type SnapshotTeam = { id: string; name?: string; code?: string };
-
-function extractMatches(dataJson: unknown): SnapshotMatch[] {
-  if (!dataJson || typeof dataJson !== "object") return [];
-  const dj = dataJson as any;
-  return Array.isArray(dj.matches) ? (dj.matches as SnapshotMatch[]) : [];
-}
-
-function extractTeams(dataJson: unknown): SnapshotTeam[] {
-  if (!dataJson || typeof dataJson !== "object") return [];
-  const dj = dataJson as any;
-  return Array.isArray(dj.teams) ? (dj.teams as SnapshotTeam[]) : [];
-}
 
 function outcomeFromScore(homeGoals: number, awayGoals: number): "HOME" | "DRAW" | "AWAY" {
   if (homeGoals > awayGoals) return "HOME";
@@ -131,9 +105,7 @@ poolsRouter.post("/", async (req, res) => {
     // Si es un string, es un preset key — generar config dinámica con fases reales
     if (typeof pickTypesConfig === "string") {
       // Extraer fases del dataJson de la instancia
-      const instanceData = instance.dataJson as any;
-      const instancePhases: Array<{ id: string; name: string; type: string }> =
-        instanceData?.phases ?? [];
+      const instancePhases = extractPhases(instance.dataJson);
 
       let dynamicConfig = instancePhases.length > 0
         ? generateDynamicPresetConfig(pickTypesConfig, instancePhases)
@@ -1690,8 +1662,7 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
     } else {
       // Derive next phase dynamically from tournament data phase order
       let derivedNextPhase: string | undefined;
-      const instanceData = pool.tournamentInstance!.dataJson as any;
-      const instancePhases: Array<{ id: string; order: number }> = instanceData?.phases ?? [];
+      const instancePhases = extractPhases(pool.tournamentInstance!.dataJson);
       if (instancePhases.length > 0) {
         const sorted = [...instancePhases].sort((a, b) => a.order - b.order);
         const idx = sorted.findIndex((p) => p.id === currentPhaseId);
@@ -1804,10 +1775,8 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
     }
 
     // Get matches from tournament data for deadline validation
-    const dataJson = pool.tournamentInstance?.dataJson as any;
-    const allMatches: any[] = dataJson?.phases?.flatMap((p: any) =>
-      (p.groups ?? []).flatMap((g: any) => g.matches ?? [])
-    ) ?? [];
+    const fixtureData = parseFixtureData(pool.tournamentInstance?.dataJson);
+    const allMatches = fixtureData.matches;
 
     // Get existing results to check for lock conditions
     const resultsRaw = await prisma.poolMatchResult.findMany({
@@ -1818,11 +1787,9 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
     for (const r of resultsRaw) {
       if (r.currentVersion) {
         // Find which phase this match belongs to
-        const match = allMatches.find((m: any) => m.id === r.matchId);
+        const match = allMatches.find((m) => m.id === r.matchId);
         if (match) {
-          const phaseId = match.phaseId ?? (dataJson?.phases?.find((p: any) =>
-            (p.groups ?? []).some((g: any) => (g.matches ?? []).some((m: any) => m.id === r.matchId))
-          )?.id);
+          const phaseId = match.phaseId;
           if (phaseId) {
             const arr = resultsByPhase.get(phaseId) ?? [];
             arr.push(r.currentVersion);
@@ -1852,14 +1819,9 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
       }
 
       // 2. Phase completed (all matches have results)
-      const phaseMatches = allMatches.filter((m: any) => {
-        const mPhaseId = m.phaseId ?? (dataJson?.phases?.find((p: any) =>
-          (p.groups ?? []).some((g: any) => (g.matches ?? []).some((mx: any) => mx.id === m.id))
-        )?.id);
-        return mPhaseId === pc.phaseId;
-      });
+      const phaseMatches = allMatches.filter((m) => m.phaseId === pc.phaseId);
       const allHaveResults = phaseMatches.length > 0 &&
-        phaseMatches.every((m: any) => resultsRaw.some((r) => r.matchId === m.id && r.currentVersion));
+        phaseMatches.every((m) => resultsRaw.some((r) => r.matchId === m.id && r.currentVersion));
       if (allHaveResults) {
         return pc; // Can't change — phase completed
       }
@@ -2186,9 +2148,8 @@ poolsRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
     }
 
     // Obtener datos del fixture
-    const fixtureData = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
-    const matches = fixtureData?.matches || [];
-    const match = matches.find((m: any) => m.id === matchId);
+    const fixtureData = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
+    const match = fixtureData.matches.find((m) => m.id === matchId);
 
     if (!match) {
       return res.status(404).json({ error: "NOT_FOUND" });
@@ -2326,14 +2287,14 @@ poolsRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
     }
 
     // Obtener datos del fixture
-    const fixtureData = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
-    const matches = fixtureData?.matches || [];
-    const teams = fixtureData?.teams || [];
-    const groups = fixtureData?.groups || [];
+    const fixtureData = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
+    const matches = fixtureData.matches;
+    const teams = fixtureData.teams;
+    const groups = (fixtureData as any).groups || [];
 
     // Crear mapa de equipos
     const teamsMap = new Map<string, { id: string; name: string }>();
-    teams.forEach((t: any) => {
+    teams.forEach((t) => {
       teamsMap.set(t.id, { id: t.id, name: t.name || t.code || t.id });
     });
 
@@ -2528,17 +2489,17 @@ poolsRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     };
 
     // Obtener datos del fixture
-    const fixtureData = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
-    const teams = fixtureData?.teams || [];
+    const fixtureData = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
+    const teams = fixtureData.teams;
 
     // Crear mapa de equipos
     const teamsMap = new Map<string, { id: string; name: string }>();
-    teams.forEach((t: any) => {
+    teams.forEach((t) => {
       teamsMap.set(t.id, { id: t.id, name: t.name || t.code || t.id });
     });
 
     // Obtener equipos del grupo específico
-    const groupTeams = teams.filter((t: any) => t.groupId === groupId);
+    const groupTeams = teams.filter((t) => t.groupId === groupId);
     if (groupTeams.length === 0) {
       return res.status(404).json({ error: "Grupo no encontrado" });
     }
@@ -2752,7 +2713,7 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
 
     // 8) Agrupar matches por fase
-    const phaseGroups = new Map<string, SnapshotMatch[]>();
+    const phaseGroups = new Map<string, FixtureMatch[]>();
     for (const match of matches) {
       const group = phaseGroups.get(match.phaseId) ?? [];
       group.push(match);
@@ -2763,15 +2724,15 @@ poolsRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     const phases: any[] = [];
 
     // Obtener orden de fases del dataJson
-    const phasesFromData = (dataJson as any)?.phases ?? [];
+    const phasesFromData = extractPhases(dataJson);
     const phaseOrder = new Map<string, number>(
-      phasesFromData.map((p: any, idx: number) => [p.id, idx])
+      phasesFromData.map((p, idx) => [p.id, idx])
     );
 
     for (const [phaseId, phaseMatches] of phaseGroups) {
       // Obtener config de fase
       const phaseConfig = pickTypesConfig?.find((p) => p.phaseId === phaseId);
-      const phaseData = phasesFromData.find((p: any) => p.id === phaseId);
+      const phaseData = phasesFromData.find((p) => p.id === phaseId);
       const phaseName = phaseData?.name ?? phaseId;
 
       // Ordenar partidos por kickoff
@@ -3169,7 +3130,7 @@ poolsRouter.get("/:poolId/notifications", async (req, res) => {
 
       // Fases completas listas para avanzar
       // Agrupar partidos por fase
-      const phaseMatches: Record<string, SnapshotMatch[]> = {};
+      const phaseMatches: Record<string, FixtureMatch[]> = {};
       for (const match of matches) {
         if (!phaseMatches[match.phaseId]) {
           phaseMatches[match.phaseId] = [];

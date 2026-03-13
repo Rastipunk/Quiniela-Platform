@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { createInvite, getPoolOverview, upsertPick, upsertResult, getUserProfile, type PoolOverview } from "@/lib/api";
+import type { PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { getToken } from "@/lib/auth";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/hooks/usePoolNotifications";
@@ -13,7 +14,6 @@ import { ScoringBreakdownModal } from "@/components/ScoringBreakdownModal";
 import { PlayerSummary } from "@/components/PlayerSummary";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 import { getPendingMembers } from "@/lib/api";
-import type { PoolPickTypesConfig } from "@/types/pickConfig";
 
 // Extracted tab components
 import { PoolAdminTab } from "./components/PoolAdminTab";
@@ -139,11 +139,11 @@ export default function PoolPage() {
   }, [poolId, verbose]);
 
   // ── Computed values ──
-  const phases = useMemo(() => {
+  const phases = useMemo((): PoolFixturePhase[] => {
     if (!overview) return [];
-    const data = (overview.tournamentInstance as any).dataJson;
+    const data = overview.tournamentInstance.dataJson;
     if (!data?.phases) return [];
-    return data.phases.sort((a: any, b: any) => a.order - b.order);
+    return [...data.phases].sort((a, b) => a.order - b.order);
   }, [overview]);
 
   useEffect(() => {
@@ -154,13 +154,13 @@ export default function PoolPage() {
 
   const getPhaseStatus = (phaseId: string) => {
     if (!overview) return "PENDING";
-    const phaseMatches = overview.matches.filter((m: any) => m.phaseId === phaseId);
+    const phaseMatches = overview.matches.filter((m) => m.phaseId === phaseId);
     if (phaseMatches.length === 0) return "PENDING";
-    const hasPlaceholders = phaseMatches.some((m: any) =>
+    const hasPlaceholders = phaseMatches.some((m) =>
       isPlaceholder(m.homeTeam?.id || "") || isPlaceholder(m.awayTeam?.id || "")
     );
     if (hasPlaceholders) return "PENDING";
-    const hasAllResults = phaseMatches.every((m: any) => m.result);
+    const hasAllResults = phaseMatches.every((m) => m.result);
     return hasAllResults ? "COMPLETED" : "ACTIVE";
   };
 
@@ -176,9 +176,9 @@ export default function PoolPage() {
     if (!overview) return false;
     const nextPhaseId = nextPhaseMap[phaseId];
     if (!nextPhaseId) return false;
-    const nextPhaseMatches = overview.matches.filter((m: any) => m.phaseId === nextPhaseId);
+    const nextPhaseMatches = overview.matches.filter((m) => m.phaseId === nextPhaseId);
     if (nextPhaseMatches.length === 0) return false;
-    const hasPlaceholdersInNext = nextPhaseMatches.some((m: any) =>
+    const hasPlaceholdersInNext = nextPhaseMatches.some((m) =>
       isPlaceholder(m.homeTeam?.id || "") || isPlaceholder(m.awayTeam?.id || "")
     );
     return !hasPlaceholdersInNext;
@@ -186,16 +186,16 @@ export default function PoolPage() {
 
   const allowScorePick = useMemo(() => {
     if (!overview) return true;
-    const allow = (overview as any)?.leaderboard?.scoringPreset?.allowScorePick;
+    const allow = overview.leaderboard?.scoringPreset?.allowScorePick;
     if (typeof allow === "boolean") return allow;
     return overview.pool.scoringPresetKey !== "OUTCOME_ONLY";
   }, [overview]);
 
   const activePhaseConfig = useMemo(() => {
     if (!overview || !activePhase || !overview.pool.pickTypesConfig) return null;
-    const config = overview.pool.pickTypesConfig as PoolPickTypesConfig;
+    const config = overview.pool.pickTypesConfig;
     if (!Array.isArray(config)) return null;
-    return config.find((pc: any) => pc.phaseId === activePhase) || null;
+    return config.find((pc) => pc.phaseId === activePhase) || null;
   }, [overview, activePhase]);
 
   const requiresStructuralPicks = useMemo(() => {
@@ -205,22 +205,22 @@ export default function PoolPage() {
 
   const activePhaseData = useMemo(() => {
     if (!activePhase) return null;
-    return phases.find((p: any) => p.id === activePhase) || null;
+    return phases.find((p) => p.id === activePhase) || null;
   }, [phases, activePhase]);
 
   const nextOpenGroup = useMemo(() => {
     if (!overview) return "A";
     const next = overview.matches
-      .filter((m: any) => !m.isLocked)
-      .sort((a: any, b: any) => new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime())[0];
+      .filter((m) => !m.isLocked)
+      .sort((a, b) => new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime())[0];
     return next?.groupId ?? "A";
   }, [overview]);
 
   const filteredMatches = useMemo(() => {
     if (!overview) return [];
     const q = norm(search);
-    return overview.matches.filter((m: any) => {
-      if (activePhase && (m as any).phaseId !== activePhase) return false;
+    return overview.matches.filter((m) => {
+      if (activePhase && m.phaseId !== activePhase) return false;
       if (onlyOpen && m.isLocked) return false;
       if (onlyNoPick && m.myPick) return false;
       if (onlyNoResult && m.result) return false;
@@ -243,7 +243,7 @@ export default function PoolPage() {
       (by[g] ??= []).push(m);
     }
     for (const g of Object.keys(by)) {
-      by[g].sort((a: any, b: any) => {
+      by[g].sort((a, b) => {
         const ta = new Date(a.kickoffUtc).getTime();
         const tb = new Date(b.kickoffUtc).getTime();
         if (ta !== tb) return ta - tb;
@@ -269,7 +269,7 @@ export default function PoolPage() {
     if (!overview || !activePhase) return new Map();
     const resultsMap = new Map<string, { homeGoals: number; awayGoals: number; homePenalties?: number | null; awayPenalties?: number | null }>();
     for (const m of overview.matches) {
-      if ((m as any).phaseId === activePhase && m.result) {
+      if (m.phaseId === activePhase && m.result) {
         resultsMap.set(m.id, {
           homeGoals: m.result.homeGoals,
           awayGoals: m.result.awayGoals,

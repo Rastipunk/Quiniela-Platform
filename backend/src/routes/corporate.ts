@@ -8,6 +8,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification, sendCorporateInquiryConfirmationEmail, sendCorporateActivationEmail, sendWelcomeEmail, escapeHtml } from "../lib/email";
 import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
 import { validatePoolPickTypesConfig, PoolPickTypesConfigSchema } from "../validation/pickConfig";
+import { extractPhases } from "../lib/fixture";
 import rateLimit from "express-rate-limit";
 import { transitionToActive } from "../services/poolStateMachine";
 
@@ -139,8 +140,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
   let finalPickTypesConfig: any = null;
   if (pickTypesConfig) {
     if (typeof pickTypesConfig === "string") {
-      const instanceData = instance.dataJson as any;
-      const instancePhases: Array<{ id: string; name: string; type: string }> = instanceData?.phases ?? [];
+      const instancePhases = extractPhases(instance.dataJson);
       let dynamicConfig = instancePhases.length > 0
         ? generateDynamicPresetConfig(pickTypesConfig, instancePhases)
         : null;

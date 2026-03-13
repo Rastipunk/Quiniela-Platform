@@ -21,6 +21,7 @@ import {
   isFixtureInProgress,
 } from "../apiFootball";
 import { writeAuditEvent } from "../../lib/audit";
+import { extractMatches } from "../../lib/fixture";
 import {
   advanceTwoLeggedPhase,
   validateCanAutoAdvance,
@@ -107,17 +108,15 @@ export class SmartSyncService {
       throw new Error(`Instance not found: ${instanceId}`);
     }
 
-    const dataJson = instance.dataJson as {
-      matches?: Array<{ id: string; kickoffUtc?: string }>;
-    };
+    const fixtureMatches = extractMatches(instance.dataJson);
 
-    if (!dataJson?.matches) {
+    if (fixtureMatches.length === 0) {
       return 0;
     }
 
     let created = 0;
 
-    for (const match of dataJson.matches) {
+    for (const match of fixtureMatches) {
       if (!match.kickoffUtc) continue;
 
       // Check if there's a mapping for this match

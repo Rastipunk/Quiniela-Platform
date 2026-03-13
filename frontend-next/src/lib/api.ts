@@ -292,7 +292,8 @@ export async function joinPool(token: string, code: string): Promise<any> {
    POOL PAGE
    ========================= */
 
-export type PoolOverview = any;
+import type { PoolOverview } from "./poolTypes";
+export type { PoolOverview } from "./poolTypes";
 
 export async function getPoolOverview(token: string, poolId: string, leaderboardVerbose = false): Promise<PoolOverview> {
   const q = leaderboardVerbose ? "?leaderboardVerbose=1" : "?leaderboardVerbose=0";

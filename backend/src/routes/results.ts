@@ -13,6 +13,7 @@ import {
 import { transitionToCompleted, canPublishResults } from "../services/poolStateMachine";
 import { ResultSource, ResultSourceMode } from "@prisma/client";
 import { requirePoolAdmin } from "../lib/roles";
+import { extractMatches, extractTeams, parseFixtureData, type FixtureMatch, type FixtureTeam } from "../lib/fixture";
 
 export const resultsRouter = Router();
 resultsRouter.use(requireAuth);
@@ -29,30 +30,6 @@ const upsertResultSchema = z.object({
   // Comentario en español: requerido solo cuando ya existía un resultado (errata)
   reason: z.string().min(1).max(500).optional(),
 });
-
-type TemplateMatch = {
-  id: string;
-  kickoffUtc: string;
-  homeTeamId: string;
-  awayTeamId: string;
-};
-
-function extractMatches(dataJson: unknown): TemplateMatch[] {
-  if (!dataJson || typeof dataJson !== "object") return [];
-  const dj = dataJson as any;
-  if (!Array.isArray(dj.matches)) return [];
-  return dj.matches as TemplateMatch[];
-}
-
-type TemplateTeam = { id: string; name?: string; code?: string };
-
-function extractTeams(dataJson: unknown): TemplateTeam[] {
-  if (!dataJson || typeof dataJson !== "object") return [];
-  const dj = dataJson as any;
-  if (!Array.isArray(dj.teams)) return [];
-  return dj.teams as TemplateTeam[];
-}
-
 
 async function requireActivePoolMember(userId: string, poolId: string) {
   const m = await prisma.poolMember.findFirst({ where: { poolId, userId, status: "ACTIVE" } });
@@ -318,14 +295,14 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
     // y si es posible avanzar automáticamente a la siguiente
 
     try {
-      const dataJson = pool.tournamentInstance.dataJson as any;
-      if (!dataJson?.phases || !dataJson?.matches) {
+      const fixtureData = parseFixtureData(pool.tournamentInstance.dataJson);
+      if (fixtureData.phases.length === 0 || fixtureData.matches.length === 0) {
         // No hay fases definidas, skip auto-advance
         return res.json(saved);
       }
 
       // Encontrar la fase del partido que acabamos de actualizar
-      const updatedMatch = dataJson.matches.find((m: any) => m.id === matchId);
+      const updatedMatch = fixtureData.matches.find((m) => m.id === matchId);
       if (!updatedMatch) {
         return res.json(saved);
       }
@@ -563,7 +540,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
           breakdown.push({
             matchId: match.id,
             kickoffUtc: match.kickoffUtc,
-            roundLabel: (match as any).roundLabel ?? null,
+            roundLabel: match.roundLabel ?? null,
             homeTeam: { id: match.homeTeamId, name: homeTeam?.name ?? null, code: homeTeam?.code ?? null },
             awayTeam: { id: match.awayTeamId, name: awayTeam?.name ?? null, code: awayTeam?.code ?? null },
             pick: pred?.pickJson ?? null,
@@ -581,7 +558,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
           breakdown.push({
             matchId: match.id,
             kickoffUtc: match.kickoffUtc,
-            roundLabel: (match as any).roundLabel ?? null,
+            roundLabel: match.roundLabel ?? null,
             homeTeam: { id: match.homeTeamId, name: homeTeam?.name ?? null, code: homeTeam?.code ?? null },
             awayTeam: { id: match.awayTeamId, name: awayTeam?.name ?? null, code: awayTeam?.code ?? null },
             pick: null,
@@ -601,7 +578,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
         breakdown.push({
           matchId: match.id,
           kickoffUtc: match.kickoffUtc,
-          roundLabel: (match as any).roundLabel ?? null,
+          roundLabel: match.roundLabel ?? null,
           homeTeam: { id: match.homeTeamId, name: homeTeam?.name ?? null, code: homeTeam?.code ?? null },
           awayTeam: { id: match.awayTeamId, name: awayTeam?.name ?? null, code: awayTeam?.code ?? null },
           pick: pred.pickJson,

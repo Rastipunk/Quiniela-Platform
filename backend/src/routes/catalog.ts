@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
+import { extractPhases } from "../lib/fixture";
 
 export const catalogRouter = Router();
 
@@ -49,12 +50,11 @@ catalogRouter.get("/instances/:instanceId/phases", async (req, res) => {
     return res.status(404).json({ message: "Instance not found" });
   }
 
-  const data = instance.dataJson as any;
-  const phases = data?.phases || [];
+  const phases = extractPhases(instance.dataJson);
 
   // Retornar las fases con la estructura que necesita el frontend
   res.json({
-    phases: phases.map((p: any) => ({
+    phases: phases.map((p) => ({
       id: p.id,
       name: p.name,
       type: p.type,

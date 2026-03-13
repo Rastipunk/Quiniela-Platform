@@ -7,7 +7,8 @@ import { getTeamFlag, getCountryName } from "@/data/teamFlags";
 import { StructuralPicksManager } from "@/components/StructuralPicksManager";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
-import { getMatchPicks, setScoringOverride, type PoolOverview, type MatchPicksResponse } from "@/lib/api";
+import { getMatchPicks, setScoringOverride, type MatchPicksResponse } from "@/lib/api";
+import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { fmtUtc, formatPhaseName, formatPhaseFullName, isPlaceholder, getPlaceholderName } from "./poolHelpers";
 import type { BreakdownModalData } from "./poolTypes";
 
@@ -25,20 +26,20 @@ interface PoolMatchesTabProps {
   refetchNotifications: () => void;
   friendlyError: (e: any) => string;
   // Phase state
-  phases: any[];
+  phases: PoolFixturePhase[];
   activePhase: string | null;
   setActivePhase: (phase: string) => void;
   getPhaseStatus: (phaseId: string) => string;
   // Computed values
   allowScorePick: boolean;
-  activePhaseConfig: any;
+  activePhaseConfig: PhasePickConfigItem | null;
   requiresStructuralPicks: boolean;
-  activePhaseData: any;
+  activePhaseData: PoolFixturePhase | null;
   nextOpenGroup: string;
-  filteredMatches: any[];
-  matchesByGroup: Record<string, any[]>;
+  filteredMatches: PoolMatchCard[];
+  matchesByGroup: Record<string, PoolMatchCard[]>;
   groupOrder: string[];
-  phaseMatchResults: Map<string, any>;
+  phaseMatchResults: Map<string, { homeGoals: number; awayGoals: number; homePenalties?: number | null; awayPenalties?: number | null }>;
   // Filter state
   search: string;
   setSearch: (s: string) => void;
@@ -330,9 +331,9 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
             poolId={poolId!}
             phaseId={activePhase!}
             phaseName={activePhaseData.name}
-            phaseType={activePhaseData.type}
-            phaseConfig={activePhaseConfig}
-            tournamentData={(overview.tournamentInstance as any).dataJson}
+            phaseType={activePhaseData.type as "GROUP" | "KNOCKOUT"}
+            phaseConfig={activePhaseConfig as any}
+            tournamentData={overview.tournamentInstance.dataJson}
             token={token!}
             isHost={overview.permissions.canManageResults}
             isLocked={getPhaseStatus(activePhase!) === "COMPLETED" || overview.myMembership.status === "LEFT"}
@@ -607,8 +608,8 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                         <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
                           {/* Botón Ver Desglose - solo si hay resultado y la fase usa requiresScore */}
                           {m.result && overview.pool.pickTypesConfig && (() => {
-                            const phaseConfig = (overview.pool.pickTypesConfig as any[])?.find(
-                              (p: any) => p.phaseId === m.phaseId
+                            const phaseConfig = overview.pool.pickTypesConfig?.find(
+                              (p) => p.phaseId === m.phaseId
                             );
                             return phaseConfig?.requiresScore === true;
                           })() && (

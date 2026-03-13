@@ -190,8 +190,8 @@ export function PoolAdminTab({
 
       {/* Extra Time Configuration */}
       {overview.pool.pickTypesConfig && (() => {
-        const ptc = overview.pool.pickTypesConfig as any[];
-        const scoringPhases = ptc.filter((pc: any) => pc.requiresScore);
+        const ptc = overview.pool.pickTypesConfig!;
+        const scoringPhases = ptc.filter((pc) => pc.requiresScore);
         if (scoringPhases.length === 0) return null;
 
         const now = Date.now();
@@ -257,9 +257,9 @@ export function PoolAdminTab({
                         setBusyKey(`et-${pc.phaseId}`);
                         setError(null);
                         try {
-                          const currentEtPhases = (overview.pool.pickTypesConfig as any[])
-                            .filter((p: any) => p.includeExtraTime)
-                            .map((p: any) => p.phaseId);
+                          const currentEtPhases = (overview.pool.pickTypesConfig ?? [])
+                            .filter((p) => p.includeExtraTime)
+                            .map((p) => p.phaseId);
                           const newEtPhases = includeET
                             ? currentEtPhases.filter((id: string) => id !== pc.phaseId)
                             : [...currentEtPhases, pc.phaseId];

@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "../services/poolStateMachine";
+import { extractPhases } from "../lib/fixture";
 
 export const structuralPicksRouter = Router();
 
@@ -89,9 +90,8 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
   }
 
   // Validar que la fase existe en el template
-  const templateData = pool.tournamentInstance.dataJson as any;
-  const phases = templateData?.phases || [];
-  const phase = phases.find((p: any) => p.id === phaseId);
+  const phases = extractPhases(pool.tournamentInstance.dataJson);
+  const phase = phases.find((p) => p.id === phaseId);
 
   if (!phase) {
     return res.status(404).json({

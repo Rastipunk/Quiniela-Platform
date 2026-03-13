@@ -60,7 +60,7 @@ export function PoolLeaderboardTab({
                   </tr>
                 </thead>
                 <tbody>
-                  {overview.leaderboard.rows.map((r: any, idx: number) => {
+                  {overview.leaderboard.rows.map((r, idx) => {
                     const leaderPoints = overview.leaderboard.rows[0]?.points ?? 0;
                     const diff = leaderPoints - r.points;
                     const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
@@ -161,7 +161,7 @@ export function PoolLeaderboardTab({
               <details style={{ marginTop: 16, padding: 12, background: "#f9f9f9", borderRadius: 8 }}>
                 <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13 }}>Ver desglose detallado (Debug)</summary>
                 <div style={{ marginTop: 10 }}>
-                  {overview.leaderboard.rows.map((r: any) => (
+                  {overview.leaderboard.rows.map((r) => (
                     <div key={r.userId} style={{ marginBottom: 12 }}>
                       <div style={{ fontWeight: 700, marginBottom: 4 }}>{r.displayName}</div>
                       {r.breakdown && (

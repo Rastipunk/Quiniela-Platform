@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "../services/poolStateMachine";
+import { extractMatches, type FixtureMatch } from "../lib/fixture";
 
 export const picksRouter = Router();
 
@@ -32,25 +33,6 @@ const upsertPickSchema = z.object({
   pick: pickSchema,
 });
 
-type TemplateMatch = {
-  id: string;
-  phaseId: string;
-  kickoffUtc: string; // ISO string
-  homeTeamId: string;
-  awayTeamId: string;
-  matchNumber?: number;
-  roundLabel?: string;
-  venue?: string;
-  groupId?: string;
-};
-
-function extractMatchesFromInstanceData(dataJson: unknown): TemplateMatch[] {
-  if (!dataJson || typeof dataJson !== "object") return [];
-  const dj = dataJson as any;
-  if (!Array.isArray(dj.matches)) return [];
-  return dj.matches as TemplateMatch[];
-}
-
 function computeDeadlineUtc(kickoffUtcIso: string, minutesBefore: number): Date | null {
   const kickoff = new Date(kickoffUtcIso);
   if (Number.isNaN(kickoff.getTime())) return null;
@@ -78,7 +60,7 @@ picksRouter.get("/:poolId/matches", async (req, res) => {
   });
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
 
-  const matches = extractMatchesFromInstanceData(pool.tournamentInstance.dataJson);
+  const matches = extractMatches(pool.tournamentInstance.dataJson);
   const now = new Date();
 
   const enriched = matches.map((m) => {
@@ -137,7 +119,7 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
     return res.status(409).json({ error: "CONFLICT", message: "TournamentInstance is ARCHIVED" });
   }
 
-  const matches = extractMatchesFromInstanceData(pool.tournamentInstance.dataJson);
+  const matches = extractMatches(pool.tournamentInstance.dataJson);
   const match = matches.find((m) => m.id === matchId);
   if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
 
@@ -211,7 +193,7 @@ picksRouter.get("/:poolId/matches/:matchId/picks", async (req, res) => {
 
   // Usar fixtureSnapshot si existe (tiene kickoffs personalizados), sino usar dataJson de la instancia
   const fixtureData = pool.fixtureSnapshot || pool.tournamentInstance.dataJson;
-  const matches = extractMatchesFromInstanceData(fixtureData);
+  const matches = extractMatches(fixtureData);
   const match = matches.find((m) => m.id === matchId);
   if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found" });
 

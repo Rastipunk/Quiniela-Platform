@@ -34,11 +34,11 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
               <div style={{ marginBottom: 8 }}>
                 <span style={{ fontWeight: 600 }}>{t("rules.scoring.preset")}:</span>{" "}
                 <span style={{ background: "#fff", padding: "2px 8px", borderRadius: 4, border: "1px solid #dee2e6" }}>
-                  {(overview as any)?.leaderboard?.scoringPreset?.name ?? overview.pool.scoringPresetKey ?? "CLASSIC"}
+                  {overview.leaderboard?.scoringPreset?.name ?? overview.pool.scoringPresetKey ?? "CLASSIC"}
                 </span>
               </div>
               <div style={{ color: "#666", fontSize: 13, marginBottom: 12, fontStyle: "italic" }}>
-                {(overview as any)?.leaderboard?.scoringPreset?.description ?? t("rules.scoring.defaultDesc")}
+                {overview.leaderboard?.scoringPreset?.description ?? t("rules.scoring.defaultDesc")}
               </div>
               <div style={{ display: "grid", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

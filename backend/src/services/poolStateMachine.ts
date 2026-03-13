@@ -9,6 +9,7 @@
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { sendPoolCompletedEmail } from "../lib/email";
+import { extractMatches } from "../lib/fixture";
 
 export type PoolStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
@@ -79,14 +80,13 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
   }
 
   // Verificar que todos los partidos tengan resultado
-  const tournamentData = pool.tournamentInstance.dataJson as any;
-  const allMatches = tournamentData.matches || [];
+  const allMatches = extractMatches(pool.tournamentInstance.dataJson);
 
   // Contar resultados publicados
   const results = await prisma.poolMatchResult.findMany({
     where: {
       poolId,
-      matchId: { in: allMatches.map((m: any) => m.id) }
+      matchId: { in: allMatches.map((m) => m.id) }
     }
   });
 
