@@ -22,6 +22,7 @@ import {
 } from "../services/poolStateMachine";
 import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
 import { sendPoolInvitationEmail, sendPoolFullNotificationEmail } from "../lib/email";
+import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
@@ -1474,15 +1475,8 @@ poolsRouter.post("/join", async (req, res) => {
       }
 
     if (!existing) {
-      // Verificar capacidad del pool antes de agregar miembro
-      if (invite.pool.maxParticipants) {
-        const memberCount = await tx.poolMember.count({
-          where: { poolId: invite.poolId, status: { in: ["ACTIVE", "PENDING_APPROVAL"] } },
-        });
-        if (memberCount >= invite.pool.maxParticipants) {
-          throw new Error("POOL_FULL");
-        }
-      }
+      // Lock Pool row + verify capacity (prevents race condition)
+      await ensurePoolCapacity(tx, invite.poolId, invite.pool.maxParticipants);
       await tx.poolMember.create({
         data: {
           poolId: invite.poolId,
@@ -1492,7 +1486,8 @@ poolsRouter.post("/join", async (req, res) => {
         },
       });
     } else if (existing.status === "LEFT") {
-      // Si el usuario había dejado el pool, lo reactivamos
+      // Verify capacity before reactivating (LEFT user doesn't count toward capacity)
+      await ensurePoolCapacity(tx, invite.poolId, invite.pool.maxParticipants);
       await tx.poolMember.update({
         where: { id: existing.id },
         data: {

@@ -10,6 +10,7 @@ import { sendPasswordResetEmail, sendWelcomeEmail, sendVerificationEmail, sendPo
 import { requireAuth } from "../middleware/requireAuth";
 import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "../services/poolStateMachine";
+import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "./legal";
 import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
 
@@ -712,27 +713,31 @@ authRouter.post("/activate-corporate", async (req, res) => {
     // Edge case: el usuario se registró por otra vía entre la invitación y la activación.
     // Lo agregamos al pool directamente y marcamos como activado.
     await prisma.$transaction(async (tx) => {
+      // Atomically claim the invite — prevents double-activation race condition.
+      // If another concurrent request already activated, updateMany returns count=0.
+      const claimed = await tx.corporateInvite.updateMany({
+        where: { id: invite.id, status: "PENDING" },
+        data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        throw new Error("ALREADY_ACTIVATED");
+      }
+
       const existingMember = await tx.poolMember.findUnique({
         where: { poolId_userId: { poolId: invite.poolId, userId: existingUser.id } },
       });
 
       if (!existingMember) {
-        if (invite.pool.maxParticipants) {
-          const count = await tx.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
-          if (count >= invite.pool.maxParticipants) {
-            throw new Error("POOL_FULL");
-          }
-        }
+        // Lock Pool row + verify capacity (prevents race condition)
+        await ensurePoolCapacity(tx, invite.poolId, invite.pool.maxParticipants);
         await tx.poolMember.create({
           data: { poolId: invite.poolId, userId: existingUser.id, role: "PLAYER", status: "ACTIVE" },
         });
       }
-
-      await tx.corporateInvite.update({
-        where: { id: invite.id },
-        data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
-      });
     }).catch((err) => {
+      if (err.message === "ALREADY_ACTIVATED") {
+        return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+      }
       if (err.message === "POOL_FULL") {
         return res.status(409).json({ error: "POOL_FULL" });
       }
@@ -813,6 +818,15 @@ authRouter.post("/activate-corporate", async (req, res) => {
   let result;
   try {
   result = await prisma.$transaction(async (tx) => {
+    // Atomically claim the invite — prevents double-activation race condition
+    const claimed = await tx.corporateInvite.updateMany({
+      where: { id: invite.id, status: "PENDING" },
+      data: { status: "ACTIVATED", activatedAt: now },
+    });
+    if (claimed.count === 0) {
+      throw new Error("ALREADY_ACTIVATED");
+    }
+
     const newUser = await tx.user.create({
       data: {
         email: invite.email,
@@ -838,13 +852,8 @@ authRouter.post("/activate-corporate", async (req, res) => {
       },
     });
 
-    // Verificar capacidad antes de agregar miembro
-    if (invite.pool.maxParticipants) {
-      const count = await tx.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
-      if (count >= invite.pool.maxParticipants) {
-        throw new Error("POOL_FULL");
-      }
-    }
+    // Lock Pool row + verify capacity (prevents race condition)
+    await ensurePoolCapacity(tx, invite.poolId, invite.pool.maxParticipants);
     await tx.poolMember.create({
       data: {
         poolId: invite.poolId,
@@ -854,14 +863,18 @@ authRouter.post("/activate-corporate", async (req, res) => {
       },
     });
 
+    // Set the activated user on the invite
     await tx.corporateInvite.update({
       where: { id: invite.id },
-      data: { status: "ACTIVATED", activatedUserId: newUser.id, activatedAt: now },
+      data: { activatedUserId: newUser.id },
     });
 
     return newUser;
   });
   } catch (err: any) {
+    if (err.message === "ALREADY_ACTIVATED") {
+      return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+    }
     if (err.message === "POOL_FULL") {
       return res.status(409).json({ error: "POOL_FULL" });
     }

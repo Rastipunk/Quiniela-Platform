@@ -77,12 +77,15 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
 
   try {
     const saved = await prisma.$transaction(async (tx) => {
-      // 1) header (poolId+matchId)
-      const header =
-        (await tx.poolMatchResult.findUnique({ where: { poolId_matchId: { poolId, matchId } } })) ??
-        (await tx.poolMatchResult.create({ data: { poolId, matchId } }));
+      // 1) header (poolId+matchId) — lock row to serialize concurrent publications
+      let header = await tx.poolMatchResult.findUnique({ where: { poolId_matchId: { poolId, matchId } } });
+      if (header) {
+        await tx.$queryRaw`SELECT id FROM "PoolMatchResult" WHERE id = ${header.id} FOR UPDATE`;
+      } else {
+        header = await tx.poolMatchResult.create({ data: { poolId, matchId } });
+      }
 
-      // 2) siguiente versionNumber y última versión
+      // 2) siguiente versionNumber y última versión (safe after row lock)
       const last = await tx.poolMatchResultVersion.findFirst({
         where: { resultId: header.id },
         orderBy: { versionNumber: "desc" },

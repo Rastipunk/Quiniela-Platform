@@ -433,14 +433,20 @@ export class SmartSyncService {
 
       // Create/update result
       await prisma.$transaction(async (tx) => {
-        const header =
-          existingResult ??
-          (await tx.poolMatchResult.create({
+        let headerId: string;
+        if (existingResult) {
+          // Lock the header row to serialize concurrent result publications
+          await tx.$queryRaw`SELECT id FROM "PoolMatchResult" WHERE id = ${existingResult.id} FOR UPDATE`;
+          headerId = existingResult.id;
+        } else {
+          const created = await tx.poolMatchResult.create({
             data: { poolId, matchId: matchState.internalMatchId },
-          }));
+          });
+          headerId = created.id;
+        }
 
         const lastVersion = await tx.poolMatchResultVersion.findFirst({
-          where: { resultId: header.id },
+          where: { resultId: headerId },
           orderBy: { versionNumber: "desc" },
         });
         const nextVersion = (lastVersion?.versionNumber ?? 0) + 1;
@@ -453,7 +459,7 @@ export class SmartSyncService {
 
         const version = await tx.poolMatchResultVersion.create({
           data: {
-            resultId: header.id,
+            resultId: headerId,
             versionNumber: nextVersion,
             status: "PUBLISHED",
             homeGoals: parsedResult.homeGoals,
@@ -470,7 +476,7 @@ export class SmartSyncService {
         });
 
         await tx.poolMatchResult.update({
-          where: { id: header.id },
+          where: { id: headerId },
           data: { currentVersionId: version.id },
         });
       });

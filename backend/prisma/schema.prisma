@@ -392,6 +392,7 @@ model PoolMember {
   @@unique([poolId, userId])
   @@index([userId])
   @@index([status])
+  @@index([poolId, status])
 }
 
 model PoolInvite {
@@ -436,6 +437,7 @@ model Prediction {
   @@unique([poolId, userId, matchId])
   @@index([userId])
   @@index([poolId])
+  @@index([poolId, matchId])
 }
 
 // Sprint 2 - Advanced Pick Types: Picks estructurales (por fase completa, no por match)
