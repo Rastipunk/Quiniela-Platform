@@ -20,7 +20,6 @@ async function main() {
     console.log("✅ Admin already existed; role/status ensured.");
     console.log("   email:", email);
     console.log("   username:", existing.username);
-    console.log("   password:", password);
     return;
   }
 
@@ -40,7 +39,6 @@ async function main() {
   console.log("✅ Admin created:");
   console.log("   email:", email);
   console.log("   username:", username);
-  console.log("   password:", password);
 }
 
 main()

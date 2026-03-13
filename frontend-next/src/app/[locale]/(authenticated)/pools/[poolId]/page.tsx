@@ -18,19 +18,20 @@ import { getPendingMembers } from "@/lib/api";
 
 // Dynamic imports for heavy tab components (HI-06)
 const PoolAdminTab = dynamic(() => import("./components/PoolAdminTab").then(m => ({ default: m.PoolAdminTab })), {
-  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: colors.textLight }}>Loading...</div>,
 });
 const PoolMatchesTab = dynamic(() => import("./components/PoolMatchesTab").then(m => ({ default: m.PoolMatchesTab })), {
-  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: colors.textLight }}>Loading...</div>,
 });
 const PoolLeaderboardTab = dynamic(() => import("./components/PoolLeaderboardTab").then(m => ({ default: m.PoolLeaderboardTab })), {
-  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: colors.textLight }}>Loading...</div>,
 });
 const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m => ({ default: m.PoolRulesTab })), {
-  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: colors.textLight }}>Loading...</div>,
 });
 import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
+import { colors, radii, fontSize, fontWeight, shadows, zIndex } from "@/lib/theme";
 
 const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "admin"] as const;
 type PoolTab = typeof VALID_TABS[number];
@@ -393,8 +394,8 @@ export default function PoolPage() {
           href="/dashboard"
           style={{
             display: "inline-flex", alignItems: "center", gap: 6,
-            color: "#007bff", textDecoration: "none", fontWeight: 600, fontSize: 14,
-            padding: "6px 12px", borderRadius: 8, background: "#f0f7ff",
+            color: colors.blue, textDecoration: "none", fontWeight: fontWeight.semibold, fontSize: fontSize.base,
+            padding: "6px 12px", borderRadius: radii.lg, background: "#f0f7ff",
             border: "1px solid #007bff30", transition: "background 0.15s ease",
           }}
         >
@@ -403,7 +404,7 @@ export default function PoolPage() {
       </div>
 
       {error && (
-        <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: "#fee", border: "1px solid #fbb", color: "#700" }}>
+        <div style={{ marginTop: 12, padding: 12, borderRadius: radii["2xl"], background: "#fee", border: "1px solid #fbb", color: "#700" }}>
           {error}
         </div>
       )}
@@ -413,30 +414,30 @@ export default function PoolPage() {
       {/* Capacity Full Popup */}
       {showCapacityPopup && overview?.pool.maxParticipants && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 9998, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", padding: 16 }}
+          style={{ position: "fixed", inset: 0, zIndex: zIndex.expulsion - 1, display: "flex", alignItems: "center", justifyContent: "center", background: colors.overlay, padding: 16 }}
           onClick={() => setShowCapacityPopup(false)}
         >
           <div
-            style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
+            style={{ background: colors.white, borderRadius: radii["4xl"], padding: 24, maxWidth: 420, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontSize: 48, marginBottom: 12 }}>&#128680;</div>
-            <h3 style={{ margin: "0 0 12px", fontSize: 20, fontWeight: 800, color: "#DC2626" }}>
+            <h3 style={{ margin: "0 0 12px", fontSize: fontSize["3xl"], fontWeight: fontWeight.extrabold, color: colors.error }}>
               {t("admin.capacity.fullTitle")}
             </h3>
-            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+            <p style={{ margin: "0 0 20px", fontSize: fontSize.base, color: "#374151", lineHeight: 1.6 }}>
               {t("admin.capacity.fullMessage", { max: overview.pool.maxParticipants })}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button
                 onClick={() => { setShowCapacityPopup(false); setActiveTab("admin"); }}
-                style={{ padding: "12px 24px", borderRadius: 10, border: "none", background: "#4f46e5", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                style={{ padding: "12px 24px", borderRadius: radii.xl, border: "none", background: colors.brand, color: "white", fontSize: fontSize.base, fontWeight: fontWeight.bold, cursor: "pointer" }}
               >
                 {t("admin.capacity.title")}
               </button>
               <button
                 onClick={() => setShowCapacityPopup(false)}
-                style={{ padding: "10px 24px", borderRadius: 10, border: "1px solid #d1d5db", background: "transparent", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "10px 24px", borderRadius: radii.xl, border: `1px solid ${colors.borderMedium}`, background: "transparent", color: "#374151", fontSize: fontSize.base, fontWeight: fontWeight.semibold, cursor: "pointer" }}
               >
                 {t("admin.capacity.fullDismiss")}
               </button>
@@ -447,7 +448,7 @@ export default function PoolPage() {
                     localStorage.setItem(`pool-capacity-full-dismissed-${poolId}`, "true");
                   }
                 }}
-                style={{ padding: "8px 24px", borderRadius: 10, border: "none", background: "transparent", color: "#9ca3af", fontSize: 12, cursor: "pointer" }}
+                style={{ padding: "8px 24px", borderRadius: radii.xl, border: "none", background: "transparent", color: colors.textLighter, fontSize: fontSize.sm, cursor: "pointer" }}
               >
                 {t("admin.capacity.fullDontShow")}
               </button>
@@ -461,7 +462,7 @@ export default function PoolPage() {
         const org = overview.pool.organization;
         return (
           <div
-            style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)", padding: 24, overflow: "hidden" }}
+            style={{ position: "fixed", inset: 0, zIndex: zIndex.expulsion, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)", padding: 24, overflow: "hidden" }}
           >
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
               <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", top: "-5%", right: "-5%" }} />
@@ -479,28 +480,28 @@ export default function PoolPage() {
                   {org.name.charAt(0).toUpperCase()}
                 </div>
               )}
-              <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: "#fff", letterSpacing: -0.5, lineHeight: 1.2, textShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+              <h1 style={{ margin: 0, fontSize: fontSize["5xl"], fontWeight: fontWeight.extrabold, color: colors.white, letterSpacing: -0.5, lineHeight: 1.2, textShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
                 {org.name}
               </h1>
-              <span style={{ display: "inline-block", marginTop: 12, padding: "5px 16px", borderRadius: 999, background: "rgba(139,92,246,0.2)", border: "1px solid rgba(139,92,246,0.3)", color: "#c4b5fd", fontSize: 13, fontWeight: 600, letterSpacing: 0.5 }}>
+              <span style={{ display: "inline-block", marginTop: 12, padding: "5px 16px", borderRadius: radii.pill, background: "rgba(139,92,246,0.2)", border: "1px solid rgba(139,92,246,0.3)", color: "#c4b5fd", fontSize: fontSize.md, fontWeight: fontWeight.semibold, letterSpacing: 0.5 }}>
                 {t("corporate.badge")}
               </span>
               {org.welcomeMessage && (
                 <div style={{ marginTop: 28, padding: "16px 20px", borderRadius: 14, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6, color: "rgba(255,255,255,0.85)", fontStyle: "italic" }}>
+                  <p style={{ margin: 0, fontSize: fontSize.lg, lineHeight: 1.6, color: "rgba(255,255,255,0.85)", fontStyle: "italic" }}>
                     &ldquo;{org.welcomeMessage}&rdquo;
                   </p>
                 </div>
               )}
               <button
                 onClick={() => { sessionStorage.setItem(`corporate-splash-${poolId}`, "1"); setShowSplash(false); }}
-                style={{ marginTop: 32, padding: "16px 48px", fontSize: 17, fontWeight: 700, background: "linear-gradient(135deg, #fff 0%, #e0e7ff 100%)", color: "#3730a3", border: "none", borderRadius: 14, cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)", transition: "transform 0.15s, box-shadow 0.15s", letterSpacing: 0.3 }}
+                style={{ marginTop: 32, padding: "16px 48px", fontSize: 17, fontWeight: fontWeight.bold, background: "linear-gradient(135deg, #fff 0%, #e0e7ff 100%)", color: "#3730a3", border: "none", borderRadius: radii["3xl"], cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)", transition: "transform 0.15s, box-shadow 0.15s", letterSpacing: 0.3 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(99,102,241,0.4), 0 0 0 1px rgba(255,255,255,0.15)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)"; }}
               >
                 {t("corporate.playButton")}
               </button>
-              <p style={{ marginTop: 20, fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: 0.3 }}>
+              <p style={{ marginTop: 20, fontSize: fontSize.md, color: "rgba(255,255,255,0.4)", fontWeight: fontWeight.medium, letterSpacing: 0.3 }}>
                 {overview.pool.name} &middot; {overview.counts.membersActive} {t("corporate.players")}
               </p>
             </div>
@@ -512,7 +513,7 @@ export default function PoolPage() {
         <>
           {/* UCL incident banner */}
           {!uclBannerDismissed && overview.tournamentInstance?.templateKey === "ucl-2025" && (
-            <div style={{ marginTop: 12, marginBottom: 12, padding: "16px 20px", background: "linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%)", borderRadius: 14, border: "1px solid #2d5a8e", color: "#e0eaf5", position: "relative" }}>
+            <div style={{ marginTop: 12, marginBottom: 12, padding: "16px 20px", background: "linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%)", borderRadius: radii["3xl"], border: "1px solid #2d5a8e", color: "#e0eaf5", position: "relative" }}>
               <button
                 onClick={() => { localStorage.setItem(`ucl_incident_banner_${poolId}`, "1"); setUclBannerDismissed(true); }}
                 style={{ position: "absolute", top: 10, right: 12, background: "none", border: "none", color: "#8ba8c8", fontSize: 20, cursor: "pointer", padding: "2px 6px", lineHeight: 1 }}
@@ -520,9 +521,9 @@ export default function PoolPage() {
               >
                 ×
               </button>
-              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: "#fff" }}>{t("uclIncidentBanner.title")}</div>
-              <div style={{ fontSize: 13, lineHeight: 1.6 }}>{t("uclIncidentBanner.body")}</div>
-              <div style={{ fontSize: 13, marginTop: 10, color: "#93c5fd", fontWeight: 600 }}>{t("uclIncidentBanner.thanks")}</div>
+              <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.xl, marginBottom: 8, color: colors.white }}>{t("uclIncidentBanner.title")}</div>
+              <div style={{ fontSize: fontSize.md, lineHeight: 1.6 }}>{t("uclIncidentBanner.body")}</div>
+              <div style={{ fontSize: fontSize.md, marginTop: 10, color: "#93c5fd", fontWeight: fontWeight.semibold }}>{t("uclIncidentBanner.thanks")}</div>
             </div>
           )}
 
@@ -532,18 +533,18 @@ export default function PoolPage() {
               {overview.pool.organization.logoBase64 ? (
                 <img src={overview.pool.organization.logoBase64} alt={overview.pool.organization.name} style={{ maxHeight: 128, maxWidth: 200, objectFit: "contain", borderRadius: 12, flexShrink: 0 }} />
               ) : (
-                <div style={{ width: 100, height: 100, borderRadius: 14, flexShrink: 0, background: "linear-gradient(135deg, #7c3aed, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: 800, color: "#fff" }}>
+                <div style={{ width: 100, height: 100, borderRadius: radii["3xl"], flexShrink: 0, background: `linear-gradient(135deg, ${colors.purple}, ${colors.brand})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: fontWeight.extrabold, color: colors.white }}>
                   {overview.pool.organization.name.charAt(0).toUpperCase()}
                 </div>
               )}
               <div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "#1a1a2e", lineHeight: 1.2, letterSpacing: "-0.5px" }}>{overview.pool.name}</div>
-                <div style={{ fontSize: 13, color: "#7c3aed", fontWeight: 600, marginTop: 2 }}>{t("corporate.byCompany", { company: overview.pool.organization.name })}</div>
+                <div style={{ fontSize: 28, fontWeight: fontWeight.extrabold, color: "#1a1a2e", lineHeight: 1.2, letterSpacing: "-0.5px" }}>{overview.pool.name}</div>
+                <div style={{ fontSize: fontSize.md, color: colors.purple, fontWeight: fontWeight.semibold, marginTop: 2 }}>{t("corporate.byCompany", { company: overview.pool.organization.name })}</div>
               </div>
               {overview.pool.status && (() => {
                 const badge = getPoolStatusBadge(overview.pool.status, t);
                 return (
-                  <span style={{ fontSize: 13, padding: "4px 12px", borderRadius: 999, border: `1px solid ${badge.color}`, background: `${badge.color}20`, color: badge.color, fontWeight: 600, marginLeft: "auto", flexShrink: 0 }}>
+                  <span style={{ fontSize: fontSize.md, padding: "4px 12px", borderRadius: radii.pill, border: `1px solid ${badge.color}`, background: `${badge.color}20`, color: badge.color, fontWeight: fontWeight.semibold, marginLeft: "auto", flexShrink: 0 }}>
                     {badge.emoji} {badge.label}
                   </span>
                 );
@@ -558,7 +559,7 @@ export default function PoolPage() {
               {overview.pool.status && (() => {
                 const badge = getPoolStatusBadge(overview.pool.status, t);
                 return (
-                  <span style={{ fontSize: 13, padding: "4px 12px", borderRadius: 999, border: `1px solid ${badge.color}`, background: `${badge.color}20`, color: badge.color, fontWeight: 600 }}>
+                  <span style={{ fontSize: fontSize.md, padding: "4px 12px", borderRadius: radii.pill, border: `1px solid ${badge.color}`, background: `${badge.color}20`, color: badge.color, fontWeight: fontWeight.semibold }}>
                     {badge.emoji} {badge.label}
                   </span>
                 );
@@ -566,13 +567,13 @@ export default function PoolPage() {
             </div>
           )}
 
-          <div style={{ color: "#666", fontSize: 12 }}>
+          <div style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
             {overview.tournamentInstance.name} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
 
           {/* LEFT member banner */}
           {overview.myMembership.status === "LEFT" && (
-            <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", fontSize: 13, fontWeight: 500 }}>
+            <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: radii.lg, background: colors.errorBg, border: `1px solid ${colors.errorBorderLight}`, color: colors.error, fontSize: fontSize.md, fontWeight: fontWeight.medium }}>
               {t("retiredBanner")}
             </div>
           )}
@@ -603,10 +604,10 @@ export default function PoolPage() {
                     position: "relative",
                     padding: isMobile ? "12px 16px" : "12px 24px",
                     border: "none",
-                    borderBottom: activeTab === tab ? "3px solid #007bff" : "3px solid transparent",
+                    borderBottom: activeTab === tab ? `3px solid ${colors.blue}` : "3px solid transparent",
                     background: "transparent",
-                    color: activeTab === tab ? "#007bff" : "#666",
-                    fontWeight: activeTab === tab ? 600 : 400,
+                    color: activeTab === tab ? colors.blue : colors.textMuted,
+                    fontWeight: activeTab === tab ? fontWeight.semibold : fontWeight.normal,
                     fontSize: isMobile ? 18 : 16,
                     cursor: "pointer",
                     transition: "all 0.2s",
@@ -625,7 +626,7 @@ export default function PoolPage() {
 
           {/* Mobile tab label */}
           {isMobile && (
-            <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: "#007bff", textAlign: "center" }}>
+            <div style={{ marginTop: 12, fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.blue, textAlign: "center" }}>
               {activeTab === "partidos" && t("tabs.matches")}
               {activeTab === "leaderboard" && t("tabs.leaderboard")}
               {activeTab === "resumen" && t("tabs.summary")}
@@ -638,7 +639,7 @@ export default function PoolPage() {
           {/* ── Tab Content ── */}
 
           {activeTab === "jugadores" && overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" && token && (
-            <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+            <div style={{ marginTop: 14, padding: 20, border: `1px solid ${colors.border}`, borderRadius: radii["3xl"], background: colors.white }}>
               <CorporateEmployeeManager poolId={poolId!} token={token} isMobile={isMobile} />
             </div>
           )}
@@ -656,7 +657,7 @@ export default function PoolPage() {
           )}
 
           {activeTab === "resumen" && (
-            <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+            <div style={{ marginTop: 14, padding: 20, border: `1px solid ${colors.border}`, borderRadius: radii["3xl"], background: colors.white }}>
               <PlayerSummary
                 poolId={poolId!}
                 userId={overview.myMembership.userId ?? ""}

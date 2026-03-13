@@ -11,6 +11,7 @@ import { validatePoolPickTypesConfig, PoolPickTypesConfigSchema } from "../valid
 import { extractPhases } from "../lib/fixture";
 import rateLimit from "express-rate-limit";
 import { transitionToActive } from "../services/poolStateMachine";
+import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
 
 export const corporateRouter = Router();
 
@@ -77,14 +78,14 @@ corporateRouter.post("/inquiry", inquiryLimiter, async (req, res) => {
       ${message ? `<p><strong>Mensaje:</strong> ${escapeHtml(message)}</p>` : ""}
       <p><strong>Idioma:</strong> ${escapeHtml(locale)}</p>
     `,
-  }).catch((err) => console.error("Error sending admin notification:", err));
+  }).catch((err) => console.error("Error sending admin notification:", err instanceof Error ? err.message : String(err)));
 
   sendCorporateInquiryConfirmationEmail({
     to: contactEmail,
     contactName,
     companyName,
     locale,
-  }).catch((err) => console.error("Error sending corporate confirmation:", err));
+  }).catch((err) => console.error("Error sending corporate confirmation:", err instanceof Error ? err.message : String(err)));
 
   return res.status(201).json({
     success: true,
@@ -214,13 +215,13 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
     if (emails && emails.length > 0) {
       const uniqueEmails = [...new Set(emails.map((e) => e.toLowerCase()))];
       for (const email of uniqueEmails) {
-        const token = crypto.randomBytes(32).toString("hex");
+        const token = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
         await tx.corporateInvite.create({
           data: {
             poolId: pool.id,
             email,
             activationToken: token,
-            activationTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            activationTokenExpiresAt: new Date(Date.now() + TOKEN_EXPIRY_MS.CORPORATE_INVITE), // 30 días
             status: "PENDING",
           },
         });
@@ -241,7 +242,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
       <p><strong>Pool:</strong> ${poolName}</p>
       <p><strong>Empleados pendientes:</strong> ${result.pendingInvites}</p>
     `,
-  }).catch((err) => console.error("Error sending admin notification:", err));
+  }).catch((err) => console.error("Error sending admin notification:", err instanceof Error ? err.message : String(err)));
 
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
@@ -299,13 +300,13 @@ corporateRouter.post("/pools/:poolId/employees", requireAuth, async (req, res) =
       skipped++;
       continue;
     }
-    const token = crypto.randomBytes(32).toString("hex");
+    const token = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
     await prisma.corporateInvite.create({
       data: {
         poolId,
         email,
         activationToken: token,
-        activationTokenExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        activationTokenExpiresAt: new Date(Date.now() + TOKEN_EXPIRY_MS.CORPORATE_INVITE),
         status: "PENDING",
       },
     });
@@ -419,7 +420,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
 
         // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
         await transitionToActive(poolId, existingUser.id).catch((err) =>
-          console.error("transitionToActive error (corporate send-invitations):", err)
+          console.error("transitionToActive error (corporate send-invitations):", err instanceof Error ? err.message : String(err))
         );
 
         activated++;
@@ -451,7 +452,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
         }
       }
     } catch (err) {
-      console.error(`Error processing invite ${invite.id}:`, err);
+      console.error(`Error processing invite ${invite.id}:`, err instanceof Error ? err.message : String(err));
       await prisma.corporateInvite.update({
         where: { id: invite.id },
         data: { status: "FAILED" },

@@ -14,6 +14,7 @@ import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "./legal";
 import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
 import { setAuthCookies, clearAuthCookies } from "../lib/authCookies";
+import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
 
 export const authRouter = Router();
 
@@ -94,8 +95,8 @@ authRouter.post("/register", async (req, res) => {
   const now = new Date();
 
   // Generar token de verificación de email
-  const emailVerificationToken = crypto.randomBytes(32).toString("hex");
-  const emailVerificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+  const emailVerificationToken = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
+  const emailVerificationTokenExpiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS.EMAIL_VERIFICATION); // 24 horas
 
   const user = await prisma.user.create({
     data: {
@@ -244,8 +245,8 @@ authRouter.post("/forgot-password", async (req, res) => {
   }
 
   // Generar token de reset
-  const resetToken = crypto.randomBytes(32).toString("hex");
-  const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+  const resetToken = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
+  const resetTokenExpiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS.PASSWORD_RESET); // 1 hora
 
   // Guardar token en DB
   await prisma.user.update({
@@ -794,7 +795,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
 
     // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
     await transitionToActive(invite.poolId, existingUser.id).catch((err) =>
-      console.error("transitionToActive error (existing user):", err)
+      console.error("transitionToActive error (existing user):", err instanceof Error ? err.message : String(err))
     );
 
     // Notificar al host si el pool acaba de llenarse
@@ -929,7 +930,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
 
   // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
   await transitionToActive(invite.poolId, result.id).catch((err) =>
-    console.error("transitionToActive error (new user):", err)
+    console.error("transitionToActive error (new user):", err instanceof Error ? err.message : String(err))
   );
 
   // Notificar al host si el pool acaba de llenarse
@@ -1006,8 +1007,8 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
   }
 
   // Generar nuevo token
-  const verificationToken = crypto.randomBytes(32).toString("hex");
-  const verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+  const verificationToken = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
+  const verificationTokenExpiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS.EMAIL_VERIFICATION); // 24 horas
 
   // Guardar token
   await prisma.user.update({

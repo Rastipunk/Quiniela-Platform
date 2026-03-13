@@ -2,9 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { useRouter, useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
 import {
   createPool,
   getMePools,
@@ -16,13 +14,12 @@ import {
 } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
 import { logout as apiLogout } from "@/lib/api";
-const PoolConfigWizard = dynamic(() => import("@/components/PoolConfigWizard").then(m => ({ default: m.PoolConfigWizard })), {
-  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
-});
-import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
-import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
+import { colors, radii, fontSize as fs, fontWeight as fw } from "@/lib/theme";
+import { PoolCard } from "./components/PoolCard";
+import { LeavePoolModal } from "./components/LeavePoolModal";
+import { CreateJoinPanel } from "./components/CreateJoinPanel";
 
 function detectTz() {
   try {
@@ -224,8 +221,8 @@ export default function DashboardPage() {
     padding: isMobile ? 14 : 10,
     fontSize: isMobile ? 16 : 14,
     minHeight: TOUCH_TARGET.minimum,
-    borderRadius: 10,
-    border: "1px solid #ddd",
+    borderRadius: radii.xl,
+    border: `1px solid ${colors.border}`,
     width: "100%",
     boxSizing: "border-box" as const,
     ...mobileInteractiveStyles.tapHighlight,
@@ -233,9 +230,9 @@ export default function DashboardPage() {
 
   const buttonStyle = {
     padding: isMobile ? "14px 16px" : "10px 12px",
-    borderRadius: 10,
-    fontSize: isMobile ? 15 : 14,
-    fontWeight: 500,
+    borderRadius: radii.xl,
+    fontSize: isMobile ? fs.lg : fs.base,
+    fontWeight: fw.medium,
     minHeight: TOUCH_TARGET.minimum,
     cursor: "pointer",
     ...mobileInteractiveStyles.tapHighlight,
@@ -254,7 +251,7 @@ export default function DashboardPage() {
       >
         <div>
           <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 24 }}>{t("title")}</h2>
-          <div style={{ color: "#666", fontSize: isMobile ? 13 : 12 }}>
+          <div style={{ color: colors.textMuted, fontSize: isMobile ? fs.md : fs.sm }}>
             {t("subtitle")}
           </div>
         </div>
@@ -293,10 +290,10 @@ export default function DashboardPage() {
           style={{
             marginTop: 12,
             padding: 12,
-            borderRadius: 12,
+            borderRadius: radii["2xl"],
             background: "#fee",
             border: "1px solid #fbb",
-            fontSize: isMobile ? 14 : 13,
+            fontSize: isMobile ? fs.base : fs.md,
           }}
         >
           {error}
@@ -313,7 +310,7 @@ export default function DashboardPage() {
               display: "flex",
               gap: 0,
               marginTop: 16,
-              borderBottom: "2px solid #e5e7eb",
+              borderBottom: `2px solid ${colors.borderLight}`,
             }}
           >
             {(["active", "finished"] as const).map((tab) => (
@@ -322,12 +319,12 @@ export default function DashboardPage() {
                 onClick={() => setActiveTab(tab)}
                 style={{
                   padding: isMobile ? "12px 16px" : "10px 20px",
-                  fontSize: isMobile ? 15 : 14,
-                  fontWeight: activeTab === tab ? 700 : 500,
-                  color: activeTab === tab ? "#111" : "#888",
+                  fontSize: isMobile ? fs.lg : fs.base,
+                  fontWeight: activeTab === tab ? fw.bold : fw.medium,
+                  color: activeTab === tab ? colors.text : "#888",
                   background: "transparent",
                   border: "none",
-                  borderBottom: activeTab === tab ? "2px solid #111" : "2px solid transparent",
+                  borderBottom: activeTab === tab ? `2px solid ${colors.text}` : "2px solid transparent",
                   marginBottom: -2,
                   cursor: "pointer",
                   ...mobileInteractiveStyles.tapHighlight,
@@ -337,11 +334,11 @@ export default function DashboardPage() {
                 <span
                   style={{
                     marginLeft: 6,
-                    fontSize: 12,
+                    fontSize: fs.sm,
                     padding: "2px 6px",
-                    borderRadius: 999,
-                    background: activeTab === tab ? "#111" : "#e5e7eb",
-                    color: activeTab === tab ? "#fff" : "#666",
+                    borderRadius: radii.pill,
+                    background: activeTab === tab ? colors.text : colors.borderLight,
+                    color: activeTab === tab ? colors.white : colors.textMuted,
                   }}
                 >
                   {tab === "active" ? activePools.length : finishedPools.length}
@@ -353,211 +350,26 @@ export default function DashboardPage() {
           {/* Pool cards */}
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             {displayedPools.map((r) => (
-              <div
+              <PoolCard
                 key={r.poolId}
-                style={{
-                  border: "1px solid #ddd",
-                  borderRadius: 14,
-                  padding: isMobile ? 16 : 14,
-                  background: "#fff",
-                  opacity: r.status === "LEFT" ? 0.75 : 1,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: isMobile ? "column" : "row",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    alignItems: isMobile ? "stretch" : "flex-start",
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    {/* Pool Name + Badges */}
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        marginBottom: 8,
-                      }}
-                    >
-                      <div style={{ fontWeight: 800, fontSize: isMobile ? 17 : 16 }}>{r.pool.name}</div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          padding: "3px 8px",
-                          borderRadius: 999,
-                          border: "1px solid #ddd",
-                          background: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#111" : "#fff",
-                          color: r.role === "HOST" || r.role === "CORPORATE_HOST" ? "#fff" : "#111",
-                        }}
-                      >
-                        {r.role === "CORPORATE_HOST" ? "HOST" : r.role}
-                      </span>
-                      {r.pool.organizationId && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: "3px 8px",
-                            borderRadius: 999,
-                            border: "1px solid #7c3aed",
-                            background: "#ede9fe",
-                            color: "#5b21b6",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {"\u{1F3E2}"} {te("badge")}
-                        </span>
-                      )}
-                      {r.status === "PENDING_APPROVAL" && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: "3px 8px",
-                            borderRadius: 999,
-                            border: "1px solid #ffc107",
-                            background: "#fff3cd",
-                            color: "#856404",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {"\u23F3"} {t("pendingBadge")}
-                        </span>
-                      )}
-                      {r.status === "LEFT" && (
-                        <span
-                          style={{
-                            fontSize: 11,
-                            padding: "3px 8px",
-                            borderRadius: 999,
-                            border: "1px solid #ef4444",
-                            background: "#fef2f2",
-                            color: "#dc2626",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {t("retired")}
-                        </span>
-                      )}
-                      {r.pool.status && (() => {
-                        const badge = getPoolStatusBadge(r.pool.status);
-                        return (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              padding: "3px 8px",
-                              borderRadius: 999,
-                              border: `1px solid ${badge.color}`,
-                              background: `${badge.color}20`,
-                              color: badge.color,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {badge.emoji} {badge.label}
-                          </span>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Meta info */}
-                    <div style={{ color: "#666", fontSize: isMobile ? 13 : 12, marginTop: 4 }}>
-                      {t("poolCard.timezone")}: {r.pool.timeZone} {"\u2022"} {t("poolCard.deadline")}: {r.pool.deadlineMinutesBeforeKickoff}m
-                    </div>
-
-                    {r.tournamentInstance && (
-                      <div style={{ marginTop: 6, color: "#666", fontSize: isMobile ? 13 : 12 }}>
-                        {t("poolCard.tournament")}: {r.tournamentInstance.name}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: isMobile ? "row" : "column",
-                      gap: 8,
-                      alignItems: isMobile ? "stretch" : "flex-end",
-                    }}
-                  >
-                    {r.status === "PENDING_APPROVAL" ? (
-                      <span
-                        style={{
-                          color: "#999",
-                          fontSize: 14,
-                          fontStyle: "italic",
-                          padding: isMobile ? "12px 0" : 0,
-                          textAlign: "center",
-                        }}
-                      >
-                        {t("waitingApproval")}
-                      </span>
-                    ) : (
-                      <Link
-                        href={{ pathname: "/pools/[poolId]", params: { poolId: r.poolId } }}
-                        style={{
-                          textDecoration: "none",
-                          padding: isMobile ? 14 : 8,
-                          background: "#007bff",
-                          color: "#fff",
-                          borderRadius: 8,
-                          fontWeight: 600,
-                          textAlign: "center",
-                          minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flex: isMobile ? 1 : undefined,
-                          ...mobileInteractiveStyles.tapHighlight,
-                        }}
-                      >
-                        {t("openPool")}
-                      </Link>
-                    )}
-                    {/* Leave button: only for active players who are not hosts */}
-                    {r.status === "ACTIVE" &&
-                      r.role !== "HOST" &&
-                      r.role !== "CORPORATE_HOST" &&
-                      r.pool.status !== "COMPLETED" &&
-                      r.pool.status !== "ARCHIVED" && (
-                        <button
-                          onClick={() => setLeaveModal(r)}
-                          style={{
-                            padding: isMobile ? 14 : 8,
-                            background: "#fff",
-                            color: "#dc2626",
-                            border: "1px solid #fca5a5",
-                            borderRadius: 8,
-                            fontWeight: 600,
-                            fontSize: isMobile ? 14 : 13,
-                            cursor: "pointer",
-                            textAlign: "center",
-                            minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            ...mobileInteractiveStyles.tapHighlight,
-                          }}
-                        >
-                          {t("leavePool")}
-                        </button>
-                      )}
-                  </div>
-                </div>
-              </div>
+                row={r}
+                isMobile={isMobile}
+                t={t}
+                te={te}
+                getPoolStatusBadge={getPoolStatusBadge}
+                onLeave={(row) => setLeaveModal(row)}
+              />
             ))}
 
             {displayedPools.length === 0 && (
               <div
                 style={{
                   padding: isMobile ? 24 : 14,
-                  border: "1px dashed #ccc",
-                  borderRadius: 14,
-                  color: "#666",
+                  border: `1px dashed ${colors.disabled}`,
+                  borderRadius: radii["3xl"],
+                  color: colors.textMuted,
                   textAlign: "center",
-                  fontSize: isMobile ? 15 : 14,
+                  fontSize: isMobile ? fs.lg : fs.base,
                 }}
               >
                 {activeTab === "active" ? t("emptyState") : t("noFinishedPools")}
@@ -569,493 +381,54 @@ export default function DashboardPage() {
 
       {/* Leave Pool Confirmation Modal */}
       {leaveModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            zIndex: 1001,
-          }}
-          onClick={() => !leaveBusy && setLeaveModal(null)}
-        >
-          <div
-            style={{
-              width: isMobile ? "100%" : "min(420px, 100%)",
-              background: "#fff",
-              borderRadius: 16,
-              padding: isMobile ? 24 : 20,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ fontWeight: 700, fontSize: isMobile ? 18 : 16, marginBottom: 12 }}>
-              {t("leaveConfirmTitle")}
-            </div>
-            <div style={{ fontWeight: 800, fontSize: isMobile ? 16 : 15, marginBottom: 8 }}>
-              {leaveModal.pool.name}
-            </div>
-            <div style={{
-              background: "#fef2f2",
-              border: "1px solid #fca5a5",
-              borderRadius: 10,
-              padding: isMobile ? 14 : 12,
-              color: "#991b1b",
-              fontSize: isMobile ? 14 : 13,
-              lineHeight: 1.5,
-              marginBottom: 20,
-            }}>
-              {t("leaveConfirmMessage")}
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => setLeaveModal(null)}
-                disabled={leaveBusy}
-                style={{
-                  flex: 1,
-                  padding: isMobile ? 14 : 10,
-                  borderRadius: 10,
-                  border: "1px solid #ddd",
-                  background: "#fff",
-                  color: "#333",
-                  fontSize: isMobile ? 15 : 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  minHeight: TOUCH_TARGET.minimum,
-                  ...mobileInteractiveStyles.tapHighlight,
-                }}
-              >
-                {t("leaveCancel")}
-              </button>
-              <button
-                onClick={() => onLeavePool(leaveModal)}
-                disabled={leaveBusy}
-                style={{
-                  flex: 1,
-                  padding: isMobile ? 14 : 10,
-                  borderRadius: 10,
-                  border: "none",
-                  background: "#dc2626",
-                  color: "#fff",
-                  fontSize: isMobile ? 15 : 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  minHeight: TOUCH_TARGET.minimum,
-                  ...mobileInteractiveStyles.tapHighlight,
-                }}
-              >
-                {leaveBusy ? t("leaving") : t("leaveConfirmButton")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <LeavePoolModal
+          pool={leaveModal}
+          isMobile={isMobile}
+          busy={leaveBusy}
+          onConfirm={() => onLeavePool(leaveModal)}
+          onCancel={() => setLeaveModal(null)}
+          t={t}
+        />
       )}
 
       {/* Panel Modal */}
       {panel !== "NONE" && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.45)",
-            display: "flex",
-            alignItems: isMobile ? "flex-end" : "center",
-            justifyContent: "center",
-            padding: isMobile ? 0 : 16,
-            zIndex: 1000,
-          }}
-          onClick={() => { setPanel("NONE"); setCreateStep(1); }}
-        >
-          <div
-            style={{
-              width: isMobile ? "100%" : "min(720px, 100%)",
-              maxHeight: isMobile ? "90vh" : "85vh",
-              background: "#fff",
-              borderRadius: isMobile ? "16px 16px 0 0" : 16,
-              padding: isMobile ? 20 : 16,
-              overflowY: "auto",
-              WebkitOverflowScrolling: "touch",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 16,
-                paddingBottom: 12,
-                borderBottom: "1px solid #eee",
-              }}
-            >
-              <div style={{ fontWeight: 900, fontSize: isMobile ? 20 : 18 }}>
-                {panel === "CREATE"
-                  ? (createStep === 2 ? t("createPanel.capacityStepTitle") : t("createPanel.title"))
-                  : t("joinPanel.title")}
-              </div>
-              <button
-                onClick={() => { setPanel("NONE"); setCreateStep(1); }}
-                style={{
-                  width: TOUCH_TARGET.minimum,
-                  height: TOUCH_TARGET.minimum,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#f5f5f5",
-                  border: "none",
-                  borderRadius: 10,
-                  fontSize: 18,
-                  color: "#666",
-                  cursor: "pointer",
-                  ...mobileInteractiveStyles.tapHighlight,
-                }}
-                aria-label="Close"
-              >
-                &#10005;
-              </button>
-            </div>
-
-            {panel === "CREATE" && !showWizard && createStep === 1 && (
-              <div style={{ display: "grid", gap: 14 }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.tournamentLabel")}</span>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(2, 1fr)",
-                      gap: 8,
-                    }}
-                  >
-                    {TOURNAMENT_CATALOG.map((tournament) => {
-                      const matchingInstance = (instances ?? []).find(
-                        (inst) => inst.template?.key === tournament.templateKey
-                      );
-                      const isAvailable = tournament.active && !!matchingInstance;
-                      const isSelected = isAvailable && instanceId === matchingInstance?.id;
-
-                      return (
-                        <button
-                          key={tournament.key}
-                          type="button"
-                          disabled={!isAvailable}
-                          onClick={() => {
-                            if (matchingInstance) setInstanceId(matchingInstance.id);
-                          }}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: 4,
-                            padding: "12px 8px",
-                            borderRadius: 10,
-                            border: isSelected
-                              ? "2px solid #667eea"
-                              : "1px solid #e5e7eb",
-                            background: isSelected
-                              ? "linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08))"
-                              : isAvailable
-                                ? "#fff"
-                                : "#f9fafb",
-                            cursor: isAvailable ? "pointer" : "default",
-                            opacity: isAvailable ? 1 : 0.45,
-                            filter: isAvailable ? "none" : "grayscale(100%)",
-                            transition: "border-color 0.15s, background 0.15s",
-                            position: "relative",
-                          }}
-                        >
-                          {!isAvailable && (
-                            <span
-                              style={{
-                                position: "absolute",
-                                top: 4,
-                                right: 4,
-                                fontSize: "0.55rem",
-                                fontWeight: 600,
-                                color: "#fff",
-                                background: "#9ca3af",
-                                padding: "1px 4px",
-                                borderRadius: 3,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.3px",
-                              }}
-                            >
-                              {tc("comingSoon")}
-                            </span>
-                          )}
-                          <span style={{ fontSize: "1.5rem" }}>{tournament.emoji}</span>
-                          <span
-                            style={{
-                              fontSize: "0.72rem",
-                              fontWeight: 600,
-                              color: isAvailable ? "#111827" : "#9ca3af",
-                              textAlign: "center",
-                              lineHeight: 1.2,
-                            }}
-                          >
-                            {tc(`items.${tournament.i18nKey}.name`)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.poolNameLabel")}</span>
-                  <input
-                    value={poolName}
-                    onChange={(e) => setPoolName(e.target.value)}
-                    placeholder={t("createPanel.poolNamePlaceholder")}
-                    style={inputStyle}
-                  />
-                </label>
-
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.descriptionLabel")}</span>
-                  <input
-                    value={poolDesc}
-                    onChange={(e) => setPoolDesc(e.target.value)}
-                    placeholder={t("createPanel.descriptionPlaceholder")}
-                    style={inputStyle}
-                  />
-                </label>
-
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>
-                      {t("createPanel.deadlineLabel")}
-                    </span>
-                    <input
-                      type="number"
-                      value={deadline}
-                      min={0}
-                      max={1440}
-                      onChange={(e) => setDeadline(Number(e.target.value))}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.timezoneLabel")}</span>
-                    <input
-                      value={timeZone}
-                      onChange={(e) => setTimeZone(e.target.value)}
-                      placeholder="America/Bogota"
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginTop: 6,
-                    padding: 12,
-                    background: "#f8f9fa",
-                    borderRadius: 10,
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={requireApproval}
-                    onChange={(e) => setRequireApproval(e.target.checked)}
-                    style={{ width: 20, height: 20, cursor: "pointer" }}
-                  />
-                  <div>
-                    <div style={{ fontSize: 14, color: "#333", fontWeight: 500 }}>
-                      {t("createPanel.requireApprovalLabel")}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                      {t("createPanel.requireApprovalDesc")}
-                    </div>
-                  </div>
-                </label>
-
-                {/* Scoring Configuration */}
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: 16,
-                    border: "2px solid #007bff",
-                    borderRadius: 12,
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                    color: "white",
-                  }}
-                >
-                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
-                    {"\u{1F4CA}"} {t("createPanel.scoringTitle")}
-                  </div>
-                  <div style={{ fontSize: 13, marginBottom: 12, opacity: 0.95 }}>
-                    {t("createPanel.scoringDesc")}
-                  </div>
-                  <button
-                    onClick={() => setShowWizard(true)}
-                    style={{
-                      padding: "12px 16px",
-                      borderRadius: 8,
-                      border: "2px solid white",
-                      background: "white",
-                      color: "#667eea",
-                      cursor: "pointer",
-                      fontSize: 14,
-                      fontWeight: 700,
-                      minHeight: TOUCH_TARGET.minimum,
-                      ...mobileInteractiveStyles.tapHighlight,
-                    }}
-                  >
-                    {"\u{1F9D9}\u200D\u2642\uFE0F"} {t("createPanel.configWizard")}
-                  </button>
-                  {pickTypesConfig && (
-                    <div
-                      style={{
-                        marginTop: 12,
-                        padding: 10,
-                        background: "rgba(255,255,255,0.2)",
-                        borderRadius: 6,
-                        fontSize: 13,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {"\u2705"} {t("createPanel.configReady", { count: Array.isArray(pickTypesConfig) ? pickTypesConfig.length : 0 })}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={goToCapacityStep}
-                  style={{
-                    marginTop: 8,
-                    padding: isMobile ? 16 : 12,
-                    borderRadius: 12,
-                    border: "none",
-                    background: "#111",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontSize: isMobile ? 16 : 14,
-                    fontWeight: 600,
-                    minHeight: TOUCH_TARGET.comfortable,
-                    ...mobileInteractiveStyles.tapHighlight,
-                  }}
-                >
-                  {t("createPanel.nextStep")}
-                </button>
-              </div>
-            )}
-
-            {/* Step 2: Capacity Selection */}
-            {panel === "CREATE" && !showWizard && createStep === 2 && (
-              <div style={{ display: "grid", gap: 14 }}>
-                {/* Step indicator */}
-                <div style={{ fontSize: 13, color: "#666", fontWeight: 500, textAlign: "center" }}>
-                  {t("createPanel.stepIndicator", { current: 2, total: 2 })}
-                </div>
-
-                <CapacitySelector
-                  type="personal"
-                  selectedCapacity={maxParticipants}
-                  onSelect={setMaxParticipants}
-                  mode="creation"
-                />
-
-                <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                  <button
-                    onClick={() => setCreateStep(1)}
-                    style={{
-                      flex: 1,
-                      padding: isMobile ? 14 : 10,
-                      borderRadius: 12,
-                      border: "1px solid #ddd",
-                      background: "#fff",
-                      color: "#333",
-                      cursor: "pointer",
-                      fontSize: isMobile ? 15 : 14,
-                      fontWeight: 600,
-                      minHeight: TOUCH_TARGET.comfortable,
-                      ...mobileInteractiveStyles.tapHighlight,
-                    }}
-                  >
-                    {t("createPanel.backStep")}
-                  </button>
-                  <button
-                    onClick={onCreate}
-                    disabled={busy}
-                    style={{
-                      flex: 2,
-                      padding: isMobile ? 14 : 10,
-                      borderRadius: 12,
-                      border: "none",
-                      background: "#111",
-                      color: "#fff",
-                      cursor: "pointer",
-                      fontSize: isMobile ? 15 : 14,
-                      fontWeight: 600,
-                      minHeight: TOUCH_TARGET.comfortable,
-                      ...mobileInteractiveStyles.tapHighlight,
-                    }}
-                  >
-                    {busy ? t("createPanel.creating") : t("createPanel.createButton")}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Advanced Configuration Wizard */}
-            {panel === "CREATE" && showWizard && instanceId && token && (
-              <div>
-                <PoolConfigWizard
-                  instanceId={instanceId}
-                  token={token}
-                  onComplete={(config) => {
-                    setPickTypesConfig(config);
-                    setShowWizard(false);
-                  }}
-                  onCancel={() => setShowWizard(false)}
-                />
-              </div>
-            )}
-
-            {panel === "JOIN" && (
-              <div style={{ display: "grid", gap: 14 }}>
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("joinPanel.inviteCodeLabel")}</span>
-                  <input
-                    value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value)}
-                    placeholder={t("joinPanel.inviteCodePlaceholder")}
-                    style={inputStyle}
-                  />
-                </label>
-
-                <button
-                  onClick={onJoin}
-                  disabled={busy}
-                  style={{
-                    marginTop: 6,
-                    padding: isMobile ? 16 : 12,
-                    borderRadius: 12,
-                    border: "none",
-                    background: "#111",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontSize: isMobile ? 16 : 14,
-                    fontWeight: 600,
-                    minHeight: TOUCH_TARGET.comfortable,
-                    ...mobileInteractiveStyles.tapHighlight,
-                  }}
-                >
-                  {busy ? t("joinPanel.joining") : t("joinPanel.joinButton")}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <CreateJoinPanel
+          panel={panel as "CREATE" | "JOIN"}
+          onClose={() => { setPanel("NONE"); setCreateStep(1); }}
+          createStep={createStep}
+          setCreateStep={setCreateStep}
+          showWizard={showWizard}
+          setShowWizard={setShowWizard}
+          instanceId={instanceId}
+          setInstanceId={setInstanceId}
+          instances={instances}
+          poolName={poolName}
+          setPoolName={setPoolName}
+          poolDesc={poolDesc}
+          setPoolDesc={setPoolDesc}
+          deadline={deadline}
+          setDeadline={setDeadline}
+          timeZone={timeZone}
+          setTimeZone={setTimeZone}
+          requireApproval={requireApproval}
+          setRequireApproval={setRequireApproval}
+          maxParticipants={maxParticipants}
+          setMaxParticipants={setMaxParticipants}
+          pickTypesConfig={pickTypesConfig}
+          setPickTypesConfig={setPickTypesConfig}
+          goToCapacityStep={goToCapacityStep}
+          onCreate={onCreate}
+          inviteCode={inviteCode}
+          setInviteCode={setInviteCode}
+          onJoin={onJoin}
+          token={token}
+          isMobile={isMobile}
+          busy={busy}
+          t={t}
+          tc={tc}
+          inputStyle={inputStyle}
+        />
       )}
     </div>
   );

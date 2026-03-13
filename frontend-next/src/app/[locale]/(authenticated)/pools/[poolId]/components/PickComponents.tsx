@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { TeamFlag } from "@/components/TeamFlag";
 import { getTeamFlag, getCountryName } from "@/data/teamFlags";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { colors, radii, fontSize, fontWeight, shadows } from "@/lib/theme";
 
 // ========== PICK SECTION (con modo lectura/edición) ==========
 export function PickSection(props: {
@@ -29,8 +30,8 @@ export function PickSection(props: {
   void _canEdit; // Used implicitly through !props.isLocked checks
 
   return (
-    <div style={{ border: "1px solid #f2f2f2", borderRadius: 10, padding: "8px 10px" }}>
-      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6, color: "#555" }}>{t("pick.myPick")}</div>
+    <div style={{ border: "1px solid #f2f2f2", borderRadius: radii.xl, padding: "8px 10px" }}>
+      <div style={{ fontWeight: fontWeight.bold, fontSize: fontSize.sm, marginBottom: 6, color: "#555" }}>{t("pick.myPick")}</div>
 
       {props.isLocked && !hasPick && (
         <div style={{ color: "#999", fontSize: 13, fontStyle: "italic" }}>🔒 {t("pick.noPick")}</div>

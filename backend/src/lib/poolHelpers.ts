@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { CRYPTO_BYTES } from "./constants";
 
 export function outcomeFromScore(homeGoals: number, awayGoals: number): "HOME" | "DRAW" | "AWAY" {
   if (homeGoals > awayGoals) return "HOME";
@@ -8,5 +9,5 @@ export function outcomeFromScore(homeGoals: number, awayGoals: number): "HOME" |
 
 export function makeInviteCode() {
   // Comentario en español: código corto, suficientemente único para MVP
-  return crypto.randomBytes(6).toString("hex"); // 12 chars
+  return crypto.randomBytes(CRYPTO_BYTES.POOL_INVITE_CODE).toString("hex"); // 12 chars
 }

@@ -217,14 +217,14 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
           totalPoints: member.points,
           exactScores: userExactScores.get(member.userId) ?? 0,
         }).catch((err) => {
-          console.error(`Error sending pool completed email to ${member.user.email}:`, err);
+          console.error("Error sending pool completed email:", err instanceof Error ? err.message : String(err));
         })
       );
 
       await Promise.allSettled(emailPromises);
       console.log(`📧 Pool completed emails sent for pool ${poolId}`);
     } catch (emailError) {
-      console.error("Error sending pool completed emails:", emailError);
+      console.error("Error sending pool completed emails:", emailError instanceof Error ? emailError.message : String(emailError));
     }
   })();
 }

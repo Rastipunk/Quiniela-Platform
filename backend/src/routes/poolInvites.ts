@@ -11,6 +11,7 @@ import {
 } from "../services/poolStateMachine";
 import { sendPoolInvitationEmail, sendPoolFullNotificationEmail } from "../lib/email";
 import { ensurePoolCapacity } from "../lib/poolCapacity";
+import { TOKEN_EXPIRY_MS } from "../lib/constants";
 
 export const poolInvitesRouter = Router();
 
@@ -58,7 +59,7 @@ poolInvitesRouter.post("/:poolId/invites", async (req, res) => {
       maxUses: parsed.data.maxUses ?? null,
       expiresAtUtc: parsed.data.expiresAtUtc
         ? new Date(parsed.data.expiresAtUtc)
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default: 30 days
+        : new Date(Date.now() + TOKEN_EXPIRY_MS.POOL_INVITE_DEFAULT), // Default: 30 days
     },
   });
 

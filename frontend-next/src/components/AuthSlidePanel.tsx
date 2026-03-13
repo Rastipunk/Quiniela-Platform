@@ -6,6 +6,7 @@ import { login, register, loginWithGoogle, type RegisterConsentOptions } from "@
 import { setToken } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
 
 declare global {
   interface Window {
@@ -264,12 +265,12 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
     padding: 12,
     fontSize: 15,
     minHeight: TOUCH_TARGET.minimum,
-    borderRadius: 8,
-    border: "1px solid var(--border)",
+    borderRadius: radii.lg,
+    border: `1px solid ${colors.varBorder}`,
     width: "100%",
     boxSizing: "border-box" as const,
-    background: "var(--bg)",
-    color: "var(--text)",
+    background: colors.varBg,
+    color: colors.varText,
     ...mobileInteractiveStyles.tapHighlight,
   };
 
@@ -277,11 +278,11 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
     width: "100%",
     padding: 14,
     fontSize: 15,
-    fontWeight: 600,
+    fontWeight: fw.semibold,
     minHeight: TOUCH_TARGET.comfortable,
-    borderRadius: 10,
+    borderRadius: radii.xl,
     cursor: "pointer",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: colors.brandGradient,
     color: "white",
     border: "none",
     ...mobileInteractiveStyles.tapHighlight,
@@ -291,12 +292,12 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
     flex: 1,
     padding: 12,
     fontSize: 14,
-    fontWeight: 500,
+    fontWeight: fw.medium,
     minHeight: TOUCH_TARGET.minimum,
-    background: isActive ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "transparent",
-    color: isActive ? "#fff" : "var(--text)",
-    border: isActive ? "none" : "1px solid var(--border)",
-    borderRadius: 8,
+    background: isActive ? colors.brandGradient : "transparent",
+    color: isActive ? "#fff" : colors.varText,
+    border: isActive ? "none" : `1px solid ${colors.varBorder}`,
+    borderRadius: radii.lg,
     cursor: "pointer",
     ...mobileInteractiveStyles.tapHighlight,
   });
@@ -338,8 +339,8 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} style={checkboxStyle} />
         <span>
           {t("acceptTermsText")}{" "}
-          <Link href="/terminos" target="_blank" style={{ color: "#667eea" }}>{t("acceptTermsLink")}</Link>{" "}
-          <span style={{ color: "#dc2626" }}>*</span>
+          <Link href="/terminos" target="_blank" style={{ color: colors.brandLight }}>{t("acceptTermsLink")}</Link>{" "}
+          <span style={{ color: colors.error }}>*</span>
         </span>
       </label>
 
@@ -347,8 +348,8 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         <input type="checkbox" checked={acceptPrivacy} onChange={(e) => setAcceptPrivacy(e.target.checked)} style={checkboxStyle} />
         <span>
           {t("acceptPrivacyText")}{" "}
-          <Link href="/privacidad" target="_blank" style={{ color: "#667eea" }}>{t("acceptPrivacyLink")}</Link>{" "}
-          <span style={{ color: "#dc2626" }}>*</span>
+          <Link href="/privacidad" target="_blank" style={{ color: colors.brandLight }}>{t("acceptPrivacyLink")}</Link>{" "}
+          <span style={{ color: colors.error }}>*</span>
         </span>
       </label>
 
@@ -356,7 +357,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         <input type="checkbox" checked={acceptAge} onChange={(e) => setAcceptAge(e.target.checked)} style={checkboxStyle} />
         <span>
           {t("acceptAge")}{" "}
-          <span style={{ color: "#dc2626" }}>*</span>
+          <span style={{ color: colors.error }}>*</span>
         </span>
       </label>
 
@@ -371,15 +372,15 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, animation: "fadeIn 0.25s ease" }} />
+      <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: colors.overlay, zIndex: zIndex.modal, animation: "fadeIn 0.25s ease" }} />
 
-      <div ref={panelRef} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: isMobile ? "100%" : "min(420px, 90vw)", background: "var(--surface)", zIndex: 1001, boxShadow: "-8px 0 30px rgba(0,0,0,0.2)", animation: "slideInRight 0.3s ease", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      <div ref={panelRef} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: isMobile ? "100%" : "min(420px, 90vw)", background: colors.varSurface, zIndex: zIndex.modalAbove, boxShadow: `-8px 0 30px ${colors.shadowMedium}`, animation: "slideInRight 0.3s ease", display: "flex", flexDirection: "column", overflowY: "auto" }}>
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg)" }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${colors.varBorder}`, background: colors.varBg }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: fw.bold }}>
             {mode === "login" ? t("loginTitle") : t("registerTitle")}
           </h2>
-          <button onClick={onClose} aria-label={t("close")} style={{ width: TOUCH_TARGET.minimum, height: TOUCH_TARGET.minimum, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)", fontSize: 18, cursor: "pointer", ...mobileInteractiveStyles.tapHighlight }}>
+          <button onClick={onClose} aria-label={t("close")} style={{ width: TOUCH_TARGET.minimum, height: TOUCH_TARGET.minimum, display: "flex", alignItems: "center", justifyContent: "center", background: colors.varSurface, border: `1px solid ${colors.varBorder}`, borderRadius: radii.lg, color: colors.varText, fontSize: 18, cursor: "pointer", ...mobileInteractiveStyles.tapHighlight }}>
             X
           </button>
         </div>
@@ -441,7 +442,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
             </button>
 
             {error && (
-              <div style={{ marginTop: 12, padding: 12, background: "rgba(220, 38, 38, 0.1)", border: "1px solid rgba(220, 38, 38, 0.3)", borderRadius: 8, color: "#dc2626", fontSize: 13 }}>
+              <div style={{ marginTop: 12, padding: 12, background: "rgba(220, 38, 38, 0.1)", border: "1px solid rgba(220, 38, 38, 0.3)", borderRadius: radii.lg, color: colors.error, fontSize: 13 }}>
                 {error}
               </div>
             )}
@@ -464,26 +465,26 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", textAlign: "center", fontSize: 10, color: "var(--muted)", background: "var(--bg)" }}>
+        <div style={{ padding: "12px 20px", borderTop: `1px solid ${colors.varBorder}`, textAlign: "center", fontSize: 10, color: colors.varMuted, background: colors.varBg }}>
           {t("footerAccept")}{" "}
-          <Link href="/terminos" target="_blank" style={{ color: "#667eea" }}>{t("footerTerms")}</Link>{" "}
+          <Link href="/terminos" target="_blank" style={{ color: colors.brandLight }}>{t("footerTerms")}</Link>{" "}
           {t("footerAnd")}{" "}
-          <Link href="/privacidad" target="_blank" style={{ color: "#667eea" }}>{t("footerPrivacy")}</Link>
+          <Link href="/privacidad" target="_blank" style={{ color: colors.brandLight }}>{t("footerPrivacy")}</Link>
         </div>
       </div>
 
       {/* Google Consent Modal */}
       {showGoogleConsentModal && (
         <>
-          <div onClick={() => { setShowGoogleConsentModal(false); setPendingGoogleCredential(null); setError(null); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.6)", zIndex: 1100 }} />
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "var(--surface)", borderRadius: 16, padding: 24, width: isMobile ? "90vw" : 380, maxWidth: "90vw", maxHeight: "90vh", overflow: "auto", zIndex: 1101, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+          <div onClick={() => { setShowGoogleConsentModal(false); setPendingGoogleCredential(null); setError(null); }} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: colors.overlayDark, zIndex: zIndex.toast }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: colors.varSurface, borderRadius: radii["4xl"], padding: 24, width: isMobile ? "90vw" : 380, maxWidth: "90vw", maxHeight: "90vh", overflow: "auto", zIndex: zIndex.toast, boxShadow: `0 20px 60px ${colors.shadowDark}` }}>
             <h3 style={{ margin: "0 0 8px 0", fontSize: 16 }}>{t("googleConsentTitle")}</h3>
             <p style={{ margin: "0 0 16px 0", fontSize: 12, color: "var(--muted)" }}>{t("googleConsentSubtitleShort")}</p>
 
             <ConsentCheckboxes inModal />
 
             {error && (
-              <div style={{ marginTop: 12, padding: 10, background: "rgba(220, 38, 38, 0.1)", border: "1px solid rgba(220, 38, 38, 0.3)", borderRadius: 8, color: "#dc2626", fontSize: 12 }}>
+              <div style={{ marginTop: 12, padding: 10, background: "rgba(220, 38, 38, 0.1)", border: "1px solid rgba(220, 38, 38, 0.3)", borderRadius: radii.lg, color: colors.error, fontSize: 12 }}>
                 {error}
               </div>
             )}

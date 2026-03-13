@@ -9,6 +9,7 @@ import { getUserProfile, logout as apiLogout, type UserProfile } from "@/lib/api
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { BrandLogo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
+import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
 
 export function NavBar() {
   const t = useTranslations("nav");
@@ -68,13 +69,13 @@ export function NavBar() {
   const avatarStyle = {
     width: isMobile ? 36 : 32,
     height: isMobile ? 36 : 32,
-    borderRadius: "50%",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    borderRadius: radii.circle as string,
+    background: colors.brandGradient,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: isMobile ? "1rem" : "1rem",
-    fontWeight: "bold" as const,
+    fontWeight: fw.bold,
     color: "white",
     flexShrink: 0,
   };
@@ -88,9 +89,9 @@ export function NavBar() {
         padding: isMobile ? "0.75rem 1rem" : "1rem 2rem",
         background: "#1a1a1a",
         color: "white",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        boxShadow: shadows.card,
         position: "relative",
-        zIndex: 100,
+        zIndex: zIndex.sticky,
       }}
     >
       {/* Logo / Brand */}
@@ -119,7 +120,7 @@ export function NavBar() {
               color: "white",
               textDecoration: "none",
               fontSize: "1rem",
-              fontWeight: 500,
+              fontWeight: fw.medium,
             }}
           >
             {t("myPools")}
@@ -131,7 +132,7 @@ export function NavBar() {
               color: "rgba(255,255,255,0.7)",
               textDecoration: "none",
               fontSize: "1rem",
-              fontWeight: 500,
+              fontWeight: fw.medium,
             }}
           >
             {t("faq")}
@@ -143,7 +144,7 @@ export function NavBar() {
               color: "rgba(255,255,255,0.7)",
               textDecoration: "none",
               fontSize: "1rem",
-              fontWeight: 500,
+              fontWeight: fw.medium,
             }}
           >
             {t("enterprises")}
@@ -161,7 +162,7 @@ export function NavBar() {
                 gap: "0.5rem",
                 background: "rgba(255,255,255,0.1)",
                 border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: "8px",
+                borderRadius: radii.lg,
                 padding: "0.5rem 1rem",
                 color: "white",
                 cursor: "pointer",
@@ -186,7 +187,7 @@ export function NavBar() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    zIndex: 999,
+                    zIndex: zIndex.overlay,
                   }}
                 />
 
@@ -195,12 +196,12 @@ export function NavBar() {
                     position: "absolute",
                     top: "calc(100% + 0.5rem)",
                     right: 0,
-                    background: "white",
-                    color: "#333",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    background: colors.white,
+                    color: colors.textDark,
+                    borderRadius: radii.lg,
+                    boxShadow: shadows.md,
                     minWidth: "200px",
-                    zIndex: 1000,
+                    zIndex: zIndex.modal,
                     overflow: "hidden",
                   }}
                 >
@@ -214,10 +215,10 @@ export function NavBar() {
                     <div style={{ fontWeight: "bold", marginBottom: "0.25rem" }}>
                       {profile?.displayName}
                     </div>
-                    <div style={{ fontSize: "0.875rem", color: "#666" }}>
+                    <div style={{ fontSize: "0.875rem", color: colors.textMuted }}>
                       @{profile?.username}
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "#999", marginTop: "0.25rem" }}>
+                    <div style={{ fontSize: "0.75rem", color: colors.textLight, marginTop: "0.25rem" }}>
                       {profile?.email}
                     </div>
                   </div>
@@ -229,7 +230,7 @@ export function NavBar() {
                     style={{
                       display: "block",
                       padding: "0.75rem 1rem",
-                      color: "#333",
+                      color: colors.textDark,
                       textDecoration: "none",
                       borderBottom: "1px solid #eee",
                       minHeight: TOUCH_TARGET.minimum,
@@ -254,7 +255,7 @@ export function NavBar() {
                         style={{
                           display: "block",
                           padding: "0.75rem 1rem",
-                          color: "#333",
+                          color: colors.textDark,
                           textDecoration: "none",
                           borderBottom: "1px solid #eee",
                           minHeight: TOUCH_TARGET.minimum,
@@ -275,7 +276,7 @@ export function NavBar() {
                         style={{
                           display: "block",
                           padding: "0.75rem 1rem",
-                          color: "#333",
+                          color: colors.textDark,
                           textDecoration: "none",
                           borderBottom: "1px solid #eee",
                           minHeight: TOUCH_TARGET.minimum,
@@ -397,8 +398,8 @@ export function NavBar() {
               left: 0,
               right: 0,
               bottom: 0,
-              background: "rgba(0,0,0,0.5)",
-              zIndex: 998,
+              background: colors.overlay,
+              zIndex: zIndex.overlay,
               animation: "fadeIn 0.2s ease",
             }}
           />
@@ -411,7 +412,7 @@ export function NavBar() {
               bottom: 0,
               width: "min(280px, 85vw)",
               background: "#1a1a1a",
-              zIndex: 999,
+              zIndex: zIndex.overlay,
               boxShadow: "-4px 0 20px rgba(0,0,0,0.3)",
               animation: "slideInRight 0.25s ease",
               display: "flex",
@@ -429,7 +430,7 @@ export function NavBar() {
                 borderBottom: "1px solid rgba(255,255,255,0.1)",
               }}
             >
-              <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{t("menu")}</span>
+              <span style={{ fontWeight: fw.bold, fontSize: "1.1rem" }}>{t("menu")}</span>
               <button
                 onClick={() => setShowMobileMenu(false)}
                 aria-label={t("closeMenu")}
@@ -441,7 +442,7 @@ export function NavBar() {
                   justifyContent: "center",
                   background: "rgba(255,255,255,0.1)",
                   border: "none",
-                  borderRadius: "8px",
+                  borderRadius: radii.lg,
                   color: "white",
                   fontSize: "1.25rem",
                   cursor: "pointer",
@@ -465,7 +466,7 @@ export function NavBar() {
                   {profile?.displayName?.charAt(0).toUpperCase() || "U"}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, marginBottom: "0.25rem" }}>
+                  <div style={{ fontWeight: fw.bold, marginBottom: "0.25rem" }}>
                     {profile?.displayName || "Usuario"}
                   </div>
                   <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>
@@ -627,10 +628,10 @@ export function NavBar() {
                   padding: "0.875rem 1rem",
                   background: "rgba(211, 47, 47, 0.1)",
                   border: "1px solid #d32f2f",
-                  borderRadius: "8px",
+                  borderRadius: radii.lg,
                   color: "#ff6b6b",
                   fontSize: "1rem",
-                  fontWeight: 600,
+                  fontWeight: fw.semibold,
                   cursor: "pointer",
                   minHeight: TOUCH_TARGET.comfortable,
                   ...mobileInteractiveStyles.tapHighlight,

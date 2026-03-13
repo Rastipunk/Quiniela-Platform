@@ -157,7 +157,7 @@ export class SmartSyncService {
         });
         created++;
       } catch (e) {
-        console.error(`[SmartSync] Error initializing state for ${match.id}:`, e);
+        console.error(`[SmartSync] Error initializing state for ${match.id}:`, e instanceof Error ? e.message : String(e));
       }
     }
 

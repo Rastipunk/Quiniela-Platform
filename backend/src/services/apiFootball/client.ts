@@ -248,7 +248,7 @@ export class ApiFootballClient {
           results.push(fixture);
         }
       } catch (error) {
-        console.error(`[API-Football] Error fetching fixture ${fixtureId}:`, error);
+        console.error(`[API-Football] Error fetching fixture ${fixtureId}:`, error instanceof Error ? error.message : String(error));
         // Continue with other fixtures
       }
     }

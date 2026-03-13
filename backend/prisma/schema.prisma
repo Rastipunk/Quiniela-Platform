@@ -797,7 +797,7 @@ model ResultSyncLog {
 model MatchSyncState {
   id                    String   @id @default(uuid())
   tournamentInstanceId  String
-  tournamentInstance    TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Cascade)
+  tournamentInstance    TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Restrict)
   
   internalMatchId       String   // Match ID from dataJson
   

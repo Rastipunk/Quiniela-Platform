@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "../services/poolStateMachine";
 import { extractMatches, type FixtureMatch } from "../lib/fixture";
+import { PLACEHOLDER_TEAM_PREFIXES } from "../lib/constants";
 
 export const picksRouter = Router();
 
@@ -124,8 +125,7 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
   if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
 
   // Block picks on placeholder matches (teams not yet determined)
-  const placeholderPrefixes = ["t_TBD", "W_", "RU_", "L_", "3rd_"];
-  const isPlaceholder = (teamId: string) => placeholderPrefixes.some((p) => teamId === p || teamId.startsWith(p));
+  const isPlaceholder = (teamId: string) => PLACEHOLDER_TEAM_PREFIXES.some((p: string) => teamId === p || teamId.startsWith(p));
   if (isPlaceholder(match.homeTeamId) || isPlaceholder(match.awayTeamId)) {
     return res.status(409).json({ error: "MATCH_PENDING", message: "Cannot make picks on matches with teams not yet determined" });
   }

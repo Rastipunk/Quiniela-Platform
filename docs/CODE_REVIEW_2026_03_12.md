@@ -53,7 +53,7 @@
 - **Fix propuesto:** Dividir en sub-routers: `poolMembers.ts`, `poolInvites.ts`, `poolAdmin.ts`, `poolOverview.ts`. Extraer middleware compartido.
 
 ### CR-06: Frontend — Componentes Gigantes sin Splitting
-- **Estado:** `[!]`
+- **Estado:** `[x]`
 - **Archivos:**
   - `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolMatchesTab.tsx` (1,594 lineas)
   - `frontend-next/src/app/[locale]/(authenticated)/dashboard/page.tsx` (1,046 lineas)
@@ -75,28 +75,28 @@
 ## HIGH
 
 ### HI-01: Token Storage en localStorage — Vulnerable a XSS
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (httpOnly cookies con dual cookie pattern)
 - **Archivos:** `frontend-next/src/lib/auth.ts:18-21`
 - **Descripcion:** JWT almacenado sin encriptar en localStorage, accesible a cualquier script en el dominio.
 - **Fix propuesto:** Ideal: httpOnly cookie set por backend. Minimo: Content-Security-Policy estricto.
 
 ### HI-02: Tokens en URL (query params)
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (POST con body + history.replaceState cleanup)
 - **Archivos:** `frontend-next/src/lib/api.ts:1160` (verify-email), `frontend-next/src/lib/api.ts:1305` (corporate-invite)
 - **Descripcion:** Tokens en URL se logean en historial del browser, server logs, proxy logs, Referrer headers.
 - **Fix propuesto:** Cambiar a POST con body.
 
-### HI-03: Type Safety — ~32 `as any` restantes
-- **Estado:** `[x]` Corregido (ApiError class + catch tipados + data tipado en api.ts)
-- **Archivos:** Backend (~19 casts), Frontend (~13 casts) — distribuidos en pools.ts, picks.ts, results.ts, api.ts, PoolConfigWizard.tsx, PoolMatchesTab.tsx
+### HI-03: Type Safety — `as any` excesivos
+- **Estado:** `[!]` Parcial (ApiError class creada, pero ~132 `as any` restantes)
+- **Archivos:** Backend (~93 casts en 27 archivos), Frontend (~39 casts en 12 archivos). Hot spots: poolAdmin.ts (11), PickRulesDisplay.tsx (17), poolOverview.ts (5).
 - **Descripcion:** Incluye `Promise<any>` en return types, `body: any` en params, `let data: any`, `e: any` en catches.
-- **Fix propuesto:** Reemplazar con tipos especificos. Crear ApiError class para catches.
+- **Fix propuesto:** Reemplazar con tipos especificos. ApiError class ya creada en frontend (apiError.ts), falta adopcion masiva.
 
 ### HI-04: API Response Shapes Inconsistentes
-- **Estado:** `[x]` Corregido (apiResponse.ts helpers creados — migracion gradual)
-- **Archivos:** Todos los routes del backend
+- **Estado:** `[!]` Parcial (apiResponse.ts creado pero NO importado en ningun route)
+- **Archivos:** `backend/src/lib/apiResponse.ts` (helpers creados), todos los routes del backend (sin adopcion)
 - **Descripcion:** Mezcla de `{ ok: true }`, `{ success: true }`, objetos directos. Errores: `{ error }` vs `{ error, message }` vs `{ error, reason }`.
-- **Fix propuesto:** Estandarizar a `{ data?, error?, message? }` con helper functions.
+- **Fix propuesto:** Integrar apiResponse.ts helpers en todos los routes gradualmente.
 
 ### HI-05: State en React que deberia estar en URL
 - **Estado:** `[x]` Corregido (useSearchParams en pool page + dashboard)
@@ -127,10 +127,10 @@
 ## MEDIUM
 
 ### MD-01: Inline Styles Excesivos
-- **Estado:** `[ ]`
-- **Archivos:** Todos los componentes grandes del frontend
-- **Descripcion:** Magic numbers repetidos (borderRadius: 12, zIndex: 1000, rgba(0,0,0,0.5)). Colores hardcoded sin CSS variables. ~400+ lineas de estilos inline por componente.
-- **Fix propuesto:** Crear theme.ts con constantes de estilo, migrar gradualmente.
+- **Estado:** `[!]` Parcial (theme.ts creado, 19 archivos migrados, resto pendiente)
+- **Archivos:** `frontend-next/src/lib/theme.ts` (colors, spacing, radii, shadows, fontSize, fontWeight, zIndex). 19 archivos ya importan de @/lib/theme (corporate, admin, nav, auth, dashboard, pool page).
+- **Descripcion:** Magic numbers repetidos (borderRadius: 12, zIndex: 1000, rgba(0,0,0,0.5)). Colores hardcoded sin CSS variables.
+- **Fix propuesto:** Continuar migracion gradual al resto de componentes.
 
 ### MD-02: Accesibilidad — Missing ARIA + Keyboard Support
 - **Estado:** `[ ]`
@@ -169,10 +169,10 @@
 - **Fix propuesto:** Agregar flag `scoringError` al breakdown para verbose mode.
 
 ### MD-08: Cascade Delete Peligroso en MatchSyncState
-- **Estado:** `[ ]`
-- **Archivos:** `backend/prisma/schema.prisma` (MatchSyncState relation)
-- **Descripcion:** Si se borra un TournamentInstance, cascadea a todos los sync states.
-- **Fix propuesto:** Cambiar a SET NULL o RESTRICT.
+- **Estado:** `[x]` Corregido (onDelete: Cascade → onDelete: Restrict)
+- **Archivos:** `backend/prisma/schema.prisma` (MatchSyncState.tournamentInstance relation)
+- **Descripcion:** Si se borra un TournamentInstance, cascadeaba a todos los sync states.
+- **Fix propuesto:** Cambiar a RESTRICT. Requiere migration al deploy.
 
 ### MD-09: Missing useCallback/useMemo en Componentes Criticos
 - **Estado:** `[x]` Corregido — useCallback en PublicPageWrapper openAuthPanel + handleLoggedIn
@@ -215,8 +215,8 @@
 ## LOW
 
 ### LO-01: Magic Strings/Numbers en Backend
-- **Estado:** `[ ]`
-- **Archivos:** `backend/src/routes/picks.ts:127`, `backend/src/routes/pools.ts:69`, `backend/src/routes/auth.ts:95`
+- **Estado:** `[x]` Corregido (constants.ts con MS, TOKEN_EXPIRY_MS, CRYPTO_BYTES, PLACEHOLDER_TEAM_PREFIXES)
+- **Archivos:** `backend/src/lib/constants.ts` (nuevo), aplicado en auth.ts, corporate.ts, poolInvites.ts, picks.ts, poolHelpers.ts, adminCorporate.ts
 - **Descripcion:** Placeholder prefixes hardcoded, `randomBytes(6)` sin constante, `24*60*60*1000` sin nombre.
 - **Fix propuesto:** Extraer a constantes nombradas.
 
@@ -227,9 +227,9 @@
 - **Fix propuesto:** Migrar a `Image` de Next.js.
 
 ### LO-03: Console.error en Produccion
-- **Estado:** `[ ]`
-- **Archivos:** Multiples archivos frontend y backend
-- **Descripcion:** `console.error(err)` logea objetos completos que podrian exponer datos sensibles.
+- **Estado:** `[x]` Corregido (err.message en vez de full objects, password logging eliminado de seedAdmin)
+- **Archivos:** corporate.ts, auth.ts, adminCorporate.ts, requireAuth.ts, poolStateMachine.ts, apiFootball/client.ts, smartSync/service.ts, seedAdmin.ts
+- **Descripcion:** `console.error(err)` logeaba objetos completos que podrian exponer datos sensibles.
 - **Fix propuesto:** Logear solo message/code, nunca full objects en produccion.
 
 ### LO-04: FAQAccordion usa Index como Key
@@ -256,3 +256,10 @@
 | 2026-03-12 | CR-04 | Agregados `@@index([poolId, status])` en PoolMember y `@@index([poolId, matchId])` en Prediction. Migration manual creada. Se aplica al deploy en Railway. | pendiente |
 | 2026-03-12 | CR-05 | pools.ts (3208 lineas) dividido en 5 archivos: pools.ts (243), poolOverview.ts (569), poolMembers.ts (573), poolInvites.ts (312), poolAdmin.ts (1535). Helpers extraidos a lib/poolHelpers.ts. Zero cambios en server.ts ni URLs. | pendiente |
 | 2026-03-12 | CR-06 | PoolMatchesTab.tsx (1594 lineas) dividido en 6 archivos: PoolMatchesTab.tsx (460), MatchCard.tsx (305), PickComponents.tsx (305), ResultComponents.tsx (351), MatchPicksModal.tsx (156), ScoringOverrideModal.tsx (116). Zero cambios funcionales, build OK. Pendiente: 4 componentes restantes. | pendiente |
+| 2026-03-13 | CR-06 | 4 componentes restantes divididos: dashboard/page.tsx (1063→434 + 3 sub), GroupStandingsCard.tsx (1042→552 + 4 sub), PoolAdminTab.tsx (982→198 + 5 sub), CorporatePoolCreation.tsx (933→489 + 7 sub). 18 archivos nuevos, zero cambios funcionales, build OK. | pendiente |
+| 2026-03-13 | HI-01 | httpOnly cookies: authCookies.ts helper, cookie-parser middleware, requireAuth lee cookie primero + fallback a header, setAuthCookies en 6 auth flows, POST /auth/logout, frontend usa p4a_logged_in cookie como UI hint. | a5719cb |
+| 2026-03-13 | HI-02 | verify-email cambiado a POST con body, corporate activation limpia token de URL con history.replaceState. | a5719cb |
+| 2026-03-13 | DB | Limpieza de produccion: eliminadas 20 pools DRAFT abandonadas (1 miembro cada una) + 84 PoolMatchResults + 84 versions + 95 AuditEvents + 12 invites + 20 members. DB queda con 10 pools activas, 41 miembros, 68 usuarios. | manual |
+| 2026-03-13 | LO-01 | Creado `lib/constants.ts` con MS, TOKEN_EXPIRY_MS, CRYPTO_BYTES, PLACEHOLDER_TEAM_PREFIXES. Aplicado en 6 archivos: auth.ts, corporate.ts, poolInvites.ts, picks.ts, poolHelpers.ts, adminCorporate.ts. | pendiente |
+| 2026-03-13 | LO-03 | Sanitizado console.error en 8 archivos backend: solo err.message en vez de full objects. Eliminado password logging de seedAdmin.ts. | pendiente |
+| 2026-03-13 | MD-08 | MatchSyncState.tournamentInstance: onDelete Cascade → Restrict. Requiere migration al deploy. | pendiente |

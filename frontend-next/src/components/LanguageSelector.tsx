@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { routing, type Locale } from "@/i18n/routing";
+import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
 
 /* ── SVG Flag Components ── */
 
@@ -138,12 +139,12 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
           gap: 6,
           background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
           border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"}`,
-          borderRadius: 8,
+          borderRadius: radii.lg,
           padding: "6px 12px",
           cursor: "pointer",
-          color: isDark ? "white" : "var(--text)",
+          color: isDark ? "white" : colors.varText,
           fontSize: "0.85rem",
-          fontWeight: 600,
+          fontWeight: fw.semibold,
           opacity: isPending ? 0.6 : 1,
           transition: "all 0.2s ease",
         }}
@@ -171,12 +172,12 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
             position: "absolute",
             top: "calc(100% + 4px)",
             left: 0,
-            background: isDark ? "#1e1e1e" : "white",
+            background: isDark ? "#1e1e1e" : colors.white,
             border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)"}`,
-            borderRadius: 10,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+            borderRadius: radii.xl,
+            boxShadow: shadows.lg,
             overflow: "hidden",
-            zIndex: 1000,
+            zIndex: zIndex.modal,
             minWidth: 170,
             animation: "fadeInDown 0.15s ease",
           }}

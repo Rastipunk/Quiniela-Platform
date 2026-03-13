@@ -7,6 +7,7 @@ import { requireAdmin } from "../middleware/requireAdmin";
 import { writeAuditEvent } from "../lib/audit";
 import { hashPassword } from "../lib/password";
 import { sendWelcomeEmail } from "../lib/email";
+import { CRYPTO_BYTES } from "../lib/constants";
 
 export const adminCorporateRouter = Router();
 
@@ -322,10 +323,10 @@ adminCorporateRouter.post("/bulk-create-users", async (req, res) => {
     if (existingEmails.has(email)) continue;
 
     const prefix = email.split("@")[0]!;
-    const suffix = crypto.randomBytes(3).toString("hex");
+    const suffix = crypto.randomBytes(CRYPTO_BYTES.USERNAME_SUFFIX).toString("hex");
     const username = `${prefix}_${suffix}`;
     const displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
-    const password = crypto.randomBytes(9).toString("base64url").slice(0, 12);
+    const password = crypto.randomBytes(9).toString("base64url").slice(0, CRYPTO_BYTES.GENERATED_PASSWORD);
     const passwordHash = await hashPassword(password);
 
     const user = await prisma.user.create({
@@ -345,7 +346,7 @@ adminCorporateRouter.post("/bulk-create-users", async (req, res) => {
       to: email,
       userId: user.id,
       displayName,
-    }).catch((err) => console.error(`Error sending welcome email to ${email}:`, err));
+    }).catch((err) => console.error(`Error sending welcome email to ${email}:`, err instanceof Error ? err.message : String(err)));
   }
 
   // Agregar a pool si se proporcionó

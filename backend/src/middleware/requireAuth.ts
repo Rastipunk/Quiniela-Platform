@@ -46,7 +46,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     req.auth = { userId: user.id, platformRole: user.platformRole };
     return next();
   } catch (error: any) {
-    console.error("[AUTH] Unexpected error:", error?.message || error);
+    console.error("[AUTH] Unexpected error:", error instanceof Error ? error.message : String(error));
     return res.status(401).json({ error: "UNAUTHENTICATED", reason: "INTERNAL_ERROR" });
   }
 }
