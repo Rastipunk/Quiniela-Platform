@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { PublicNavbar } from "./PublicNavbar";
@@ -20,17 +20,17 @@ export function PublicPageWrapper({ children }: PublicPageWrapperProps) {
   const [authPanelMode, setAuthPanelMode] = useState<"login" | "register">("login");
   const [authRedirectTo, setAuthRedirectTo] = useState<string | null>(null);
 
-  const openAuthPanel = (mode: "login" | "register" = "login", redirectTo?: string) => {
+  const openAuthPanel = useCallback((mode: "login" | "register" = "login", redirectTo?: string) => {
     setAuthPanelMode(mode);
     setAuthRedirectTo(redirectTo ?? null);
     setShowAuthPanel(true);
-  };
+  }, []);
 
-  const handleLoggedIn = () => {
+  const handleLoggedIn = useCallback(() => {
     setShowAuthPanel(false);
     router.push(authRedirectTo || "/dashboard");
     setAuthRedirectTo(null);
-  };
+  }, [router, authRedirectTo]);
 
   return (
     <AuthPanelContext.Provider value={{ openAuthPanel }}>

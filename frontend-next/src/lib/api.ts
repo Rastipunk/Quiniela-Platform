@@ -1,6 +1,7 @@
 // frontend-next/src/lib/api.ts
 // Cliente HTTP para hablar con el backend — Adaptado para Next.js
 import { clearToken, getToken, markSessionExpired } from "./auth";
+import { ApiError } from "./apiError";
 
 // Detectar API base URL para Next.js:
 // 1. Variable de entorno NEXT_PUBLIC_API_URL (set en Railway/Vercel)
@@ -37,7 +38,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
 
   const text = await res.text();
-  let data: any = null;
+  let data: unknown = null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
@@ -45,8 +46,10 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
   }
 
   if (!res.ok) {
+    const errorCode =
+      (data && typeof data === "object" && (data as Record<string, unknown>).error as string) || `HTTP_${res.status}`;
     const msg =
-      (data && typeof data === "object" && (data.error || data.message)) ||
+      (data && typeof data === "object" && ((data as Record<string, unknown>).error || (data as Record<string, unknown>).message)) ||
       (typeof data === "string" && data) ||
       `HTTP ${res.status}`;
 
@@ -58,10 +61,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
         clearToken();
       }
     }
-    const err: any = new Error(msg);
-    err.status = res.status;
-    err.payload = data;
-    throw err;
+    throw new ApiError(res.status, errorCode as string, msg as string, data);
   }
 
   return data as T;
@@ -73,7 +73,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
 
 export type LoginResponse = {
   token: string;
-  user?: any;
+  user?: { id: string; email: string; username: string; displayName: string; role: string };
 };
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

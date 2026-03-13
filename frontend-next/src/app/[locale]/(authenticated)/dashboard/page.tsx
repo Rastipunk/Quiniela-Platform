@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
   createPool,
   getMePools,
@@ -14,7 +15,9 @@ import {
   type MePoolRow,
 } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
-import { PoolConfigWizard } from "@/components/PoolConfigWizard";
+const PoolConfigWizard = dynamic(() => import("@/components/PoolConfigWizard").then(m => ({ default: m.PoolConfigWizard })), {
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+});
 import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
@@ -30,6 +33,7 @@ function detectTz() {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const t = useTranslations("dashboard");
   const tc = useTranslations("landing.tournaments");
@@ -53,7 +57,17 @@ export default function DashboardPage() {
   const [instances, setInstances] = useState<CatalogInstance[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"active" | "finished">("active");
+  // HI-05: activeTab from URL search params
+  const activeTab = useMemo(() => {
+    const param = searchParams.get("tab");
+    return param === "finished" ? "finished" as const : "active" as const;
+  }, [searchParams]);
+
+  const setActiveTab = useCallback((tab: "active" | "finished") => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "active") params.delete("tab"); else params.set("tab", tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
   const [leaveModal, setLeaveModal] = useState<MePoolRow | null>(null);
   const [leaveBusy, setLeaveBusy] = useState(false);
 
@@ -106,8 +120,8 @@ export default function DashboardPage() {
       await leavePool(token, poolRow.poolId);
       setLeaveModal(null);
       await loadAll();
-    } catch (e: any) {
-      setError(e?.message ?? "Error");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
     } finally {
       setLeaveBusy(false);
     }
@@ -123,8 +137,8 @@ export default function DashboardPage() {
 
       // default instance selection
       if (!instanceId && inst.length) setInstanceId(inst[0].id);
-    } catch (e: any) {
-      setError(e?.message ?? "Error");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
     }
   }
 
@@ -170,8 +184,8 @@ export default function DashboardPage() {
       setPickTypesConfig(null);
       await loadAll();
       router.push(`/pools/${created.id}`);
-    } catch (e: any) {
-      setError(e?.message ?? "Error");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
     } finally {
       setBusy(false);
     }
@@ -197,8 +211,8 @@ export default function DashboardPage() {
         // Join directo aprobado, navegar al pool
         router.push(`/pools/${res.poolId}`);
       }
-    } catch (e: any) {
-      setError(e?.message ?? "Error");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
     } finally {
       setBusy(false);
     }
@@ -907,7 +921,7 @@ export default function DashboardPage() {
                         fontWeight: 600,
                       }}
                     >
-                      {"\u2705"} {t("createPanel.configReady", { count: (pickTypesConfig as any[]).length })}
+                      {"\u2705"} {t("createPanel.configReady", { count: Array.isArray(pickTypesConfig) ? pickTypesConfig.length : 0 })}
                     </div>
                   )}
                 </div>

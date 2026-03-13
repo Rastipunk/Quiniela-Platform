@@ -196,6 +196,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
         fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
         organizationId: org.id,
         maxParticipants: maxParticipants ?? 100,
+        status: "ACTIVE",
       },
     });
 

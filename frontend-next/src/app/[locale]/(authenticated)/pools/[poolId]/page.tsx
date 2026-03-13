@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { createInvite, getPoolOverview, upsertPick, upsertResult, getUserProfile, type PoolOverview } from "@/lib/api";
 import type { PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { getToken } from "@/lib/auth";
@@ -15,26 +16,69 @@ import { PlayerSummary } from "@/components/PlayerSummary";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 import { getPendingMembers } from "@/lib/api";
 
-// Extracted tab components
-import { PoolAdminTab } from "./components/PoolAdminTab";
-import { PoolMatchesTab } from "./components/PoolMatchesTab";
-import { PoolLeaderboardTab } from "./components/PoolLeaderboardTab";
-import { PoolRulesTab } from "./components/PoolRulesTab";
+// Dynamic imports for heavy tab components (HI-06)
+const PoolAdminTab = dynamic(() => import("./components/PoolAdminTab").then(m => ({ default: m.PoolAdminTab })), {
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+});
+const PoolMatchesTab = dynamic(() => import("./components/PoolMatchesTab").then(m => ({ default: m.PoolMatchesTab })), {
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+});
+const PoolLeaderboardTab = dynamic(() => import("./components/PoolLeaderboardTab").then(m => ({ default: m.PoolLeaderboardTab })), {
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+});
+const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m => ({ default: m.PoolRulesTab })), {
+  loading: () => <div style={{ padding: 20, textAlign: "center", color: "#999" }}>Loading...</div>,
+});
 import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
+
+const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "admin"] as const;
+type PoolTab = typeof VALID_TABS[number];
 
 export default function PoolPage() {
   const { poolId } = useParams() as { poolId: string };
   const token = useMemo(() => getToken(), []);
   const isMobile = useIsMobile();
   const t = useTranslations("pool");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // HI-05: Read UI state from URL search params
+  const activeTab: PoolTab = useMemo(() => {
+    const param = searchParams.get("tab");
+    if (param && VALID_TABS.includes(param as PoolTab)) return param as PoolTab;
+    return "partidos";
+  }, [searchParams]);
+
+  const activePhase: string | null = searchParams.get("phase") || null;
+  const selectedGroup: string | null = searchParams.get("group") || null;
+
+  const setActiveTab = useCallback((tab: PoolTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "partidos") params.delete("tab"); else params.set("tab", tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  const setActivePhase = useCallback((phase: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (phase) params.set("phase", phase); else params.delete("phase");
+    params.delete("group"); // reset group when phase changes
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  const setSelectedGroup = useCallback((group: string | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (group) params.set("group", group); else params.delete("group");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
 
   // Helper: translate raw API error messages
-  function friendlyError(e: any): string {
-    const msg = e?.message ?? "";
-    if (msg === "FORBIDDEN" || e?.status === 403) return t("httpErrors.FORBIDDEN");
-    if (e?.status === 404) return t("httpErrors.NOT_FOUND");
-    if (e?.status === 401) return t("httpErrors.UNAUTHORIZED");
+  function friendlyError(e: unknown): string {
+    const err = e as { message?: string; status?: number };
+    const msg = err?.message ?? "";
+    if (msg === "FORBIDDEN" || err?.status === 403) return t("httpErrors.FORBIDDEN");
+    if (err?.status === 404) return t("httpErrors.NOT_FOUND");
+    if (err?.status === 401) return t("httpErrors.UNAUTHORIZED");
     if (msg.startsWith("HTTP ")) return t("httpErrors.GENERIC");
     return msg || t("httpErrors.GENERIC");
   }
@@ -49,14 +93,9 @@ export default function PoolPage() {
   // ── UI state ──
   const [showSplash, setShowSplash] = useState(false);
   const [showCapacityPopup, setShowCapacityPopup] = useState(false);
-  const [activeTab, setActiveTab] = useState<"partidos" | "leaderboard" | "resumen" | "reglas" | "jugadores" | "admin">("partidos");
-
-  // Phase navigation
-  const [activePhase, setActivePhase] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   // Pending members
-  const [pendingMembers, setPendingMembers] = useState<any[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<Array<{ id: string; userId: string; user: { displayName: string; email: string } }>>([]);
 
   // Modals
   const [breakdownModalData, setBreakdownModalData] = useState<BreakdownModalData | null>(null);
@@ -118,7 +157,7 @@ export default function PoolPage() {
       if (data.permissions.canManageResults) {
         loadPendingMembers();
       }
-    } catch (e: any) {
+    } catch (e) {
       setError(friendlyError(e));
     }
   }
@@ -128,7 +167,7 @@ export default function PoolPage() {
     try {
       const data = await getPendingMembers(token, poolId);
       setPendingMembers(data.pendingMembers || []);
-    } catch (e: any) {
+    } catch (e) {
       console.error("Error loading pending members:", e);
     }
   }
@@ -150,7 +189,7 @@ export default function PoolPage() {
     if (phases.length > 0 && !activePhase) {
       setActivePhase(phases[0].id);
     }
-  }, [phases, activePhase]);
+  }, [phases, activePhase, setActivePhase]);
 
   const getPhaseStatus = (phaseId: string) => {
     if (!overview) return "PENDING";
@@ -290,14 +329,14 @@ export default function PoolPage() {
       const inv = await createInvite(token, poolId);
       setInviteCode(inv.code);
       try { await navigator.clipboard.writeText(inv.code); } catch {}
-    } catch (e: any) {
+    } catch (e) {
       setError(friendlyError(e));
     } finally {
       setBusyKey(null);
     }
   }
 
-  async function savePick(matchId: string, pick: any) {
+  async function savePick(matchId: string, pick: Record<string, unknown>) {
     if (!token || !poolId) return;
     setBusyKey(`pick:${matchId}`);
     setError(null);
@@ -314,7 +353,7 @@ export default function PoolPage() {
       await upsertPick(token, poolId, matchId, { pick: normalizedPick });
       await load();
       refetchNotifications();
-    } catch (e: any) {
+    } catch (e) {
       setError(friendlyError(e));
     } finally {
       setBusyKey(null);
@@ -329,7 +368,7 @@ export default function PoolPage() {
       await (await import("@/lib/api")).upsertResult(token, poolId, matchId, input);
       await load();
       refetchNotifications();
-    } catch (e: any) {
+    } catch (e) {
       setError(friendlyError(e));
     } finally {
       setBusyKey(null);

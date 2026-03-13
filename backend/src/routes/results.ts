@@ -14,6 +14,7 @@ import { transitionToCompleted, canPublishResults } from "../services/poolStateM
 import { ResultSource, ResultSourceMode } from "@prisma/client";
 import { requirePoolAdmin } from "../lib/roles";
 import { extractMatches, extractTeams, parseFixtureData, type FixtureMatch, type FixtureTeam } from "../lib/fixture";
+import { outcomeFromScore } from "../lib/poolHelpers";
 
 export const resultsRouter = Router();
 resultsRouter.use(requireAuth);
@@ -220,14 +221,12 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           const result = resultByMatchId.get(pred.matchId);
           if (!result) continue;
           const pick = pred.pickJson as any;
-          const actualOutcomeForPred = result.homeGoals > result.awayGoals ? "HOME" :
-                        result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
+          const actualOutcomeForPred = outcomeFromScore(result.homeGoals, result.awayGoals);
           let pts = 0;
           if (pick?.type === "OUTCOME") {
             if (pick.outcome === actualOutcomeForPred) pts = preset.outcomePoints;
           } else if (pick?.type === "SCORE") {
-            const predicted = pick.homeGoals > pick.awayGoals ? "HOME" :
-                             pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
+            const predicted = outcomeFromScore(pick.homeGoals, pick.awayGoals);
             if (predicted === actualOutcomeForPred) {
               pts = preset.outcomePoints;
               if (preset.allowScorePick && pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
@@ -247,8 +246,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           });
 
         // Calcular puntos ganados en este partido por usuario
-        const actualOutcome = homeGoals > awayGoals ? "HOME" :
-                             homeGoals < awayGoals ? "AWAY" : "DRAW";
+        const actualOutcome = outcomeFromScore(homeGoals, awayGoals);
 
         // Enviar emails
         const emailPromises = sortedMembers.map((member, idx) => {

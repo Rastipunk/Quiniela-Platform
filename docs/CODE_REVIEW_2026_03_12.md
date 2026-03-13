@@ -64,7 +64,7 @@
 - **Fix propuesto:** Extraer sub-componentes y custom hooks por cada componente.
 
 ### CR-07: Corporate Pool queda en DRAFT
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido
 - **Archivos:** `backend/src/routes/corporate.ts:200`
 - **Descripcion:** La creacion de pool corporativo nunca llama `transitionToActive()`. El pool queda en DRAFT y no se pueden publicar resultados ni hacer picks.
 - **Fix propuesto:** Llamar `transitionToActive()` despues del transaction, o crear el pool directamente en ACTIVE.
@@ -87,37 +87,37 @@
 - **Fix propuesto:** Cambiar a POST con body.
 
 ### HI-03: Type Safety — ~32 `as any` restantes
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (ApiError class + catch tipados + data tipado en api.ts)
 - **Archivos:** Backend (~19 casts), Frontend (~13 casts) — distribuidos en pools.ts, picks.ts, results.ts, api.ts, PoolConfigWizard.tsx, PoolMatchesTab.tsx
 - **Descripcion:** Incluye `Promise<any>` en return types, `body: any` en params, `let data: any`, `e: any` en catches.
 - **Fix propuesto:** Reemplazar con tipos especificos. Crear ApiError class para catches.
 
 ### HI-04: API Response Shapes Inconsistentes
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (apiResponse.ts helpers creados — migracion gradual)
 - **Archivos:** Todos los routes del backend
 - **Descripcion:** Mezcla de `{ ok: true }`, `{ success: true }`, objetos directos. Errores: `{ error }` vs `{ error, message }` vs `{ error, reason }`.
 - **Fix propuesto:** Estandarizar a `{ data?, error?, message? }` con helper functions.
 
 ### HI-05: State en React que deberia estar en URL
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (useSearchParams en pool page + dashboard)
 - **Archivos:** Pool page (activeTab, activePhase, selectedGroup), Dashboard (activeTab)
 - **Descripcion:** Tab activo, fase, grupo se pierden al refrescar. No se puede hacer bookmark ni compartir link con estado.
 - **Fix propuesto:** `useSearchParams()` en vez de `useState()`.
 
 ### HI-06: No hay Dynamic Imports para Componentes Pesados
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (next/dynamic en pool page tabs + dashboard wizard)
 - **Archivos:** Dashboard (importa PoolConfigWizard), Pool page (importa todas las tabs)
 - **Descripcion:** Componentes de 700-1600 lineas se cargan upfront aunque el usuario no los necesite.
 - **Fix propuesto:** `next/dynamic` con loading skeleton.
 
 ### HI-07: Missing Error Handling Estandarizado en Frontend
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (ApiError class + getErrorMessage + isApiError)
 - **Archivos:** `frontend-next/src/lib/api.ts`, multiples componentes
 - **Descripcion:** No hay clase ApiError. Errors se capturan como `catch(e: any)`. No hay retry logic ni boton de reintentar. No hay diferenciacion entre error de red, validacion, o auth.
 - **Fix propuesto:** Crear `ApiError` class, estandarizar catches, agregar retry para network errors.
 
 ### HI-08: No Validation de Env Variables al Startup
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido (env.ts con Zod schema + fail-fast en server.ts)
 - **Archivos:** `backend/src/server.ts`
 - **Descripcion:** Si falta `JWT_SECRET` o `DATABASE_URL`, el error aparece en runtime (no al arrancar).
 - **Fix propuesto:** Validar con Zod al arrancar el server y fallar fast.
@@ -139,7 +139,7 @@
 - **Fix propuesto:** Agregar aria-labels, usar `<button>`, focus trap en modals.
 
 ### MD-03: Hydration Mismatch con sessionStorage
-- **Estado:** `[ ]`
+- **Estado:** `[x]` No aplica — sessionStorage ya dentro de useEffect/async, sin hydration mismatch real
 - **Archivos:** Pool page.tsx:96-98
 - **Descripcion:** sessionStorage accedido fuera de useState initializer. Server render difiere del client.
 - **Fix propuesto:** Mover logica a useState initializer o useEffect.
@@ -157,13 +157,13 @@
 - **Fix propuesto:** Agregar retry con backoff exponencial, o usar queue (BullMQ).
 
 ### MD-06: Scoring Logic Duplicada
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido — results.ts usa outcomeFromScore() compartido
 - **Archivos:** `backend/src/routes/results.ts:220-233`, `backend/src/routes/pools.ts:461-512`
 - **Descripcion:** Calculo de outcome aparece en notificaciones y en leaderboard independientemente.
 - **Fix propuesto:** Usar `outcomeFromScore()` compartido.
 
 ### MD-07: Advanced Scoring Swallows Errors Silently
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido — scoringErrors array + structured logging
 - **Archivos:** `backend/src/routes/pools.ts:607-611`
 - **Descripcion:** Fallback a legacy scoring sin notificar al usuario. Puntos podrian ser incorrectos.
 - **Fix propuesto:** Agregar flag `scoringError` al breakdown para verbose mode.
@@ -175,13 +175,13 @@
 - **Fix propuesto:** Cambiar a SET NULL o RESTRICT.
 
 ### MD-09: Missing useCallback/useMemo en Componentes Criticos
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido — useCallback en PublicPageWrapper openAuthPanel + handleLoggedIn
 - **Archivos:** `frontend-next/src/components/PublicPageWrapper.tsx:23`, PoolConfigWizard.tsx
 - **Descripcion:** `openAuthPanel` se recrea cada render, causando re-renders en todos los consumers del context.
 - **Fix propuesto:** Envolver en useCallback.
 
 ### MD-10: Google OAuth — Account Linking sin Verificacion
-- **Estado:** `[ ]`
+- **Estado:** `[x]` No aplica — Google verifica email (email_verified field), no es vulnerabilidad
 - **Archivos:** `backend/src/routes/auth.ts:388-391`
 - **Descripcion:** Vincula Google ID a email existente sin confirmar que el usuario es dueno del email.
 - **Fix propuesto:** Verificar que email de Google coincida con email registrado antes de vincular.
@@ -199,13 +199,13 @@
 - **Fix propuesto:** Agregar schema Zod para validar respuesta antes de procesar.
 
 ### MD-13: Invite Codes sin Expiracion por Defecto
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido — default 30 dias cuando no se especifica expiresAtUtc
 - **Archivos:** `backend/src/routes/pools.ts:1332`
 - **Descripcion:** `expiresAtUtc` es opcional. Se pueden crear invites permanentes.
 - **Fix propuesto:** Default 30 dias de expiracion.
 
 ### MD-14: Soft Deletes y Config Changes no Auditados
-- **Estado:** `[ ]`
+- **Estado:** `[x]` No aplica — reject ya tiene writeAuditEvent, PATCH settings ya tiene writeAuditEvent
 - **Archivos:** `backend/src/routes/pools.ts` (member reject, settings patch)
 - **Descripcion:** `poolMember.delete()` en reject y `PATCH /settings` no generan audit events.
 - **Fix propuesto:** Agregar writeAuditEvent para estas operaciones.
@@ -233,13 +233,13 @@
 - **Fix propuesto:** Logear solo message/code, nunca full objects en produccion.
 
 ### LO-04: FAQAccordion usa Index como Key
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido — key basado en category+question
 - **Archivos:** `frontend-next/src/components/FAQAccordion.tsx:89`
 - **Descripcion:** `key={globalIndex}` en lista filtrable. Puede causar bugs de reconciliacion.
 - **Fix propuesto:** Usar ID unico por item FAQ.
 
 ### LO-05: i18n — Dynamic Keys con `as any`
-- **Estado:** `[ ]`
+- **Estado:** `[x]` Corregido — lookup object con keys explicitas
 - **Archivos:** `frontend-next/src/components/CorporatePoolCreation.tsx:289`
 - **Descripcion:** `t(`step${step}Desc` as any)` — si falta key en un locale, muestra el nombre de la key.
 - **Fix propuesto:** Usar lookup object con keys explicitas.

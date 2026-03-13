@@ -1,4 +1,7 @@
 import "dotenv/config";
+import { validateEnv } from "./lib/env";
+validateEnv();
+
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";

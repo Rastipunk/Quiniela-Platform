@@ -92,7 +92,7 @@ export function FAQAccordion({ faqData }: FAQAccordionProps) {
 
             return (
               <div
-                key={globalIndex}
+                key={`${item.category}-${item.question.slice(0, 40)}`}
                 style={{
                   background: "var(--surface)",
                   border: "1px solid var(--border)",

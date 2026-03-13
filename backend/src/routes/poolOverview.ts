@@ -329,6 +329,8 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
     }
   }
 
+  const scoringErrors: Array<{ userId: string; error: string }> = [];
+
   const leaderboardRows = members.map((m) => {
     let points = 0;
     let scoredMatches = 0;
@@ -458,7 +460,9 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
             pool.pickTypesConfig as any[]
           );
         } catch (err) {
-          console.error(`Error calculating structural points for user ${m.userId}:`, err);
+          console.error(`[SCORING_ERROR] Structural points failed for user ${m.userId} in pool ${pool.id}:`, err instanceof Error ? err.message : err);
+          // structuralPoints stays 0 — flag it so the response can indicate the issue
+          scoringErrors.push({ userId: m.userId, error: err instanceof Error ? err.message : "Unknown scoring error" });
         }
       }
     }

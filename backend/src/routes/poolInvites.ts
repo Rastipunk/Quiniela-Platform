@@ -56,7 +56,9 @@ poolInvitesRouter.post("/:poolId/invites", async (req, res) => {
       code,
       createdByUserId: req.auth!.userId,
       maxUses: parsed.data.maxUses ?? null,
-      expiresAtUtc: parsed.data.expiresAtUtc ? new Date(parsed.data.expiresAtUtc) : null,
+      expiresAtUtc: parsed.data.expiresAtUtc
+        ? new Date(parsed.data.expiresAtUtc)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default: 30 days
     },
   });
 

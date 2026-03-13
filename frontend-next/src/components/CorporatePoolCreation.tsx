@@ -286,7 +286,14 @@ export function CorporatePoolCreation() {
             {stepLabels[step - 1]}
           </div>
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
-            {t(`step${step}Desc` as any)}
+            {t({
+              1: "step1Desc",
+              2: "step2Desc",
+              3: "step3Desc",
+              4: "step4Desc",
+              5: "step5Desc",
+              6: "step6Desc",
+            }[step] ?? "step1Desc")}
           </div>
         </div>
       </div>
@@ -689,7 +696,7 @@ export function CorporatePoolCreation() {
                   textAlign: "center",
                 }}
               >
-                {"\u2705"} {t("configReady", { count: (pickTypesConfig as any[]).length })}
+                {"\u2705"} {t("configReady", { count: Array.isArray(pickTypesConfig) ? pickTypesConfig.length : 0 })}
               </div>
             ) : (
               <div
