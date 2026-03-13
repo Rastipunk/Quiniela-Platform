@@ -36,7 +36,7 @@ poolInvitesRouter.post("/:poolId/invites", async (req, res) => {
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
 
   // Validar que el pool permita crear invites según su estado
-  if (!canCreateInvites(pool.status as any)) {
+  if (!canCreateInvites(pool.status)) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Cannot create invites in this pool status"
@@ -172,7 +172,7 @@ poolInvitesRouter.post("/join", async (req, res) => {
   if (!invite) return res.status(404).json({ error: "NOT_FOUND", message: "Invite not found" });
 
   // Validar que el pool acepte nuevos miembros según su estado
-  if (!canJoinPool(invite.pool.status as any)) {
+  if (!canJoinPool(invite.pool.status)) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Pool is not accepting new members"

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "../db";
@@ -254,7 +255,7 @@ adminCorporateRouter.post("/organizations/:orgId/pools", async (req, res) => {
       logoUrl: logoUrl || org.logoUrl || null,
       createdByUserId: req.auth!.userId,
       status: "ACTIVE",
-      fixtureSnapshot: instance.dataJson as any,
+      fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
     },
   });
 

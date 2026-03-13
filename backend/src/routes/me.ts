@@ -16,7 +16,7 @@ meRouter.get("/pools", async (req, res) => {
   const memberships = await prisma.poolMember.findMany({
     where: {
       userId,
-      status: { in: ["ACTIVE", "PENDING_APPROVAL", "LEFT"] as any }
+      status: { in: ["ACTIVE", "PENDING_APPROVAL", "LEFT"] }
     },
     orderBy: { joinedAtUtc: "desc" },
     include: {

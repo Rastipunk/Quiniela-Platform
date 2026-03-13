@@ -428,7 +428,7 @@ export default function ProfilePage() {
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  gender: e.target.value as any,
+                  gender: e.target.value as typeof formData.gender,
                 })
               }
               style={{

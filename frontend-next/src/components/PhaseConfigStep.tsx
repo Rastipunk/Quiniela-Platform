@@ -352,6 +352,8 @@ function MatchPicksConfiguration({
   isMobile = false,
 }: MatchPicksConfigurationProps) {
   const tp = useTranslations("pool");
+  // next-intl doesn't support computed keys at type level
+  const tpDynamic = tp as (key: string) => string;
 
   return (
     <div>
@@ -369,11 +371,11 @@ function MatchPicksConfiguration({
             <PickTypeCard
               key={type.key}
               type={type}
-              title={tp(`pickTypeExtended.${type.key}.title` as any)}
+              title={tpDynamic(`pickTypeExtended.${type.key}.title`)}
               description={isMobile
-                ? tp(`pickTypeExtended.${type.key}.shortDesc` as any)
-                : tp(`pickTypeExtended.${type.key}.description` as any)}
-              example={tp(`pickTypeExtended.${type.key}.example` as any)}
+                ? tpDynamic(`pickTypeExtended.${type.key}.shortDesc`)
+                : tpDynamic(`pickTypeExtended.${type.key}.description`)}
+              example={tpDynamic(`pickTypeExtended.${type.key}.example`)}
               onToggle={(enabled) => onTypeChange(type.key, enabled)}
               onPointsChange={(points) => onTypeChange(type.key, type.enabled, points)}
               isMobile={isMobile}

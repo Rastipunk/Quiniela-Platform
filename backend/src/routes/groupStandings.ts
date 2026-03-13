@@ -6,6 +6,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "../services/poolStateMachine";
 import { advanceToRoundOf32, validateCanAutoAdvance } from "../services/instanceAdvancement";
 import { requirePoolAdmin } from "../lib/roles";
+import { parseFixtureData, type FixtureData } from "../lib/fixture";
 
 export const groupStandingsRouter = Router();
 
@@ -58,7 +59,7 @@ groupStandingsRouter.put("/:poolId/group-standings/:phaseId/:groupId", async (re
   }
 
   // Validar que el pool permita hacer picks según su estado
-  if (!canMakePicks(pool.status as any)) {
+  if (!canMakePicks(pool.status)) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Cannot make picks in this pool status",
@@ -312,19 +313,19 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
   }
 
   // Obtener datos del torneo
-  const data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
+  const data = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
   if (!data?.matches || !data?.teams) {
     return res.status(400).json({ error: "INVALID_DATA", message: "No tournament data found" });
   }
 
   // Obtener partidos del grupo
-  const groupMatches = data.matches.filter((m: any) => m.groupId === groupId);
+  const groupMatches = data.matches.filter((m) => m.groupId === groupId);
   if (groupMatches.length === 0) {
     return res.status(404).json({ error: "NOT_FOUND", message: "No matches found for group" });
   }
 
   // Obtener resultados publicados para estos partidos
-  const matchIds = groupMatches.map((m: any) => m.id);
+  const matchIds = groupMatches.map((m) => m.id);
   const results = await prisma.poolMatchResult.findMany({
     where: {
       poolId,
@@ -344,7 +345,7 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
 
   // Obtener equipos del grupo
   const teamIds = new Set<string>();
-  groupMatches.forEach((m: any) => {
+  groupMatches.forEach((m) => {
     teamIds.add(m.homeTeamId);
     teamIds.add(m.awayTeamId);
   });
@@ -367,7 +368,7 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
 
   // Procesar cada resultado
   for (const result of resultsWithVersion) {
-    const match = groupMatches.find((m: any) => m.id === result.matchId);
+    const match = groupMatches.find((m) => m.id === result.matchId);
     if (!match || !result.currentVersion) continue;
 
     const home = standingsMap.get(match.homeTeamId);
@@ -460,7 +461,7 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
   try {
     // Obtener todos los grupos de la fase
     const allGroups = new Set<string>();
-    data.matches?.forEach((m: any) => {
+    data.matches?.forEach((m) => {
       if (m.groupId && (!m.phaseId || m.phaseId === phaseId)) {
         allGroups.add(m.groupId);
       }
@@ -543,9 +544,9 @@ groupStandingsRouter.get("/:poolId/group-match-results/:groupId", async (req, re
     return res.status(404).json({ error: "NOT_FOUND" });
   }
 
-  const data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as any;
-  const groupMatches = data.matches?.filter((m: any) => m.groupId === groupId) || [];
-  const matchIds = groupMatches.map((m: any) => m.id);
+  const data = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
+  const groupMatches = data.matches?.filter((m) => m.groupId === groupId) || [];
+  const matchIds = groupMatches.map((m) => m.id);
 
   const results = await prisma.poolMatchResult.findMany({
     where: {

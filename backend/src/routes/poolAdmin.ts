@@ -17,7 +17,8 @@ import {
   generateKnockoutWinnerBreakdown,
 } from "../lib/scoringBreakdown";
 import { outcomeFromScore } from "../lib/poolHelpers";
-import { extractMatches, extractTeams, extractPhases, parseFixtureData, type FixtureMatch } from "../lib/fixture";
+import { Prisma } from "@prisma/client";
+import { extractMatches, extractTeams, extractPhases, parseFixtureData, typed, type FixtureMatch, type PickJson, type StructuralPickJson } from "../lib/fixture";
 import type { PhasePickConfig } from "../types/pickConfig";
 
 export const poolAdminRouter = Router();
@@ -323,7 +324,7 @@ poolAdminRouter.patch("/:poolId/settings", async (req, res) => {
     data: {
       ...(autoAdvanceEnabled !== undefined ? { autoAdvanceEnabled } : {}),
       ...(requireApproval !== undefined ? { requireApproval } : {}),
-      ...(pickTypesConfigUpdate ? { pickTypesConfig: pickTypesConfigUpdate as any } : {}),
+      ...(pickTypesConfigUpdate ? { pickTypesConfig: pickTypesConfigUpdate as Prisma.InputJsonValue } : {}),
     },
   });
 
@@ -445,7 +446,7 @@ poolAdminRouter.post("/:poolId/archive", async (req, res) => {
  * Obtiene el desglose de puntuacion para un pick de partido especifico
  */
 poolAdminRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
-  const userId = (req as any).auth.userId;
+  const userId = req.auth!.userId;
   const { poolId, matchId } = req.params;
 
   try {
@@ -565,7 +566,7 @@ poolAdminRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
  * Obtiene el desglose de puntuacion para picks estructurales de una fase
  */
 poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
-  const userId = (req as any).auth.userId;
+  const userId = req.auth!.userId;
   const { poolId, phaseId } = req.params;
 
   try {
@@ -612,7 +613,8 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
     const fixtureData = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
     const matches = fixtureData.matches;
     const teams = fixtureData.teams;
-    const groups = (fixtureData as any).groups || [];
+    const rawJson = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as Record<string, unknown>;
+    const groups = (Array.isArray(rawJson.groups) ? rawJson.groups : []) as Array<{ id: string; name?: string; teamCount?: number }>;
 
     // Crear mapa de equipos
     const teamsMap = new Map<string, { id: string; name: string }>();
@@ -678,8 +680,8 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
       // Como último recurso, extraerlos de los partidos
       if (groupsInfo.length === 0) {
         const groupIds = new Set<string>();
-        matches.filter((m: any) => m.groupId).forEach((m: any) => {
-          groupIds.add(m.groupId);
+        matches.filter((m) => m.groupId).forEach((m) => {
+          groupIds.add(m.groupId!);
         });
         groupIds.forEach(gId => {
           groupsInfo.push({ id: gId, name: `Grupo ${gId}`, teamCount: 4 });
@@ -687,8 +689,8 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
       }
 
       const breakdown = generateGroupStandingsBreakdown(
-        userPick?.pickJson as any,
-        result?.resultJson as any,
+        userPick?.pickJson as { groups: Array<{ groupId: string; teamIds: string[] }> } | null ?? null,
+        result?.resultJson as { groups: Array<{ groupId: string; teamIds: string[] }> } | null ?? null,
         phaseConfig,
         groupsInfo,
         teamsMap
@@ -698,8 +700,8 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
     } else if (structuralType === "KNOCKOUT_WINNER") {
       // Obtener partidos de la fase
       const phaseMatches = matches
-        .filter((m: any) => m.phaseId === phaseId)
-        .map((m: any) => ({
+        .filter((m) => m.phaseId === phaseId)
+        .map((m) => ({
           id: m.id,
           homeTeamId: m.homeTeamId,
           awayTeamId: m.awayTeamId,
@@ -710,7 +712,7 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
       const matchResults = await prisma.poolMatchResult.findMany({
         where: {
           poolId,
-          matchId: { in: phaseMatches.map((m: any) => m.id) },
+          matchId: { in: phaseMatches.map((m) => m.id) },
         },
         include: { currentVersion: true },
       });
@@ -722,7 +724,7 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
       for (const matchResult of matchResults) {
         if (matchResult.currentVersion) {
           const cv = matchResult.currentVersion;
-          const matchInfo = phaseMatches.find((m: any) => m.id === matchResult.matchId);
+          const matchInfo = phaseMatches.find((m) => m.id === matchResult.matchId);
           if (matchInfo) {
             let winnerId: string;
             if (cv.homeGoals > cv.awayGoals) {
@@ -744,7 +746,7 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
       }
 
       const breakdown = generateKnockoutWinnerBreakdown(
-        userPick?.pickJson as any,
+        userPick?.pickJson as { matches: Array<{ matchId: string; winnerId: string }> } | null ?? null,
         knockoutResultData.matches.length > 0 ? knockoutResultData : null,
         phaseConfig,
         phaseMatches,
@@ -766,7 +768,7 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
  * Obtiene el desglose de puntuacion para un grupo específico (GROUP_STANDINGS)
  */
 poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
-  const userId = (req as any).auth.userId;
+  const userId = req.auth!.userId;
   const { poolId, groupId } = req.params;
 
   try {
@@ -1006,7 +1008,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     const predictions = await prisma.prediction.findMany({
       where: { poolId, userId: targetUserId },
     });
-    const pickByMatchId = new Map(predictions.map((p) => [p.matchId, p.pickJson as any]));
+    const pickByMatchId = new Map(predictions.map((p) => [p.matchId, typed<PickJson>(p.pickJson)]));
 
     // 6) Cargar resultados y overrides
     const [resultsRaw, playerSummaryOverrides] = await Promise.all([
@@ -1120,12 +1122,12 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
                   : (result.awayGoals90 ?? result.awayGoals),
               };
               const scoring = scoreMatchPick(
-                { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
+                { homeGoals: pick.homeGoals!, awayGoals: pick.awayGoals! },
                 resultForScoring,
                 phaseConfig
               );
               pointsEarned = scoring.totalPoints;
-              breakdown = scoring.evaluations.map((e: any) => ({
+              breakdown = scoring.evaluations.map((e: { matchPickType: string; matched: boolean; points: number }) => ({
                 type: e.matchPickType,
                 matched: e.matched,
                 points: e.points,
@@ -1157,7 +1159,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
             };
             const actualOutcome = outcomeFromScore(legacyResult.homeGoals, legacyResult.awayGoals);
             const pickOutcome = pick.type === "SCORE"
-              ? outcomeFromScore(pick.homeGoals, pick.awayGoals)
+              ? outcomeFromScore(pick.homeGoals!, pick.awayGoals!)
               : pick.outcome;
             const outcomeCorrect = pickOutcome === actualOutcome;
             const exact = pick.type === "SCORE" &&
@@ -1233,7 +1235,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
       const memberPicks = await prisma.prediction.findMany({
         where: { poolId, userId: member.userId },
       });
-      const memberPickByMatch = new Map(memberPicks.map((p) => [p.matchId, p.pickJson as any]));
+      const memberPickByMatch = new Map(memberPicks.map((p) => [p.matchId, typed<PickJson>(p.pickJson)]));
 
       for (const match of matches) {
         const pick = memberPickByMatch.get(match.id);
@@ -1254,7 +1256,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
                 : (result.awayGoals90 ?? result.awayGoals),
             };
             const scoring = scoreMatchPick(
-              { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
+              { homeGoals: pick.homeGoals!, awayGoals: pick.awayGoals! },
               resultForScoring,
               phaseConfig
             );
@@ -1272,7 +1274,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
           };
           const actualOutcome = outcomeFromScore(scoringResult.homeGoals, scoringResult.awayGoals);
           const pickOutcome = pick.type === "SCORE"
-            ? outcomeFromScore(pick.homeGoals, pick.awayGoals)
+            ? outcomeFromScore(pick.homeGoals!, pick.awayGoals!)
             : pick.outcome;
           const outcomeCorrect = pickOutcome === actualOutcome;
           const exact = pick.type === "SCORE" &&
@@ -1437,7 +1439,7 @@ poolAdminRouter.get("/:poolId/notifications", async (req, res) => {
     if (isHostOrCoAdmin) {
       // Solicitudes de join pendientes
       const pendingMembers = await prisma.poolMember.count({
-        where: { poolId, status: "PENDING_APPROVAL" as any },
+        where: { poolId, status: "PENDING_APPROVAL" },
       });
       pendingJoins = pendingMembers;
 

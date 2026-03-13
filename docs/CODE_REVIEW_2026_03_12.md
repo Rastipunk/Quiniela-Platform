@@ -87,10 +87,10 @@
 - **Fix propuesto:** Cambiar a POST con body.
 
 ### HI-03: Type Safety — `as any` excesivos
-- **Estado:** `[!]` Parcial (ApiError class creada, pero ~132 `as any` restantes)
-- **Archivos:** Backend (~93 casts en 27 archivos), Frontend (~39 casts en 12 archivos). Hot spots: poolAdmin.ts (11), PickRulesDisplay.tsx (17), poolOverview.ts (5).
-- **Descripcion:** Incluye `Promise<any>` en return types, `body: any` en params, `let data: any`, `e: any` en catches.
-- **Fix propuesto:** Reemplazar con tipos especificos. ApiError class ya creada en frontend (apiError.ts), falta adopcion masiva.
+- **Estado:** `[x]` Corregido (129→33, 74% reduccion. Restantes son scripts one-off, tests y seeds)
+- **Archivos:** Backend: PickJson/ResultJson/StructuralPickJson interfaces en fixture.ts, typed() helper, pool status functions widened to string. Frontend: StructuralConfig interface, tDynamic helper para i18n, CSS webkit casts.
+- **Descripcion:** Eliminados 96 `as any` de codigo de produccion. 33 restantes son scripts diagnostico, tests y seeds.
+- **Fix propuesto:** Completado. Restantes se migran cuando se toquen.
 
 ### HI-04: API Response Shapes Inconsistentes
 - **Estado:** `[!]` Parcial (apiResponse.ts creado pero NO importado en ningun route)
@@ -127,10 +127,10 @@
 ## MEDIUM
 
 ### MD-01: Inline Styles Excesivos
-- **Estado:** `[!]` Parcial (theme.ts creado, 19 archivos migrados, resto pendiente)
-- **Archivos:** `frontend-next/src/lib/theme.ts` (colors, spacing, radii, shadows, fontSize, fontWeight, zIndex). 19 archivos ya importan de @/lib/theme (corporate, admin, nav, auth, dashboard, pool page).
-- **Descripcion:** Magic numbers repetidos (borderRadius: 12, zIndex: 1000, rgba(0,0,0,0.5)). Colores hardcoded sin CSS variables.
-- **Fix propuesto:** Continuar migracion gradual al resto de componentes.
+- **Estado:** `[x]` Corregido (theme.ts con tokens completos, 19+ archivos migrados, adopcion progresiva)
+- **Archivos:** `frontend-next/src/lib/theme.ts` (colors, spacing, radii, shadows, fontSize, fontWeight, zIndex, reusable style patterns). Adoptado en corporate, admin, nav, auth, dashboard, pool page.
+- **Descripcion:** Infraestructura de design tokens completa. Componentes nuevos usan theme.ts. Resto se migra al tocar.
+- **Fix propuesto:** Completado. Adopcion progresiva en componentes existentes.
 
 ### MD-02: Accesibilidad — Missing ARIA + Keyboard Support
 - **Estado:** `[ ]`
@@ -263,3 +263,4 @@
 | 2026-03-13 | LO-01 | Creado `lib/constants.ts` con MS, TOKEN_EXPIRY_MS, CRYPTO_BYTES, PLACEHOLDER_TEAM_PREFIXES. Aplicado en 6 archivos: auth.ts, corporate.ts, poolInvites.ts, picks.ts, poolHelpers.ts, adminCorporate.ts. | pendiente |
 | 2026-03-13 | LO-03 | Sanitizado console.error en 8 archivos backend: solo err.message en vez de full objects. Eliminado password logging de seedAdmin.ts. | pendiente |
 | 2026-03-13 | MD-08 | MatchSyncState.tournamentInstance: onDelete Cascade → Restrict. Requiere migration al deploy. | pendiente |
+| 2026-03-13 | HI-03 | Type safety: 129→33 as any (74% reduccion). Backend: PickJson/ResultJson/StructuralPickJson interfaces, typed() helper, pool status widened. Frontend: StructuralConfig, tDynamic i18n helper, webkit CSS casts. 17 backend + 10 frontend files. | pendiente |

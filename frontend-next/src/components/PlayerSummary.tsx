@@ -53,6 +53,8 @@ function BreakdownPopover({ breakdown, onClose }: {
   onClose: () => void;
 }) {
   const t = useTranslations("pool");
+  // next-intl doesn't support computed keys at type level
+  const tDynamic = t as (key: string) => string;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,7 +103,7 @@ function BreakdownPopover({ breakdown, onClose }: {
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: 12, color: "#333" }}>{typeTranslationKeys[b.type] ? t(typeTranslationKeys[b.type] as any) : b.type}</span>
+              <span style={{ fontSize: 12, color: "#333" }}>{typeTranslationKeys[b.type] ? tDynamic(typeTranslationKeys[b.type]) : b.type}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: typeColors[b.type] ?? "#6c757d", marginLeft: "auto" }}>
                 +{b.points}
               </span>
@@ -131,6 +133,8 @@ const statusTranslationKeys: Record<string, string> = {
 // Componente para una fila de partido (usa display:contents para compartir grid del padre)
 function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatch; tournamentKey: string; isMobile?: boolean }) {
   const t = useTranslations("pool");
+  // next-intl doesn't support computed keys at type level
+  const tDynamic = t as (key: string) => string;
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const colors = statusColors[match.status] ?? statusColors.LOCKED;
@@ -243,7 +247,7 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
               whiteSpace: "nowrap",
             }}
           >
-            {statusTranslationKeys[match.status] ? t(statusTranslationKeys[match.status] as any) : match.status}
+            {statusTranslationKeys[match.status] ? tDynamic(statusTranslationKeys[match.status]) : match.status}
           </span>
         )}
         {showBreakdown && (
@@ -305,7 +309,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
 
       {/* Contenido expandible: scrollable on mobile */}
       {expanded && (
-        <div style={{ overflowX: isMobile ? "auto" : undefined, WebkitOverflowScrolling: "touch" as any }}>
+        <div style={{ overflowX: isMobile ? "auto" : undefined, WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
           <div
             style={{
               display: "grid",

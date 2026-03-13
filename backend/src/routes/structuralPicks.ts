@@ -3,8 +3,9 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
+import { Prisma } from "@prisma/client";
 import { canMakePicks } from "../services/poolStateMachine";
-import { extractPhases } from "../lib/fixture";
+import { extractPhases, typed, type StructuralPickJson } from "../lib/fixture";
 
 export const structuralPicksRouter = Router();
 
@@ -75,7 +76,7 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
   }
 
   // Validar que el pool permita hacer picks según su estado
-  if (!canMakePicks(pool.status as any)) {
+  if (!canMakePicks(pool.status)) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Cannot make picks in this pool status",
@@ -117,7 +118,7 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
   // Para knockout picks, hacer merge con picks existentes
   let finalPickData = parsed.data;
   if ("matches" in parsed.data && existingPick?.pickJson) {
-    const existingData = existingPick.pickJson as any;
+    const existingData = typed<StructuralPickJson>(existingPick.pickJson);
     if (existingData.matches && Array.isArray(existingData.matches)) {
       // Crear un map de picks existentes
       const matchesMap = new Map<string, string>();
@@ -148,13 +149,13 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
       },
     },
     update: {
-      pickJson: finalPickData as any,
+      pickJson: finalPickData as Prisma.InputJsonValue,
     },
     create: {
       poolId,
       userId: req.auth!.userId,
       phaseId,
-      pickJson: finalPickData as any,
+      pickJson: finalPickData as Prisma.InputJsonValue,
     },
   });
 

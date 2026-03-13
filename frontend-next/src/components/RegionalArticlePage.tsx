@@ -275,8 +275,7 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
               {relatedLinks.map((link) => (
                 <li key={link.key}>
                   <Link
-                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                    href={link.href as any}
+                    href={link.href as unknown as "/"}
                     style={{
                       color: "#667eea",
                       textDecoration: "none",

@@ -9,7 +9,7 @@
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { sendPoolCompletedEmail } from "../lib/email";
-import { extractMatches } from "../lib/fixture";
+import { extractMatches, typed, type PickJson } from "../lib/fixture";
 
 export type PoolStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
@@ -158,7 +158,7 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
         const result = resultByMatchId.get(pred.matchId);
         if (!result) continue;
 
-        const pick = pred.pickJson as any;
+        const pick = typed<PickJson>(pred.pickJson);
         let points = 0;
 
         if (pick?.type === "OUTCOME") {
@@ -168,8 +168,8 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
         } else if (pick?.type === "SCORE") {
           const actualOutcome = result.homeGoals > result.awayGoals ? "HOME" :
                                 result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-          const predOutcome = pick.homeGoals > pick.awayGoals ? "HOME" :
-                              pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
+          const predOutcome = pick.homeGoals! > pick.awayGoals! ? "HOME" :
+                              pick.homeGoals! < pick.awayGoals! ? "AWAY" : "DRAW";
           if (predOutcome === actualOutcome) {
             points = 3;
             if (pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
@@ -195,10 +195,10 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
       for (const pred of predictions) {
         const result = resultByMatchId.get(pred.matchId);
         if (!result) continue;
-        const pick = pred.pickJson as any;
-        if (pick?.type === "SCORE" &&
-            pick.homeGoals === result.homeGoals &&
-            pick.awayGoals === result.awayGoals) {
+        const pick2 = typed<PickJson>(pred.pickJson);
+        if (pick2?.type === "SCORE" &&
+            pick2.homeGoals === result.homeGoals &&
+            pick2.awayGoals === result.awayGoals) {
           const current = userExactScores.get(pred.userId) ?? 0;
           userExactScores.set(pred.userId, current + 1);
         }
@@ -273,28 +273,28 @@ export async function transitionToArchived(poolId: string, actorUserId: string) 
  * Validaciones por estado
  */
 
-export function canJoinPool(poolStatus: PoolStatus): boolean {
+export function canJoinPool(poolStatus: string): boolean {
   // Solo se puede unir a pools en DRAFT o ACTIVE
   return poolStatus === "DRAFT" || poolStatus === "ACTIVE";
 }
 
-export function canMakePicks(poolStatus: PoolStatus): boolean {
+export function canMakePicks(poolStatus: string): boolean {
   // Solo se pueden hacer picks en ACTIVE
   return poolStatus === "ACTIVE";
 }
 
-export function canPublishResults(poolStatus: PoolStatus): boolean {
+export function canPublishResults(poolStatus: string): boolean {
   // Solo se pueden publicar resultados en ACTIVE o COMPLETED
   // (COMPLETED permite erratas)
   return poolStatus === "ACTIVE" || poolStatus === "COMPLETED";
 }
 
-export function canEditPoolSettings(poolStatus: PoolStatus): boolean {
+export function canEditPoolSettings(poolStatus: string): boolean {
   // Solo se pueden editar configuraciones en DRAFT
   return poolStatus === "DRAFT";
 }
 
-export function canCreateInvites(poolStatus: PoolStatus): boolean {
+export function canCreateInvites(poolStatus: string): boolean {
   // Solo se pueden crear invites en DRAFT o ACTIVE
   return poolStatus === "DRAFT" || poolStatus === "ACTIVE";
 }

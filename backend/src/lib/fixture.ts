@@ -101,3 +101,38 @@ export function extractTeams(dataJson: unknown): FixtureTeam[] {
 export function extractPhases(dataJson: unknown): FixturePhase[] {
   return parseFixtureData(dataJson).phases;
 }
+
+// ─── Typed JSON field interfaces ────────────────────────────
+// Use these instead of `as any` when accessing Prisma JSON fields.
+
+/** Shape stored in Prediction.pickJson for match picks */
+export interface PickJson {
+  type: "SCORE" | "OUTCOME";
+  homeGoals?: number;
+  awayGoals?: number;
+  outcome?: "HOME" | "DRAW" | "AWAY";
+  homePenalties?: number;
+  awayPenalties?: number;
+}
+
+/** Shape stored in PoolMatchResult.resultJson */
+export interface ResultJson {
+  homeGoals: number;
+  awayGoals: number;
+  homePenalties?: number;
+  awayPenalties?: number;
+  extraTime?: boolean;
+}
+
+/** Shape stored in StructuralPrediction.pickJson / StructuralPhaseResult.resultJson */
+export interface StructuralPickJson {
+  type?: string;
+  groups?: Array<{ groupId: string; teamIds: string[] }>;
+  matches?: Array<{ matchId: string; winnerId: string }>;
+  [key: string]: unknown;
+}
+
+/** Helper to cast Prisma JsonValue to a typed object */
+export function typed<T>(json: unknown): T {
+  return json as T;
+}

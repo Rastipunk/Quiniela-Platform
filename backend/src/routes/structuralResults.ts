@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
+import { Prisma } from "@prisma/client";
 import { canPublishResults } from "../services/poolStateMachine";
 import { requirePoolAdmin } from "../lib/roles";
 import { extractPhases } from "../lib/fixture";
@@ -70,7 +71,7 @@ structuralResultsRouter.put("/:poolId/structural-results/:phaseId", async (req, 
   }
 
   // Validar que el pool permita publicar resultados según su estado
-  if (!canPublishResults(pool.status as any)) {
+  if (!canPublishResults(pool.status)) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Cannot publish results in this pool status",
@@ -104,14 +105,14 @@ structuralResultsRouter.put("/:poolId/structural-results/:phaseId", async (req, 
       },
     },
     update: {
-      resultJson: parsed.data as any,
+      resultJson: parsed.data as Prisma.InputJsonValue,
       createdByUserId: req.auth!.userId,
       publishedAtUtc: new Date(),
     },
     create: {
       poolId,
       phaseId,
-      resultJson: parsed.data as any,
+      resultJson: parsed.data as Prisma.InputJsonValue,
       createdByUserId: req.auth!.userId,
     },
   });

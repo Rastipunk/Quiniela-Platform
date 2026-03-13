@@ -6,6 +6,22 @@
 import { useTranslations } from "next-intl";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
 
+interface StructuralConfig {
+  lockDateTime: string;
+  pointsPosition1: number;
+  pointsPosition2: number;
+  pointsPosition3: number;
+  pointsPosition4: number;
+  pointsPerExactPosition: number;
+  bonusPerfectGroupEnabled: boolean;
+  bonusPerfectGroup: number;
+  includeGlobalQualifiers: boolean;
+  globalQualifiersPoints: number;
+  totalQualifiers: number;
+  pointsPerCorrectAdvance: number;
+  [key: string]: unknown;
+}
+
 type PickRulesDisplayProps = {
   pickTypesConfig: PoolPickTypesConfig;
   poolDeadlineMinutes: number;
@@ -18,6 +34,8 @@ export function PickRulesDisplay({
   poolTimeZone,
 }: PickRulesDisplayProps) {
   const t = useTranslations("pool");
+  // next-intl doesn't support computed keys at type level
+  const tDynamic = t as (key: string) => string;
 
   // Guard: verificar que pickTypesConfig es un array válido
   if (!pickTypesConfig || !Array.isArray(pickTypesConfig)) {
@@ -80,7 +98,7 @@ export function PickRulesDisplay({
               {index + 1}
             </span>
             <h4 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#007bff" }}>
-              {(phase.phaseName || (() => { const key = `phasesLong.${phase.phaseId}` as any; try { return t(key); } catch { return phase.phaseId.replace(/_/g, " "); } })() || `${t("phase")} ${index + 1}`).toUpperCase()}
+              {(phase.phaseName || (() => { const key = `phasesLong.${phase.phaseId}`; try { return tDynamic(key); } catch { return phase.phaseId.replace(/_/g, " "); } })() || `${t("phase")} ${index + 1}`).toUpperCase()}
             </h4>
           </div>
 
@@ -126,8 +144,8 @@ export function PickRulesDisplay({
                         {type.points}
                       </span>
                       <span style={{ fontSize: 14 }}>
-                        {t("points")} - <strong>{t(`pickTypeNames.${type.key}` as any)}</strong>{" "}
-                        <span style={{ color: "#666", fontSize: 13 }}>{t(`pickTypeDescriptions.${type.key}` as any)}</span>
+                        {t("points")} - <strong>{tDynamic(`pickTypeNames.${type.key}`)}</strong>{" "}
+                        <span style={{ color: "#666", fontSize: 13 }}>{tDynamic(`pickTypeDescriptions.${type.key}`)}</span>
                       </span>
                     </div>
                   ))}
@@ -169,7 +187,9 @@ export function PickRulesDisplay({
                 <strong style={{ fontSize: 14 }}>{t("rulesDisplay.howToEarnPoints")}:</strong>
               </div>
 
-              {phase.structuralPicks.type === "GROUP_STANDINGS" && (
+              {phase.structuralPicks.type === "GROUP_STANDINGS" && (() => {
+                const cfg = phase.structuralPicks!.config as StructuralConfig;
+                return (
                 <div
                   style={{
                     padding: "8px 12px",
@@ -184,41 +204,44 @@ export function PickRulesDisplay({
                     📋 <strong>{t("rulesDisplay.groupStandingsTitle")}</strong>
                   </div>
                   {/* Soportar nuevo formato (pointsPosition1-4) y legacy (pointsPerExactPosition) */}
-                  {(phase.structuralPicks.config as any).pointsPosition1 !== undefined ? (
+                  {cfg.pointsPosition1 !== undefined ? (
                     <>
                       <div style={{ color: "#666", fontSize: 13 }}>
-                        • 🥇 {t("rulesDisplay.positionPoints1", { points: (phase.structuralPicks.config as any).pointsPosition1 })}
+                        • 🥇 {t("rulesDisplay.positionPoints1", { points: cfg.pointsPosition1 })}
                       </div>
                       <div style={{ color: "#666", fontSize: 13 }}>
-                        • 🥈 {t("rulesDisplay.positionPoints2", { points: (phase.structuralPicks.config as any).pointsPosition2 })}
+                        • 🥈 {t("rulesDisplay.positionPoints2", { points: cfg.pointsPosition2 })}
                       </div>
                       <div style={{ color: "#666", fontSize: 13 }}>
-                        • 🥉 {t("rulesDisplay.positionPoints3", { points: (phase.structuralPicks.config as any).pointsPosition3 })}
+                        • 🥉 {t("rulesDisplay.positionPoints3", { points: cfg.pointsPosition3 })}
                       </div>
                       <div style={{ color: "#666", fontSize: 13 }}>
-                        • 4️⃣ {t("rulesDisplay.positionPoints4", { points: (phase.structuralPicks.config as any).pointsPosition4 })}
+                        • 4️⃣ {t("rulesDisplay.positionPoints4", { points: cfg.pointsPosition4 })}
                       </div>
                     </>
                   ) : (
                     <div style={{ color: "#666", fontSize: 13 }}>
-                      • {t("rulesDisplay.ptsPerExactPosition", { points: (phase.structuralPicks.config as any).pointsPerExactPosition })}
+                      • {t("rulesDisplay.ptsPerExactPosition", { points: cfg.pointsPerExactPosition })}
                     </div>
                   )}
                   {/* Bonus por grupo perfecto - soporta nuevo formato (bonusPerfectGroupEnabled) y legacy */}
-                  {((phase.structuralPicks.config as any).bonusPerfectGroupEnabled ?? (phase.structuralPicks.config as any).bonusPerfectGroup) && (phase.structuralPicks.config as any).bonusPerfectGroup && (
+                  {(cfg.bonusPerfectGroupEnabled ?? cfg.bonusPerfectGroup) && cfg.bonusPerfectGroup && (
                     <div style={{ color: "#666", fontSize: 13 }}>
-                      • 🎯 {t("rulesDisplay.bonusPerfectGroupPts", { points: (phase.structuralPicks.config as any).bonusPerfectGroup })}
+                      • 🎯 {t("rulesDisplay.bonusPerfectGroupPts", { points: cfg.bonusPerfectGroup })}
                     </div>
                   )}
-                  {(phase.structuralPicks.config as any).includeGlobalQualifiers && (
+                  {cfg.includeGlobalQualifiers && (
                     <div style={{ color: "#666", fontSize: 13 }}>
-                      • {t("rulesDisplay.globalQualifiersAdditional", { points: (phase.structuralPicks.config as any).globalQualifiersPoints })}
+                      • {t("rulesDisplay.globalQualifiersAdditional", { points: cfg.globalQualifiersPoints })}
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
-              {phase.structuralPicks.type === "GLOBAL_QUALIFIERS" && (
+              {phase.structuralPicks.type === "GLOBAL_QUALIFIERS" && (() => {
+                const cfg = phase.structuralPicks!.config as StructuralConfig;
+                return (
                 <div
                   style={{
                     padding: "8px 12px",
@@ -233,16 +256,17 @@ export function PickRulesDisplay({
                     🌍 <strong>{t("rulesDisplay.globalQualifiersTitle")}</strong>
                   </div>
                   <div style={{ color: "#666", fontSize: 13 }}>
-                    • {t("rulesDisplay.predictTotalQualifiers", { total: (phase.structuralPicks.config as any).totalQualifiers })}
+                    • {t("rulesDisplay.predictTotalQualifiers", { total: cfg.totalQualifiers })}
                   </div>
                   <div style={{ color: "#666", fontSize: 13 }}>
-                    • {t("rulesDisplay.ptsPerExactPosition", { points: (phase.structuralPicks.config as any).pointsPerExactPosition })}
+                    • {t("rulesDisplay.ptsPerExactPosition", { points: cfg.pointsPerExactPosition })}
                   </div>
                   <div style={{ marginTop: 8, fontSize: 12, color: "#856404" }}>
-                    ⚠️ {t("rulesDisplay.lockDateWarning", { date: new Date((phase.structuralPicks.config as any).lockDateTime).toLocaleString() })}
+                    ⚠️ {t("rulesDisplay.lockDateWarning", { date: new Date(cfg.lockDateTime!).toLocaleString() })}
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {phase.structuralPicks.type === "KNOCKOUT_WINNER" && (
                 <div
@@ -259,7 +283,7 @@ export function PickRulesDisplay({
                     🎯 <strong>{t("rulesDisplay.knockoutWinnerTitle")}</strong>
                   </div>
                   <div style={{ color: "#666", fontSize: 13 }}>
-                    • {t("rulesDisplay.knockoutWinnerPoints", { points: (phase.structuralPicks.config as any).pointsPerCorrectAdvance })}
+                    • {t("rulesDisplay.knockoutWinnerPoints", { points: (phase.structuralPicks.config as StructuralConfig).pointsPerCorrectAdvance })}
                   </div>
                   <div style={{ color: "#666", fontSize: 13, marginTop: 4 }}>
                     {t("rulesDisplay.knockoutWinnerNote")}

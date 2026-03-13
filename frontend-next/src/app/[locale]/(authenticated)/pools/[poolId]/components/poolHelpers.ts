@@ -10,13 +10,17 @@ export function norm(s: string) {
 }
 
 export function formatPhaseName(phaseId: string, t: ReturnType<typeof useTranslations<"pool">>): string {
-  const key = `phases.${phaseId}` as any;
-  try { return t(key); } catch { return phaseId.replace(/_/g, " ").slice(0, 6); }
+  // next-intl doesn't support computed keys at type level
+  const tDynamic = t as (key: string) => string;
+  const key = `phases.${phaseId}`;
+  try { return tDynamic(key); } catch { return phaseId.replace(/_/g, " ").slice(0, 6); }
 }
 
 export function formatPhaseFullName(phaseId: string, t: ReturnType<typeof useTranslations<"pool">>): string {
-  const key = `phasesLong.${phaseId}` as any;
-  try { return t(key); } catch { return phaseId.replace(/_/g, " "); }
+  // next-intl doesn't support computed keys at type level
+  const tDynamic = t as (key: string) => string;
+  const key = `phasesLong.${phaseId}`;
+  try { return tDynamic(key); } catch { return phaseId.replace(/_/g, " "); }
 }
 
 export function getPoolStatusBadge(status: string, t: ReturnType<typeof useTranslations<"pool">>): { label: string; color: string; emoji: string } {

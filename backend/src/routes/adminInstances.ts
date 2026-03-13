@@ -742,7 +742,8 @@ adminInstancesRouter.post("/instances/:instanceId/update-r16-draw", async (req, 
     const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
     if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
 
-    const currentData = instance.dataJson as any;
+    // Dynamic fixture JSON with API-Football specific extensions
+    const currentData = instance.dataJson as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- admin-only dynamic fixture manipulation
 
     // Build API team ID → internal team ID mapping from teams array
     const apiToInternal: Record<number, string> = {};
@@ -895,7 +896,7 @@ adminInstancesRouter.post("/instances/:instanceId/update-r16-draw", async (req, 
       select: { id: true, name: true, fixtureSnapshot: true },
     });
     for (const pool of pools) {
-      const poolData = (pool.fixtureSnapshot ?? currentData) as any;
+      const poolData = (pool.fixtureSnapshot ?? currentData) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
       for (const tie of ties) {
         for (const match of poolData.matches || []) {
           if (!match.phaseId?.startsWith("r16_")) continue;
@@ -919,7 +920,7 @@ adminInstancesRouter.post("/instances/:instanceId/update-r16-draw", async (req, 
     }
 
     await writeAuditEvent({
-      actorUserId: (req as any).user?.id ?? null,
+      actorUserId: req.auth?.userId ?? null,
       action: "UPDATE_R16_DRAW",
       entityType: "TournamentInstance",
       entityId: instanceId,

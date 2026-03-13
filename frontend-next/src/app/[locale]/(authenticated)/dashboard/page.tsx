@@ -45,7 +45,9 @@ export default function DashboardPage() {
       ARCHIVED: { color: "#6b7280", emoji: "\u{1F4E6}" },
     };
     const info = labels[status] ?? { color: "#9ca3af", emoji: "\u2753" };
-    const label = t(`status.${status}` as any) ?? t("status.UNKNOWN");
+    // next-intl doesn't support computed keys at type level
+    const tDynamic = t as (key: string) => string;
+    const label = tDynamic(`status.${status}`) ?? t("status.UNKNOWN");
     return { label, ...info };
   }
 

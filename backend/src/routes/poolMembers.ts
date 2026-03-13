@@ -42,7 +42,7 @@ poolMembersRouter.get("/:poolId/pending-members", async (req, res) => {
   const pendingMembers = await prisma.poolMember.findMany({
     where: {
       poolId,
-      status: "PENDING_APPROVAL" as any // TypeScript no ha recargado tipos, pero Prisma sí lo soporta
+      status: "PENDING_APPROVAL" // TypeScript no ha recargado tipos, pero Prisma sí lo soporta
     },
     include: {
       user: {
@@ -59,7 +59,7 @@ poolMembersRouter.get("/:poolId/pending-members", async (req, res) => {
 
   return res.json({
     ok: true,
-    pendingMembers: pendingMembers.map((m: any) => ({
+    pendingMembers: pendingMembers.map((m) => ({
       id: m.id,
       userId: m.userId,
       username: m.user.username,
@@ -85,7 +85,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/approve", async (req, res) =>
   if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
   if (member.poolId !== poolId) return res.status(403).json({ error: "FORBIDDEN" });
 
-  if (member.status !== ("PENDING_APPROVAL" as any)) {
+  if (member.status !== ("PENDING_APPROVAL")) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Member is not pending approval"
@@ -95,7 +95,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/approve", async (req, res) =>
   await prisma.poolMember.update({
     where: { id: memberId },
     data: {
-      status: "ACTIVE" as any,
+      status: "ACTIVE",
       approvedByUserId: req.auth!.userId,
       approvedAtUtc: new Date(),
     },
@@ -148,7 +148,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/reject", async (req, res) => 
   if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
   if (member.poolId !== poolId) return res.status(403).json({ error: "FORBIDDEN" });
 
-  if (member.status !== ("PENDING_APPROVAL" as any)) {
+  if (member.status !== ("PENDING_APPROVAL")) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Member is not pending approval"

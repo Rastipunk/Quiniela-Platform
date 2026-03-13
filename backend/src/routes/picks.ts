@@ -108,7 +108,7 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
 
   // Validar que el pool permita hacer picks según su estado
-  if (!canMakePicks(pool.status as any)) {
+  if (!canMakePicks(pool.status)) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Cannot make picks in this pool status"
@@ -168,7 +168,7 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
     action: "PREDICTION_UPSERTED",
     entityType: "Prediction",
     entityId: prediction.id,
-    dataJson: { poolId, matchId, pickType: (parsed.data.pick as any).type },
+    dataJson: { poolId, matchId, pickType: (parsed.data.pick as Record<string, unknown>).type },
     ip: req.ip,
     userAgent: req.get("user-agent") ?? null,
   });

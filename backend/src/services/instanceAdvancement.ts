@@ -4,6 +4,7 @@
  * Conecta los algoritmos de tournamentAdvancement.ts con la base de datos.
  */
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import {
   calculateGroupStandings,
@@ -323,7 +324,7 @@ export async function advanceToRoundOf32(instanceId: string, poolId?: string): P
   await prisma.pool.update({
     where: { id: poolId },
     data: {
-      fixtureSnapshot: updatedData as any,
+      fixtureSnapshot: updatedData as Prisma.InputJsonValue,
     },
   });
 
@@ -477,7 +478,7 @@ export async function advanceKnockoutPhase(
   await prisma.pool.update({
     where: { id: poolId },
     data: {
-      fixtureSnapshot: updatedData as any,
+      fixtureSnapshot: updatedData as Prisma.InputJsonValue,
     },
   });
 
@@ -529,7 +530,7 @@ export async function advanceTwoLeggedPhase(
   const leg2PhaseId = `${currentRound}_leg2`;
 
   // Determinar si la siguiente ronda es la final (partido único) o two-legged
-  const nextPhases = data.phases?.filter((p: any) => p.id.startsWith(nextRound));
+  const nextPhases = data.phases?.filter((p) => p.id.startsWith(nextRound));
   const isNextFinal = nextRound === "final";
 
   // 3. Obtener matches de ambas legs
@@ -585,15 +586,15 @@ export async function advanceTwoLeggedPhase(
   }
 
   // 6. Agrupar por tieNumber y calcular aggregate
-  const tieNumbers = [...new Set(leg1Matches.map((m) => (m as any).tieNumber as number))].sort(
+  const tieNumbers = [...new Set(leg1Matches.map((m) => m.tieNumber!))].sort(
     (a, b) => a - b
   );
 
   const winners: TwoLeggedTieResult[] = [];
 
   for (const tieNum of tieNumbers) {
-    const leg1Match = leg1Matches.find((m) => (m as any).tieNumber === tieNum);
-    const leg2Match = leg2Matches.find((m) => (m as any).tieNumber === tieNum);
+    const leg1Match = leg1Matches.find((m) => m.tieNumber === tieNum);
+    const leg2Match = leg2Matches.find((m) => m.tieNumber === tieNum);
 
     if (!leg1Match || !leg2Match) {
       throw new Error(`No se encontraron ambas legs para llave ${tieNum}`);
@@ -654,10 +655,10 @@ export async function advanceTwoLeggedPhase(
 
     const nextLeg1Matches = data.matches
       .filter((m) => m.phaseId === nextLeg1PhaseId)
-      .sort((a, b) => ((a as any).tieNumber ?? 0) - ((b as any).tieNumber ?? 0));
+      .sort((a, b) => (a.tieNumber ?? 0) - (b.tieNumber ?? 0));
     const nextLeg2Matches = data.matches
       .filter((m) => m.phaseId === nextLeg2PhaseId)
-      .sort((a, b) => ((a as any).tieNumber ?? 0) - ((b as any).tieNumber ?? 0));
+      .sort((a, b) => (a.tieNumber ?? 0) - (b.tieNumber ?? 0));
 
     for (let i = 0; i < nextLeg1Matches.length; i++) {
       const nextLeg1 = nextLeg1Matches[i]!;
@@ -727,7 +728,7 @@ export async function advanceTwoLeggedPhase(
   // 9. Persistir cambios SOLO en el fixtureSnapshot del pool
   await prisma.pool.update({
     where: { id: poolId },
-    data: { fixtureSnapshot: updatedData as any },
+    data: { fixtureSnapshot: updatedData as Prisma.InputJsonValue },
   });
 
   return { winners, resolvedMatches };

@@ -13,7 +13,7 @@ import {
 import { transitionToCompleted, canPublishResults } from "../services/poolStateMachine";
 import { ResultSource, ResultSourceMode } from "@prisma/client";
 import { requirePoolAdmin } from "../lib/roles";
-import { extractMatches, extractTeams, parseFixtureData, type FixtureMatch, type FixtureTeam } from "../lib/fixture";
+import { extractMatches, extractTeams, parseFixtureData, typed, type FixtureMatch, type FixtureTeam, type PickJson } from "../lib/fixture";
 import { outcomeFromScore } from "../lib/poolHelpers";
 
 export const resultsRouter = Router();
@@ -56,7 +56,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
 
   // Validar que el pool permita publicar resultados según su estado
-  if (!canPublishResults(pool.status as any)) {
+  if (!canPublishResults(pool.status)) {
     return res.status(409).json({
       error: "CONFLICT",
       message: "Cannot publish results in this pool status"
@@ -220,13 +220,13 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
         for (const pred of allPredictions) {
           const result = resultByMatchId.get(pred.matchId);
           if (!result) continue;
-          const pick = pred.pickJson as any;
+          const pick = typed<PickJson>(pred.pickJson);
           const actualOutcomeForPred = outcomeFromScore(result.homeGoals, result.awayGoals);
           let pts = 0;
           if (pick?.type === "OUTCOME") {
             if (pick.outcome === actualOutcomeForPred) pts = preset.outcomePoints;
           } else if (pick?.type === "SCORE") {
-            const predicted = outcomeFromScore(pick.homeGoals, pick.awayGoals);
+            const predicted = outcomeFromScore(pick.homeGoals!, pick.awayGoals!);
             if (predicted === actualOutcomeForPred) {
               pts = preset.outcomePoints;
               if (preset.allowScorePick && pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
@@ -253,12 +253,12 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
           const pick = pickByUserId.get(member.userId);
           let pointsEarned = 0;
           if (pick) {
-            const pickJson = pick.pickJson as any;
+            const pickJson = typed<PickJson>(pick.pickJson);
             if (pickJson?.type === "OUTCOME" && pickJson.outcome === actualOutcome) {
               pointsEarned = preset.outcomePoints;
             } else if (pickJson?.type === "SCORE") {
-              const predicted = pickJson.homeGoals > pickJson.awayGoals ? "HOME" :
-                               pickJson.homeGoals < pickJson.awayGoals ? "AWAY" : "DRAW";
+              const predicted = pickJson.homeGoals! > pickJson.awayGoals! ? "HOME" :
+                               pickJson.homeGoals! < pickJson.awayGoals! ? "AWAY" : "DRAW";
               if (predicted === actualOutcome) {
                 pointsEarned = preset.outcomePoints;
                 if (preset.allowScorePick && pickJson.homeGoals === homeGoals && pickJson.awayGoals === awayGoals) {
@@ -461,9 +461,9 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
     where: { poolId, matchId: { in: matchIds } },
   });
 
-  const predsByUserMatch = new Map<string, Map<string, any>>();
+  const predsByUserMatch = new Map<string, Map<string, typeof predictions[number]>>();
   for (const p of predictions) {
-    const byMatch = predsByUserMatch.get(p.userId) ?? new Map<string, any>();
+    const byMatch = predsByUserMatch.get(p.userId) ?? new Map<string, typeof predictions[number]>();
     byMatch.set(p.matchId, p);
     predsByUserMatch.set(p.userId, byMatch);
   }
@@ -474,7 +474,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
     return "DRAW";
   }
 
-  function scorePickDetailed(pick: any, actualHome: number, actualAway: number) {
+  function scorePickDetailed(pick: PickJson | null | undefined, actualHome: number, actualAway: number) {
     const actualOutcome = outcomeFromScoreLocal(actualHome, actualAway);
 
     // Comentario en español: MVP soporta OUTCOME y SCORE
@@ -490,7 +490,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
     }
 
     if (pick?.type === "SCORE") {
-      const predictedOutcome = outcomeFromScoreLocal(pick.homeGoals, pick.awayGoals);
+      const predictedOutcome = outcomeFromScoreLocal(pick.homeGoals!, pick.awayGoals!);
       const outcomeCorrect = predictedOutcome === actualOutcome;
       const outcomePoints = outcomeCorrect ? 3 : 0;
 
@@ -526,8 +526,8 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
     let points = 0;
     let scoredMatches = 0;
 
-    const byMatch = predsByUserMatch.get(m.userId) ?? new Map<string, any>();
-    const breakdown: any[] = [];
+    const byMatch = predsByUserMatch.get(m.userId) ?? new Map<string, typeof predictions[number]>();
+    const breakdown: Array<Record<string, unknown>> = [];
 
     for (const match of matches) {
       const pred = byMatch.get(match.id);
@@ -571,7 +571,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
         continue;
       }
 
-      const scored = scorePickDetailed(pred.pickJson, result.homeGoals, result.awayGoals);
+      const scored = scorePickDetailed(typed<PickJson>(pred.pickJson), result.homeGoals, result.awayGoals);
       points += scored.totalPoints;
       scoredMatches += 1;
 

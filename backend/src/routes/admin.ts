@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { prisma } from "../db";
@@ -90,7 +91,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
         versionNumber: nextVersionNumber,
         status: "PUBLISHED",
         publishedAtUtc: now,
-        dataJson: parsed as any,
+        dataJson: parsed as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -106,7 +107,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
         status: "ACTIVE",
         templateId: template.id,
         templateVersionId: version.id,
-        dataJson: parsed as any,
+        dataJson: parsed as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -310,7 +311,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
       });
 
       const updatedData = { ...currentData, matches: updatedMatches };
-      await prisma.tournamentInstance.update({ where: { id: UCL_INSTANCE_ID }, data: { dataJson: updatedData as any } });
+      await prisma.tournamentInstance.update({ where: { id: UCL_INSTANCE_ID }, data: { dataJson: updatedData as unknown as Prisma.InputJsonValue } });
       log("Instance updated from API-Football");
 
       // Also update template version
@@ -331,7 +332,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
             label: `${vTeamName(tie.teamB)} vs ${vTeamName(tie.teamA)}`, tieNumber: seedTieNum, status: "SCHEDULED" as const };
           return match;
         });
-        await prisma.tournamentTemplateVersion.update({ where: { id: UCL_VERSION_ID }, data: { dataJson: { ...versionData, matches: updatedVersionMatches } as any } });
+        await prisma.tournamentTemplateVersion.update({ where: { id: UCL_VERSION_ID }, data: { dataJson: { ...versionData, matches: updatedVersionMatches } as unknown as Prisma.InputJsonValue } });
         log("Template version updated");
       }
 
@@ -367,7 +368,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
         select: { id: true, name: true },
       });
       for (const pool of pools) {
-        await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: updatedData as any } });
+        await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: updatedData as unknown as Prisma.InputJsonValue } });
         log(`Synced pool: ${pool.name} (${pool.id})`);
       }
 
@@ -377,7 +378,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     // 3. Update instance
     log("3. Updating instance dataJson...");
     const updatedData = updateMatchesWithR16Data(currentData, r16Ties);
-    await prisma.tournamentInstance.update({ where: { id: UCL_INSTANCE_ID }, data: { dataJson: updatedData as any } });
+    await prisma.tournamentInstance.update({ where: { id: UCL_INSTANCE_ID }, data: { dataJson: updatedData as unknown as Prisma.InputJsonValue } });
 
     // 4. Update template version
     log("4. Updating template version...");
@@ -385,7 +386,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     if (version) {
       const versionData = version.dataJson as unknown as UclTemplateData;
       const updatedVersionData = updateMatchesWithR16Data(versionData, r16Ties);
-      await prisma.tournamentTemplateVersion.update({ where: { id: UCL_VERSION_ID }, data: { dataJson: updatedVersionData as any } });
+      await prisma.tournamentTemplateVersion.update({ where: { id: UCL_VERSION_ID }, data: { dataJson: updatedVersionData as unknown as Prisma.InputJsonValue } });
       log("Template version updated");
     }
 
@@ -435,7 +436,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     for (const pool of pools) {
       const poolData = (pool.fixtureSnapshot ?? currentData) as unknown as UclTemplateData;
       const updatedPoolData = updateMatchesWithR16Data(poolData, r16Ties);
-      await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: updatedPoolData as any } });
+      await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: updatedPoolData as unknown as Prisma.InputJsonValue } });
       log(`Updated pool: ${pool.name} (${pool.id})`);
     }
 
@@ -946,7 +947,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
         const updatedData = { ...instanceData, matches: updatedMatches };
         await prisma.tournamentInstance.update({
           where: { id: UCL_INSTANCE_ID },
-          data: { dataJson: updatedData as any },
+          data: { dataJson: updatedData as unknown as Prisma.InputJsonValue },
         });
         log("  ✅ Instance dataJson updated");
 
@@ -969,7 +970,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
           });
           await prisma.tournamentTemplateVersion.update({
             where: { id: UCL_VERSION_ID },
-            data: { dataJson: { ...versionData, matches: updatedVersionMatches } as any },
+            data: { dataJson: { ...versionData, matches: updatedVersionMatches } as unknown as Prisma.InputJsonValue },
           });
           log("  ✅ Template version updated");
         }
@@ -996,7 +997,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
           });
           await prisma.pool.update({
             where: { id: pool.id },
-            data: { fixtureSnapshot: { ...poolData, matches: updatedPoolMatches } as any },
+            data: { fixtureSnapshot: { ...poolData, matches: updatedPoolMatches } as unknown as Prisma.InputJsonValue },
           });
           log(`  ✅ Pool "${pool.name}" snapshot updated`);
         }

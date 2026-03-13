@@ -572,7 +572,7 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
         </h3>
         <p style={{ margin: 0, color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
           {isPreset
-            ? t("wizard.summary.presetUsing", { preset: t(`wizard.presetNames.${wizardState.selectedPreset!}` as any) })
+            ? t("wizard.summary.presetUsing", { preset: (t as (key: string) => string)(`wizard.presetNames.${wizardState.selectedPreset!}`) })
             : t("wizard.summary.customReview")}
         </p>
       </div>
@@ -661,7 +661,7 @@ function PresetSummary({ presetKey, isMobile }: PresetSummaryProps) {
         </span>
       </div>
       <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
-        {t(`wizard.summary.presetDescriptions.${presetKey}` as any)}
+        {(t as (key: string) => string)(`wizard.summary.presetDescriptions.${presetKey}`)}
       </p>
     </div>
   );
@@ -675,6 +675,8 @@ type CustomConfigSummaryProps = {
 function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryProps) {
   const t = useTranslations("dashboard");
   const tp = useTranslations("pool");
+  // next-intl doesn't support computed keys at type level
+  const tpDynamic = tp as (key: string) => string;
   return (
     <div style={{ display: "grid", gap: isMobile ? "0.5rem" : "1rem" }}>
       {configuration.map((phase, index) => (
@@ -701,7 +703,7 @@ function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryPro
                   .filter((pt) => pt.enabled)
                   .map((type) => (
                     <span key={type.key} style={{ color: "#333" }}>
-                      {tp(`pickTypeNames.${type.key}` as any)}: <strong>{type.points}{tp("points")}</strong>
+                      {tpDynamic(`pickTypeNames.${type.key}`)}: <strong>{type.points}{tp("points")}</strong>
                       {isMobile ? "" : " \u2022"}
                     </span>
                   ))}
@@ -726,6 +728,8 @@ type RulesPreviewProps = {
 function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
   const t = useTranslations("dashboard");
   const tp = useTranslations("pool");
+  // next-intl doesn't support computed keys at type level
+  const tpDynamic = tp as (key: string) => string;
   return (
     <div>
       <h3 style={{ margin: "0 0 0.5rem 0", fontSize: isMobile ? "0.9rem" : "1.125rem" }}>
@@ -755,7 +759,7 @@ function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
                   .filter((pt) => pt.enabled)
                   .map((type) => (
                     <span key={type.key} style={{ background: "#e8f4ff", padding: "0.1rem 0.3rem", borderRadius: "3px" }}>
-                      {type.points}{tp("points")} {tp(`pickTypeNames.${type.key}` as any)}
+                      {type.points}{tp("points")} {tpDynamic(`pickTypeNames.${type.key}`)}
                     </span>
                   ))}
               </div>

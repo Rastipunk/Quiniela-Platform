@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { getScoringPreset } from "../lib/scoringPresets";
 import { isPoolAdmin } from "../lib/roles";
-import { extractMatches, extractTeams, extractPhases } from "../lib/fixture";
+import { extractMatches, extractTeams, extractPhases, typed, type PickJson, type StructuralPickJson } from "../lib/fixture";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
 import { scoreUserStructuralPicks } from "../services/structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
@@ -62,7 +62,7 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
     }),
   ]);
   const overrideByMatchId = new Map(matchOverrides.map((o) => [o.matchId, o]));
-  const myPickByMatchId = new Map(myPredictions.map((p) => [p.matchId, p.pickJson as any]));
+  const myPickByMatchId = new Map(myPredictions.map((p) => [p.matchId, typed<PickJson>(p.pickJson)]));
 
   const resultByMatchId = new Map<string, {
     homeGoals: number;
@@ -134,10 +134,10 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
     }),
   ]);
 
-  const predsByUserMatch = new Map<string, Map<string, any>>();
+  const predsByUserMatch = new Map<string, Map<string, PickJson>>();
   for (const p of allPredictions) {
-    const byMatch = predsByUserMatch.get(p.userId) ?? new Map<string, any>();
-    byMatch.set(p.matchId, p.pickJson as any);
+    const byMatch = predsByUserMatch.get(p.userId) ?? new Map<string, PickJson>();
+    byMatch.set(p.matchId, typed<PickJson>(p.pickJson));
     predsByUserMatch.set(p.userId, byMatch);
   }
 
@@ -149,10 +149,10 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
     prisma.groupStandingsResult.findMany({ where: { poolId } }),
   ]);
 
-  const structuralPicksByUser = new Map<string, Array<{ phaseId: string; pickJson: any }>>();
+  const structuralPicksByUser = new Map<string, Array<{ phaseId: string; pickJson: StructuralPickJson }>>();
   for (const sp of allStructuralPicks) {
     const userPicks = structuralPicksByUser.get(sp.userId) ?? [];
-    userPicks.push({ phaseId: sp.phaseId, pickJson: sp.pickJson as any });
+    userPicks.push({ phaseId: sp.phaseId, pickJson: typed<StructuralPickJson>(sp.pickJson) });
     structuralPicksByUser.set(sp.userId, userPicks);
   }
 
@@ -180,11 +180,11 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
 
   const structuralResults = allStructuralResults.map((sr) => ({
     phaseId: sr.phaseId,
-    resultJson: sr.resultJson as any,
+    resultJson: typed<StructuralPickJson>(sr.resultJson),
   }));
 
   // Agrupar resultados de grupos por fase
-  const groupResultsByPhase = new Map<string, any[]>();
+  const groupResultsByPhase = new Map<string, Array<{ groupId: string; teamIds: string[] }>>();
   for (const gsr of allGroupStandingsResults) {
     const groups = groupResultsByPhase.get(gsr.phaseId) ?? [];
     groups.push({
@@ -267,7 +267,7 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
     }
   }
 
-  function scorePick(pick: any, actualHome: number, actualAway: number) {
+  function scorePick(pick: PickJson | null | undefined, actualHome: number, actualAway: number) {
     const actualOutcome = outcomeFromScore(actualHome, actualAway);
 
     // Caso 1: pick por outcome (HOME/DRAW/AWAY)
@@ -285,7 +285,7 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
 
     // Caso 2: pick por score (homeGoals/awayGoals)
     if (pick?.type === "SCORE") {
-      const predictedOutcome = outcomeFromScore(pick.homeGoals, pick.awayGoals);
+      const predictedOutcome = outcomeFromScore(pick.homeGoals!, pick.awayGoals!);
       const outcomeCorrect = predictedOutcome === actualOutcome;
 
       const outcomePoints = outcomeCorrect ? preset.outcomePoints : 0;
@@ -341,8 +341,8 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
       pointsByPhase[ph] = 0;
     }
 
-    const byMatch = predsByUserMatch.get(m.userId) ?? new Map<string, any>();
-    const breakdown: any[] = [];
+    const byMatch = predsByUserMatch.get(m.userId) ?? new Map<string, PickJson>();
+    const breakdown: Array<Record<string, unknown>> = [];
 
     for (const match of matches) {
       const pick = byMatch.get(match.id);
@@ -457,7 +457,7 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
           structuralPoints = scoreUserStructuralPicks(
             userStructuralPicks,
             structuralResults,
-            pool.pickTypesConfig as any[]
+            pool.pickTypesConfig as PhasePickConfig[]
           );
         } catch (err) {
           console.error(`[SCORING_ERROR] Structural points failed for user ${m.userId} in pool ${pool.id}:`, err instanceof Error ? err.message : err);
