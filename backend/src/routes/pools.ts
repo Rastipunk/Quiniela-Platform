@@ -32,6 +32,7 @@ import {
   generateKnockoutWinnerBreakdown,
 } from "../lib/scoringBreakdown";
 import type { PhasePickConfig } from "../types/pickConfig";
+import { requirePoolAdmin, requirePoolOwner, isPoolAdmin, isPoolOwner, HOST_NOTIFICATION_ROLES, NON_LEAVABLE_ROLES } from "../lib/roles";
 
 
 type SnapshotMatch = {
@@ -94,14 +95,6 @@ const createPoolSchema = z.object({
 function makeInviteCode() {
   // Comentario en español: código corto, suficientemente único para MVP
   return crypto.randomBytes(6).toString("hex"); // 12 chars
-}
-
-// Comentario en español: valida que el usuario sea HOST o CO_ADMIN del pool
-async function requirePoolHostOrCoAdmin(userId: string, poolId: string) {
-  const m = await prisma.poolMember.findFirst({
-    where: { poolId, userId, status: "ACTIVE" },
-  });
-  return m?.role === "HOST" || m?.role === "CO_ADMIN";
 }
 
 // POST /pools  (crea pool y agrega al creador como HOST)
@@ -763,8 +756,8 @@ poolsRouter.get("/:poolId/overview", async (req, res) => {
       dataJson: pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson,
     },
     permissions: {
-      canManageResults: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN" || myMembership.role === "CORPORATE_HOST",
-      canInvite: myMembership.role === "HOST" || myMembership.role === "CO_ADMIN" || myMembership.role === "CORPORATE_HOST",
+      canManageResults: isPoolAdmin(myMembership.role),
+      canInvite: isPoolAdmin(myMembership.role),
     },
     matches: matchCards,
     leaderboard: {
@@ -858,9 +851,8 @@ poolsRouter.get("/:poolId", async (req, res) => {
         }
       : null,
     permissions: {
-      // Comentario en español: útil para habilitar/ocultar botones en UI
-      canManageResults: myMembership.role === "HOST",
-      canInvite: myMembership.role === "HOST",
+      canManageResults: isPoolAdmin(myMembership.role),
+      canInvite: isPoolAdmin(myMembership.role),
     },
   });
 });
@@ -895,7 +887,7 @@ poolsRouter.get("/:poolId/members", async (req, res) => {
 poolsRouter.get("/:poolId/pending-members", async (req, res) => {
   const { poolId } = req.params;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const pendingMembers = await prisma.poolMember.findMany({
@@ -933,7 +925,7 @@ poolsRouter.get("/:poolId/pending-members", async (req, res) => {
 poolsRouter.post("/:poolId/members/:memberId/approve", async (req, res) => {
   const { poolId, memberId } = req.params;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const member = await prisma.poolMember.findUnique({
@@ -991,7 +983,7 @@ const rejectMemberSchema = z.object({
 poolsRouter.post("/:poolId/members/:memberId/reject", async (req, res) => {
   const { poolId, memberId } = req.params;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = rejectMemberSchema.safeParse(req.body ?? {});
@@ -1050,7 +1042,7 @@ poolsRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
   const { poolId, memberId } = req.params;
   const actorUserId = req.auth!.userId;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(actorUserId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(actorUserId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = kickMemberSchema.safeParse(req.body ?? {});
@@ -1144,8 +1136,8 @@ poolsRouter.post("/:poolId/leave", async (req, res) => {
     return res.status(404).json({ error: "NOT_FOUND", message: "Not an active member of this pool" });
   }
 
-  // Hosts and corporate hosts cannot leave
-  if (member.role === "HOST" || member.role === "CORPORATE_HOST") {
+  // Pool owners cannot leave
+  if ((NON_LEAVABLE_ROLES as readonly string[]).includes(member.role)) {
     return res.status(403).json({ error: "HOST_CANNOT_LEAVE", message: "Hosts cannot leave their own pool" });
   }
 
@@ -1180,7 +1172,7 @@ poolsRouter.put("/:poolId/matches/:matchId/scoring-override", async (req, res) =
   const { poolId, matchId } = req.params;
   const userId = req.auth!.userId;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(userId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = scoringOverrideSchema.safeParse(req.body ?? {});
@@ -1227,7 +1219,7 @@ poolsRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
   const { poolId, memberId } = req.params;
   const actorUserId = req.auth!.userId;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(actorUserId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(actorUserId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = banMemberSchema.safeParse(req.body ?? {});
@@ -1332,7 +1324,7 @@ const createInviteSchema = z.object({
 poolsRouter.post("/:poolId/invites", async (req, res) => {
   const { poolId } = req.params;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = createInviteSchema.safeParse(req.body ?? {});
@@ -1392,7 +1384,7 @@ const sendInviteEmailSchema = z.object({
 poolsRouter.post("/:poolId/send-invite-email", async (req, res) => {
   const { poolId } = req.params;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = sendInviteEmailSchema.safeParse(req.body);
@@ -1601,7 +1593,7 @@ poolsRouter.post("/join", async (req, res) => {
     });
     if (currentCount >= invite.pool.maxParticipants) {
       const host = await prisma.poolMember.findFirst({
-        where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+        where: { poolId: invite.poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
         include: { user: { select: { email: true, displayName: true } } },
       });
       if (host?.user?.email) {
@@ -1643,8 +1635,8 @@ poolsRouter.post("/:poolId/advance-phase", async (req, res) => {
     where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
   });
 
-  if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
+  if (!myMembership || !isPoolOwner(myMembership.role)) {
+    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
   }
 
   const parsed = advancePhaseSchema.safeParse(req.body);
@@ -1785,8 +1777,8 @@ poolsRouter.patch("/:poolId/settings", async (req, res) => {
     where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
   });
 
-  if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
+  if (!myMembership || !isPoolOwner(myMembership.role)) {
+    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
   }
 
   const { autoAdvanceEnabled, requireApproval, extraTimePhases } = parsed.data;
@@ -1932,8 +1924,8 @@ poolsRouter.post("/:poolId/lock-phase", async (req, res) => {
     where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
   });
 
-  if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
+  if (!myMembership || !isPoolOwner(myMembership.role)) {
+    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
   }
 
   const { phaseId, locked } = parsed.data;
@@ -1990,8 +1982,8 @@ poolsRouter.post("/:poolId/archive", async (req, res) => {
     where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
   });
 
-  if (!myMembership || myMembership.role !== "HOST") {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "HOST_ONLY" });
+  if (!myMembership || !isPoolOwner(myMembership.role)) {
+    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
   }
 
   try {
@@ -2022,10 +2014,10 @@ poolsRouter.post("/:poolId/members/:memberId/promote", async (req, res) => {
     where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
   });
 
-  if (!actorMembership || actorMembership.role !== "HOST") {
+  if (!actorMembership || !isPoolOwner(actorMembership.role)) {
     return res.status(403).json({
       error: "FORBIDDEN",
-      reason: "HOST_ONLY",
+      reason: "OWNER_ONLY",
     });
   }
 
@@ -2097,10 +2089,10 @@ poolsRouter.post("/:poolId/members/:memberId/demote", async (req, res) => {
     where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
   });
 
-  if (!actorMembership || actorMembership.role !== "HOST") {
+  if (!actorMembership || !isPoolOwner(actorMembership.role)) {
     return res.status(403).json({
       error: "FORBIDDEN",
-      reason: "HOST_ONLY",
+      reason: "OWNER_ONLY",
     });
   }
 
@@ -3062,7 +3054,7 @@ poolsRouter.get("/:poolId/notifications", async (req, res) => {
       return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
     }
 
-    const isHostOrCoAdmin = membership.role === "HOST" || membership.role === "CO_ADMIN";
+    const isHostOrCoAdmin = isPoolAdmin(membership.role);
 
     // Obtener pool con fixture
     const pool = await prisma.pool.findUnique({

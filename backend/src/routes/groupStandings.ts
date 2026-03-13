@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "../services/poolStateMachine";
 import { advanceToRoundOf32, validateCanAutoAdvance } from "../services/instanceAdvancement";
+import { requirePoolAdmin } from "../lib/roles";
 
 export const groupStandingsRouter = Router();
 
@@ -23,18 +24,6 @@ const groupStandingsSchema = z.object({
 async function requireActivePoolMember(userId: string, poolId: string) {
   const member = await prisma.poolMember.findFirst({
     where: { poolId, userId, status: "ACTIVE" },
-  });
-  return member != null;
-}
-
-async function requireHostOrCoAdmin(userId: string, poolId: string) {
-  const member = await prisma.poolMember.findFirst({
-    where: {
-      poolId,
-      userId,
-      status: "ACTIVE",
-      role: { in: ["HOST", "CO_ADMIN"] },
-    },
   });
   return member != null;
 }
@@ -178,7 +167,7 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
     });
   }
 
-  const isHostOrCoAdmin = await requireHostOrCoAdmin(req.auth!.userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) {
     return res.status(403).json({
       error: "FORBIDDEN",
@@ -305,7 +294,7 @@ groupStandingsRouter.get("/:poolId/group-standings-results/:phaseId", async (req
 groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId", async (req, res) => {
   const { poolId, phaseId, groupId } = req.params;
 
-  const isHostOrCoAdmin = await requireHostOrCoAdmin(req.auth!.userId, poolId);
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) {
     return res.status(403).json({
       error: "FORBIDDEN",

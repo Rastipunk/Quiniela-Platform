@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { canPublishResults } from "../services/poolStateMachine";
+import { requirePoolAdmin } from "../lib/roles";
 
 export const structuralResultsRouter = Router();
 
@@ -35,20 +36,6 @@ const structuralResultPayloadSchema = z.union([
   knockoutPhaseResultSchema,
 ]);
 
-// ==================== HELPERS ====================
-
-async function requireHostOrCoAdmin(userId: string, poolId: string) {
-  const member = await prisma.poolMember.findFirst({
-    where: {
-      poolId,
-      userId,
-      status: "ACTIVE",
-      role: { in: ["HOST", "CO_ADMIN"] },
-    },
-  });
-  return member != null;
-}
-
 // ==================== ENDPOINTS ====================
 
 // PUT /pools/:poolId/structural-results/:phaseId
@@ -64,8 +51,8 @@ structuralResultsRouter.put("/:poolId/structural-results/:phaseId", async (req, 
     });
   }
 
-  const isHostOrCoAdmin = await requireHostOrCoAdmin(req.auth!.userId, poolId);
-  if (!isHostOrCoAdmin) {
+  const isAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
+  if (!isAdmin) {
     return res.status(403).json({
       error: "FORBIDDEN",
       message: "Only HOST or CO_ADMIN can publish results",

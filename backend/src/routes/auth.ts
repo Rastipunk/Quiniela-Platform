@@ -11,6 +11,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "../services/poolStateMachine";
 import { CURRENT_LEGAL_VERSIONS } from "./legal";
+import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
 
 export const authRouter = Router();
 
@@ -750,7 +751,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
       const curCount = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
       if (curCount >= invite.pool.maxParticipants) {
         const host = await prisma.poolMember.findFirst({
-          where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+          where: { poolId: invite.poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
           include: { user: { select: { email: true, displayName: true } } },
         });
         if (host?.user?.email) {
@@ -877,7 +878,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
     const curCount = await prisma.poolMember.count({ where: { poolId: invite.poolId, status: "ACTIVE" } });
     if (curCount >= invite.pool.maxParticipants) {
       const host = await prisma.poolMember.findFirst({
-        where: { poolId: invite.poolId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+        where: { poolId: invite.poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
         include: { user: { select: { email: true, displayName: true } } },
       });
       if (host?.user?.email) {

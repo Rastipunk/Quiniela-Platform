@@ -12,6 +12,7 @@ import {
 } from "../services/instanceAdvancement";
 import { transitionToCompleted, canPublishResults } from "../services/poolStateMachine";
 import { ResultSource, ResultSourceMode } from "@prisma/client";
+import { requirePoolAdmin } from "../lib/roles";
 
 export const resultsRouter = Router();
 resultsRouter.use(requireAuth);
@@ -58,18 +59,12 @@ async function requireActivePoolMember(userId: string, poolId: string) {
   return m != null;
 }
 
-// Comentario en español: valida que el usuario sea HOST o CO_ADMIN del pool
-async function requirePoolHostOrCoAdmin(userId: string, poolId: string) {
-  const m = await prisma.poolMember.findFirst({ where: { poolId, userId, status: "ACTIVE" } });
-  return m?.role === "HOST" || m?.role === "CO_ADMIN";
-}
-
-// PUT /pools/:poolId/results/:matchId  (HOST o CO_ADMIN)
+// PUT /pools/:poolId/results/:matchId  (HOST, CO_ADMIN, or CORPORATE_HOST)
 resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   const { poolId, matchId } = req.params;
 
-  const isHostOrCoAdmin = await requirePoolHostOrCoAdmin(req.auth!.userId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  const isAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
+  if (!isAdmin) return res.status(403).json({ error: "FORBIDDEN" });
 
   const parsed = upsertResultSchema.safeParse(req.body);
   if (!parsed.success) {
