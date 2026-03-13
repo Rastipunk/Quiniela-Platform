@@ -53,7 +53,7 @@
 - **Fix propuesto:** Dividir en sub-routers: `poolMembers.ts`, `poolInvites.ts`, `poolAdmin.ts`, `poolOverview.ts`. Extraer middleware compartido.
 
 ### CR-06: Frontend — Componentes Gigantes sin Splitting
-- **Estado:** `[ ]`
+- **Estado:** `[!]`
 - **Archivos:**
   - `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolMatchesTab.tsx` (1,594 lineas)
   - `frontend-next/src/app/[locale]/(authenticated)/dashboard/page.tsx` (1,046 lineas)
@@ -255,3 +255,4 @@
 | 2026-03-12 | CR-03 | `updateMany WHERE status='PENDING'` con check de `count=0` para evitar doble activacion. Aplicado en ambos flujos de auth.ts (existing user + new user). El claim atomico se hace ANTES de crear usuario/miembro. | pendiente |
 | 2026-03-12 | CR-04 | Agregados `@@index([poolId, status])` en PoolMember y `@@index([poolId, matchId])` en Prediction. Migration manual creada. Se aplica al deploy en Railway. | pendiente |
 | 2026-03-12 | CR-05 | pools.ts (3208 lineas) dividido en 5 archivos: pools.ts (243), poolOverview.ts (569), poolMembers.ts (573), poolInvites.ts (312), poolAdmin.ts (1535). Helpers extraidos a lib/poolHelpers.ts. Zero cambios en server.ts ni URLs. | pendiente |
+| 2026-03-12 | CR-06 | PoolMatchesTab.tsx (1594 lineas) dividido en 6 archivos: PoolMatchesTab.tsx (460), MatchCard.tsx (305), PickComponents.tsx (305), ResultComponents.tsx (351), MatchPicksModal.tsx (156), ScoringOverrideModal.tsx (116). Zero cambios funcionales, build OK. Pendiente: 4 componentes restantes. | pendiente |
