@@ -47,7 +47,7 @@
 - **Fix propuesto:** Agregar `@@index` en schema.prisma + migration.
 
 ### CR-05: Backend God-File — pools.ts 3000+ lineas
-- **Estado:** `[ ]`
+- **Estado:** `[x]`
 - **Archivos:** `backend/src/routes/pools.ts`
 - **Descripcion:** 25+ endpoints en un solo archivo. Imposible de mantener/testear. `requireActivePoolMember()` duplicado en 4 archivos.
 - **Fix propuesto:** Dividir en sub-routers: `poolMembers.ts`, `poolInvites.ts`, `poolAdmin.ts`, `poolOverview.ts`. Extraer middleware compartido.
@@ -254,3 +254,4 @@
 | 2026-03-12 | CR-02 | `SELECT FOR UPDATE` en PoolMatchResult header antes de leer lastVersion. Aplicado en results.ts (host publish) y smartSync/service.ts (API publish). Unique constraint `@@unique([resultId, versionNumber])` como safety net. | pendiente |
 | 2026-03-12 | CR-03 | `updateMany WHERE status='PENDING'` con check de `count=0` para evitar doble activacion. Aplicado en ambos flujos de auth.ts (existing user + new user). El claim atomico se hace ANTES de crear usuario/miembro. | pendiente |
 | 2026-03-12 | CR-04 | Agregados `@@index([poolId, status])` en PoolMember y `@@index([poolId, matchId])` en Prediction. Migration manual creada. Se aplica al deploy en Railway. | pendiente |
+| 2026-03-12 | CR-05 | pools.ts (3208 lineas) dividido en 5 archivos: pools.ts (243), poolOverview.ts (569), poolMembers.ts (573), poolInvites.ts (312), poolAdmin.ts (1535). Helpers extraidos a lib/poolHelpers.ts. Zero cambios en server.ts ni URLs. | pendiente |
