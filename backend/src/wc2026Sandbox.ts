@@ -13,9 +13,7 @@ export function buildWc2026Sandbox(): TemplateData {
       code: `${g}${n}`,         // corto para UI
       groupId: g,
 
-      // Base futura (opcional): para banderas más adelante
-      // countryCode: "CO", // ISO2 cuando sea real
-      // flagEmoji: "🇨🇴",
+      // countryCode / flagEmoji: to be added when real teams are assigned
     }));
   });
 

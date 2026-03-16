@@ -6,7 +6,7 @@ export type AuthTokenPayload = {
   platformRole: PlatformRole;
 };
 
-// Firma un JWT con expiración de 4 horas
+/** Sign a JWT with 4-hour expiry. */
 export function signToken(payload: AuthTokenPayload): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -15,7 +15,7 @@ export function signToken(payload: AuthTokenPayload): string {
   return jwt.sign(payload, secret, { expiresIn: "4h", algorithm: "HS256" });
 }
 
-// Valida y decodifica el JWT
+/** Verify and decode a JWT. Throws on invalid/expired tokens. */
 export function verifyToken(token: string): AuthTokenPayload {
   const secret = process.env.JWT_SECRET;
   if (!secret) {

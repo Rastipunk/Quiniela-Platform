@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-// Comentario en español: esquema del snapshot completo del torneo dentro de TemplateVersion.dataJson
-
 export const templateTeamSchema = z.object({
   id: z.string().min(1).max(50), // ej: "mex", "usa", "t1"
   name: z.string().min(1).max(120),
@@ -15,7 +13,6 @@ export const templatePhaseSchema = z.object({
   name: z.string().min(1).max(120),
   type: z.enum(["GROUP", "KNOCKOUT"]),
   order: z.number().int().min(1).max(99),
-  // Comentario en español: configuración simple; luego la refinamos
   config: z
     .object({
       groupsCount: z.number().int().min(1).max(64).optional(),
@@ -48,14 +45,12 @@ export const templateDataSchema = z.object({
       })
       .optional(),
 
-    // Comentario en español: mantenemos estos 3 arrays como base del snapshot
     teams: z.array(templateTeamSchema),
     phases: z.array(templatePhaseSchema),
     matches: z.array(templateMatchSchema),
 
     note: z.string().max(500).optional(),
   })
-  // Comentario en español: permitimos campos extra por ahora para no bloquear evolución
   .passthrough();
 
 export type TemplateData = z.infer<typeof templateDataSchema>;
@@ -66,7 +61,7 @@ export type TemplateDataIssue = {
   message: string;
 };
 
-// Comentario en español: validación “lógica” adicional (consistencia entre IDs y referencias)
+/** Cross-reference validation: checks ID uniqueness and referential integrity between teams, phases, and matches. */
 export function validateTemplateDataConsistency(data: TemplateData): TemplateDataIssue[] {
   const issues: TemplateDataIssue[] = [];
 

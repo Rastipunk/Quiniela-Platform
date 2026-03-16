@@ -2,7 +2,7 @@ import type { Response, CookieOptions } from "express";
 
 const COOKIE_NAME = "p4a_token";
 const LOGGED_IN_COOKIE = "p4a_logged_in";
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4 hours — aligned with JWT expiry
 
 function getCookieOptions(overrides?: Partial<CookieOptions>): CookieOptions {
   const isProduction = process.env.NODE_ENV === "production";
