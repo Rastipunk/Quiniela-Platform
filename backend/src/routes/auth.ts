@@ -27,6 +27,7 @@ import {
   activateCorporateAccount,
   resendVerification,
 } from "../services/authService";
+import { isPasswordValid } from "../lib/passwordRules";
 import type { AuditContext } from "../services/authService";
 
 export const authRouter = Router();
@@ -61,7 +62,7 @@ const registerSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3).max(20),
   displayName: z.string().min(2).max(50),
-  password: z.string().min(8).max(200),
+  password: z.string().min(8).max(200).refine(isPasswordValid, { message: "Password must contain at least 1 uppercase letter and 1 number" }),
   timezone: z.string().optional(),
   acceptTerms: z.boolean(),
   acceptPrivacy: z.boolean(),
@@ -80,7 +81,7 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1),
-  newPassword: z.string().min(8).max(200),
+  newPassword: z.string().min(8).max(200).refine(isPasswordValid, { message: "Password must contain at least 1 uppercase letter and 1 number" }),
 });
 
 const googleAuthSchema = z.object({
@@ -100,7 +101,10 @@ const activateCorporateSchema = z.object({
   activationToken: z.string().min(1),
   displayName: z.string().min(2).max(50).optional(),
   username: z.string().min(3).max(20).optional(),
-  password: z.string().min(8).max(200).optional(),
+  password: z.string().min(8).max(200).optional().refine(
+    (val) => !val || isPasswordValid(val),
+    { message: "Password must contain at least 1 uppercase letter and 1 number" }
+  ),
   acceptTerms: z.boolean().optional(),
   acceptPrivacy: z.boolean().optional(),
   acceptAge: z.boolean().optional(),

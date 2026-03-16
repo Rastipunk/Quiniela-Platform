@@ -14,6 +14,7 @@ import {
   sendForbidden, sendNotFound, sendConflict, sendInternal,
 } from "../lib/apiResponse";
 import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
+import { validateBase64Image } from "../lib/validateBase64Image";
 import { ServiceError } from "../services/authService";
 import type { AuditContext } from "../services/authService";
 import {
@@ -73,7 +74,10 @@ const inquirySchema = z.object({
 
 const createCorporatePoolSchema = z.object({
   companyName: z.string().min(2).max(200),
-  logoBase64: z.string().max(700_000).optional(),
+  logoBase64: z.string().max(700_000).optional().refine(
+    (val) => !val || validateBase64Image(val) !== null,
+    { message: "Logo must be a valid image (PNG, JPEG, GIF, or WebP)" }
+  ),
   welcomeMessage: z.string().max(1000).optional(),
   invitationMessage: z.string().max(1000).optional(),
   tournamentInstanceId: z.string().min(1),

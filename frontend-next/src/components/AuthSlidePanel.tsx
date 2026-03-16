@@ -7,6 +7,7 @@ import { setToken } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
+import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
 
 declare global {
   interface Window {
@@ -223,7 +224,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
           throw new Error(t("errors.displayNameRequired"));
         }
 
-        if (password.length < 8) {
+        if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
           throw new Error(t("errors.passwordMinLength"));
         }
 
@@ -424,7 +425,11 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
             <label style={{ display: "grid", gap: 4, marginBottom: mode === "register" ? 4 : 12 }}>
               <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>{t("password")}</span>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required style={inputStyle} />
-              <span style={{ fontSize: 11, color: "var(--muted)" }}>{t("passwordHint")}</span>
+              {mode === "register" ? (
+                <PasswordStrengthIndicator password={password} />
+              ) : (
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>{t("passwordHint")}</span>
+              )}
             </label>
 
             {mode === "login" && (

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { activateCorporateAccount, checkCorporateInvite } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
 
 type Status = "form" | "submitting" | "success" | "error";
 type CheckStatus = "loading" | "new_user" | "existing_user" | "error";
@@ -72,7 +73,7 @@ export function ActivationContent() {
   const canSubmit =
     displayName.trim().length >= 2 &&
     username.trim().length >= 3 &&
-    password.length >= 8 &&
+    password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password) &&
     password === confirmPassword &&
     acceptTerms &&
     acceptPrivacy &&
@@ -366,6 +367,7 @@ export function ActivationContent() {
             minLength={8}
             maxLength={200}
           />
+          <PasswordStrengthIndicator password={password} />
         </div>
 
         <div>

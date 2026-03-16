@@ -6,6 +6,7 @@ import { resetPassword } from "@/lib/api";
 import { Link } from "@/i18n/navigation";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getToken, clearToken } from "@/lib/auth";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
 import { logout as apiLogout } from "@/lib/api";
 
 /**
@@ -52,7 +53,7 @@ function ResetPasswordInner() {
 
     try {
       if (!token) throw new Error(t("resetPasswordPage.invalidTokenShort"));
-      if (!newPassword || newPassword.length < 8) {
+      if (!newPassword || newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
         throw new Error(t("resetPasswordPage.passwordMinLength"));
       }
       if (newPassword !== confirmPassword) {
@@ -212,6 +213,7 @@ function ResetPasswordInner() {
             required
             autoFocus
           />
+          <PasswordStrengthIndicator password={newPassword} />
         </label>
 
         <label style={{ display: "grid", gap: 6, marginBottom: 12 }}>

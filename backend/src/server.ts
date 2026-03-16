@@ -96,7 +96,13 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
-  console.error("[UNHANDLED ERROR]", err.stack || err.message);
+  if (process.env.NODE_ENV === "production") {
+    // In production, log only the error message — stack traces may contain
+    // query parameters, user data, or other sensitive information.
+    console.error("[UNHANDLED ERROR]", err.message);
+  } else {
+    console.error("[UNHANDLED ERROR]", err.stack || err.message);
+  }
   sendInternal(res, "INTERNAL_ERROR", {
     message: process.env.NODE_ENV === "production"
       ? "An unexpected error occurred"
