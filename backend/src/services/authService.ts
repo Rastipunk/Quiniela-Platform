@@ -25,7 +25,8 @@ import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "../routes/legal";
 import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
 import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
-import type { PlatformRole } from "@prisma/client";
+import { serializeUser } from "../lib/serializers";
+import type { SerializedUser } from "../lib/serializers";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -47,35 +48,8 @@ export class ServiceError extends Error {
   }
 }
 
-/** Standard shape for a serialized user (safe for API responses). */
-export type SerializedUser = {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string;
-  platformRole: PlatformRole;
-  status: string;
-};
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-function serializeUser(u: {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string;
-  platformRole: PlatformRole;
-  status: string;
-}): SerializedUser {
-  return {
-    id: u.id,
-    email: u.email,
-    username: u.username,
-    displayName: u.displayName,
-    platformRole: u.platformRole,
-    status: u.status,
-  };
-}
+// Re-export for consumers that import from authService
+export type { SerializedUser };
 
 /** Fire-and-forget with error logging. */
 function fireAndForget(label: string, promise: Promise<unknown>): void {
