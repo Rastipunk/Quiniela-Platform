@@ -1,7 +1,7 @@
 {
   "brand": {
     "name": "Picks4All",
-    "tagline": "Quinielas Deportivas Gratis con Amigos"
+    "tagline": "{fullNamePluralUpper} Gratis con Amigos"
   },
   "nav": {
     "loading": "Cargando...",
@@ -41,7 +41,8 @@
     "copyright": "Todos los derechos reservados.",
     "enterprises": "Para Empresas",
     "pricing": "Precios",
-    "refundPolicy": "Política de Reembolso"
+    "refundPolicy": "Política de Reembolso",
+    "regionLabel": "Región"
   },
   "beta": {
     "message": "Beta — Tu feedback nos ayuda a mejorar",
@@ -58,22 +59,22 @@
   "landing": {
     "hero": {
       "title": "Compite con tus amigos prediciendo partidos de fútbol",
-      "subtitle": "Crea tu quiniela (polla, prode, penca) gratis y diviértete prediciendo resultados de fútbol con tus amigos.",
+      "subtitle": "Crea tu {term} gratis y diviértete prediciendo resultados de fútbol con tus amigos.",
       "cta": "Crear cuenta gratis",
       "secondaryCta": "Ver cómo funciona"
     },
     "whatIs": {
       "title": "¿Qué es Picks4All?",
       "p1": "Picks4All es la plataforma gratuita para crear <strong>quinielas deportivas</strong> online y competir con amigos, familia o compañeros de trabajo prediciendo resultados de fútbol. También conocida como <strong>polla futbolera</strong> en Colombia, Chile y Venezuela, <strong>prode</strong> en Argentina, <strong>penca</strong> en Uruguay, o <strong>porra</strong> en España.",
-      "p2": "Crea tu quiniela gratis para hasta 20 jugadores, invita a quien quieras con un código, haz tus predicciones y compite en el leaderboard. <strong>Gratis y sin apuestas</strong> — solo diversión y rivalidad sana."
+      "p2": "Crea tu {term} gratis para hasta 20 jugadores, invita a quien quieras con un código, haz tus predicciones y compite en el leaderboard. <strong>Gratis y sin apuestas</strong> — solo diversión y rivalidad sana."
     },
     "features": {
       "title": "Todo lo que necesitas para competir",
-      "subtitle": "Una plataforma completa para organizar tus quinielas con amigos, familia o compañeros de trabajo."
+      "subtitle": "Una plataforma completa para organizar tus {plural} con amigos, familia o compañeros de trabajo."
     },
     "feature1": {
-      "title": "Crea tu quiniela en minutos",
-      "description": "Personaliza las reglas, el sistema de puntos y los plazos. Elige entre marcador exacto, resultado, diferencia de goles y más. Tú decides cómo se juega tu polla, prode o penca."
+      "title": "Crea tu {term} en minutos",
+      "description": "Personaliza las reglas, el sistema de puntos y los plazos. Elige entre marcador exacto, resultado, diferencia de goles y más. Tú decides cómo se juega tu {term}."
     },
     "feature2": {
       "title": "Leaderboard en tiempo real",
@@ -97,7 +98,7 @@
     },
     "feature7": {
       "title": "Multi-torneo",
-      "description": "Copa del Mundo, Champions League, Copa América, ligas locales y más. Crea quinielas para cualquier competencia y maneja varios torneos a la vez."
+      "description": "Copa del Mundo, Champions League, Copa América, ligas locales y más. Crea {plural} para cualquier competencia y maneja varios torneos a la vez."
     },
     "feature8": {
       "title": "Optimizado para móvil",
@@ -108,7 +109,7 @@
     },
     "step1": {
       "title": "Crea o únete",
-      "description": "Crea tu propia quiniela o únete a una existente con un código de invitación."
+      "description": "Crea tu {term} o únete a un pool con un código de invitación."
     },
     "step2": {
       "title": "Haz tus predicciones",
@@ -121,7 +122,7 @@
     "seeMore": "Ver más detalles →",
     "tournaments": {
       "title": "Torneos disponibles",
-      "subtitle": "Crea quinielas para los torneos más emocionantes del mundo.",
+      "subtitle": "Crea {plural} para los torneos más emocionantes del mundo.",
       "comingSoon": "Próximamente",
       "createPool": "Crear pool",
       "items": {
@@ -162,7 +163,7 @@
     "final": {
       "title": "¿Listo para demostrar que sabes de fútbol?",
       "subtitle": "Crea tu pool gratis y comienza a competir con tus amigos.",
-      "hint": "Gratis para pools de hasta 20 jugadores. Crea tu quiniela en menos de 1 minuto.",
+      "hint": "Gratis para pools de hasta 20 jugadores. Crea tu {term} en menos de 1 minuto.",
       "cta": "Comenzar ahora — Es gratis"
     },
     "pricing": {
@@ -233,19 +234,19 @@
   "seo": {
     "home": {
       "title": "Predicciones Deportivas Gratis con Amigos - Picks4All",
-      "description": "Crea quinielas, pollas, prodes y pencas de futbol gratis. Predice resultados del Mundial 2026, Champions League y mas. Sin dinero real, solo diversion entre amigos.",
-      "ogDescription": "La plataforma gratuita para crear quinielas, pollas, prodes y pencas de futbol. Compite con amigos prediciendo resultados."
+      "description": "Crea quinielas, pollas, prodes y pencas de fútbol gratis. Predice resultados del Mundial 2026, Champions League y más. Sin dinero real, solo diversión entre amigos.",
+      "ogDescription": "La plataforma gratuita para crear quinielas, pollas, prodes y pencas de fútbol. Compite con amigos prediciendo resultados."
     }
   },
   "jsonLd": {
-    "orgDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de futbol",
-    "appDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de futbol",
+    "orgDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de fútbol",
+    "appDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de fútbol",
     "featureList": [
       "Crear quinielas deportivas gratis",
-      "Invitar amigos con codigo de invitacion",
-      "Predicciones de partidos de futbol",
-      "Leaderboard automatico en tiempo real",
-      "Reglas de puntuacion personalizables",
+      "Invitar amigos con código de invitación",
+      "Predicciones de partidos de fútbol",
+      "Leaderboard automático en tiempo real",
+      "Reglas de puntuación personalizables",
       "Compatible con Mundial 2026 y Champions League"
     ],
     "ctaName": "Crear Quiniela Gratis"
@@ -256,7 +257,7 @@
     "item1Title": "Sorteo de Octavos UCL",
     "item1Desc": "Los cruces de octavos de final de la Champions League ya están disponibles. Todas las pools se actualizaron automáticamente con los partidos reales.",
     "item2Title": "Marcador al 90' o +ET por fase",
-    "item2Desc": "Ahora puedes elegir fase por fase si el resultado cuenta al minuto 90 o incluye tiempo extra. Configúralo al crear tu quiniela.",
+    "item2Desc": "Ahora puedes elegir fase por fase si el resultado cuenta al minuto 90 o incluye tiempo extra. Configúralo al crear tu {term}.",
     "item3Title": "Deadline y horarios mejorados",
     "item3Desc": "Ahora puedes ver con más claridad el deadline para enviar tus predicciones y la hora de inicio de cada partido.",
     "dismiss": "Entendido"
@@ -277,8 +278,8 @@
       "description": "Organiza quinielas corporativas en tu empresa. Crea pools entre departamentos, invita empleados y fomenta el team building con predicciones deportivas."
     },
     "hero": {
-      "title": "Quinielas corporativas para tu empresa",
-      "subtitle": "Fomenta el team building y la competencia sana entre tus equipos con quinielas deportivas. Configuración en minutos, sin complicaciones.",
+      "title": "{pluralUpper} {adjPlural} para tu empresa",
+      "subtitle": "Fomenta el team building y la competencia sana entre tus equipos con {plural} {adjPlural}. Configuración en minutos, sin complicaciones.",
       "cta": "Crear pool corporativo",
       "secondaryCta": "Conoce más"
     },
@@ -291,7 +292,7 @@
       "engagement": "Engagement",
       "engagementDesc": "Mantén a tu equipo motivado y conectado durante los torneos más importantes del mundo.",
       "support": "Atención preferencial",
-      "supportDesc": "Soporte prioritario para empresas. Te ayudamos a configurar y administrar tus quinielas."
+      "supportDesc": "Soporte prioritario para empresas. Te ayudamos a configurar y administrar tus {plural}."
     },
     "howItWorks": {
       "title": "Cómo funciona",
@@ -333,7 +334,7 @@
       "step2": "Elige el torneo",
       "step2Desc": "Selecciona el torneo para tu pool.",
       "step3": "Detalles del pool",
-      "step3Desc": "Configura los detalles de tu quiniela.",
+      "step3Desc": "Configura los detalles de tu {term}.",
       "step4": "Puntuación",
       "step4Desc": "Elige cómo se puntúan las predicciones.",
       "step5": "Capacidad",
@@ -359,7 +360,7 @@
       "invitationMessagePlaceholder": "Mensaje personalizado que recibirán tus empleados en el correo...",
       "tournament": "Selecciona el torneo",
       "poolName": "Nombre del pool",
-      "poolNamePlaceholder": "Ej: Quiniela Acme Corp",
+      "poolNamePlaceholder": "Ej: {termUpper} Acme Corp",
       "poolDescription": "Descripción (opcional)",
       "poolDescriptionPlaceholder": "Breve descripción de tu pool...",
       "deadline": "Cierre antes del partido (min)",
@@ -421,7 +422,7 @@
     "success": "Cuenta activada exitosamente",
     "welcomeTo": "Invitado por {company}",
     "passwordMismatch": "Las contraseñas no coinciden",
-    "goToPool": "Ir a mi quiniela",
+    "goToPool": "Ir a mi {term}",
     "checking": "Verificando...",
     "existingUserTitle": "Ya tienes una cuenta",
     "existingUserDesc": "Tu cuenta con {email} será vinculada al pool {poolName} de {companyName}.",
@@ -430,7 +431,7 @@
   },
   "notFound": {
     "message": "La página que buscas no existe o fue movida.",
-    "subMessage": "Pero tu quiniela te está esperando.",
+    "subMessage": "Pero tu {term} te está esperando.",
     "goHome": "Ir al inicio",
     "faq": "Preguntas frecuentes"
   }

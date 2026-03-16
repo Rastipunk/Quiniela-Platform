@@ -7,6 +7,7 @@ import {
   updateUserEmailPreferences,
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 
 // Tipo definido localmente para evitar issues de Vite con type exports
 type UserEmailPreferences = {
@@ -34,6 +35,7 @@ type PreferenceItem = {
 
 export function EmailPreferencesSection() {
   const t = useTranslations("profile");
+  const { params: poolParams } = usePoolTerm();
 
   const preferenceItems: PreferenceItem[] = [
     {
@@ -45,8 +47,8 @@ export function EmailPreferencesSection() {
     {
       key: "emailPoolInvitations",
       platformKey: "emailPoolInvitations",
-      label: t("emailPrefs.invitationsLabel"),
-      description: t("emailPrefs.invitationsDesc"),
+      label: t("emailPrefs.invitationsLabel", poolParams),
+      description: t("emailPrefs.invitationsDesc", poolParams),
     },
     {
       key: "emailDeadlineReminders",
@@ -63,8 +65,8 @@ export function EmailPreferencesSection() {
     {
       key: "emailPoolCompletions",
       platformKey: "emailPoolCompletions",
-      label: t("emailPrefs.completionsLabel"),
-      description: t("emailPrefs.completionsDesc"),
+      label: t("emailPrefs.completionsLabel", poolParams),
+      description: t("emailPrefs.completionsDesc", poolParams),
     },
   ];
 

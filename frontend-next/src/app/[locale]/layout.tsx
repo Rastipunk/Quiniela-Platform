@@ -1,11 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 import { routing } from "@/i18n/routing";
 import { BetaFeedbackBar } from "@/components/BetaFeedbackBar";
 import { JsonLd } from "@/components/JsonLd";
+import { PoolTermProvider } from "@/contexts/PoolTermContext";
+import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
+import type { PoolRegion } from "@/lib/poolTerms";
 import "../globals.css";
 
 export const viewport: Viewport = {
@@ -99,6 +103,12 @@ export default async function LocaleLayout({
   const messages = await getMessages();
   const t = await getTranslations("jsonLd");
 
+  // Read pool region from cookie (set by middleware via CF-IPCountry)
+  const cookieStore = await cookies();
+  const regionCookie = cookieStore.get(POOL_REGION_COOKIE)?.value;
+  const region: PoolRegion =
+    regionCookie && isValidRegion(regionCookie) ? regionCookie : DEFAULT_REGION;
+
   return (
     <html lang={locale} style={{ colorScheme: "light only" } as React.CSSProperties}>
       <head>
@@ -109,19 +119,21 @@ export default async function LocaleLayout({
       </head>
       <body style={{ backgroundColor: "#f4f5f7", color: "#111827" }}>
         <NextIntlClientProvider messages={messages}>
-          <JsonLd
-            data={{
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "Picks4All",
-              url: "https://picks4all.com",
-              logo: "https://picks4all.com/opengraph-image",
-              inLanguage: locale,
-              description: t("orgDescription"),
-            }}
-          />
-          <BetaFeedbackBar />
-          {children}
+          <PoolTermProvider region={region} locale={locale}>
+            <JsonLd
+              data={{
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                name: "Picks4All",
+                url: "https://picks4all.com",
+                logo: "https://picks4all.com/opengraph-image",
+                inLanguage: locale,
+                description: t("orgDescription"),
+              }}
+            />
+            <BetaFeedbackBar />
+            {children}
+          </PoolTermProvider>
         </NextIntlClientProvider>
         {/* Google Analytics (GA4) — lazyOnload: analytics can wait for idle time */}
         {process.env.NEXT_PUBLIC_GA_ID && (

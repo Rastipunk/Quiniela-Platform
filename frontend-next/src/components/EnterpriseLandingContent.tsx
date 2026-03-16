@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 
 export function EnterpriseLandingContent() {
   const t = useTranslations("enterprise");
@@ -12,6 +13,7 @@ export function EnterpriseLandingContent() {
   const isMobile = useIsMobile();
   const { isAuthenticated } = useAuth();
   const { openAuthPanel } = useAuthPanel();
+  const { params: poolParams } = usePoolTerm();
 
   const handleCta = () => {
     if (isAuthenticated) {
@@ -40,7 +42,7 @@ export function EnterpriseLandingContent() {
     {
       icon: "\u{1F3AF}",
       title: t("benefits.support"),
-      desc: t("benefits.supportDesc"),
+      desc: t("benefits.supportDesc", poolParams),
     },
   ];
 
@@ -84,7 +86,7 @@ export function EnterpriseLandingContent() {
               lineHeight: 1.2,
             }}
           >
-            {t("hero.title")}
+            {t("hero.title", poolParams)}
           </h1>
           <p
             style={{
@@ -97,7 +99,7 @@ export function EnterpriseLandingContent() {
               marginRight: "auto",
             }}
           >
-            {t("hero.subtitle")}
+            {t("hero.subtitle", poolParams)}
           </p>
           <div
             style={{

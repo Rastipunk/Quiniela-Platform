@@ -5,22 +5,22 @@
   },
   "hero": {
     "title": "How It Works",
-    "subtitle": "Learn how to use Picks4All in minutes and start competing with your friends. Whether you call it a pool, bracket, or prediction game, here's how it works."
+    "subtitle": "Learn how to use Picks4All in minutes and start competing with your friends. Whether you call it a {term}, bracket, or prediction game, here's how it works."
   },
   "jsonLd": {
-    "name": "How to create a free sports prediction pool",
-    "description": "Step-by-step guide to creating your sports prediction pool with Picks4All. Invite friends and compete by predicting football match results.",
+    "name": "How to create a free sports prediction {term}",
+    "description": "Step-by-step guide to creating your sports prediction {term} with Picks4All. Invite friends and compete by predicting football match results.",
     "steps": [
       { "name": "Create your account", "text": "Sign up for free with your email or Google. It only takes a few seconds." },
-      { "name": "Create your pool", "text": "Choose a tournament, name your pool, and set up the scoring rules." },
+      { "name": "Create your {term}", "text": "Choose a tournament, name your {term}, and set up the scoring rules." },
       { "name": "Invite your friends", "text": "Share the invite code via WhatsApp, email, or however you like." },
       { "name": "Publish the results", "text": "Enter the official score after each match. The leaderboard updates automatically." },
       { "name": "Enjoy the competition", "text": "Watch the rankings rise and fall among your friends." }
     ],
-    "tool": "Picks4All - Sports Prediction Platform"
+    "tool": "Picks4All - Sports {plural} Platform"
   },
   "hostSection": {
-    "title": "Want to create a pool? (Host)",
+    "title": "Want to create a {term}? (Host)",
     "steps": [
       {
         "number": 1,
@@ -29,13 +29,13 @@
       },
       {
         "number": 2,
-        "title": "Create your pool",
-        "description": "Choose a tournament (e.g., World Cup 2026), name your pool, and set up the rules: scoring system, deadline before each match, etc."
+        "title": "Create your {term}",
+        "description": "Choose a tournament (e.g., World Cup 2026), name your {term}, and set up the rules: scoring system, deadline before each match, etc."
       },
       {
         "number": 3,
         "title": "Invite your friends",
-        "description": "Generate an invite code and share it via WhatsApp, email, or however you like. Anyone with the code can join your pool."
+        "description": "Generate an invite code and share it via WhatsApp, email, or however you like. Anyone with the code can join your {term}."
       },
       {
         "number": 4,
@@ -45,7 +45,7 @@
       {
         "number": 5,
         "title": "Enjoy the competition",
-        "description": "Watch the rankings rise and fall. Appoint co-admins if you need help managing your pool."
+        "description": "Watch the rankings rise and fall. Appoint co-admins if you need help managing your {term}."
       }
     ]
   },
@@ -55,7 +55,7 @@
       {
         "number": 1,
         "title": "Get the invite code",
-        "description": "Your friend (the Host) will share a unique code so you can join their prediction pool."
+        "description": "Your friend (the Host) will share a unique code so you can join their prediction {term}."
       },
       {
         "number": 2,
@@ -75,13 +75,13 @@
       {
         "number": 5,
         "title": "Climb the rankings",
-        "description": "Track your position on the leaderboard and prove you're the best predictor in the group."
+        "description": "Track your position on the leaderboard and prove you're the best predictor in the {term}."
       }
     ]
   },
   "scoringSection": {
     "title": "Scoring System",
-    "subtitle": "The Host can customize the scoring system for the pool. Here's a typical example:",
+    "subtitle": "The Host can customize the scoring system for the {term}. Here's a typical example:",
     "columns": {
       "type": "Prediction type",
       "points": "Points"
@@ -116,8 +116,8 @@
     "note": "* Points stack up. If you predict the exact score, you earn points for all matching criteria."
   },
   "cta": {
-    "title": "Ready to start your pool?",
-    "description": "Create your free account and start competing. Set up your prediction pool in minutes.",
+    "title": "Ready to start your {term}?",
+    "description": "Create your free account and start competing. Set up your prediction {term} in minutes.",
     "button": "Create free account"
   }
 }

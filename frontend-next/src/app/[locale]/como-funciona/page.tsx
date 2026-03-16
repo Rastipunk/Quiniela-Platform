@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
+import {
+  POOL_REGION_COOKIE,
+  DEFAULT_REGION,
+  isValidRegion,
+  getPoolTermParams,
+} from "@/lib/poolTerms";
+import type { PoolRegion } from "@/lib/poolTerms";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -33,6 +41,11 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
   };
+}
+
+/** Replace ICU-style {key} placeholders with values from params */
+function interpolate(text: string, params: Record<string, string>): string {
+  return text.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? `{${key}}`);
 }
 
 interface StepData {
@@ -130,7 +143,58 @@ function StepItem({
 
 export default async function ComoFuncionaPage() {
   const locale = await getLocale();
-  const msg: HowItWorksMessages = (await import(`@/messages/${locale}/howItWorks.json`)).default;
+  const rawMsg: HowItWorksMessages = (await import(`@/messages/${locale}/howItWorks.json`)).default;
+
+  // Read pool region from cookie and build interpolation params
+  const cookieStore = await cookies();
+  const regionCookie = cookieStore.get(POOL_REGION_COOKIE)?.value;
+  const region: PoolRegion =
+    regionCookie && isValidRegion(regionCookie) ? regionCookie : DEFAULT_REGION;
+  const pp = getPoolTermParams(locale, region);
+
+  // Interpolate pool term placeholders into all message strings
+  const msg: HowItWorksMessages = {
+    breadcrumbs: rawMsg.breadcrumbs,
+    hero: {
+      title: rawMsg.hero.title,
+      subtitle: interpolate(rawMsg.hero.subtitle, pp),
+    },
+    jsonLd: {
+      name: interpolate(rawMsg.jsonLd.name, pp),
+      description: interpolate(rawMsg.jsonLd.description, pp),
+      steps: rawMsg.jsonLd.steps.map((s) => ({
+        name: interpolate(s.name, pp),
+        text: interpolate(s.text, pp),
+      })),
+      tool: interpolate(rawMsg.jsonLd.tool, pp),
+    },
+    hostSection: {
+      title: interpolate(rawMsg.hostSection.title, pp),
+      steps: rawMsg.hostSection.steps.map((s) => ({
+        number: s.number,
+        title: interpolate(s.title, pp),
+        description: interpolate(s.description, pp),
+      })),
+    },
+    playerSection: {
+      title: rawMsg.playerSection.title,
+      steps: rawMsg.playerSection.steps.map((s) => ({
+        number: s.number,
+        title: interpolate(s.title, pp),
+        description: interpolate(s.description, pp),
+      })),
+    },
+    scoringSection: {
+      ...rawMsg.scoringSection,
+      subtitle: interpolate(rawMsg.scoringSection.subtitle, pp),
+    },
+    cta: {
+      title: interpolate(rawMsg.cta.title, pp),
+      description: interpolate(rawMsg.cta.description, pp),
+      button: rawMsg.cta.button,
+    },
+  };
+
   const baseUrl = "https://picks4all.com";
   const localePath = locale === "es" ? "" : `/${locale}`;
   const pagePath = locale === "en" ? "/how-it-works" : "/como-funciona";

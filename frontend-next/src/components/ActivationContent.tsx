@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { activateCorporateAccount, checkCorporateInvite } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
 
 type Status = "form" | "submitting" | "success" | "error";
@@ -13,6 +14,7 @@ type CheckStatus = "loading" | "new_user" | "existing_user" | "error";
 
 export function ActivationContent() {
   const t = useTranslations("activation");
+  const { params: poolParams } = usePoolTerm();
   const searchParams = useSearchParams();
   const router = useRouter();
   const tokenParam = searchParams.get("token") || "";
@@ -206,7 +208,7 @@ export function ActivationContent() {
               cursor: "pointer",
             }}
           >
-            {t("goToPool")}
+            {t("goToPool", poolParams)}
           </button>
         )}
       </div>

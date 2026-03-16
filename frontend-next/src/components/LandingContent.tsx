@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 import { CORPORATE_BASE_PRICE } from "@/lib/pricing";
 
@@ -11,6 +12,7 @@ export function LandingContent() {
   const t = useTranslations("landing");
   const isMobile = useIsMobile();
   const { openAuthPanel } = useAuthPanel();
+  const { params: poolParams } = usePoolTerm();
 
   const strongTag = (chunks: React.ReactNode) => (
     <strong style={{ color: "var(--text)" }}>{chunks}</strong>
@@ -49,7 +51,7 @@ export function LandingContent() {
               marginRight: "auto",
             }}
           >
-            {t("hero.subtitle")}
+            {t("hero.subtitle", poolParams)}
           </p>
           <div
             style={{
@@ -136,7 +138,7 @@ export function LandingContent() {
             margin: "0 auto",
           }}
         >
-          {t.rich("whatIs.p2", { strong: strongTag })}
+          {t.rich("whatIs.p2", { strong: strongTag, ...poolParams })}
         </p>
       </section>
 
@@ -170,7 +172,7 @@ export function LandingContent() {
             marginRight: "auto",
           }}
         >
-          {t("features.subtitle")}
+          {t("features.subtitle", poolParams)}
         </p>
 
         <div
@@ -182,8 +184,8 @@ export function LandingContent() {
         >
           <FeatureCard
             icon={"\u26BD"}
-            title={t("feature1.title")}
-            description={t("feature1.description")}
+            title={t("feature1.title", poolParams)}
+            description={t("feature1.description", poolParams)}
           />
           <FeatureCard
             icon={"\uD83D\uDCCA"}
@@ -213,7 +215,7 @@ export function LandingContent() {
           <FeatureCard
             icon={"\uD83C\uDFC6"}
             title={t("feature7.title")}
-            description={t("feature7.description")}
+            description={t("feature7.description", poolParams)}
           />
           <FeatureCard
             icon={"\uD83D\uDCF1"}
@@ -253,7 +255,7 @@ export function LandingContent() {
             <StepCard
               number={1}
               title={t("step1.title")}
-              description={t("step1.description")}
+              description={t("step1.description", poolParams)}
             />
             <StepCard
               number={2}
@@ -563,7 +565,7 @@ export function LandingContent() {
             marginRight: "auto",
           }}
         >
-          {t("tournaments.subtitle")}
+          {t("tournaments.subtitle", poolParams)}
         </p>
 
         <div
@@ -623,7 +625,7 @@ export function LandingContent() {
             marginBottom: 32,
           }}
         >
-          {t("final.hint")}
+          {t("final.hint", poolParams)}
         </p>
         <button
           onClick={() => openAuthPanel("register")}

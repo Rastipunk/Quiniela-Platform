@@ -20,7 +20,7 @@
     "title": "Crear pool",
     "tournamentLabel": "Torneo / Instancia",
     "poolNameLabel": "Nombre de la pool",
-    "poolNamePlaceholder": "Ej: Quiniela con amigos",
+    "poolNamePlaceholder": "Ej: {termUpper} con amigos",
     "descriptionLabel": "Descripción (opcional)",
     "descriptionPlaceholder": "Reglas rápidas o contexto",
     "deadlineLabel": "Deadline (min antes del kickoff)",

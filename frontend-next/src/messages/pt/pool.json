@@ -203,7 +203,7 @@
     },
     "employees": {
       "title": "Gestão de Funcionários",
-      "subtitle": "Gerencie os funcionários do seu bolão corporativo.",
+      "subtitle": "Gerencie os funcionários do seu {term} corporativo.",
       "addTitle": "Adicionar funcionários",
       "emailsPlaceholder": "Cole endereços de email, um por linha...",
       "csvUpload": "Enviar CSV",
@@ -355,7 +355,7 @@
     "scoring": {
       "title": "Sistema de Pontuação",
       "preset": "Preset",
-      "defaultDesc": "Sistema de pontuação clássico para bolões esportivos",
+      "defaultDesc": "Sistema de pontuação clássico para {plural} esportivos",
       "exactScore": "pontos por acertar o <b>placar exato</b>",
       "outcomeOnly": "pontos por acertar apenas o <b>resultado</b> (vencedor ou empate)"
     },

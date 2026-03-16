@@ -20,7 +20,7 @@
     "title": "Create pool",
     "tournamentLabel": "Tournament / Instance",
     "poolNameLabel": "Pool name",
-    "poolNamePlaceholder": "E.g.: Pool with friends",
+    "poolNamePlaceholder": "E.g.: {termUpper} with friends",
     "descriptionLabel": "Description (optional)",
     "descriptionPlaceholder": "Quick rules or context",
     "deadlineLabel": "Deadline (min before kickoff)",

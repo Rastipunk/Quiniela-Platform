@@ -78,13 +78,13 @@
     "adminDisabled": "Some notifications have been disabled by the platform administrator and are not currently available.",
     "masterLabel": "Receive email notifications",
     "masterDesc": "Enable or disable all notifications (except password recovery)",
-    "invitationsLabel": "Pool invitations",
-    "invitationsDesc": "Receive notifications when someone invites you to a pool",
+    "invitationsLabel": "{plural} invitations",
+    "invitationsDesc": "Receive notifications when someone invites you to a {term}",
     "deadlineLabel": "Deadline reminders",
     "deadlineDesc": "Receive reminders when you have pending picks",
     "resultsLabel": "Results published",
     "resultsDesc": "Receive notifications when match results are published",
-    "completionsLabel": "Pools completed",
-    "completionsDesc": "Receive notifications when a pool ends"
+    "completionsLabel": "{pluralUpper} completed",
+    "completionsDesc": "Receive notifications when a {term} ends"
   }
 }

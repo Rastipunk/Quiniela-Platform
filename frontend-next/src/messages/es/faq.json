@@ -1,7 +1,7 @@
 {
   "hero": {
     "title": "Preguntas Frecuentes",
-    "subtitle": "Encuentra respuestas a las preguntas más comunes sobre quinielas, pollas, prodes y pencas deportivas en Picks4All."
+    "subtitle": "Encuentra respuestas a las preguntas más comunes sobre {plural} {adjPlural} en Picks4All."
   },
   "contact": {
     "title": "¿No encontraste lo que buscabas?",
@@ -9,8 +9,8 @@
     "button": "Contactar soporte"
   },
   "cta": {
-    "title": "¿Listo para empezar tu quiniela?",
-    "description": "Crea tu cuenta gratis y comienza a competir con tu polla, prode o penca.",
+    "title": "¿Listo para empezar tu {term}?",
+    "description": "Crea tu cuenta gratis y comienza a competir con tu {term}.",
     "button": "Crear cuenta gratis"
   },
   "breadcrumbs": {
@@ -32,7 +32,7 @@
     {
       "category": "General",
       "question": "¿Esto es apuestas?",
-      "answer": "No. Picks4All es una plataforma de entretenimiento donde compites por puntos y posiciones en el ranking, no por dinero. No hay apuestas ni transacciones monetarias involucradas. Es simplemente una quiniela entre amigos para divertirse."
+      "answer": "No. Picks4All es una plataforma de entretenimiento donde compites por puntos y posiciones en el ranking, no por dinero. No hay apuestas ni transacciones monetarias involucradas. Es simplemente {indefinite} {term} entre amigos para divertirse."
     },
     {
       "category": "General",
@@ -51,8 +51,8 @@
     },
     {
       "category": "Para Hosts",
-      "question": "¿Cómo creo un pool (quiniela)?",
-      "answer": "Después de crear tu cuenta, ve a 'Mis Pools' y haz clic en 'Crear Pool'. Elige el torneo, dale un nombre a tu quiniela, configura el sistema de puntos y el tiempo límite para predicciones. Una vez creado, recibirás un código de invitación para compartir."
+      "question": "¿Cómo creo un pool ({term})?",
+      "answer": "Después de crear tu cuenta, ve a 'Mis Pools' y haz clic en 'Crear Pool'. Elige el torneo, dale un nombre a tu {term}, configura el sistema de puntos y el tiempo límite para predicciones. Una vez creado, recibirás un código de invitación para compartir."
     },
     {
       "category": "Para Hosts",
@@ -62,7 +62,7 @@
     {
       "category": "Para Hosts",
       "question": "¿Cómo invito personas a mi pool?",
-      "answer": "Cada pool tiene un código de invitación único. Comparte este código por WhatsApp, email, o cualquier medio. Quien tenga el código puede unirse a tu quiniela después de crear su cuenta."
+      "answer": "Cada pool tiene un código de invitación único. Comparte este código por WhatsApp, email, o cualquier medio. Quien tenga el código puede unirse a tu {term} después de crear su cuenta."
     },
     {
       "category": "Para Hosts",
@@ -77,12 +77,12 @@
     {
       "category": "Para Hosts",
       "question": "¿Puedo nombrar co-administradores?",
-      "answer": "Sí. Puedes nombrar a otros miembros del pool como co-administradores para que te ayuden a publicar resultados. Ellos tendrán los mismos permisos que tú para administrar la quiniela."
+      "answer": "Sí. Puedes nombrar a otros miembros del pool como co-administradores para que te ayuden a publicar resultados. Ellos tendrán los mismos permisos que tú para administrar {article} {term}."
     },
     {
       "category": "Para Jugadores",
       "question": "¿Cómo me uno a un pool?",
-      "answer": "Necesitas el código de invitación que te compartió el Host. Después de crear tu cuenta o iniciar sesión, ve a 'Mis Pools' y haz clic en 'Unirse a Pool'. Ingresa el código y estarás dentro de la quiniela."
+      "answer": "Necesitas el código de invitación que te compartió el Host. Después de crear tu cuenta o iniciar sesión, ve a 'Mis Pools' y haz clic en 'Unirse a Pool'. Ingresa el código y estarás dentro de {article} {term}."
     },
     {
       "category": "Para Jugadores",
@@ -102,7 +102,7 @@
     {
       "category": "Para Jugadores",
       "question": "¿Puedo participar en varios pools?",
-      "answer": "Sí. Puedes unirte a tantos pools como quieras, incluso del mismo torneo. Cada quiniela tiene su propio leaderboard y reglas."
+      "answer": "Sí. Puedes unirte a tantos pools como quieras, incluso del mismo torneo. Cada {term} tiene su propio leaderboard y reglas."
     },
     {
       "category": "Cuenta",

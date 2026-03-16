@@ -4,6 +4,7 @@ import React from "react";
 import dynamic from "next/dynamic";
 import type { CatalogInstance } from "@/lib/api";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 import CapacitySelector from "@/components/CapacitySelector";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 import { colors, radii, zIndex, shadows, spacing, fontSize, fontWeight } from "@/lib/theme";
@@ -89,6 +90,8 @@ export function CreateJoinPanel({
   tc,
   inputStyle,
 }: CreateJoinPanelProps) {
+  const { params: poolParams } = usePoolTerm();
+
   return (
     <div
       style={{
@@ -244,7 +247,7 @@ export function CreateJoinPanel({
               <input
                 value={poolName}
                 onChange={(e) => setPoolName(e.target.value)}
-                placeholder={t("createPanel.poolNamePlaceholder")}
+                placeholder={t("createPanel.poolNamePlaceholder", poolParams)}
                 style={inputStyle}
               />
             </label>

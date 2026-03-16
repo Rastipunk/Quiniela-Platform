@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 
 const WHATS_NEW_VERSION = "2026-02-27";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
@@ -11,6 +12,7 @@ const TOKEN_KEY = "quiniela.token";
 export function WhatsNewModal() {
   const t = useTranslations("whatsNew");
   const isMobile = useIsMobile();
+  const { params: poolParams } = usePoolTerm();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -121,7 +123,7 @@ export function WhatsNewModal() {
                 {t("item2Title")}
               </div>
               <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4 }}>
-                {t("item2Desc")}
+                {t("item2Desc", poolParams)}
               </div>
             </div>
           </div>

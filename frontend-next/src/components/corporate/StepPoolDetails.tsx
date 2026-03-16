@@ -18,7 +18,8 @@ interface StepPoolDetailsProps {
   inputStyle: React.CSSProperties;
   labelStyle: React.CSSProperties;
   navButtons: ReactNode;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string>) => string;
+  poolParams?: Record<string, string>;
 }
 
 export function StepPoolDetails({
@@ -37,6 +38,7 @@ export function StepPoolDetails({
   labelStyle,
   navButtons,
   t,
+  poolParams,
 }: StepPoolDetailsProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -46,7 +48,7 @@ export function StepPoolDetails({
           type="text"
           value={poolName}
           onChange={(e) => setPoolName(e.target.value)}
-          placeholder={t("poolNamePlaceholder")}
+          placeholder={t("poolNamePlaceholder", poolParams)}
           style={inputStyle}
           maxLength={120}
           autoFocus

@@ -1,7 +1,7 @@
 {
   "hero": {
     "title": "Perguntas Frequentes",
-    "subtitle": "Encontre respostas para as perguntas mais comuns sobre pencas e previsões esportivas no Picks4All."
+    "subtitle": "Encontre respostas para as perguntas mais comuns sobre {plural} e previsões esportivas no Picks4All."
   },
   "contact": {
     "title": "Não encontrou o que procurava?",
@@ -9,8 +9,8 @@
     "button": "Contatar suporte"
   },
   "cta": {
-    "title": "Pronto para começar sua penca?",
-    "description": "Crie sua conta grátis e comece a competir com seus amigos.",
+    "title": "Pronto para começar seu {term}?",
+    "description": "Crie sua conta grátis e comece a competir no seu {term} com seus amigos.",
     "button": "Criar conta grátis"
   },
   "breadcrumbs": {
@@ -32,7 +32,7 @@
     {
       "category": "Geral",
       "question": "Isso é apostas?",
-      "answer": "Não. Picks4All é uma plataforma de entretenimento onde você compete por pontos e posições no ranking, não por dinheiro. Não há apostas nem transações monetárias envolvidas. É simplesmente uma penca entre amigos para se divertir."
+      "answer": "Não. Picks4All é uma plataforma de entretenimento onde você compete por pontos e posições no ranking, não por dinheiro. Não há apostas nem transações monetárias envolvidas. É simplesmente um {term} entre amigos para se divertir."
     },
     {
       "category": "Geral",
@@ -51,8 +51,8 @@
     },
     {
       "category": "Para Hosts",
-      "question": "Como crio um pool (penca)?",
-      "answer": "Depois de criar sua conta, vá para 'Minhas Pencas' e clique em 'Criar Pool'. Escolha o torneio, dê um nome à sua penca, configure o sistema de pontos e o prazo para previsões. Uma vez criado, você receberá um código de convite para compartilhar."
+      "question": "Como crio um pool ({term})?",
+      "answer": "Depois de criar sua conta, vá para 'Minhas Pencas' e clique em 'Criar Pool'. Escolha o torneio, dê um nome ao seu {term}, configure o sistema de pontos e o prazo para previsões. Uma vez criado, você receberá um código de convite para compartilhar."
     },
     {
       "category": "Para Hosts",
@@ -62,7 +62,7 @@
     {
       "category": "Para Hosts",
       "question": "Como convido pessoas para meu pool?",
-      "answer": "Cada pool tem um código de convite único. Compartilhe este código por WhatsApp, email ou qualquer outro meio. Quem tiver o código pode entrar na sua penca depois de criar sua conta."
+      "answer": "Cada pool tem um código de convite único. Compartilhe este código por WhatsApp, email ou qualquer outro meio. Quem tiver o código pode entrar no seu {term} depois de criar sua conta."
     },
     {
       "category": "Para Hosts",
@@ -77,12 +77,12 @@
     {
       "category": "Para Hosts",
       "question": "Posso nomear co-administradores?",
-      "answer": "Sim. Você pode nomear outros membros do pool como co-administradores para ajudá-lo a publicar resultados. Eles terão as mesmas permissões que você para administrar a penca."
+      "answer": "Sim. Você pode nomear outros membros do pool como co-administradores para ajudá-lo a publicar resultados. Eles terão as mesmas permissões que você para administrar o {term}."
     },
     {
       "category": "Para Jogadores",
       "question": "Como entro em um pool?",
-      "answer": "Você precisa do código de convite compartilhado pelo Host. Depois de criar sua conta ou fazer login, vá para 'Minhas Pencas' e clique em 'Entrar em Pool'. Insira o código e pronto."
+      "answer": "Você precisa do código de convite compartilhado pelo Host. Depois de criar sua conta ou fazer login, vá para 'Minhas Pencas' e clique em 'Entrar em Pool'. Insira o código e entre no {term}."
     },
     {
       "category": "Para Jogadores",
@@ -102,7 +102,7 @@
     {
       "category": "Para Jogadores",
       "question": "Posso participar de vários pools?",
-      "answer": "Sim. Você pode entrar em quantos pools quiser, até do mesmo torneio. Cada penca tem seu próprio ranking e regras."
+      "answer": "Sim. Você pode entrar em quantos pools quiser, até do mesmo torneio. Cada {term} tem seu próprio ranking e regras."
     },
     {
       "category": "Conta",

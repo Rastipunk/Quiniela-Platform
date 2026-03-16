@@ -1,7 +1,7 @@
 {
   "brand": {
     "name": "Picks4All",
-    "tagline": "Free Sports Pools with Friends"
+    "tagline": "Free Sports {pluralUpper} with Friends"
   },
   "nav": {
     "loading": "Loading...",
@@ -41,7 +41,8 @@
     "copyright": "All rights reserved.",
     "enterprises": "For Companies",
     "pricing": "Pricing",
-    "refundPolicy": "Refund Policy"
+    "refundPolicy": "Refund Policy",
+    "regionLabel": "Region"
   },
   "beta": {
     "message": "Beta — Your feedback helps us improve",
@@ -58,22 +59,22 @@
   "landing": {
     "hero": {
       "title": "Compete with friends predicting football matches",
-      "subtitle": "Create your free sports pool and have fun predicting football results with your friends.",
+      "subtitle": "Create your free sports {term} and have fun predicting football results with your friends.",
       "cta": "Create free account",
       "secondaryCta": "See how it works"
     },
     "whatIs": {
       "title": "What is Picks4All?",
       "p1": "Picks4All is the free platform to create <strong>sports pools</strong> online and compete with friends, family, or coworkers by predicting football results. Known as <strong>polla futbolera</strong> in Colombia, <strong>prode</strong> in Argentina, <strong>penca</strong> in Uruguay, or <strong>porra</strong> in Spain.",
-      "p2": "Create your pool for free (up to 20 players), invite anyone with a code, make your predictions and compete on the leaderboard. <strong>Free and with no gambling</strong> — just fun and friendly rivalry."
+      "p2": "Create your {term} for free (up to 20 players), invite anyone with a code, make your predictions and compete on the leaderboard. <strong>Free and with no gambling</strong> — just fun and friendly rivalry."
     },
     "features": {
       "title": "Everything you need to compete",
-      "subtitle": "A complete platform to organize sports pools with friends, family, or coworkers."
+      "subtitle": "A complete platform to organize sports {plural} with friends, family, or coworkers."
     },
     "feature1": {
-      "title": "Create your pool in minutes",
-      "description": "Customize rules, scoring system, and deadlines. Choose between exact score, match result, goal difference, and more. You decide how your pool is played."
+      "title": "Create your {term} in minutes",
+      "description": "Customize rules, scoring system, and deadlines. Choose between exact score, match result, goal difference, and more. You decide how your {term} is played."
     },
     "feature2": {
       "title": "Real-time leaderboard",
@@ -97,7 +98,7 @@
     },
     "feature7": {
       "title": "Multi-tournament",
-      "description": "World Cup, Champions League, Copa América, local leagues, and more. Create pools for any competition and manage multiple tournaments at once."
+      "description": "World Cup, Champions League, Copa América, local leagues, and more. Create {plural} for any competition and manage multiple tournaments at once."
     },
     "feature8": {
       "title": "Mobile optimized",
@@ -108,7 +109,7 @@
     },
     "step1": {
       "title": "Create or join",
-      "description": "Create your own pool or join an existing one with an invitation code."
+      "description": "Create your own {term} or join an existing one with an invitation code."
     },
     "step2": {
       "title": "Make your predictions",
@@ -121,7 +122,7 @@
     "seeMore": "See more details →",
     "tournaments": {
       "title": "Available tournaments",
-      "subtitle": "Create pools for the most exciting tournaments in the world.",
+      "subtitle": "Create {plural} for the most exciting tournaments in the world.",
       "comingSoon": "Coming soon",
       "createPool": "Create pool",
       "items": {
@@ -162,7 +163,7 @@
     "final": {
       "title": "Ready to prove you know football?",
       "subtitle": "Create your pool for free and start competing with your friends.",
-      "hint": "Free for pools up to 20 players. Create your pool in less than 1 minute.",
+      "hint": "Free for {plural} up to 20 players. Create your {term} in less than 1 minute.",
       "cta": "Start now — It's free"
     },
     "pricing": {
@@ -256,7 +257,7 @@
     "item1Title": "UCL Round of 16 Draw",
     "item1Desc": "The Champions League Round of 16 matchups are now available. All pools have been automatically updated with the real fixtures.",
     "item2Title": "90' or +ET score per phase",
-    "item2Desc": "You can now choose per phase whether the score counts at 90 minutes or includes extra time. Set it up when creating your pool.",
+    "item2Desc": "You can now choose per phase whether the score counts at 90 minutes or includes extra time. Set it up when creating your {term}.",
     "item3Title": "Improved deadlines & schedules",
     "item3Desc": "You can now see more clearly the deadline to submit your predictions and the kickoff time for each match.",
     "dismiss": "Got it"
@@ -277,8 +278,8 @@
       "description": "Organize corporate sports pools in your company. Create pools between departments, invite employees and foster team building with sports predictions."
     },
     "hero": {
-      "title": "Corporate sports pools for your company",
-      "subtitle": "Foster team building and friendly competition among your teams with sports pools. Set up in minutes, no hassle.",
+      "title": "Corporate sports {pluralUpper} for your company",
+      "subtitle": "Foster team building and friendly competition among your teams with sports {plural}. Set up in minutes, no hassle.",
       "cta": "Create corporate pool",
       "secondaryCta": "Learn more"
     },
@@ -291,7 +292,7 @@
       "engagement": "Engagement",
       "engagementDesc": "Keep your team motivated and connected during the most important tournaments in the world.",
       "support": "Priority Support",
-      "supportDesc": "Priority support for companies. We help you set up and manage your pools."
+      "supportDesc": "Priority support for companies. We help you set up and manage your {plural}."
     },
     "howItWorks": {
       "title": "How it works",
@@ -333,7 +334,7 @@
       "step2": "Choose tournament",
       "step2Desc": "Select the tournament for your pool.",
       "step3": "Pool details",
-      "step3Desc": "Configure your pool settings.",
+      "step3Desc": "Configure your {term} settings.",
       "step4": "Scoring",
       "step4Desc": "Choose how predictions are scored.",
       "step5": "Capacity",
@@ -359,7 +360,7 @@
       "invitationMessagePlaceholder": "Personalized message your employees will receive in the email...",
       "tournament": "Select tournament",
       "poolName": "Pool name",
-      "poolNamePlaceholder": "E.g. Acme Corp Pool",
+      "poolNamePlaceholder": "E.g. Acme Corp {termUpper}",
       "poolDescription": "Description (optional)",
       "poolDescriptionPlaceholder": "Short description of your pool...",
       "deadline": "Deadline before match (min)",
@@ -421,7 +422,7 @@
     "success": "Account activated successfully",
     "welcomeTo": "Invited by {company}",
     "passwordMismatch": "Passwords do not match",
-    "goToPool": "Go to my pool",
+    "goToPool": "Go to my {term}",
     "checking": "Verifying...",
     "existingUserTitle": "You already have an account",
     "existingUserDesc": "Your account with {email} will be linked to the {poolName} pool by {companyName}.",
@@ -430,7 +431,7 @@
   },
   "notFound": {
     "message": "The page you're looking for doesn't exist or was moved.",
-    "subMessage": "But your pool is waiting for you.",
+    "subMessage": "But your {term} is waiting for you.",
     "goHome": "Go to home",
     "faq": "FAQ"
   }

@@ -1,7 +1,7 @@
 {
   "brand": {
     "name": "Picks4All",
-    "tagline": "Pencas Esportivas Grátis com Amigos"
+    "tagline": "{pluralUpper} Esportivos Grátis com Amigos"
   },
   "nav": {
     "loading": "Carregando...",
@@ -41,7 +41,8 @@
     "copyright": "Todos os direitos reservados.",
     "enterprises": "Para Empresas",
     "pricing": "Preços",
-    "refundPolicy": "Política de Reembolso"
+    "refundPolicy": "Política de Reembolso",
+    "regionLabel": "Região"
   },
   "beta": {
     "message": "Beta — Seu feedback nos ajuda a melhorar",
@@ -58,22 +59,22 @@
   "landing": {
     "hero": {
       "title": "Compita com seus amigos prevendo jogos de futebol",
-      "subtitle": "Crie sua penca grátis e divirta-se prevendo resultados de futebol com seus amigos.",
+      "subtitle": "Crie seu {term} grátis e divirta-se prevendo resultados de futebol com seus amigos.",
       "cta": "Criar conta grátis",
       "secondaryCta": "Veja como funciona"
     },
     "whatIs": {
       "title": "O que é o Picks4All?",
       "p1": "O Picks4All é a plataforma gratuita para criar <strong>pencas esportivas</strong> online e competir com amigos, família ou colegas de trabalho prevendo resultados de futebol. Também conhecida como <strong>polla</strong> na Colômbia, <strong>prode</strong> na Argentina, <strong>quiniela</strong> no México, ou <strong>porra</strong> na Espanha.",
-      "p2": "Crie sua penca grátis para até 20 jogadores, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>Grátis e sem apostas</strong> — só diversão e rivalidade saudável."
+      "p2": "Crie seu {term} grátis para até 20 jogadores, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>Grátis e sem apostas</strong> — só diversão e rivalidade saudável."
     },
     "features": {
       "title": "Tudo o que você precisa para competir",
-      "subtitle": "Uma plataforma completa para organizar pencas com amigos, família ou colegas de trabalho."
+      "subtitle": "Uma plataforma completa para organizar {plural} com amigos, família ou colegas de trabalho."
     },
     "feature1": {
-      "title": "Crie sua penca em minutos",
-      "description": "Personalize as regras, o sistema de pontos e os prazos. Escolha entre placar exato, resultado, diferença de gols e mais. Você decide como sua penca funciona."
+      "title": "Crie seu {term} em minutos",
+      "description": "Personalize as regras, o sistema de pontos e os prazos. Escolha entre placar exato, resultado, diferença de gols e mais. Você decide como seu {term} funciona."
     },
     "feature2": {
       "title": "Placar em tempo real",
@@ -97,7 +98,7 @@
     },
     "feature7": {
       "title": "Multi-torneio",
-      "description": "Copa do Mundo, Champions League, Copa América, ligas locais e mais. Crie pencas para qualquer competição e gerencie vários torneios ao mesmo tempo."
+      "description": "Copa do Mundo, Champions League, Copa América, ligas locais e mais. Crie {plural} para qualquer competição e gerencie vários torneios ao mesmo tempo."
     },
     "feature8": {
       "title": "Otimizado para celular",
@@ -108,7 +109,7 @@
     },
     "step1": {
       "title": "Crie ou participe",
-      "description": "Crie sua própria penca ou participe de uma existente com um código de convite."
+      "description": "Crie seu próprio {term} ou participe de um existente com um código de convite."
     },
     "step2": {
       "title": "Faça suas previsões",
@@ -121,7 +122,7 @@
     "seeMore": "Ver mais detalhes →",
     "tournaments": {
       "title": "Torneios disponíveis",
-      "subtitle": "Crie pencas para os torneios mais emocionantes do mundo.",
+      "subtitle": "Crie {plural} para os torneios mais emocionantes do mundo.",
       "comingSoon": "Em breve",
       "createPool": "Criar penca",
       "items": {
@@ -162,7 +163,7 @@
     "final": {
       "title": "Pronto para provar que entende de futebol?",
       "subtitle": "Crie seu pool grátis e comece a competir com seus amigos.",
-      "hint": "Grátis para pools de até 20 jogadores. Crie sua penca em menos de 1 minuto.",
+      "hint": "Grátis para pools de até 20 jogadores. Crie seu {term} em menos de 1 minuto.",
       "cta": "Começar agora — É grátis"
     },
     "pricing": {
@@ -256,7 +257,7 @@
     "item1Title": "Sorteio das Oitavas UCL",
     "item1Desc": "Os confrontos das oitavas de final da Champions League já estão disponíveis. Todas as pencas foram atualizadas automaticamente com os jogos reais.",
     "item2Title": "Placar aos 90' ou +PE por fase",
-    "item2Desc": "Agora você pode escolher por fase se o resultado conta aos 90 minutos ou inclui prorrogação. Configure ao criar sua penca.",
+    "item2Desc": "Agora você pode escolher por fase se o resultado conta aos 90 minutos ou inclui prorrogação. Configure ao criar seu {term}.",
     "item3Title": "Prazos e horários melhorados",
     "item3Desc": "Agora você pode ver com mais clareza o prazo para enviar suas previsões e o horário de início de cada partida.",
     "dismiss": "Entendi"
@@ -277,8 +278,8 @@
       "description": "Organize bolões corporativos na sua empresa. Crie pencas entre departamentos, convide funcionários e promova o team building com previsões esportivas."
     },
     "hero": {
-      "title": "Bolões corporativos para sua empresa",
-      "subtitle": "Promova o team building e a competição saudável entre suas equipes com bolões esportivos. Configuração em minutos, sem complicações.",
+      "title": "{pluralUpper} corporativos para sua empresa",
+      "subtitle": "Promova o team building e a competição saudável entre suas equipes com {plural} esportivos. Configuração em minutos, sem complicações.",
       "cta": "Criar bolão corporativo",
       "secondaryCta": "Saiba mais"
     },
@@ -291,7 +292,7 @@
       "engagement": "Engajamento",
       "engagementDesc": "Mantenha sua equipe motivada e conectada durante os torneios mais importantes do mundo.",
       "support": "Atendimento prioritário",
-      "supportDesc": "Suporte prioritário para empresas. Ajudamos você a configurar e administrar seus bolões."
+      "supportDesc": "Suporte prioritário para empresas. Ajudamos você a configurar e administrar seus {plural}."
     },
     "howItWorks": {
       "title": "Como funciona",
@@ -300,7 +301,7 @@
       "step2Title": "Convide sua equipe",
       "step2Desc": "Envie um CSV ou adicione emails manualmente. Cada funcionário receberá um link de ativação.",
       "step3Title": "Comece a jogar",
-      "step3Desc": "Seus funcionários ativam a conta com um clique e começam a fazer previsões imediatamente."
+      "step3Desc": "Seus funcionários ativam a conta com um clique e começam a fazer previsões no {term} imediatamente."
     },
     "pricing": {
       "title": "Grátis durante o beta",
@@ -359,7 +360,7 @@
       "invitationMessagePlaceholder": "Mensagem personalizada que seus funcionários receberão no email...",
       "tournament": "Selecione o torneio",
       "poolName": "Nome do bolão",
-      "poolNamePlaceholder": "Ex: Bolão Acme Corp",
+      "poolNamePlaceholder": "Ex: {termUpper} Acme Corp",
       "poolDescription": "Descrição (opcional)",
       "poolDescriptionPlaceholder": "Breve descrição do seu bolão...",
       "deadline": "Encerramento antes do jogo (min)",
@@ -421,7 +422,7 @@
     "success": "Conta ativada com sucesso",
     "welcomeTo": "Convidado por {company}",
     "passwordMismatch": "As senhas não coincidem",
-    "goToPool": "Ir para meu bolão",
+    "goToPool": "Ir para meu {term}",
     "checking": "Verificando...",
     "existingUserTitle": "Você já tem uma conta",
     "existingUserDesc": "Sua conta com {email} será vinculada ao bolão {poolName} de {companyName}.",
@@ -430,7 +431,7 @@
   },
   "notFound": {
     "message": "A página que você procura não existe ou foi movida.",
-    "subMessage": "Mas sua penca está esperando por você.",
+    "subMessage": "Mas seu {term} está esperando por você.",
     "goHome": "Ir para o início",
     "faq": "Perguntas frequentes"
   }

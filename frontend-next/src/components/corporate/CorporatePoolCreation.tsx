@@ -13,6 +13,7 @@ import { PoolConfigWizard } from "@/components/PoolConfigWizard";
 import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 import { colors, radii, fontSize as fs, fontWeight as fw } from "@/lib/theme";
 
@@ -40,6 +41,7 @@ export function CorporatePoolCreation() {
   const isMobile = useIsMobile();
   const t = useTranslations("enterprise.create");
   const tc = useTranslations("landing.tournaments");
+  const { params: poolParams } = usePoolTerm();
   const token = useMemo(() => getToken(), []);
 
   // Wizard step (1-7)
@@ -234,7 +236,7 @@ export function CorporatePoolCreation() {
   const stepDescriptions: Record<number, string> = {
     1: t("step1Desc"),
     2: t("step2Desc"),
-    3: t("step3Desc"),
+    3: t("step3Desc", poolParams),
     4: t("step4Desc"),
     5: t("step5Desc"),
     6: t("step6Desc"),
@@ -378,6 +380,7 @@ export function CorporatePoolCreation() {
             labelStyle={labelStyle}
             navButtons={navButtons}
             t={t}
+            poolParams={poolParams}
           />
         );
 

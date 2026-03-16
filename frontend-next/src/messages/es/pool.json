@@ -203,7 +203,7 @@
     },
     "employees": {
       "title": "Gestión de Empleados",
-      "subtitle": "Administra los empleados de tu quiniela corporativa.",
+      "subtitle": "Administra los empleados de tu {term}.",
       "addTitle": "Agregar empleados",
       "emailsPlaceholder": "Pega correos electrónicos, uno por línea...",
       "csvUpload": "Subir CSV",
@@ -355,7 +355,7 @@
     "scoring": {
       "title": "Sistema de Puntuación",
       "preset": "Preset",
-      "defaultDesc": "Sistema de puntuación clásico para quinielas deportivas",
+      "defaultDesc": "Sistema de puntuación clásico para {plural} {adjPlural}",
       "exactScore": "puntos por acertar el <b>marcador exacto</b>",
       "outcomeOnly": "puntos por acertar solo el <b>resultado</b> (ganador o empate)"
     },

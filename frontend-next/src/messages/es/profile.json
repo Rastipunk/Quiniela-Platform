@@ -78,13 +78,13 @@
     "adminDisabled": "Algunas notificaciones han sido desactivadas por el administrador de la plataforma y no están disponibles actualmente.",
     "masterLabel": "Recibir notificaciones por email",
     "masterDesc": "Activa o desactiva todas las notificaciones (excepto recuperación de contraseña)",
-    "invitationsLabel": "Invitaciones a quinielas",
-    "invitationsDesc": "Recibe notificaciones cuando alguien te invita a una quiniela",
+    "invitationsLabel": "Invitaciones a {plural}",
+    "invitationsDesc": "Recibe notificaciones cuando alguien te invita a {indefinite} {term}",
     "deadlineLabel": "Recordatorios de deadline",
     "deadlineDesc": "Recibe recordatorios cuando tengas pronósticos pendientes",
     "resultsLabel": "Resultados publicados",
     "resultsDesc": "Recibe notificaciones cuando se publican resultados de partidos",
-    "completionsLabel": "Quinielas completadas",
-    "completionsDesc": "Recibe notificaciones cuando termina una quiniela"
+    "completionsLabel": "{pluralUpper} completadas",
+    "completionsDesc": "Recibe notificaciones cuando termina {indefinite} {term}"
   }
 }

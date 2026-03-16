@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
+import {
+  POOL_REGION_COOKIE,
+  DEFAULT_REGION,
+  isValidRegion,
+  getPoolTermParams,
+} from "@/lib/poolTerms";
+import type { PoolRegion } from "@/lib/poolTerms";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -50,6 +58,11 @@ interface FAQMessages {
   items: FAQItem[];
 }
 
+/** Replace ICU-style {key} placeholders with values from params */
+function interpolate(text: string, params: Record<string, string>): string {
+  return text.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? `{${key}}`);
+}
+
 const SUPPORT_EMAILS: Record<string, string> = {
   es: "soporte@picks4all.com",
   en: "support@picks4all.com",
@@ -58,10 +71,36 @@ const SUPPORT_EMAILS: Record<string, string> = {
 
 export default async function FAQPage() {
   const locale = await getLocale();
-  const faqMessages: FAQMessages = (await import(`@/messages/${locale}/faq.json`)).default;
+  const rawFaqMessages: FAQMessages = (await import(`@/messages/${locale}/faq.json`)).default;
   const supportEmail = SUPPORT_EMAILS[locale] || SUPPORT_EMAILS.es;
   const baseUrl = "https://picks4all.com";
   const localePath = locale === "es" ? "" : `/${locale}`;
+
+  // Read pool region from cookie and build interpolation params
+  const cookieStore = await cookies();
+  const regionCookie = cookieStore.get(POOL_REGION_COOKIE)?.value;
+  const region: PoolRegion =
+    regionCookie && isValidRegion(regionCookie) ? regionCookie : DEFAULT_REGION;
+  const pp = getPoolTermParams(locale, region);
+
+  // Interpolate pool term placeholders
+  const faqMessages: FAQMessages = {
+    ...rawFaqMessages,
+    hero: {
+      title: rawFaqMessages.hero.title,
+      subtitle: interpolate(rawFaqMessages.hero.subtitle, pp),
+    },
+    cta: {
+      title: interpolate(rawFaqMessages.cta.title, pp),
+      description: interpolate(rawFaqMessages.cta.description, pp),
+      button: rawFaqMessages.cta.button,
+    },
+    items: rawFaqMessages.items.map((item) => ({
+      ...item,
+      question: interpolate(item.question, pp),
+      answer: interpolate(item.answer, pp),
+    })),
+  };
 
   const { hero, contact, cta, breadcrumbs, items } = faqMessages;
 

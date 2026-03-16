@@ -1,51 +1,51 @@
 {
   "breadcrumbs": {
     "home": "Inicio",
-    "howItWorks": "Como Funciona"
+    "howItWorks": "Cómo Funciona"
   },
   "hero": {
-    "title": "Como Funciona",
-    "subtitle": "Aprende a usar Picks4All en minutos y comienza a competir con tus amigos. Ya sea que la conozcas como quiniela, polla, prode, penca o porra, aqui te explicamos como funciona."
+    "title": "Cómo Funciona",
+    "subtitle": "Aprende a usar Picks4All en minutos y comienza a competir con tus amigos. Tu {term} online, fácil y gratis."
   },
   "jsonLd": {
-    "name": "Como crear una quiniela deportiva gratis",
-    "description": "Guia paso a paso para crear tu quiniela, polla, prode o penca deportiva online con Picks4All. Invita amigos y compite prediciendo resultados de futbol.",
+    "name": "Cómo crear {indefinite} {fullName} gratis",
+    "description": "Guía paso a paso para crear tu {term} online con Picks4All. Invita amigos y compite prediciendo resultados de fútbol.",
     "steps": [
-      { "name": "Crea tu cuenta", "text": "Registrate gratis con tu email o Google. Solo toma unos segundos." },
-      { "name": "Crea tu pool (quiniela)", "text": "Elige el torneo, ponle nombre a tu pool y configura las reglas de puntuacion." },
-      { "name": "Invita a tus amigos", "text": "Comparte el codigo de invitacion por WhatsApp, email o donde quieras." },
-      { "name": "Publica los resultados", "text": "Ingresa el marcador oficial despues de cada partido. El leaderboard se actualiza automaticamente." },
-      { "name": "Disfruta la competencia", "text": "Observa como sube y baja el ranking entre tus amigos." }
+      { "name": "Crea tu cuenta", "text": "Regístrate gratis con tu email o Google. Solo toma unos segundos." },
+      { "name": "Crea tu pool ({term})", "text": "Elige el torneo, ponle nombre a tu pool y configura las reglas de puntuación." },
+      { "name": "Invita a tus amigos", "text": "Comparte el código de invitación por WhatsApp, email o donde quieras." },
+      { "name": "Publica los resultados", "text": "Ingresa el marcador oficial después de cada partido. El leaderboard se actualiza automáticamente." },
+      { "name": "Disfruta la competencia", "text": "Observa cómo sube y baja el ranking entre tus amigos." }
     ],
-    "tool": "Picks4All - Plataforma de quinielas deportivas"
+    "tool": "Picks4All - Plataforma de {plural} {adjPlural}"
   },
   "hostSection": {
-    "title": "Si quieres crear una quiniela (Host)",
+    "title": "Si quieres crear {indefinite} {term} (Host)",
     "steps": [
       {
         "number": 1,
         "title": "Crea tu cuenta",
-        "description": "Registrate gratis con tu email o Google. Solo toma unos segundos."
+        "description": "Regístrate gratis con tu email o Google. Solo toma unos segundos."
       },
       {
         "number": 2,
-        "title": "Crea tu pool (quiniela, polla o prode)",
-        "description": "Elige el torneo (ej: Copa del Mundo 2026), ponle nombre a tu pool y configura las reglas: sistema de puntos, deadline antes de cada partido, etc."
+        "title": "Crea tu pool ({term})",
+        "description": "Elige el torneo (ej: Copa del Mundo 2026), ponle nombre a tu {term} y configura las reglas: sistema de puntos, deadline antes de cada partido, etc."
       },
       {
         "number": 3,
         "title": "Invita a tus amigos",
-        "description": "Genera un codigo de invitacion y compartelo por WhatsApp, email o donde quieras. Quien tenga el codigo puede unirse a tu quiniela."
+        "description": "Genera un código de invitación y compártelo por WhatsApp, email o donde quieras. Quien tenga el código puede unirse a tu {term}."
       },
       {
         "number": 4,
         "title": "Publica los resultados",
-        "description": "Despues de cada partido, ingresa el marcador oficial. El leaderboard se actualiza automaticamente."
+        "description": "Después de cada partido, ingresa el marcador oficial. El leaderboard se actualiza automáticamente."
       },
       {
         "number": 5,
         "title": "Disfruta la competencia",
-        "description": "Observa como sube y baja el ranking. Nombra co-admins si necesitas ayuda para administrar tu polla o quiniela."
+        "description": "Observa cómo sube y baja el ranking. Nombra co-admins si necesitas ayuda para administrar tu {term}."
       }
     ]
   },
@@ -54,34 +54,34 @@
     "steps": [
       {
         "number": 1,
-        "title": "Recibe el codigo de invitacion",
-        "description": "Tu amigo (el Host) te compartira un codigo unico para unirte a su quiniela, polla o prode."
+        "title": "Recibe el código de invitación",
+        "description": "Tu amigo (el Host) te compartirá un código único para unirte a su {term}."
       },
       {
         "number": 2,
-        "title": "Crea tu cuenta y unete",
-        "description": "Registrate si aun no tienes cuenta, luego ingresa el codigo para unirte al pool."
+        "title": "Crea tu cuenta y únete",
+        "description": "Regístrate si aún no tienes cuenta, luego ingresa el código para unirte al pool."
       },
       {
         "number": 3,
         "title": "Haz tus predicciones",
-        "description": "Para cada partido, ingresa tu pronostico antes del deadline (generalmente 10 minutos antes del partido)."
+        "description": "Para cada partido, ingresa tu pronóstico antes del deadline (generalmente 10 minutos antes del partido)."
       },
       {
         "number": 4,
         "title": "Gana puntos",
-        "description": "Cuando se publiquen los resultados, ganaras puntos segun tus aciertos: marcador exacto, resultado correcto, diferencia de goles, etc."
+        "description": "Cuando se publiquen los resultados, ganarás puntos según tus aciertos: marcador exacto, resultado correcto, diferencia de goles, etc."
       },
       {
         "number": 5,
         "title": "Sube en el ranking",
-        "description": "Sigue tu posicion en el leaderboard y demuestra que eres el mejor predictor del grupo. Compite en tu penca, quiniela o porra entre amigos."
+        "description": "Sigue tu posición en el leaderboard y demuestra que eres el mejor predictor del grupo. Compite en tu {term} entre amigos."
       }
     ]
   },
   "scoringSection": {
     "title": "Sistema de Puntos",
-    "subtitle": "El Host puede personalizar el sistema de puntos de la quiniela. Aqui hay un ejemplo tipico:",
+    "subtitle": "El Host puede personalizar el sistema de puntos de tu {term}. Aquí hay un ejemplo típico:",
     "columns": {
       "type": "Tipo de acierto",
       "points": "Puntos"
@@ -116,8 +116,8 @@
     "note": "* Los puntos se acumulan. Si aciertas el marcador exacto, ganas puntos por todos los criterios."
   },
   "cta": {
-    "title": "Listo para empezar tu quiniela?",
-    "description": "Crea tu cuenta gratis y comienza a competir. Arma tu polla, prode o penca en minutos.",
+    "title": "¿Listo para empezar tu {term}?",
+    "description": "Crea tu cuenta gratis y comienza a competir. Arma tu {term} en minutos.",
     "button": "Crear cuenta gratis"
   }
 }

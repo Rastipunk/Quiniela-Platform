@@ -78,13 +78,13 @@
     "adminDisabled": "Algumas notificações foram desativadas pelo administrador da plataforma e não estão disponíveis no momento.",
     "masterLabel": "Receber notificações por email",
     "masterDesc": "Ative ou desative todas as notificações (exceto recuperação de senha)",
-    "invitationsLabel": "Convites para pools",
-    "invitationsDesc": "Receba notificações quando alguém te convidar para um pool",
+    "invitationsLabel": "Convites para {plural}",
+    "invitationsDesc": "Receba notificações quando alguém te convidar para um {term}",
     "deadlineLabel": "Lembretes de deadline",
     "deadlineDesc": "Receba lembretes quando tiver palpites pendentes",
     "resultsLabel": "Resultados publicados",
     "resultsDesc": "Receba notificações quando resultados de jogos forem publicados",
-    "completionsLabel": "Pools finalizados",
-    "completionsDesc": "Receba notificações quando um pool terminar"
+    "completionsLabel": "{pluralUpper} finalizados",
+    "completionsDesc": "Receba notificações quando um {term} terminar"
   }
 }

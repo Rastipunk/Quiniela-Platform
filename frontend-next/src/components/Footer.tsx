@@ -3,9 +3,20 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BrandLogo } from "./BrandLogo";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
+import type { PoolRegion } from "@/lib/poolTerms";
+
+const REGION_OPTIONS: { value: PoolRegion; flag: string; label: string }[] = [
+  { value: "quiniela", flag: "\uD83C\uDDF2\uD83C\uDDFD", label: "Quiniela" },
+  { value: "polla", flag: "\uD83C\uDDE8\uD83C\uDDF4", label: "Polla" },
+  { value: "prode", flag: "\uD83C\uDDE6\uD83C\uDDF7", label: "Prode" },
+  { value: "penca", flag: "\uD83C\uDDFA\uD83C\uDDFE", label: "Penca" },
+  { value: "porra", flag: "\uD83C\uDDEA\uD83C\uDDF8", label: "Porra" },
+];
 
 export function Footer() {
   const t = useTranslations("footer");
+  const { params: poolParams, region, setRegion } = usePoolTerm();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -54,7 +65,7 @@ export function Footer() {
               lineHeight: 1.5,
             }}
           >
-            {t("tagline")}
+            {t("tagline", poolParams)}
             {" "}
             {t("disclaimer")}
           </p>
@@ -230,28 +241,71 @@ export function Footer() {
           </Link>
         </div>
 
-        {/* Contact */}
-        <div>
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "var(--text)",
-              marginBottom: 4,
-            }}
-          >
-            {t("contact")}
+        {/* Contact + Region */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text)",
+                marginBottom: 4,
+              }}
+            >
+              {t("contact")}
+            </div>
+            <a
+              href={`mailto:${t("supportEmail")}`}
+              style={{
+                fontSize: 13,
+                color: "var(--muted)",
+                textDecoration: "none",
+              }}
+            >
+              {t("supportEmail")}
+            </a>
           </div>
-          <a
-            href={`mailto:${t("supportEmail")}`}
-            style={{
-              fontSize: 13,
-              color: "var(--muted)",
-              textDecoration: "none",
-            }}
-          >
-            {t("supportEmail")}
-          </a>
+
+          {/* Region Selector */}
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text)",
+                marginBottom: 6,
+              }}
+            >
+              {t("regionLabel")}
+            </div>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value as PoolRegion)}
+              style={{
+                fontSize: 13,
+                color: "var(--text)",
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: "6px 10px",
+                cursor: "pointer",
+                width: "100%",
+                maxWidth: 180,
+              }}
+            >
+              {REGION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.flag} {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

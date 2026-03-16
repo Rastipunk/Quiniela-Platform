@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { PickRulesDisplay } from "@/components/PickRulesDisplay";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import type { PoolOverview } from "@/lib/api";
 
@@ -12,6 +13,7 @@ interface PoolRulesTabProps {
 
 export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
   const t = useTranslations("pool");
+  const { params: poolParams } = usePoolTerm();
 
   return (
     <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
@@ -38,7 +40,7 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
                 </span>
               </div>
               <div style={{ color: "#666", fontSize: 13, marginBottom: 12, fontStyle: "italic" }}>
-                {overview.leaderboard?.scoringPreset?.description ?? t("rules.scoring.defaultDesc")}
+                {overview.leaderboard?.scoringPreset?.description ?? t("rules.scoring.defaultDesc", poolParams)}
               </div>
               <div style={{ display: "grid", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

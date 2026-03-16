@@ -3,9 +3,11 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 
 export default function NotFound() {
   const t = useTranslations("notFound");
+  const { params: poolParams } = usePoolTerm();
 
   return (
     <div
@@ -52,7 +54,7 @@ export default function NotFound() {
           marginBottom: 32,
         }}
       >
-        {t("subMessage")}
+        {t("subMessage", poolParams)}
       </p>
 
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>

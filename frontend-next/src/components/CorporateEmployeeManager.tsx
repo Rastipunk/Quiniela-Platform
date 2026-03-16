@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { usePoolTerm } from "@/contexts/PoolTermContext";
 import {
   getCorporateEmployees,
   addCorporateEmployees,
@@ -25,6 +26,7 @@ type Props = {
 
 export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
   const t = useTranslations("pool.admin.employees");
+  const { params: poolParams } = usePoolTerm();
 
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -148,7 +150,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
         {"\u{1F3E2}"} {t("title")}
       </h4>
       <p style={{ fontSize: 13, color: "#6b21a8", margin: "0 0 16px" }}>
-        {t("subtitle")}
+        {t("subtitle", poolParams)}
       </p>
 
       {/* Progress */}

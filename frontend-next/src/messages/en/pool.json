@@ -203,7 +203,7 @@
     },
     "employees": {
       "title": "Employee Management",
-      "subtitle": "Manage employees in your corporate pool.",
+      "subtitle": "Manage employees in your corporate {term}.",
       "addTitle": "Add employees",
       "emailsPlaceholder": "Paste email addresses, one per line...",
       "csvUpload": "Upload CSV",
@@ -355,7 +355,7 @@
     "scoring": {
       "title": "Scoring System",
       "preset": "Preset",
-      "defaultDesc": "Classic scoring system for sports pools",
+      "defaultDesc": "Classic scoring system for sports {plural}",
       "exactScore": "points for getting the <b>exact score</b> right",
       "outcomeOnly": "points for getting only the <b>result</b> right (winner or draw)"
     },
