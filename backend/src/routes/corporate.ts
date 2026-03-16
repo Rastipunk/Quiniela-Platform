@@ -1,42 +1,65 @@
+/**
+ * Corporate Routes — Thin HTTP layer.
+ *
+ * Each handler: validate input → call service → send HTTP response.
+ * All business logic lives in services/corporateService.ts.
+ */
+
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import crypto from "crypto";
-import { prisma } from "../db";
-import { requireAuth } from "../middleware/requireAuth";
-import { writeAuditEvent } from "../lib/audit";
-import { sendAdminNotification, sendCorporateInquiryConfirmationEmail, sendCorporateActivationEmail, sendWelcomeEmail, escapeHtml } from "../lib/email";
-import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
-import { validatePoolPickTypesConfig, PoolPickTypesConfigSchema } from "../validation/pickConfig";
-import { extractPhases } from "../lib/fixture";
 import rateLimit from "express-rate-limit";
-import { transitionToActive } from "../services/poolStateMachine";
-import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
-import { sendOk, sendCreated, sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
+import { requireAuth } from "../middleware/requireAuth";
+import {
+  sendData, sendOk, sendCreated, sendBadRequest,
+  sendForbidden, sendNotFound, sendConflict, sendInternal,
+} from "../lib/apiResponse";
+import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
+import { ServiceError } from "../services/authService";
+import type { AuditContext } from "../services/authService";
+import {
+  submitInquiry,
+  createCorporatePool,
+  addEmployees,
+  listEmployees,
+  sendInvitations,
+  deleteEmployee,
+} from "../services/corporateService";
 
 export const corporateRouter = Router();
 
-// =========================================================================
-// HELPER: Verificar que el usuario es CORPORATE_HOST del pool
-// =========================================================================
+// ─── Helpers ─────────────────────────────────────────────────
 
-async function requireCorporateHost(userId: string, poolId: string) {
-  const member = await prisma.poolMember.findUnique({
-    where: { poolId_userId: { poolId, userId } },
-    select: { role: true },
-  });
-  return member?.role === "CORPORATE_HOST";
+/** Extract audit context from the Express request. */
+function auditCtx(req: { ip?: string; get: (h: string) => string | undefined }): AuditContext {
+  return { ip: req.ip ?? null, userAgent: req.get("user-agent") ?? null };
 }
 
-// =========================================================================
-// POST /corporate/inquiry — Público, sin auth (formulario de contacto)
-// =========================================================================
+/** Map ServiceError to HTTP response. */
+function handleServiceError(res: any, err: unknown): void {
+  if (err instanceof ServiceError) {
+    const send = {
+      400: sendBadRequest,
+      401: sendBadRequest,
+      403: sendForbidden,
+      404: sendNotFound,
+      409: sendConflict,
+      500: sendInternal,
+    }[err.statusHint] ?? sendInternal;
+    send(res, err.code, err.extra);
+    return;
+  }
+  throw err; // Re-throw unexpected errors → global error handler
+}
+
+// ─── Rate Limiters ───────────────────────────────────────────
 
 const inquiryLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { error: "RATE_LIMITED" },
 });
+
+// ─── Schemas ─────────────────────────────────────────────────
 
 const inquirySchema = z.object({
   companyName: z.string().min(2).max(200),
@@ -47,56 +70,6 @@ const inquirySchema = z.object({
   message: z.string().max(2000).optional(),
   locale: z.enum(["es", "en", "pt"]).default("es"),
 });
-
-corporateRouter.post("/inquiry", inquiryLimiter, async (req, res) => {
-  const parsed = inquirySchema.safeParse(req.body);
-  if (!parsed.success) {
-    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
-  }
-
-  const { companyName, contactName, contactEmail, contactPhone, employeeCount, message, locale } = parsed.data;
-
-  const inquiry = await prisma.organizationInquiry.create({
-    data: {
-      companyName,
-      contactName,
-      contactEmail,
-      contactPhone: contactPhone || null,
-      employeeCount: employeeCount || null,
-      message: message || null,
-      locale,
-    },
-  });
-
-  sendAdminNotification({
-    subject: `${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
-    type: "corporate_inquiry",
-    body: `
-      <p><strong>Empresa:</strong> ${escapeHtml(companyName)}</p>
-      <p><strong>Contacto:</strong> ${escapeHtml(contactName)} &lt;${escapeHtml(contactEmail)}&gt;</p>
-      ${contactPhone ? `<p><strong>Teléfono:</strong> ${escapeHtml(contactPhone)}</p>` : ""}
-      ${employeeCount ? `<p><strong>Empleados:</strong> ${employeeCount}</p>` : ""}
-      ${message ? `<p><strong>Mensaje:</strong> ${escapeHtml(message)}</p>` : ""}
-      <p><strong>Idioma:</strong> ${escapeHtml(locale)}</p>
-    `,
-  }).catch((err) => console.error("Error sending admin notification:", err instanceof Error ? err.message : String(err)));
-
-  sendCorporateInquiryConfirmationEmail({
-    to: contactEmail,
-    contactName,
-    companyName,
-    locale,
-  }).catch((err) => console.error("Error sending corporate confirmation:", err instanceof Error ? err.message : String(err)));
-
-  return sendCreated(res, {
-    message: "Solicitud enviada exitosamente. Nos pondremos en contacto contigo pronto.",
-    id: inquiry.id,
-  });
-});
-
-// =========================================================================
-// POST /corporate/pools — Crear pool corporativo (self-service, autenticado)
-// =========================================================================
 
 const createCorporatePoolSchema = z.object({
   companyName: z.string().min(2).max(200),
@@ -117,367 +90,88 @@ const createCorporatePoolSchema = z.object({
   emails: z.array(z.string().email()).max(500).optional(),
 });
 
-corporateRouter.post("/pools", requireAuth, async (req, res) => {
-  const parsed = createCorporatePoolSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
-  }
-
-  const {
-    companyName, logoBase64, welcomeMessage, invitationMessage,
-    tournamentInstanceId, poolName, poolDescription,
-    timeZone, deadlineMinutesBeforeKickoff, requireApproval,
-    pickTypesConfig, maxParticipants, emails,
-  } = parsed.data;
-
-  // Verificar que la instancia existe
-  const instance = await prisma.tournamentInstance.findUnique({ where: { id: tournamentInstanceId } });
-  if (!instance) return sendNotFound(res, "NOT_FOUND");
-  if (instance.status === "ARCHIVED") {
-    return sendConflict(res, "INSTANCE_ARCHIVED");
-  }
-
-  // Procesar pickTypesConfig (misma lógica que pools.ts)
-  let finalPickTypesConfig: any = null;
-  if (pickTypesConfig) {
-    if (typeof pickTypesConfig === "string") {
-      const instancePhases = extractPhases(instance.dataJson);
-      let dynamicConfig = instancePhases.length > 0
-        ? generateDynamicPresetConfig(pickTypesConfig, instancePhases)
-        : null;
-      if (!dynamicConfig) {
-        const preset = getPresetByKey(pickTypesConfig);
-        if (!preset) {
-          return sendBadRequest(res, "VALIDATION_ERROR", { message: `Invalid preset key: ${pickTypesConfig}` });
-        }
-        dynamicConfig = preset.config;
-      }
-      finalPickTypesConfig = dynamicConfig;
-    } else {
-      const validation = validatePoolPickTypesConfig(pickTypesConfig);
-      if (!validation.valid) {
-        return sendBadRequest(res, "VALIDATION_ERROR", { message: "Invalid pick types configuration", errors: validation.errors });
-      }
-      finalPickTypesConfig = pickTypesConfig;
-    }
-  }
-
-  // Obtener info del usuario creador
-  const user = await prisma.user.findUnique({
-    where: { id: req.auth!.userId },
-    select: { email: true, displayName: true },
-  });
-
-  // Transacción: crear Organization + Pool + PoolMember + CorporateInvites
-  const result = await prisma.$transaction(async (tx) => {
-    const org = await tx.organization.create({
-      data: {
-        name: companyName,
-        contactEmail: user?.email || "",
-        contactName: user?.displayName || "",
-        logoBase64: logoBase64 || null,
-        welcomeMessage: welcomeMessage || null,
-        invitationMessage: invitationMessage || null,
-        status: "ACTIVE",
-      },
-    });
-
-    const pool = await tx.pool.create({
-      data: {
-        tournamentInstanceId,
-        name: poolName,
-        description: poolDescription ?? null,
-        visibility: "PRIVATE",
-        timeZone: timeZone ?? "UTC",
-        deadlineMinutesBeforeKickoff: deadlineMinutesBeforeKickoff ?? 10,
-        createdByUserId: req.auth!.userId,
-        scoringPresetKey: "CLASSIC",
-        requireApproval: requireApproval ?? false,
-        pickTypesConfig: finalPickTypesConfig,
-        fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
-        organizationId: org.id,
-        maxParticipants: maxParticipants ?? 100,
-        status: "ACTIVE",
-      },
-    });
-
-    await tx.poolMember.create({
-      data: {
-        poolId: pool.id,
-        userId: req.auth!.userId,
-        role: "CORPORATE_HOST",
-        status: "ACTIVE",
-      },
-    });
-
-    // Crear invites pendientes si se proporcionaron emails
-    let pendingInvites = 0;
-    if (emails && emails.length > 0) {
-      const uniqueEmails = [...new Set(emails.map((e) => e.toLowerCase()))];
-      for (const email of uniqueEmails) {
-        const token = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
-        await tx.corporateInvite.create({
-          data: {
-            poolId: pool.id,
-            email,
-            activationToken: token,
-            activationTokenExpiresAt: new Date(Date.now() + TOKEN_EXPIRY_MS.CORPORATE_INVITE), // 30 días
-            status: "PENDING",
-          },
-        });
-        pendingInvites++;
-      }
-    }
-
-    return { org, pool, pendingInvites };
-  });
-
-  // Notificar admin (fire and forget)
-  sendAdminNotification({
-    subject: `Nueva pool corporativa: ${companyName}`,
-    type: "corporate_inquiry",
-    body: `
-      <p><strong>Empresa:</strong> ${companyName}</p>
-      <p><strong>Creado por:</strong> ${user?.displayName || "—"} &lt;${user?.email || "—"}&gt;</p>
-      <p><strong>Pool:</strong> ${poolName}</p>
-      <p><strong>Empleados pendientes:</strong> ${result.pendingInvites}</p>
-    `,
-  }).catch((err) => console.error("Error sending admin notification:", err instanceof Error ? err.message : String(err)));
-
-  await writeAuditEvent({
-    actorUserId: req.auth!.userId,
-    action: "CORPORATE_POOL_CREATED",
-    entityType: "Pool",
-    entityId: result.pool.id,
-    poolId: result.pool.id,
-    dataJson: { companyName, organizationId: result.org.id, pendingInvites: result.pendingInvites },
-    ip: req.ip,
-    userAgent: req.get("user-agent"),
-  });
-
-  return sendCreated(res, {
-    pool: result.pool,
-    organization: { id: result.org.id, name: result.org.name },
-    pendingInvites: result.pendingInvites,
-  });
-});
-
-// =========================================================================
-// POST /corporate/pools/:poolId/employees — Agregar empleados
-// =========================================================================
-
 const addEmployeesSchema = z.object({
   emails: z.array(z.string().email()).min(1).max(500),
 });
 
-corporateRouter.post("/pools/:poolId/employees", requireAuth, async (req, res) => {
-  const poolId = req.params.poolId as string;
+// ─── Routes ──────────────────────────────────────────────────
 
-  if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
+// POST /corporate/inquiry — Public, no auth (contact form)
+corporateRouter.post("/inquiry", inquiryLimiter, async (req, res) => {
+  const parsed = inquirySchema.safeParse(req.body);
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+
+  try {
+    const result = await submitInquiry(parsed.data);
+    return sendCreated(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
   }
+});
 
-  const parsed = addEmployeesSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
-  }
+// POST /corporate/pools — Create corporate pool (self-service, authenticated)
+corporateRouter.post("/pools", requireAuth, async (req, res) => {
+  const parsed = createCorporatePoolSchema.safeParse(req.body);
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
 
-  const uniqueEmails = [...new Set(parsed.data.emails.map((e) => e.toLowerCase()))];
+  const { pickTypesConfig, ...rest } = parsed.data;
 
-  // Buscar invites existentes para este pool
-  const existing = await prisma.corporateInvite.findMany({
-    where: { poolId, email: { in: uniqueEmails } },
-    select: { email: true },
-  });
-  const existingSet = new Set(existing.map((e) => e.email));
-
-  let added = 0;
-  let skipped = 0;
-
-  for (const email of uniqueEmails) {
-    if (existingSet.has(email)) {
-      skipped++;
-      continue;
-    }
-    const token = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
-    await prisma.corporateInvite.create({
-      data: {
-        poolId,
-        email,
-        activationToken: token,
-        activationTokenExpiresAt: new Date(Date.now() + TOKEN_EXPIRY_MS.CORPORATE_INVITE),
-        status: "PENDING",
+  try {
+    const result = await createCorporatePool(
+      {
+        ...rest,
+        userId: req.auth!.userId,
+        pickTypesConfig: pickTypesConfig as string | Record<string, unknown> | undefined,
       },
+      auditCtx(req),
+    );
+    return sendCreated(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /corporate/pools/:poolId/employees — Add employees
+corporateRouter.post("/pools/:poolId/employees", requireAuth, async (req, res) => {
+  const parsed = addEmployeesSchema.safeParse(req.body);
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+
+  try {
+    const result = await addEmployees({
+      userId: req.auth!.userId,
+      poolId: req.params.poolId as string,
+      emails: parsed.data.emails,
     });
-    added++;
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
   }
-
-  const total = await prisma.corporateInvite.count({ where: { poolId } });
-
-  return sendOk(res, { added, skipped, total });
 });
 
-// =========================================================================
-// GET /corporate/pools/:poolId/employees — Listar empleados
-// =========================================================================
-
+// GET /corporate/pools/:poolId/employees — List employees
 corporateRouter.get("/pools/:poolId/employees", requireAuth, async (req, res) => {
-  const poolId = req.params.poolId as string;
-
-  if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
+  try {
+    const result = await listEmployees(req.auth!.userId, req.params.poolId as string);
+    return sendData(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
   }
-
-  const invites = await prisma.corporateInvite.findMany({
-    where: { poolId },
-    orderBy: { createdAtUtc: "desc" },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      status: true,
-      activatedAt: true,
-      createdAtUtc: true,
-    },
-  });
-
-  const summary = {
-    total: invites.length,
-    pending: invites.filter((i) => i.status === "PENDING").length,
-    sent: invites.filter((i) => i.status === "SENT").length,
-    activated: invites.filter((i) => i.status === "ACTIVATED").length,
-    failed: invites.filter((i) => i.status === "FAILED").length,
-  };
-
-  return sendData(res, { invites, summary });
 });
 
-// =========================================================================
-// POST /corporate/pools/:poolId/send-invitations — Enviar invitaciones
-// =========================================================================
-
+// POST /corporate/pools/:poolId/send-invitations — Send invitations
 corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req, res) => {
-  const poolId = req.params.poolId as string;
-
-  if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
+  try {
+    const result = await sendInvitations(
+      { userId: req.auth!.userId, poolId: req.params.poolId as string },
+      auditCtx(req),
+    );
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
   }
-
-  // Obtener pool y org para datos del email
-  const pool = await prisma.pool.findUnique({
-    where: { id: poolId },
-    include: { organization: { select: { name: true, logoBase64: true, invitationMessage: true } } },
-  });
-  if (!pool) return sendNotFound(res, "NOT_FOUND");
-
-  const companyName = pool.organization?.name || "Empresa";
-  const orgLogoBase64 = pool.organization?.logoBase64 || null;
-  const orgInvitationMessage = pool.organization?.invitationMessage || null;
-
-  // Buscar invites PENDING
-  const pendingInvites = await prisma.corporateInvite.findMany({
-    where: { poolId, status: "PENDING" },
-  });
-
-  if (pendingInvites.length === 0) {
-    return sendOk(res, { sent: 0, activated: 0, failed: 0 });
-  }
-
-  let sent = 0;
-  let activated = 0;
-  let failed = 0;
-
-  for (const invite of pendingInvites) {
-    try {
-      // Verificar si el email ya tiene cuenta
-      const existingUser = await prisma.user.findUnique({
-        where: { email: invite.email },
-        select: { id: true, displayName: true },
-      });
-
-      if (existingUser) {
-        // Usuario ya existe → agregar directamente al pool
-        const existingMember = await prisma.poolMember.findUnique({
-          where: { poolId_userId: { poolId, userId: existingUser.id } },
-        });
-
-        if (!existingMember) {
-          await prisma.poolMember.create({
-            data: {
-              poolId,
-              userId: existingUser.id,
-              role: "PLAYER",
-              status: "ACTIVE",
-            },
-          });
-        }
-
-        await prisma.corporateInvite.update({
-          where: { id: invite.id },
-          data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
-        });
-
-        // Transicionar pool DRAFT→ACTIVE si es el primer PLAYER
-        await transitionToActive(poolId, existingUser.id).catch((err) =>
-          console.error("transitionToActive error (corporate send-invitations):", err instanceof Error ? err.message : String(err))
-        );
-
-        activated++;
-      } else {
-        // Usuario no existe → enviar activation email
-        const emailResult = await sendCorporateActivationEmail({
-          to: invite.email,
-          employeeName: invite.name || undefined,
-          companyName,
-          poolName: pool.name,
-          activationToken: invite.activationToken,
-          logoBase64: orgLogoBase64,
-          invitationMessage: orgInvitationMessage,
-        });
-
-        if (emailResult.success) {
-          await prisma.corporateInvite.update({
-            where: { id: invite.id },
-            data: { status: "SENT" },
-          });
-          sent++;
-        } else {
-          console.error(`Email failed for ${invite.email}: ${emailResult.error}`);
-          await prisma.corporateInvite.update({
-            where: { id: invite.id },
-            data: { status: "FAILED" },
-          });
-          failed++;
-        }
-      }
-    } catch (err) {
-      console.error(`Error processing invite ${invite.id}:`, err instanceof Error ? err.message : String(err));
-      await prisma.corporateInvite.update({
-        where: { id: invite.id },
-        data: { status: "FAILED" },
-      }).catch(() => {});
-      failed++;
-    }
-  }
-
-  await writeAuditEvent({
-    actorUserId: req.auth!.userId,
-    action: "CORPORATE_INVITATIONS_SENT",
-    entityType: "Pool",
-    entityId: poolId,
-    poolId,
-    dataJson: { sent, activated, failed, total: pendingInvites.length },
-    ip: req.ip,
-    userAgent: req.get("user-agent"),
-  });
-
-  return sendOk(res, { sent, activated, failed });
 });
 
-// =========================================================================
-// GET /corporate/csv-template — Descargar template CSV
-// =========================================================================
-
+// GET /corporate/csv-template — Download CSV template
 corporateRouter.get("/csv-template", (_req, res) => {
   const bom = "\uFEFF";
   const csv = bom + "email,nombre\nempleado1@empresa.com,Juan Perez\nempleado2@empresa.com,Maria Garcia\n";
@@ -486,28 +180,16 @@ corporateRouter.get("/csv-template", (_req, res) => {
   return res.send(csv);
 });
 
-// =========================================================================
-// DELETE /corporate/pools/:poolId/employees/:inviteId — Remover empleado pendiente
-// =========================================================================
-
+// DELETE /corporate/pools/:poolId/employees/:inviteId — Remove pending employee
 corporateRouter.delete("/pools/:poolId/employees/:inviteId", requireAuth, async (req, res) => {
-  const poolId = req.params.poolId as string;
-  const inviteId = req.params.inviteId as string;
-
-  if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
+  try {
+    await deleteEmployee({
+      userId: req.auth!.userId,
+      poolId: req.params.poolId as string,
+      inviteId: req.params.inviteId as string,
+    });
+    return sendOk(res);
+  } catch (err) {
+    return handleServiceError(res, err);
   }
-
-  const invite = await prisma.corporateInvite.findUnique({ where: { id: inviteId } });
-  if (!invite || invite.poolId !== poolId) {
-    return sendNotFound(res, "NOT_FOUND");
-  }
-
-  if (invite.status === "ACTIVATED") {
-    return sendConflict(res, "ALREADY_ACTIVATED");
-  }
-
-  await prisma.corporateInvite.delete({ where: { id: inviteId } });
-
-  return sendOk(res);
 });
