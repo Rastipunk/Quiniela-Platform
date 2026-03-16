@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
+import { sendData, sendOk, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
 import { writeAuditEvent } from "../lib/audit";
 import { getScoringPreset } from "../lib/scoringPresets";
 import { requirePoolAdmin, isPoolOwner, isPoolAdmin } from "../lib/roles";
@@ -34,11 +35,11 @@ poolAdminRouter.put("/:poolId/matches/:matchId/scoring-override", async (req, re
   const userId = req.auth!.userId;
 
   const isHostOrCoAdmin = await requirePoolAdmin(userId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const parsed = scoringOverrideSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const { scoringEnabled, reason } = parsed.data;
@@ -66,7 +67,7 @@ poolAdminRouter.put("/:poolId/matches/:matchId/scoring-override", async (req, re
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ ok: true, scoringEnabled, matchId });
+  return sendOk(res, { scoringEnabled, matchId });
 });
 
 // POST /pools/:poolId/advance-phase (solo HOST)
@@ -85,12 +86,12 @@ poolAdminRouter.post("/:poolId/advance-phase", async (req, res) => {
   });
 
   if (!myMembership || !isPoolOwner(myMembership.role)) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
+    return sendForbidden(res, "OWNER_ONLY");
   }
 
   const parsed = advancePhaseSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const { currentPhaseId, nextPhaseId } = parsed.data;
@@ -101,7 +102,7 @@ poolAdminRouter.post("/:poolId/advance-phase", async (req, res) => {
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   try {
@@ -111,11 +112,7 @@ poolAdminRouter.post("/:poolId/advance-phase", async (req, res) => {
     if (currentPhaseId === "group_stage") {
       const validation = await validateGroupStageComplete(pool.tournamentInstance.id, poolId);
       if (!validation.isComplete) {
-        return res.status(400).json({
-          error: "PHASE_INCOMPLETE",
-          message: `Fase de grupos incompleta. Faltan ${validation.missingMatches.length} partido(s)`,
-          details: { missingMatches: validation.missingMatches },
-        });
+        return sendBadRequest(res, `Fase de grupos incompleta. Faltan ${validation.missingMatches.length} partido(s)`);
       }
 
       result = await advanceToRoundOf32(pool.tournamentInstance.id, poolId);
@@ -161,9 +158,7 @@ poolAdminRouter.post("/:poolId/advance-phase", async (req, res) => {
 
       actualNextPhaseId = nextPhaseId || derivedNextPhase || "";
       if (!actualNextPhaseId) {
-        return res.status(400).json({
-          error: "INVALID_PHASE",
-        });
+        return sendBadRequest(res, "INVALID_PHASE");
       }
 
       result = await advanceKnockoutPhase(
@@ -190,8 +185,7 @@ poolAdminRouter.post("/:poolId/advance-phase", async (req, res) => {
       });
     }
 
-    return res.json({
-      success: true,
+    return sendOk(res, {
       message: `Avance manual exitoso: ${currentPhaseId} → ${actualNextPhaseId}`,
       data: {
         currentPhaseId,
@@ -200,10 +194,7 @@ poolAdminRouter.post("/:poolId/advance-phase", async (req, res) => {
       },
     });
   } catch (error: any) {
-    return res.status(400).json({
-      error: "ADVANCEMENT_FAILED",
-      message: error.message,
-    });
+    return sendBadRequest(res, error.message);
   }
 });
 
@@ -218,7 +209,7 @@ poolAdminRouter.patch("/:poolId/settings", async (req, res) => {
   const { poolId } = req.params;
   const parsed = updatePoolSettingsSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const myMembership = await prisma.poolMember.findFirst({
@@ -226,7 +217,7 @@ poolAdminRouter.patch("/:poolId/settings", async (req, res) => {
   });
 
   if (!myMembership || !isPoolOwner(myMembership.role)) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
+    return sendForbidden(res, "OWNER_ONLY");
   }
 
   const { autoAdvanceEnabled, requireApproval, extraTimePhases } = parsed.data;
@@ -243,12 +234,12 @@ poolAdminRouter.patch("/:poolId/settings", async (req, res) => {
       },
     });
     if (!pool) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     const phaseConfigs = pool.pickTypesConfig as PhasePickConfig[] | null;
     if (!phaseConfigs) {
-      return res.status(400).json({ error: "NO_CONFIG", message: "Pool has no pick types config" });
+      return sendBadRequest(res, "Pool has no pick types config");
     }
 
     // Get matches from tournament data for deadline validation
@@ -335,8 +326,7 @@ poolAdminRouter.patch("/:poolId/settings", async (req, res) => {
     dataJson: { changes: parsed.data },
   });
 
-  return res.json({
-    success: true,
+  return sendOk(res, {
     pool: {
       id: updatedPool.id,
       autoAdvanceEnabled: updatedPool.autoAdvanceEnabled,
@@ -356,7 +346,7 @@ poolAdminRouter.post("/:poolId/lock-phase", async (req, res) => {
   const { poolId } = req.params;
   const parsed = lockPhaseSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", issues: parsed.error.issues });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const myMembership = await prisma.poolMember.findFirst({
@@ -364,7 +354,7 @@ poolAdminRouter.post("/:poolId/lock-phase", async (req, res) => {
   });
 
   if (!myMembership || !isPoolOwner(myMembership.role)) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
+    return sendForbidden(res, "OWNER_ONLY");
   }
 
   const { phaseId, locked } = parsed.data;
@@ -375,7 +365,7 @@ poolAdminRouter.post("/:poolId/lock-phase", async (req, res) => {
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const currentLocked = (pool.lockedPhases as string[]) || [];
@@ -403,8 +393,7 @@ poolAdminRouter.post("/:poolId/lock-phase", async (req, res) => {
     dataJson: { phaseId },
   });
 
-  return res.json({
-    success: true,
+  return sendOk(res, {
     pool: {
       id: updatedPool.id,
       lockedPhases: updatedPool.lockedPhases,
@@ -422,18 +411,18 @@ poolAdminRouter.post("/:poolId/archive", async (req, res) => {
   });
 
   if (!myMembership || !isPoolOwner(myMembership.role)) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "OWNER_ONLY" });
+    return sendForbidden(res, "OWNER_ONLY");
   }
 
   try {
     await transitionToArchived(poolId, req.auth!.userId);
-    return res.json({ success: true });
+    return sendOk(res);
   } catch (e: any) {
     if (e.message === "Pool not found") {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
     if (e.message === "Pool must be COMPLETED to archive") {
-      return res.status(409).json({ error: "CONFLICT", message: e.message });
+      return sendConflict(res, e.message);
     }
     throw e;
   }
@@ -462,12 +451,12 @@ poolAdminRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
     });
 
     if (!pool) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     // Verificar que el usuario es miembro
     if (pool.members.length === 0) {
-      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
+      return sendForbidden(res, "NOT_A_MEMBER");
     }
 
     // Obtener datos del fixture
@@ -475,26 +464,23 @@ poolAdminRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
     const match = fixtureData.matches.find((m) => m.id === matchId);
 
     if (!match) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     // Obtener configuracion de la fase
     const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
     if (!pickTypesConfig) {
-      return res.status(400).json({ error: "NO_PICK_CONFIG" });
+      return sendBadRequest(res, "NO_PICK_CONFIG");
     }
 
     const phaseConfig = pickTypesConfig.find(p => p.phaseId === match.phaseId);
     if (!phaseConfig) {
-      return res.status(400).json({ error: "Fase no configurada" });
+      return sendBadRequest(res, "Fase no configurada");
     }
 
     // Verificar que la fase requiere score (match picks)
     if (!phaseConfig.requiresScore || !phaseConfig.matchPicks) {
-      return res.status(400).json({
-        error: "Esta fase no usa picks de marcador",
-        suggestion: "Usa el endpoint de breakdown estructural",
-      });
+      return sendBadRequest(res, "Esta fase no usa picks de marcador");
     }
 
     // Obtener pick del usuario (modelo Prediction)
@@ -539,7 +525,7 @@ poolAdminRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
     const homeTeam = teams.find((t: any) => t.id === match.homeTeamId);
     const awayTeam = teams.find((t: any) => t.id === match.awayTeamId);
 
-    return res.json({
+    return sendData(res, {
       breakdown,
       match: {
         id: matchId,
@@ -557,7 +543,7 @@ poolAdminRouter.get("/:poolId/breakdown/match/:matchId", async (req, res) => {
     });
   } catch (error) {
     console.error("Error generando breakdown de partido:", error);
-    return res.status(500).json({ error: "Error interno del servidor" });
+    return sendInternal(res, "Error interno del servidor");
   }
 });
 
@@ -582,31 +568,28 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
     });
 
     if (!pool) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     // Verificar que el usuario es miembro
     if (pool.members.length === 0) {
-      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
+      return sendForbidden(res, "NOT_A_MEMBER");
     }
 
     // Obtener configuracion de la fase
     const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
     if (!pickTypesConfig) {
-      return res.status(400).json({ error: "NO_PICK_CONFIG" });
+      return sendBadRequest(res, "NO_PICK_CONFIG");
     }
 
     const phaseConfig = pickTypesConfig.find(p => p.phaseId === phaseId);
     if (!phaseConfig) {
-      return res.status(400).json({ error: "Fase no configurada" });
+      return sendBadRequest(res, "Fase no configurada");
     }
 
     // Verificar que la fase es estructural
     if (phaseConfig.requiresScore || !phaseConfig.structuralPicks) {
-      return res.status(400).json({
-        error: "Esta fase no usa picks estructurales",
-        suggestion: "Usa el endpoint de breakdown de partido",
-      });
+      return sendBadRequest(res, "Esta fase no usa picks estructurales");
     }
 
     // Obtener datos del fixture
@@ -696,7 +679,7 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
         teamsMap
       );
 
-      return res.json({ breakdown });
+      return sendData(res, { breakdown });
     } else if (structuralType === "KNOCKOUT_WINNER") {
       // Obtener partidos de la fase
       const phaseMatches = matches
@@ -753,13 +736,13 @@ poolAdminRouter.get("/:poolId/breakdown/phase/:phaseId", async (req, res) => {
         teamsMap
       );
 
-      return res.json({ breakdown });
+      return sendData(res, { breakdown });
     } else {
-      return res.status(400).json({ error: `Tipo estructural no soportado: ${structuralType}` });
+      return sendBadRequest(res, `Tipo estructural no soportado: ${structuralType}`);
     }
   } catch (error) {
     console.error("Error generando breakdown estructural:", error);
-    return res.status(500).json({ error: "Error interno del servidor" });
+    return sendInternal(res, "Error interno del servidor");
   }
 });
 
@@ -784,18 +767,18 @@ poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     });
 
     if (!pool) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     // Verificar que el usuario es miembro
     if (pool.members.length === 0) {
-      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
+      return sendForbidden(res, "NOT_A_MEMBER");
     }
 
     // Buscar la fase de grupos en pickTypesConfig
     const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
     if (!pickTypesConfig) {
-      return res.status(400).json({ error: "NO_PICK_CONFIG" });
+      return sendBadRequest(res, "NO_PICK_CONFIG");
     }
 
     // Encontrar la fase que tiene GROUP_STANDINGS
@@ -804,7 +787,7 @@ poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     );
 
     if (!phaseConfig) {
-      return res.status(400).json({ error: "No hay fase de grupos configurada" });
+      return sendBadRequest(res, "No hay fase de grupos configurada");
     }
 
     const config = phaseConfig.structuralPicks!.config as {
@@ -825,7 +808,7 @@ poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     // Obtener equipos del grupo específico
     const groupTeams = teams.filter((t) => t.groupId === groupId);
     if (groupTeams.length === 0) {
-      return res.status(404).json({ error: "Grupo no encontrado" });
+      return sendNotFound(res, "Grupo no encontrado");
     }
 
     // Obtener pick del usuario para este grupo específico
@@ -854,7 +837,7 @@ poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
 
     // Si no hay pick
     if (!userPick || !userPick.teamIds || userPick.teamIds.length === 0) {
-      return res.json({
+      return sendData(res, {
         breakdown: {
           type: "GROUP_SINGLE",
           groupId,
@@ -877,7 +860,7 @@ poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
 
     // Si no hay resultado
     if (!result || !result.teamIds || result.teamIds.length === 0) {
-      return res.json({
+      return sendData(res, {
         breakdown: {
           type: "GROUP_SINGLE",
           groupId,
@@ -933,7 +916,7 @@ poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     const bonusPoints = bonusAchieved ? config.bonusPerfectGroup! : 0;
     totalEarned += bonusPoints;
 
-    return res.json({
+    return sendData(res, {
       breakdown: {
         type: "GROUP_SINGLE",
         groupId,
@@ -954,7 +937,7 @@ poolAdminRouter.get("/:poolId/breakdown/group/:groupId", async (req, res) => {
     });
   } catch (error) {
     console.error("Error generando breakdown de grupo:", error);
-    return res.status(500).json({ error: "Error interno del servidor" });
+    return sendInternal(res, "Error interno del servidor");
   }
 });
 
@@ -974,7 +957,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
       where: { poolId, userId: requestingUserId, status: "ACTIVE" },
     });
     if (!myMembership) {
-      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
+      return sendForbidden(res, "NOT_A_MEMBER");
     }
 
     // 2) Verificar que el usuario objetivo es miembro activo del pool
@@ -983,7 +966,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
       include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
     });
     if (!targetMembership) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     // 3) Cargar pool con instancia
@@ -992,7 +975,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
       include: { tournamentInstance: true },
     });
     if (!pool || !pool.tournamentInstance) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     const isViewingSelf = targetUserId === requestingUserId;
@@ -1303,7 +1286,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     const targetPoints = memberPoints.find((m) => m.userId === targetUserId)?.points ?? 0;
 
     // 11) Respuesta
-    return res.json({
+    return sendData(res, {
       player: {
         userId: targetUserId,
         displayName: targetMembership.user.displayName,
@@ -1318,7 +1301,7 @@ poolAdminRouter.get("/:poolId/players/:userId/summary", async (req, res) => {
     });
   } catch (error) {
     console.error("Error en resumen de jugador:", error);
-    return res.status(500).json({ error: "Error interno del servidor" });
+    return sendInternal(res, "Error interno del servidor");
   }
 });
 
@@ -1336,7 +1319,7 @@ poolAdminRouter.get("/:poolId/notifications", async (req, res) => {
     });
 
     if (!membership) {
-      return res.status(403).json({ error: "FORBIDDEN", reason: "NOT_A_MEMBER" });
+      return sendForbidden(res, "NOT_A_MEMBER");
     }
 
     const isHostOrCoAdmin = isPoolAdmin(membership.role);
@@ -1350,7 +1333,7 @@ poolAdminRouter.get("/:poolId/notifications", async (req, res) => {
     });
 
     if (!pool) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
 
     // Obtener matches del snapshot
@@ -1516,7 +1499,7 @@ poolAdminRouter.get("/:poolId/notifications", async (req, res) => {
     }
 
     // Respuesta
-    return res.json({
+    return sendData(res, {
       // Común a todos
       pendingPicks,
       urgentDeadlines: urgentDeadlines.slice(0, 5), // Máximo 5 urgentes
@@ -1532,6 +1515,6 @@ poolAdminRouter.get("/:poolId/notifications", async (req, res) => {
     });
   } catch (error) {
     console.error("Error obteniendo notificaciones:", error);
-    return res.status(500).json({ error: "Error interno del servidor" });
+    return sendInternal(res, "Error interno del servidor");
   }
 });

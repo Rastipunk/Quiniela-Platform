@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { getScoringPreset } from "../lib/scoringPresets";
 import { isPoolAdmin } from "../lib/roles";
+import { sendData, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 import { extractMatches, extractTeams, extractPhases, typed, type PickJson, type StructuralPickJson } from "../lib/fixture";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
 import { scoreUserStructuralPicks } from "../services/structuralScoring";
@@ -21,7 +22,7 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
   const myMembership = await prisma.poolMember.findFirst({
     where: { poolId, userId: req.auth!.userId, status: { in: ["ACTIVE", "LEFT"] } },
   });
-  if (!myMembership) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!myMembership) return sendForbidden(res, "FORBIDDEN");
 
   // 2) Pool + instancia
   const pool = await prisma.pool.findUnique({
@@ -31,8 +32,8 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
       organization: { select: { id: true, name: true, logoBase64: true, welcomeMessage: true } },
     },
   });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
-  if (!pool.tournamentInstance) return res.status(409).json({ error: "CONFLICT", message: "Pool has no tournamentInstance" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
+  if (!pool.tournamentInstance) return sendConflict(res, "CONFLICT", { message: "Pool has no tournamentInstance" });
 
   const preset = getScoringPreset(pool.scoringPresetKey);
 
@@ -491,7 +492,7 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
   });
 
   // 8) Respuesta final "1-call"
-  return res.json({
+  return sendData(res, {
     nowUtc: now.toISOString(),
     pool: {
       id: pool.id,

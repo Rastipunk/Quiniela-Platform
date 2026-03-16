@@ -6,6 +6,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { Prisma } from "@prisma/client";
 import { canMakePicks } from "../services/poolStateMachine";
 import { extractPhases, typed, type StructuralPickJson } from "../lib/fixture";
+import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const structuralPicksRouter = Router();
 
@@ -55,15 +56,12 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
 
   const parsed = structuralPickPayloadSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      details: parsed.error.flatten(),
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const pool = await prisma.pool.findUnique({
@@ -72,22 +70,16 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   // Validar que el pool permita hacer picks según su estado
   if (!canMakePicks(pool.status)) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Cannot make picks in this pool status",
-    });
+    return sendConflict(res, "CONFLICT", { message: "Cannot make picks in this pool status" });
   }
 
   if (pool.tournamentInstance.status === "ARCHIVED") {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "TournamentInstance is ARCHIVED",
-    });
+    return sendConflict(res, "CONFLICT", { message: "TournamentInstance is ARCHIVED" });
   }
 
   // Validar que la fase existe en el template
@@ -95,10 +87,7 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
   const phase = phases.find((p) => p.id === phaseId);
 
   if (!phase) {
-    return res.status(404).json({
-      error: "NOT_FOUND",
-      message: "Phase not found in tournament instance",
-    });
+    return sendNotFound(res, "NOT_FOUND", { message: "Phase not found in tournament instance" });
   }
 
   // TODO: Validar deadline de la fase (si aplica)
@@ -169,7 +158,7 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(prediction);
+  return sendData(res, prediction as any);
 });
 
 // GET /pools/:poolId/structural-picks/:phaseId
@@ -179,7 +168,7 @@ structuralPicksRouter.get("/:poolId/structural-picks/:phaseId", async (req, res)
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const prediction = await prisma.structuralPrediction.findUnique({
@@ -193,10 +182,10 @@ structuralPicksRouter.get("/:poolId/structural-picks/:phaseId", async (req, res)
   });
 
   if (!prediction) {
-    return res.json({ pick: null });
+    return sendData(res, { pick: null });
   }
 
-  return res.json({ pick: prediction.pickJson });
+  return sendData(res, { pick: prediction.pickJson } as any);
 });
 
 // GET /pools/:poolId/structural-picks
@@ -206,7 +195,7 @@ structuralPicksRouter.get("/:poolId/structural-picks", async (req, res) => {
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const predictions = await prisma.structuralPrediction.findMany({
@@ -214,5 +203,5 @@ structuralPicksRouter.get("/:poolId/structural-picks", async (req, res) => {
     orderBy: { createdAtUtc: "asc" },
   });
 
-  return res.json({ picks: predictions });
+  return sendData(res, { picks: predictions } as any);
 });

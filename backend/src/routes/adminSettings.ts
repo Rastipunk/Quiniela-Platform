@@ -23,6 +23,7 @@ import {
   processDeadlineReminders,
   getDeadlineReminderStats,
 } from "../services/deadlineReminderService";
+import { sendData, sendOk, sendBadRequest, sendInternal } from "../lib/apiResponse";
 
 // Tipo extendido de Request con autenticación
 interface AuthenticatedRequest extends Request {
@@ -73,7 +74,7 @@ router.get("/email", async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    return res.json({
+    return sendData(res, {
       settings: {
         emailWelcomeEnabled: settings.emailWelcomeEnabled,
         emailPoolInvitationEnabled: settings.emailPoolInvitationEnabled,
@@ -93,10 +94,7 @@ router.get("/email", async (req: AuthenticatedRequest, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching email settings:", error);
-    return res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "Error al obtener configuración de emails.",
-    });
+    return sendInternal(res, "Error al obtener configuración de emails.");
   }
 });
 
@@ -112,21 +110,14 @@ router.put("/email", async (req: AuthenticatedRequest, res: Response) => {
     // Validar body
     const parseResult = updateEmailSettingsSchema.safeParse(req.body);
     if (!parseResult.success) {
-      return res.status(400).json({
-        error: "VALIDATION_ERROR",
-        message: "Datos inválidos.",
-        details: parseResult.error.flatten().fieldErrors,
-      });
+      return sendBadRequest(res, "VALIDATION_ERROR", { details: parseResult.error.flatten().fieldErrors });
     }
 
     const updates = parseResult.data;
 
     // Verificar que hay al menos un campo para actualizar
     if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        error: "VALIDATION_ERROR",
-        message: "Debe especificar al menos un campo para actualizar.",
-      });
+      return sendBadRequest(res, "Debe especificar al menos un campo para actualizar.");
     }
 
     // Obtener configuración actual para comparar cambios
@@ -148,10 +139,7 @@ router.put("/email", async (req: AuthenticatedRequest, res: Response) => {
 
     // Si no hay cambios reales, retornar sin actualizar
     if (Object.keys(changes).length === 0) {
-      return res.json({
-        message: "No hay cambios que aplicar.",
-        settings: currentSettings,
-      });
+      return sendOk(res, { message: "No hay cambios que aplicar.", settings: currentSettings });
     }
 
     // Actualizar configuración
@@ -188,7 +176,7 @@ router.put("/email", async (req: AuthenticatedRequest, res: Response) => {
       },
     });
 
-    return res.json({
+    return sendOk(res, {
       message: "Configuración de emails actualizada exitosamente.",
       settings: {
         emailWelcomeEnabled: updatedSettings.emailWelcomeEnabled,
@@ -202,10 +190,7 @@ router.put("/email", async (req: AuthenticatedRequest, res: Response) => {
     });
   } catch (error) {
     console.error("Error updating email settings:", error);
-    return res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "Error al actualizar configuración de emails.",
-    });
+    return sendInternal(res, "Error al actualizar configuración de emails.");
   }
 });
 
@@ -218,7 +203,7 @@ router.get("/email/stats", async (_req: AuthenticatedRequest, res: Response) => 
   try {
     // Por ahora retornamos datos básicos
     // TODO: Implementar tracking real de emails enviados
-    return res.json({
+    return sendData(res, {
       stats: {
         message:
           "Estadísticas de emails no implementadas. Consulta el dashboard de Resend.",
@@ -227,10 +212,7 @@ router.get("/email/stats", async (_req: AuthenticatedRequest, res: Response) => 
     });
   } catch (error) {
     console.error("Error fetching email stats:", error);
-    return res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "Error al obtener estadísticas de emails.",
-    });
+    return sendInternal(res, "Error al obtener estadísticas de emails.");
   }
 });
 
@@ -258,11 +240,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
     // Validar body
     const parseResult = testEmailSchema.safeParse(req.body);
     if (!parseResult.success) {
-      return res.status(400).json({
-        error: "VALIDATION_ERROR",
-        message: "Datos inválidos. Especifica 'type' y 'to' (email válido).",
-        details: parseResult.error.flatten().fieldErrors,
-      });
+      return sendBadRequest(res, "VALIDATION_ERROR", { details: parseResult.error.flatten().fieldErrors });
     }
 
     const { type, to } = parseResult.data;
@@ -339,10 +317,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
         break;
 
       default:
-        return res.status(400).json({
-          error: "INVALID_TYPE",
-          message: `Tipo de email no válido: ${type}`,
-        });
+        return sendBadRequest(res, `Tipo de email no válido: ${type}`);
     }
 
     // Log del test
@@ -355,7 +330,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
     });
 
     if (result.success) {
-      return res.json({
+      return sendOk(res, {
         message: `Email de prueba "${type}" enviado exitosamente a ${to}`,
         type,
         to,
@@ -363,8 +338,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
         skipReason: result.reason,
       });
     } else {
-      return res.status(500).json({
-        error: "EMAIL_SEND_FAILED",
+      return sendInternal(res, "EMAIL_SEND_FAILED", {
         message: `Error al enviar email de prueba: ${result.error}`,
         type,
         to,
@@ -372,10 +346,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
     }
   } catch (error) {
     console.error("Error sending test email:", error);
-    return res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "Error al enviar email de prueba.",
-    });
+    return sendInternal(res, "Error al enviar email de prueba.");
   }
 });
 
@@ -398,11 +369,7 @@ router.post(
       // Validar body
       const parseResult = runRemindersSchema.safeParse(req.body);
       if (!parseResult.success) {
-        return res.status(400).json({
-          error: "VALIDATION_ERROR",
-          message: "Datos inválidos.",
-          details: parseResult.error.flatten().fieldErrors,
-        });
+        return sendBadRequest(res, "VALIDATION_ERROR", { details: parseResult.error.flatten().fieldErrors });
       }
 
       const { hoursBeforeDeadline, dryRun } = parseResult.data;
@@ -431,7 +398,7 @@ router.post(
         },
       });
 
-      return res.json({
+      return sendOk(res, {
         message: dryRun
           ? "Simulación de recordatorios completada (no se enviaron emails)"
           : "Proceso de recordatorios completado",
@@ -439,10 +406,7 @@ router.post(
       });
     } catch (error) {
       console.error("Error running deadline reminders:", error);
-      return res.status(500).json({
-        error: "INTERNAL_ERROR",
-        message: "Error al ejecutar proceso de recordatorios.",
-      });
+      return sendInternal(res, "Error al ejecutar proceso de recordatorios.");
     }
   }
 );
@@ -461,7 +425,7 @@ router.get(
 
       const stats = await getDeadlineReminderStats(poolId, days);
 
-      return res.json({
+      return sendData(res, {
         stats,
         period: {
           days,
@@ -470,10 +434,7 @@ router.get(
       });
     } catch (error) {
       console.error("Error fetching reminder stats:", error);
-      return res.status(500).json({
-        error: "INTERNAL_ERROR",
-        message: "Error al obtener estadísticas de recordatorios.",
-      });
+      return sendInternal(res, "Error al obtener estadísticas de recordatorios.");
     }
   }
 );

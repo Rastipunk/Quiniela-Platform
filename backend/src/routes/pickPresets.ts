@@ -3,6 +3,7 @@
 
 import { Router } from "express";
 import { getAllPresets, getPresetByKey } from "../lib/pickPresets";
+import { sendData, sendNotFound } from "../lib/apiResponse";
 
 export const pickPresetsRouter = Router();
 
@@ -11,12 +12,11 @@ export const pickPresetsRouter = Router();
 pickPresetsRouter.get("/", async (req, res) => {
   const presets = getAllPresets();
 
-  return res.json({
+  return sendData(res, {
     presets: presets.map((p) => ({
       key: p.key,
       name: p.name,
       description: p.description,
-      // No incluir config completo aquí, solo metadata
     })),
   });
 });
@@ -29,11 +29,9 @@ pickPresetsRouter.get("/:key", async (req, res) => {
   const preset = getPresetByKey(key.toUpperCase());
 
   if (!preset) {
-    return res.status(404).json({
-      error: "NOT_FOUND",
-      message: `Preset ${key} not found`,
-    });
+    return sendNotFound(res, `Preset ${key} not found`);
   }
 
+  // eslint-disable-next-line -- preset is a plain object, sendData expects Record
   return res.json(preset);
 });

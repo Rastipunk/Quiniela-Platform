@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
+import { sendData, sendOk, sendNotFound, sendBadRequest, sendInternal } from "../lib/apiResponse";
 
 export const meRouter = Router();
 
@@ -28,6 +29,8 @@ meRouter.get("/pools", async (req, res) => {
     },
   });
 
+  // Note: returns raw array to preserve existing frontend contract (MePoolRow[])
+  // eslint-disable-next-line -- sendData expects object, frontend expects array
   return res.json(
     memberships.map((m) => ({
       poolId: m.poolId,
@@ -107,10 +110,7 @@ meRouter.get("/email-preferences", async (req, res) => {
   ]);
 
   if (!user) {
-    return res.status(404).json({
-      error: "USER_NOT_FOUND",
-      message: "Usuario no encontrado.",
-    });
+    return sendNotFound(res, "USER_NOT_FOUND", { message: "Usuario no encontrado." });
   }
 
   // Mapeo de preferencias de usuario a configuración de plataforma
@@ -121,7 +121,7 @@ meRouter.get("/email-preferences", async (req, res) => {
     emailPoolCompletions: platformSettings?.emailPoolCompletedEnabled ?? true,
   };
 
-  return res.json({
+  return sendData(res, {
     preferences: {
       emailNotificationsEnabled: user.emailNotificationsEnabled,
       emailPoolInvitations: user.emailPoolInvitations,
@@ -151,20 +151,14 @@ meRouter.put("/email-preferences", async (req, res) => {
   // Validar body
   const parseResult = updateEmailPreferencesSchema.safeParse(req.body);
   if (!parseResult.success) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      details: parseResult.error.flatten().fieldErrors,
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parseResult.error.flatten().fieldErrors });
   }
 
   const updates = parseResult.data;
 
   // Verificar que hay al menos un campo para actualizar
   if (Object.keys(updates).length === 0) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      message: "Debe especificar al menos un campo para actualizar.",
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { message: "Debe especificar al menos un campo para actualizar." });
   }
 
   try {
@@ -180,7 +174,7 @@ meRouter.put("/email-preferences", async (req, res) => {
       },
     });
 
-    return res.json({
+    return sendOk(res, {
       message: "Preferencias de email actualizadas exitosamente.",
       preferences: {
         emailNotificationsEnabled: updatedUser.emailNotificationsEnabled,
@@ -192,9 +186,6 @@ meRouter.put("/email-preferences", async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating email preferences:", error);
-    return res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "Error al actualizar preferencias de email.",
-    });
+    return sendInternal(res, "INTERNAL_ERROR", { message: "Error al actualizar preferencias de email." });
   }
 });

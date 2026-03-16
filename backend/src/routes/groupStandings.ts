@@ -7,6 +7,7 @@ import { canMakePicks } from "../services/poolStateMachine";
 import { advanceToRoundOf32, validateCanAutoAdvance } from "../services/instanceAdvancement";
 import { requirePoolAdmin } from "../lib/roles";
 import { parseFixtureData, type FixtureData } from "../lib/fixture";
+import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const groupStandingsRouter = Router();
 
@@ -38,15 +39,12 @@ groupStandingsRouter.put("/:poolId/group-standings/:phaseId/:groupId", async (re
 
   const parsed = groupStandingsSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      details: parsed.error.flatten(),
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const pool = await prisma.pool.findUnique({
@@ -55,22 +53,16 @@ groupStandingsRouter.put("/:poolId/group-standings/:phaseId/:groupId", async (re
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   // Validar que el pool permita hacer picks según su estado
   if (!canMakePicks(pool.status)) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Cannot make picks in this pool status",
-    });
+    return sendConflict(res, "CONFLICT", { message: "Cannot make picks in this pool status" });
   }
 
   if (pool.tournamentInstance.status === "ARCHIVED") {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "TournamentInstance is ARCHIVED",
-    });
+    return sendConflict(res, "CONFLICT", { message: "TournamentInstance is ARCHIVED" });
   }
 
   // Guardar pick granular
@@ -105,7 +97,7 @@ groupStandingsRouter.put("/:poolId/group-standings/:phaseId/:groupId", async (re
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(prediction);
+  return sendData(res, prediction);
 });
 
 // GET /pools/:poolId/group-standings/:phaseId/:groupId
@@ -115,7 +107,7 @@ groupStandingsRouter.get("/:poolId/group-standings/:phaseId/:groupId", async (re
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const prediction = await prisma.groupStandingsPrediction.findUnique({
@@ -129,7 +121,7 @@ groupStandingsRouter.get("/:poolId/group-standings/:phaseId/:groupId", async (re
     },
   });
 
-  return res.json({ prediction });
+  return sendData(res, { prediction });
 });
 
 // GET /pools/:poolId/group-standings/:phaseId
@@ -139,7 +131,7 @@ groupStandingsRouter.get("/:poolId/group-standings/:phaseId", async (req, res) =
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const predictions = await prisma.groupStandingsPrediction.findMany({
@@ -150,7 +142,7 @@ groupStandingsRouter.get("/:poolId/group-standings/:phaseId", async (req, res) =
     },
   });
 
-  return res.json({ predictions });
+  return sendData(res, { predictions });
 });
 
 // ==================== ENDPOINTS - HOST RESULTS ====================
@@ -162,18 +154,12 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
 
   const parsed = groupStandingsSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      details: parsed.error.flatten(),
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) {
-    return res.status(403).json({
-      error: "FORBIDDEN",
-      message: "Only HOST or CO_ADMIN can publish results",
-    });
+    return sendForbidden(res, "FORBIDDEN", { message: "Only HOST or CO_ADMIN can publish results" });
   }
 
   const pool = await prisma.pool.findUnique({
@@ -181,7 +167,7 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   // Verificar si ya existe un resultado (para determinar si es errata)
@@ -199,10 +185,7 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
 
   // Si es errata, requerir razón
   if (isErrata && !parsed.data.reason?.trim()) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      reason: "ERRATA_REASON_REQUIRED",
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { reason: "ERRATA_REASON_REQUIRED" });
   }
 
   // Publicar resultado granular
@@ -241,7 +224,7 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(result);
+  return sendData(res, result);
 });
 
 // GET /pools/:poolId/group-standings-results/:phaseId/:groupId
@@ -251,7 +234,7 @@ groupStandingsRouter.get("/:poolId/group-standings-results/:phaseId/:groupId", a
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const result = await prisma.groupStandingsResult.findUnique({
@@ -264,7 +247,7 @@ groupStandingsRouter.get("/:poolId/group-standings-results/:phaseId/:groupId", a
     },
   });
 
-  return res.json({ result });
+  return sendData(res, { result });
 });
 
 // GET /pools/:poolId/group-standings-results/:phaseId
@@ -274,7 +257,7 @@ groupStandingsRouter.get("/:poolId/group-standings-results/:phaseId", async (req
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const results = await prisma.groupStandingsResult.findMany({
@@ -284,7 +267,7 @@ groupStandingsRouter.get("/:poolId/group-standings-results/:phaseId", async (req
     },
   });
 
-  return res.json({ results });
+  return sendData(res, { results });
 });
 
 // ==================== GENERAR POSICIONES DESDE RESULTADOS DE PARTIDOS ====================
@@ -297,10 +280,7 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
 
   const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isHostOrCoAdmin) {
-    return res.status(403).json({
-      error: "FORBIDDEN",
-      message: "Only HOST or CO_ADMIN can generate standings",
-    });
+    return sendForbidden(res, "FORBIDDEN", { message: "Only HOST or CO_ADMIN can generate standings" });
   }
 
   const pool = await prisma.pool.findUnique({
@@ -309,19 +289,19 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   // Obtener datos del torneo
   const data = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
   if (!data?.matches || !data?.teams) {
-    return res.status(400).json({ error: "INVALID_DATA", message: "No tournament data found" });
+    return sendBadRequest(res, "INVALID_DATA", { message: "No tournament data found" });
   }
 
   // Obtener partidos del grupo
   const groupMatches = data.matches.filter((m) => m.groupId === groupId);
   if (groupMatches.length === 0) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "No matches found for group" });
+    return sendNotFound(res, "NOT_FOUND", { message: "No matches found for group" });
   }
 
   // Obtener resultados publicados para estos partidos
@@ -337,8 +317,7 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
   // Verificar que todos los partidos tengan resultado
   const resultsWithVersion = results.filter((r) => r.currentVersion !== null);
   if (resultsWithVersion.length !== groupMatches.length) {
-    return res.status(400).json({
-      error: "INCOMPLETE",
+    return sendBadRequest(res, "INCOMPLETE", {
       message: `Only ${resultsWithVersion.length}/${groupMatches.length} matches have results`,
     });
   }
@@ -518,7 +497,7 @@ groupStandingsRouter.post("/:poolId/group-standings-generate/:phaseId/:groupId",
     console.error("[AUTO-ADVANCE ERROR]", autoAdvanceError.message);
   }
 
-  return res.json({
+  return sendData(res, {
     result: savedResult,
     standings: standingsArray,
     autoAdvance: autoAdvanceResult,
@@ -532,7 +511,7 @@ groupStandingsRouter.get("/:poolId/group-match-results/:groupId", async (req, re
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const pool = await prisma.pool.findUnique({
@@ -541,7 +520,7 @@ groupStandingsRouter.get("/:poolId/group-match-results/:groupId", async (req, re
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const data = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
@@ -567,7 +546,7 @@ groupStandingsRouter.get("/:poolId/group-match-results/:groupId", async (req, re
     }
   }
 
-  return res.json({
+  return sendData(res, {
     matches: groupMatches,
     results: Object.fromEntries(resultsByMatch),
     completedCount: resultsByMatch.size,

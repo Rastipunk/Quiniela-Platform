@@ -27,6 +27,7 @@ import adminSettingsRouter from "./routes/adminSettings";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
 import { adminCorporateRouter } from "./routes/adminCorporate";
+import { sendOk, sendForbidden, sendInternal } from "./lib/apiResponse";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob } from "./jobs/deadlineReminderJob";
@@ -69,8 +70,7 @@ const BUILD_VERSION = "v0.6.0";
 const COMMIT_SHA = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || "local";
 
 app.get("/health", (_req, res) => {
-  res.json({
-    ok: true,
+  sendOk(res, {
     version: BUILD_VERSION,
     commit: COMMIT_SHA,
     timestamp: new Date().toISOString(),
@@ -110,13 +110,12 @@ app.use("/corporate", corporateRouter);
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   // CORS errors
   if (err.message.includes("not allowed by CORS")) {
-    res.status(403).json({ error: "CORS_ERROR", message: err.message });
+    sendForbidden(res, "CORS_ERROR", { message: err.message });
     return;
   }
 
   console.error("[UNHANDLED ERROR]", err.stack || err.message);
-  res.status(500).json({
-    error: "INTERNAL_ERROR",
+  sendInternal(res, "INTERNAL_ERROR", {
     message: process.env.NODE_ENV === "production"
       ? "An unexpected error occurred"
       : err.message,

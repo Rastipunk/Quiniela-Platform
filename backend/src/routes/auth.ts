@@ -15,6 +15,7 @@ import { CURRENT_LEGAL_VERSIONS } from "./legal";
 import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
 import { setAuthCookies, clearAuthCookies } from "../lib/authCookies";
 import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
+import { sendData, sendOk, sendCreated, sendBadRequest, sendUnauthorized, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
 
 export const authRouter = Router();
 
@@ -34,7 +35,7 @@ const registerSchema = z.object({
 authRouter.post("/register", async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const {
@@ -52,29 +53,21 @@ authRouter.post("/register", async (req, res) => {
 
   // Validar consentimiento legal obligatorio
   if (!acceptTerms) {
-    return res.status(400).json({
-      error: "CONSENT_REQUIRED",
-      reason: "TERMS_REQUIRED",
-    });
+    return sendBadRequest(res, "CONSENT_REQUIRED", { reason: "TERMS_REQUIRED" });
   }
 
   if (!acceptPrivacy) {
-    return res.status(400).json({
-      error: "CONSENT_REQUIRED",
-      reason: "PRIVACY_REQUIRED",
-    });
+    return sendBadRequest(res, "CONSENT_REQUIRED", { reason: "PRIVACY_REQUIRED" });
   }
 
   if (!acceptAge) {
-    return res.status(400).json({
-      error: "AGE_VERIFICATION_REQUIRED",
-    });
+    return sendBadRequest(res, "AGE_VERIFICATION_REQUIRED");
   }
 
   // Validar username
   const usernameValidation = validateUsername(rawUsername);
   if (!usernameValidation.valid) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", reason: usernameValidation.error });
+    return sendBadRequest(res, "VALIDATION_ERROR", { reason: usernameValidation.error });
   }
 
   const username = normalizeUsername(rawUsername);
@@ -82,13 +75,13 @@ authRouter.post("/register", async (req, res) => {
   // Verificar email único
   const existingEmail = await prisma.user.findUnique({ where: { email } });
   if (existingEmail) {
-    return res.status(409).json({ error: "EMAIL_TAKEN" });
+    return sendConflict(res, "EMAIL_TAKEN");
   }
 
   // Verificar username único
   const existingUsername = await prisma.user.findUnique({ where: { username } });
   if (existingUsername) {
-    return res.status(409).json({ error: "USERNAME_TAKEN" });
+    return sendConflict(res, "USERNAME_TAKEN");
   }
 
   const passwordHash = await hashPassword(password);
@@ -155,7 +148,7 @@ authRouter.post("/register", async (req, res) => {
   const token = signToken({ userId: user.id, platformRole: user.platformRole });
   setAuthCookies(res, token);
 
-  return res.status(201).json({
+  return sendCreated(res, {
     user,
     emailVerificationSent: true,
   });
@@ -169,7 +162,7 @@ const loginSchema = z.object({
 authRouter.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const email = parsed.data.email.trim().toLowerCase();
@@ -177,12 +170,12 @@ authRouter.post("/login", async (req, res) => {
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.status !== "ACTIVE") {
-    return res.status(401).json({ error: "UNAUTHENTICATED" });
+    return sendUnauthorized(res, "UNAUTHENTICATED");
   }
 
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
-    return res.status(401).json({ error: "UNAUTHENTICATED" });
+    return sendUnauthorized(res, "UNAUTHENTICATED");
   }
 
   await writeAuditEvent({
@@ -197,7 +190,7 @@ authRouter.post("/login", async (req, res) => {
   const token = signToken({ userId: user.id, platformRole: user.platformRole });
   setAuthCookies(res, token);
 
-  return res.json({
+  return sendData(res, {
     user: {
       id: user.id,
       email: user.email,
@@ -218,7 +211,7 @@ const forgotPasswordSchema = z.object({
 authRouter.post("/forgot-password", async (req, res) => {
   const parsed = forgotPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const email = parsed.data.email.trim().toLowerCase();
@@ -228,7 +221,7 @@ authRouter.post("/forgot-password", async (req, res) => {
 
   // Por seguridad, siempre retornamos éxito (no revelamos si el email existe)
   if (!user || user.status !== "ACTIVE") {
-    return res.json({ ok: true });
+    return sendOk(res);
   }
 
   // Verificar si es cuenta de Google sin contraseña local
@@ -239,9 +232,7 @@ authRouter.post("/forgot-password", async (req, res) => {
     // Retornar error específico para que el frontend muestre mensaje apropiado
     // Esto revela que el email existe, pero es necesario para buena UX
     // y las cuentas de Google ya son "públicas" por naturaleza
-    return res.status(400).json({
-      error: "GOOGLE_ACCOUNT",
-    });
+    return sendBadRequest(res, "GOOGLE_ACCOUNT");
   }
 
   // Generar token de reset
@@ -278,7 +269,7 @@ authRouter.post("/forgot-password", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ ok: true });
+  return sendOk(res);
 });
 
 // ========== RESET PASSWORD ==========
@@ -291,7 +282,7 @@ const resetPasswordSchema = z.object({
 authRouter.post("/reset-password", async (req, res) => {
   const parsed = resetPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { token, newPassword } = parsed.data;
@@ -306,7 +297,7 @@ authRouter.post("/reset-password", async (req, res) => {
   });
 
   if (!user) {
-    return res.status(400).json({ error: "INVALID_TOKEN" });
+    return sendBadRequest(res, "INVALID_TOKEN");
   }
 
   // Hash nueva password
@@ -331,7 +322,7 @@ authRouter.post("/reset-password", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ ok: true });
+  return sendOk(res);
 });
 
 // ========== GOOGLE OAUTH ==========
@@ -349,7 +340,7 @@ const googleAuthSchema = z.object({
 authRouter.post("/google", async (req, res) => {
   const parsed = googleAuthSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { idToken, timezone, acceptTerms, acceptPrivacy, acceptAge, acceptMarketing } = parsed.data;
@@ -358,7 +349,7 @@ authRouter.post("/google", async (req, res) => {
   const googleUser = await verifyGoogleToken(idToken);
 
   if (!googleUser) {
-    return res.status(401).json({ error: "INVALID_TOKEN" });
+    return sendUnauthorized(res, "INVALID_TOKEN");
   }
 
   // Normalize Google email for consistent matching
@@ -384,7 +375,7 @@ authRouter.post("/google", async (req, res) => {
   if (user) {
     // Verificar que esté activo
     if (user.status !== "ACTIVE") {
-      return res.status(403).json({ error: "ACCOUNT_INACTIVE" });
+      return sendForbidden(res, "ACCOUNT_INACTIVE");
     }
 
     // Si existe por email pero no tiene googleId, vincular cuenta
@@ -426,7 +417,7 @@ authRouter.post("/google", async (req, res) => {
     const token = signToken({ userId: user.id, platformRole: user.platformRole });
     setAuthCookies(res, token);
 
-    return res.json({
+    return sendData(res, {
       user: {
         id: user.id,
         email: user.email,
@@ -441,24 +432,21 @@ authRouter.post("/google", async (req, res) => {
   // Usuario nuevo: crear cuenta
   // Validar consentimiento legal obligatorio para nuevos usuarios
   if (!acceptTerms) {
-    return res.status(400).json({
-      error: "CONSENT_REQUIRED",
+    return sendBadRequest(res, "CONSENT_REQUIRED", {
       reason: "TERMS_REQUIRED",
       requiresConsent: true,
     });
   }
 
   if (!acceptPrivacy) {
-    return res.status(400).json({
-      error: "CONSENT_REQUIRED",
+    return sendBadRequest(res, "CONSENT_REQUIRED", {
       reason: "PRIVACY_REQUIRED",
       requiresConsent: true,
     });
   }
 
   if (!acceptAge) {
-    return res.status(400).json({
-      error: "AGE_VERIFICATION_REQUIRED",
+    return sendBadRequest(res, "AGE_VERIFICATION_REQUIRED", {
       requiresConsent: true,
     });
   }
@@ -543,7 +531,7 @@ authRouter.post("/google", async (req, res) => {
   const token = signToken({ userId: newUser.id, platformRole: newUser.platformRole });
   setAuthCookies(res, token);
 
-  return res.json({
+  return sendData(res, {
     user: {
       id: newUser.id,
       email: newUser.email,
@@ -566,7 +554,7 @@ const verifyEmailSchema = z.object({
 authRouter.get("/verify-email", async (req, res) => {
   const parsed = verifyEmailSchema.safeParse(req.query);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "TOKEN_REQUIRED" });
+    return sendBadRequest(res, "VALIDATION_ERROR", { reason: "TOKEN_REQUIRED" });
   }
 
   const { token } = parsed.data;
@@ -580,14 +568,12 @@ authRouter.get("/verify-email", async (req, res) => {
   });
 
   if (!user) {
-    return res.status(400).json({
-      error: "INVALID_TOKEN",
-    });
+    return sendBadRequest(res, "INVALID_TOKEN");
   }
 
   // Ya está verificado
   if (user.emailVerified) {
-    return res.json({
+    return sendData(res, {
       alreadyVerified: true,
     });
   }
@@ -611,7 +597,7 @@ authRouter.get("/verify-email", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({
+  return sendData(res, {
     verified: true,
   });
 });
@@ -620,7 +606,7 @@ authRouter.get("/verify-email", async (req, res) => {
 authRouter.post("/verify-email", async (req, res) => {
   const parsed = verifyEmailSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "TOKEN_REQUIRED" });
+    return sendBadRequest(res, "VALIDATION_ERROR", { reason: "TOKEN_REQUIRED" });
   }
 
   const { token } = parsed.data;
@@ -633,11 +619,11 @@ authRouter.post("/verify-email", async (req, res) => {
   });
 
   if (!user) {
-    return res.status(400).json({ error: "INVALID_TOKEN" });
+    return sendBadRequest(res, "INVALID_TOKEN");
   }
 
   if (user.emailVerified) {
-    return res.json({ alreadyVerified: true });
+    return sendData(res, { alreadyVerified: true });
   }
 
   await prisma.user.update({
@@ -658,7 +644,7 @@ authRouter.post("/verify-email", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ verified: true });
+  return sendData(res, { verified: true });
 });
 
 // ========== CORPORATE ACTIVATION ==========
@@ -668,7 +654,7 @@ authRouter.get("/check-corporate-invite", async (req, res) => {
   const { token: activationToken } = req.query;
 
   if (!activationToken || typeof activationToken !== "string") {
-    return res.status(400).json({ error: "MISSING_TOKEN" });
+    return sendBadRequest(res, "MISSING_TOKEN");
   }
 
   const invite = await prisma.corporateInvite.findUnique({
@@ -685,15 +671,15 @@ authRouter.get("/check-corporate-invite", async (req, res) => {
   });
 
   if (!invite) {
-    return res.status(400).json({ error: "INVALID_TOKEN" });
+    return sendBadRequest(res, "INVALID_TOKEN");
   }
 
   if (invite.activationTokenExpiresAt < new Date()) {
-    return res.status(400).json({ error: "TOKEN_EXPIRED" });
+    return sendBadRequest(res, "TOKEN_EXPIRED");
   }
 
   if (invite.status === "ACTIVATED") {
-    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+    return sendConflict(res, "ALREADY_ACTIVATED");
   }
 
   const existingUser = await prisma.user.findUnique({
@@ -701,7 +687,7 @@ authRouter.get("/check-corporate-invite", async (req, res) => {
     select: { id: true },
   });
 
-  return res.json({
+  return sendData(res, {
     email: invite.email,
     alreadyExists: !!existingUser,
     poolName: invite.pool.name,
@@ -723,7 +709,7 @@ const activateCorporateSchema = z.object({
 authRouter.post("/activate-corporate", async (req, res) => {
   const parsed = activateCorporateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const {
@@ -743,15 +729,15 @@ authRouter.post("/activate-corporate", async (req, res) => {
   });
 
   if (!invite) {
-    return res.status(400).json({ error: "INVALID_TOKEN" });
+    return sendBadRequest(res, "INVALID_TOKEN");
   }
 
   if (invite.activationTokenExpiresAt < new Date()) {
-    return res.status(400).json({ error: "TOKEN_EXPIRED" });
+    return sendBadRequest(res, "TOKEN_EXPIRED");
   }
 
   if (invite.status === "ACTIVATED") {
-    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+    return sendConflict(res, "ALREADY_ACTIVATED");
   }
 
   // Verificar si ya existe un usuario con ese email
@@ -783,10 +769,10 @@ authRouter.post("/activate-corporate", async (req, res) => {
       }
     }).catch((err) => {
       if (err.message === "ALREADY_ACTIVATED") {
-        return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+        return sendConflict(res, "ALREADY_ACTIVATED");
       }
       if (err.message === "POOL_FULL") {
-        return res.status(409).json({ error: "POOL_FULL" });
+        return sendConflict(res, "POOL_FULL");
       }
       throw err;
     });
@@ -820,7 +806,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
 
     const token = signToken({ userId: existingUser.id, platformRole: existingUser.platformRole });
     setAuthCookies(res, token);
-    return res.json({
+    return sendData(res, {
       user: {
         id: existingUser.id,
         email: existingUser.email,
@@ -838,16 +824,16 @@ authRouter.post("/activate-corporate", async (req, res) => {
 
   // Nuevo usuario: campos de registro son obligatorios
   if (!displayName || !rawUsername || !password) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", reason: "MISSING_REQUIRED_FIELDS" });
+    return sendBadRequest(res, "VALIDATION_ERROR", { reason: "MISSING_REQUIRED_FIELDS" });
   }
   if (!acceptTerms || !acceptPrivacy || !acceptAge) {
-    return res.status(400).json({ error: "CONSENT_REQUIRED" });
+    return sendBadRequest(res, "CONSENT_REQUIRED");
   }
 
   // Validar username
   const usernameValidation = validateUsername(rawUsername);
   if (!usernameValidation.valid) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", reason: usernameValidation.error });
+    return sendBadRequest(res, "VALIDATION_ERROR", { reason: usernameValidation.error });
   }
 
   const username = normalizeUsername(rawUsername);
@@ -855,7 +841,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
   // Verificar username único
   const existingUsername = await prisma.user.findUnique({ where: { username } });
   if (existingUsername) {
-    return res.status(409).json({ error: "USERNAME_TAKEN" });
+    return sendConflict(res, "USERNAME_TAKEN");
   }
 
   // Crear usuario y asignar al pool en transacción
@@ -920,10 +906,10 @@ authRouter.post("/activate-corporate", async (req, res) => {
   });
   } catch (err: any) {
     if (err.message === "ALREADY_ACTIVATED") {
-      return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+      return sendConflict(res, "ALREADY_ACTIVATED");
     }
     if (err.message === "POOL_FULL") {
-      return res.status(409).json({ error: "POOL_FULL" });
+      return sendConflict(res, "POOL_FULL");
     }
     throw err;
   }
@@ -973,7 +959,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
   const jwtToken = signToken({ userId: result.id, platformRole: result.platformRole });
   setAuthCookies(res, jwtToken);
 
-  return res.status(201).json({
+  return sendCreated(res, {
     user: result,
     poolId: invite.poolId,
     poolName: invite.pool.name,
@@ -997,13 +983,11 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ error: "USER_NOT_FOUND" });
+    return sendNotFound(res, "USER_NOT_FOUND");
   }
 
   if (user.emailVerified) {
-    return res.status(400).json({
-      error: "ALREADY_VERIFIED",
-    });
+    return sendBadRequest(res, "ALREADY_VERIFIED");
   }
 
   // Generar nuevo token
@@ -1028,9 +1012,7 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
 
   if (!emailResult.success) {
     console.error("Error sending verification email:", emailResult.error);
-    return res.status(500).json({
-      error: "EMAIL_SEND_FAILED",
-    });
+    return sendInternal(res, "EMAIL_SEND_FAILED");
   }
 
   await writeAuditEvent({
@@ -1042,7 +1024,7 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ ok: true });
+  return sendOk(res);
 });
 
 // ========== LOGOUT ==========
@@ -1050,5 +1032,5 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
 // POST /auth/logout — Clear auth cookies
 authRouter.post("/logout", (_req, res) => {
   clearAuthCookies(res);
-  return res.json({ ok: true });
+  return sendOk(res);
 });

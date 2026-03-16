@@ -93,10 +93,10 @@
 - **Fix propuesto:** Completado. Restantes se migran cuando se toquen.
 
 ### HI-04: API Response Shapes Inconsistentes
-- **Estado:** `[!]` Parcial (apiResponse.ts creado pero NO importado en ningun route)
-- **Archivos:** `backend/src/lib/apiResponse.ts` (helpers creados), todos los routes del backend (sin adopcion)
+- **Estado:** `[x]` Corregido (apiResponse.ts reescrito + adoptado en 22 archivos)
+- **Archivos:** `backend/src/lib/apiResponse.ts`, todos los routes, middleware, server.ts
 - **Descripcion:** Mezcla de `{ ok: true }`, `{ success: true }`, objetos directos. Errores: `{ error }` vs `{ error, message }` vs `{ error, reason }`.
-- **Fix propuesto:** Integrar apiResponse.ts helpers en todos los routes gradualmente.
+- **Fix:** Helpers `sendData`, `sendOk`, `sendCreated`, `sendError`, `sendBadRequest`, `sendUnauthorized`, `sendForbidden`, `sendNotFound`, `sendConflict`, `sendGone`, `sendTooMany`, `sendInternal` adoptados en todos los routes + middleware + server.ts. Solo 3 `res.json()` raw (arrays que el frontend espera directamente).
 
 ### HI-05: State en React que deberia estar en URL
 - **Estado:** `[x]` Corregido (useSearchParams en pool page + dashboard)
@@ -263,4 +263,5 @@
 | 2026-03-13 | LO-01 | Creado `lib/constants.ts` con MS, TOKEN_EXPIRY_MS, CRYPTO_BYTES, PLACEHOLDER_TEAM_PREFIXES. Aplicado en 6 archivos: auth.ts, corporate.ts, poolInvites.ts, picks.ts, poolHelpers.ts, adminCorporate.ts. | pendiente |
 | 2026-03-13 | LO-03 | Sanitizado console.error en 8 archivos backend: solo err.message en vez de full objects. Eliminado password logging de seedAdmin.ts. | pendiente |
 | 2026-03-13 | MD-08 | MatchSyncState.tournamentInstance: onDelete Cascade → Restrict. Requiere migration al deploy. | pendiente |
-| 2026-03-13 | HI-03 | Type safety: 129→33 as any (74% reduccion). Backend: PickJson/ResultJson/StructuralPickJson interfaces, typed() helper, pool status widened. Frontend: StructuralConfig, tDynamic i18n helper, webkit CSS casts. 17 backend + 10 frontend files. | pendiente |
+| 2026-03-13 | HI-03 | Type safety: 129→33 as any (74% reduccion). Backend: PickJson/ResultJson/StructuralPickJson interfaces, typed() helper, pool status widened. Frontend: StructuralConfig, tDynamic i18n helper, webkit CSS casts. 17 backend + 10 frontend files. | d868d46 |
+| 2026-03-15 | HI-04 | apiResponse.ts reescrito (sendData/sendOk/sendCreated + 8 error helpers con extra?). Adoptado en 22 archivos: 17 routes + 2 middleware + server.ts + adminSettings.ts + pickPresets.ts. ~250 res.json/res.status().json reemplazados. 3 res.json raw (arrays frontend contract). | pendiente |

@@ -12,6 +12,7 @@ import { extractPhases } from "../lib/fixture";
 import rateLimit from "express-rate-limit";
 import { transitionToActive } from "../services/poolStateMachine";
 import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
+import { sendOk, sendCreated, sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const corporateRouter = Router();
 
@@ -50,7 +51,7 @@ const inquirySchema = z.object({
 corporateRouter.post("/inquiry", inquiryLimiter, async (req, res) => {
   const parsed = inquirySchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { companyName, contactName, contactEmail, contactPhone, employeeCount, message, locale } = parsed.data;
@@ -87,8 +88,7 @@ corporateRouter.post("/inquiry", inquiryLimiter, async (req, res) => {
     locale,
   }).catch((err) => console.error("Error sending corporate confirmation:", err instanceof Error ? err.message : String(err)));
 
-  return res.status(201).json({
-    success: true,
+  return sendCreated(res, {
     message: "Solicitud enviada exitosamente. Nos pondremos en contacto contigo pronto.",
     id: inquiry.id,
   });
@@ -120,7 +120,7 @@ const createCorporatePoolSchema = z.object({
 corporateRouter.post("/pools", requireAuth, async (req, res) => {
   const parsed = createCorporatePoolSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const {
@@ -132,9 +132,9 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
 
   // Verificar que la instancia existe
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: tournamentInstanceId } });
-  if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!instance) return sendNotFound(res, "NOT_FOUND");
   if (instance.status === "ARCHIVED") {
-    return res.status(409).json({ error: "INSTANCE_ARCHIVED" });
+    return sendConflict(res, "INSTANCE_ARCHIVED");
   }
 
   // Procesar pickTypesConfig (misma lógica que pools.ts)
@@ -148,7 +148,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
       if (!dynamicConfig) {
         const preset = getPresetByKey(pickTypesConfig);
         if (!preset) {
-          return res.status(400).json({ error: "VALIDATION_ERROR", message: `Invalid preset key: ${pickTypesConfig}` });
+          return sendBadRequest(res, "VALIDATION_ERROR", { message: `Invalid preset key: ${pickTypesConfig}` });
         }
         dynamicConfig = preset.config;
       }
@@ -156,7 +156,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
     } else {
       const validation = validatePoolPickTypesConfig(pickTypesConfig);
       if (!validation.valid) {
-        return res.status(400).json({ error: "VALIDATION_ERROR", message: "Invalid pick types configuration", errors: validation.errors });
+        return sendBadRequest(res, "VALIDATION_ERROR", { message: "Invalid pick types configuration", errors: validation.errors });
       }
       finalPickTypesConfig = pickTypesConfig;
     }
@@ -255,8 +255,7 @@ corporateRouter.post("/pools", requireAuth, async (req, res) => {
     userAgent: req.get("user-agent"),
   });
 
-  return res.status(201).json({
-    success: true,
+  return sendCreated(res, {
     pool: result.pool,
     organization: { id: result.org.id, name: result.org.name },
     pendingInvites: result.pendingInvites,
@@ -275,12 +274,12 @@ corporateRouter.post("/pools/:poolId/employees", requireAuth, async (req, res) =
   const poolId = req.params.poolId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
+    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
   }
 
   const parsed = addEmployeesSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const uniqueEmails = [...new Set(parsed.data.emails.map((e) => e.toLowerCase()))];
@@ -315,7 +314,7 @@ corporateRouter.post("/pools/:poolId/employees", requireAuth, async (req, res) =
 
   const total = await prisma.corporateInvite.count({ where: { poolId } });
 
-  return res.json({ success: true, added, skipped, total });
+  return sendOk(res, { added, skipped, total });
 });
 
 // =========================================================================
@@ -326,7 +325,7 @@ corporateRouter.get("/pools/:poolId/employees", requireAuth, async (req, res) =>
   const poolId = req.params.poolId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
+    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
   }
 
   const invites = await prisma.corporateInvite.findMany({
@@ -350,7 +349,7 @@ corporateRouter.get("/pools/:poolId/employees", requireAuth, async (req, res) =>
     failed: invites.filter((i) => i.status === "FAILED").length,
   };
 
-  return res.json({ invites, summary });
+  return sendData(res, { invites, summary });
 });
 
 // =========================================================================
@@ -361,7 +360,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
   const poolId = req.params.poolId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
+    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
   }
 
   // Obtener pool y org para datos del email
@@ -369,7 +368,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
     where: { id: poolId },
     include: { organization: { select: { name: true, logoBase64: true, invitationMessage: true } } },
   });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
 
   const companyName = pool.organization?.name || "Empresa";
   const orgLogoBase64 = pool.organization?.logoBase64 || null;
@@ -381,7 +380,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
   });
 
   if (pendingInvites.length === 0) {
-    return res.json({ success: true, sent: 0, activated: 0, failed: 0 });
+    return sendOk(res, { sent: 0, activated: 0, failed: 0 });
   }
 
   let sent = 0;
@@ -472,7 +471,7 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req,
     userAgent: req.get("user-agent"),
   });
 
-  return res.json({ success: true, sent, activated, failed });
+  return sendOk(res, { sent, activated, failed });
 });
 
 // =========================================================================
@@ -496,19 +495,19 @@ corporateRouter.delete("/pools/:poolId/employees/:inviteId", requireAuth, async 
   const inviteId = req.params.inviteId as string;
 
   if (!(await requireCorporateHost(req.auth!.userId, poolId))) {
-    return res.status(403).json({ error: "FORBIDDEN", reason: "CORPORATE_HOST_ONLY" });
+    return sendForbidden(res, "FORBIDDEN", { reason: "CORPORATE_HOST_ONLY" });
   }
 
   const invite = await prisma.corporateInvite.findUnique({ where: { id: inviteId } });
   if (!invite || invite.poolId !== poolId) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   if (invite.status === "ACTIVATED") {
-    return res.status(409).json({ error: "ALREADY_ACTIVATED" });
+    return sendConflict(res, "ALREADY_ACTIVATED");
   }
 
   await prisma.corporateInvite.delete({ where: { id: inviteId } });
 
-  return res.json({ success: true });
+  return sendOk(res);
 });

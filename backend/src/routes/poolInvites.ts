@@ -12,6 +12,7 @@ import {
 import { sendPoolInvitationEmail, sendPoolFullNotificationEmail } from "../lib/email";
 import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { TOKEN_EXPIRY_MS } from "../lib/constants";
+import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
 
 export const poolInvitesRouter = Router();
 
@@ -25,22 +26,19 @@ poolInvitesRouter.post("/:poolId/invites", async (req, res) => {
   const { poolId } = req.params;
 
   const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const parsed = createInviteSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const pool = await prisma.pool.findUnique({ where: { id: poolId } });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
 
   // Validar que el pool permita crear invites según su estado
   if (!canCreateInvites(pool.status)) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Cannot create invites in this pool status"
-    });
+    return sendConflict(res, "CONFLICT", { message: "Cannot create invites in this pool status" });
   }
 
   // Comentario en español: generamos code y reintentamos si colisiona (muy raro)
@@ -73,7 +71,7 @@ poolInvitesRouter.post("/:poolId/invites", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.status(201).json(invite);
+  return sendCreated(res, invite as unknown as Record<string, unknown>);
 });
 
 // POST /pools/:poolId/send-invite-email
@@ -87,11 +85,11 @@ poolInvitesRouter.post("/:poolId/send-invite-email", async (req, res) => {
   const { poolId } = req.params;
 
   const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const parsed = sendInviteEmailSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { email, inviteCode } = parsed.data;
@@ -102,13 +100,13 @@ poolInvitesRouter.post("/:poolId/send-invite-email", async (req, res) => {
     prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } }),
   ]);
 
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND", message: "Pool not found" });
-  if (!inviter) return res.status(404).json({ error: "NOT_FOUND", message: "Inviter not found" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND", { message: "Pool not found" });
+  if (!inviter) return sendNotFound(res, "NOT_FOUND", { message: "Inviter not found" });
 
   // Verificar que el código de invitación existe y pertenece a este pool
   const invite = await prisma.poolInvite.findUnique({ where: { code: inviteCode } });
   if (!invite || invite.poolId !== poolId) {
-    return res.status(400).json({ error: "INVALID_CODE", message: "Invalid invite code for this pool" });
+    return sendBadRequest(res, "INVALID_CODE", { message: "Invalid invite code for this pool" });
   }
 
   // Buscar si el email corresponde a un usuario existente (para respetar preferencias)
@@ -129,9 +127,7 @@ poolInvitesRouter.post("/:poolId/send-invite-email", async (req, res) => {
 
   if (!emailResult.success && !emailResult.skipped) {
     console.error("Error sending pool invitation email:", emailResult.error);
-    return res.status(500).json({
-      error: "EMAIL_SEND_FAILED",
-    });
+    return sendInternal(res, "EMAIL_SEND_FAILED");
   }
 
   await writeAuditEvent({
@@ -144,8 +140,7 @@ poolInvitesRouter.post("/:poolId/send-invite-email", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({
-    success: true,
+  return sendOk(res, {
     message: emailResult.skipped
       ? "El email no fue enviado porque el usuario tiene deshabilitadas las notificaciones."
       : "Invitación enviada exitosamente.",
@@ -161,7 +156,7 @@ const joinSchema = z.object({
 poolInvitesRouter.post("/join", async (req, res) => {
   const parsed = joinSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const invite = await prisma.poolInvite.findUnique({
@@ -169,22 +164,19 @@ poolInvitesRouter.post("/join", async (req, res) => {
     include: { pool: true },
   });
 
-  if (!invite) return res.status(404).json({ error: "NOT_FOUND", message: "Invite not found" });
+  if (!invite) return sendNotFound(res, "NOT_FOUND", { message: "Invite not found" });
 
   // Validar que el pool acepte nuevos miembros según su estado
   if (!canJoinPool(invite.pool.status)) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Pool is not accepting new members"
-    });
+    return sendConflict(res, "CONFLICT", { message: "Pool is not accepting new members" });
   }
 
   if (invite.expiresAtUtc && invite.expiresAtUtc.getTime() < Date.now()) {
-    return res.status(409).json({ error: "CONFLICT", message: "Invite expired" });
+    return sendConflict(res, "CONFLICT", { message: "Invite expired" });
   }
 
   if (invite.maxUses != null && invite.uses >= invite.maxUses) {
-    return res.status(409).json({ error: "CONFLICT", message: "Invite maxUses reached" });
+    return sendConflict(res, "CONFLICT", { message: "Invite maxUses reached" });
   }
 
   // Determinar el status inicial según si requireApproval está activado
@@ -244,14 +236,10 @@ poolInvitesRouter.post("/join", async (req, res) => {
   });
   } catch (err: any) {
     if (err.message === "BANNED_FROM_POOL") {
-      return res.status(403).json({
-        error: "BANNED_FROM_POOL",
-      });
+      return sendForbidden(res, "BANNED_FROM_POOL");
     }
     if (err.message === "POOL_FULL") {
-      return res.status(409).json({
-        error: "POOL_FULL",
-      });
+      return sendConflict(res, "POOL_FULL");
     }
     throw err; // Re-throw if it's another error
   }
@@ -304,8 +292,7 @@ poolInvitesRouter.post("/join", async (req, res) => {
     }
   }
 
-  return res.json({
-    ok: true,
+  return sendOk(res, {
     poolId: joined.poolId,
     status: joined.status,
     message: joined.status === "PENDING_APPROVAL"

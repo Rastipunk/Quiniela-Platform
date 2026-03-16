@@ -14,6 +14,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { LegalDocumentType, PlatformRole } from "@prisma/client";
+import { sendData, sendOk, sendBadRequest, sendNotFound, sendInternal } from "../lib/apiResponse";
 
 // Tipo extendido de Request con autenticación
 interface AuthenticatedRequest extends Request {
@@ -51,9 +52,7 @@ router.get("/documents/:type", async (req: Request, res: Response) => {
     const typeKey = Array.isArray(type) ? type[0] : type;
     const documentType = typeKey ? typeMap[typeKey] : undefined;
     if (!documentType) {
-      return res.status(400).json({
-        error: "INVALID_TYPE",
-      });
+      return sendBadRequest(res, "INVALID_TYPE");
     }
 
     // Buscar documento activo
@@ -76,19 +75,13 @@ router.get("/documents/:type", async (req: Request, res: Response) => {
     });
 
     if (!document) {
-      return res.status(404).json({
-        error: "DOCUMENT_NOT_FOUND",
-        message: `No hay documento ${type} activo para el idioma ${locale}.`,
-      });
+      return sendNotFound(res, "DOCUMENT_NOT_FOUND", { message: `No hay documento ${type} activo para el idioma ${locale}.` });
     }
 
-    return res.json({ document });
+    return sendData(res, { document });
   } catch (error) {
     console.error("Error fetching legal document:", error);
-    return res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "Error al obtener el documento.",
-    });
+    return sendInternal(res, "INTERNAL_ERROR", { message: "Error al obtener el documento." });
   }
 });
 
@@ -112,7 +105,7 @@ router.get("/current-versions", async (_req: Request, res: Response) => {
       }),
     ]);
 
-    return res.json({
+    return sendData(res, {
       versions: {
         termsOfService: terms?.version || CURRENT_LEGAL_VERSIONS.TERMS_OF_SERVICE,
         privacyPolicy: privacy?.version || CURRENT_LEGAL_VERSIONS.PRIVACY_POLICY,
@@ -124,10 +117,7 @@ router.get("/current-versions", async (_req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching current versions:", error);
-    return res.status(500).json({
-      error: "INTERNAL_ERROR",
-      message: "Error al obtener versiones.",
-    });
+    return sendInternal(res, "INTERNAL_ERROR", { message: "Error al obtener versiones." });
   }
 });
 
@@ -155,10 +145,7 @@ router.get(
       });
 
       if (!user) {
-        return res.status(404).json({
-          error: "USER_NOT_FOUND",
-          message: "Usuario no encontrado.",
-        });
+        return sendNotFound(res, "USER_NOT_FOUND", { message: "Usuario no encontrado." });
       }
 
       // Verificar si las versiones aceptadas coinciden con las actuales
@@ -167,7 +154,7 @@ router.get(
       const privacyUpToDate =
         user.acceptedPrivacyVersion === CURRENT_LEGAL_VERSIONS.PRIVACY_POLICY;
 
-      return res.json({
+      return sendData(res, {
         consent: {
           termsOfService: {
             accepted: !!user.acceptedTermsAt,
@@ -190,10 +177,7 @@ router.get(
       });
     } catch (error) {
       console.error("Error fetching consent status:", error);
-      return res.status(500).json({
-        error: "INTERNAL_ERROR",
-        message: "Error al verificar estado de consentimiento.",
-      });
+      return sendInternal(res, "INTERNAL_ERROR", { message: "Error al verificar estado de consentimiento." });
     }
   }
 );
@@ -217,17 +201,14 @@ router.post(
       });
       const parsed = acceptSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+        return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
       }
 
       const { acceptTerms, acceptPrivacy, acceptAge, acceptMarketing } = parsed.data;
 
       // Validar que al menos se está aceptando algo
       if (!acceptTerms && !acceptPrivacy && acceptAge === undefined) {
-        return res.status(400).json({
-          error: "VALIDATION_ERROR",
-          reason: "NO_DOCUMENTS_SPECIFIED",
-        });
+        return sendBadRequest(res, "VALIDATION_ERROR", { reason: "NO_DOCUMENTS_SPECIFIED" });
       }
 
       const updateData: Record<string, any> = {};
@@ -265,16 +246,13 @@ router.post(
         },
       });
 
-      return res.json({
+      return sendOk(res, {
         message: "Consentimiento registrado exitosamente.",
         consent: updatedUser,
       });
     } catch (error) {
       console.error("Error accepting legal documents:", error);
-      return res.status(500).json({
-        error: "INTERNAL_ERROR",
-        message: "Error al registrar consentimiento.",
-      });
+      return sendInternal(res, "INTERNAL_ERROR", { message: "Error al registrar consentimiento." });
     }
   }
 );

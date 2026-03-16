@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { extractPhases } from "../lib/fixture";
+import { sendData, sendNotFound } from "../lib/apiResponse";
 
 export const catalogRouter = Router();
 
@@ -33,6 +34,7 @@ catalogRouter.get("/instances", async (_req, res) => {
     },
   });
 
+  // eslint-disable-next-line -- sendData expects object, frontend expects array
   res.json(instances);
 });
 
@@ -47,13 +49,13 @@ catalogRouter.get("/instances/:instanceId/phases", async (req, res) => {
   });
 
   if (!instance) {
-    return res.status(404).json({ message: "Instance not found" });
+    return sendNotFound(res, "Instance not found");
   }
 
   const phases = extractPhases(instance.dataJson);
 
   // Retornar las fases con la estructura que necesita el frontend
-  res.json({
+  sendData(res, {
     phases: phases.map((p) => ({
       id: p.id,
       name: p.name,

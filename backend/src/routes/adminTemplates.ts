@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { writeAuditEvent } from "../lib/audit";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
+import { sendOk, sendData, sendCreated, sendBadRequest, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 
 export const adminTemplatesRouter = Router();
@@ -45,14 +46,14 @@ function validateTemplateData(dataJson: unknown) {
 adminTemplatesRouter.post("/templates", async (req, res) => {
   const parsed = createTemplateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { key, name, description } = parsed.data;
 
   const existing = await prisma.tournamentTemplate.findUnique({ where: { key } });
   if (existing) {
-    return res.status(409).json({ error: "CONFLICT", message: "Template key already exists" });
+    return sendConflict(res, "Template key already exists");
   }
 
   const tpl = await prisma.tournamentTemplate.create({
@@ -69,7 +70,7 @@ adminTemplatesRouter.post("/templates", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.status(201).json(tpl);
+  return sendCreated(res, tpl);
 });
 
 // POST /admin/templates/:templateId/versions
@@ -78,17 +79,17 @@ adminTemplatesRouter.post("/templates/:templateId/versions", async (req, res) =>
 
   const parsed = createVersionSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const validated = validateTemplateData(parsed.data.dataJson);
   if (!validated.ok) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: validated.details });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: validated.details });
   }
 
   const template = await prisma.tournamentTemplate.findUnique({ where: { id: templateId } });
   if (!template) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const last = await prisma.tournamentTemplateVersion.findFirst({
@@ -117,7 +118,7 @@ adminTemplatesRouter.post("/templates/:templateId/versions", async (req, res) =>
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.status(201).json(version);
+  return sendCreated(res, version);
 });
 
 // PUT /admin/templates/:templateId/versions/:versionId  (solo DRAFT)
@@ -126,12 +127,12 @@ adminTemplatesRouter.put("/templates/:templateId/versions/:versionId", async (re
 
   const parsed = createVersionSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const validated = validateTemplateData(parsed.data.dataJson);
   if (!validated.ok) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: validated.details });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: validated.details });
   }
 
   const version = await prisma.tournamentTemplateVersion.findFirst({
@@ -139,11 +140,11 @@ adminTemplatesRouter.put("/templates/:templateId/versions/:versionId", async (re
   });
 
   if (!version) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   if (version.status !== "DRAFT") {
-    return res.status(409).json({ error: "CONFLICT", message: "Only DRAFT versions can be edited" });
+    return sendConflict(res, "Only DRAFT versions can be edited");
   }
 
   const updated = await prisma.tournamentTemplateVersion.update({
@@ -161,7 +162,7 @@ adminTemplatesRouter.put("/templates/:templateId/versions/:versionId", async (re
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(updated);
+  return sendData(res, updated);
 });
 
 // POST /admin/templates/:templateId/versions/:versionId/publish
@@ -173,16 +174,16 @@ adminTemplatesRouter.post("/templates/:templateId/versions/:versionId/publish", 
   });
 
   if (!version) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   if (version.status !== "DRAFT") {
-    return res.status(409).json({ error: "CONFLICT", message: "Only DRAFT versions can be published" });
+    return sendConflict(res, "Only DRAFT versions can be published");
   }
-    
+
   const validated = validateTemplateData(version.dataJson);
   if (!validated.ok) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: validated.details });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: validated.details });
   }
   const published = await prisma.$transaction(async (tx) => {
     const v = await tx.tournamentTemplateVersion.update({
@@ -208,7 +209,7 @@ adminTemplatesRouter.post("/templates/:templateId/versions/:versionId/publish", 
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ ok: true, publishedVersion: published });
+  return sendOk(res, { publishedVersion: published });
 });
 
 // GET /admin/templates
@@ -218,7 +219,7 @@ adminTemplatesRouter.get("/templates", async (_req, res) => {
     include: { currentPublishedVersion: true },
   });
 
-  return res.json(list);
+  return sendData(res, { templates: list });
 });
 
 // GET /admin/templates/:templateId/versions
@@ -230,5 +231,5 @@ adminTemplatesRouter.get("/templates/:templateId/versions", async (req, res) => 
     orderBy: { versionNumber: "desc" },
   });
 
-  return res.json(list);
+  return sendData(res, { versions: list });
 });

@@ -6,6 +6,16 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { writeAuditEvent } from "../lib/audit";
 import {
+  sendData,
+  sendOk,
+  sendCreated,
+  sendBadRequest,
+  sendNotFound,
+  sendConflict,
+  sendError,
+  sendInternal,
+} from "../lib/apiResponse";
+import {
   advanceToRoundOf32,
   advanceKnockoutPhase,
   advanceTwoLeggedPhase,
@@ -34,7 +44,7 @@ adminInstancesRouter.post("/templates/:templateId/instances", async (req, res) =
 
   const bodyParsed = createInstanceSchema.safeParse(req.body ?? {});
   if (!bodyParsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const template = await prisma.tournamentTemplate.findUnique({
@@ -42,7 +52,7 @@ adminInstancesRouter.post("/templates/:templateId/instances", async (req, res) =
     include: { currentPublishedVersion: true },
   });
 
-  if (!template) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!template) return sendNotFound(res, "NOT_FOUND");
 
   let sourceVersionId: string | null = null;
 
@@ -54,7 +64,7 @@ adminInstancesRouter.post("/templates/:templateId/instances", async (req, res) =
   }
 
   if (!sourceVersionId) {
-    return res.status(409).json({ error: "CONFLICT", message: "Template has no published version" });
+    return sendConflict(res, "Template has no published version");
   }
 
   const version = await prisma.tournamentTemplateVersion.findFirst({
@@ -62,11 +72,11 @@ adminInstancesRouter.post("/templates/:templateId/instances", async (req, res) =
   });
 
   if (!version) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Template version not found for this template" });
+    return sendNotFound(res, "Template version not found for this template");
   }
 
   if (version.status !== "PUBLISHED") {
-    return res.status(409).json({ error: "CONFLICT", message: "Selected templateVersionId is not PUBLISHED" });
+    return sendConflict(res, "Selected templateVersionId is not PUBLISHED");
   }
 
   const name = bodyParsed.data.name ?? `${template.name} (Instance)`;
@@ -91,7 +101,7 @@ adminInstancesRouter.post("/templates/:templateId/instances", async (req, res) =
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.status(201).json(instance);
+  return sendCreated(res, { instance });
 });
 
 function ensureTransition(from: string, to: string) {
@@ -109,10 +119,10 @@ adminInstancesRouter.post("/instances/:instanceId/activate", async (req, res) =>
   const { instanceId } = req.params;
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
-  if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!instance) return sendNotFound(res, "NOT_FOUND");
 
   if (!ensureTransition(instance.status, "ACTIVE")) {
-    return res.status(409).json({ error: "CONFLICT", message: `Cannot transition ${instance.status} -> ACTIVE` });
+    return sendConflict(res, `Cannot transition ${instance.status} -> ACTIVE`);
   }
 
   const updated = await prisma.tournamentInstance.update({
@@ -130,7 +140,7 @@ adminInstancesRouter.post("/instances/:instanceId/activate", async (req, res) =>
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(updated);
+  return sendData(res, { instance: updated });
 });
 
 // POST /admin/instances/:instanceId/complete  (ACTIVE -> COMPLETED)
@@ -138,10 +148,10 @@ adminInstancesRouter.post("/instances/:instanceId/complete", async (req, res) =>
   const { instanceId } = req.params;
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
-  if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!instance) return sendNotFound(res, "NOT_FOUND");
 
   if (!ensureTransition(instance.status, "COMPLETED")) {
-    return res.status(409).json({ error: "CONFLICT", message: `Cannot transition ${instance.status} -> COMPLETED` });
+    return sendConflict(res, `Cannot transition ${instance.status} -> COMPLETED`);
   }
 
   const updated = await prisma.tournamentInstance.update({
@@ -159,7 +169,7 @@ adminInstancesRouter.post("/instances/:instanceId/complete", async (req, res) =>
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(updated);
+  return sendData(res, { instance: updated });
 });
 
 // POST /admin/instances/:instanceId/archive  (DRAFT|COMPLETED -> ARCHIVED)
@@ -167,10 +177,10 @@ adminInstancesRouter.post("/instances/:instanceId/archive", async (req, res) => 
   const { instanceId } = req.params;
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
-  if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!instance) return sendNotFound(res, "NOT_FOUND");
 
   if (!ensureTransition(instance.status, "ARCHIVED")) {
-    return res.status(409).json({ error: "CONFLICT", message: `Cannot transition ${instance.status} -> ARCHIVED` });
+    return sendConflict(res, `Cannot transition ${instance.status} -> ARCHIVED`);
   }
 
   const updated = await prisma.tournamentInstance.update({
@@ -188,7 +198,7 @@ adminInstancesRouter.post("/instances/:instanceId/archive", async (req, res) => 
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(updated);
+  return sendData(res, { instance: updated });
 });
 
 // GET /admin/instances
@@ -196,15 +206,15 @@ adminInstancesRouter.get("/instances", async (_req, res) => {
   const list = await prisma.tournamentInstance.findMany({
     orderBy: { createdAtUtc: "desc" },
   });
-  return res.json(list);
+  return sendData(res, { instances: list });
 });
 
 // GET /admin/instances/:instanceId
 adminInstancesRouter.get("/instances/:instanceId", async (req, res) => {
   const { instanceId } = req.params;
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
-  if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
-  return res.json(instance);
+  if (!instance) return sendNotFound(res, "NOT_FOUND");
+  return sendData(res, { instance });
 });
 
 // ========== TOURNAMENT ADVANCEMENT ENDPOINTS ==========
@@ -232,8 +242,7 @@ adminInstancesRouter.post("/instances/:instanceId/advance-to-r32", async (req, r
       userAgent: req.get("user-agent") ?? null,
     });
 
-    return res.json({
-      success: true,
+    return sendOk(res, {
       message: "Avance a Round of 32 completado",
       data: {
         standings: Object.fromEntries(result.standings),
@@ -244,10 +253,7 @@ adminInstancesRouter.post("/instances/:instanceId/advance-to-r32", async (req, r
       },
     });
   } catch (error: any) {
-    return res.status(400).json({
-      error: "ADVANCEMENT_FAILED",
-      message: error.message,
-    });
+    return sendBadRequest(res, error.message);
   }
 });
 
@@ -264,7 +270,7 @@ adminInstancesRouter.post("/instances/:instanceId/advance-knockout", async (req,
 
   const bodyParsed = advanceKnockoutSchema.safeParse(req.body);
   if (!bodyParsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const { currentPhaseId, nextPhaseId } = bodyParsed.data;
@@ -286,18 +292,14 @@ adminInstancesRouter.post("/instances/:instanceId/advance-knockout", async (req,
       userAgent: req.get("user-agent") ?? null,
     });
 
-    return res.json({
-      success: true,
+    return sendOk(res, {
       message: `Avance de ${currentPhaseId} a ${nextPhaseId} completado`,
       data: {
         resolvedMatches: result.resolvedMatches,
       },
     });
   } catch (error: any) {
-    return res.status(400).json({
-      error: "ADVANCEMENT_FAILED",
-      message: error.message,
-    });
+    return sendBadRequest(res, error.message);
   }
 });
 
@@ -315,7 +317,7 @@ adminInstancesRouter.post("/instances/:instanceId/advance-two-legged", async (re
 
   const bodyParsed = advanceTwoLeggedSchema.safeParse(req.body);
   if (!bodyParsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const { currentRound, nextRound, poolId } = bodyParsed.data;
@@ -336,7 +338,7 @@ adminInstancesRouter.post("/instances/:instanceId/advance-two-legged", async (re
     }
 
     if (poolIds.length === 0) {
-      return res.status(404).json({ error: "NOT_FOUND", message: "No pools found for this instance" });
+      return sendNotFound(res, "No pools found for this instance");
     }
 
     const allResults = [];
@@ -367,16 +369,12 @@ adminInstancesRouter.post("/instances/:instanceId/advance-two-legged", async (re
       userAgent: req.get("user-agent") ?? null,
     });
 
-    return res.json({
-      success: true,
+    return sendOk(res, {
       message: `Avance de ${currentRound} a ${nextRound} completado para ${poolIds.length} pool(s)`,
       data: allResults,
     });
   } catch (error: any) {
-    return res.status(400).json({
-      error: "ADVANCEMENT_FAILED",
-      message: error.message,
-    });
+    return sendBadRequest(res, error.message);
   }
 });
 
@@ -388,16 +386,13 @@ adminInstancesRouter.get("/instances/:instanceId/group-stage-status", async (req
   try {
     const validation = await validateGroupStageComplete(instanceId);
 
-    return res.json({
+    return sendData(res, {
       isComplete: validation.isComplete,
       missingMatches: validation.missingMatches,
       missingCount: validation.missingMatches.length,
     });
   } catch (error: any) {
-    return res.status(400).json({
-      error: "VALIDATION_FAILED",
-      message: error.message,
-    });
+    return sendBadRequest(res, error.message);
   }
 });
 
@@ -417,7 +412,7 @@ adminInstancesRouter.put("/instances/:instanceId/result-source", async (req, res
 
   const bodyParsed = resultSourceConfigSchema.safeParse(req.body);
   if (!bodyParsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const { resultSourceMode, apiFootballLeagueId, apiFootballSeasonId, syncEnabled } = bodyParsed.data;
@@ -425,16 +420,13 @@ adminInstancesRouter.put("/instances/:instanceId/result-source", async (req, res
   // Si es AUTO, requerir IDs de API-Football
   if (resultSourceMode === "AUTO") {
     if (!apiFootballLeagueId || !apiFootballSeasonId) {
-      return res.status(400).json({
-        error: "VALIDATION_ERROR",
-        message: "apiFootballLeagueId and apiFootballSeasonId are required when resultSourceMode is AUTO",
-      });
+      return sendBadRequest(res, "apiFootballLeagueId and apiFootballSeasonId are required when resultSourceMode is AUTO");
     }
   }
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
   if (!instance) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const updated = await prisma.tournamentInstance.update({
@@ -462,7 +454,7 @@ adminInstancesRouter.put("/instances/:instanceId/result-source", async (req, res
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(updated);
+  return sendData(res, { instance: updated });
 });
 
 // ========== MATCH MAPPING ENDPOINTS ==========
@@ -483,19 +475,16 @@ adminInstancesRouter.post("/instances/:instanceId/match-mappings", async (req, r
 
   const bodyParsed = bulkMappingsSchema.safeParse(req.body);
   if (!bodyParsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: bodyParsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
   if (!instance) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   if (instance.resultSourceMode !== "AUTO") {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Match mappings can only be created for instances in AUTO mode",
-    });
+    return sendConflict(res, "Match mappings can only be created for instances in AUTO mode");
   }
 
   const { mappings } = bodyParsed.data;
@@ -532,8 +521,7 @@ adminInstancesRouter.post("/instances/:instanceId/match-mappings", async (req, r
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.status(201).json({
-    success: true,
+  return sendCreated(res, {
     created: results.length,
     mappings: results,
   });
@@ -546,7 +534,7 @@ adminInstancesRouter.get("/instances/:instanceId/match-mappings", async (req, re
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
   if (!instance) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const mappings = await prisma.matchExternalMapping.findMany({
@@ -554,7 +542,7 @@ adminInstancesRouter.get("/instances/:instanceId/match-mappings", async (req, re
     orderBy: { createdAtUtc: "asc" },
   });
 
-  return res.json({
+  return sendData(res, {
     instanceId,
     resultSourceMode: instance.resultSourceMode,
     mappingsCount: mappings.length,
@@ -572,7 +560,7 @@ adminInstancesRouter.delete("/instances/:instanceId/match-mappings/:mappingId", 
   });
 
   if (!mapping) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   await prisma.matchExternalMapping.delete({ where: { id: mappingId } });
@@ -587,7 +575,7 @@ adminInstancesRouter.delete("/instances/:instanceId/match-mappings/:mappingId", 
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ success: true });
+  return sendOk(res);
 });
 
 // ========== SYNC ENDPOINTS ==========
@@ -599,23 +587,17 @@ adminInstancesRouter.post("/instances/:instanceId/sync", async (req, res) => {
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
   if (!instance) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   if (instance.resultSourceMode !== "AUTO") {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Sync is only available for instances in AUTO mode",
-    });
+    return sendConflict(res, "Sync is only available for instances in AUTO mode");
   }
 
   const syncService = getResultSyncService();
 
   if (!syncService.isAvailable()) {
-    return res.status(503).json({
-      error: "SERVICE_UNAVAILABLE",
-      message: "API-Football service is not available",
-    });
+    return sendError(res, 503, "API-Football service is not available");
   }
 
   try {
@@ -635,15 +617,9 @@ adminInstancesRouter.post("/instances/:instanceId/sync", async (req, res) => {
       userAgent: req.get("user-agent") ?? null,
     });
 
-    return res.json({
-      success: true,
-      result,
-    });
+    return sendOk(res, { result });
   } catch (error: any) {
-    return res.status(500).json({
-      error: "SYNC_FAILED",
-      message: error.message,
-    });
+    return sendInternal(res, error.message);
   }
 });
 
@@ -654,7 +630,7 @@ adminInstancesRouter.get("/instances/:instanceId/sync-status", async (req, res) 
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
   if (!instance) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   // Obtener últimos 20 logs de sincronización
@@ -672,7 +648,7 @@ adminInstancesRouter.get("/instances/:instanceId/sync-status", async (req, res) 
   // Estado del job global
   const jobStatus = getJobStatus();
 
-  return res.json({
+  return sendData(res, {
     instanceId,
     instanceName: instance.name,
     resultSourceMode: instance.resultSourceMode,
@@ -692,10 +668,7 @@ adminInstancesRouter.post("/sync/trigger-all", async (req, res) => {
   const syncService = getResultSyncService();
 
   if (!syncService.isAvailable()) {
-    return res.status(503).json({
-      error: "SERVICE_UNAVAILABLE",
-      message: "API-Football service is not available",
-    });
+    return sendError(res, 503, "API-Football service is not available");
   }
 
   try {
@@ -715,15 +688,9 @@ adminInstancesRouter.post("/sync/trigger-all", async (req, res) => {
       userAgent: req.get("user-agent") ?? null,
     });
 
-    return res.json({
-      success: true,
-      summary,
-    });
+    return sendOk(res, { summary });
   } catch (error: any) {
-    return res.status(500).json({
-      error: "SYNC_FAILED",
-      message: error.message,
-    });
+    return sendInternal(res, error.message);
   }
 });
 
@@ -740,7 +707,7 @@ adminInstancesRouter.post("/instances/:instanceId/update-r16-draw", async (req, 
 
     // 1. Load instance
     const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
-    if (!instance) return res.status(404).json({ error: "NOT_FOUND" });
+    if (!instance) return sendNotFound(res, "NOT_FOUND");
 
     // Dynamic fixture JSON with API-Football specific extensions
     const currentData = instance.dataJson as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- admin-only dynamic fixture manipulation
@@ -762,10 +729,10 @@ adminInstancesRouter.post("/instances/:instanceId/update-r16-draw", async (req, 
     log(`Found ${r16Fixtures.length} R16 fixtures from API-Football`);
 
     if (r16Fixtures.length === 0) {
-      return res.json({ success: false, message: "No R16 fixtures found in API-Football yet", logs });
+      return sendData(res, { success: false, message: "No R16 fixtures found in API-Football yet", logs });
     }
     if (r16Fixtures.length !== 16) {
-      return res.json({ success: false, message: `Expected 16 R16 fixtures, got ${r16Fixtures.length}`, logs });
+      return sendData(res, { success: false, message: `Expected 16 R16 fixtures, got ${r16Fixtures.length}`, logs });
     }
 
     // 3. Group into ties
@@ -928,14 +895,13 @@ adminInstancesRouter.post("/instances/:instanceId/update-r16-draw", async (req, 
     });
 
     log("DONE");
-    return res.json({
-      success: true,
+    return sendOk(res, {
       summary: { ties: ties.length, matchesUpdated, mappings: mappingCount, syncStates: syncCount, poolsUpdated: pools.length },
       logs,
     });
   } catch (error: any) {
     log(`ERROR: ${error.message}`);
-    return res.status(500).json({ error: error.message, logs });
+    return sendInternal(res, error.message);
   }
 });
 
@@ -965,7 +931,7 @@ adminInstancesRouter.get("/sync/status", async (_req, res) => {
     },
   });
 
-  return res.json({
+  return sendData(res, {
     serviceAvailable: syncService.isAvailable(),
     jobStatus,
     autoInstancesCount,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
+import { sendData, sendOk, sendBadRequest, sendNotFound } from "../lib/apiResponse";
 
 export const userProfileRouter = Router();
 
@@ -57,10 +58,10 @@ userProfileRouter.get("/me/profile", async (req, res) => {
   });
 
   if (!user) {
-    return res.status(404).json({ error: "USER_NOT_FOUND" });
+    return sendNotFound(res, "USER_NOT_FOUND");
   }
 
-  return res.json({
+  return sendData(res, {
     user: {
       id: user.id,
       email: user.email,
@@ -92,10 +93,7 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
   // Validación del payload
   const parseResult = updateProfileSchema.safeParse(req.body);
   if (!parseResult.success) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      details: parseResult.error.issues,
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parseResult.error.issues });
   }
 
   const data = parseResult.data;
@@ -111,7 +109,7 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
   });
 
   if (!currentUser) {
-    return res.status(404).json({ error: "USER_NOT_FOUND" });
+    return sendNotFound(res, "USER_NOT_FOUND");
   }
 
   // Comentario en español: validación de cambio de username (30 días)
@@ -122,9 +120,7 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({
-        error: "USERNAME_TAKEN",
-      });
+      return sendBadRequest(res, "USERNAME_TAKEN");
     }
 
     // Verificar límite de 30 días
@@ -135,10 +131,7 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
 
       if (daysSinceLastChange < 30) {
         const daysRemaining = Math.ceil(30 - daysSinceLastChange);
-        return res.status(400).json({
-          error: "USERNAME_CHANGE_TOO_SOON",
-          daysRemaining,
-        });
+        return sendBadRequest(res, "USERNAME_CHANGE_TOO_SOON", { daysRemaining });
       }
     }
   }
@@ -156,16 +149,11 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
       monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
 
     if (actualAge < 13) {
-      return res.status(400).json({
-        error: "AGE_TOO_YOUNG",
-      });
+      return sendBadRequest(res, "AGE_TOO_YOUNG");
     }
 
     if (actualAge > 120) {
-      return res.status(400).json({
-        error: "AGE_INVALID",
-        message: "Por favor verifica tu fecha de nacimiento",
-      });
+      return sendBadRequest(res, "AGE_INVALID", { message: "Por favor verifica tu fecha de nacimiento" });
     }
   }
 
@@ -236,7 +224,5 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
     },
   });
 
-  return res.json({
-    user: updatedUser,
-  });
+  return sendOk(res, { user: updatedUser });
 });

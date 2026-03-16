@@ -6,6 +6,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "../services/poolStateMachine";
 import { extractMatches, type FixtureMatch } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES } from "../lib/constants";
+import { sendData, sendOk, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const picksRouter = Router();
 
@@ -53,13 +54,13 @@ picksRouter.get("/:poolId/matches", async (req, res) => {
   const { poolId } = req.params;
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
-  if (!isMember) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isMember) return sendForbidden(res, "FORBIDDEN");
 
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     include: { tournamentInstance: true },
   });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
 
   const matches = extractMatches(pool.tournamentInstance.dataJson);
   const now = new Date();
@@ -75,7 +76,7 @@ picksRouter.get("/:poolId/matches", async (req, res) => {
     };
   });
 
-  return res.json({
+  return sendData(res, {
     pool: {
       id: pool.id,
       name: pool.name,
@@ -95,50 +96,46 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
 
   const parsed = upsertPickSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
-  if (!isMember) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isMember) return sendForbidden(res, "FORBIDDEN");
 
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     include: { tournamentInstance: true },
   });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
 
   // Validar que el pool permita hacer picks según su estado
   if (!canMakePicks(pool.status)) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Cannot make picks in this pool status"
-    });
+    return sendConflict(res, "CONFLICT", { message: "Cannot make picks in this pool status" });
   }
 
   // Comentario en español: no permitimos picks en instancias archivadas (guardrail)
   if (pool.tournamentInstance.status === "ARCHIVED") {
-    return res.status(409).json({ error: "CONFLICT", message: "TournamentInstance is ARCHIVED" });
+    return sendConflict(res, "CONFLICT", { message: "TournamentInstance is ARCHIVED" });
   }
 
   const matches = extractMatches(pool.tournamentInstance.dataJson);
   const match = matches.find((m) => m.id === matchId);
-  if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
+  if (!match) return sendNotFound(res, "NOT_FOUND", { message: "Match not found in instance snapshot" });
 
   // Block picks on placeholder matches (teams not yet determined)
   const isPlaceholder = (teamId: string) => PLACEHOLDER_TEAM_PREFIXES.some((p: string) => teamId === p || teamId.startsWith(p));
   if (isPlaceholder(match.homeTeamId) || isPlaceholder(match.awayTeamId)) {
-    return res.status(409).json({ error: "MATCH_PENDING", message: "Cannot make picks on matches with teams not yet determined" });
+    return sendConflict(res, "MATCH_PENDING", { message: "Cannot make picks on matches with teams not yet determined" });
   }
 
   const deadlineUtc = computeDeadlineUtc(match.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
   if (!deadlineUtc) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Invalid kickoffUtc on match" });
+    return sendBadRequest(res, "VALIDATION_ERROR", { message: "Invalid kickoffUtc on match" });
   }
 
   const now = new Date();
   if (now.getTime() > deadlineUtc.getTime()) {
-    return res.status(409).json({
-      error: "DEADLINE_PASSED",
+    return sendConflict(res, "DEADLINE_PASSED", {
       deadlineUtc: deadlineUtc.toISOString(),
       nowUtc: now.toISOString(),
     });
@@ -173,7 +170,7 @@ picksRouter.put("/:poolId/picks/:matchId", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(prediction);
+  return sendOk(res, { prediction });
 });
 
 // GET /pools/:poolId/matches/:matchId/picks
@@ -183,23 +180,23 @@ picksRouter.get("/:poolId/matches/:matchId/picks", async (req, res) => {
   const { poolId, matchId } = req.params;
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
-  if (!isMember) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isMember) return sendForbidden(res, "FORBIDDEN");
 
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     include: { tournamentInstance: true },
   });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
 
   // Usar fixtureSnapshot si existe (tiene kickoffs personalizados), sino usar dataJson de la instancia
   const fixtureData = pool.fixtureSnapshot || pool.tournamentInstance.dataJson;
   const matches = extractMatches(fixtureData);
   const match = matches.find((m) => m.id === matchId);
-  if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found" });
+  if (!match) return sendNotFound(res, "NOT_FOUND", { message: "Match not found" });
 
   const deadlineUtc = computeDeadlineUtc(match.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
   if (!deadlineUtc) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", message: "Invalid kickoffUtc" });
+    return sendBadRequest(res, "VALIDATION_ERROR", { message: "Invalid kickoffUtc" });
   }
 
   const now = new Date();
@@ -216,7 +213,7 @@ picksRouter.get("/:poolId/matches/:matchId/picks", async (req, res) => {
       select: { id: true, displayName: true },
     });
 
-    return res.json({
+    return sendData(res, {
       matchId,
       deadlineUtc: deadlineUtc.toISOString(),
       isUnlocked: false,
@@ -259,7 +256,7 @@ picksRouter.get("/:poolId/matches/:matchId/picks", async (req, res) => {
     return a.displayName.localeCompare(b.displayName);
   });
 
-  return res.json({
+  return sendData(res, {
     matchId,
     deadlineUtc: deadlineUtc.toISOString(),
     isUnlocked: true,
@@ -273,12 +270,12 @@ picksRouter.get("/:poolId/picks", async (req, res) => {
   const { poolId } = req.params;
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
-  if (!isMember) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isMember) return sendForbidden(res, "FORBIDDEN");
 
   const list = await prisma.prediction.findMany({
     where: { poolId, userId: req.auth!.userId },
     orderBy: { updatedAtUtc: "desc" },
   });
 
-  return res.json(list);
+  return sendData(res, { picks: list });
 });

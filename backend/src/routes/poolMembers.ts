@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
+import { sendData, sendOk, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 import { requirePoolAdmin, isPoolOwner, NON_LEAVABLE_ROLES } from "../lib/roles";
 import { transitionToActive } from "../services/poolStateMachine";
 
@@ -14,7 +15,7 @@ poolMembersRouter.get("/:poolId/members", async (req, res) => {
   const member = await prisma.poolMember.findFirst({
     where: { poolId, userId: req.auth!.userId, status: "ACTIVE" },
   });
-  if (!member) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!member) return sendForbidden(res, "FORBIDDEN");
 
   const members = await prisma.poolMember.findMany({
     where: { poolId },
@@ -22,14 +23,14 @@ poolMembersRouter.get("/:poolId/members", async (req, res) => {
     orderBy: { joinedAtUtc: "asc" },
   });
 
-  return res.json(members.map(m => ({
+  return sendData(res, { members: members.map(m => ({
     id: m.id,
     userId: m.userId,
     displayName: m.user.displayName,
     role: m.role,
     status: m.status,
     joinedAtUtc: m.joinedAtUtc,
-  })));
+  })) });
 });
 
 // GET /pools/:poolId/pending-members  (solo HOST/CO_ADMIN)
@@ -37,7 +38,7 @@ poolMembersRouter.get("/:poolId/pending-members", async (req, res) => {
   const { poolId } = req.params;
 
   const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const pendingMembers = await prisma.poolMember.findMany({
     where: {
@@ -57,8 +58,7 @@ poolMembersRouter.get("/:poolId/pending-members", async (req, res) => {
     orderBy: { joinedAtUtc: "asc" },
   });
 
-  return res.json({
-    ok: true,
+  return sendOk(res, {
     pendingMembers: pendingMembers.map((m) => ({
       id: m.id,
       userId: m.userId,
@@ -75,21 +75,18 @@ poolMembersRouter.post("/:poolId/members/:memberId/approve", async (req, res) =>
   const { poolId, memberId } = req.params;
 
   const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const member = await prisma.poolMember.findUnique({
     where: { id: memberId },
     include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } }
   });
 
-  if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
-  if (member.poolId !== poolId) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!member) return sendNotFound(res, "Member not found");
+  if (member.poolId !== poolId) return sendForbidden(res, "FORBIDDEN");
 
   if (member.status !== ("PENDING_APPROVAL")) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Member is not pending approval"
-    });
+    return sendConflict(res, "Member is not pending approval");
   }
 
   await prisma.poolMember.update({
@@ -118,10 +115,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/approve", async (req, res) =>
   // Trigger transición DRAFT → ACTIVE si es el primer jugador activo
   await transitionToActive(poolId, member.userId);
 
-  return res.json({
-    ok: true,
-    message: "Member approved successfully"
-  });
+  return sendOk(res, { message: "Member approved successfully" });
 });
 
 // POST /pools/:poolId/members/:memberId/reject  (solo HOST/CO_ADMIN)
@@ -133,11 +127,11 @@ poolMembersRouter.post("/:poolId/members/:memberId/reject", async (req, res) => 
   const { poolId, memberId } = req.params;
 
   const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const parsed = rejectMemberSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const member = await prisma.poolMember.findUnique({
@@ -145,14 +139,11 @@ poolMembersRouter.post("/:poolId/members/:memberId/reject", async (req, res) => 
     include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } }
   });
 
-  if (!member) return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
-  if (member.poolId !== poolId) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!member) return sendNotFound(res, "Member not found");
+  if (member.poolId !== poolId) return sendForbidden(res, "FORBIDDEN");
 
   if (member.status !== ("PENDING_APPROVAL")) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Member is not pending approval"
-    });
+    return sendConflict(res, "Member is not pending approval");
   }
 
   // Rechazar = eliminar el registro (el usuario puede intentar unirse de nuevo)
@@ -175,10 +166,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/reject", async (req, res) => 
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({
-    ok: true,
-    message: "Member rejected successfully"
-  });
+  return sendOk(res, { message: "Member rejected successfully" });
 });
 
 const kickMemberSchema = z.object({
@@ -192,11 +180,11 @@ poolMembersRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
   const actorUserId = req.auth!.userId;
 
   const isHostOrCoAdmin = await requirePoolAdmin(actorUserId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const parsed = kickMemberSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const { reason } = parsed.data;
@@ -208,22 +196,16 @@ poolMembersRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
   });
 
   if (!member || member.poolId !== poolId) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
+    return sendNotFound(res, "Member not found");
   }
 
   if (member.status !== "ACTIVE") {
-    return res.status(400).json({
-      error: "INVALID_STATUS",
-      message: "Can only kick active members"
-    });
+    return sendBadRequest(res, "Can only kick active members");
   }
 
   // No permitir que el host se expulse a sí mismo
   if (member.userId === actorUserId) {
-    return res.status(400).json({
-      error: "CANNOT_KICK_SELF",
-      message: "You cannot kick yourself"
-    });
+    return sendBadRequest(res, "You cannot kick yourself");
   }
 
   // No permitir expulsar al creador del pool
@@ -233,10 +215,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
   });
 
   if (member.userId === pool?.createdByUserId) {
-    return res.status(400).json({
-      error: "CANNOT_KICK_HOST",
-      message: "Cannot kick the pool creator"
-    });
+    return sendBadRequest(res, "Cannot kick the pool creator");
   }
 
   // Actualizar el miembro a LEFT
@@ -264,10 +243,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({
-    ok: true,
-    message: "Member kicked successfully"
-  });
+  return sendOk(res, { message: "Member kicked successfully" });
 });
 
 // POST /pools/:poolId/leave — Player voluntarily leaves a pool
@@ -282,12 +258,12 @@ poolMembersRouter.post("/:poolId/leave", async (req, res) => {
     where: { poolId, userId, status: "ACTIVE" },
   });
   if (!member) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Not an active member of this pool" });
+    return sendNotFound(res, "Not an active member of this pool");
   }
 
   // Pool owners cannot leave
   if ((NON_LEAVABLE_ROLES as readonly string[]).includes(member.role)) {
-    return res.status(403).json({ error: "HOST_CANNOT_LEAVE", message: "Hosts cannot leave their own pool" });
+    return sendForbidden(res, "Hosts cannot leave their own pool");
   }
 
   // Set status to LEFT
@@ -308,7 +284,7 @@ poolMembersRouter.post("/:poolId/leave", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({ ok: true, message: "Left pool successfully" });
+  return sendOk(res, { message: "Left pool successfully" });
 });
 
 const banMemberSchema = z.object({
@@ -323,11 +299,11 @@ poolMembersRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
   const actorUserId = req.auth!.userId;
 
   const isHostOrCoAdmin = await requirePoolAdmin(actorUserId, poolId);
-  if (!isHostOrCoAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const parsed = banMemberSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR");
   }
 
   const { reason, deletePicks } = parsed.data;
@@ -339,22 +315,16 @@ poolMembersRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
   });
 
   if (!member || member.poolId !== poolId) {
-    return res.status(404).json({ error: "NOT_FOUND", message: "Member not found" });
+    return sendNotFound(res, "Member not found");
   }
 
   if (member.status !== "ACTIVE") {
-    return res.status(400).json({
-      error: "INVALID_STATUS",
-      message: "Can only ban active members"
-    });
+    return sendBadRequest(res, "Can only ban active members");
   }
 
   // No permitir que el host se expulse a sí mismo
   if (member.userId === actorUserId) {
-    return res.status(400).json({
-      error: "CANNOT_BAN_SELF",
-      message: "You cannot ban yourself"
-    });
+    return sendBadRequest(res, "You cannot ban yourself");
   }
 
   // No permitir expulsar al creador del pool
@@ -364,10 +334,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
   });
 
   if (member.userId === pool?.createdByUserId) {
-    return res.status(400).json({
-      error: "CANNOT_BAN_HOST",
-      message: "Cannot ban the pool creator"
-    });
+    return sendBadRequest(res, "Cannot ban the pool creator");
   }
 
   // Operación atómica: eliminar picks (si aplica) + banear miembro
@@ -410,8 +377,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json({
-    ok: true,
+  return sendOk(res, {
     message: deletePicks
       ? `Member permanently banned and ${picksDeleted} picks deleted`
       : "Member permanently banned"
@@ -433,10 +399,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/promote", async (req, res) =>
   });
 
   if (!actorMembership || !isPoolOwner(actorMembership.role)) {
-    return res.status(403).json({
-      error: "FORBIDDEN",
-      reason: "OWNER_ONLY",
-    });
+    return sendForbidden(res, "OWNER_ONLY");
   }
 
   // Buscar el miembro a promover
@@ -446,19 +409,15 @@ poolMembersRouter.post("/:poolId/members/:memberId/promote", async (req, res) =>
   });
 
   if (!targetMember || targetMember.poolId !== poolId) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   if (targetMember.status !== "ACTIVE") {
-    return res.status(409).json({
-      error: "MEMBER_NOT_ACTIVE",
-    });
+    return sendConflict(res, "MEMBER_NOT_ACTIVE");
   }
 
   if (targetMember.role !== "PLAYER") {
-    return res.status(409).json({
-      error: "INVALID_ROLE",
-    });
+    return sendConflict(res, "INVALID_ROLE");
   }
 
   // Promover a CO_ADMIN
@@ -483,8 +442,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/promote", async (req, res) =>
     },
   });
 
-  return res.json({
-    success: true,
+  return sendOk(res, {
     member: {
       id: updated.id,
       role: updated.role,
@@ -508,10 +466,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/demote", async (req, res) => 
   });
 
   if (!actorMembership || !isPoolOwner(actorMembership.role)) {
-    return res.status(403).json({
-      error: "FORBIDDEN",
-      reason: "OWNER_ONLY",
-    });
+    return sendForbidden(res, "OWNER_ONLY");
   }
 
   // Buscar el miembro a degradar
@@ -521,19 +476,15 @@ poolMembersRouter.post("/:poolId/members/:memberId/demote", async (req, res) => 
   });
 
   if (!targetMember || targetMember.poolId !== poolId) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   if (targetMember.status !== "ACTIVE") {
-    return res.status(409).json({
-      error: "MEMBER_NOT_ACTIVE",
-    });
+    return sendConflict(res, "MEMBER_NOT_ACTIVE");
   }
 
   if (targetMember.role !== "CO_ADMIN") {
-    return res.status(409).json({
-      error: "INVALID_ROLE",
-    });
+    return sendConflict(res, "INVALID_ROLE");
   }
 
   // Degradar a PLAYER
@@ -558,8 +509,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/demote", async (req, res) => 
     },
   });
 
-  return res.json({
-    success: true,
+  return sendOk(res, {
     member: {
       id: updated.id,
       role: updated.role,

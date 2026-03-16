@@ -13,6 +13,7 @@ import {
 import { transitionToCompleted, canPublishResults } from "../services/poolStateMachine";
 import { ResultSource, ResultSourceMode } from "@prisma/client";
 import { requirePoolAdmin } from "../lib/roles";
+import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 import { extractMatches, extractTeams, parseFixtureData, typed, type FixtureMatch, type FixtureTeam, type PickJson } from "../lib/fixture";
 import { outcomeFromScore } from "../lib/poolHelpers";
 
@@ -42,34 +43,31 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
   const { poolId, matchId } = req.params;
 
   const isAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
-  if (!isAdmin) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isAdmin) return sendForbidden(res, "FORBIDDEN");
 
   const parsed = upsertResultSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     include: { tournamentInstance: true },
   });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
 
   // Validar que el pool permita publicar resultados según su estado
   if (!canPublishResults(pool.status)) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Cannot publish results in this pool status"
-    });
+    return sendConflict(res, "CONFLICT", { message: "Cannot publish results in this pool status" });
   }
 
   if (pool.tournamentInstance.status === "ARCHIVED") {
-    return res.status(409).json({ error: "CONFLICT", message: "TournamentInstance is ARCHIVED" });
+    return sendConflict(res, "CONFLICT", { message: "TournamentInstance is ARCHIVED" });
   }
 
   const matches = extractMatches(pool.tournamentInstance.dataJson);
   const match = matches.find((m) => m.id === matchId);
-  if (!match) return res.status(404).json({ error: "NOT_FOUND", message: "Match not found in instance snapshot" });
+  if (!match) return sendNotFound(res, "NOT_FOUND", { message: "Match not found in instance snapshot" });
 
   const { homeGoals, awayGoals, homeGoals90, awayGoals90, homePenalties, awayPenalties, reason } = parsed.data;
 
@@ -299,18 +297,18 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
       const fixtureData = parseFixtureData(pool.tournamentInstance.dataJson);
       if (fixtureData.phases.length === 0 || fixtureData.matches.length === 0) {
         // No hay fases definidas, skip auto-advance
-        return res.json(saved);
+        return sendData(res, saved as any);
       }
 
       // Encontrar la fase del partido que acabamos de actualizar
       const updatedMatch = fixtureData.matches.find((m) => m.id === matchId);
       if (!updatedMatch) {
-        return res.json(saved);
+        return sendData(res, saved as any);
       }
 
       const phaseId = updatedMatch.phaseId;
       if (!phaseId) {
-        return res.json(saved);
+        return sendData(res, saved as any);
       }
 
       // Validar si podemos hacer auto-advance para esta fase
@@ -323,7 +321,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
       if (!validation.canAdvance) {
         // No se puede avanzar automáticamente
         console.log(`[AUTO-ADVANCE BLOCKED] Phase: ${phaseId}, Reason: ${validation.reason}`);
-        return res.json(saved);
+        return sendData(res, saved as any);
       }
 
       // ¡Fase completa y sin bloqueos! Proceder con auto-advance
@@ -404,10 +402,10 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
       console.error("[POOL COMPLETED ERROR]", completedError.message);
     }
 
-    return res.json(saved);
+    return sendData(res, saved as any);
   } catch (e: any) {
     if (e?.message === "REASON_REQUIRED_FOR_ERRATA") {
-      return res.status(400).json({ error: "VALIDATION_ERROR", message: "reason is required for errata (version > 1)" });
+      return sendBadRequest(res, "VALIDATION_ERROR", { message: "reason is required for errata (version > 1)" });
     }
     throw e;
   }
@@ -420,13 +418,13 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
   const verbose = req.query.verbose === "1" || req.query.verbose === "true";
 
   const isMember = await requireActivePoolMember(req.auth!.userId, poolId);
-  if (!isMember) return res.status(403).json({ error: "FORBIDDEN" });
+  if (!isMember) return sendForbidden(res, "FORBIDDEN");
 
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     include: { tournamentInstance: true },
   });
-  if (!pool) return res.status(404).json({ error: "NOT_FOUND" });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
 
   const matches = extractMatches(pool.tournamentInstance.dataJson);
   const teams = extractTeams(pool.tournamentInstance.dataJson);
@@ -615,7 +613,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
     return aTime - bTime;
   });
 
-  return res.json({
+  return sendData(res, {
     pool: { id: pool.id, name: pool.name },
     scoring: { outcomePoints: 3, exactScoreBonus: 2 },
     updatedAtUtc: new Date().toISOString(),
@@ -630,7 +628,7 @@ resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
       joinedAtUtc: r.joinedAtUtc,
       ...(verbose ? { breakdown: r.breakdown } : {}),
     })),
-  });
+  } as any);
 });
 
 

@@ -5,6 +5,7 @@ import { requireAuth, optionalAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { sendAdminNotification, escapeHtml } from "../lib/email";
 import rateLimit from "express-rate-limit";
+import { sendCreated, sendData, sendBadRequest } from "../lib/apiResponse";
 
 export const feedbackRouter = Router();
 
@@ -29,7 +30,7 @@ const submitFeedbackSchema = z.object({
 feedbackRouter.post("/", feedbackLimiter, optionalAuth, async (req, res) => {
   const parsed = submitFeedbackSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { type, message, imageBase64, wantsContact, contactName, phoneNumber, currentUrl } = parsed.data;
@@ -74,8 +75,8 @@ feedbackRouter.post("/", feedbackLimiter, optionalAuth, async (req, res) => {
     `,
   }).catch((err) => console.error("Error sending admin notification:", err));
 
-  return res.status(201).json({
-    success: true,
+  return sendCreated(res, {
+    ok: true,
     message: "Feedback enviado exitosamente. Gracias por tu ayuda!",
     id: feedback.id,
   });
@@ -121,7 +122,7 @@ feedbackRouter.get("/admin", requireAuth, requireAdmin, async (req, res) => {
     prisma.betaFeedback.count({ where }),
   ]);
 
-  return res.json({
+  return sendData(res, {
     feedbacks,
     pagination: {
       page: pageNum,

@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../lib/jwt";
 import { prisma } from "../db";
 import { getTokenFromCookies } from "../lib/authCookies";
+import { sendUnauthorized } from "../lib/apiResponse";
 
 /** Extract Bearer token from Authorization header */
 function extractBearerToken(req: Request): string | null {
@@ -18,7 +19,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const token = getTokenFromCookies(req.cookies) || extractBearerToken(req);
 
     if (!token) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", reason: "NO_AUTH_TOKEN" });
+      return sendUnauthorized(res, "UNAUTHENTICATED", { reason: "NO_AUTH_TOKEN" });
     }
 
     let payload;
@@ -26,8 +27,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       payload = verifyToken(token);
     } catch (jwtError: any) {
       const errorName = jwtError?.name || "UnknownError";
-      return res.status(401).json({
-        error: "UNAUTHENTICATED",
+      return sendUnauthorized(res, "UNAUTHENTICATED", {
         reason: errorName === "TokenExpiredError" ? "TOKEN_EXPIRED" : "INVALID_TOKEN",
       });
     }
@@ -36,18 +36,18 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
 
     if (!user) {
-      return res.status(401).json({ error: "UNAUTHENTICATED", reason: "USER_NOT_FOUND" });
+      return sendUnauthorized(res, "UNAUTHENTICATED", { reason: "USER_NOT_FOUND" });
     }
 
     if (user.status !== "ACTIVE") {
-      return res.status(401).json({ error: "UNAUTHENTICATED", reason: "USER_NOT_ACTIVE" });
+      return sendUnauthorized(res, "UNAUTHENTICATED", { reason: "USER_NOT_ACTIVE" });
     }
 
     req.auth = { userId: user.id, platformRole: user.platformRole };
     return next();
   } catch (error: any) {
     console.error("[AUTH] Unexpected error:", error instanceof Error ? error.message : String(error));
-    return res.status(401).json({ error: "UNAUTHENTICATED", reason: "INTERNAL_ERROR" });
+    return sendUnauthorized(res, "UNAUTHENTICATED", { reason: "INTERNAL_ERROR" });
   }
 }
 

@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import { canPublishResults } from "../services/poolStateMachine";
 import { requirePoolAdmin } from "../lib/roles";
 import { extractPhases } from "../lib/fixture";
+import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const structuralResultsRouter = Router();
 
@@ -47,18 +48,12 @@ structuralResultsRouter.put("/:poolId/structural-results/:phaseId", async (req, 
 
   const parsed = structuralResultPayloadSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({
-      error: "VALIDATION_ERROR",
-      details: parsed.error.flatten(),
-    });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const isAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
   if (!isAdmin) {
-    return res.status(403).json({
-      error: "FORBIDDEN",
-      message: "Only HOST or CO_ADMIN can publish results",
-    });
+    return sendForbidden(res, "FORBIDDEN", { message: "Only HOST or CO_ADMIN can publish results" });
   }
 
   const pool = await prisma.pool.findUnique({
@@ -67,22 +62,16 @@ structuralResultsRouter.put("/:poolId/structural-results/:phaseId", async (req, 
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   // Validar que el pool permita publicar resultados según su estado
   if (!canPublishResults(pool.status)) {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "Cannot publish results in this pool status",
-    });
+    return sendConflict(res, "CONFLICT", { message: "Cannot publish results in this pool status" });
   }
 
   if (pool.tournamentInstance.status === "ARCHIVED") {
-    return res.status(409).json({
-      error: "CONFLICT",
-      message: "TournamentInstance is ARCHIVED",
-    });
+    return sendConflict(res, "CONFLICT", { message: "TournamentInstance is ARCHIVED" });
   }
 
   // Validar que la fase existe en el template
@@ -90,10 +79,7 @@ structuralResultsRouter.put("/:poolId/structural-results/:phaseId", async (req, 
   const phase = phases.find((p) => p.id === phaseId);
 
   if (!phase) {
-    return res.status(404).json({
-      error: "NOT_FOUND",
-      message: "Phase not found in tournament instance",
-    });
+    return sendNotFound(res, "NOT_FOUND", { message: "Phase not found in tournament instance" });
   }
 
   // Upsert resultado estructural
@@ -127,7 +113,7 @@ structuralResultsRouter.put("/:poolId/structural-results/:phaseId", async (req, 
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.json(result);
+  return sendData(res, result as any);
 });
 
 // GET /pools/:poolId/structural-results/:phaseId
@@ -141,7 +127,7 @@ structuralResultsRouter.get("/:poolId/structural-results/:phaseId", async (req, 
   });
 
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const result = await prisma.structuralPhaseResult.findUnique({
@@ -162,10 +148,10 @@ structuralResultsRouter.get("/:poolId/structural-results/:phaseId", async (req, 
   });
 
   if (!result) {
-    return res.json({ result: null });
+    return sendData(res, { result: null });
   }
 
-  return res.json({ result });
+  return sendData(res, { result } as any);
 });
 
 // GET /pools/:poolId/structural-results
@@ -178,7 +164,7 @@ structuralResultsRouter.get("/:poolId/structural-results", async (req, res) => {
   });
 
   if (!isMember) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const results = await prisma.structuralPhaseResult.findMany({
@@ -194,5 +180,5 @@ structuralResultsRouter.get("/:poolId/structural-results", async (req, res) => {
     orderBy: { createdAtUtc: "asc" },
   });
 
-  return res.json({ results });
+  return sendData(res, { results } as any);
 });

@@ -9,6 +9,7 @@ import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
 import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
 import { extractPhases } from "../lib/fixture";
+import { sendData, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 // Sub-routers
 import { poolOverviewRouter } from "./poolOverview";
@@ -47,7 +48,7 @@ const createPoolSchema = z.object({
 poolsRouter.post("/", async (req, res) => {
   const parsed = createPoolSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const {
@@ -63,11 +64,11 @@ poolsRouter.post("/", async (req, res) => {
   } = parsed.data;
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: tournamentInstanceId } });
-  if (!instance) return res.status(404).json({ error: "NOT_FOUND", message: "TournamentInstance not found" });
+  if (!instance) return sendNotFound(res, "NOT_FOUND", { message: "TournamentInstance not found" });
 
   // Comentario en español: no permitimos pools sobre instancias archivadas
   if (instance.status === "ARCHIVED") {
-    return res.status(409).json({ error: "CONFLICT", message: "Cannot create pool on ARCHIVED instance" });
+    return sendConflict(res, "CONFLICT", { message: "Cannot create pool on ARCHIVED instance" });
   }
 
   // Comentario en español: procesar pickTypesConfig
@@ -87,10 +88,7 @@ poolsRouter.post("/", async (req, res) => {
       if (!dynamicConfig) {
         const preset = getPresetByKey(pickTypesConfig);
         if (!preset) {
-          return res.status(400).json({
-            error: "VALIDATION_ERROR",
-            message: `Invalid preset key: ${pickTypesConfig}`
-          });
+          return sendBadRequest(res, "VALIDATION_ERROR", { message: `Invalid preset key: ${pickTypesConfig}` });
         }
         dynamicConfig = preset.config;
       }
@@ -100,11 +98,7 @@ poolsRouter.post("/", async (req, res) => {
       const validation = validatePoolPickTypesConfig(pickTypesConfig);
 
       if (!validation.valid) {
-        return res.status(400).json({
-          error: "VALIDATION_ERROR",
-          message: "Invalid pick types configuration",
-          errors: validation.errors,
-        });
+        return sendBadRequest(res, "VALIDATION_ERROR", { message: "Invalid pick types configuration", errors: validation.errors });
       }
 
       // Si hay warnings, incluirlos en la respuesta pero no bloquear
@@ -170,7 +164,7 @@ poolsRouter.post("/", async (req, res) => {
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return res.status(201).json(created);
+  return sendCreated(res, created as unknown as Record<string, unknown>);
 });
 
 
@@ -185,7 +179,7 @@ poolsRouter.get("/:poolId", async (req, res) => {
   });
 
   if (!myMembership) {
-    return res.status(403).json({ error: "FORBIDDEN" });
+    return sendForbidden(res, "FORBIDDEN");
   }
 
   const pool = await prisma.pool.findUnique({
@@ -194,14 +188,14 @@ poolsRouter.get("/:poolId", async (req, res) => {
   });
 
   if (!pool) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const membersActive = await prisma.poolMember.count({
     where: { poolId, status: "ACTIVE" },
   });
 
-  return res.json({
+  return sendData(res, {
     pool: {
       id: pool.id,
       name: pool.name,

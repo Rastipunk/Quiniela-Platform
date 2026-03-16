@@ -9,6 +9,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { hashPassword } from "../lib/password";
 import { sendWelcomeEmail } from "../lib/email";
 import { CRYPTO_BYTES } from "../lib/constants";
+import { sendData, sendOk, sendCreated, sendBadRequest, sendNotFound } from "../lib/apiResponse";
 
 export const adminCorporateRouter = Router();
 
@@ -42,7 +43,7 @@ adminCorporateRouter.get("/inquiries", async (req, res) => {
     prisma.organizationInquiry.count({ where }),
   ]);
 
-  return res.json({
+  return sendData(res, {
     inquiries,
     pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
   });
@@ -54,7 +55,7 @@ adminCorporateRouter.patch("/inquiries/:id", async (req, res) => {
 
   const inquiry = await prisma.organizationInquiry.findUnique({ where: { id } });
   if (!inquiry) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const updated = await prisma.organizationInquiry.update({
@@ -71,7 +72,7 @@ adminCorporateRouter.patch("/inquiries/:id", async (req, res) => {
     userAgent: req.get("user-agent"),
   });
 
-  return res.json({ success: true, inquiry: updated });
+  return sendOk(res, { inquiry: updated });
 });
 
 // =========================================================================
@@ -94,7 +95,7 @@ const createOrgSchema = z.object({
 adminCorporateRouter.post("/organizations", async (req, res) => {
   const parsed = createOrgSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { inquiryId, ...orgData } = parsed.data;
@@ -131,7 +132,7 @@ adminCorporateRouter.post("/organizations", async (req, res) => {
     userAgent: req.get("user-agent"),
   });
 
-  return res.status(201).json({ success: true, organization: org });
+  return sendCreated(res, { organization: org });
 });
 
 // GET /admin/corporate/organizations — Listar organizaciones
@@ -160,7 +161,7 @@ adminCorporateRouter.get("/organizations", async (req, res) => {
     prisma.organization.count({ where }),
   ]);
 
-  return res.json({
+  return sendData(res, {
     organizations,
     pagination: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
   });
@@ -184,12 +185,12 @@ adminCorporateRouter.patch("/organizations/:id", async (req, res) => {
 
   const org = await prisma.organization.findUnique({ where: { id } });
   if (!org) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const parsed = updateOrgSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const updated = await prisma.organization.update({
@@ -207,7 +208,7 @@ adminCorporateRouter.patch("/organizations/:id", async (req, res) => {
     userAgent: req.get("user-agent"),
   });
 
-  return res.json({ success: true, organization: updated });
+  return sendOk(res, { organization: updated });
 });
 
 // =========================================================================
@@ -227,12 +228,12 @@ adminCorporateRouter.post("/organizations/:orgId/pools", async (req, res) => {
 
   const org = await prisma.organization.findUnique({ where: { id: orgId } });
   if (!org) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const parsed = createPoolSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { name, description, tournamentInstanceId, logoUrl } = parsed.data;
@@ -243,7 +244,7 @@ adminCorporateRouter.post("/organizations/:orgId/pools", async (req, res) => {
     select: { id: true, dataJson: true },
   });
   if (!instance) {
-    return res.status(404).json({ error: "NOT_FOUND" });
+    return sendNotFound(res, "NOT_FOUND");
   }
 
   const pool = await prisma.pool.create({
@@ -280,7 +281,7 @@ adminCorporateRouter.post("/organizations/:orgId/pools", async (req, res) => {
     userAgent: req.get("user-agent"),
   });
 
-  return res.status(201).json({ success: true, pool });
+  return sendCreated(res, { pool });
 });
 
 // =========================================================================
@@ -296,7 +297,7 @@ const bulkCreateUsersSchema = z.object({
 adminCorporateRouter.post("/bulk-create-users", async (req, res) => {
   const parsed = bulkCreateUsersSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
   }
 
   const { emails, poolId } = parsed.data;
@@ -305,7 +306,7 @@ adminCorporateRouter.post("/bulk-create-users", async (req, res) => {
   if (poolId) {
     const pool = await prisma.pool.findUnique({ where: { id: poolId }, select: { id: true } });
     if (!pool) {
-      return res.status(404).json({ error: "NOT_FOUND" });
+      return sendNotFound(res, "NOT_FOUND");
     }
   }
 
@@ -396,8 +397,7 @@ adminCorporateRouter.post("/bulk-create-users", async (req, res) => {
     userAgent: req.get("user-agent"),
   });
 
-  return res.status(201).json({
-    success: true,
+  return sendCreated(res, {
     created,
     existing,
     addedToPool,

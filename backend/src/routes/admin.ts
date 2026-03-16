@@ -5,12 +5,13 @@ import { requireAdmin } from "../middleware/requireAdmin";
 import { prisma } from "../db";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
 import { ApiFootballClient } from "../services/apiFootball/client";
+import { sendOk, sendData, sendBadRequest, sendNotFound, sendInternal } from "../lib/apiResponse";
 
 export const adminRouter = Router();
 
 // Comentario en español: endpoint de prueba para validar RBAC admin
 adminRouter.get("/ping", requireAuth, requireAdmin, (_req, res) => {
-  res.json({ ok: true, admin: true });
+  sendOk(res, { admin: true });
 });
 
 // GET /admin/stats — platform stats (users, pools, feedback)
@@ -29,7 +30,7 @@ adminRouter.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
     prisma.betaFeedback.count(),
   ]);
 
-  res.json({
+  sendData(res, {
     users: {
       total: totalUsers,
       test: testUsers,
@@ -43,7 +44,7 @@ adminRouter.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
 
 // Bootstrap-admin disabled in production — use seed script for admin creation
 adminRouter.post("/bootstrap-admin", (_req, res) => {
-  res.status(404).json({ ok: false, error: "Not found" });
+  sendNotFound(res, "Not found");
 });
 
 // Endpoint para seedear WC2026 en producción (solo admin)
@@ -55,7 +56,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
     });
 
     if (existing) {
-      return res.json({ ok: true, message: "WC2026 ya existe", instanceId: existing.id });
+      return sendOk(res, { message: "WC2026 ya existe", instanceId: existing.id });
     }
 
     // Build WC2026 data
@@ -63,7 +64,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
     const parsed = templateDataSchema.parse(raw);
     const issues = validateTemplateDataConsistency(parsed);
     if (issues.length) {
-      return res.status(400).json({ ok: false, error: `TemplateData inconsistente: ${issues.join(", ")}` });
+      return sendBadRequest(res, `TemplateData inconsistente: ${issues.join(", ")}`);
     }
 
     const key = "wc_2026_sandbox";
@@ -111,8 +112,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
       },
     });
 
-    res.json({
-      ok: true,
+    sendOk(res, {
       message: "WC2026 Sandbox creado exitosamente",
       templateId: template.id,
       versionId: version.id,
@@ -120,7 +120,7 @@ adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) =>
     });
   } catch (error: any) {
     console.error("Error seeding WC2026:", error);
-    res.status(500).json({ ok: false, error: error.message });
+    sendInternal(res, error.message);
   }
 });
 
@@ -195,7 +195,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     log(`Found ${r16Fixtures.length} R16 fixtures`);
 
     if (r16Fixtures.length !== 16) {
-      return res.status(400).json({ ok: false, error: `Expected 16 R16 fixtures, got ${r16Fixtures.length}`, logs });
+      return sendBadRequest(res, `Expected 16 R16 fixtures, got ${r16Fixtures.length}`, { logs });
     }
 
     // Group into ties
@@ -209,7 +209,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     }
 
     if (tieMap.size !== 8) {
-      return res.status(400).json({ ok: false, error: `Expected 8 R16 ties, got ${tieMap.size}`, logs });
+      return sendBadRequest(res, `Expected 8 R16 ties, got ${tieMap.size}`, { logs });
     }
 
     const r16Ties: R16TieData[] = [];
@@ -220,7 +220,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
       const teamA = API_TO_INTERNAL[leg1.teams.home.id];
       const teamB = API_TO_INTERNAL[leg1.teams.away.id];
       if (!teamA || !teamB) {
-        return res.status(400).json({ ok: false, error: `Unknown API team ID: home=${leg1.teams.home.id} away=${leg1.teams.away.id}`, logs });
+        return sendBadRequest(res, `Unknown API team ID: home=${leg1.teams.home.id} away=${leg1.teams.away.id}`, { logs });
       }
       r16Ties.push({
         tieNumber: tieNum++, teamA, teamB,
@@ -237,7 +237,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
     log("2. Loading tournament instance...");
     const instance = await prisma.tournamentInstance.findUnique({ where: { id: UCL_INSTANCE_ID } });
     if (!instance) {
-      return res.status(404).json({ ok: false, error: `Instance ${UCL_INSTANCE_ID} not found`, logs });
+      return sendNotFound(res, `Instance ${UCL_INSTANCE_ID} not found`, { logs });
     }
 
     const currentData = instance.dataJson as unknown as UclTemplateData;
@@ -372,7 +372,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
         log(`Synced pool: ${pool.name} (${pool.id})`);
       }
 
-      return res.json({ ok: true, message: `R16 updated from API-Football. Synced ${pools.length} pools.`, logs });
+      return sendOk(res, { message: `R16 updated from API-Football. Synced ${pools.length} pools.`, logs });
     }
 
     // 3. Update instance
@@ -449,8 +449,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
 
     log(`Verification: SCHEDULED=${scheduled.length}/16, PLACEHOLDER=${stillPlaceholder.length}/16`);
 
-    res.json({
-      ok: true,
+    sendOk(res, {
       message: "UCL R16 update complete",
       stats: { mappings: mappingCount, syncStates: syncCount, poolsUpdated: pools.length,
         scheduled: scheduled.length, stillPlaceholder: stillPlaceholder.length },
@@ -459,7 +458,7 @@ adminRouter.post("/update-ucl-r16", requireAuth, requireAdmin, async (_req, res)
   } catch (error: any) {
     console.error("Error updating UCL R16:", error);
     log(`ERROR: ${error.message}`);
-    res.status(500).json({ ok: false, error: error.message, logs });
+    sendInternal(res, error.message, { logs });
   }
 });
 
@@ -572,8 +571,7 @@ adminRouter.get("/audit/r16-late-picks", requireAuth, requireAdmin, async (_req,
       };
     });
 
-    res.json({
-      ok: true,
+    sendOk(res, {
       summary: {
         totalPools: pools.length,
         totalR16Leg1Predictions: predictions.length,
@@ -585,7 +583,7 @@ adminRouter.get("/audit/r16-late-picks", requireAuth, requireAdmin, async (_req,
     });
   } catch (error: any) {
     console.error("Error in R16 audit:", error);
-    res.status(500).json({ ok: false, error: error.message });
+    sendInternal(res, error.message);
   }
 });
 
@@ -638,7 +636,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
     log(`  Found ${r16Fixtures.length} R16 fixtures`);
 
     if (r16Fixtures.length !== 16) {
-      return res.status(400).json({ ok: false, error: `Expected 16 R16 fixtures, got ${r16Fixtures.length}` });
+      return sendBadRequest(res, `Expected 16 R16 fixtures, got ${r16Fixtures.length}`);
     }
 
     // Build fixture lookup: fixtureId → full fixture data
@@ -742,7 +740,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
     }
 
     if (errors.length > 0) {
-      return res.status(400).json({ ok: false, errors, logs });
+      return sendBadRequest(res, "Validation errors", { errors, logs });
     }
 
     // ================================================================
@@ -757,7 +755,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
 
     const instance = await prisma.tournamentInstance.findUnique({ where: { id: UCL_INSTANCE_ID } });
     if (!instance) {
-      return res.status(404).json({ ok: false, error: "Instance not found" });
+      return sendNotFound(res, "Instance not found");
     }
     const instanceData = instance.dataJson as unknown as UclTemplateData;
     const teamName = (id: string) => instanceData.teams.find((t: any) => t.id === id)?.name ?? id;
@@ -1116,8 +1114,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
     // ================================================================
     // RESPONSE
     // ================================================================
-    res.json({
-      ok: true,
+    sendOk(res, {
       dryRun,
       summary: {
         mappingFixes: mappingFixes.length,
@@ -1147,7 +1144,7 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
     });
   } catch (error: any) {
     console.error("Error in R16 integrity fix:", error);
-    res.status(500).json({ ok: false, error: error.message });
+    sendInternal(res, error.message);
   }
 });
 
