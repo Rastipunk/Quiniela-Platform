@@ -29,8 +29,9 @@ import { corporateRouter } from "./routes/corporate";
 import { adminCorporateRouter } from "./routes/adminCorporate";
 import { sendOk, sendForbidden, sendInternal } from "./lib/apiResponse";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
-import { startSmartSyncJob } from "./jobs/smartSyncJob";
-import { startDeadlineReminderJob } from "./jobs/deadlineReminderJob";
+import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
+import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
+import { prisma } from "./db";
 
 const app = express();
 
@@ -123,8 +124,44 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);
   startSmartSyncJob();
   startDeadlineReminderJob();
 });
+
+// Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+async function gracefulShutdown(signal: string): Promise<void> {
+  console.log(`\n[SHUTDOWN] ${signal} received — shutting down gracefully...`);
+
+  // 1. Stop accepting new connections
+  server.close(() => {
+    console.log("[SHUTDOWN] HTTP server closed");
+  });
+
+  // 2. Stop cron jobs so no new DB work starts
+  stopSmartSyncJob();
+  stopDeadlineReminderJob();
+
+  // 3. Disconnect Prisma (closes DB connection pool)
+  try {
+    await prisma.$disconnect();
+    console.log("[SHUTDOWN] Prisma disconnected");
+  } catch (err) {
+    console.error("[SHUTDOWN] Error disconnecting Prisma:", err);
+  }
+
+  // 4. Force exit if cleanup takes too long
+  const forceTimer = setTimeout(() => {
+    console.error("[SHUTDOWN] Timed out — forcing exit");
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  forceTimer.unref();
+
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
