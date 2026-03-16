@@ -11,11 +11,16 @@ import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets"
 import { extractPhases } from "../lib/fixture";
 import { sendData, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
-// Sub-routers
+// Sub-routers — all pool-related routes composed here
 import { poolOverviewRouter } from "./poolOverview";
 import { poolMembersRouter } from "./poolMembers";
 import { poolInvitesRouter } from "./poolInvites";
 import { poolAdminRouter } from "./poolAdmin";
+import { picksRouter } from "./picks";
+import { structuralPicksRouter } from "./structuralPicks";
+import { resultsRouter } from "./results";
+import { structuralResultsRouter } from "./structuralResults";
+import { groupStandingsRouter } from "./groupStandings";
 
 export const poolsRouter = Router();
 poolsRouter.use(requireAuth);
@@ -25,6 +30,11 @@ poolsRouter.use("/", poolOverviewRouter);
 poolsRouter.use("/", poolMembersRouter);
 poolsRouter.use("/", poolInvitesRouter);
 poolsRouter.use("/", poolAdminRouter);
+poolsRouter.use("/", picksRouter);
+poolsRouter.use("/", structuralPicksRouter);
+poolsRouter.use("/", resultsRouter);
+poolsRouter.use("/", structuralResultsRouter);
+poolsRouter.use("/", groupStandingsRouter);
 
 const createPoolSchema = z.object({
   tournamentInstanceId: z.string().min(1),

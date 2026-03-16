@@ -23,7 +23,19 @@ import {
   fixR16Integrity,
 } from "../services/adminService";
 
+// Sub-routers — all admin-related routes composed here
+import { adminTemplatesRouter } from "./adminTemplates";
+import { adminInstancesRouter } from "./adminInstances";
+import adminSettingsRouter from "./adminSettings";
+import { adminCorporateRouter } from "./adminCorporate";
+
 export const adminRouter = Router();
+
+// Mount sub-routers
+adminRouter.use("/", adminTemplatesRouter);
+adminRouter.use("/", adminInstancesRouter);
+adminRouter.use("/settings", adminSettingsRouter);
+adminRouter.use("/corporate", adminCorporateRouter);
 
 // ─── Helpers ─────────────────────────────────────────────────
 

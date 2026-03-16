@@ -9,24 +9,14 @@ import cookieParser from "cookie-parser";
 
 import { authRouter } from "./routes/auth";
 import { adminRouter } from "./routes/admin";
-import { adminTemplatesRouter } from "./routes/adminTemplates";
-import { requireAuth } from "./middleware/requireAuth";
-import { adminInstancesRouter } from "./routes/adminInstances";
 import { poolsRouter } from "./routes/pools";
-import { picksRouter } from "./routes/picks";
-import { structuralPicksRouter } from "./routes/structuralPicks";
-import { resultsRouter } from "./routes/results";
-import { structuralResultsRouter } from "./routes/structuralResults";
-import { groupStandingsRouter } from "./routes/groupStandings";
 import { meRouter } from "./routes/me";
 import { catalogRouter } from "./routes/catalog";
 import { userProfileRouter } from "./routes/userProfile";
 import { pickPresetsRouter } from "./routes/pickPresets";
 import legalRouter from "./routes/legal";
-import adminSettingsRouter from "./routes/adminSettings";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
-import { adminCorporateRouter } from "./routes/adminCorporate";
 import { sendOk, sendForbidden, sendInternal } from "./lib/apiResponse";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
@@ -86,19 +76,10 @@ app.use("/auth/reset-password", passwordResetLimiter);
 app.use("/auth/resend-verification", verificationResendLimiter);
 app.use("/corporate/pools", corporateInviteLimiter);
 
-// Routes
+// Routes — each path has a single composed router
 app.use("/auth", authRouter);
-app.use("/admin", adminRouter);
-app.use("/admin", adminTemplatesRouter);
-app.use("/admin", adminInstancesRouter);
-app.use("/admin/settings", adminSettingsRouter);
-app.use("/admin/corporate", adminCorporateRouter);
-app.use("/pools", poolsRouter);
-app.use("/pools", picksRouter);
-app.use("/pools", structuralPicksRouter);
-app.use("/pools", resultsRouter);
-app.use("/pools", structuralResultsRouter);
-app.use("/pools", groupStandingsRouter);
+app.use("/admin", adminRouter);       // composes: templates, instances, settings, corporate
+app.use("/pools", poolsRouter);       // composes: picks, results, structural, groupStandings, members, invites, admin, overview
 app.use("/me", meRouter);
 app.use("/users", userProfileRouter);
 app.use("/catalog", catalogRouter);
