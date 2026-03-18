@@ -1,4 +1,3 @@
-// Build: 2026-03-18T02
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
