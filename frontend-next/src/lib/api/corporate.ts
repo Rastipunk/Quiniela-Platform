@@ -12,7 +12,7 @@ export type CreateCorporatePoolInput = {
   timeZone?: string;
   deadlineMinutesBeforeKickoff?: number;
   requireApproval?: boolean;
-  pickTypesConfig?: string | Record<string, unknown>;
+  pickTypesConfig?: unknown;
   maxParticipants?: number;
   emails?: string[];
 };

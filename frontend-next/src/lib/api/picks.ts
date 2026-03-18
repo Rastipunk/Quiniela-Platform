@@ -5,19 +5,16 @@ import type { StructuralPickData } from "@/types/pickConfig";
 // ── Types ──
 
 export type MatchPickBody = {
-  pick: {
-    type: "SCORE" | "OUTCOME";
-    homeGoals?: number;
-    awayGoals?: number;
-    outcome?: "HOME" | "DRAW" | "AWAY";
-  };
+  pick: Record<string, unknown>;
 };
 
 export type MatchResultBody = {
   homeGoals: number;
   awayGoals: number;
-  extraTimeHomeGoals?: number;
-  extraTimeAwayGoals?: number;
+  homeGoals90?: number;
+  awayGoals90?: number;
+  homePenalties?: number;
+  awayPenalties?: number;
   reason?: string;
 };
 
@@ -27,12 +24,7 @@ export type UpsertResponse = {
   result?: Record<string, unknown>;
 };
 
-export type StructuralRecord = {
-  phaseId: string;
-  pickJson: unknown;
-  createdAtUtc: string;
-  updatedAtUtc: string;
-};
+export type StructuralRecord = Record<string, unknown>;
 
 // ── Match picks ──
 

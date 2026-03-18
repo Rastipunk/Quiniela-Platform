@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
@@ -489,7 +489,7 @@ export default async function QueEsUnaQuinielaPage() {
             {msg.relatedLinks.links.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href as never}
                 style={{
                   display: "flex",
                   alignItems: "center",

@@ -7,6 +7,7 @@
 
 import { Router } from "express";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 import { requireAuth } from "../middleware/requireAuth";
 import {
   sendData, sendBadRequest, sendForbidden, sendNotFound,
@@ -47,6 +48,16 @@ function handleServiceError(res: any, err: unknown): void {
   throw err; // Re-throw unexpected errors → global error handler
 }
 
+// ─── Rate Limiters ──────────────────────────────────────────
+
+const resultPublishLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  message: { error: "TOO_MANY_RESULT_UPDATES" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // ─── Schemas ─────────────────────────────────────────────────
 
 const upsertResultSchema = z.object({
@@ -65,8 +76,9 @@ const upsertResultSchema = z.object({
 // ─── Routes ──────────────────────────────────────────────────
 
 // PUT /pools/:poolId/results/:matchId  (HOST, CO_ADMIN, or CORPORATE_HOST)
-resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
-  const { poolId, matchId } = req.params;
+resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req, res) => {
+  const poolId = req.params.poolId as string;
+  const matchId = req.params.matchId as string;
 
   const parsed = upsertResultSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -122,7 +134,7 @@ resultsRouter.put("/:poolId/results/:matchId", async (req, res) => {
 
 // GET /pools/:poolId/leaderboard  (active pool members)
 resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
-  const { poolId } = req.params;
+  const poolId = req.params.poolId as string;
   const verbose = req.query.verbose === "1" || req.query.verbose === "true";
 
   try {
