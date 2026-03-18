@@ -38,9 +38,14 @@ interface ReminderDetail {
 
 interface MatchWithDeadline {
   id: string;
-  homeTeam: string;
-  awayTeam: string;
-  kickoffTime: string;
+  label?: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
+  kickoffUtc?: string;
+  // Legacy field names (fallback)
+  homeTeam?: string;
+  awayTeam?: string;
+  kickoffTime?: string;
   group?: string;
 }
 
@@ -53,7 +58,12 @@ interface TournamentData {
 // CONFIGURACIÓN
 // =========================================================================
 
-const DEFAULT_HOURS_BEFORE_DEADLINE = 24; // Enviar recordatorio 24 horas antes
+const DEFAULT_HOURS_BEFORE_DEADLINE = 48; // Enviar recordatorio 48 horas antes
+
+// Pools excluidos de deadline reminders (por solicitud del dueño)
+const EXCLUDED_POOL_IDS = new Set([
+  "3e22e016-6311-45df-a977-99b7d675ea61", // AON Champions 2026
+]);
 
 // =========================================================================
 // FUNCIONES AUXILIARES
@@ -68,6 +78,28 @@ function getTeamName(
 ): string {
   const team = teams.find((t) => t.id === teamId);
   return team?.shortName || team?.name || teamId;
+}
+
+/**
+ * Obtiene el kickoff time de un match (soporta kickoffUtc y kickoffTime)
+ */
+function getKickoff(match: MatchWithDeadline): string | undefined {
+  return match.kickoffUtc || match.kickoffTime;
+}
+
+/**
+ * Obtiene el label descriptivo de un match
+ */
+function getMatchLabel(
+  match: MatchWithDeadline,
+  teams: Array<{ id: string; name: string; shortName?: string }>
+): string {
+  if (match.label) return match.label;
+  if (match.homeTeam && match.awayTeam) return `${match.homeTeam} vs ${match.awayTeam}`;
+  if (match.homeTeamId && match.awayTeamId) {
+    return `${getTeamName(match.homeTeamId, teams)} vs ${getTeamName(match.awayTeamId, teams)}`;
+  }
+  return match.id;
 }
 
 /**
@@ -185,6 +217,9 @@ export async function processDeadlineReminders(
   console.log(`   Encontrados ${activePools.length} pools activos`);
 
   for (const pool of activePools) {
+    // Saltar pools excluidos
+    if (EXCLUDED_POOL_IDS.has(pool.id)) continue;
+
     result.poolsProcessed++;
 
     // Obtener datos del torneo (fixture)
@@ -197,8 +232,10 @@ export async function processDeadlineReminders(
 
     // Encontrar partidos cuyo deadline está dentro de la ventana
     const upcomingMatches = matches.filter((match) => {
+      const kickoff = getKickoff(match);
+      if (!kickoff) return false;
       const deadline = getMatchDeadline(
-        match.kickoffTime,
+        kickoff,
         pool.deadlineMinutesBeforeKickoff
       );
       return deadline > now && deadline <= reminderWindowEnd;
@@ -253,12 +290,14 @@ export async function processDeadlineReminders(
       // Calcular el deadline más próximo para el email
       const firstMatch = matchesToRemind[0]!; // Safe: we already checked length > 0
       const nearestDeadline = matchesToRemind.reduce((nearest, match) => {
+        const kickoff = getKickoff(match);
+        if (!kickoff) return nearest;
         const deadline = getMatchDeadline(
-          match.kickoffTime,
+          kickoff,
           pool.deadlineMinutesBeforeKickoff
         );
         return deadline < nearest ? deadline : nearest;
-      }, new Date(firstMatch.kickoffTime));
+      }, new Date(getKickoff(firstMatch)!));
 
       const deadlineFormatted = formatDeadlineTime(nearestDeadline, pool.timeZone);
 

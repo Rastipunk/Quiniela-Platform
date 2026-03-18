@@ -41,7 +41,7 @@ async function runDeadlineReminders(): Promise<void> {
 
   try {
     console.log("[DeadlineReminderJob] Running daily deadline reminder check...");
-    const result = await processDeadlineReminders(24, false);
+    const result = await processDeadlineReminders(48, false);
 
     if (result.success) {
       console.log(
