@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { clearToken, getToken } from "@/lib/auth";
 import { getUserProfile, logout as apiLogout, type UserProfile } from "@/lib/api";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
@@ -21,7 +20,7 @@ export function NavBar() {
 
   useEffect(() => {
     loadProfile();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isMobile) {
@@ -34,8 +33,24 @@ export function NavBar() {
       const token = getToken();
       if (!token) return;
 
+      // Use sessionStorage cache to avoid refetching on every navigation
+      const CACHE_KEY = "p4a_profile_cache";
+      const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const { user, ts } = JSON.parse(cached);
+          if (Date.now() - ts < CACHE_TTL) {
+            setProfile(user);
+            if (!user.timezone) await autoUpdateTimezone(token);
+            return;
+          }
+        } catch { /* ignore corrupt cache */ }
+      }
+
       const data = await getUserProfile(token);
       setProfile(data.user);
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ user: data.user, ts: Date.now() }));
 
       if (!data.user.timezone) {
         await autoUpdateTimezone(token);
@@ -62,8 +77,8 @@ export function NavBar() {
   function handleLogout() {
     apiLogout().catch(() => {}); // Clear server-side cookie
     clearToken();
+    sessionStorage.removeItem("p4a_profile_cache");
     router.push("/");
-    window.location.reload();
   }
 
   const avatarStyle = {
@@ -156,6 +171,8 @@ export function NavBar() {
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
+              aria-label={t("userMenu")}
+              aria-expanded={showUserMenu}
               style={{
                 display: "flex",
                 alignItems: "center",

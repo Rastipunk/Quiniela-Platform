@@ -12,14 +12,14 @@ export type CreateCorporatePoolInput = {
   timeZone?: string;
   deadlineMinutesBeforeKickoff?: number;
   requireApproval?: boolean;
-  pickTypesConfig?: any;
+  pickTypesConfig?: string | Record<string, unknown>;
   maxParticipants?: number;
   emails?: string[];
 };
 
 export type CreateCorporatePoolResponse = {
   success: boolean;
-  pool: any;
+  pool: Record<string, unknown>;
   organization: { id: string; name: string };
   pendingInvites: number;
 };
@@ -50,7 +50,7 @@ export type ActivateCorporateInput = {
 
 export type ActivateCorporateResponse = {
   token: string;
-  user: any;
+  user: { id: string; email: string; username: string; displayName: string; platformRole: string; status: string };
   poolId: string;
   poolName?: string;
   companyName?: string | null;
@@ -65,23 +65,23 @@ export type CheckCorporateInviteResponse = {
 };
 
 export async function createCorporatePool(token: string, input: CreateCorporatePoolInput): Promise<CreateCorporatePoolResponse> {
-  return requestJson<CreateCorporatePoolResponse>("/corporate/pools", { method: "POST", body: JSON.stringify(input) }, token);
+  return requestJson<CreateCorporatePoolResponse>("/corporate/pools", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function getCorporateEmployees(token: string, poolId: string): Promise<CorporateEmployeesResponse> {
-  return requestJson<CorporateEmployeesResponse>(`/corporate/pools/${poolId}/employees`, { method: "GET" }, token);
+  return requestJson<CorporateEmployeesResponse>(`/corporate/pools/${poolId}/employees`, { method: "GET" });
 }
 
 export async function addCorporateEmployees(token: string, poolId: string, emails: string[]): Promise<{ success: boolean; added: number; skipped: number; total: number }> {
-  return requestJson(`/corporate/pools/${poolId}/employees`, { method: "POST", body: JSON.stringify({ emails }) }, token);
+  return requestJson(`/corporate/pools/${poolId}/employees`, { method: "POST", body: JSON.stringify({ emails }) });
 }
 
 export async function sendCorporateInvitations(token: string, poolId: string): Promise<{ success: boolean; sent: number; activated: number; failed: number }> {
-  return requestJson(`/corporate/pools/${poolId}/send-invitations`, { method: "POST" }, token);
+  return requestJson(`/corporate/pools/${poolId}/send-invitations`, { method: "POST" });
 }
 
 export async function deleteCorporateEmployee(token: string, poolId: string, inviteId: string): Promise<{ success: boolean }> {
-  return requestJson(`/corporate/pools/${poolId}/employees/${inviteId}`, { method: "DELETE" }, token);
+  return requestJson(`/corporate/pools/${poolId}/employees/${inviteId}`, { method: "DELETE" });
 }
 
 export async function checkCorporateInvite(token: string): Promise<CheckCorporateInviteResponse> {

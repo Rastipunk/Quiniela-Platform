@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Type check
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend-next
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend-next
+        run: npm run lint
+
+      - name: Type check
+        working-directory: frontend-next
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: frontend-next
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.picks4all.com
+          NEXT_PUBLIC_GA_ID: ""
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ""

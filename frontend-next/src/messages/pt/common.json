@@ -19,7 +19,8 @@
     "pricing": "Preços",
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu",
-    "menu": "Menu"
+    "menu": "Menu",
+    "userMenu": "Menu do usuário"
   },
   "footer": {
     "tagline": "Plataforma gratuita de previsões esportivas para jogar com amigos.",
@@ -167,34 +168,34 @@
       "cta": "Começar agora — É grátis"
     },
     "pricing": {
-      "title": "Planos e Precos",
-      "subtitle": "Comece gratis. Sem cartao de credito.",
+      "title": "Planos e Preços",
+      "subtitle": "Comece grátis. Sem cartão de crédito.",
       "seeAllPlans": "Ver todos os planos →",
       "personal": {
         "title": "Pessoal",
-        "badge": "Gratis",
-        "subtitle": "Ate 20 jogadores",
-        "cta": "Criar pool gratis"
+        "badge": "Grátis",
+        "subtitle": "Até 20 jogadores",
+        "cta": "Criar pool grátis"
       },
       "personalPro": {
         "title": "Pessoal Pro",
         "badge": "A partir de $6.99",
-        "subtitle": "Ate 300+ jogadores",
-        "includesBase": "Tudo do plano gratis",
-        "extraPlayers": "Ate 300+ jogadores"
+        "subtitle": "Até 300+ jogadores",
+        "includesBase": "Tudo do plano grátis",
+        "extraPlayers": "Até 300+ jogadores"
       },
       "corporate": {
         "title": "Corporativo",
         "badge": "Teste gratuito",
-        "subtitle": "Ate 100 jogadores incluidos",
+        "subtitle": "Até 100 jogadores incluídos",
         "includesPersonal": "Tudo do Pessoal",
         "cta": "Criar pool corporativo"
       },
       "features": {
         "leaderboard": "Leaderboard em tempo real",
-        "scoringModes": "Multiplos modos de pontuacao",
-        "autoResults": "Atualizacao automatica de resultados",
-        "emailNotifications": "Notificacoes por email aos jogadores",
+        "scoringModes": "Múltiplos modos de pontuação",
+        "autoResults": "Atualização automática de resultados",
+        "emailNotifications": "Notificações por email aos jogadores",
         "multiTournament": "Suporte multi-torneio",
         "inviteByLink": "Convide por link",
         "mobileOptimized": "Otimizado para celular"
@@ -202,8 +203,8 @@
       "corporateFeatures": {
         "companyLogo": "Logo e marca da sua empresa",
         "emailInvites": "Convites personalizados por email",
-        "csvImport": "Importacao CSV de funcionarios",
-        "employeeDashboard": "Painel de gestao de funcionarios",
+        "csvImport": "Importação CSV de funcionários",
+        "employeeDashboard": "Painel de gestão de funcionários",
         "brandedExperience": "Pool com marca empresarial"
       },
       "comingSoon": "Em breve"
@@ -434,5 +435,11 @@
     "subMessage": "Mas seu {term} está esperando por você.",
     "goHome": "Ir para o início",
     "faq": "Perguntas frequentes"
+  },
+  "error": {
+    "title": "Algo deu errado",
+    "message": "Ocorreu um erro inesperado. Por favor, tente novamente.",
+    "retry": "Tentar novamente",
+    "goHome": "Ir para o início"
   }
 }

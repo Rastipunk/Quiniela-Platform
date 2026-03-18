@@ -15,7 +15,7 @@ export default function AuthenticatedLayout({
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <NavBar />
         <WhatsNewModal />
-        <main style={{ flex: 1 }}>{children}</main>
+        <main id="main-content" style={{ flex: 1 }}>{children}</main>
         <Footer />
       </div>
     </AuthGuard>

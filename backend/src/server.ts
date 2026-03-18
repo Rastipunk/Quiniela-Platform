@@ -14,10 +14,11 @@ import { meRouter } from "./routes/me";
 import { catalogRouter } from "./routes/catalog";
 import { userProfileRouter } from "./routes/userProfile";
 import { pickPresetsRouter } from "./routes/pickPresets";
-import legalRouter from "./routes/legal";
+import { legalRouter } from "./routes/legal";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
 import { sendOk, sendForbidden, sendInternal } from "./lib/apiResponse";
+import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
@@ -96,13 +97,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
-  if (process.env.NODE_ENV === "production") {
-    // In production, log only the error message — stack traces may contain
-    // query parameters, user data, or other sensitive information.
-    console.error("[UNHANDLED ERROR]", err.message);
-  } else {
-    console.error("[UNHANDLED ERROR]", err.stack || err.message);
-  }
+  logger.error("Unhandled route error", { error: err.message });
   sendInternal(res, "INTERNAL_ERROR", {
     message: process.env.NODE_ENV === "production"
       ? "An unexpected error occurred"
@@ -110,9 +105,20 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+// Process-level error handlers — catch async errors outside request lifecycle
+process.on("unhandledRejection", (reason: unknown) => {
+  logger.error("Unhandled rejection", { error: reason instanceof Error ? reason.message : String(reason) });
+});
+
+process.on("uncaughtException", (err: Error) => {
+  logger.error("Uncaught exception", { error: err.message, stack: err.stack });
+  // Give time for the log to flush, then exit — the process is in an undefined state
+  setTimeout(() => process.exit(1), 1000).unref();
+});
+
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const server = app.listen(PORT, () => {
-  console.log(`API running on http://localhost:${PORT}`);
+  logger.info("API started", { port: PORT, version: BUILD_VERSION, commit: COMMIT_SHA });
   startSmartSyncJob();
   startDeadlineReminderJob();
 });
@@ -121,11 +127,11 @@ const server = app.listen(PORT, () => {
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
 async function gracefulShutdown(signal: string): Promise<void> {
-  console.log(`\n[SHUTDOWN] ${signal} received — shutting down gracefully...`);
+  logger.info("Shutdown initiated", { signal });
 
   // 1. Stop accepting new connections
   server.close(() => {
-    console.log("[SHUTDOWN] HTTP server closed");
+    logger.info("HTTP server closed");
   });
 
   // 2. Stop cron jobs so no new DB work starts
@@ -135,14 +141,14 @@ async function gracefulShutdown(signal: string): Promise<void> {
   // 3. Disconnect Prisma (closes DB connection pool)
   try {
     await prisma.$disconnect();
-    console.log("[SHUTDOWN] Prisma disconnected");
+    logger.info("Prisma disconnected");
   } catch (err) {
-    console.error("[SHUTDOWN] Error disconnecting Prisma:", err);
+    logger.error("Error disconnecting Prisma", { error: err instanceof Error ? err.message : String(err) });
   }
 
   // 4. Force exit if cleanup takes too long
   const forceTimer = setTimeout(() => {
-    console.error("[SHUTDOWN] Timed out — forcing exit");
+    logger.error("Shutdown timed out, forcing exit");
     process.exit(1);
   }, SHUTDOWN_TIMEOUT_MS);
   forceTimer.unref();

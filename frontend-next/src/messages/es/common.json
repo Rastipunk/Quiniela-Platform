@@ -19,7 +19,8 @@
     "pricing": "Precios",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
-    "menu": "Menú"
+    "menu": "Menú",
+    "userMenu": "Menú de usuario"
   },
   "footer": {
     "tagline": "Plataforma gratuita de predicciones deportivas entre amigos.",
@@ -434,5 +435,11 @@
     "subMessage": "Pero tu {term} te está esperando.",
     "goHome": "Ir al inicio",
     "faq": "Preguntas frecuentes"
+  },
+  "error": {
+    "title": "Algo salió mal",
+    "message": "Ocurrió un error inesperado. Por favor intenta de nuevo.",
+    "retry": "Intentar de nuevo",
+    "goHome": "Ir al inicio"
   }
 }

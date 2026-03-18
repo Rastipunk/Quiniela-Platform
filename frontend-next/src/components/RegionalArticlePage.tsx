@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { RegisterButton } from "@/components/RegisterButton";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const articleStyle = {
   paragraph: {
@@ -106,19 +107,19 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
 
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("section1P1") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("section1P1")) }}
           />
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("section1P2") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("section1P2")) }}
           />
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("section1P3") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("section1P3")) }}
           />
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("section1P4") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("section1P4")) }}
           />
 
           {/* Section 2: How it works */}
@@ -137,7 +138,7 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
 
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("section2Intro") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("section2Intro")) }}
           />
 
           {/* Steps */}
@@ -203,7 +204,7 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
 
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("stepsOutro") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("stepsOutro")) }}
           />
 
           {/* Section 3: Why Picks4All */}
@@ -223,11 +224,11 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
           <p style={articleStyle.paragraph}>{t("section3P1")}</p>
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("section3P2") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("section3P2")) }}
           />
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("section3P3") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("section3P3")) }}
           />
 
           {/* Pull Quote */}
@@ -235,11 +236,11 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
 
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("closingP1") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("closingP1")) }}
           />
           <p
             style={articleStyle.paragraph}
-            dangerouslySetInnerHTML={{ __html: t("closingP2") }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(t("closingP2")) }}
           />
 
           {/* Related Links */}

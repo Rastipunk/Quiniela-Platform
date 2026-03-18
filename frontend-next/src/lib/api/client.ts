@@ -15,7 +15,7 @@ function getApiBase(): string {
 
 export const API_BASE = getApiBase();
 
-export async function requestJson<T>(path: string, init: RequestInit = {}, _token?: string): Promise<T> {
+export async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
 
   headers.set("Accept", "application/json");
@@ -25,7 +25,26 @@ export async function requestJson<T>(path: string, init: RequestInit = {}, _toke
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" as const });
+  const timeout = 30_000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers,
+      credentials: "include" as const,
+      signal: init.signal ?? controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err instanceof DOMException && err.name === "AbortError" && !init.signal) {
+      throw new ApiError(0, "TIMEOUT", "Request timed out after 30 seconds");
+    }
+    throw err;
+  }
+  clearTimeout(timer);
 
   const text = await res.text();
   let data: unknown = null;
@@ -43,12 +62,11 @@ export async function requestJson<T>(path: string, init: RequestInit = {}, _toke
       (typeof data === "string" && data) ||
       `HTTP ${res.status}`;
 
-    if (res.status === 401) {
-      if (typeof window !== "undefined" && getToken()) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      const hadToken = !!getToken();
+      clearToken();
+      if (hadToken) {
         markSessionExpired();
-      }
-      if (typeof window !== "undefined") {
-        clearToken();
       }
     }
     throw new ApiError(res.status, errorCode as string, msg as string, data);

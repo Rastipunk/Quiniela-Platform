@@ -373,12 +373,12 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: colors.overlay, zIndex: zIndex.modal, animation: "fadeIn 0.25s ease" }} />
+      <div onClick={onClose} aria-hidden="true" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: colors.overlay, zIndex: zIndex.modal, animation: "fadeIn 0.25s ease" }} />
 
-      <div ref={panelRef} style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: isMobile ? "100%" : "min(420px, 90vw)", background: colors.varSurface, zIndex: zIndex.modalAbove, boxShadow: `-8px 0 30px ${colors.shadowMedium}`, animation: "slideInRight 0.3s ease", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="auth-panel-title" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: isMobile ? "100%" : "min(420px, 90vw)", background: colors.varSurface, zIndex: zIndex.modalAbove, boxShadow: `-8px 0 30px ${colors.shadowMedium}`, animation: "slideInRight 0.3s ease", display: "flex", flexDirection: "column", overflowY: "auto" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${colors.varBorder}`, background: colors.varBg }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: fw.bold }}>
+          <h2 id="auth-panel-title" style={{ margin: 0, fontSize: 18, fontWeight: fw.bold }}>
             {mode === "login" ? t("loginTitle") : t("registerTitle")}
           </h2>
           <button onClick={onClose} aria-label={t("close")} style={{ width: TOUCH_TARGET.minimum, height: TOUCH_TARGET.minimum, display: "flex", alignItems: "center", justifyContent: "center", background: colors.varSurface, border: `1px solid ${colors.varBorder}`, borderRadius: radii.lg, color: colors.varText, fontSize: 18, cursor: "pointer", ...mobileInteractiveStyles.tapHighlight }}>

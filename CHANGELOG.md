@@ -8,11 +8,28 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
-### Pendiente
-- PWA completo (offline mode, push notifications)
-- Chat del pool
-- Payment integration (Lemon Squeezy)
-- WC 2026 template preparation
+### Security & Infrastructure Audit (2026-03-18)
+
+#### Security
+- **Rotated RESEND_API_KEY** — old key invalidated, new key verified in production
+- **Added unhandled rejection/exception handlers** in `server.ts` — prevents silent crashes
+- **HTML sanitizer** (`sanitize.ts`) — protects `dangerouslySetInnerHTML` in SEO pages
+- **Dependabot** configured for backend, frontend, and GitHub Actions (weekly scans)
+
+#### Added
+- **Error boundaries** — `error.tsx` for public and authenticated routes (i18n: ES/EN/PT)
+- **CI/CD pipeline** — GitHub Actions (`ci.yml`): backend type-check + tests, frontend lint + build
+- **Structured logger** (`logger.ts`) — JSON output in production, human-readable in dev
+- **API request timeout** — 30s AbortController in frontend `requestJson()`
+- **Skip-to-content link** — keyboard accessibility in root layout
+- **Focus indicators** — `:focus-visible` styles (WCAG 2.1 AA) in `globals.css`
+
+#### Changed
+- **AuthSlidePanel** — added `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
+- **NavBar** — profile data cached in sessionStorage (5 min TTL), cleared on logout
+- **API type safety** — replaced `any` types in `picks.ts`, `corporate.ts`, `pickConfig.ts`
+- **RegionalArticlePage** — all `dangerouslySetInnerHTML` calls wrapped with `sanitizeHtml()`
+- **server.ts** — migrated console.log/error to structured `logger` module
 
 ---
 

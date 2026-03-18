@@ -19,7 +19,8 @@
     "pricing": "Pricing",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "menu": "Menu"
+    "menu": "Menu",
+    "userMenu": "User menu"
   },
   "footer": {
     "tagline": "Sports prediction platform to play with friends.",
@@ -434,5 +435,11 @@
     "subMessage": "But your {term} is waiting for you.",
     "goHome": "Go to home",
     "faq": "FAQ"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "message": "An unexpected error occurred. Please try again.",
+    "retry": "Try again",
+    "goHome": "Go to home"
   }
 }

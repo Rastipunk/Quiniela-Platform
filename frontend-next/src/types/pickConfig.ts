@@ -16,7 +16,7 @@ export type MatchPickType = {
   key: MatchPickTypeKey;
   enabled: boolean;
   points: number;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 };
 
 export type AutoScalingConfig = {

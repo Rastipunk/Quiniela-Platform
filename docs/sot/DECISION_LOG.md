@@ -5,7 +5,7 @@
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-03-01
+> **Last Updated:** 2026-03-18
 
 ---
 
@@ -103,6 +103,7 @@ How to implement this decision (if applicable)
 | [035](#adr-035-corporate-pool-feature--self-service-mvp) | Corporate Pool Feature — Self-Service MVP | Accepted | 2026-03-01 |
 | [036](#adr-036-lemon-squeezy-as-merchant-of-record) | Lemon Squeezy as Merchant of Record | Accepted | 2026-03-01 |
 | [037](#adr-037-resend-domain-verification-for-production-email) | Resend Domain Verification for Production Email | Accepted | 2026-03-01 |
+| [038](#adr-038-limpieza-de-código-y-documentación-v060) | Limpieza de Código y Documentación v0.6.0 | Accepted | 2026-03-17 |
 
 ---
 
@@ -3806,6 +3807,123 @@ Additionally, email templates still reference the old domain `soporte@tuquiniela
 
 ---
 
+## ADR-038: Limpieza de Código y Documentación v0.6.0
+
+**Date:** 2026-03-17
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #maintenance #documentation #cleanup
+
+### Context
+
+Tras completar el Corporate Self-Service MVP (v0.6.0), se realizó una auditoría exhaustiva del repositorio para identificar código muerto, archivos huérfanos y documentación desactualizada.
+
+### Decision
+
+Realizar limpieza de código y actualización completa de documentación:
+1. Eliminar archivos huérfanos y código muerto
+2. Actualizar todos los documentos SoT a estado actual
+3. Agregar endpoints y términos faltantes en la documentación
+
+### Rationale
+
+La documentación es la fuente de verdad del proyecto. Mantenerla actualizada reduce el riesgo de decisiones basadas en información obsoleta y facilita el onboarding de nuevos colaboradores.
+
+### Consequences
+
+**Positive:**
+- ✅ Documentación 100% sincronizada con el código
+- ✅ Eliminados 18 MB de artefactos innecesarios
+- ✅ Removido código muerto (wc2026Sandbox.ts, createResourceLimiter)
+- ✅ Endpoints faltantes documentados en API_SPEC.md
+- ✅ Términos corporativos agregados al GLOSSARY.md
+
+**Negative:**
+- ⚠️ Requiere disciplina continua para mantener sincronización
+
+### Implementation Notes
+
+**Archivos eliminados:**
+- `backend/src/wc2026Sandbox.ts` — exportaba función sin importar
+- `createResourceLimiter` en `middleware/rateLimit.ts` — rate limiter sin uso
+- `.railwayignore` (raíz) — artefacto Windows
+- `.tmp.driveupload/` — 18 MB de artefactos Google Drive
+
+**Documentos actualizados:**
+- CURRENT_STATE.md, PRD.md, API_SPEC.md, ARCHITECTURE.md, DATA_MODEL.md, GLOSSARY.md, DECISION_LOG.md, CLAUDE.md
+
+### Related Decisions
+- ADR-035 (Corporate Pool Feature)
+- ADR-037 (Resend Domain Verification)
+
+---
+
+## ADR-039: Security & Infrastructure Audit
+
+**Date:** 2026-03-18
+**Status:** Accepted
+**Deciders:** Product Team
+**Tags:** #security #infrastructure #ci-cd #accessibility
+
+### Context
+
+A comprehensive audit of the entire codebase (frontend, backend, infrastructure) identified 20 findings across critical, high, medium, and low severity. Key concerns: exposed API keys in local `.env`, no process-level error handlers, no CI/CD pipeline, missing error boundaries, no request timeout, and accessibility gaps.
+
+### Decision
+
+Address all critical and high severity findings immediately, medium findings in the same session, and defer low-priority items (PoolPage refactor, token revocation, comprehensive test coverage) to dedicated sessions.
+
+### Rationale
+
+The platform is approaching its April 1st launch. Critical security and stability fixes cannot wait. Infrastructure improvements (CI/CD, Dependabot, structured logging) provide immediate value and prevent regressions. Accessibility improvements align with professional standards.
+
+### Consequences
+
+**Positive:**
+- ✅ API keys rotated, exposure eliminated
+- ✅ Process won't crash silently on unhandled errors
+- ✅ CI pipeline catches type errors and test failures before deploy
+- ✅ Dependabot alerts on vulnerable dependencies weekly
+- ✅ Error boundaries prevent full-page crashes for users
+- ✅ API requests fail gracefully after 30s instead of hanging
+- ✅ WCAG 2.1 AA focus indicators and skip-to-content
+- ✅ Structured logging enables future log aggregation (Sentry, Datadog)
+- ✅ NavBar no longer spams API on every navigation
+- ✅ XSS protection on translated HTML content
+
+**Negative:**
+- ⚠️ `pools.ts` and `groupStandings.ts` still have `any` types
+- ⚠️ PoolPage (720 lines) deferred — functional but hard to maintain
+- ⚠️ No Sentry yet — requires account setup
+
+### Files Created
+- `backend/src/lib/logger.ts` — Structured logging module
+- `frontend-next/src/lib/sanitize.ts` — HTML sanitizer for translated content
+- `frontend-next/src/app/[locale]/error.tsx` — Public error boundary
+- `frontend-next/src/app/[locale]/(authenticated)/error.tsx` — Authenticated error boundary
+- `.github/workflows/ci.yml` — CI pipeline
+- `.github/dependabot.yml` — Dependency scanning
+
+### Files Modified
+- `backend/src/server.ts` — Logger + unhandled rejection/exception handlers
+- `frontend-next/src/lib/api/client.ts` — 30s timeout with AbortController
+- `frontend-next/src/lib/api/picks.ts` — Full type safety rewrite
+- `frontend-next/src/lib/api/corporate.ts` — Replaced `any` types
+- `frontend-next/src/types/pickConfig.ts` — `Record<string, unknown>` instead of `any`
+- `frontend-next/src/components/AuthSlidePanel.tsx` — ARIA dialog attributes
+- `frontend-next/src/components/NavBar.tsx` — SessionStorage profile cache
+- `frontend-next/src/components/RegionalArticlePage.tsx` — sanitizeHtml() wrapper
+- `frontend-next/src/app/[locale]/layout.tsx` — Skip-to-content link
+- `frontend-next/src/app/[locale]/(authenticated)/layout.tsx` — `id="main-content"`
+- `frontend-next/src/app/globals.css` — `:focus-visible` indicators
+- `frontend-next/src/messages/{es,en,pt}/common.json` — Error boundary translations
+
+### Related Decisions
+- ADR-038 (Code Cleanup v0.6.0)
+- ADR-028 (Rate Limiting Strategy)
+
+---
+
 ## Future Decisions (To Be Documented)
 
 **v0.3.0:**
@@ -3834,15 +3952,17 @@ Additionally, email templates still reference the old domain `soporte@tuquiniela
 - [x] ADR-035: Corporate Pool Feature — Self-Service MVP ✅ (2026-03-01)
 - [x] ADR-036: Lemon Squeezy as Merchant of Record ✅ (2026-03-01)
 - [x] ADR-037: Resend Domain Verification for Production Email ✅ (2026-03-01)
+- [x] ADR-038: Limpieza de Código y Documentación v0.6.0 ✅ (2026-03-17)
+- [x] ADR-039: Security & Infrastructure Audit ✅ (2026-03-18)
 
 **v1.0:**
-- [ ] ADR-038: PWA + Service Worker
-- [ ] ADR-039: Redis caching layer
+- [ ] ADR-040: PWA + Service Worker
+- [ ] ADR-041: Redis caching layer
 
 **v2.0:**
-- [ ] ADR-040: Multi-sport support architecture
-- [ ] ADR-041: WebSocket for real-time updates
-- [ ] ADR-042: Facebook/Apple OAuth providers
+- [ ] ADR-042: Multi-sport support architecture
+- [ ] ADR-043: WebSocket for real-time updates
+- [ ] ADR-044: Facebook/Apple OAuth providers
 
 ---
 
