@@ -109,6 +109,7 @@ export function CorporatePoolCreation() {
     setLogoError(null);
     if (file.size > MAX_LOGO_BYTES) {
       setLogoError(t("imageSize"));
+      e.target.value = "";
       return;
     }
     const reader = new FileReader();

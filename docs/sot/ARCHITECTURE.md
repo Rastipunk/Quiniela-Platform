@@ -2,7 +2,7 @@
 # Picks4All
 
 > **Version:** 2.1 (v0.6.0 — Corporate Self-Service MVP)
-> **Last Updated:** 2026-02-22
+> **Last Updated:** 2026-03-17
 > **Status:** Production (Railway)
 > **Domain:** picks4all.com | api.picks4all.com
 
@@ -657,7 +657,7 @@ export function proxy(request: NextRequest) {
 2. `setToken(jwt)` saves to `localStorage` and fires `quiniela:auth` event
 3. `useAuth()` hook listens for auth changes, exposes `{ token, isAuthenticated, isLoading }`
 4. `AuthGuard` component wraps authenticated route group -> redirects to `/` if no token
-5. API client (`lib/api.ts`) auto-injects `Authorization: Bearer <token>` header
+5. API client (`lib/api/client.ts`) auto-injects `Authorization: Bearer <token>` header
 6. On 401 response: `clearToken()` fires event -> `useAuth` updates -> `AuthGuard` redirects
 
 **Google Sign-In:**
@@ -665,9 +665,26 @@ export function proxy(request: NextRequest) {
 - On successful Google sign-in, frontend sends `idToken` to `POST /auth/google`
 - Backend verifies token with `google-auth-library`, creates or links user
 
-### 5.5 API Client (`lib/api.ts`)
+### 5.5 API Client (`lib/api/`)
 
-Centralized fetch wrapper with 70+ typed methods:
+El cliente API está organizado de forma modular en `lib/api/`, no como un único archivo `api.ts`:
+
+```
+lib/api/
+├── client.ts          # requestJson, getApiBase, manejo de 401
+├── auth.ts            # login, register, loginWithGoogle, forgotPassword, resetPassword, verifyEmail
+├── dashboard.ts       # getMePools, listInstances, createPool, joinPool
+├── pool.ts            # getPoolOverview, upsertPick, upsertResult, createInvite
+├── structural.ts      # upsertStructuralPick, publishStructuralResult, saveGroupStandingsPick
+├── scoring.ts         # getMatchBreakdown, getPhaseBreakdown, getGroupBreakdown
+├── members.ts         # promoteMemberToCoAdmin, approveMember, kickMember, banMember
+├── profile.ts         # getUserProfile, updateUserProfile, getUserEmailPreferences
+├── admin.ts           # getAdminFeedback, getAdminEmailSettings, updateAdminEmailSettings
+├── corporate.ts       # createCorporatePool, addEmployees, sendInvitations, getCorporateEmployees
+└── index.ts           # Re-exporta todo
+```
+
+**Base del cliente (`lib/api/client.ts`):**
 
 ```typescript
 function getApiBase(): string {
@@ -691,15 +708,12 @@ async function requestJson<T>(path: string, init: RequestInit = {}, token?: stri
 }
 ```
 
-**API method categories:**
-- Auth: `login`, `register`, `loginWithGoogle`, `forgotPassword`, `resetPassword`, `verifyEmail`
-- Dashboard: `getMePools`, `listInstances`, `createPool`, `joinPool`
-- Pool: `getPoolOverview`, `upsertPick`, `upsertResult`, `createInvite`
-- Structural: `upsertStructuralPick`, `publishStructuralResult`, `saveGroupStandingsPick`
-- Scoring: `getMatchBreakdown`, `getPhaseBreakdown`, `getGroupBreakdown`
-- Members: `promoteMemberToCoAdmin`, `approveMember`, `kickMember`, `banMember`
-- Profile: `getUserProfile`, `updateUserProfile`, `getUserEmailPreferences`
-- Admin: `getAdminFeedback`, `getAdminEmailSettings`, `updateAdminEmailSettings`
+70+ métodos tipados distribuidos por módulo. Cada módulo importa `requestJson` desde `client.ts`.
+
+**Componentes corporativos (`components/corporate/`):**
+- `EnterpriseLandingContent.tsx` — Landing pública `/empresas`
+- `CorporatePoolCreation.tsx` — Wizard de 6 pasos `/empresas/crear`
+- `ActivationContent.tsx` — Activación de empleado `/activar-cuenta`
 
 ### 5.6 Styling Architecture
 
@@ -841,6 +855,33 @@ Configured in `next.config.ts`:
 - **Rate Limiting:** Per-endpoint rate limits (see section 4.2)
 - **CORS:** Configured on backend
 
+### 7.6 Tokens de Activación Corporativa
+
+**Propósito:** Permitir a empleados de empresas activar sus cuentas y unirse a pools corporativos.
+
+**Implementación:**
+- Token generado con `crypto.randomBytes(48)` → 96 caracteres hex
+- Vigencia: 30 días desde la creación
+- Almacenado en modelo `CorporateInvite` con status (PENDING → ACTIVATED → EXPIRED)
+- Verificación: `GET /auth/check-corporate-invite?token=xxx` (público)
+- Activación: `POST /auth/activate-corporate` (crea cuenta o vincula existente)
+
+**Flujo de activación:**
+```
+1. CORPORATE_HOST agrega empleados (manual o CSV)
+2. Sistema genera CorporateInvite con token único
+3. Email de activación enviado con link: /activar-cuenta?token=xxx
+4. Empleado accede al link, ve info de la empresa/pool
+5. Empleado crea contraseña (o vincula cuenta existente)
+6. Sistema crea PoolMember con rol PLAYER en la pool corporativa
+```
+
+**Seguridad:**
+- Tokens de un solo uso (status cambia a ACTIVATED tras usar)
+- 48 bytes de entropía (resistente a fuerza bruta)
+- Expiración automática a los 30 días
+- Rate limiting en endpoint de activación (5 req/hora por IP)
+
 ---
 
 ## 8. API Design Patterns
@@ -962,6 +1003,21 @@ Cron (every N minutes) ─────> Check MatchSyncState records
                                   Update MatchSyncState -> FINISHED
                                   Trigger leaderboard recalc
 ```
+
+### 9.4 Email — Arquitectura Completa
+
+**Envío de emails transaccionales (Resend):**
+- Proveedor: Resend (dominio verificado — ADR-037)
+- Templates: 6 tipos (bienvenida, invitación pool, deadline reminder, resultado, pool completado, activación corporativa)
+- Soporte multi-idioma: ES/EN/PT (templates locale-aware)
+- Notificaciones admin: `sendAdminNotification()` envía a equipo en eventos importantes
+- Rate limiting: Corporative invites 5/hora por IP
+
+**Recepción de emails (Cloudflare Email Routing — ADR-034):**
+- 16 direcciones configuradas + catch-all
+- Direcciones clave: soporte@picks4all.com, privacidad@picks4all.com, empresas@picks4all.com
+- Rutas por idioma: support@, privacy@, enterprise@ (EN), suporte@, privacidade@ (PT)
+- Catch-all redirige a correo principal del equipo
 
 ---
 
@@ -1097,8 +1153,13 @@ npm run dev                       # Start Next.js dev server (port 3000 or next 
 
 ## 12. Future Architecture Evolution
 
+> **Nota:** El MVP corporativo (Self-Service) fue implementado en v0.6.0 (marzo 2026).
+> Ver sección 7.6 (tokens de activación) y sección 9.4 (email) para detalles.
+
 ### 12.1 Near-Term
 
+- [ ] Corporate pool branding (splash screen, logo de empresa, colores personalizados)
+- [ ] Integración de pagos (Lemon Squeezy — solicitud enviada mar 2026)
 - [ ] Redis caching layer (pool overview, leaderboard)
 - [ ] Background job queue (decouple sync jobs from API process)
 - [ ] Error tracking (Sentry integration)
@@ -1107,6 +1168,7 @@ npm run dev                       # Start Next.js dev server (port 3000 or next 
 
 ### 12.2 Mid-Term
 
+- [ ] Sistema de chat (dentro de pools)
 - [ ] Read replicas for leaderboard queries
 - [ ] WebSockets for real-time leaderboard updates
 - [ ] Shared TypeScript types package between frontend/backend
@@ -1115,6 +1177,7 @@ npm run dev                       # Start Next.js dev server (port 3000 or next 
 
 ### 12.3 Long-Term
 
+- [ ] PWA offline + push notifications
 - [ ] Microservices split (Auth, Pools, Leaderboard, Sync)
 - [ ] Event-driven architecture (message queue for result updates)
 - [ ] Multi-region deployment

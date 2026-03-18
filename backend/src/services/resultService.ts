@@ -29,16 +29,8 @@ import {
   type PickJson,
 } from "../lib/fixture";
 import { outcomeFromScore } from "../lib/poolHelpers";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-/** Fire-and-forget with error logging. */
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[ResultService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 // ─── Types ───────────────────────────────────────────────────
 

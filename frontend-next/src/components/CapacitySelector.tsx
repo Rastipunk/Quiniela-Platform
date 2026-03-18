@@ -128,6 +128,10 @@ export default function CapacitySelector({
               onClick={() => {
                 if (!isLocked) onSelect(tier.maxParticipants);
               }}
+              onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && !isLocked) { e.preventDefault(); onSelect(tier.maxParticipants); }}}
+              role="button"
+              tabIndex={isLocked ? -1 : 0}
+              aria-disabled={isLocked}
               style={{
                 position: "relative",
                 padding: "14px 16px",

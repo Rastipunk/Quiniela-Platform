@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
@@ -10,6 +11,7 @@ import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets";
 import { extractPhases } from "../lib/fixture";
 import { sendData, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
+import { isValidTimezone } from "../lib/timezone";
 
 // Sub-routers — all pool-related routes composed here
 import { poolOverviewRouter } from "./poolOverview";
@@ -36,6 +38,14 @@ poolsRouter.use("/", resultsRouter);
 poolsRouter.use("/", structuralResultsRouter);
 poolsRouter.use("/", groupStandingsRouter);
 
+const poolCreationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // max 10 pools per hour
+  message: { error: "TOO_MANY_POOLS" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const createPoolSchema = z.object({
   tournamentInstanceId: z.string().min(1),
   name: z.string().min(3).max(120),
@@ -55,7 +65,7 @@ const createPoolSchema = z.object({
 });
 
 // POST /pools  (crea pool y agrega al creador como HOST)
-poolsRouter.post("/", async (req, res) => {
+poolsRouter.post("/", poolCreationLimiter, async (req, res) => {
   const parsed = createPoolSchema.safeParse(req.body);
   if (!parsed.success) {
     return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
@@ -72,6 +82,11 @@ poolsRouter.post("/", async (req, res) => {
     maxParticipants,
     pickTypesConfig
   } = parsed.data;
+
+  // Validate timezone if provided
+  if (timeZone && !isValidTimezone(timeZone)) {
+    return sendBadRequest(res, "INVALID_TIMEZONE");
+  }
 
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: tournamentInstanceId } });
   if (!instance) return sendNotFound(res, "NOT_FOUND", { message: "TournamentInstance not found" });

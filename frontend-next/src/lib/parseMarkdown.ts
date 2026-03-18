@@ -13,14 +13,19 @@ export function parseMarkdown(md: string): string {
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     // Italic
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    // Links (only allow safe protocols)
+    // Links (only allow safe protocols with proper URL validation)
     .replace(
       /\[([^\]]+)\]\(([^)]+)\)/g,
       (_m, text, url) => {
-        if (/^https?:\/\/|^mailto:/i.test(url)) {
-          return `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        try {
+          const parsed = new URL(url);
+          if (!["http:", "https:", "mailto:"].includes(parsed.protocol)) return text;
+          // Encode any quotes in the URL to prevent attribute injection
+          const safeUrl = url.replace(/"/g, '%22');
+          return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        } catch {
+          return text; // Invalid URL, just show text
         }
-        return text;
       }
     )
     // Horizontal rule

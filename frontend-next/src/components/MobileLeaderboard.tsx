@@ -45,6 +45,10 @@ export function MobileLeaderboard({
           <div
             key={r.userId}
             onClick={() => onPlayerClick(r.userId, r.displayName)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPlayerClick(r.userId, r.displayName); }}}
+            role="button"
+            tabIndex={0}
+            aria-label={`${r.displayName} - ${r.points} pts`}
             style={{
               background: isTopThree
                 ? idx === 0

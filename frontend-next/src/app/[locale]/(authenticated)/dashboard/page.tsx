@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   createPool,
@@ -32,6 +32,7 @@ function detectTz() {
 export default function DashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const locale = useLocale();
   const isMobile = useIsMobile();
   const t = useTranslations("dashboard");
   const tc = useTranslations("landing.tournaments");
@@ -277,7 +278,7 @@ export default function DashboardPage() {
               onClick={() => {
                 apiLogout().catch(() => {});
                 clearToken();
-                window.location.href = "/";
+                window.location.href = locale === "es" ? "/" : `/${locale}`;
               }}
               style={buttonStyle}
             >

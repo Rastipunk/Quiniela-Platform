@@ -14,15 +14,10 @@ import { canMakePicks } from "./poolStateMachine";
 import { advanceToRoundOf32, validateCanAutoAdvance } from "./instanceAdvancement";
 import { requirePoolAdmin } from "../lib/roles";
 import { parseFixtureData } from "../lib/fixture";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
 
 // ─── Helpers ─────────────────────────────────────────────────
-
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[GroupStandingsService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 async function requireActivePoolMember(userId: string, poolId: string): Promise<boolean> {
   const member = await prisma.poolMember.findFirst({

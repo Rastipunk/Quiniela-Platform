@@ -20,7 +20,7 @@ export type AdminEmailSettingsResponse = {
 };
 
 export async function getAdminEmailSettings(token: string): Promise<AdminEmailSettingsResponse> {
-  return requestJson("/admin/settings/email", { method: "GET" }, token);
+  return requestJson("/admin/settings/email", { method: "GET" });
 }
 
 export async function updateAdminEmailSettings(
@@ -31,7 +31,7 @@ export async function updateAdminEmailSettings(
   settings: PlatformEmailSettings;
   changes: Record<string, { from: boolean; to: boolean }>;
 }> {
-  return requestJson("/admin/settings/email", { method: "PUT", body: JSON.stringify(settings) }, token);
+  return requestJson("/admin/settings/email", { method: "PUT", body: JSON.stringify(settings) });
 }
 
 // Feedback
@@ -70,7 +70,7 @@ export async function getAdminFeedback(
   if (params?.page) q.set("page", String(params.page));
   if (params?.limit) q.set("limit", String(params.limit));
   const qs = q.toString() ? `?${q.toString()}` : "";
-  return requestJson<AdminFeedbackResponse>(`/feedback/admin${qs}`, { method: "GET" }, token);
+  return requestJson<AdminFeedbackResponse>(`/feedback/admin${qs}`, { method: "GET" });
 }
 
 export async function submitFeedback(
@@ -96,6 +96,5 @@ export async function submitFeedback(
         currentUrl: typeof window !== "undefined" ? window.location.href : undefined,
       }),
     },
-    token || undefined
   );
 }

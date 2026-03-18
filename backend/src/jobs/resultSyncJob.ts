@@ -16,10 +16,6 @@ import { isApiFootballEnabled } from "../services/apiFootball";
 // Cron expression for active sync (every 5 minutes)
 const ACTIVE_SYNC_CRON = process.env.RESULT_SYNC_ACTIVE_CRON || "*/5 * * * *";
 
-// Cron expression for idle sync (every 30 minutes)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _IDLE_SYNC_CRON = process.env.RESULT_SYNC_IDLE_CRON || "*/30 * * * *";
-
 // Whether sync is enabled
 const SYNC_ENABLED = process.env.RESULT_SYNC_ENABLED === "true";
 

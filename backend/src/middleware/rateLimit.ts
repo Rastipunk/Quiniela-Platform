@@ -45,12 +45,3 @@ export const corporateInviteLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-// Resource creation (pools, invites) — 20 req/hour per IP
-export const createResourceLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 20,
-  message: { error: "TOO_MANY_CREATIONS" },
-  standardHeaders: true,
-  legacyHeaders: false,
-});

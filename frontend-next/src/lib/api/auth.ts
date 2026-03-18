@@ -96,7 +96,6 @@ export async function logout(): Promise<{ ok: boolean }> {
 export async function resendVerificationEmail(token: string): Promise<{ message: string }> {
   return requestJson<{ message: string }>(
     "/auth/resend-verification",
-    { method: "POST" },
-    token
+    { method: "POST" }
   );
 }

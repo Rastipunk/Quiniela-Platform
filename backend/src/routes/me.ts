@@ -29,10 +29,7 @@ meRouter.get("/pools", async (req, res) => {
     },
   });
 
-  // Note: returns raw array to preserve existing frontend contract (MePoolRow[])
-  // eslint-disable-next-line -- sendData expects object, frontend expects array
-  return res.json(
-    memberships.map((m) => ({
+  const pools = memberships.map((m) => ({
       poolId: m.poolId,
       role: m.role,
       status: m.status,
@@ -63,8 +60,9 @@ meRouter.get("/pools", async (req, res) => {
             updatedAtUtc: m.pool.tournamentInstance.updatedAtUtc,
           }
         : null,
-    }))
-  );
+    }));
+
+  return sendData(res, { pools });
 });
 
 // =========================================================================

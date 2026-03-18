@@ -35,7 +35,7 @@ export type UpdateProfileInput = {
 };
 
 export async function getUserProfile(token: string): Promise<{ user: UserProfile }> {
-  return requestJson<{ user: UserProfile }>("/users/me/profile", { method: "GET" }, token);
+  return requestJson<{ user: UserProfile }>("/users/me/profile", { method: "GET" });
 }
 
 export async function updateUserProfile(
@@ -44,8 +44,7 @@ export async function updateUserProfile(
 ): Promise<{ user: UserProfile }> {
   return requestJson<{ user: UserProfile }>(
     "/users/me/profile",
-    { method: "PATCH", body: JSON.stringify(input) },
-    token
+    { method: "PATCH", body: JSON.stringify(input) }
   );
 }
 
@@ -73,7 +72,7 @@ export type UserEmailPreferencesResponse = {
 export async function getUserEmailPreferences(
   token: string
 ): Promise<UserEmailPreferencesResponse> {
-  return requestJson("/me/email-preferences", { method: "GET" }, token);
+  return requestJson("/me/email-preferences", { method: "GET" });
 }
 
 export async function updateUserEmailPreferences(
@@ -85,7 +84,6 @@ export async function updateUserEmailPreferences(
 }> {
   return requestJson(
     "/me/email-preferences",
-    { method: "PUT", body: JSON.stringify(preferences) },
-    token
+    { method: "PUT", body: JSON.stringify(preferences) }
   );
 }

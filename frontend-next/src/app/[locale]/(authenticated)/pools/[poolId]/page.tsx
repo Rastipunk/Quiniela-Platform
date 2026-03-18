@@ -582,7 +582,7 @@ export default function PoolPage() {
           <div style={{
             marginTop: isMobile ? 12 : 16, paddingTop: 8, borderBottom: "2px solid #e0e0e0",
             display: "flex", gap: isMobile ? 4 : 8, overflowX: "auto", overflowY: "visible",
-            WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none",
+            WebkitOverflowScrolling: "touch",
             ...mobileInteractiveStyles.tapHighlight,
           }}>
             {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" ? ["jugadores" as const] : []), ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {

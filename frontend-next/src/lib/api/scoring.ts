@@ -147,15 +147,15 @@ export async function getMatchBreakdown(
     kickoffUtc: string;
   };
 }> {
-  return requestJson(`/pools/${poolId}/breakdown/match/${matchId}`, { method: "GET" }, token);
+  return requestJson(`/pools/${poolId}/breakdown/match/${matchId}`, { method: "GET" });
 }
 
 export async function getPhaseBreakdown(token: string, poolId: string, phaseId: string): Promise<{ breakdown: ScoringBreakdown }> {
-  return requestJson(`/pools/${poolId}/breakdown/phase/${phaseId}`, { method: "GET" }, token);
+  return requestJson(`/pools/${poolId}/breakdown/phase/${phaseId}`, { method: "GET" });
 }
 
 export async function getGroupBreakdown(token: string, poolId: string, groupId: string): Promise<{ breakdown: GroupSingleBreakdown }> {
-  return requestJson(`/pools/${poolId}/breakdown/group/${groupId}`, { method: "GET" }, token);
+  return requestJson(`/pools/${poolId}/breakdown/group/${groupId}`, { method: "GET" });
 }
 
 // Player summary
@@ -198,5 +198,5 @@ export type PlayerSummaryResponse = {
 };
 
 export async function getPlayerSummary(token: string, poolId: string, userId: string): Promise<PlayerSummaryResponse> {
-  return requestJson(`/pools/${poolId}/players/${userId}/summary`, { method: "GET" }, token);
+  return requestJson(`/pools/${poolId}/players/${userId}/summary`, { method: "GET" });
 }

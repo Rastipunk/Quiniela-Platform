@@ -12,16 +12,8 @@ import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { requirePoolAdmin, isPoolOwner, NON_LEAVABLE_ROLES } from "../lib/roles";
 import { transitionToActive } from "./poolStateMachine";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-/** Fire-and-forget with error logging. */
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[PoolMemberService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 // ─── Types ───────────────────────────────────────────────────
 

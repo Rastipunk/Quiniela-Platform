@@ -41,31 +41,11 @@ export function useIsMobile(options: UseIsMobileOptions = {}): boolean {
 
     handleChange(mediaQuery);
 
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    } else {
-      mediaQuery.addListener(handleChange);
-      return () => mediaQuery.removeListener(handleChange);
-    }
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [breakpoint]);
 
   return isMobile;
-}
-
-export function useIsTablet(): boolean {
-  const isNotMobile = !useIsMobile({ breakpoint: BREAKPOINTS.mobile });
-  const isNotDesktop = useIsMobile({ breakpoint: BREAKPOINTS.tabletLg });
-  return isNotMobile && isNotDesktop;
-}
-
-export function useDeviceType(): "mobile" | "tablet" | "desktop" {
-  const isMobile = useIsMobile();
-  const isTablet = useIsTablet();
-
-  if (isMobile) return "mobile";
-  if (isTablet) return "tablet";
-  return "desktop";
 }
 
 export const mobileInteractiveStyles = {

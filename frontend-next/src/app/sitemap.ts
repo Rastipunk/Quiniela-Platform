@@ -77,6 +77,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: allLocales("/privacidad", "/privacy", "/privacidade"),
     },
 
+    // Pricing (localized paths)
+    {
+      url: `${baseUrl}/precios`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      alternates: allLocales("/precios", "/pricing", "/precos"),
+    },
+
+    // Refund policy (localized paths)
+    {
+      url: `${baseUrl}/reembolsos`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+      alternates: allLocales("/reembolsos", "/refunds", "/reembolsos"),
+    },
+
     // Enterprise / Corporate
     {
       url: `${baseUrl}/empresas`,

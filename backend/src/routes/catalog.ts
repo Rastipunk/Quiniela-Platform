@@ -34,8 +34,7 @@ catalogRouter.get("/instances", async (_req, res) => {
     },
   });
 
-  // eslint-disable-next-line -- sendData expects object, frontend expects array
-  res.json(instances);
+  return sendData(res, { instances });
 });
 
 // GET /catalog/instances/:instanceId/phases

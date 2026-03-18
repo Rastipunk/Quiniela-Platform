@@ -37,15 +37,8 @@ import {
   type StructuralPickJson,
 } from "../lib/fixture";
 import type { PhasePickConfig } from "../types/pickConfig";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[PoolAdminService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 // ─── Scoring Override ────────────────────────────────────────
 

@@ -23,6 +23,23 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
   const [errorMsg, setErrorMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const resetForm = () => {
+    setMessage("");
+    setImageBase64(null);
+    setImagePreview(null);
+    setWantsContact(false);
+    setContactName("");
+    setPhoneNumber("");
+    setStatus("idle");
+    setErrorMsg("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const title = type === "BUG" ? t("bugTitle") : t("suggestionTitle");
   const placeholder = type === "BUG" ? t("bugPlaceholder") : t("suggestionPlaceholder");
 
@@ -71,7 +88,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -116,7 +133,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
               {t("successMessage")}
             </p>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               style={{
                 background: "var(--text, #111)",
                 color: "var(--bg, #fff)",
@@ -328,7 +345,7 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
             {/* Actions */}
             <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={status === "loading"}
                 style={{
                   background: "transparent",

@@ -11,15 +11,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
 import { ApiFootballClient } from "../services/apiFootball/client";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[AdminService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 // ─── Platform Stats ──────────────────────────────────────────
 

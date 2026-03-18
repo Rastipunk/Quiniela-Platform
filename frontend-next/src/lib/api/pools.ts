@@ -75,43 +75,45 @@ export type PoolNotifications = {
 
 // Dashboard / Catalog
 export async function getMePools(token: string): Promise<MePoolRow[]> {
-  return requestJson<MePoolRow[]>("/me/pools", { method: "GET" }, token);
+  const data = await requestJson<{ pools: MePoolRow[] }>("/me/pools", { method: "GET" });
+  return data.pools;
 }
 
 export async function listInstances(token: string): Promise<CatalogInstance[]> {
-  return requestJson<CatalogInstance[]>("/catalog/instances", { method: "GET" }, token);
+  const data = await requestJson<{ instances: CatalogInstance[] }>("/catalog/instances", { method: "GET" });
+  return data.instances;
 }
 
 export const listCatalogInstances = listInstances;
 
 export async function getInstancePhases(token: string, instanceId: string): Promise<{ phases: InstancePhase[] }> {
-  return requestJson<{ phases: InstancePhase[] }>(`/catalog/instances/${instanceId}/phases`, { method: "GET" }, token);
+  return requestJson<{ phases: InstancePhase[] }>(`/catalog/instances/${instanceId}/phases`, { method: "GET" });
 }
 
 // Pool CRUD
 export async function createPool(token: string, input: CreatePoolInput): Promise<any> {
-  return requestJson<any>("/pools", { method: "POST", body: JSON.stringify(input) }, token);
+  return requestJson<any>("/pools", { method: "POST", body: JSON.stringify(input) });
 }
 
 export async function joinPool(token: string, code: string): Promise<any> {
-  return requestJson<any>("/pools/join", { method: "POST", body: JSON.stringify({ code }) }, token);
+  return requestJson<any>("/pools/join", { method: "POST", body: JSON.stringify({ code }) });
 }
 
 export async function getPoolOverview(token: string, poolId: string, leaderboardVerbose = false): Promise<PoolOverview> {
   const q = leaderboardVerbose ? "?leaderboardVerbose=1" : "?leaderboardVerbose=0";
-  return requestJson<PoolOverview>(`/pools/${poolId}/overview${q}`, { method: "GET" }, token);
+  return requestJson<PoolOverview>(`/pools/${poolId}/overview${q}`, { method: "GET" });
 }
 
 export async function createInvite(token: string, poolId: string): Promise<{ code: string }> {
-  return requestJson<{ code: string }>(`/pools/${poolId}/invites`, { method: "POST" }, token);
+  return requestJson<{ code: string }>(`/pools/${poolId}/invites`, { method: "POST" });
 }
 
 export async function leavePool(token: string, poolId: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/leave`, { method: "POST" }, token);
+  return requestJson<any>(`/pools/${poolId}/leave`, { method: "POST" });
 }
 
 export async function getPoolNotifications(token: string, poolId: string): Promise<PoolNotifications> {
-  return requestJson(`/pools/${poolId}/notifications`, { method: "GET" }, token);
+  return requestJson(`/pools/${poolId}/notifications`, { method: "GET" });
 }
 
 export async function sendPoolInviteEmail(
@@ -119,57 +121,56 @@ export async function sendPoolInviteEmail(
 ): Promise<{ success: boolean; message: string; skipped?: boolean }> {
   return requestJson(
     `/pools/${poolId}/send-invite-email`,
-    { method: "POST", body: JSON.stringify({ email, inviteCode }) },
-    token
+    { method: "POST", body: JSON.stringify({ email, inviteCode }) }
   );
 }
 
 // Pool Admin / Host actions
 export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean; requireApproval?: boolean; extraTimePhases?: string[] }): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/settings`, { method: "PATCH", body: JSON.stringify(settings) }, token);
+  return requestJson<any>(`/pools/${poolId}/settings`, { method: "PATCH", body: JSON.stringify(settings) });
 }
 
 export async function manualAdvancePhase(token: string, poolId: string, currentPhaseId: string, nextPhaseId?: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/advance-phase`, { method: "POST", body: JSON.stringify({ currentPhaseId, nextPhaseId }) }, token);
+  return requestJson<any>(`/pools/${poolId}/advance-phase`, { method: "POST", body: JSON.stringify({ currentPhaseId, nextPhaseId }) });
 }
 
 export async function lockPhase(token: string, poolId: string, phaseId: string, locked: boolean): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/lock-phase`, { method: "POST", body: JSON.stringify({ phaseId, locked }) }, token);
+  return requestJson<any>(`/pools/${poolId}/lock-phase`, { method: "POST", body: JSON.stringify({ phaseId, locked }) });
 }
 
 export async function archivePool(token: string, poolId: string): Promise<{ success: boolean }> {
-  return requestJson<{ success: boolean }>(`/pools/${poolId}/archive`, { method: "POST" }, token);
+  return requestJson<{ success: boolean }>(`/pools/${poolId}/archive`, { method: "POST" });
 }
 
 // Member management
 export async function promoteMemberToCoAdmin(token: string, poolId: string, memberId: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/promote`, { method: "POST" }, token);
+  return requestJson<any>(`/pools/${poolId}/members/${memberId}/promote`, { method: "POST" });
 }
 
 export async function demoteMemberFromCoAdmin(token: string, poolId: string, memberId: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/demote`, { method: "POST" }, token);
+  return requestJson<any>(`/pools/${poolId}/members/${memberId}/demote`, { method: "POST" });
 }
 
 export async function getPendingMembers(token: string, poolId: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/pending-members`, {}, token);
+  return requestJson<any>(`/pools/${poolId}/pending-members`, {});
 }
 
 export async function approveMember(token: string, poolId: string, memberId: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/approve`, { method: "POST" }, token);
+  return requestJson<any>(`/pools/${poolId}/members/${memberId}/approve`, { method: "POST" });
 }
 
 export async function rejectMember(token: string, poolId: string, memberId: string, reason?: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/reject`, { method: "POST", body: JSON.stringify({ reason }) }, token);
+  return requestJson<any>(`/pools/${poolId}/members/${memberId}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
 }
 
 export async function kickMember(token: string, poolId: string, memberId: string, reason?: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/kick`, { method: "POST", body: JSON.stringify({ reason }) }, token);
+  return requestJson<any>(`/pools/${poolId}/members/${memberId}/kick`, { method: "POST", body: JSON.stringify({ reason }) });
 }
 
 export async function banMember(token: string, poolId: string, memberId: string, reason: string, deletePicks: boolean): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/ban`, { method: "POST", body: JSON.stringify({ reason, deletePicks }) }, token);
+  return requestJson<any>(`/pools/${poolId}/members/${memberId}/ban`, { method: "POST", body: JSON.stringify({ reason, deletePicks }) });
 }
 
 export async function setScoringOverride(token: string, poolId: string, matchId: string, scoringEnabled: boolean, reason?: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/matches/${matchId}/scoring-override`, { method: "PUT", body: JSON.stringify({ scoringEnabled, reason }) }, token);
+  return requestJson<any>(`/pools/${poolId}/matches/${matchId}/scoring-override`, { method: "PUT", body: JSON.stringify({ scoringEnabled, reason }) });
 }

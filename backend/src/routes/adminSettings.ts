@@ -195,28 +195,6 @@ router.put("/email", async (req: AuthenticatedRequest, res: Response) => {
 });
 
 // =========================================================================
-// GET /admin/settings/email/stats
-// Obtiene estadísticas de uso de emails (opcional, para dashboard)
-// =========================================================================
-
-router.get("/email/stats", async (_req: AuthenticatedRequest, res: Response) => {
-  try {
-    // Por ahora retornamos datos básicos
-    // TODO: Implementar tracking real de emails enviados
-    return sendData(res, {
-      stats: {
-        message:
-          "Estadísticas de emails no implementadas. Consulta el dashboard de Resend.",
-        resendDashboard: "https://resend.com/emails",
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching email stats:", error);
-    return sendInternal(res, "Error al obtener estadísticas de emails.");
-  }
-});
-
-// =========================================================================
 // POST /admin/settings/email/test
 // Envía un email de prueba del tipo especificado
 // Solo para admins - útil para verificar que los templates funcionan
@@ -439,4 +417,4 @@ router.get(
   }
 );
 
-export default router;
+export { router as adminSettingsRouter };

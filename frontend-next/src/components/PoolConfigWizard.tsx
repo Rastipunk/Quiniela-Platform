@@ -502,6 +502,9 @@ function PresetCard({ title, description, recommended, onSelect, isMobile }: Pre
         gap: isMobile ? "0.75rem" : undefined,
       }}
       onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); }}}
+      role="button"
+      tabIndex={0}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "#007bff";
         e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,123,255,0.15)";

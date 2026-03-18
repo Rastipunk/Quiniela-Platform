@@ -2,9 +2,9 @@
 # Picks4All
 
 > **Version:** 2.1
-> **Last Updated:** 2026-03-01
+> **Last Updated:** 2026-03-17
 > **Status:** Production Schema (v0.6.0)
-> **Database:** PostgreSQL 14+
+> **Database:** PostgreSQL 16 (Railway managed)
 > **ORM:** Prisma 6.x
 
 ---
@@ -1354,6 +1354,7 @@ model DeadlineReminderLog {
 - `hoursBeforeDeadline` records the reminder tier (e.g., 24h, 6h, 1h)
 - Failed sends tracked via `success = false` and `error` message
 
+
 ---
 
 ### 10.4 BetaFeedback
@@ -1419,8 +1420,9 @@ model Organization {
   logoBase64    String?            // Logo in base64 (client-side compressed)
   website       String?
   employeeCount String?            // Range: "1-50", "51-200", "201-500", "500+"
-  welcomeMessage String?           @db.Text  // Displayed in pool splash screen
-  notes         String?            @db.Text
+  welcomeMessage    String?           @db.Text  // Displayed in pool splash screen
+  invitationMessage String?           @db.Text  // Mensaje personalizado incluido en el email de invitación corporativa
+  notes             String?           @db.Text
   status        OrganizationStatus @default(INQUIRY)
 
   inquiries OrganizationInquiry[]
@@ -1554,6 +1556,8 @@ enum PoolMemberRole {
 ```
 
 **CORPORATE_HOST permissions:** Same as HOST + can manage employees (add, delete, send invitations).
+
+> **Regla de negocio:** HOST y CORPORATE_HOST **no pueden abandonar** la pool. Solo PLAYER y CO_ADMIN tienen acceso al endpoint `POST /pools/:poolId/leave`.
 
 ---
 

@@ -187,12 +187,64 @@ emailVerificationToken          String?   @unique
 emailVerificationTokenExpiresAt DateTime?
 ```
 
-## Proveedor de Email
+## Infraestructura de Email
+
+### Envío — Resend (Transaccional)
 
 - **Servicio**: Resend (https://resend.com)
+- **Dominio verificado**: picks4all.com (ADR-037, verificado 2026-03-01)
+- **From**: noreply@picks4all.com
 - **Free tier**: 3,000 emails/mes
 - **Dashboard**: https://resend.com/emails
 - **Variable de entorno**: `RESEND_API_KEY`
+- **SPF**: Configurado con `include:send.resend.com` en DNS de Cloudflare
+- **DKIM**: Clave DKIM agregada como registro DNS en Cloudflare
+
+### Recepción — Cloudflare Email Routing (ADR-034)
+
+**Configuración activa desde 2026-03-01:**
+
+| Dirección | Idioma | Propósito |
+|-----------|--------|-----------|
+| soporte@picks4all.com | ES | Soporte general |
+| support@picks4all.com | EN | Soporte general |
+| suporte@picks4all.com | PT | Soporte general |
+| privacidad@picks4all.com | ES | Solicitudes de privacidad |
+| privacy@picks4all.com | EN | Solicitudes de privacidad |
+| privacidade@picks4all.com | PT | Solicitudes de privacidad |
+| empresas@picks4all.com | ES | Consultas corporativas |
+| enterprise@picks4all.com | EN | Consultas corporativas |
+| facturacion@picks4all.com | ES | Facturación |
+| billing@picks4all.com | EN | Facturación |
+| hola@picks4all.com | ES | Contacto general |
+| hello@picks4all.com | EN | Contacto general |
+| info@picks4all.com | — | Información general |
+| admin@picks4all.com | — | Administración |
+| noreply@picks4all.com | — | No-reply (envío) |
+| legal@picks4all.com | — | Asuntos legales |
+
+- **Catch-all**: Activo, redirige a correo principal del equipo
+- **Total**: 16 direcciones configuradas + catch-all
+
+### Emails por Idioma (Backend)
+
+Las direcciones de soporte se configuran por locale en `emailTemplates.ts`:
+
+```typescript
+// ES (default)
+supportEmail: "soporte@picks4all.com"
+privacyEmail: "privacidad@picks4all.com"
+enterpriseEmail: "empresas@picks4all.com"
+
+// EN
+supportEmail: "support@picks4all.com"
+privacyEmail: "privacy@picks4all.com"
+enterpriseEmail: "enterprise@picks4all.com"
+
+// PT
+supportEmail: "suporte@picks4all.com"
+privacyEmail: "privacidade@picks4all.com"
+```
 
 ## Integración Actual
 

@@ -27,6 +27,7 @@ import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
 import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
 import { serializeUser } from "../lib/serializers";
 import type { SerializedUser } from "../lib/serializers";
+import { fireAndForget } from "../lib/asyncHelpers";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -50,13 +51,6 @@ export class ServiceError extends Error {
 
 // Re-export for consumers that import from authService
 export type { SerializedUser };
-
-/** Fire-and-forget with error logging. */
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[AuthService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 /**
  * After a user joins a pool via corporate activation, check if the pool is

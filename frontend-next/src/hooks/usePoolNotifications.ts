@@ -1,7 +1,7 @@
 "use client";
 
 // Hook para obtener notificaciones de una pool con polling
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getPoolNotifications, type PoolNotifications } from "../lib/api";
 import { getToken } from "../lib/auth";
 
@@ -29,8 +29,14 @@ export function usePoolNotifications(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!poolId) return;
+  // Ref to store the latest poolId for the manual refetch function
+  const poolIdRef = useRef(poolId);
+  poolIdRef.current = poolId;
+
+  // Manual refetch (not used as a dependency)
+  const refetch = useCallback(async () => {
+    const currentPoolId = poolIdRef.current;
+    if (!currentPoolId) return;
 
     const token = getToken();
     if (!token) return;
@@ -38,7 +44,7 @@ export function usePoolNotifications(
     try {
       setIsLoading(true);
       setError(null);
-      const data = await getPoolNotifications(token, poolId);
+      const data = await getPoolNotifications(token, currentPoolId);
       setNotifications(data);
     } catch (err: any) {
       console.error("Error fetching notifications:", err);
@@ -46,29 +52,50 @@ export function usePoolNotifications(
     } finally {
       setIsLoading(false);
     }
-  }, [poolId]);
+  }, []);
 
-  // Fetch inicial
+  // Fetch inicial + polling — inline fetch with cancelled flag
   useEffect(() => {
-    if (enabled && poolId) {
-      fetchNotifications();
-    }
-  }, [enabled, poolId, fetchNotifications]);
+    if (!enabled || !poolId) return;
 
-  // Polling
-  useEffect(() => {
-    if (!enabled || !poolId || pollingInterval <= 0) return;
+    let cancelled = false;
 
-    const interval = setInterval(fetchNotifications, pollingInterval);
+    const fetchData = async () => {
+      const token = getToken();
+      if (!token || cancelled) return;
 
-    return () => clearInterval(interval);
-  }, [enabled, poolId, pollingInterval, fetchNotifications]);
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await getPoolNotifications(token, poolId);
+        if (!cancelled) setNotifications(data);
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error("Error fetching notifications:", err);
+          setError(err.message || "Error obteniendo notificaciones");
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    const interval = pollingInterval > 0
+      ? setInterval(fetchData, pollingInterval)
+      : undefined;
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
+  }, [enabled, poolId, pollingInterval]);
 
   return {
     notifications,
     isLoading,
     error,
-    refetch: fetchNotifications,
+    refetch,
   };
 }
 

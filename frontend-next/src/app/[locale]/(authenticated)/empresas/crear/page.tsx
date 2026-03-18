@@ -10,6 +10,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: t("meta.title"),
     robots: { index: false, follow: false },
+    alternates: {
+      languages: {
+        es: "/empresas/crear",
+        en: "/en/for-companies/create",
+        pt: "/pt/para-empresas/criar",
+      },
+    },
   };
 }
 

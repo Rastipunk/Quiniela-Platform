@@ -110,12 +110,8 @@ docs/
 * Corporate Self-Service MVP (Organization, inquiry, corporate pools, employee invites, CSV upload, activation flow)
 * Pricing section + /precios page
 
-### Pendiente
-* UI Admin para creación de templates sin código
-* Chat del pool
-* PWA completo (offline, push notifications)
-* Más deportes
-* Payment integration (Lemon Squeezy)
+### Roadmap
+Ver `docs/sot/CURRENT_STATE.md` para el roadmap completo.
 
 ---
 
@@ -334,18 +330,20 @@ Antes de cambiar código:
 
 ## 12) Prioridades actuales
 
-**Estado:** v0.6.0 — Corporate Self-Service MVP (2026-03-01)
+**Estado:** v0.6.0 — Corporate Self-Service MVP (2026-03-17)
 
-### Completado recientemente:
+### Completado:
 - ✅ Corporate Self-Service (Organization, invites, activation, CSV upload)
 - ✅ Leave pool feature + dashboard tabs (En curso / Finalizadas)
 - ✅ Pricing section + /precios page
 - ✅ Locale-aware emails
 - ✅ i18n completo (ES/EN/PT)
 - ✅ SEO profesional
+- ✅ Limpieza de código y documentación (ADR-038, 2026-03-17)
+- ✅ Auditoría de código completa — 38 hallazgos resueltos (5 críticos, 12 altos, 13 medios, 8 bajos)
 
-### Próximos pasos:
+### Roadmap v1.0:
 - Payment integration (Lemon Squeezy)
+- Corporate pool branding (splash, logo, email personalizado)
 - WC 2026 template preparation
-- Code quality fixes (error handler, CORS, duplicate routes, scoring consolidation)
 - UI Admin para templates sin código

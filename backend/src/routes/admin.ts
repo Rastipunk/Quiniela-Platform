@@ -26,7 +26,7 @@ import {
 // Sub-routers — all admin-related routes composed here
 import { adminTemplatesRouter } from "./adminTemplates";
 import { adminInstancesRouter } from "./adminInstances";
-import adminSettingsRouter from "./adminSettings";
+import { adminSettingsRouter } from "./adminSettings";
 import { adminCorporateRouter } from "./adminCorporate";
 
 export const adminRouter = Router();

@@ -13,16 +13,10 @@ import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "./poolStateMachine";
 import { extractMatches } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES } from "../lib/constants";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
 
 // ─── Helpers ─────────────────────────────────────────────────
-
-/** Fire-and-forget with error logging. */
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[PickService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 /** Compute the deadline UTC time for a match based on pool config. */
 export function computeDeadlineUtc(kickoffUtcIso: string, minutesBefore: number): Date | null {

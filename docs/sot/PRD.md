@@ -2,7 +2,7 @@
 # Picks4All
 
 > **Version:** 0.6.0 (Corporate Self-Service MVP)
-> **Last Updated:** 2026-03-01
+> **Last Updated:** 2026-03-17
 > **Status:** Live at picks4all.com
 > **Document Owner:** Product Team
 
@@ -63,7 +63,7 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 
 ## 2. Product Scope
 
-### 2.1 Current State (v0.5.0)
+### 2.1 Current State (v0.6.0)
 
 **Implemented Features:**
 
@@ -129,8 +129,8 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 - ⚠️ No in-pool chat system
 - ⚠️ No PWA offline mode or push notifications
 - ⚠️ No payment system yet (Lemon Squeezy approval pending)
-- ⚠️ No corporate/enterprise features yet
-- ⚠️ Email sending uses Resend sandbox (domain verification pending)
+- ⚠️ Corporate pool branding (splash, logo) aún no implementado
+- ⚠️ Email corporativo sin logo de empresa personalizado
 
 ---
 
@@ -223,11 +223,38 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 
 ---
 
+#### **v0.6.0 (Sprint 7 Complete)** — Corporate Self-Service MVP
+**Timeline:** Completed 2026-03-01
+**Goal:** Enterprise/corporate pool creation with employee management
+
+**🏢 Corporate Self-Service System:**
+- [x] Enterprise landing page (`/empresas`) with marketing content ✅
+- [x] Corporate pool creation wizard (6-step guided flow) ✅
+- [x] Organization model with company info, logo, branding fields ✅
+- [x] CORPORATE_HOST role (nuevo PoolMemberRole) ✅
+- [x] Employee invitation system (manual entry + CSV upload) ✅
+- [x] Corporate activation tokens (48 bytes, 30-day expiry) ✅
+- [x] Employee activation page (`/activar-cuenta`) ✅
+- [x] Corporate-specific email templates (invitation + inquiry confirmation) ✅
+- [x] OrganizationInquiry model for enterprise contact form ✅
+- [x] AuthPanelContext extended with `redirectTo` parameter ✅
+
+**📧 Email System Improvements:**
+- [x] Resend domain verification for production email (ADR-037) ✅
+- [x] Cloudflare Email Routing — 16 addresses + catch-all (ADR-034) ✅
+- [x] Locale-aware emails (ES/EN/PT) in Footer, FAQ, legal ✅
+- [x] Admin notification system (`sendAdminNotification`) ✅
+- [x] Feedback route sends admin email on new submissions ✅
+
+**Estado:** Todos los bugs conocidos de v0.6.0 fueron resueltos en la auditoría de código del 2026-03-17 (ADR-038).
+
+---
+
 #### **v1.0 (MVP - Public Launch)** — First Public Release
 **Timeline:** 8-12 weeks from now
 **Goal:** Production-ready platform for general public
 
-**On top of v0.5.0:**
+**On top of v0.6.0:**
 
 **🔑 Authentication Enhancements:**
 - [x] Google login (OAuth 2.0) ✅ (v0.1.4)
@@ -261,12 +288,18 @@ Build a **world-class multi-tournament sports prediction platform** (currently f
 - [x] Disclaimer: "No real money transactions, entertainment only" ✅ (v0.3.0)
 
 **🏢 Corporate/Enterprise Pools:**
-- [ ] Enterprise landing page (/empresas, /enterprise)
-- [ ] Corporate inquiry form (public, no auth required)
-- [ ] Organization model (name, logo, contact info)
-- [ ] Admin bulk user creation from employee lists
-- [ ] Pool-level custom logo/branding (optional logoUrl)
-- [ ] Admin endpoints for organization management
+- [x] Enterprise landing page (`/empresas`) ✅ (v0.6.0)
+- [x] Corporate inquiry form (public, no auth required) ✅ (v0.6.0)
+- [x] Organization model (name, logo, contact info) ✅ (v0.6.0)
+- [x] Employee invitation system (manual + CSV upload) ✅ (v0.6.0)
+- [x] Corporate activation tokens + activation page ✅ (v0.6.0)
+- [x] Admin endpoints for organization management ✅ (v0.6.0)
+
+**🏢 Corporate Enhancements:**
+- [ ] Corporate pool branding (splash screen, company logo, custom colors)
+- [ ] Personalized corporate invitation emails with company logo
+- [ ] DRAFT→ACTIVE automatic transition for corporate pools
+- [ ] Organization data in pool overview API response
 
 **💰 Monetization:**
 - [ ] Free tier: up to 20 participants per pool

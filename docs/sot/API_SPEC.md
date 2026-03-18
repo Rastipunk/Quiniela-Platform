@@ -2,7 +2,7 @@
 # Picks4All
 
 > **Version:** 2.1 (v0.6.0 — Corporate Self-Service MVP)
-> **Last Updated:** 2026-03-01
+> **Last Updated:** 2026-03-17
 > **Base URL:** `http://localhost:3000` (development) | `https://api.picks4all.com` (production)
 > **Protocol:** REST over HTTP/HTTPS
 > **Authentication:** JWT Bearer Token
@@ -1471,6 +1471,48 @@ Or if pool requires approval:
 **Authentication:** Required (must be active member)
 
 **Success Response (200):** Detailed breakdown of the player's points, picks, and performance
+
+---
+
+### 6.21 Leave Pool
+
+**Abandonar una pool voluntariamente. Solo disponible para PLAYER y CO_ADMIN.**
+
+**Endpoint:** `POST /pools/:poolId/leave`
+
+**Authentication:** Bearer Token (requerido)
+
+**Path Parameters:**
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| `poolId` | UUID | ID de la pool |
+
+**Success Response (200):**
+
+```json
+{
+  "message": "LEFT_POOL",
+  "poolId": "uuid",
+  "leftAt": "2026-03-17T10:00:00.000Z"
+}
+```
+
+**Error Responses:**
+
+| Código | Error | Descripción |
+|--------|-------|-------------|
+| 403 | `HOST_CANNOT_LEAVE` | HOST y CORPORATE_HOST no pueden abandonar la pool |
+| 404 | `NOT_FOUND` | Pool no existe o usuario no es miembro |
+
+**Reglas de negocio:**
+- Solo PLAYER y CO_ADMIN pueden abandonar una pool
+- HOST y CORPORATE_HOST están bloqueados (deben archivar la pool en su lugar)
+- El miembro que abandona conserva sus puntos en el leaderboard
+- Su status cambia a `LEFT` y se registra `leftAtUtc`
+- Aparece como "Retirado" en el leaderboard
+- No puede hacer más picks (modo read-only)
+- No puede volver a unirse a la misma pool
 
 ---
 
@@ -3134,6 +3176,50 @@ Activate an employee account from a corporate invitation. Creates user, verifies
 - `400 INVALID_TOKEN` — Token not found or expired (30-day expiry)
 - `400 ALREADY_ACTIVATED` — Token already used
 - `409 USERNAME_TAKEN` — Username already exists
+
+---
+
+### 21.9 GET /auth/check-corporate-invite
+
+**Verificar el estado de una invitación corporativa antes de activar la cuenta.**
+
+**Endpoint:** `GET /auth/check-corporate-invite`
+
+**Authentication:** None (público)
+
+> **Note:** Este endpoint también está en `auth.ts`, ya que se usa en el flujo previo a la creación de cuenta.
+
+**Query Parameters:**
+
+| Parámetro | Tipo | Requerido | Descripción |
+|-----------|------|-----------|-------------|
+| `token` | string | Sí | Token de activación corporativa (96 caracteres hex) |
+
+**Success Response (200):**
+
+```json
+{
+  "email": "empleado@empresa.com",
+  "organizationName": "Empresa S.A.",
+  "poolName": "Quiniela Corporativa WC2026",
+  "status": "PENDING",
+  "alreadyHasAccount": false
+}
+```
+
+**Error Responses:**
+
+| Código | Error | Descripción |
+|--------|-------|-------------|
+| 400 | `MISSING_TOKEN` | Token no proporcionado |
+| 404 | `INVITE_NOT_FOUND` | Token inválido o no existe |
+| 410 | `TOKEN_EXPIRED` | Token expirado (>30 días) |
+| 409 | `ALREADY_ACTIVATED` | Invitación ya fue activada |
+
+**Notas:**
+- Este endpoint se usa en la página `/activar-cuenta` para mostrar la información de la invitación antes de que el empleado cree su cuenta
+- El token tiene una vigencia de 30 días desde su creación
+- Si el usuario ya tiene cuenta en la plataforma, `alreadyHasAccount` será `true`
 
 ---
 

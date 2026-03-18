@@ -5,7 +5,7 @@
 >
 > **Audience:** Developers, product managers, stakeholders, and new team members.
 >
-> **Last Updated:** 2026-03-05
+> **Last Updated:** 2026-03-17
 
 ---
 
@@ -150,13 +150,17 @@
 
 ### CORPORATE_HOST
 
-**Definition:** A pool role similar to HOST but specifically for corporate pools created via the enterprise flow (`/empresas/crear`).
+**Definición:** Rol especial de PoolMember para el administrador de una pool corporativa.
 
-**Context:** When an organization creates a corporate pool, the creating user is assigned the CORPORATE_HOST role within that pool.
+**Permisos:**
+- Publicar y corregir resultados
+- Generar códigos de invitación y enviar emails
+- Gestionar empleados vía endpoints corporativos específicos
+- **No puede:** abandonar la pool, nominar co-admins, ni archivar
 
-**Permissions:** Same as HOST (full control over the pool).
+**Diferencia con HOST:** CORPORATE_HOST gestiona empleados a través de los endpoints `/corporate/` dedicados en vez del flujo estándar de miembros.
 
-**Example:** "Maria created a corporate pool for Acme Corp and was assigned the CORPORATE_HOST role."
+**Técnico:** Valor del enum `PoolMemberRole` en Prisma.
 
 ---
 
@@ -407,6 +411,21 @@ deadlineUtc = match.kickoffUtc - pool.deadlineMinutesBeforeKickoff
 
 ---
 
+### Leave Pool (Abandonar Pool)
+
+**Definición:** Acción voluntaria de un miembro para retirarse de una pool.
+
+**Restricciones:**
+- Solo disponible para roles PLAYER y CO_ADMIN
+- HOST y CORPORATE_HOST **no pueden abandonar** (deben archivar la pool)
+- El miembro conserva sus puntos en el leaderboard
+- Aparece como "Retirado" en la tabla de posiciones
+- No puede volver a unirse ni hacer más picks (modo read-only)
+
+**Técnico:** Cambia `PoolMember.status` a `LEFT` y registra `leftAtUtc`.
+
+---
+
 ### Organization (Organización)
 
 **Definition:** An entity representing a company or organization that creates corporate pools for their employees.
@@ -582,6 +601,18 @@ return "DRAW";
 
 ---
 
+### Cloudflare Email Routing
+
+**Definición:** Servicio de enrutamiento de correo entrante configurado para el dominio picks4all.com.
+
+**Configuración:**
+- 16 direcciones de email configuradas + catch-all
+- Direcciones por idioma: soporte@ (ES), support@ (EN), suporte@ (PT)
+- Direcciones especializadas: privacidad@, empresas@, facturacion@
+- Documentado en ADR-034
+
+---
+
 ### JWT (JSON Web Token)
 
 **Definition:** Compact, URL-safe token used for stateless authentication.
@@ -722,20 +753,17 @@ await prisma.prediction.upsert({
 
 ---
 
-### Smart Sync (Sincronización Automática)
+### Smart Sync
 
-**Definition:** The automatic result syncing system that fetches match results from API-Football and publishes them to pools.
+**Definición:** Sistema de sincronización inteligente para obtener resultados de partidos automáticamente desde API-Football.
 
-**How it works:**
-1. Periodically checks for matches that have ended (via API-Football)
-2. Fetches final scores for completed matches
-3. Automatically publishes results to all pools using the relevant tournament instance
+**Arquitectura:**
+- Cron job evalúa cada minuto qué partidos necesitan consulta
+- Máquina de estados: PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
+- Eficiencia: 2-4 requests por partido (vs 20-30 con polling estándar)
+- Kill switch disponible (`syncEnabled`) para emergencias
 
-**Configuration:** Enabled per `TournamentInstance` when `ResultSourceMode = AUTO`.
-
-**Technical:** Implementation in `backend/src/services/smartSync/service.ts`.
-
-**Example:** "Smart Sync detected that the UCL semifinal ended 3-1 and automatically published the result to all active pools."
+**Técnico:** Documentado en ADR-031 y ADR-032. Implementado en `services/smartSync/`.
 
 ---
 
@@ -750,6 +778,20 @@ await prisma.prediction.upsert({
 **Purpose:** Immutability, preventing cascading changes.
 
 **Example:** "Instance snapshot contains 48 teams. If template updates to 64 teams, instance is unaffected."
+
+---
+
+### Token de Activación Corporativa
+
+**Definición:** Token criptográfico de un solo uso que permite a un empleado activar su cuenta y unirse a una pool corporativa.
+
+**Especificaciones:**
+- Generado con `crypto.randomBytes(48)` → 96 caracteres hexadecimales
+- Vigencia: 30 días desde la creación
+- Estados: PENDING → ACTIVATED | EXPIRED
+- Enviado por email al empleado con enlace a `/activar-cuenta?token=xxx`
+
+**Técnico:** Almacenado en el modelo `CorporateInvite`.
 
 ---
 

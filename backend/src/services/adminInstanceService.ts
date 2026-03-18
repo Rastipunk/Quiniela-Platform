@@ -19,15 +19,10 @@ import {
 } from "./instanceAdvancement";
 import { getResultSyncService } from "./resultSync";
 import { getJobStatus, triggerManualSync } from "../jobs/resultSyncJob";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
 
 // ─── Helpers ─────────────────────────────────────────────────
-
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[AdminInstanceService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 function ensureTransition(from: string, to: string): boolean {
   const allowed: Record<string, string[]> = {

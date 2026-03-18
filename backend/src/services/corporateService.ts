@@ -23,16 +23,9 @@ import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import { extractPhases } from "../lib/fixture";
 import { transitionToActive } from "./poolStateMachine";
 import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
+import { fireAndForget } from "../lib/asyncHelpers";
+import { isValidTimezone } from "../lib/timezone";
 import { ServiceError, type AuditContext } from "./authService";
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-/** Fire-and-forget with error logging. */
-function fireAndForget(label: string, promise: Promise<unknown>): void {
-  promise.catch((err) => {
-    console.error(`[CorporateService] ${label} failed:`, err instanceof Error ? err.message : String(err));
-  });
-}
 
 /** Verify that the user is a CORPORATE_HOST for the given pool. */
 export async function requireCorporateHost(userId: string, poolId: string): Promise<boolean> {
@@ -188,6 +181,11 @@ export async function createCorporatePool(
     pickTypesConfig, maxParticipants, emails,
   } = data;
 
+  // Validate timezone if provided
+  if (timeZone && !isValidTimezone(timeZone)) {
+    throw new ServiceError("INVALID_TIMEZONE", 400);
+  }
+
   // Verify the instance exists
   const instance = await prisma.tournamentInstance.findUnique({ where: { id: tournamentInstanceId } });
   if (!instance) throw new ServiceError("NOT_FOUND", 404);
@@ -232,8 +230,8 @@ export async function createCorporatePool(
         contactEmail: user?.email || "",
         contactName: user?.displayName || "",
         logoBase64: logoBase64 || null,
-        welcomeMessage: welcomeMessage || null,
-        invitationMessage: invitationMessage || null,
+        welcomeMessage: welcomeMessage ? escapeHtml(welcomeMessage) : null,
+        invitationMessage: invitationMessage ? escapeHtml(invitationMessage) : null,
         status: "ACTIVE",
       },
     });
@@ -253,7 +251,7 @@ export async function createCorporatePool(
         fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
         organizationId: org.id,
         maxParticipants: maxParticipants ?? 100,
-        status: "ACTIVE",
+        status: "DRAFT",
       },
     });
 
