@@ -63,6 +63,8 @@ const DEFAULT_HOURS_BEFORE_DEADLINE = 48; // Enviar recordatorio 48 horas antes
 // Pools excluidos de deadline reminders (por solicitud del dueño)
 const EXCLUDED_POOL_IDS = new Set([
   "3e22e016-6311-45df-a977-99b7d675ea61", // AON Champions 2026
+  "359e27cd-2f87-49ff-839f-457e039ec3ef", // Tamayos
+  "05346b84-04fd-4ece-a831-f1514ccba279", // Prueba champions
 ]);
 
 // =========================================================================
