@@ -5,7 +5,7 @@ buildCommand = "npm install && npm run build && cp -r .next/static .next/standal
 [deploy]
 startCommand = "node .next/standalone/server.js"
 healthcheckPath = "/"
-healthcheckTimeout = 30
+healthcheckTimeout = 120
 
 [build.env]
 NODE_ENV = "production"
