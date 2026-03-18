@@ -21,10 +21,14 @@ export function PublicPageWrapper({ children }: PublicPageWrapperProps) {
   const [authRedirectTo, setAuthRedirectTo] = useState<string | null>(null);
 
   const openAuthPanel = useCallback((mode: "login" | "register" = "login", redirectTo?: string) => {
+    if (isAuthenticated) {
+      router.push(redirectTo || "/dashboard");
+      return;
+    }
     setAuthPanelMode(mode);
     setAuthRedirectTo(redirectTo ?? null);
     setShowAuthPanel(true);
-  }, []);
+  }, [isAuthenticated, router]);
 
   const handleLoggedIn = useCallback(() => {
     setShowAuthPanel(false);
