@@ -118,7 +118,7 @@ export default async function LocaleLayout({
         <link rel="dns-prefetch" href="https://flagcdn.com" />
       </head>
       <body style={{ backgroundColor: "#f4f5f7", color: "#111827" }}>
-        <a href="#main-content" style={{ position: "absolute", left: "-9999px", top: "auto", width: "1px", height: "1px", overflow: "hidden", zIndex: 9999 }} onFocus={(e) => { e.currentTarget.style.cssText = "position:fixed;top:8px;left:8px;width:auto;height:auto;overflow:visible;z-index:9999;background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;font-size:1rem;font-weight:600;text-decoration:none;"; }} onBlur={(e) => { e.currentTarget.style.cssText = "position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:9999;"; }}>Skip to content</a>
+        <a href="#main-content" className="skip-to-content">Skip to content</a>
         <NextIntlClientProvider messages={messages}>
           <PoolTermProvider region={region} locale={locale}>
             <JsonLd

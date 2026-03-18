@@ -419,6 +419,34 @@ button:disabled {
 }
 
 /* ===========================
+   Skip to content (WCAG 2.1 AA)
+   =========================== */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+  text-decoration: none;
+}
+.skip-to-content:focus {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  background: #4f46e5;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ===========================
    Focus indicators (WCAG 2.1 AA)
    =========================== */
 :focus-visible {
