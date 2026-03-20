@@ -12,9 +12,10 @@ export interface PoolCardProps {
   te: any;
   getPoolStatusBadge: (status: string) => { label: string; color: string; emoji: string };
   onLeave: (row: MePoolRow) => void;
+  onArchive?: (row: MePoolRow) => void;
 }
 
-export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave }: PoolCardProps) {
+export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave, onArchive }: PoolCardProps) {
   return (
     <div
       key={r.poolId}
@@ -170,6 +171,33 @@ export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave 
                 }}
               >
                 {t("leavePool")}
+              </button>
+            )}
+          {/* Archive button: only for hosts, on non-archived pools */}
+          {onArchive &&
+            (r.role === "HOST" || r.role === "CORPORATE_HOST") &&
+            r.pool.status !== "ARCHIVED" && (
+              <button
+                onClick={() => onArchive(r)}
+                style={{
+                  padding: isMobile ? 14 : 8,
+                  background: colors.white,
+                  color: colors.textMuted,
+                  border: `1px solid ${colors.borderLight}`,
+                  borderRadius: radii.lg,
+                  fontWeight: fw.medium,
+                  fontSize: isMobile ? fs.base : fs.md,
+                  cursor: "pointer",
+                  textAlign: "center",
+                  minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {r.pool.status === "DRAFT" ? t("deletePool") ?? "Eliminar" : t("archivePool") ?? "Archivar"}
               </button>
             )}
         </div>

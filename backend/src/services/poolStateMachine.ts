@@ -230,10 +230,12 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
 }
 
 /**
- * Transición COMPLETED → ARCHIVED
+ * Transición → ARCHIVED
  *
  * Trigger: Manual por HOST
- * Condiciones: Pool debe estar en COMPLETED
+ * Condiciones: Pool debe estar en DRAFT, ACTIVE, o COMPLETED
+ * - DRAFT: se elimina el pool y sus datos dependientes (no hay valor)
+ * - ACTIVE/COMPLETED: se archiva (conserva datos para historial)
  */
 export async function transitionToArchived(poolId: string, actorUserId: string) {
   const pool = await prisma.pool.findUnique({
@@ -245,11 +247,38 @@ export async function transitionToArchived(poolId: string, actorUserId: string) 
     throw new Error("Pool not found");
   }
 
-  if (pool.status !== "COMPLETED") {
-    throw new Error("Pool must be COMPLETED to archive");
+  const allowedStatuses = ["DRAFT", "ACTIVE", "COMPLETED"];
+  if (!allowedStatuses.includes(pool.status)) {
+    throw new Error("Pool is already archived");
   }
 
-  // Transición a ARCHIVED
+  const previousStatus = pool.status;
+
+  // DRAFT pools: delete entirely (no valuable data)
+  if (pool.status === "DRAFT") {
+    await prisma.$transaction([
+      prisma.poolInvite.deleteMany({ where: { poolId } }),
+      prisma.corporateInvite.deleteMany({ where: { poolId } }),
+      prisma.auditEvent.deleteMany({ where: { poolId } }),
+      prisma.poolMember.deleteMany({ where: { poolId } }),
+      prisma.pool.delete({ where: { id: poolId } }),
+    ]);
+
+    await writeAuditEvent({
+      actorUserId,
+      action: "POOL_STATUS_CHANGED",
+      entityType: "Pool",
+      entityId: poolId,
+      dataJson: {
+        from: "DRAFT",
+        to: "DELETED",
+        reason: "Draft pool deleted by host"
+      }
+    });
+    return;
+  }
+
+  // ACTIVE/COMPLETED → ARCHIVED
   await prisma.pool.update({
     where: { id: poolId },
     data: { status: "ARCHIVED" }
@@ -262,7 +291,7 @@ export async function transitionToArchived(poolId: string, actorUserId: string) 
     entityId: poolId,
     poolId,
     dataJson: {
-      from: "COMPLETED",
+      from: previousStatus,
       to: "ARCHIVED",
       reason: "Manually archived by host"
     }

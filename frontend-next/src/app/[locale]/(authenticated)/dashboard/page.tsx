@@ -8,6 +8,7 @@ import {
   getMePools,
   joinPool,
   leavePool,
+  archivePool,
   listCatalogInstances,
   type CatalogInstance,
   type MePoolRow,
@@ -58,13 +59,16 @@ export default function DashboardPage() {
   const [instances, setInstances] = useState<CatalogInstance[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // HI-05: activeTab from URL search params
+  type TabKey = "active" | "finished" | "archived";
+
   const activeTab = useMemo(() => {
     const param = searchParams.get("tab");
-    return param === "finished" ? "finished" as const : "active" as const;
+    if (param === "finished") return "finished" as const;
+    if (param === "archived") return "archived" as const;
+    return "active" as const;
   }, [searchParams]);
 
-  const setActiveTab = useCallback((tab: "active" | "finished") => {
+  const setActiveTab = useCallback((tab: TabKey) => {
     const params = new URLSearchParams(searchParams.toString());
     if (tab === "active") params.delete("tab"); else params.set("tab", tab);
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -91,7 +95,7 @@ export default function DashboardPage() {
 
   const [busy, setBusy] = useState(false);
 
-  // Filter pools into active vs finished tabs
+  // Filter pools into 3 tabs
   const activePools = useMemo(() => {
     if (!rows) return [];
     return rows.filter(
@@ -106,13 +110,19 @@ export default function DashboardPage() {
     if (!rows) return [];
     return rows.filter(
       (r) =>
-        r.status === "LEFT" ||
-        r.pool.status === "COMPLETED" ||
-        r.pool.status === "ARCHIVED"
+        (r.status === "LEFT" || r.pool.status === "COMPLETED") &&
+        r.pool.status !== "ARCHIVED"
     );
   }, [rows]);
 
-  const displayedPools = activeTab === "active" ? activePools : finishedPools;
+  const archivedPools = useMemo(() => {
+    if (!rows) return [];
+    return rows.filter((r) => r.pool.status === "ARCHIVED");
+  }, [rows]);
+
+  const displayedPools = activeTab === "active" ? activePools
+    : activeTab === "finished" ? finishedPools
+    : archivedPools;
 
   async function onLeavePool(poolRow: MePoolRow) {
     if (!token) return;
@@ -125,6 +135,21 @@ export default function DashboardPage() {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
       setLeaveBusy(false);
+    }
+  }
+
+  async function onArchivePool(poolRow: MePoolRow) {
+    if (!token) return;
+    const isDraft = poolRow.pool.status === "DRAFT";
+    const msg = isDraft
+      ? "¿Eliminar este pool borrador? Esta acción no se puede deshacer."
+      : "¿Archivar este pool? Los participantes ya no podrán acceder.";
+    if (!confirm(msg)) return;
+    try {
+      await archivePool(token, poolRow.poolId);
+      await loadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
     }
   }
 
@@ -267,8 +292,13 @@ export default function DashboardPage() {
             flexDirection: isMobile ? "column" : "row",
           }}
         >
-          <button onClick={() => setPanel("CREATE")} style={buttonStyle}>
-            {t("createPool")}
+          <button onClick={() => router.push("/crear-pool")} style={{
+            ...buttonStyle,
+            background: colors.brand,
+            color: colors.white,
+            border: "none",
+          }}>
+            + {t("createPool")}
           </button>
           <button onClick={() => setPanel("JOIN")} style={buttonStyle}>
             {t("joinWithCode")}
@@ -316,36 +346,42 @@ export default function DashboardPage() {
               borderBottom: `2px solid ${colors.borderLight}`,
             }}
           >
-            {(["active", "finished"] as const).map((tab) => (
+            {([
+              { key: "active" as TabKey, label: t("tabActive"), count: activePools.length },
+              { key: "finished" as TabKey, label: t("tabFinished"), count: finishedPools.length },
+              { key: "archived" as TabKey, label: t("tabArchived") ?? "Archivadas", count: archivedPools.length },
+            ]).map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
                 style={{
                   padding: isMobile ? "12px 16px" : "10px 20px",
                   fontSize: isMobile ? fs.lg : fs.base,
-                  fontWeight: activeTab === tab ? fw.bold : fw.medium,
-                  color: activeTab === tab ? colors.text : "#888",
+                  fontWeight: activeTab === tab.key ? fw.bold : fw.medium,
+                  color: activeTab === tab.key ? colors.text : "#888",
                   background: "transparent",
                   border: "none",
-                  borderBottom: activeTab === tab ? `2px solid ${colors.text}` : "2px solid transparent",
+                  borderBottom: activeTab === tab.key ? `2px solid ${colors.text}` : "2px solid transparent",
                   marginBottom: -2,
                   cursor: "pointer",
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
               >
-                {tab === "active" ? t("tabActive") : t("tabFinished")}
-                <span
-                  style={{
-                    marginLeft: 6,
-                    fontSize: fs.sm,
-                    padding: "2px 6px",
-                    borderRadius: radii.pill,
-                    background: activeTab === tab ? colors.text : colors.borderLight,
-                    color: activeTab === tab ? colors.white : colors.textMuted,
-                  }}
-                >
-                  {tab === "active" ? activePools.length : finishedPools.length}
-                </span>
+                {tab.label}
+                {tab.count > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontSize: fs.sm,
+                      padding: "2px 6px",
+                      borderRadius: radii.pill,
+                      background: activeTab === tab.key ? colors.text : colors.borderLight,
+                      color: activeTab === tab.key ? colors.white : colors.textMuted,
+                    }}
+                  >
+                    {tab.count}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -361,6 +397,7 @@ export default function DashboardPage() {
                 te={te}
                 getPoolStatusBadge={getPoolStatusBadge}
                 onLeave={(row) => setLeaveModal(row)}
+                onArchive={onArchivePool}
               />
             ))}
 
@@ -375,7 +412,7 @@ export default function DashboardPage() {
                   fontSize: isMobile ? fs.lg : fs.base,
                 }}
               >
-                {activeTab === "active" ? t("emptyState") : t("noFinishedPools")}
+                {activeTab === "active" ? t("emptyState") : activeTab === "finished" ? t("noFinishedPools") : (t("noArchivedPools") ?? "No tienes pools archivadas")}
               </div>
             )}
           </div>
