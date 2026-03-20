@@ -1110,6 +1110,7 @@ export function StepScoring() {
 
   // Track which phase sections are open
   const [openPhases, setOpenPhases] = useState<Record<number, boolean>>({ 0: true });
+  const [scalingEnabled, setScalingEnabled] = useState(false);
 
   const isCustom = scoringStyle === "CUSTOM";
   const isScoreBased = scoringStyle === "CUMULATIVE" || scoringStyle === "BASIC" || scoringStyle === "CUSTOM";
@@ -1118,16 +1119,70 @@ export function StepScoring() {
   // Get the preset name for display
   const activePreset = PRESETS.find(p => p.key === scoringStyle);
 
+  // Phase multipliers for scaling
+  const PHASE_MULTIPLIERS: Record<string, number> = {
+    group_stage: 1.0, group: 1.0,
+    r32_leg1: 1.2, r32_leg2: 1.2, round_of_32: 1.2, r32: 1.2,
+    r16_leg1: 1.5, r16_leg2: 1.5, round_of_16: 1.5, r16: 1.5,
+    qf_leg1: 2.0, qf_leg2: 2.0, quarter_finals: 2.0, qf: 2.0,
+    sf_leg1: 2.5, sf_leg2: 2.5, semi_finals: 2.5, sf: 2.5,
+    third_place: 2.5,
+    final: 3.0, finals: 3.0,
+  };
+
+  function getMultiplier(phaseId: string): number {
+    const lower = phaseId.toLowerCase();
+    for (const [key, mult] of Object.entries(PHASE_MULTIPLIERS)) {
+      if (lower.includes(key) || lower === key) return mult;
+    }
+    return 1.0;
+  }
+
+  // Apply or remove scaling
+  const handleToggleScaling = useCallback(() => {
+    const newEnabled = !scalingEnabled;
+    setScalingEnabled(newEnabled);
+
+    // Find the base phase (first phase = x1.0)
+    const basePhase = scoringConfig[0];
+    if (!basePhase?.matchPicks) return;
+
+    const baseTypes = basePhase.matchPicks.types;
+
+    const newConfig = scoringConfig.map((phase) => {
+      if (!phase.matchPicks) return phase;
+      const mult = newEnabled ? getMultiplier(phase.phaseId) : 1.0;
+      return {
+        ...phase,
+        matchPicks: {
+          ...phase.matchPicks,
+          types: phase.matchPicks.types.map((t, ti) => {
+            const basePoints = baseTypes[ti]?.points ?? t.points;
+            return {
+              ...t,
+              points: newEnabled ? Math.round(basePoints * mult) : basePoints,
+            };
+          }),
+        },
+      };
+    });
+
+    dispatch({ type: "UPDATE_SCORING_CONFIG", config: newConfig });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scalingEnabled, scoringConfig, dispatch]);
+
   // Handle preset selection
   const handleSelectPreset = useCallback((key: PickConfigPresetKey) => {
     const config = generatePresetConfig(key, instancePhases);
     dispatch({ type: "SET_SCORING", style: key, config });
     setOpenPhases({ 0: true });
+    setScalingEnabled(false);
   }, [instancePhases, dispatch]);
 
   // Handle going back to preset selection
   const handleChangePreset = useCallback(() => {
     dispatch({ type: "SET_SCORING", style: null as unknown as PickConfigPresetKey, config: [] });
+    setScalingEnabled(false);
   }, [dispatch]);
 
   // Handle phase config updates
@@ -1262,6 +1317,99 @@ export function StepScoring() {
           </button>
         </div>
 
+        {/* Scaling toggle */}
+        {isScoreBased && scoringConfig.length > 1 && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: `${spacing.md}px ${spacing.lg}px`,
+            background: scalingEnabled ? `${colors.brand}08` : colors.bgLighter,
+            border: `1px solid ${scalingEnabled ? `${colors.brand}30` : colors.borderLight}`,
+            borderRadius: radii.xl,
+            transition: "all 0.2s ease",
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: spacing.sm,
+                marginBottom: 4,
+              }}>
+                <span style={{ fontSize: 18 }}>📈</span>
+                <span style={{
+                  fontSize: fontSize.base,
+                  fontWeight: fontWeight.bold,
+                  color: colors.text,
+                }}>
+                  Puntos progresivos
+                </span>
+              </div>
+              <div style={{
+                fontSize: fontSize.sm,
+                color: colors.textMuted,
+                lineHeight: 1.5,
+              }}>
+                {scalingEnabled
+                  ? "Los puntos crecen automáticamente en fases avanzadas. Cuartos vale x2, semifinal x2.5, final x3 respecto a los valores de grupo."
+                  : "Activar para que los puntos valgan más en fases avanzadas del torneo. Ideal para premiar las predicciones más difíciles."
+                }
+              </div>
+              {scalingEnabled && (
+                <div style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  marginTop: spacing.sm,
+                }}>
+                  {scoringConfig.map((p) => {
+                    const m = getMultiplier(p.phaseId);
+                    return (
+                      <span key={p.phaseId} style={{
+                        fontSize: fontSize.xs,
+                        padding: "2px 8px",
+                        borderRadius: radii.pill,
+                        background: m > 1 ? `${colors.brand}15` : colors.white,
+                        border: `1px solid ${m > 1 ? `${colors.brand}30` : colors.borderLight}`,
+                        color: m > 1 ? colors.brand : colors.textMuted,
+                        fontWeight: fontWeight.semibold,
+                      }}>
+                        {p.phaseName} ×{m}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div
+              onClick={handleToggleScaling}
+              style={{
+                position: "relative",
+                width: 48,
+                height: 26,
+                borderRadius: radii.pill,
+                background: scalingEnabled ? colors.brand : colors.disabled,
+                cursor: "pointer",
+                transition: "background 0.2s ease",
+                flexShrink: 0,
+                marginLeft: spacing.md,
+              }}
+            >
+              <div style={{
+                position: "absolute",
+                top: 3,
+                left: scalingEnabled ? 24 : 3,
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: colors.white,
+                boxShadow: shadows.sm,
+                transition: "left 0.2s ease",
+              }} />
+            </div>
+          </div>
+        )}
+
         {/* Phase sections */}
         <div style={{
           display: "flex",
@@ -1275,7 +1423,7 @@ export function StepScoring() {
             textTransform: "uppercase" as const,
             letterSpacing: 0.5,
           }}>
-            Configuracion por fase ({scoringConfig.length} fases)
+            Configuración por fase ({scoringConfig.length} fases)
           </div>
 
           {scoringConfig.map((phase, i) => (
