@@ -1112,15 +1112,8 @@ export function StepScoring() {
   const [openPhases, setOpenPhases] = useState<Record<number, boolean>>({ 0: true });
   const [scalingEnabled, setScalingEnabled] = useState(false);
 
-  const isCustom = scoringStyle === "CUSTOM";
-  const isScoreBased = scoringStyle === "CUMULATIVE" || scoringStyle === "BASIC" || scoringStyle === "CUSTOM";
-  const isSimple = scoringStyle === "SIMPLE";
-
-  // Get the preset name for display
-  const activePreset = PRESETS.find(p => p.key === scoringStyle);
-
-  // Phase multipliers for scaling
-  const PHASE_MULTIPLIERS: Record<string, number> = {
+  // Editable multipliers per phase
+  const DEFAULT_MULTIPLIERS: Record<string, number> = {
     group_stage: 1.0, group: 1.0,
     r32_leg1: 1.2, r32_leg2: 1.2, round_of_32: 1.2, r32: 1.2,
     r16_leg1: 1.5, r16_leg2: 1.5, round_of_16: 1.5, r16: 1.5,
@@ -1130,46 +1123,96 @@ export function StepScoring() {
     final: 3.0, finals: 3.0,
   };
 
-  function getMultiplier(phaseId: string): number {
+  function getDefaultMultiplier(phaseId: string): number {
     const lower = phaseId.toLowerCase();
-    for (const [key, mult] of Object.entries(PHASE_MULTIPLIERS)) {
+    for (const [key, mult] of Object.entries(DEFAULT_MULTIPLIERS)) {
       if (lower.includes(key) || lower === key) return mult;
     }
     return 1.0;
   }
 
-  // Apply or remove scaling
-  const handleToggleScaling = useCallback(() => {
-    const newEnabled = !scalingEnabled;
-    setScalingEnabled(newEnabled);
+  const [phaseMultipliers, setPhaseMultipliers] = useState<Record<string, number>>(() => {
+    const m: Record<string, number> = {};
+    scoringConfig.forEach(p => { m[p.phaseId] = getDefaultMultiplier(p.phaseId); });
+    return m;
+  });
 
-    // Find the base phase (first phase = x1.0)
-    const basePhase = scoringConfig[0];
-    if (!basePhase?.matchPicks) return;
+  // Store base points (from first phase) when scaling is first enabled
+  const [basePoints, setBasePoints] = useState<number[]>([]);
 
-    const baseTypes = basePhase.matchPicks.types;
+  const isCustom = scoringStyle === "CUSTOM";
+  const isScoreBased = scoringStyle === "CUMULATIVE" || scoringStyle === "BASIC" || scoringStyle === "CUSTOM";
+  const isSimple = scoringStyle === "SIMPLE";
 
+  const activePreset = PRESETS.find(p => p.key === scoringStyle);
+
+  // Apply scaling with current multipliers
+  const applyScaling = useCallback((multipliers: Record<string, number>, base: number[]) => {
+    if (base.length === 0) return;
     const newConfig = scoringConfig.map((phase) => {
       if (!phase.matchPicks) return phase;
-      const mult = newEnabled ? getMultiplier(phase.phaseId) : 1.0;
+      const mult = multipliers[phase.phaseId] ?? 1.0;
       return {
         ...phase,
         matchPicks: {
           ...phase.matchPicks,
-          types: phase.matchPicks.types.map((t, ti) => {
-            const basePoints = baseTypes[ti]?.points ?? t.points;
-            return {
-              ...t,
-              points: newEnabled ? Math.round(basePoints * mult) : basePoints,
-            };
-          }),
+          types: phase.matchPicks.types.map((t, ti) => ({
+            ...t,
+            points: Math.round((base[ti] ?? t.points) * mult),
+          })),
         },
       };
     });
-
     dispatch({ type: "UPDATE_SCORING_CONFIG", config: newConfig });
+  }, [scoringConfig, dispatch]);
+
+  // Toggle scaling on/off
+  const handleToggleScaling = useCallback(() => {
+    const newEnabled = !scalingEnabled;
+    setScalingEnabled(newEnabled);
+
+    if (newEnabled) {
+      // Capture base points from first phase
+      const firstPhase = scoringConfig[0];
+      const bp = firstPhase?.matchPicks?.types.map(t => t.points) ?? [];
+      setBasePoints(bp);
+
+      // Initialize multipliers with defaults
+      const mults: Record<string, number> = {};
+      scoringConfig.forEach(p => { mults[p.phaseId] = getDefaultMultiplier(p.phaseId); });
+      setPhaseMultipliers(mults);
+
+      // Apply
+      applyScaling(mults, bp);
+    } else {
+      // Reset all phases to base points
+      if (basePoints.length > 0) {
+        const newConfig = scoringConfig.map((phase) => {
+          if (!phase.matchPicks) return phase;
+          return {
+            ...phase,
+            matchPicks: {
+              ...phase.matchPicks,
+              types: phase.matchPicks.types.map((t, ti) => ({
+                ...t,
+                points: basePoints[ti] ?? t.points,
+              })),
+            },
+          };
+        });
+        dispatch({ type: "UPDATE_SCORING_CONFIG", config: newConfig });
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scalingEnabled, scoringConfig, dispatch]);
+
+  // Handle multiplier change for a specific phase
+  const handleMultiplierChange = useCallback((phaseId: string, value: number) => {
+    const newMults = { ...phaseMultipliers, [phaseId]: value };
+    setPhaseMultipliers(newMults);
+    applyScaling(newMults, basePoints);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phaseMultipliers, basePoints]);
 
   // Handle preset selection
   const handleSelectPreset = useCallback((key: PickConfigPresetKey) => {
@@ -1320,93 +1363,155 @@ export function StepScoring() {
         {/* Scaling toggle */}
         {isScoreBased && scoringConfig.length > 1 && (
           <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
             padding: `${spacing.md}px ${spacing.lg}px`,
-            background: scalingEnabled ? `${colors.brand}08` : colors.bgLighter,
-            border: `1px solid ${scalingEnabled ? `${colors.brand}30` : colors.borderLight}`,
+            background: scalingEnabled ? `${colors.brand}06` : colors.bgLighter,
+            border: `1px solid ${scalingEnabled ? `${colors.brand}25` : colors.borderLight}`,
             borderRadius: radii.xl,
             transition: "all 0.2s ease",
           }}>
-            <div style={{ flex: 1 }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: spacing.sm,
-                marginBottom: 4,
-              }}>
-                <span style={{ fontSize: 18 }}>📈</span>
-                <span style={{
-                  fontSize: fontSize.base,
-                  fontWeight: fontWeight.bold,
-                  color: colors.text,
-                }}>
-                  Puntos progresivos
-                </span>
-              </div>
-              <div style={{
-                fontSize: fontSize.sm,
-                color: colors.textMuted,
-                lineHeight: 1.5,
-              }}>
-                {scalingEnabled
-                  ? "Los puntos crecen automáticamente en fases avanzadas. Cuartos vale x2, semifinal x2.5, final x3 respecto a los valores de grupo."
-                  : "Activar para que los puntos valgan más en fases avanzadas del torneo. Ideal para premiar las predicciones más difíciles."
-                }
-              </div>
-              {scalingEnabled && (
+            {/* Header row with toggle */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: scalingEnabled ? spacing.md : 0,
+            }}>
+              <div style={{ flex: 1 }}>
                 <div style={{
                   display: "flex",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  marginTop: spacing.sm,
+                  alignItems: "center",
+                  gap: spacing.sm,
+                  marginBottom: 4,
                 }}>
-                  {scoringConfig.map((p) => {
-                    const m = getMultiplier(p.phaseId);
-                    return (
-                      <span key={p.phaseId} style={{
-                        fontSize: fontSize.xs,
-                        padding: "2px 8px",
-                        borderRadius: radii.pill,
-                        background: m > 1 ? `${colors.brand}15` : colors.white,
-                        border: `1px solid ${m > 1 ? `${colors.brand}30` : colors.borderLight}`,
-                        color: m > 1 ? colors.brand : colors.textMuted,
-                        fontWeight: fontWeight.semibold,
-                      }}>
-                        {p.phaseName} ×{m}
-                      </span>
-                    );
-                  })}
+                  <span style={{ fontSize: 18 }}>📈</span>
+                  <span style={{
+                    fontSize: fontSize.base,
+                    fontWeight: fontWeight.bold,
+                    color: colors.text,
+                  }}>
+                    Puntos progresivos
+                  </span>
                 </div>
-              )}
+                <div style={{
+                  fontSize: fontSize.sm,
+                  color: colors.textMuted,
+                  lineHeight: 1.5,
+                }}>
+                  {scalingEnabled
+                    ? "Los puntos de cada fase se multiplican respecto a los valores de grupo. Ajusta los multiplicadores a tu gusto."
+                    : "Activar para que los puntos valgan más en fases avanzadas. Ideal para premiar las predicciones más difíciles."
+                  }
+                </div>
+              </div>
+              <div
+                onClick={handleToggleScaling}
+                style={{
+                  position: "relative",
+                  width: 48,
+                  height: 26,
+                  borderRadius: radii.pill,
+                  background: scalingEnabled ? colors.brand : colors.disabled,
+                  cursor: "pointer",
+                  transition: "background 0.2s ease",
+                  flexShrink: 0,
+                  marginLeft: spacing.md,
+                }}
+              >
+                <div style={{
+                  position: "absolute",
+                  top: 3,
+                  left: scalingEnabled ? 24 : 3,
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  background: colors.white,
+                  boxShadow: shadows.sm,
+                  transition: "left 0.2s ease",
+                }} />
+              </div>
             </div>
-            <div
-              onClick={handleToggleScaling}
-              style={{
-                position: "relative",
-                width: 48,
-                height: 26,
-                borderRadius: radii.pill,
-                background: scalingEnabled ? colors.brand : colors.disabled,
-                cursor: "pointer",
-                transition: "background 0.2s ease",
-                flexShrink: 0,
-                marginLeft: spacing.md,
-              }}
-            >
+
+            {/* Editable multipliers per phase */}
+            {scalingEnabled && (
               <div style={{
-                position: "absolute",
-                top: 3,
-                left: scalingEnabled ? 24 : 3,
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                background: colors.white,
-                boxShadow: shadows.sm,
-                transition: "left 0.2s ease",
-              }} />
-            </div>
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                padding: `${spacing.sm}px 0`,
+              }}>
+                {scoringConfig.map((p) => {
+                  const mult = phaseMultipliers[p.phaseId] ?? 1.0;
+                  const isBase = mult === 1.0;
+                  return (
+                    <div key={p.phaseId} style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: `6px ${spacing.md}px`,
+                      background: isBase ? colors.white : `${colors.brand}08`,
+                      border: `1px solid ${isBase ? colors.borderLight : `${colors.brand}20`}`,
+                      borderRadius: radii.lg,
+                    }}>
+                      <span style={{
+                        fontSize: fontSize.sm,
+                        fontWeight: fontWeight.medium,
+                        color: colors.text,
+                        flex: 1,
+                      }}>
+                        {p.phaseName}
+                      </span>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}>
+                        <span style={{
+                          fontSize: fontSize.xs,
+                          color: colors.textMuted,
+                        }}>×</span>
+                        <input
+                          type="number"
+                          min={0.5}
+                          max={10}
+                          step={0.5}
+                          value={mult}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            if (!isNaN(v) && v >= 0.5 && v <= 10) {
+                              handleMultiplierChange(p.phaseId, v);
+                            }
+                          }}
+                          style={{
+                            width: 56,
+                            height: 32,
+                            borderRadius: radii.md,
+                            border: `1px solid ${isBase ? colors.borderMedium : colors.brand}`,
+                            fontSize: fontSize.base,
+                            fontWeight: fontWeight.bold,
+                            textAlign: "center" as const,
+                            color: isBase ? colors.textMuted : colors.brand,
+                            background: colors.white,
+                            outline: "none",
+                          }}
+                        />
+                        {getDefaultMultiplier(p.phaseId) !== mult && (
+                          <span style={{
+                            fontSize: 10,
+                            color: colors.textMuted,
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                          }}
+                          onClick={() => handleMultiplierChange(p.phaseId, getDefaultMultiplier(p.phaseId))}
+                          >
+                            (sug: ×{getDefaultMultiplier(p.phaseId)})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
