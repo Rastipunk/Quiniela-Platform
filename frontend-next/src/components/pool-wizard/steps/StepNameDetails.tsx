@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { colors, radii, spacing, fontSize, fontWeight, shadows } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -8,14 +8,37 @@ import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import { RECOMMENDED_DEADLINE } from "@/types/poolWizard";
 
-// ── Deadline options ──────────────────────────────────────────
+// ── Deadline presets ──────────────────────────────────────────
 
-const DEADLINE_OPTIONS: Array<{ labelKey: string; value: number; recommended?: boolean }> = [
-  { labelKey: "deadlineAtStart", value: 0 },
-  { labelKey: "deadline10min", value: 10, recommended: true },
-  { labelKey: "deadline1hr", value: 60 },
-  { labelKey: "deadline1day", value: 1440 },
-] as const;
+const DEADLINE_PRESETS: Array<{ label: string; value: number; recommended?: boolean }> = [
+  { label: "Al inicio", value: 0 },
+  { label: "10 min", value: 10, recommended: true },
+  { label: "1 hora", value: 60 },
+  { label: "1 día", value: 1440 },
+];
+
+// ── Common timezones for dropdown ─────────────────────────────
+
+const COMMON_TIMEZONES = [
+  { value: "America/Bogota", label: "Colombia (UTC-5)" },
+  { value: "America/Mexico_City", label: "México (UTC-6)" },
+  { value: "America/Argentina/Buenos_Aires", label: "Argentina (UTC-3)" },
+  { value: "America/Santiago", label: "Chile (UTC-4)" },
+  { value: "America/Lima", label: "Perú (UTC-5)" },
+  { value: "America/Montevideo", label: "Uruguay (UTC-3)" },
+  { value: "America/Sao_Paulo", label: "Brasil (UTC-3)" },
+  { value: "America/Caracas", label: "Venezuela (UTC-4)" },
+  { value: "America/Panama", label: "Panamá (UTC-5)" },
+  { value: "America/Guayaquil", label: "Ecuador (UTC-5)" },
+  { value: "America/New_York", label: "Este EEUU (UTC-5)" },
+  { value: "America/Los_Angeles", label: "Pacífico EEUU (UTC-8)" },
+  { value: "Europe/Madrid", label: "España (UTC+1)" },
+  { value: "Europe/London", label: "Reino Unido (UTC+0)" },
+  { value: "Europe/Paris", label: "Francia (UTC+1)" },
+  { value: "Europe/Berlin", label: "Alemania (UTC+1)" },
+  { value: "Europe/Rome", label: "Italia (UTC+1)" },
+  { value: "Europe/Lisbon", label: "Portugal (UTC+0)" },
+];
 
 export function StepNameDetails() {
   const t = useTranslations("poolWizard");
@@ -127,15 +150,16 @@ export function StepNameDetails() {
         {/* ── Deadline ─────────────────────────────────────────── */}
         <div>
           <label style={labelStyle}>{t("deadlineLabel")}</label>
+
+          {/* Quick preset pills */}
           <div style={{
             display: "flex",
             flexWrap: "wrap",
             gap: spacing.sm,
             marginTop: spacing.xs,
           }}>
-            {DEADLINE_OPTIONS.map((opt) => {
+            {DEADLINE_PRESETS.map((opt) => {
               const isActive = state.deadlineMinutesBeforeKickoff === opt.value;
-
               return (
                 <button
                   key={opt.value}
@@ -158,20 +182,8 @@ export function StepNameDetails() {
                     transition: "all 0.15s ease",
                     whiteSpace: "nowrap",
                   }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.borderColor = colors.brandLight;
-                      e.currentTarget.style.background = colors.bgLighter;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.borderColor = colors.borderMedium;
-                      e.currentTarget.style.background = colors.white;
-                    }
-                  }}
                 >
-                  {t(opt.labelKey)}
+                  {opt.label}
                   {opt.recommended && (
                     <span style={{
                       fontSize: fontSize.xs,
@@ -190,52 +202,103 @@ export function StepNameDetails() {
               );
             })}
           </div>
+
+          {/* Custom input with unit selector */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: spacing.sm,
+            marginTop: spacing.md,
+          }}>
+            <span style={{ fontSize: fontSize.sm, color: colors.textMuted, whiteSpace: "nowrap" }}>
+              O personalizar:
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={10080}
+              value={(() => {
+                const v = state.deadlineMinutesBeforeKickoff;
+                if (v >= 1440 && v % 1440 === 0) return v / 1440;
+                if (v >= 60 && v % 60 === 0) return v / 60;
+                return v;
+              })()}
+              onChange={(e) => {
+                const num = parseInt(e.target.value) || 0;
+                const v = state.deadlineMinutesBeforeKickoff;
+                let unit: "min" | "hr" | "day" = "min";
+                if (v >= 1440 && v % 1440 === 0) unit = "day";
+                else if (v >= 60 && v % 60 === 0) unit = "hr";
+                const multiplier = unit === "day" ? 1440 : unit === "hr" ? 60 : 1;
+                setField("deadlineMinutesBeforeKickoff", Math.min(num * multiplier, 10080));
+              }}
+              style={{
+                ...inputBaseStyle,
+                width: 80,
+                textAlign: "center" as const,
+                padding: `${spacing.sm}px ${spacing.md}px`,
+              }}
+            />
+            <select
+              value={(() => {
+                const v = state.deadlineMinutesBeforeKickoff;
+                if (v >= 1440 && v % 1440 === 0) return "day";
+                if (v >= 60 && v % 60 === 0) return "hr";
+                return "min";
+              })()}
+              onChange={(e) => {
+                const v = state.deadlineMinutesBeforeKickoff;
+                const unit = e.target.value;
+                let currentValue: number;
+                if (v >= 1440 && v % 1440 === 0) currentValue = v / 1440;
+                else if (v >= 60 && v % 60 === 0) currentValue = v / 60;
+                else currentValue = v;
+                const multiplier = unit === "day" ? 1440 : unit === "hr" ? 60 : 1;
+                setField("deadlineMinutesBeforeKickoff", Math.min(currentValue * multiplier, 10080));
+              }}
+              style={{
+                ...inputBaseStyle,
+                width: "auto",
+                padding: `${spacing.sm}px ${spacing.md}px`,
+                cursor: "pointer",
+              }}
+            >
+              <option value="min">minutos</option>
+              <option value="hr">horas</option>
+              <option value="day">días</option>
+            </select>
+            <span style={{ fontSize: fontSize.sm, color: colors.textMuted, whiteSpace: "nowrap" }}>
+              antes
+            </span>
+          </div>
+
           <p style={helpTextStyle}>{t("deadlineHelp")}</p>
         </div>
 
         {/* ── Timezone ─────────────────────────────────────────── */}
         <div>
           <label style={labelStyle}>{t("timezoneLabel")}</label>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: spacing.sm,
-            marginTop: spacing.xs,
-          }}>
-            <div style={{
+          <select
+            value={state.timeZone || detectedTimezone}
+            onChange={(e) => setField("timeZone", e.target.value)}
+            style={{
               ...inputBaseStyle,
-              display: "flex",
-              alignItems: "center",
-              background: colors.bgLight,
-              color: colors.textDark,
-              cursor: "default",
-              flex: 1,
-            }}>
-              {state.timeZone || detectedTimezone}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const tz = prompt(t("timezonePrompt"), state.timeZone || detectedTimezone);
-                if (tz && tz.trim()) {
-                  setField("timeZone", tz.trim());
-                }
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                color: colors.brand,
-                fontSize: fontSize.sm,
-                fontWeight: fontWeight.medium,
-                cursor: "pointer",
-                textDecoration: "underline",
-                padding: spacing.xs,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {t("timezoneEdit")}
-            </button>
-          </div>
+              cursor: "pointer",
+              appearance: "auto" as const,
+            }}
+          >
+            {/* Auto-detected option if not in common list */}
+            {!COMMON_TIMEZONES.some(tz => tz.value === (state.timeZone || detectedTimezone)) && (
+              <option value={state.timeZone || detectedTimezone}>
+                {state.timeZone || detectedTimezone} (detectada)
+              </option>
+            )}
+            {COMMON_TIMEZONES.map(tz => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}{tz.value === detectedTimezone ? " ← detectada" : ""}
+              </option>
+            ))}
+          </select>
           <p style={helpTextStyle}>{t("timezoneHelp")}</p>
         </div>
 

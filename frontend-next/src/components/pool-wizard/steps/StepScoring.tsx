@@ -441,7 +441,7 @@ function PhaseSection({
               color: colors.brand,
               fontWeight: fontWeight.semibold,
             }}>
-              {activeCriteria} criterios \u00B7 {totalPoints}pts max
+              {activeCriteria} criterios · {totalPoints}pts max
             </span>
           )}
         </div>
@@ -452,7 +452,7 @@ function PhaseSection({
           transition: "transform 0.2s ease",
           lineHeight: 1,
         }}>
-          \u25BE
+          ▾
         </span>
       </button>
 
@@ -561,7 +561,7 @@ function PhaseSection({
                         fontWeight: fontWeight.medium,
                         whiteSpace: "nowrap" as const,
                       }}>
-                        Rec: {recommended}
+                        Sugerido: {recommended}
                       </span>
                     )}
                     <div style={{
@@ -709,7 +709,7 @@ function StructuralInput({
             fontWeight: fontWeight.medium,
             whiteSpace: "nowrap" as const,
           }}>
-            Rec: {recommended}
+            Sugerido: {recommended}
           </span>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
