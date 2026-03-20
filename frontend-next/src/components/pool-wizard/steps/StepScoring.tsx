@@ -1434,78 +1434,112 @@ export function StepScoring() {
             {/* Editable multipliers per phase */}
             {scalingEnabled && (
               <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: 10,
                 padding: `${spacing.sm}px 0`,
               }}>
                 {scoringConfig.map((p) => {
                   const mult = phaseMultipliers[p.phaseId] ?? 1.0;
-                  const isBase = mult === 1.0;
+                  const suggested = getDefaultMultiplier(p.phaseId);
+                  const isModified = mult !== suggested;
+                  const barWidth = Math.min((mult / 3.0) * 100, 100);
                   return (
                     <div key={p.phaseId} style={{
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: `6px ${spacing.md}px`,
-                      background: isBase ? colors.white : `${colors.brand}08`,
-                      border: `1px solid ${isBase ? colors.borderLight : `${colors.brand}20`}`,
+                      gap: spacing.sm,
+                      padding: `8px ${spacing.md}px`,
+                      background: colors.white,
+                      border: `1px solid ${colors.borderLight}`,
                       borderRadius: radii.lg,
+                      position: "relative",
+                      overflow: "hidden",
                     }}>
+                      {/* Progress bar background */}
+                      <div style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: `${barWidth}%`,
+                        background: `${colors.brand}08`,
+                        transition: "width 0.3s ease",
+                      }} />
+
+                      {/* Phase name */}
                       <span style={{
                         fontSize: fontSize.sm,
                         fontWeight: fontWeight.medium,
                         color: colors.text,
                         flex: 1,
+                        position: "relative",
+                        zIndex: 1,
                       }}>
                         {p.phaseName}
                       </span>
+
+                      {/* Stepper controls */}
                       <div style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 6,
+                        gap: 2,
+                        position: "relative",
+                        zIndex: 1,
                       }}>
-                        <span style={{
-                          fontSize: fontSize.xs,
-                          color: colors.textMuted,
-                        }}>×</span>
-                        <input
-                          type="number"
-                          min={0.5}
-                          max={10}
-                          step={0.5}
-                          value={mult}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value);
-                            if (!isNaN(v) && v >= 0.5 && v <= 10) {
-                              handleMultiplierChange(p.phaseId, v);
-                            }
-                          }}
+                        <button
+                          onClick={() => handleMultiplierChange(p.phaseId, Math.max(0.5, mult - 0.5))}
                           style={{
-                            width: 56,
-                            height: 32,
-                            borderRadius: radii.md,
-                            border: `1px solid ${isBase ? colors.borderMedium : colors.brand}`,
+                            width: 28,
+                            height: 28,
+                            borderRadius: radii.sm,
+                            border: `1px solid ${colors.borderLight}`,
+                            background: colors.bgLighter,
+                            color: colors.textMuted,
+                            fontSize: 16,
+                            fontWeight: fontWeight.bold,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: 1,
+                          }}
+                        >−</button>
+                        <div
+                          style={{
+                            minWidth: 52,
+                            height: 28,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             fontSize: fontSize.base,
                             fontWeight: fontWeight.bold,
-                            textAlign: "center" as const,
-                            color: isBase ? colors.textMuted : colors.brand,
-                            background: colors.white,
-                            outline: "none",
+                            color: mult > 1 ? colors.brand : colors.textMuted,
+                            cursor: isModified ? "pointer" : "default",
                           }}
-                        />
-                        {getDefaultMultiplier(p.phaseId) !== mult && (
-                          <span style={{
-                            fontSize: 10,
+                          title={isModified ? `Sugerido: ×${suggested}` : undefined}
+                          onClick={isModified ? () => handleMultiplierChange(p.phaseId, suggested) : undefined}
+                        >
+                          ×{mult}
+                        </div>
+                        <button
+                          onClick={() => handleMultiplierChange(p.phaseId, Math.min(10, mult + 0.5))}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: radii.sm,
+                            border: `1px solid ${colors.borderLight}`,
+                            background: colors.bgLighter,
                             color: colors.textMuted,
+                            fontSize: 16,
+                            fontWeight: fontWeight.bold,
                             cursor: "pointer",
-                            textDecoration: "underline",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: 1,
                           }}
-                          onClick={() => handleMultiplierChange(p.phaseId, getDefaultMultiplier(p.phaseId))}
-                          >
-                            (sug: ×{getDefaultMultiplier(p.phaseId)})
-                          </span>
-                        )}
+                        >+</button>
                       </div>
                     </div>
                   );
