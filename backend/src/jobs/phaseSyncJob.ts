@@ -13,6 +13,7 @@ import * as cron from "node-cron";
 import { prisma } from "../db";
 import { syncNextPhaseFromApi } from "../services/adminInstanceService";
 import { sendAdminNotification } from "../lib/email";
+import { getSmartSyncService } from "../services/smartSync";
 
 // Every 12 hours: at 08:00 and 20:00 UTC (3:00 AM and 3:00 PM Colombia)
 const PHASE_SYNC_CRON = process.env.PHASE_SYNC_CRON || "0 8,20 * * *";
@@ -96,6 +97,24 @@ async function runPhaseSyncCheck(): Promise<void> {
     }
   } catch (error) {
     console.error("[PhaseSyncJob] Error:", error instanceof Error ? error.message : error);
+  }
+
+  // ── Pre-kickoff fixture verification ──
+  // Re-fetch fixtures 1-3 days before kickoff to detect date/team changes
+  try {
+    const autoInstances = await prisma.tournamentInstance.findMany({
+      where: { resultSourceMode: "AUTO", syncEnabled: true, status: { in: ["ACTIVE", "COMPLETED"] } },
+      select: { id: true, name: true },
+    });
+
+    const smartSync = getSmartSyncService();
+    if (smartSync.isAvailable()) {
+      for (const inst of autoInstances) {
+        await smartSync.verifyUpcomingFixtures(inst.id);
+      }
+    }
+  } catch (error) {
+    console.error("[PhaseSyncJob] Fixture verification error:", error instanceof Error ? error.message : error);
   }
 }
 

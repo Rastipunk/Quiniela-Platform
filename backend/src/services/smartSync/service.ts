@@ -700,6 +700,151 @@ export class SmartSyncService {
       kickoffUtc: m.kickoffUtc,
     }));
   }
+
+  /**
+   * Pre-kickoff fixture verification.
+   *
+   * Checks matches whose kickoff is 1-3 days away by re-fetching them from
+   * API-Football. If date, time, or teams have changed, updates the DB and
+   * sends an admin email notification.
+   *
+   * Cost: 1 API call per match checked (only matches 1-3 days out).
+   * Called from phaseSyncJob every 12h.
+   */
+  async verifyUpcomingFixtures(instanceId: string): Promise<void> {
+    if (!this.client) return;
+
+    const instance = await prisma.tournamentInstance.findUnique({
+      where: { id: instanceId },
+      include: { matchMappings: true, pools: { select: { id: true, fixtureSnapshot: true } } },
+    });
+    if (!instance || instance.resultSourceMode !== "AUTO") return;
+
+    const now = new Date();
+    const oneDayFromNow = new Date(now.getTime() + 1 * 24 * 60 * 60_000);
+    const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60_000);
+
+    // Find PENDING matches with kickoff in 1-3 days
+    const upcoming = await prisma.matchSyncState.findMany({
+      where: {
+        tournamentInstanceId: instanceId,
+        syncStatus: "PENDING",
+        kickoffUtc: { gte: oneDayFromNow, lte: threeDaysFromNow },
+      },
+    });
+
+    if (upcoming.length === 0) return;
+
+    console.log(`[SmartSync] Verifying ${upcoming.length} upcoming fixtures (1-3 days out)`);
+
+    const data = instance.dataJson as Record<string, any>;
+    const teams = (data.teams || []) as Array<{ id: string; name: string; apiFootballId?: number }>;
+    const teamName = (id: string) => teams.find(t => t.id === id)?.name ?? id;
+
+    const apiIdToInternal: Record<number, string> = {};
+    for (const t of teams) {
+      if (t.apiFootballId) apiIdToInternal[t.apiFootballId] = t.id;
+    }
+
+    const changes: string[] = [];
+
+    for (const match of upcoming) {
+      const mapping = instance.matchMappings.find(m => m.internalMatchId === match.internalMatchId);
+      if (!mapping) continue;
+
+      try {
+        const fixture = await this.client.getFixture(mapping.apiFootballFixtureId);
+        if (!fixture) continue;
+
+        const fixtureMatch = (data.matches || []).find((m: any) => m.id === match.internalMatchId);
+        if (!fixtureMatch) continue;
+
+        const apiDate = new Date(fixture.fixture.date).toISOString();
+        const apiHomeId = apiIdToInternal[fixture.teams.home.id];
+        const apiAwayId = apiIdToInternal[fixture.teams.away.id];
+        const currentDate = fixtureMatch.kickoffUtc;
+        const currentHome = fixtureMatch.homeTeamId;
+        const currentAway = fixtureMatch.awayTeamId;
+
+        const dateChanged = apiDate !== currentDate;
+        const teamsChanged = (apiHomeId && apiAwayId) &&
+          (apiHomeId !== currentHome || apiAwayId !== currentAway);
+
+        if (!dateChanged && !teamsChanged) continue;
+
+        // Something changed — update
+        const changeParts: string[] = [];
+
+        if (dateChanged) {
+          changeParts.push(`Date: ${currentDate?.slice(0, 16)} → ${apiDate.slice(0, 16)}`);
+          fixtureMatch.kickoffUtc = apiDate;
+
+          // Update sync state timing
+          const newKickoff = new Date(apiDate);
+          await prisma.matchSyncState.update({
+            where: { id: match.id },
+            data: {
+              kickoffUtc: newKickoff,
+              firstCheckAtUtc: new Date(newKickoff.getTime() + 5 * 60_000),
+              finishCheckAtUtc: new Date(newKickoff.getTime() + 110 * 60_000),
+            },
+          });
+        }
+
+        if (teamsChanged && apiHomeId && apiAwayId) {
+          changeParts.push(`Teams: ${teamName(currentHome)} vs ${teamName(currentAway)} → ${teamName(apiHomeId)} vs ${teamName(apiAwayId)}`);
+          fixtureMatch.homeTeamId = apiHomeId;
+          fixtureMatch.awayTeamId = apiAwayId;
+          fixtureMatch.label = `${teamName(apiHomeId)} vs ${teamName(apiAwayId)}`;
+        }
+
+        changes.push(`${match.internalMatchId}: ${changeParts.join(" | ")}`);
+      } catch (err) {
+        console.error(`[SmartSync] Error verifying ${match.internalMatchId}:`, err instanceof Error ? err.message : err);
+      }
+    }
+
+    if (changes.length === 0) {
+      console.log("[SmartSync] All upcoming fixtures verified — no changes detected");
+      return;
+    }
+
+    // Persist updated instance data
+    await prisma.tournamentInstance.update({
+      where: { id: instanceId },
+      data: { dataJson: data },
+    });
+
+    // Update all pool fixture snapshots
+    for (const pool of instance.pools) {
+      const poolData = (pool.fixtureSnapshot ?? data) as Record<string, any>;
+      for (const change of changes) {
+        const matchId = change.split(":")[0]!;
+        const instanceMatch = (data.matches || []).find((m: any) => m.id === matchId);
+        const poolMatch = (poolData.matches || []).find((m: any) => m.id === matchId);
+        if (instanceMatch && poolMatch) {
+          poolMatch.kickoffUtc = instanceMatch.kickoffUtc;
+          poolMatch.homeTeamId = instanceMatch.homeTeamId;
+          poolMatch.awayTeamId = instanceMatch.awayTeamId;
+          poolMatch.label = instanceMatch.label;
+        }
+      }
+      await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: poolData } });
+    }
+
+    console.log(`[SmartSync] ⚠️ ${changes.length} fixture change(s) detected and applied:`);
+    changes.forEach(c => console.log(`  ${c}`));
+
+    // Send admin notification
+    try {
+      const { sendAdminNotification } = await import("../../lib/email");
+      await sendAdminNotification({
+        subject: `⚠️ Fixture update: ${changes.length} match(es) changed`,
+        body: `Pre-kickoff verification detected changes in upcoming fixtures:\n\n${changes.map(c => `• ${c}`).join("\n")}\n\nAll pools have been updated automatically.`,
+        type: "error",
+      });
+    } catch { /* best-effort */ }
+  }
 }
 
 // ============================================================================
