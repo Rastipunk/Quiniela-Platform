@@ -101,7 +101,25 @@
       "WebFetch(domain:next-intl.dev)",
       "Bash(for item in \"\\(authenticated\\)\" como-funciona faq forgot-password login not-found.tsx page.tsx penca-futbol polla-futbolera porra-deportiva privacidad prode-deportivo que-es-una-quiniela reset-password terminos verify-email)",
       "Bash(do mv \"$item\" \"[locale]/$item\")",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(gh repo view:*)",
+      "Bash(git rm:*)",
+      "Bash(while IFS= read -r f)",
+      "Bash(do git rm -f \"$f\")",
+      "Bash(xargs:*)",
+      "Bash(winget install:*)",
+      "Bash(cmd.exe /c \"winget install --id GitHub.cli --accept-package-agreements --accept-source-agreements\")",
+      "Bash(cmd.exe /c \"winget install GitHub.cli --accept-package-agreements --accept-source-agreements:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" --version)",
+      "Bash(\"/c/Program Files \\(x86\\)/GitHub CLI/gh.exe\" --version)",
+      "WebFetch(domain:www.saashub.com)",
+      "WebFetch(domain:docs.lemonsqueezy.com)",
+      "WebFetch(domain:www.lemonsqueezy.com)",
+      "Bash(railway version:*)",
+      "Bash(railway vars:*)",
+      "Bash(railway run:*)",
+      "WebFetch(domain:picks4all.com)",
+      "Bash(python3:*)"
     ]
   }
 }

@@ -858,8 +858,11 @@ function ExampleCalculator({
   const [predHome, setPredHome] = useState(3);
   const [predAway, setPredAway] = useState(1);
 
-  // Use the first score-based phase for the example
-  const examplePhase = scoringConfig.find(p => p.requiresScore && p.matchPicks);
+  const scorePhases = scoringConfig.filter(p => p.requiresScore && p.matchPicks);
+  const [selectedPhaseIdx, setSelectedPhaseIdx] = useState(0);
+
+  if (scorePhases.length === 0) return null;
+  const examplePhase = scorePhases[selectedPhaseIdx] ?? scorePhases[0];
   if (!examplePhase?.matchPicks) return null;
 
   const results = calculateScore(
@@ -895,6 +898,35 @@ function ExampleCalculator({
           Calculadora de Ejemplo
         </span>
       </div>
+
+      {/* Phase selector */}
+      {scorePhases.length > 1 && (
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 6,
+          marginBottom: spacing.md,
+        }}>
+          {scorePhases.map((p, i) => (
+            <button
+              key={p.phaseId}
+              onClick={() => setSelectedPhaseIdx(i)}
+              style={{
+                padding: "4px 12px",
+                borderRadius: radii.pill,
+                fontSize: fontSize.xs,
+                fontWeight: i === selectedPhaseIdx ? fontWeight.bold : fontWeight.medium,
+                border: `1px solid ${i === selectedPhaseIdx ? colors.brand : colors.borderLight}`,
+                background: i === selectedPhaseIdx ? `${colors.brand}15` : colors.white,
+                color: i === selectedPhaseIdx ? colors.brand : colors.textMuted,
+                cursor: "pointer",
+              }}
+            >
+              {p.phaseName}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Input rows */}
       <div style={{
@@ -1049,16 +1081,19 @@ function ScoreInput({
       value={value}
       onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
       style={{
-        width: 44,
-        height: 36,
+        width: 52,
+        height: 40,
+        padding: "4px 2px",
         borderRadius: radii.md,
         border: `2px solid ${accent ? colors.brandLight : colors.borderMedium}`,
-        fontSize: fontSize["2xl"],
+        fontSize: fontSize.xl,
         fontWeight: fontWeight.bold,
         textAlign: "center" as const,
         color: accent ? colors.brand : colors.text,
         background: accent ? `${colors.brand}08` : colors.white,
         outline: "none",
+        MozAppearance: "textfield" as never,
+        WebkitAppearance: "none" as never,
       }}
     />
   );

@@ -172,12 +172,17 @@
     "title": "Reglas avanzadas",
     "subtitle": "Ajustes opcionales para personalizar la experiencia",
     "icon": "⚙️",
+    "extraTimeTitle": "Incluir tiempo extra",
     "extraTime": "Incluir tiempo extra",
     "extraTimeDesc": "Contar los goles del tiempo extra en eliminatorias (no incluye penales).",
+    "scalingTitle": "Escalar puntos por fase",
     "phaseScaling": "Escalar puntos por fase",
+    "scalingDesc": "Los puntos valen más en fases avanzadas del torneo. Cada fase tiene un multiplicador.",
     "phaseScalingDesc": "Los puntos valen más en fases avanzadas del torneo.",
     "multiplier": "Multiplicador",
-    "noAdvancedNeeded": "La configuración actual no requiere ajustes avanzados. Puedes continuar."
+    "recommended": "Recomendado",
+    "noAdvancedNeeded": "La configuración actual no requiere ajustes avanzados. Puedes continuar.",
+    "note": "Estos ajustes son opcionales. Los valores por defecto funcionan bien para la mayoría de pools."
   },
 
   "capacity": {
@@ -233,6 +238,15 @@
     "employees": "Empleados invitados",
     "employeesValue": "{count} invitaciones",
     "noDescription": "Sin descripción",
-    "createError": "Error al crear el pool. Intenta de nuevo."
+    "createError": "Error al crear el pool. Intenta de nuevo.",
+    "scoring": "Puntuación",
+    "pickTypes": "{count} criterios activos",
+    "scalingEnabled": "Escalado de puntos activado",
+    "extraTime": "Tiempo extra incluido en eliminatorias",
+    "welcomeMessage": "Mensaje de bienvenida",
+    "employeeInvites": "Invitaciones de empleados",
+    "emailCount": "{count} email(s) agregados",
+    "noEmails": "Sin invitaciones (puedes agregar después)",
+    "note": "Podrás invitar jugadores y ajustar configuraciones después de crear el pool."
   }
 }
