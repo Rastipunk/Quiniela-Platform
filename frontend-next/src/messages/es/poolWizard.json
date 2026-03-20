@@ -3,6 +3,47 @@
   "pageSubtitle": "Configura tu pool paso a paso",
   "backToDashboard": "← Volver al dashboard",
 
+  "tournamentTitle": "¿Qué torneo vas a jugar?",
+  "tournamentSubtitle": "Selecciona el torneo para tu pool de predicciones",
+  "loadingTournaments": "Cargando torneos...",
+  "tournamentLoadError": "Error al cargar torneos",
+  "phasesLoadError": "Error al cargar fases del torneo",
+  "comingSoon": "Próximamente",
+
+  "nameDetailsTitle": "Dale personalidad a tu pool",
+  "nameDetailsSubtitle": "Nombre, descripción y configuración básica",
+  "poolNameLabel": "Nombre del pool",
+  "poolNamePlaceholder": "Ej: Polla con amigos",
+  "poolNameHelp": "Mínimo 3 caracteres. Este nombre lo verán todos los participantes.",
+  "nameMinLength": "Mínimo 3 caracteres",
+  "descriptionLabel": "Descripción (opcional)",
+  "descriptionPlaceholder": "Reglas adicionales, premios, contexto...",
+  "descriptionHelp": "Máximo 500 caracteres.",
+  "deadlineLabel": "Cierre de pronósticos",
+  "deadlineHelp": "¿Cuánto tiempo antes de cada partido se cierran los pronósticos?",
+  "deadlineAtStart": "Al inicio",
+  "deadline10min": "10 min antes",
+  "deadline1hr": "1 hora antes",
+  "deadline1day": "1 día antes",
+  "recommended": "Recomendado",
+  "timezoneLabel": "Zona horaria",
+  "timezoneHelp": "Detectada automáticamente.",
+  "timezoneEdit": "Cambiar",
+  "timezonePrompt": "Ingresa tu zona horaria (ej: America/Bogota)",
+  "requireApprovalLabel": "Requiere aprobación para entrar",
+  "requireApprovalHelp": "Los jugadores deben esperar tu aprobación para unirse.",
+
+  "tournaments": {
+    "wc2026": "Copa del Mundo 2026",
+    "ucl2025": "Champions League 2025-26",
+    "copaAmerica2028": "Copa América 2028",
+    "euro2028": "Eurocopa 2028",
+    "nationsLeague": "UEFA Nations League",
+    "libertadores": "Copa Libertadores",
+    "sudamericana": "Copa Sudamericana",
+    "premierLeague": "Premier League"
+  },
+
   "steps": {
     "COMPANY_INFO": "Empresa",
     "TOURNAMENT": "Torneo",
@@ -62,6 +103,9 @@
     "icon": "⭐",
     "changeStyle": "Cambiar estilo",
     "currentStyle": "Estilo: {style}",
+    "configTitle": "Personaliza tu puntuación",
+    "configSubtitle": "Ajusta los valores a tu gusto. Puedes cambiar de estilo cuando quieras.",
+    "tip": "Si es tu primera vez, te recomendamos el estilo Predictor. Es el más divertido y equilibrado.",
 
     "presets": {
       "CUMULATIVE": {
