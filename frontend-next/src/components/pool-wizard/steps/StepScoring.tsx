@@ -464,6 +464,104 @@ function PhaseSection({
           flexDirection: "column",
           gap: spacing.md,
         }}>
+          {/* ── CUSTOM: Pick type selector (Marcadores vs Posiciones) ── */}
+          {isCustom && (
+            <div style={{
+              display: "flex",
+              gap: spacing.md,
+              marginBottom: spacing.sm,
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (phase.requiresScore) return; // already selected
+                  const updated: PhasePickConfig = {
+                    ...phase,
+                    requiresScore: true,
+                    structuralPicks: undefined,
+                    matchPicks: {
+                      types: [
+                        { key: "MATCH_OUTCOME_90MIN", enabled: true, points: phaseIsKnockout ? 10 : 5 },
+                        { key: "HOME_GOALS", enabled: true, points: phaseIsKnockout ? 4 : 2 },
+                        { key: "AWAY_GOALS", enabled: true, points: phaseIsKnockout ? 4 : 2 },
+                        { key: "GOAL_DIFFERENCE", enabled: true, points: phaseIsKnockout ? 2 : 1 },
+                        { key: "EXACT_SCORE", enabled: false, points: 0 },
+                        { key: "TOTAL_GOALS", enabled: false, points: 0 },
+                        { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+                      ],
+                    },
+                  };
+                  onUpdatePhase(phaseIndex, updated);
+                }}
+                style={{
+                  flex: 1,
+                  padding: `${spacing.md}px ${spacing.lg}px`,
+                  borderRadius: radii.xl,
+                  border: phase.requiresScore
+                    ? `2px solid ${colors.brand}`
+                    : `1px solid ${colors.borderMedium}`,
+                  background: phase.requiresScore ? colors.brandBg : colors.white,
+                  cursor: "pointer",
+                  textAlign: "center" as const,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 4 }}>🎯</div>
+                <div style={{
+                  fontSize: fontSize.base,
+                  fontWeight: phase.requiresScore ? fontWeight.bold : fontWeight.medium,
+                  color: phase.requiresScore ? colors.brand : colors.textDark,
+                }}>
+                  Marcadores
+                </div>
+                <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>
+                  Predicen el resultado de cada partido
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!phase.requiresScore) return; // already selected
+                  const isGroupPhase = phase.phaseId.includes("group") || phase.phaseName.toLowerCase().includes("grupo");
+                  const updated: PhasePickConfig = {
+                    ...phase,
+                    requiresScore: false,
+                    matchPicks: undefined,
+                    structuralPicks: isGroupPhase
+                      ? { type: "GROUP_STANDINGS", config: { pointsPerExactPosition: 10, bonusPerfectGroup: 20, includeGlobalQualifiers: false } }
+                      : { type: "KNOCKOUT_WINNER", config: { pointsPerCorrectAdvance: 15 } },
+                  };
+                  onUpdatePhase(phaseIndex, updated);
+                }}
+                style={{
+                  flex: 1,
+                  padding: `${spacing.md}px ${spacing.lg}px`,
+                  borderRadius: radii.xl,
+                  border: !phase.requiresScore
+                    ? `2px solid ${colors.brand}`
+                    : `1px solid ${colors.borderMedium}`,
+                  background: !phase.requiresScore ? colors.brandBg : colors.white,
+                  cursor: "pointer",
+                  textAlign: "center" as const,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 4 }}>📊</div>
+                <div style={{
+                  fontSize: fontSize.base,
+                  fontWeight: !phase.requiresScore ? fontWeight.bold : fontWeight.medium,
+                  color: !phase.requiresScore ? colors.brand : colors.textDark,
+                }}>
+                  Posiciones
+                </div>
+                <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>
+                  {isGroup ? "Ordenan equipos en el grupo" : "Eligen quién avanza"}
+                </div>
+              </button>
+            </div>
+          )}
+
           {/* Score-based criteria rows */}
           {isScoreBased && phase.matchPicks?.types.map((t) => {
             const meta = CRITERION_META[t.key];
@@ -575,7 +673,7 @@ function PhaseSection({
                         max={999}
                         value={t.points}
                         onChange={(e) => handlePointsChange(t.key, parseInt(e.target.value) || 0)}
-                        disabled={!isCustom}
+                        disabled={false}
                         style={{
                           width: 60,
                           padding: `${spacing.xs}px ${spacing.sm}px`,
@@ -585,7 +683,7 @@ function PhaseSection({
                           fontWeight: fontWeight.semibold,
                           textAlign: "center" as const,
                           color: colors.text,
-                          background: isCustom ? colors.white : colors.bgLighter,
+                          background: colors.white,
                           outline: "none",
                         }}
                       />
@@ -719,7 +817,7 @@ function StructuralInput({
             max={999}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-            disabled={!isCustom}
+            disabled={false}
             style={{
               width: 60,
               padding: `${spacing.xs}px ${spacing.sm}px`,
@@ -729,7 +827,7 @@ function StructuralInput({
               fontWeight: fontWeight.semibold,
               textAlign: "center" as const,
               color: colors.text,
-              background: isCustom ? colors.white : colors.bgLighter,
+              background: colors.white,
               outline: "none",
             }}
           />
