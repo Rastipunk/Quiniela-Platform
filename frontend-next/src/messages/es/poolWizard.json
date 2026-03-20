@@ -1,0 +1,194 @@
+{
+  "pageTitle": "Crear Pool",
+  "pageSubtitle": "Configura tu pool paso a paso",
+  "backToDashboard": "← Volver al dashboard",
+
+  "steps": {
+    "COMPANY_INFO": "Empresa",
+    "TOURNAMENT": "Torneo",
+    "NAME_DETAILS": "Detalles",
+    "SCORING": "Puntuación",
+    "ADVANCED_RULES": "Reglas",
+    "CAPACITY": "Capacidad",
+    "EMPLOYEE_INVITES": "Empleados",
+    "SUMMARY": "Resumen"
+  },
+
+  "nav": {
+    "back": "Atrás",
+    "next": "Siguiente",
+    "create": "Crear Pool",
+    "creating": "Creando...",
+    "createCorporate": "Crear Pool Corporativo"
+  },
+
+  "tournament": {
+    "title": "¿Qué torneo vas a jugar?",
+    "subtitle": "Selecciona el torneo para tu pool de predicciones",
+    "icon": "🏆",
+    "comingSoon": "Próximamente",
+    "loadingPhases": "Cargando fases del torneo..."
+  },
+
+  "nameDetails": {
+    "title": "Dale personalidad a tu pool",
+    "subtitle": "Nombre, descripción y configuración básica",
+    "icon": "✏️",
+    "poolName": "Nombre del pool",
+    "poolNamePlaceholder": "Ej: Polla con amigos",
+    "poolNameHelp": "Mínimo 3 caracteres. Este nombre lo verán todos los participantes.",
+    "description": "Descripción (opcional)",
+    "descriptionPlaceholder": "Reglas adicionales, premios, contexto...",
+    "descriptionHelp": "Máximo 500 caracteres.",
+    "deadline": "Cierre de pronósticos",
+    "deadlineHelp": "¿Cuánto tiempo antes de cada partido se cierran los pronósticos?",
+    "deadlineOptions": {
+      "0": "Al inicio",
+      "10": "10 min antes",
+      "60": "1 hora antes",
+      "1440": "1 día antes"
+    },
+    "recommended": "Recomendado",
+    "timezone": "Zona horaria",
+    "timezoneHelp": "Detectada automáticamente. Los horarios de partidos se mostrarán en esta zona.",
+    "timezoneEdit": "Cambiar",
+    "requireApproval": "Requiere aprobación para entrar",
+    "requireApprovalDesc": "Los jugadores deben esperar tu aprobación para unirse al pool."
+  },
+
+  "scoring": {
+    "title": "¿Cómo se ganan los puntos?",
+    "subtitle": "Elige un estilo de juego y personalízalo a tu gusto",
+    "icon": "⭐",
+    "changeStyle": "Cambiar estilo",
+    "currentStyle": "Estilo: {style}",
+
+    "presets": {
+      "CUMULATIVE": {
+        "name": "Predictor",
+        "tagline": "Puntos acumulables por cada criterio",
+        "description": "Ganas puntos por acertar el resultado, los goles de cada equipo y la diferencia. ¡Mientras más aciertes, más sumas!",
+        "example": "Si dices 3-1 y sale 2-1 → Resultado ✓ (5pts) + Goles visitante ✓ (2pts) = 7pts"
+      },
+      "BASIC": {
+        "name": "Todo o Nada",
+        "tagline": "Solo marcador exacto cuenta",
+        "description": "Simple y directo: solo ganas puntos si aciertas el marcador exacto. Los puntos valen más en fases avanzadas.",
+        "example": "2-1 → 2-1 = ¡20pts! | 2-1 → 3-1 = 0pts"
+      },
+      "SIMPLE": {
+        "name": "Estratega",
+        "tagline": "Predice posiciones y avances",
+        "description": "No predices marcadores. En grupos ordenas los equipos por posición. En eliminatorias eliges quién avanza.",
+        "example": "1° Argentina, 2° Francia → ¡10pts por cada posición correcta!"
+      },
+      "CUSTOM": {
+        "name": "Personalizado",
+        "tagline": "Diseña tu propio sistema",
+        "description": "Control total: configura cada fase, cada criterio y cada puntaje a tu medida.",
+        "example": "Tú decides las reglas"
+      }
+    },
+
+    "config": {
+      "phase": "Fase",
+      "criterion": "Criterio",
+      "points": "Puntos",
+      "enabled": "Activo",
+      "recommendedValue": "Recomendado: {value}",
+      "groupPhase": "Fase de grupos",
+      "knockoutPhase": "Eliminatoria",
+      "pointsPerPosition": "Puntos por posición exacta",
+      "bonusPerfectGroup": "Bonus grupo perfecto",
+      "pointsPerAdvance": "Puntos por acierto"
+    },
+
+    "example": {
+      "title": "Ejemplo interactivo",
+      "realResult": "Resultado real",
+      "yourPrediction": "Tu predicción",
+      "breakdown": "Desglose",
+      "total": "Total",
+      "hit": "Acierto",
+      "miss": "Fallo"
+    },
+
+    "criteria": {
+      "MATCH_OUTCOME_90MIN": "Resultado (victoria/empate/derrota)",
+      "HOME_GOALS": "Goles del local exactos",
+      "AWAY_GOALS": "Goles del visitante exactos",
+      "GOAL_DIFFERENCE": "Diferencia de goles exacta",
+      "EXACT_SCORE": "Marcador exacto",
+      "TOTAL_GOALS": "Total de goles",
+      "PARTIAL_SCORE": "Marcador parcial"
+    }
+  },
+
+  "advancedRules": {
+    "title": "Reglas avanzadas",
+    "subtitle": "Ajustes opcionales para personalizar la experiencia",
+    "icon": "⚙️",
+    "extraTime": "Incluir tiempo extra",
+    "extraTimeDesc": "Contar los goles del tiempo extra en eliminatorias (no incluye penales).",
+    "phaseScaling": "Escalar puntos por fase",
+    "phaseScalingDesc": "Los puntos valen más en fases avanzadas del torneo.",
+    "multiplier": "Multiplicador",
+    "noAdvancedNeeded": "La configuración actual no requiere ajustes avanzados. Puedes continuar."
+  },
+
+  "capacity": {
+    "title": "¿Cuántos van a jugar?",
+    "subtitle": "Define el tamaño máximo de tu pool",
+    "icon": "👥"
+  },
+
+  "employeeInvites": {
+    "title": "Invita a tus empleados",
+    "subtitle": "Agrega los correos de las personas que participarán",
+    "icon": "📧",
+    "emailsLabel": "Correos electrónicos",
+    "emailsPlaceholder": "Ingresa un email por línea o separados por coma",
+    "csvUpload": "O sube un archivo CSV",
+    "emailCount": "{count} email(s) ingresados",
+    "skipNote": "Puedes omitir este paso e invitar empleados después."
+  },
+
+  "companyInfo": {
+    "title": "Información de tu empresa",
+    "subtitle": "Estos datos aparecerán en el pool corporativo",
+    "icon": "🏢",
+    "companyName": "Nombre de la empresa",
+    "companyNamePlaceholder": "Ej: Acme Corp",
+    "logo": "Logo de la empresa (opcional)",
+    "logoUpload": "Subir logo",
+    "logoRequirements": "PNG o JPG, máximo 500KB",
+    "welcomeMessage": "Mensaje de bienvenida (opcional)",
+    "welcomeMessagePlaceholder": "Se mostrará al entrar al pool...",
+    "invitationMessage": "Mensaje de invitación (opcional)",
+    "invitationMessagePlaceholder": "Se incluirá en el email de invitación..."
+  },
+
+  "summary": {
+    "title": "Todo listo, revisa tu pool",
+    "subtitle": "Verifica la configuración antes de crear",
+    "icon": "✅",
+    "edit": "Editar",
+    "tournament": "Torneo",
+    "poolName": "Nombre",
+    "description": "Descripción",
+    "scoringStyle": "Estilo de puntuación",
+    "deadline": "Cierre de pronósticos",
+    "deadlineValue": "{minutes} minutos antes del partido",
+    "timezone": "Zona horaria",
+    "capacity": "Capacidad máxima",
+    "capacityValue": "{count} participantes",
+    "approval": "Aprobación requerida",
+    "yes": "Sí",
+    "no": "No",
+    "company": "Empresa",
+    "employees": "Empleados invitados",
+    "employeesValue": "{count} invitaciones",
+    "noDescription": "Sin descripción",
+    "createError": "Error al crear el pool. Intenta de nuevo."
+  }
+}

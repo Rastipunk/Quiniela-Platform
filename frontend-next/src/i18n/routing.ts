@@ -63,6 +63,12 @@ export const routing = defineRouting({
       en: "/activate-account",
       pt: "/ativar-conta",
     },
+    // Pool creation wizard
+    "/crear-pool": {
+      es: "/crear-pool",
+      en: "/create-pool",
+      pt: "/criar-pool",
+    },
     // App pages
     "/dashboard": "/dashboard",
     "/profile": "/profile",
