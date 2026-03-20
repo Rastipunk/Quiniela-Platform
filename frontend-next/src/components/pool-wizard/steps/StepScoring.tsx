@@ -1115,12 +1115,12 @@ export function StepScoring() {
   // Editable multipliers per phase
   const DEFAULT_MULTIPLIERS: Record<string, number> = {
     group_stage: 1.0, group: 1.0,
-    r32_leg1: 1.2, r32_leg2: 1.2, round_of_32: 1.2, r32: 1.2,
-    r16_leg1: 1.5, r16_leg2: 1.5, round_of_16: 1.5, r16: 1.5,
-    qf_leg1: 2.0, qf_leg2: 2.0, quarter_finals: 2.0, qf: 2.0,
-    sf_leg1: 2.5, sf_leg2: 2.5, semi_finals: 2.5, sf: 2.5,
-    third_place: 2.5,
-    final: 3.0, finals: 3.0,
+    r32_leg1: 1.5, r32_leg2: 1.5, round_of_32: 1.5, r32: 1.5,
+    r16_leg1: 2.0, r16_leg2: 2.0, round_of_16: 2.0, r16: 2.0,
+    qf_leg1: 2.5, qf_leg2: 2.5, quarter_finals: 2.5, qf: 2.5,
+    sf_leg1: 3.0, sf_leg2: 3.0, semi_finals: 3.0, sf: 3.0,
+    third_place: 3.0,
+    final: 4.0, finals: 4.0,
   };
 
   function getDefaultMultiplier(phaseId: string): number {
@@ -1434,11 +1434,35 @@ export function StepScoring() {
             {/* Editable multipliers per phase */}
             {scalingEnabled && (
               <div style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
                 padding: `${spacing.sm}px 0`,
               }}>
+                {/* Restore defaults button */}
+                {scoringConfig.some(p => (phaseMultipliers[p.phaseId] ?? 1) !== getDefaultMultiplier(p.phaseId)) && (
+                  <button
+                    onClick={() => {
+                      const mults: Record<string, number> = {};
+                      scoringConfig.forEach(p => { mults[p.phaseId] = getDefaultMultiplier(p.phaseId); });
+                      setPhaseMultipliers(mults);
+                      applyScaling(mults, basePoints);
+                    }}
+                    style={{
+                      alignSelf: "flex-end",
+                      padding: "4px 12px",
+                      borderRadius: radii.pill,
+                      border: `1px solid ${colors.brand}`,
+                      background: `${colors.brand}08`,
+                      color: colors.brand,
+                      fontSize: fontSize.xs,
+                      fontWeight: fontWeight.semibold,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ↺ Restaurar recomendados
+                  </button>
+                )}
                 {scoringConfig.map((p) => {
                   const mult = phaseMultipliers[p.phaseId] ?? 1.0;
                   const suggested = getDefaultMultiplier(p.phaseId);
