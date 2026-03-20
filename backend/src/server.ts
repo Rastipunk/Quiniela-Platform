@@ -22,6 +22,7 @@ import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
+import { startPhaseSyncJob, stopPhaseSyncJob } from "./jobs/phaseSyncJob";
 import { prisma } from "./db";
 
 const app = express();
@@ -121,6 +122,7 @@ const server = app.listen(PORT, () => {
   logger.info("API started", { port: PORT, version: BUILD_VERSION, commit: COMMIT_SHA });
   startSmartSyncJob();
   startDeadlineReminderJob();
+  startPhaseSyncJob();
 });
 
 // Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)
@@ -137,6 +139,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   // 2. Stop cron jobs so no new DB work starts
   stopSmartSyncJob();
   stopDeadlineReminderJob();
+  stopPhaseSyncJob();
 
   // 3. Disconnect Prisma (closes DB connection pool)
   try {

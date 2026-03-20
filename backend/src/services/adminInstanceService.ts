@@ -720,3 +720,406 @@ export async function updateR16Draw(userId: string, instanceId: string, ctx: Aud
     logs,
   };
 }
+
+// ─── Phase advancement map ────────────────────────────────────────────────
+
+/** Maps internal phase prefix → API-Football round name */
+const PHASE_TO_API_ROUND: Record<string, string> = {
+  r32: "Round of 32",
+  r16: "Round of 16",
+  qf: "Quarter-finals",
+  sf: "Semi-finals",
+  final: "Final",
+};
+
+/** Maps completed phase → next phase */
+const ADVANCEMENT_MAP: Record<string, string> = {
+  r32: "r16",
+  r16: "qf",
+  qf: "sf",
+  sf: "final",
+};
+
+// ─── syncNextPhaseFromApi ─────────────────────────────────────────────────
+
+/**
+ * Fetch next-phase fixtures from API-Football and configure them in the instance
+ * and all associated pools. Generalizes updateR16Draw() for any knockout phase.
+ *
+ * Flow:
+ *   1. Query API-Football for fixtures of the target round
+ *   2. Group fixtures into ties (two-legged) or single matches (final)
+ *   3. Update instance.dataJson with real teams, dates, fixture IDs
+ *   4. Create MatchExternalMapping for Smart Sync
+ *   5. Create MatchSyncState so Smart Sync monitors them
+ *   6. Update fixtureSnapshot of every pool on this instance
+ *
+ * Returns { success, summary?, logs } — never throws on API unavailability.
+ */
+export async function syncNextPhaseFromApi(
+  instanceId: string,
+  nextPhase: string,
+  options?: { actorUserId?: string | null }
+): Promise<{ success: boolean; message?: string; summary?: Record<string, number>; logs: string[] }> {
+  const logs: string[] = [];
+  const log = (msg: string) => { logs.push(msg); console.log(`[PhaseSync] ${msg}`); };
+
+  const apiRoundName = PHASE_TO_API_ROUND[nextPhase];
+  if (!apiRoundName) {
+    return { success: false, message: `Unknown phase: ${nextPhase}`, logs };
+  }
+
+  const isFinal = nextPhase === "final";
+
+  // 1. Load instance
+  const instance = await prisma.tournamentInstance.findUnique({ where: { id: instanceId } });
+  if (!instance) return { success: false, message: "Instance not found", logs };
+
+  const currentData = instance.dataJson as Record<string, any>;
+  const leagueId = instance.apiFootballLeagueId ?? 2;
+  const season = instance.apiFootballSeasonId ?? 2025;
+
+  // 2. Build team mapping: apiFootballId → internal ID
+  const apiToInternal: Record<number, string> = {};
+  for (const team of currentData.teams || []) {
+    if (team.apiFootballId) apiToInternal[team.apiFootballId] = team.id;
+  }
+  log(`Loaded ${Object.keys(apiToInternal).length} team mappings`);
+
+  // 3. Fetch fixtures from API-Football
+  const { ApiFootballClient } = await import("../services/apiFootball/client");
+  const client = new ApiFootballClient();
+  log(`Fetching ${apiRoundName} fixtures (league=${leagueId}, season=${season})...`);
+
+  let fixtures;
+  try {
+    fixtures = await client.getFixtures({ league: leagueId, season, round: apiRoundName });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(`API error: ${msg}`);
+    return { success: false, message: `API-Football error: ${msg}`, logs };
+  }
+
+  log(`Found ${fixtures.length} fixtures from API-Football`);
+
+  if (fixtures.length === 0) {
+    return { success: false, message: `No ${apiRoundName} fixtures available yet in API-Football`, logs };
+  }
+
+  // 4. Validate team mappings
+  const missingTeams: string[] = [];
+  for (const f of fixtures) {
+    if (!apiToInternal[f.teams.home.id]) missingTeams.push(`${f.teams.home.name} (API ID: ${f.teams.home.id})`);
+    if (!apiToInternal[f.teams.away.id]) missingTeams.push(`${f.teams.away.name} (API ID: ${f.teams.away.id})`);
+  }
+  if (missingTeams.length > 0) {
+    log(`Missing team mappings: ${missingTeams.join(", ")}`);
+    return { success: false, message: `Missing team mappings: ${missingTeams.join(", ")}`, logs };
+  }
+
+  const teamName = (id: string) => currentData.teams.find((t: any) => t.id === id)?.name ?? id;
+
+  // 5. Process fixtures
+  let matchesUpdated = 0;
+  let mappingCount = 0;
+  let syncCount = 0;
+
+  if (isFinal) {
+    // ── Single-match final ──
+    if (fixtures.length !== 1) {
+      log(`WARNING: Expected 1 final fixture, got ${fixtures.length}`);
+    }
+    const f = fixtures[0]!;
+    const homeId = apiToInternal[f.teams.home.id]!;
+    const awayId = apiToInternal[f.teams.away.id]!;
+    const kickoffUtc = new Date(f.fixture.date).toISOString();
+
+    log(`Final: ${teamName(homeId)} vs ${teamName(awayId)} | #${f.fixture.id} ${kickoffUtc.slice(0, 16)}`);
+
+    // Update match in instance dataJson
+    for (const match of currentData.matches) {
+      if (match.phaseId !== "final") continue;
+      match.homeTeamId = homeId;
+      match.awayTeamId = awayId;
+      match.kickoffUtc = kickoffUtc;
+      match.label = `${teamName(homeId)} vs ${teamName(awayId)}`;
+      match.status = "SCHEDULED";
+      matchesUpdated++;
+    }
+
+    // Create mapping + sync state
+    const matchId = currentData.matches.find((m: any) => m.phaseId === "final")?.id;
+    if (matchId) {
+      await prisma.matchExternalMapping.upsert({
+        where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: matchId } },
+        create: { tournamentInstanceId: instanceId, internalMatchId: matchId, apiFootballFixtureId: f.fixture.id },
+        update: { apiFootballFixtureId: f.fixture.id },
+      });
+      mappingCount++;
+
+      const kickoff = new Date(kickoffUtc);
+      await prisma.matchSyncState.upsert({
+        where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: matchId } },
+        create: {
+          tournamentInstanceId: instanceId, internalMatchId: matchId, syncStatus: "PENDING",
+          kickoffUtc: kickoff,
+          firstCheckAtUtc: new Date(kickoff.getTime() + 5 * 60_000),
+          finishCheckAtUtc: new Date(kickoff.getTime() + 140 * 60_000), // Final can have extra time
+        },
+        update: {
+          syncStatus: "PENDING",
+          kickoffUtc: kickoff,
+          firstCheckAtUtc: new Date(kickoff.getTime() + 5 * 60_000),
+          finishCheckAtUtc: new Date(kickoff.getTime() + 140 * 60_000),
+        },
+      });
+      syncCount++;
+    }
+  } else {
+    // ── Two-legged knockout ──
+    // Group fixtures into ties (same two teams = same tie)
+    const tieMap = new Map<string, any[]>();
+    for (const f of fixtures) {
+      const homeId = f.teams.home.id;
+      const awayId = f.teams.away.id;
+      const key = [Math.min(homeId, awayId), Math.max(homeId, awayId)].join("-");
+      if (!tieMap.has(key)) tieMap.set(key, []);
+      tieMap.get(key)!.push(f);
+    }
+
+    interface Tie {
+      tieNumber: number; teamA: string; teamB: string;
+      leg1: { fixtureId: number; kickoffUtc: string };
+      leg2: { fixtureId: number; kickoffUtc: string };
+    }
+
+    const ties: Tie[] = [];
+    let tieNum = 1;
+    for (const [, legs] of tieMap.entries()) {
+      legs.sort((a: any, b: any) => new Date(a.fixture.date).getTime() - new Date(b.fixture.date).getTime());
+      const leg1 = legs[0]; const leg2 = legs[1];
+      if (!leg1 || !leg2) {
+        log(`WARNING: Incomplete tie — only ${legs.length} leg(s)`);
+        continue;
+      }
+      const teamA = apiToInternal[leg1.teams.home.id]!;
+      const teamB = apiToInternal[leg1.teams.away.id]!;
+      ties.push({
+        tieNumber: tieNum++, teamA, teamB,
+        leg1: { fixtureId: leg1.fixture.id, kickoffUtc: new Date(leg1.fixture.date).toISOString() },
+        leg2: { fixtureId: leg2.fixture.id, kickoffUtc: new Date(leg2.fixture.date).toISOString() },
+      });
+    }
+    log(`Grouped into ${ties.length} ties`);
+
+    for (const tie of ties) {
+      log(`  Tie ${tie.tieNumber}: ${teamName(tie.teamA)} vs ${teamName(tie.teamB)} | L1:#${tie.leg1.fixtureId} ${tie.leg1.kickoffUtc.slice(0, 16)} | L2:#${tie.leg2.fixtureId} ${tie.leg2.kickoffUtc.slice(0, 16)}`);
+    }
+
+    // Update matches in instance dataJson
+    const leg1Phase = `${nextPhase}_leg1`;
+    const leg2Phase = `${nextPhase}_leg2`;
+
+    for (const tie of ties) {
+      for (const match of currentData.matches) {
+        if (match.tieNumber !== tie.tieNumber) continue;
+        if (match.phaseId === leg1Phase) {
+          match.homeTeamId = tie.teamA; match.awayTeamId = tie.teamB;
+          match.kickoffUtc = tie.leg1.kickoffUtc;
+          match.label = `${teamName(tie.teamA)} vs ${teamName(tie.teamB)}`;
+          match.status = "SCHEDULED"; matchesUpdated++;
+        } else if (match.phaseId === leg2Phase) {
+          match.homeTeamId = tie.teamB; match.awayTeamId = tie.teamA;
+          match.kickoffUtc = tie.leg2.kickoffUtc;
+          match.label = `${teamName(tie.teamB)} vs ${teamName(tie.teamA)}`;
+          match.status = "SCHEDULED"; matchesUpdated++;
+        }
+      }
+    }
+
+    // Create mappings + sync states
+    for (const tie of ties) {
+      for (const leg of [
+        { matchId: `${nextPhase}_${tie.tieNumber}_leg1`, fixtureId: tie.leg1.fixtureId, kickoff: tie.leg1.kickoffUtc },
+        { matchId: `${nextPhase}_${tie.tieNumber}_leg2`, fixtureId: tie.leg2.fixtureId, kickoff: tie.leg2.kickoffUtc },
+      ]) {
+        await prisma.matchExternalMapping.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId } },
+          create: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId, apiFootballFixtureId: leg.fixtureId },
+          update: { apiFootballFixtureId: leg.fixtureId },
+        });
+        mappingCount++;
+
+        const kickoffUtc = new Date(leg.kickoff);
+        await prisma.matchSyncState.upsert({
+          where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId } },
+          create: {
+            tournamentInstanceId: instanceId, internalMatchId: leg.matchId, syncStatus: "PENDING",
+            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+          },
+          update: {
+            syncStatus: "PENDING",
+            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+          },
+        });
+        syncCount++;
+      }
+    }
+  }
+
+  log(`Updated ${matchesUpdated} matches in dataJson`);
+
+  // 6. Persist instance dataJson
+  await prisma.tournamentInstance.update({
+    where: { id: instanceId },
+    data: { dataJson: currentData },
+  });
+
+  if (instance.templateVersionId) {
+    await prisma.tournamentTemplateVersion.update({
+      where: { id: instance.templateVersionId },
+      data: { dataJson: currentData },
+    });
+    log("Template version updated");
+  }
+
+  log(`Created/updated ${mappingCount} fixture mappings, ${syncCount} sync states`);
+
+  // 7. Update fixtureSnapshot of every pool on this instance
+  const pools = await prisma.pool.findMany({
+    where: { tournamentInstanceId: instanceId },
+    select: { id: true, name: true, fixtureSnapshot: true },
+  });
+
+  for (const pool of pools) {
+    const poolData = (pool.fixtureSnapshot ?? currentData) as Record<string, any>;
+
+    if (isFinal) {
+      const finalMatch = currentData.matches.find((m: any) => m.phaseId === "final");
+      if (finalMatch) {
+        for (const match of poolData.matches || []) {
+          if (match.phaseId !== "final") continue;
+          match.homeTeamId = finalMatch.homeTeamId;
+          match.awayTeamId = finalMatch.awayTeamId;
+          match.kickoffUtc = finalMatch.kickoffUtc;
+          match.label = finalMatch.label;
+          match.status = "SCHEDULED";
+        }
+      }
+    } else {
+      // Copy resolved matches from instance data to pool
+      const leg1Phase = `${nextPhase}_leg1`;
+      const leg2Phase = `${nextPhase}_leg2`;
+      for (const instanceMatch of currentData.matches) {
+        if (instanceMatch.phaseId !== leg1Phase && instanceMatch.phaseId !== leg2Phase) continue;
+        if (instanceMatch.status !== "SCHEDULED") continue;
+        const poolMatch = (poolData.matches || []).find((m: any) => m.id === instanceMatch.id);
+        if (poolMatch) {
+          poolMatch.homeTeamId = instanceMatch.homeTeamId;
+          poolMatch.awayTeamId = instanceMatch.awayTeamId;
+          poolMatch.kickoffUtc = instanceMatch.kickoffUtc;
+          poolMatch.label = instanceMatch.label;
+          poolMatch.status = "SCHEDULED";
+        }
+      }
+    }
+
+    await prisma.pool.update({ where: { id: pool.id }, data: { fixtureSnapshot: poolData } });
+    log(`Updated pool: ${pool.name}`);
+  }
+
+  // 8. Audit
+  fireAndForget("audit:phase-sync", writeAuditEvent({
+    actorUserId: options?.actorUserId ?? null,
+    action: "PHASE_SYNCED_FROM_API",
+    entityType: "TournamentInstance",
+    entityId: instanceId,
+    dataJson: { nextPhase, apiRoundName, matchesUpdated, mappings: mappingCount, syncStates: syncCount, poolsUpdated: pools.length },
+  }));
+
+  log("DONE");
+  return {
+    success: true,
+    summary: { matchesUpdated, mappings: mappingCount, syncStates: syncCount, poolsUpdated: pools.length },
+    logs,
+  };
+}
+
+/**
+ * Try to sync the next phase from API, or create a PendingPhaseSync if not available.
+ * Called by checkAutoAdvance() when a phase completes.
+ */
+export async function tryAdvancePhaseFromApi(
+  instanceId: string,
+  completedPhase: string,
+): Promise<void> {
+  const nextPhase = ADVANCEMENT_MAP[completedPhase];
+  if (!nextPhase) return; // No next phase (final completed = tournament done)
+
+  const apiRoundName = PHASE_TO_API_ROUND[nextPhase];
+  if (!apiRoundName) return;
+
+  console.log(`[PhaseSync] Phase ${completedPhase} complete → trying to sync ${nextPhase} (${apiRoundName}) from API`);
+
+  const result = await syncNextPhaseFromApi(instanceId, nextPhase);
+
+  if (result.success) {
+    // Mark any existing pending record as resolved
+    await prisma.pendingPhaseSync.upsert({
+      where: { tournamentInstanceId_nextPhase: { tournamentInstanceId: instanceId, nextPhase } },
+      create: {
+        tournamentInstanceId: instanceId,
+        completedPhase, nextPhase, apiRoundName,
+        status: "RESOLVED", attempts: 1,
+        lastAttemptAtUtc: new Date(), resolvedAtUtc: new Date(),
+      },
+      update: {
+        status: "RESOLVED",
+        attempts: { increment: 1 },
+        lastAttemptAtUtc: new Date(), resolvedAtUtc: new Date(),
+        errorMessage: null,
+      },
+    });
+
+    // Send admin notification
+    try {
+      const { sendAdminNotification } = await import("../lib/email");
+      await sendAdminNotification({
+        subject: `Phase Sync: ${nextPhase.toUpperCase()} configured`,
+        body: `Phase ${completedPhase.toUpperCase()} completed. ${nextPhase.toUpperCase()} (${apiRoundName}) has been automatically configured from API-Football.\n\nMatches updated: ${result.summary?.matchesUpdated}\nPools updated: ${result.summary?.poolsUpdated}`,
+        type: "error",
+      });
+    } catch { /* notification is best-effort */ }
+  } else {
+    // API doesn't have fixtures yet — create pending record for the 12h job
+    await prisma.pendingPhaseSync.upsert({
+      where: { tournamentInstanceId_nextPhase: { tournamentInstanceId: instanceId, nextPhase } },
+      create: {
+        tournamentInstanceId: instanceId,
+        completedPhase, nextPhase, apiRoundName,
+        status: "PENDING", attempts: 1,
+        lastAttemptAtUtc: new Date(),
+        errorMessage: result.message,
+      },
+      update: {
+        attempts: { increment: 1 },
+        lastAttemptAtUtc: new Date(),
+        errorMessage: result.message,
+      },
+    });
+
+    console.log(`[PhaseSync] ${nextPhase} not available yet: ${result.message}. Queued for 12h retry.`);
+
+    // Notify admin
+    try {
+      const { sendAdminNotification } = await import("../lib/email");
+      await sendAdminNotification({
+        subject: `Phase Sync: ${nextPhase.toUpperCase()} pendiente`,
+        body: `Phase ${completedPhase.toUpperCase()} completed but ${nextPhase.toUpperCase()} (${apiRoundName}) is not yet available in API-Football.\n\nReason: ${result.message}\n\nThe system will retry every 12 hours automatically.`,
+        type: "error",
+      });
+    } catch { /* notification is best-effort */ }
+  }
+}

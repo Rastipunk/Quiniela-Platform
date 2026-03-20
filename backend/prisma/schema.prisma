@@ -251,9 +251,10 @@ model TournamentInstance {
   syncEnabled   Boolean   @default(true) // Kill switch de emergencia para detener sync
 
   // Relaciones para auto results
-  matchMappings    MatchExternalMapping[]
-  syncLogs         ResultSyncLog[]
-  matchSyncStates  MatchSyncState[]
+  matchMappings     MatchExternalMapping[]
+  syncLogs          ResultSyncLog[]
+  matchSyncStates   MatchSyncState[]
+  pendingPhaseSyncs PendingPhaseSync[]
 
   createdAtUtc DateTime @default(now())
   updatedAtUtc DateTime @updatedAt
@@ -831,6 +832,41 @@ enum MatchSyncStatus {
   AWAITING_FINISH   // Past estimated end, polling every 5min
   COMPLETED         // Match finished, never check again
   SKIPPED           // No API mapping or manual mode
+}
+
+// ==========================================
+// Pending Phase Sync
+// ==========================================
+// When a knockout phase completes, the system tries to fetch the next phase
+// from API-Football. If fixtures aren't available yet (e.g., draw not made),
+// a pending record is created. A job checks every 12h until resolved.
+
+model PendingPhaseSync {
+  id                    String   @id @default(uuid())
+  tournamentInstanceId  String
+  tournamentInstance    TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Restrict)
+
+  completedPhase        String   // Phase prefix that just completed (e.g., "r16", "qf")
+  nextPhase             String   // Phase prefix to configure (e.g., "qf", "sf", "final")
+  apiRoundName          String   // API-Football round name (e.g., "Quarter-finals")
+
+  status                PhaseSyncStatus @default(PENDING)
+  attempts              Int      @default(0)
+  lastAttemptAtUtc      DateTime?
+  resolvedAtUtc         DateTime?
+  errorMessage          String?
+
+  createdAtUtc          DateTime @default(now())
+  updatedAtUtc          DateTime @updatedAt
+
+  @@unique([tournamentInstanceId, nextPhase])
+  @@index([status])
+}
+
+enum PhaseSyncStatus {
+  PENDING    // Waiting for API to have fixtures
+  RESOLVED   // Successfully synced from API
+  FAILED     // Gave up after too many attempts (manual intervention needed)
 }
 
 // ==========================================

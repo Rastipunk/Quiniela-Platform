@@ -23,9 +23,9 @@ import {
 import { writeAuditEvent } from "../../lib/audit";
 import { extractMatches } from "../../lib/fixture";
 import {
-  advanceTwoLeggedPhase,
   validateCanAutoAdvance,
 } from "../instanceAdvancement";
+import { tryAdvancePhaseFromApi } from "../adminInstanceService";
 
 // ============================================================================
 // Configuration
@@ -578,42 +578,40 @@ export class SmartSyncService {
           continue;
         }
 
-        // All results are in and auto-advance is enabled -> advance!
+        // All results are in and auto-advance is enabled -> sync next phase from API!
+        // We only need to do this once per instance (not per pool), since
+        // syncNextPhaseFromApi updates all pools on the instance.
         console.log(
-          `[SmartSync] Auto-advancing ${currentRound} -> ${nextRound} for pool ${poolId}`
+          `[SmartSync] Phase ${currentRound} complete → syncing ${nextRound} from API for instance ${matchState.tournamentInstanceId}`
         );
 
         try {
-          const result = await advanceTwoLeggedPhase(
+          await tryAdvancePhaseFromApi(
             matchState.tournamentInstanceId,
-            currentRound,
-            nextRound,
-            poolId
+            currentRound
           );
 
           await writeAuditEvent({
             actorUserId: null,
-            action: "AUTO_ADVANCE_TWO_LEGGED",
-            entityType: "Pool",
-            entityId: poolId,
+            action: "AUTO_PHASE_SYNC_TRIGGERED",
+            entityType: "TournamentInstance",
+            entityId: matchState.tournamentInstanceId,
             dataJson: {
-              from: currentRound,
-              to: nextRound,
-              instanceId: matchState.tournamentInstanceId,
-              winners: result.winners.map((w) => ({
-                tieNumber: w.tieNumber,
-                winnerId: w.winnerId,
-                decidedBy: w.decidedBy,
-              })),
+              completedPhase: currentRound,
+              nextPhase: nextRound,
+              triggeredByPool: poolId,
             },
           });
 
           console.log(
-            `[SmartSync] Auto-advance complete: ${result.winners.length} winners resolved`
+            `[SmartSync] Phase sync for ${nextRound} triggered successfully`
           );
+
+          // Break out of pool loop — sync is instance-wide, no need to repeat
+          break;
         } catch (advanceError) {
           console.error(
-            `[SmartSync] Auto-advance failed for pool ${poolId}:`,
+            `[SmartSync] Phase sync failed:`,
             advanceError instanceof Error ? advanceError.message : advanceError
           );
         }
