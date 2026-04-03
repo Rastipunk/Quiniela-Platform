@@ -881,46 +881,65 @@ function buildWc2026SandboxData() {
 
   kickoff += 3 * 24 * 60 * 60 * 1000;
 
-  for (let i = 1; i <= 16; i++) {
+  // R32 — Official FIFA WC 2026 bracket (matches 73-88)
+  const r32Matchups: [string, string][] = [
+    ["RU_A", "RU_B"], ["W_E", "3rd_POOL_1"], ["W_F", "RU_C"], ["W_C", "RU_F"],
+    ["W_I", "3rd_POOL_2"], ["RU_E", "RU_I"], ["W_A", "3rd_POOL_3"], ["W_L", "3rd_POOL_4"],
+    ["W_D", "3rd_POOL_5"], ["W_G", "3rd_POOL_6"], ["RU_K", "RU_L"], ["W_H", "RU_J"],
+    ["W_B", "3rd_POOL_7"], ["W_J", "RU_H"], ["W_K", "3rd_POOL_8"], ["RU_D", "RU_G"],
+  ];
+  for (let i = 0; i < r32Matchups.length; i++) {
     matches.push({
-      id: `m_R32_${i}`, phaseId: "round_of_32",
+      id: `m_R32_${i + 1}`, phaseId: "round_of_32",
       kickoffUtc: new Date(kickoff).toISOString(), matchNumber: matchNumber++,
-      roundLabel: `R32 - Partido ${i}`, venue: `Estadio ${(i % 16) + 1}`,
-      homeTeamId: `W_G${String.fromCharCode(64 + ((i - 1) % 12) + 1)}`,
-      awayTeamId: `RU_G${String.fromCharCode(64 + ((i + 5) % 12) + 1)}`,
+      roundLabel: `R32 - Partido ${i + 1}`, venue: `Estadio ${((i + 1) % 16) + 1}`,
+      homeTeamId: r32Matchups[i]![0], awayTeamId: r32Matchups[i]![1],
     });
     kickoff += twoHours;
   }
 
+  // R16 — FIFA bracket connections (matches 89-96)
   kickoff += 2 * 24 * 60 * 60 * 1000;
-  for (let i = 1; i <= 8; i++) {
+  const r16Matchups: [string, string][] = [
+    ["W_R32_2", "W_R32_5"], ["W_R32_1", "W_R32_3"], ["W_R32_4", "W_R32_6"], ["W_R32_7", "W_R32_8"],
+    ["W_R32_11", "W_R32_12"], ["W_R32_9", "W_R32_10"], ["W_R32_14", "W_R32_16"], ["W_R32_13", "W_R32_15"],
+  ];
+  for (let i = 0; i < r16Matchups.length; i++) {
     matches.push({
-      id: `m_R16_${i}`, phaseId: "round_of_16",
+      id: `m_R16_${i + 1}`, phaseId: "round_of_16",
       kickoffUtc: new Date(kickoff).toISOString(), matchNumber: matchNumber++,
-      roundLabel: `Octavos - Partido ${i}`, venue: `Estadio ${(i % 16) + 1}`,
-      homeTeamId: `W_R32_${i * 2 - 1}`, awayTeamId: `W_R32_${i * 2}`,
+      roundLabel: `Octavos - Partido ${i + 1}`, venue: `Estadio ${((i + 1) % 16) + 1}`,
+      homeTeamId: r16Matchups[i]![0], awayTeamId: r16Matchups[i]![1],
     });
     kickoff += twoHours;
   }
 
+  // QF — FIFA bracket connections (matches 97-100)
   kickoff += 2 * 24 * 60 * 60 * 1000;
-  for (let i = 1; i <= 4; i++) {
+  const qfMatchups: [string, string][] = [
+    ["W_R16_1", "W_R16_2"], ["W_R16_5", "W_R16_6"], ["W_R16_3", "W_R16_4"], ["W_R16_7", "W_R16_8"],
+  ];
+  for (let i = 0; i < qfMatchups.length; i++) {
     matches.push({
-      id: `m_QF_${i}`, phaseId: "quarter_finals",
+      id: `m_QF_${i + 1}`, phaseId: "quarter_finals",
       kickoffUtc: new Date(kickoff).toISOString(), matchNumber: matchNumber++,
-      roundLabel: `Cuartos - Partido ${i}`, venue: `Estadio ${(i % 16) + 1}`,
-      homeTeamId: `W_R16_${i * 2 - 1}`, awayTeamId: `W_R16_${i * 2}`,
+      roundLabel: `Cuartos - Partido ${i + 1}`, venue: `Estadio ${((i + 1) % 16) + 1}`,
+      homeTeamId: qfMatchups[i]![0], awayTeamId: qfMatchups[i]![1],
     });
     kickoff += twoHours;
   }
 
+  // SF — FIFA bracket connections (matches 101-102)
   kickoff += 2 * 24 * 60 * 60 * 1000;
-  for (let i = 1; i <= 2; i++) {
+  const sfMatchups: [string, string][] = [
+    ["W_QF_1", "W_QF_2"], ["W_QF_3", "W_QF_4"],
+  ];
+  for (let i = 0; i < sfMatchups.length; i++) {
     matches.push({
-      id: `m_SF_${i}`, phaseId: "semi_finals",
+      id: `m_SF_${i + 1}`, phaseId: "semi_finals",
       kickoffUtc: new Date(kickoff).toISOString(), matchNumber: matchNumber++,
-      roundLabel: `Semifinal ${i}`, venue: `Estadio Final`,
-      homeTeamId: `W_QF_${i * 2 - 1}`, awayTeamId: `W_QF_${i * 2}`,
+      roundLabel: `Semifinal ${i + 1}`, venue: `Estadio Final`,
+      homeTeamId: sfMatchups[i]![0], awayTeamId: sfMatchups[i]![1],
     });
     kickoff += twoHours;
   }

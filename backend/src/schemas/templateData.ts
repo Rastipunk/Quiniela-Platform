@@ -6,6 +6,7 @@ export const templateTeamSchema = z.object({
   shortName: z.string().min(1).max(20).optional(),
   code: z.string().min(2).max(6).optional(), // ej: "MEX"
   groupId: z.string().min(1).max(50).optional(), // ej: "A"
+  apiFootballId: z.number().int().positive().optional(), // ID en API-Football (api-sports.io)
 });
 
 export const templatePhaseSchema = z.object({
