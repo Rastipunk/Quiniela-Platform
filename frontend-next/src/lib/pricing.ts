@@ -18,11 +18,11 @@ const envInt = (key: string, fallback: number) => parseInt(process.env[key] || S
 
 export const PERSONAL_FREE_LIMIT = envInt("NEXT_PUBLIC_PERSONAL_FREE_LIMIT", 20);
 export const CORPORATE_FREE_LIMIT = envInt("NEXT_PUBLIC_CORPORATE_FREE_LIMIT", 100);
-const INCREMENT = 50;
-const BASE_PRICE = envFloat("NEXT_PUBLIC_BASE_PRICE", 6.99);
+export const INCREMENT = 50;
+export const BASE_PRICE = envFloat("NEXT_PUBLIC_BASE_PRICE", 6.99);
 const PAIR_DISCOUNT = 0.4;
 const MIN_PRICE = envFloat("NEXT_PUBLIC_MIN_PRICE", 3.99);
-const CORPORATE_BASE_PRICE = envFloat("NEXT_PUBLIC_CORPORATE_BASE_PRICE", 49.99);
+export const CORPORATE_BASE_PRICE = envFloat("NEXT_PUBLIC_CORPORATE_BASE_PRICE", 49.99);
 
 function roundPrice(n: number): number {
   return Math.round(n * 100) / 100;
@@ -180,10 +180,4 @@ export function getUpgradePrice(
   return roundPrice(toTier.totalPrice - fromTier.totalPrice);
 }
 
-export {
-  PERSONAL_FREE_LIMIT,
-  CORPORATE_FREE_LIMIT,
-  CORPORATE_BASE_PRICE,
-  BASE_PRICE,
-  INCREMENT,
-};
+// All pricing constants are exported inline at declaration
