@@ -54,9 +54,12 @@ function handleServiceError(res: any, err: unknown): void {
 
 // ─── Rate Limiters ───────────────────────────────────────────
 
+const envInt = (key: string, fallback: number): number =>
+  parseInt(process.env[key] || String(fallback), 10);
+
 const inquiryLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+  windowMs: envInt("RATE_LIMIT_CORP_INQUIRY_WINDOW_MS", 15 * 60 * 1000),
+  max: envInt("RATE_LIMIT_CORP_INQUIRY_MAX", 5),
   message: { error: "RATE_LIMITED" },
 });
 

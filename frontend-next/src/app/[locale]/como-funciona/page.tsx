@@ -12,11 +12,12 @@ import {
   getPoolTermParams,
 } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
 
   const localePath = locale === "es" ? "" : `/${locale}`;
   const pagePath = locale === "en" ? "/how-it-works" : "/como-funciona";
@@ -195,7 +196,7 @@ export default async function ComoFuncionaPage() {
     },
   };
 
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
   const pagePath = locale === "en" ? "/how-it-works" : "/como-funciona";
 

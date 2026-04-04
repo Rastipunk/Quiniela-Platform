@@ -9,6 +9,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
+import { MATCH_SYNC } from "../lib/constants";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
 import { ApiFootballClient } from "../services/apiFootball/client";
 import { fireAndForget } from "../lib/asyncHelpers";
@@ -322,8 +323,8 @@ export async function updateUclR16() {
       await prisma.matchSyncState.upsert({
         where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: matchId } },
         create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: matchId, syncStatus: "PENDING", kickoffUtc,
-          firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
-        update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+          firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS), finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS) },
+        update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS), finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS) },
       });
 
       await prisma.matchExternalMapping.create({
@@ -383,8 +384,8 @@ export async function updateUclR16() {
       await prisma.matchSyncState.upsert({
         where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId } },
         create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: leg.matchId, syncStatus: "PENDING", kickoffUtc,
-          firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
-        update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000) },
+          firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS), finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS) },
+        update: { kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS), finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS) },
       });
       syncCount++;
     }
@@ -746,8 +747,8 @@ export async function fixR16Integrity(dryRun: boolean) {
       const isFinished = FINISHED_STATUSES.includes(cm.fixtureStatusShort);
       await prisma.matchSyncState.upsert({
         where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: cm.internalMatchId } },
-        create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: cm.internalMatchId, syncStatus: isFinished ? "COMPLETED" : "PENDING", kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000), completedAtUtc: isFinished ? new Date() : null, lastApiStatus: cm.fixtureStatusShort },
-        update: { kickoffUtc, syncStatus: isFinished ? "COMPLETED" : "PENDING", firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000), finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000), completedAtUtc: isFinished ? new Date() : null, lastApiStatus: cm.fixtureStatusShort, lastCheckedAtUtc: isFinished ? new Date() : null },
+        create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: cm.internalMatchId, syncStatus: isFinished ? "COMPLETED" : "PENDING", kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS), finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS), completedAtUtc: isFinished ? new Date() : null, lastApiStatus: cm.fixtureStatusShort },
+        update: { kickoffUtc, syncStatus: isFinished ? "COMPLETED" : "PENDING", firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS), finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS), completedAtUtc: isFinished ? new Date() : null, lastApiStatus: cm.fixtureStatusShort, lastCheckedAtUtc: isFinished ? new Date() : null },
       });
     }
 

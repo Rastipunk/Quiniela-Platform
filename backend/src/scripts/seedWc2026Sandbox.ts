@@ -1,6 +1,7 @@
 // backend/src/scripts/seedWc2026Sandbox.ts
 import "dotenv/config";
 import { prisma } from "../db";
+import { MATCH_SYNC } from "../lib/constants";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
 
 type Team = {
@@ -680,8 +681,8 @@ async function main() {
     if (!match) continue;
 
     const kickoffUtc = new Date(match.kickoffUtc);
-    const firstCheckAt = new Date(kickoffUtc.getTime() + 5 * 60 * 1000); // +5 min
-    const finishCheckAt = new Date(kickoffUtc.getTime() + 110 * 60 * 1000); // +110 min
+    const firstCheckAt = new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS);
+    const finishCheckAt = new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS);
 
     await prisma.matchSyncState.create({
       data: {

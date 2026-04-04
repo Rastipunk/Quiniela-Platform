@@ -30,10 +30,12 @@ const app = express();
 // Trust proxy — needed behind Railway's reverse proxy so rate-limit sees real client IP
 app.set("trust proxy", 1);
 
-// CORS — only allow our frontend origins
+// CORS — only allow our frontend origins (configurable via env)
+const SITE_DOMAIN = process.env.SITE_DOMAIN || "picks4all.com";
 const ALLOWED_ORIGINS = [
-  "https://picks4all.com",
-  "https://www.picks4all.com",
+  `https://${SITE_DOMAIN}`,
+  `https://www.${SITE_DOMAIN}`,
+  ...(process.env.CORS_EXTRA_ORIGINS ? process.env.CORS_EXTRA_ORIGINS.split(",") : []),
   ...(process.env.NODE_ENV !== "production" ? ["http://localhost:3000"] : []),
 ];
 

@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { EnterpriseLandingContent } from "@/components/EnterpriseLandingContent";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("enterprise.meta");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
 
   const localePaths: Record<string, string> = {
     es: "/empresas",

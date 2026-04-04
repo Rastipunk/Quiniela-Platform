@@ -24,25 +24,28 @@ const BRAND = {
   supportEmail: "soporte@picks4all.com",
 };
 
+// Email domain — all contact addresses derive from this
+const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "picks4all.com";
+
 // Emails de soporte por locale
 export const SUPPORT_EMAILS: Record<string, string> = {
-  es: "soporte@picks4all.com",
-  en: "support@picks4all.com",
-  pt: "suporte@picks4all.com",
+  es: `soporte@${EMAIL_DOMAIN}`,
+  en: `support@${EMAIL_DOMAIN}`,
+  pt: `suporte@${EMAIL_DOMAIN}`,
 };
 
 // Emails de privacidad por locale
 export const PRIVACY_EMAILS: Record<string, string> = {
-  es: "privacidad@picks4all.com",
-  en: "privacy@picks4all.com",
-  pt: "privacidade@picks4all.com",
+  es: `privacidad@${EMAIL_DOMAIN}`,
+  en: `privacy@${EMAIL_DOMAIN}`,
+  pt: `privacidade@${EMAIL_DOMAIN}`,
 };
 
 // Emails de empresas por locale
 export const ENTERPRISE_EMAILS: Record<string, string> = {
-  es: "empresas@picks4all.com",
-  en: "enterprise@picks4all.com",
-  pt: "empresas@picks4all.com",
+  es: `empresas@${EMAIL_DOMAIN}`,
+  en: `enterprise@${EMAIL_DOMAIN}`,
+  pt: `empresas@${EMAIL_DOMAIN}`,
 };
 
 /** Obtener email de soporte según locale */

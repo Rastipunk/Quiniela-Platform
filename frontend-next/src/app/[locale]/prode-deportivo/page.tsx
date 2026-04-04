@@ -3,11 +3,12 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd";
 import { RegionalArticlePage } from "@/components/RegionalArticlePage";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
   const url = `${baseUrl}${localePath}/prode-deportivo`;
 
@@ -45,7 +46,7 @@ const relatedLinks = [
 export default async function ProdeDeportivoPage() {
   const locale = await getLocale();
   const t = await getTranslations("prode");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
 
   const articleJsonLd = {
@@ -56,13 +57,13 @@ export default async function ProdeDeportivoPage() {
     inLanguage: locale,
     datePublished: "2026-02-13",
     dateModified: "2026-02-22",
-    image: "https://picks4all.com/opengraph-image",
-    author: { "@type": "Organization", name: "Picks4All", url: "https://picks4all.com" },
+    image: `${SITE_URL}/opengraph-image`,
+    author: { "@type": "Organization", name: "Picks4All", url: SITE_URL },
     publisher: {
       "@type": "Organization",
       name: "Picks4All",
-      url: "https://picks4all.com",
-      logo: { "@type": "ImageObject", url: "https://picks4all.com/opengraph-image" },
+      url: SITE_URL,
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/opengraph-image` },
     },
     mainEntityOfPage: {
       "@type": "WebPage",

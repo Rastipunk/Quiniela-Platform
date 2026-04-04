@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import LoginContent from "./LoginContent";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
   const url = `${baseUrl}${localePath}/login`;
 

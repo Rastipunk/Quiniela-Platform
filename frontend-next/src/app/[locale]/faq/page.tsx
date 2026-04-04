@@ -13,11 +13,12 @@ import {
   getPoolTermParams,
 } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
 
   const localePath = locale === "es" ? "" : `/${locale}`;
   const url = `${baseUrl}${localePath}/faq`;
@@ -63,17 +64,18 @@ function interpolate(text: string, params: Record<string, string>): string {
   return text.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? `{${key}}`);
 }
 
+const EMAIL_DOMAIN = process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "picks4all.com";
 const SUPPORT_EMAILS: Record<string, string> = {
-  es: "soporte@picks4all.com",
-  en: "support@picks4all.com",
-  pt: "suporte@picks4all.com",
+  es: `soporte@${EMAIL_DOMAIN}`,
+  en: `support@${EMAIL_DOMAIN}`,
+  pt: `suporte@${EMAIL_DOMAIN}`,
 };
 
 export default async function FAQPage() {
   const locale = await getLocale();
   const rawFaqMessages: FAQMessages = (await import(`@/messages/${locale}/faq.json`)).default;
   const supportEmail = SUPPORT_EMAILS[locale] || SUPPORT_EMAILS.es;
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
 
   // Read pool region from cookie and build interpolation params

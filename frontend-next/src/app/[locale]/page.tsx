@@ -3,11 +3,12 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingContent } from "@/components/LandingContent";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
 
   const localePath = locale === "es" ? "" : `/${locale}`;
   const url = `${baseUrl}${localePath}`;
@@ -38,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function LandingPage() {
   const locale = await getLocale();
   const t = await getTranslations("jsonLd");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
   const url = `${baseUrl}${localePath}`;
 
@@ -60,7 +61,7 @@ export default async function LandingPage() {
           applicationSubCategory: "Game",
           operatingSystem: "Web",
           inLanguage: locale,
-          image: "https://picks4all.com/opengraph-image",
+          image: `${SITE_URL}/opengraph-image`,
           offers: {
             "@type": "Offer",
             price: "0",
@@ -69,7 +70,7 @@ export default async function LandingPage() {
           publisher: {
             "@type": "Organization",
             name: "Picks4All",
-            url: "https://picks4all.com",
+            url: SITE_URL,
           },
           featureList,
           potentialAction: {

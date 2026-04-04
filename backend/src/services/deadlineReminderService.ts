@@ -58,14 +58,10 @@ interface TournamentData {
 // CONFIGURACIÓN
 // =========================================================================
 
-const DEFAULT_HOURS_BEFORE_DEADLINE = 48; // Enviar recordatorio 48 horas antes
-
-// Pools excluidos de deadline reminders (por solicitud del dueño)
-const EXCLUDED_POOL_IDS = new Set([
-  "3e22e016-6311-45df-a977-99b7d675ea61", // AON Champions 2026
-  "359e27cd-2f87-49ff-839f-457e039ec3ef", // Tamayos
-  "05346b84-04fd-4ece-a831-f1514ccba279", // Prueba champions
-]);
+const DEFAULT_HOURS_BEFORE_DEADLINE = parseInt(
+  process.env.DEADLINE_REMINDER_HOURS_BEFORE || "48",
+  10,
+);
 
 // =========================================================================
 // FUNCIONES AUXILIARES
@@ -186,7 +182,7 @@ export async function processDeadlineReminders(
 
   // Obtener todos los pools activos
   const activePools = await prisma.pool.findMany({
-    where: { status: "ACTIVE" },
+    where: { status: "ACTIVE", muteReminders: false },
     include: {
       members: {
         where: { status: "ACTIVE" },
@@ -219,9 +215,6 @@ export async function processDeadlineReminders(
   console.log(`   Encontrados ${activePools.length} pools activos`);
 
   for (const pool of activePools) {
-    // Saltar pools excluidos
-    if (EXCLUDED_POOL_IDS.has(pool.id)) continue;
-
     result.poolsProcessed++;
 
     // Obtener datos del torneo (fixture)

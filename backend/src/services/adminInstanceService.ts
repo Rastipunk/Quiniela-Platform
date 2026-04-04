@@ -10,6 +10,7 @@
 
 import { Prisma, ResultSourceMode, TournamentInstanceStatus } from "@prisma/client";
 import { prisma } from "../db";
+import { MATCH_SYNC } from "../lib/constants";
 import { writeAuditEvent } from "../lib/audit";
 import {
   advanceToRoundOf32,
@@ -665,12 +666,12 @@ export async function updateR16Draw(userId: string, instanceId: string, ctx: Aud
         where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId } },
         create: {
           tournamentInstanceId: instanceId, internalMatchId: leg.matchId, syncStatus: "PENDING",
-          kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
-          finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+          kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+          finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
         },
         update: {
-          kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
-          finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+          kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+          finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
         },
       });
       syncCount++;
@@ -863,13 +864,13 @@ export async function syncNextPhaseFromApi(
         create: {
           tournamentInstanceId: instanceId, internalMatchId: matchId, syncStatus: "PENDING",
           kickoffUtc: kickoff,
-          firstCheckAtUtc: new Date(kickoff.getTime() + 5 * 60_000),
+          firstCheckAtUtc: new Date(kickoff.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
           finishCheckAtUtc: new Date(kickoff.getTime() + 140 * 60_000), // Final can have extra time
         },
         update: {
           syncStatus: "PENDING",
           kickoffUtc: kickoff,
-          firstCheckAtUtc: new Date(kickoff.getTime() + 5 * 60_000),
+          firstCheckAtUtc: new Date(kickoff.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
           finishCheckAtUtc: new Date(kickoff.getTime() + 140 * 60_000),
         },
       });
@@ -955,13 +956,13 @@ export async function syncNextPhaseFromApi(
           where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: instanceId, internalMatchId: leg.matchId } },
           create: {
             tournamentInstanceId: instanceId, internalMatchId: leg.matchId, syncStatus: "PENDING",
-            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
-            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
           },
           update: {
             syncStatus: "PENDING",
-            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60_000),
-            finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60_000),
+            kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+            finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
           },
         });
         syncCount++;

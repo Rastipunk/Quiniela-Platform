@@ -33,10 +33,20 @@ if (!apiKey) {
 
 const resend = apiKey ? new Resend(apiKey) : null;
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
+if (!FROM_EMAIL && apiKey) {
+  console.warn("⚠️  RESEND_FROM_EMAIL no configurada. Se requiere para enviar emails.");
+}
 const APP_NAME = "Picks4All";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "admin@picks4all.com";
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
+
+/** Returns null if email system is ready, or an error message if not */
+function emailSystemCheck(): string | null {
+  if (!resend) return "RESEND_API_KEY not configured";
+  if (!FROM_EMAIL) return "RESEND_FROM_EMAIL not configured";
+  return null;
+}
 
 // =========================================================================
 // TIPOS Y CONSTANTES
@@ -173,9 +183,10 @@ export async function sendPasswordResetEmail(params: {
   username: string;
   resetToken: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${params.resetToken}`;
@@ -302,9 +313,10 @@ export async function sendVerificationEmail(params: {
   displayName: string;
   verificationToken: string;
 }): Promise<EmailResult> {
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const verificationUrl = `${FRONTEND_URL}/verify-email?token=${params.verificationToken}`;
@@ -436,9 +448,10 @@ export async function sendWelcomeEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const templateParams: WelcomeEmailParams = {
@@ -491,9 +504,10 @@ export async function sendPoolInvitationEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const templateParams: PoolInvitationEmailParams = {
@@ -549,9 +563,10 @@ export async function sendDeadlineReminderEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const templateParams: DeadlineReminderEmailParams = {
@@ -611,9 +626,10 @@ export async function sendResultPublishedEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const templateParams: ResultPublishedEmailParams = {
@@ -675,9 +691,10 @@ export async function sendPoolCompletedEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const templateParams: PoolCompletedEmailParams = {
@@ -761,9 +778,10 @@ export async function sendCorporateInquiryConfirmationEmail(params: {
   companyName: string;
   locale?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const locale = params.locale || "es";
@@ -816,9 +834,10 @@ export async function sendCorporateActivationEmail(params: {
   logoBase64?: string | null;
   invitationMessage?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.error("❌ No se puede enviar email: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar email: ${checkErr}`);
+    return { success: false, error: checkErr };
   }
 
   const locale = params.locale || "es";
@@ -893,9 +912,14 @@ export async function sendAdminNotification(params: {
   body: string;
   type: "feedback" | "corporate_inquiry" | "error";
 }): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.error("❌ No se puede enviar notificación admin: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
+  const checkErr = emailSystemCheck();
+  if (checkErr) {
+    console.error(`❌ No se puede enviar notificación admin: ${checkErr}`);
+    return { success: false, error: checkErr };
+  }
+  if (!ADMIN_EMAIL) {
+    console.warn("⚠️  ADMIN_NOTIFICATION_EMAIL no configurada. Notificación omitida.");
+    return { success: false, error: "ADMIN_NOTIFICATION_EMAIL not configured" };
   }
 
   const typeLabels: Record<string, string> = {

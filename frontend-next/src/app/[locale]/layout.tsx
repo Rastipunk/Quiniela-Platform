@@ -10,6 +10,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
+import { SITE_URL } from "@/lib/siteConfig";
 import "../globals.css";
 
 export const viewport: Viewport = {
@@ -34,7 +35,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "seo.home" });
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localeUrl = locale === "es" ? baseUrl : `${baseUrl}/${locale}`;
 
   return {
@@ -126,8 +127,8 @@ export default async function LocaleLayout({
                 "@context": "https://schema.org",
                 "@type": "Organization",
                 name: "Picks4All",
-                url: "https://picks4all.com",
-                logo: "https://picks4all.com/opengraph-image",
+                url: SITE_URL,
+                logo: `${SITE_URL}/opengraph-image`,
                 inLanguage: locale,
                 description: t("orgDescription"),
               }}

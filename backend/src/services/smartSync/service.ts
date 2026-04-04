@@ -11,6 +11,7 @@
  */
 
 import { prisma } from "../../db";
+import { MATCH_SYNC } from "../../lib/constants";
 import { MatchSyncStatus } from "@prisma/client";
 import {
   ApiFootballClient,
@@ -785,8 +786,8 @@ export class SmartSyncService {
             where: { id: match.id },
             data: {
               kickoffUtc: newKickoff,
-              firstCheckAtUtc: new Date(newKickoff.getTime() + 5 * 60_000),
-              finishCheckAtUtc: new Date(newKickoff.getTime() + 110 * 60_000),
+              firstCheckAtUtc: new Date(newKickoff.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+              finishCheckAtUtc: new Date(newKickoff.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
             },
           });
         }

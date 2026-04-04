@@ -326,6 +326,9 @@ model Pool {
   // Comentario en español: si true, nuevos miembros requieren aprobación del host/co-admin
   requireApproval Boolean @default(false)
 
+  // Si true, esta pool no envía deadline reminders por email
+  muteReminders Boolean @default(false)
+
   // Comentario en español: configuración avanzada de tipos de picks por fase (PhasePickConfig[])
   // Define qué tipos de predicciones están permitidos y sus puntos en cada fase
   // null = usa scoring preset clásico (retrocompatibilidad)

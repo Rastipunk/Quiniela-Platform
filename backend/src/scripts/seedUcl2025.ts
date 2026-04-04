@@ -13,6 +13,7 @@
 
 import "dotenv/config";
 import { prisma } from "../db";
+import { MATCH_SYNC } from "../lib/constants";
 
 // ============================================================================
 // IDs
@@ -520,8 +521,8 @@ async function seedUcl2025() {
         internalMatchId: match.id,
         syncStatus: "PENDING",
         kickoffUtc: kickoff,
-        firstCheckAtUtc: new Date(kickoff.getTime() + 5 * 60 * 1000),
-        finishCheckAtUtc: new Date(kickoff.getTime() + 110 * 60 * 1000),
+        firstCheckAtUtc: new Date(kickoff.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+        finishCheckAtUtc: new Date(kickoff.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
       },
     });
     syncCount++;

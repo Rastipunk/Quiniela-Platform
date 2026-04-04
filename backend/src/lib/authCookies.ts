@@ -12,7 +12,7 @@ function getCookieOptions(overrides?: Partial<CookieOptions>): CookieOptions {
     sameSite: "lax",
     maxAge: MAX_AGE_MS,
     path: "/",
-    ...(isProduction ? { domain: ".picks4all.com" } : {}),
+    ...(isProduction ? { domain: `.${process.env.SITE_DOMAIN || "picks4all.com"}` } : {}),
     ...overrides,
   };
 }
@@ -29,7 +29,7 @@ export function clearAuthCookies(res: Response): void {
   const isProduction = process.env.NODE_ENV === "production";
   const opts: CookieOptions = {
     path: "/",
-    ...(isProduction ? { domain: ".picks4all.com" } : {}),
+    ...(isProduction ? { domain: `.${process.env.SITE_DOMAIN || "picks4all.com"}` } : {}),
   };
   res.clearCookie(COOKIE_NAME, opts);
   res.clearCookie(LOGGED_IN_COOKIE, opts);

@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const now = new Date();
 
   // Helper: create alternates for all 3 locales

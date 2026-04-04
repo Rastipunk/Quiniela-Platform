@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { TerminosContent } from "./TerminosContent";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
 
   const pathMap: Record<string, string> = {
     es: "/terminos",
@@ -35,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function TerminosPage() {
   const locale = await getLocale();
   const t = await getTranslations("legal");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
 
   const pathMap: Record<string, string> = {

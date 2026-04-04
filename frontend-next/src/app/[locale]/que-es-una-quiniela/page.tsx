@@ -5,11 +5,12 @@ import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
+import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
 
   const pathMap: Record<string, string> = {
     es: "/que-es-una-quiniela",
@@ -105,7 +106,7 @@ const articleStyle = {
 export default async function QueEsUnaQuinielaPage() {
   const locale = await getLocale();
   const msg: WhatIsQuinielaMessages = (await import(`@/messages/${locale}/whatIsQuiniela.json`)).default;
-  const baseUrl = "https://picks4all.com";
+  const baseUrl = SITE_URL;
   const pathMap: Record<string, string> = {
     es: "/que-es-una-quiniela",
     en: "/what-is-a-pool",
@@ -136,19 +137,19 @@ export default async function QueEsUnaQuinielaPage() {
     inLanguage: msg.jsonLd.article.inLanguage,
     datePublished: "2026-02-12",
     dateModified: "2026-02-13",
-    image: "https://picks4all.com/opengraph-image",
+    image: `${SITE_URL}/opengraph-image`,
     author: {
       "@type": "Organization",
       name: "Picks4All",
-      url: "https://picks4all.com",
+      url: SITE_URL,
     },
     publisher: {
       "@type": "Organization",
       name: "Picks4All",
-      url: "https://picks4all.com",
+      url: SITE_URL,
       logo: {
         "@type": "ImageObject",
-        url: "https://picks4all.com/opengraph-image",
+        url: `${SITE_URL}/opengraph-image`,
       },
     },
     mainEntityOfPage: {

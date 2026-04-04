@@ -13,6 +13,7 @@
  *
  * Run: npx tsx src/scripts/updateUclR16Draw.ts
  */
+import { MATCH_SYNC } from "../lib/constants";
 
 import "dotenv/config";
 import { prisma } from "../db";
@@ -370,13 +371,13 @@ async function main() {
           internalMatchId: leg.matchId,
           syncStatus: "PENDING",
           kickoffUtc,
-          firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000),
-          finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000),
+          firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+          finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
         },
         update: {
           kickoffUtc,
-          firstCheckAtUtc: new Date(kickoffUtc.getTime() + 5 * 60 * 1000),
-          finishCheckAtUtc: new Date(kickoffUtc.getTime() + 110 * 60 * 1000),
+          firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS),
+          finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS),
         },
       });
       syncCount++;
