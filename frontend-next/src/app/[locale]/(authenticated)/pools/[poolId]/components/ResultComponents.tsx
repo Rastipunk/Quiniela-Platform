@@ -25,10 +25,25 @@ export function ResultSection(props: {
     <div style={{ border: "1px solid #f2f2f2", borderRadius: 10, padding: "8px 10px" }}>
       <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6, color: "#555" }}>{t("result.title")}</div>
 
-      {/* No result yet — show pending message (no form for anyone) */}
+      {/* No result yet — informative pending state */}
       {!hasResult && (
-        <div style={{ color: "#999", fontSize: 13, fontStyle: "italic" }}>
-          {t("result.awaitingResult")}
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 8,
+          padding: "16px 12px",
+          background: "linear-gradient(135deg, #f0f4ff 0%, #f5f3ff 100%)",
+          borderRadius: 10,
+          border: "1px solid #e0e7ff",
+        }}>
+          <div style={{ fontSize: 28, lineHeight: 1 }}>⏳</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#4338ca", textAlign: "center" }}>
+            {t("result.awaitingResult")}
+          </div>
+          <div style={{ fontSize: 11, color: "#6366f1", textAlign: "center", lineHeight: 1.4 }}>
+            {t("result.autoUpdateHint")}
+          </div>
         </div>
       )}
 
