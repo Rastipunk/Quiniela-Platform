@@ -1,7 +1,7 @@
 {
   "title": "Mis Pools",
-  "subtitle": "Crear / Unirse / Entrar a una pool",
-  "createPool": "+ Crear pool",
+  "subtitle": "",
+  "createPool": "Crear pool",
   "joinWithCode": "Unirme con código",
   "logout": "Logout",
   "loading": "Cargando...",

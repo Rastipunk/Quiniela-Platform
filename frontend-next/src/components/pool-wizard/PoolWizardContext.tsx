@@ -166,7 +166,10 @@ function loadDraft(): Partial<WizardState> | null {
   }
 }
 
+let _draftCleared = false;
+
 export function clearWizardDraft() {
+  _draftCleared = true;
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
 }
 
@@ -187,15 +190,20 @@ export function PoolWizardProvider({
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === steps.length - 1;
 
-  // Auto-save draft on state changes (debounced-ish via effect)
+  // Auto-save draft on state changes (skip if draft was just cleared after pool creation)
   useEffect(() => {
+    if (_draftCleared) return;
     if (state.instanceId || state.poolName || state.companyName) {
       saveDraft(state);
     }
   }, [state]);
 
-  // Restore draft on mount
+  // Restore draft on mount (skip if pool was just created)
   useEffect(() => {
+    if (_draftCleared) {
+      _draftCleared = false; // Reset for next mount
+      return;
+    }
     const draft = loadDraft();
     if (draft && draft.mode === mode && (draft.instanceId || draft.poolName)) {
       dispatch({ type: "RESTORE", state: draft });

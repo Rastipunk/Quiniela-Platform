@@ -1,7 +1,7 @@
 {
   "pageTitle": "Crear Pool",
   "pageSubtitle": "Configura tu pool paso a paso",
-  "backToDashboard": "← Volver al dashboard",
+  "backToDashboard": "← Volver a mis pools",
 
   "tournamentTitle": "¿Qué torneo vas a jugar?",
   "tournamentSubtitle": "Selecciona el torneo para tu pool de predicciones",
@@ -230,7 +230,7 @@
     "deadlineValue": "{minutes} minutos antes del partido",
     "timezone": "Zona horaria",
     "capacity": "Capacidad máxima",
-    "capacityValue": "{count} participantes",
+    "capacityValue": "Hasta {max} participantes",
     "approval": "Aprobación requerida",
     "yes": "Sí",
     "no": "No",

@@ -298,7 +298,7 @@ export default function DashboardPage() {
             color: colors.white,
             border: "none",
           }}>
-            + {t("createPool")}
+            {t("createPool")}
           </button>
           <button onClick={() => setPanel("JOIN")} style={buttonStyle}>
             {t("joinWithCode")}
