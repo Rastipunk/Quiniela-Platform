@@ -5,7 +5,7 @@
 >
 > **Audience:** Developers, product managers, stakeholders, and new team members.
 >
-> **Last Updated:** 2026-03-17
+> **Last Updated:** 2026-04-04
 
 ---
 
@@ -1014,6 +1014,30 @@ await prisma.prediction.upsert({
 **Future:** Upset predictions may earn bonus points (difficulty weighting).
 
 **Example:** "Predicting underdog win in upset match could earn 2x points (future feature)."
+
+---
+
+### Brand System
+
+**Definition:** Centralized brand identity configuration (`lib/brand.ts` in both frontend and backend) containing colors, gradients, name, and domain. All visual branding (emails, icons, OG images, theme) derives from this single source.
+
+**Key principle:** No brand color or name should ever be hardcoded inline. Always import from `brand.ts`.
+
+### Result Override
+
+**Definition:** When a HOST modifies an API-published result. Requires a mandatory reason/justification. Triggers email notification to ALL active pool members. Creates a new `PoolMatchResultVersion` with source `HOST_OVERRIDE`.
+
+### API-First Results
+
+**Definition:** The principle that match results are published exclusively by the SmartSync system from API-Football. Hosts cannot publish results manually — they can only override existing API-confirmed results. Legacy instances in MANUAL mode are exempt.
+
+### Mute Reminders
+
+**Definition:** Boolean flag (`muteReminders`) on the Pool model that excludes a pool from deadline reminder emails. Replaces hardcoded pool ID exclusions.
+
+### SITE_URL / SITE_DOMAIN
+
+**Definition:** Environment-driven configuration for the platform's domain. `SITE_URL` (full URL with protocol) is used in the frontend for SEO/canonical links. `SITE_DOMAIN` (domain only) is used in the backend for CORS, cookies, and email footers. Both default to `picks4all.com` via `brand.ts`.
 
 ---
 

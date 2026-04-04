@@ -1,349 +1,200 @@
-# CLAUDE.md — Picks4All (Manual Operativo + Memoria del Repo)
+# CLAUDE.md — Picks4All Development Standards
 
-> **Propósito:** Este archivo es la "memoria" y manual operativo que Claude Code debe leer para trabajar de forma consistente y profesional en este repositorio.
+> **Last updated:** 2026-04-04
 >
-> **Regla de oro:** Si algo no está explícito aquí o en `/docs`, Claude debe **proponer opciones** y pedir decisión. **No inventar requisitos.**
+> This file defines the mandatory standards, principles, and constraints for ALL work in this repository. Every change — code, documentation, infrastructure — must comply with these rules.
 
 ---
 
-## 0) Visión del producto (North Star)
+## 1) Product Identity
 
-Construir una plataforma web de **quinielas deportivas multi‑torneo** (por ahora **solo fútbol**) con tres roles:
+**Picks4All** — Multi-tournament sports prediction platform (football only, for now).
 
-* **PLAYER**: se une a pools, hace pronósticos (picks), ve reglas, resultados y leaderboard.
-* **HOST**: crea/administra una pool, invita jugadores, publica resultados y realiza correcciones oficiales (erratas) con trazabilidad.
-* **CORPORATE_HOST**: como HOST pero para pools corporativos creados a través del flujo empresarial.
-* **PLATFORM ADMIN** (dueño de la plataforma): gestiona **templates** (torneos pre‑configurados) y **instances** (ediciones jugables), y controla catálogo/curación de torneos.
+- **Domain:** picks4all.com (frontend), api.picks4all.com (backend)
+- **Locales:** ES (default, no prefix), EN (`/en/`), PT (`/pt/`) via next-intl v4
+- **Branding:** Defined in `frontend-next/src/lib/brand.ts` and `backend/src/lib/brand.ts` — single source of truth for colors, gradients, name, domain
+- **Hosting:** Railway (frontend + backend + PostgreSQL)
 
-Meta final:
+### User Roles
 
-* UX y estética **altísimo nivel profesional**.
-* Arquitectura robusta y **escalable** (templates/versionado/reglas por fase).
-* Preparado para futuro: resultados por API externa, más deportes, más reglas.
-
-Idioma:
-
-* **Español, Inglés, Portugués** — i18n implementado con next-intl v4.
+| Role | Description |
+|------|-------------|
+| **PLAYER** | Joins pools, makes picks, views leaderboard |
+| **HOST** | Creates/manages pools, invites players, can override results (with justification + notification) |
+| **CO_ADMIN** | Same as HOST except cannot delete pool |
+| **CORPORATE_HOST** | HOST for corporate pools created via enterprise flow |
+| **PLATFORM ADMIN** | Manages templates, instances, platform settings |
 
 ---
 
-## 1) Fuente de verdad (Source of Truth) + regla de trabajo
+## 2) Mandatory Quality Standards
 
-### 📚 Documentación SoT (Source of Truth)
+### These rules are NON-NEGOTIABLE. Every change must comply.
 
-**CRÍTICO:** Antes de hacer cualquier cambio al código o tomar decisiones, **SIEMPRE consulta `/docs/sot/`**.
+### Code Quality
+- **Zero hardcoded values.** All configuration comes from environment variables, centralized constants (`lib/constants.ts`, `lib/brand.ts`, `lib/siteConfig.ts`), or the database. Static mappings (like flag URLs) are acceptable ONLY as fallbacks — the primary source must always be dynamic data from the API.
+- **Zero magic numbers.** Every numeric literal in business logic must be a named constant with a comment explaining its purpose.
+- **Zero duplicated logic.** If the same pattern appears twice, extract it to a shared utility, hook, or service.
+- **Strict TypeScript.** No `any` types except at system boundaries (external API responses). Always narrow `unknown` before use.
+- **Zod validation** on every API endpoint input. Never trust client data.
+- **Audit trail** for every sensitive operation (result publish, member ban, pool delete, errata).
 
-La documentación oficial y completa está en:
+### Architecture
+- **Backend:** Routes validate input → Services contain business logic → Libraries provide utilities. Business logic NEVER lives in route handlers.
+- **Frontend:** Components render UI → Hooks manage state/effects → Lib provides utilities. Business logic NEVER lives in components.
+- **Single source of truth.** Every piece of data lives in ONE place. If it's in the database, don't also hardcode it in the frontend.
+- **Separation of concerns.** Each file has ONE responsibility. Components >500 lines must be split. Services >800 lines must be decomposed.
 
-1. **[PRD.md](/docs/sot/PRD.md)** - Product Requirements Document
-2. **[DATA_MODEL.md](/docs/sot/DATA_MODEL.md)** - Modelo de Datos Completo
-3. **[API_SPEC.md](/docs/sot/API_SPEC.md)** - Especificación de API
-4. **[ARCHITECTURE.md](/docs/sot/ARCHITECTURE.md)** - Arquitectura Técnica
-5. **[BUSINESS_RULES.md](/docs/sot/BUSINESS_RULES.md)** - Reglas de Negocio
-6. **[DECISION_LOG.md](/docs/sot/DECISION_LOG.md)** - Log de Decisiones Arquitectónicas (37+ ADRs)
-7. **[GLOSSARY.md](/docs/sot/GLOSSARY.md)** - Glosario de Términos
-8. **[CURRENT_STATE.md](/docs/sot/CURRENT_STATE.md)** - Estado actual del sistema
+### Internationalization (i18n)
+- **Every user-facing string** must use `t()` from next-intl. No hardcoded text in TSX components.
+- **All three locales** (ES/EN/PT) must have complete translations. Never add a key to one locale without adding it to all three.
+- **Dates and numbers** must respect the user's locale and timezone.
 
-### 📂 Estructura de Documentación:
+### SEO
+- **Every public page** must have: metadata (title, description), canonical URL, Open Graph tags, JSON-LD structured data, and hreflang alternates.
+- **All URLs** derive from `SITE_URL` in `lib/siteConfig.ts`, never hardcoded.
+- **Sitemap and robots.txt** must be kept current with all public routes.
+
+### Security
+- **Never expose** stack traces, internal errors, or database details to clients.
+- **Rate limiting** on all public and auth endpoints (configurable via env vars).
+- **Input sanitization** for any user content rendered as HTML (use `escapeHtml`).
+- **CORS** restricted to configured origins via `SITE_DOMAIN` env var.
+
+### Results System
+- **Results are API-first.** The host CANNOT publish results manually. Results come from the API-Football sync system.
+- **Host can override** an existing result only with: mandatory reason, warning shown, and email notification sent to ALL pool members.
+- **Legacy MANUAL mode** instances are exempt (backwards compatibility).
+
+---
+
+## 3) Documentation Structure
 
 ```
 docs/
-├── sot/                    # Source of Truth (documentación oficial)
-│   ├── PRD.md              # Product Requirements
-│   ├── DATA_MODEL.md       # Schema completo
-│   ├── API_SPEC.md         # Contratos de API
-│   ├── ARCHITECTURE.md     # Arquitectura técnica
-│   ├── BUSINESS_RULES.md   # Reglas de negocio
-│   ├── DECISION_LOG.md     # ADRs
-│   ├── GLOSSARY.md         # Glosario
-│   └── CURRENT_STATE.md    # Estado actual del sistema
-├── guides/                 # Guías operativas
-│   ├── GOOGLE_OAUTH_SETUP.md
-│   ├── EMAIL_SYSTEM.md
-│   ├── TOURNAMENT_ADVANCEMENT_GUIDE.md
-│   └── WC2026_TOURNAMENT_STRUCTURE.md
+├── PRD.md                    # Product definition and scope
+├── ARCHITECTURE.md           # Technical architecture and stack
+├── DATA_MODEL.md             # Database schema (mirrors Prisma)
+├── API_SPEC.md               # REST API contracts
+├── BUSINESS_RULES.md         # Business rules and invariants
+├── GLOSSARY.md               # Domain terminology
+├── DECISION_LOG.md           # Architectural Decision Records
+└── guides/
+    ├── SETUP.md              # Local development setup
+    ├── DEPLOYMENT.md         # Railway deployment and env vars
+    ├── EMAIL_SYSTEM.md       # Email notification system
+    ├── TOURNAMENT_SYSTEM.md  # Tournaments, phases, advancement, sync
+    └── GOOGLE_OAUTH.md       # Google OAuth configuration
+CLAUDE.md                     # This file — development standards
+README.md                     # Repository entry point
+CHANGELOG.md                  # Version history (Keep a Changelog format)
 ```
 
-* **CHANGELOG.md** en la raíz del proyecto contiene el historial de cambios
-* Prisma schema en `backend/prisma/schema.prisma` → Implementación técnica
-
-### 🎯 Regla de Oro para Claude:
-
-- **Si algo está documentado en `/docs/sot/`, ESA es la verdad absoluta.**
-- **Si hay contradicción entre código y docs → AVISAR al usuario para decidir.**
-- **Toda nueva decisión (arquitectura, producto, contrato) → Registrar en `DECISION_LOG.md`.**
-- **Si falta información → Proponer opciones, pedir decisión, documentar la elegida.**
-
-### ✅ Reglas de trabajo (obligatorias):
-
-1. **Consultar SoT primero**: Antes de cualquier cambio, leer los docs relevantes en `/docs/sot/`.
-2. **Cada decisión**: Registrar en `DECISION_LOG.md` con formato ADR.
-3. **No inventar requisitos**: Si falta info, proponer opciones y pedir decisión.
-4. **Diseño extensible**: Mantener templates/versionado/reglas por fase.
-5. **Actualización de docs**: Al final del día o tras un hito claro (no en cada micro-paso).
+### Documentation Rules
+- **Docs reflect the current state of the code.** No "planned features", no "to-do" sections, no history of changes.
+- **If code and docs disagree → alert the user.** Never silently assume either is correct.
+- **Every architectural decision** gets recorded in `DECISION_LOG.md` as an ADR.
+- **Update docs in the same commit** as the code change, not in a separate pass.
 
 ---
 
-## 2) Estado de features
+## 4) Tech Stack
 
-### Completado ✅
-* Register/Login (email/password + Google OAuth)
-* Forgot/Reset password (Resend email)
-* Email verification
-* Dashboard con pools del usuario (tabs En curso / Finalizadas)
-* Crear pool / unirse por código
-* Pool page: partidos por fases, reglas, leaderboard
-* Picks (SCORE + OUTCOME + structural)
-* Resultados (Host publish + errata + Smart Sync automático)
-* Co-Admin system, Join approval, Player expulsion
-* Leave pool (jugador se retira voluntariamente, conserva puntos, modo read-only)
-* Rate limiting, Mobile UX, Notification badges
-* Email notifications (transactional via Resend)
-* Legal documents (versionado + consent)
-* Next.js 16 migration (SSR, App Router)
-* SEO profesional (metadata, JSON-LD, sitemap, robots, OG images)
-* Páginas regionales (polla, prode, penca, porra, football-pool)
-* i18n (ES/EN/PT) con next-intl v4
-* Google Analytics + Search Console
-* Smart Sync (API-Football, resultados automáticos)
-* UCL 2025-26 instance (45 partidos, 9 fases)
-* Corporate Self-Service MVP (Organization, inquiry, corporate pools, employee invites, CSV upload, activation flow)
-* Pricing section + /precios page
-
-### Roadmap
-Ver `docs/sot/CURRENT_STATE.md` para el roadmap completo.
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Frontend | Next.js (App Router, standalone) | 16 |
+| UI | React + TypeScript + CSS custom properties | 19 |
+| i18n | next-intl | v4 |
+| Backend | Express + TypeScript | 5 |
+| ORM | Prisma | 6.19+ |
+| Database | PostgreSQL (Railway managed) | 16 |
+| Auth | JWT (4h) + Google Sign-In | — |
+| Email | Resend | — |
+| Sports Data | API-Football (api-sports.io) | v3 |
+| Hosting | Railway (2 services + Postgres) | — |
+| DNS | Cloudflare (+ Email Routing) | — |
 
 ---
 
-## 3) Stack y estructura real del repo
+## 5) Key File Locations
 
-Monorepo:
+### Backend (`backend/src/`)
+| Category | Files |
+|----------|-------|
+| Entry point | `server.ts` |
+| Database | `db.ts`, `prisma/schema.prisma` |
+| Auth | `lib/jwt.ts`, `lib/password.ts`, `middleware/requireAuth.ts` |
+| Branding | `lib/brand.ts` |
+| Constants | `lib/constants.ts` (time, pagination, sync, locales, user rules) |
+| Shared schemas | `lib/schemas.ts` (Zod field schemas for reuse) |
+| Email | `lib/email.ts`, `lib/emailTemplates.ts` |
+| Scoring | `lib/scoringAdvanced.ts`, `lib/pickPresets.ts` |
+| API-Football | `services/apiFootball/client.ts` |
+| Smart Sync | `services/smartSync/service.ts` |
+| Jobs | `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts` |
 
-### `/backend`
-
-* Node + Express 5 + TypeScript
-* Prisma + Postgres (Railway production, Docker local)
-
-Archivos clave:
-
-* Prisma: `backend/prisma/schema.prisma`
-* Server: `backend/src/server.ts`
-* DB: `backend/src/db.ts`
-* JWT/Auth helpers: `backend/src/lib/jwt.ts`, `backend/src/lib/password.ts`
-* Middleware: `backend/src/middleware/requireAuth.ts`, `backend/src/middleware/requireAdmin.ts`
-* Scoring: `backend/src/lib/scoringAdvanced.ts`, `backend/src/lib/pickPresets.ts`
-* Smart Sync: `backend/src/services/smartSync/service.ts`
-* API-Football: `backend/src/services/apiFootball/client.ts`
-* Email: `backend/src/lib/email.ts`, `backend/src/lib/emailTemplates.ts`
-
-Rutas:
-
-* `backend/src/routes/auth.ts` (register, login, Google OAuth, password recovery, email verification, corporate activation)
-* `backend/src/routes/me.ts` (profile, pools, email preferences)
-* `backend/src/routes/pools.ts` (CRUD, join, leave, overview, members, invites, kick, ban)
-* `backend/src/routes/picks.ts` (match picks + structural picks)
-* `backend/src/routes/results.ts` (publish + structural results)
-* `backend/src/routes/admin.ts` (platform admin)
-* `backend/src/routes/adminInstances.ts` (instance management + sync)
-* `backend/src/routes/adminTemplates.ts` (template management)
-* `backend/src/routes/adminCorporate.ts` (corporate admin)
-* `backend/src/routes/corporate.ts` (corporate self-service)
-* `backend/src/routes/catalog.ts` (public instance listing)
-* `backend/src/routes/feedback.ts` (beta feedback)
-* `backend/src/routes/legal.ts` (legal documents)
-
-Seeds/Scripts:
-
-* `backend/src/scripts/seedAdmin.ts`
-* `backend/src/scripts/seedTestAccounts.ts`
-* `backend/src/scripts/seedWc2026Sandbox.ts`
-* `backend/src/scripts/seedUcl2025.ts`
-* `backend/src/scripts/seedLegalDocuments.ts`
-* `backend/src/scripts/fetchUclData.ts`
-* `backend/src/scripts/initSmartSyncStates.ts`
-* `backend/src/scripts/updateUclR16Draw.ts`
-* `backend/src/scripts/migrateExtraTimeConfig.ts`
-
-### `/frontend-next`
-
-* Next.js 16 (App Router) + React 19 + TypeScript
-* next-intl v4 (i18n: ES/EN/PT)
-* SSR para páginas públicas, CSR para autenticadas
-
-Archivos clave:
-
-* Layout: `frontend-next/src/app/[locale]/layout.tsx`
-* i18n: `frontend-next/src/i18n/routing.ts`, `navigation.ts`, `request.ts`
-* Messages: `frontend-next/src/messages/{es,en,pt}/*.json`
-* Content (SEO): `frontend-next/src/content/{es,en,pt}/*.tsx`
-* API client: `frontend-next/src/lib/api.ts`
-* Auth: `frontend-next/src/hooks/useAuth.ts`
-* Middleware: `frontend-next/src/proxy.ts` (www redirect + locale routing)
-* Pool page: `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/page.tsx`
-* Corporate: `frontend-next/src/components/CorporatePoolCreation.tsx`, `EnterpriseLandingContent.tsx`
-* Auth context: `frontend-next/src/contexts/AuthPanelContext.tsx`
+### Frontend (`frontend-next/src/`)
+| Category | Files |
+|----------|-------|
+| Theme | `lib/theme.ts` (derives from `lib/brand.ts`) |
+| Site config | `lib/siteConfig.ts` (SITE_URL, SITE_NAME, EMAIL_DOMAIN) |
+| Branding | `lib/brand.ts` |
+| Validation | `lib/validation.ts` (centralized form constraints) |
+| API client | `lib/api/client.ts` |
+| i18n | `i18n/routing.ts`, `messages/{es,en,pt}/*.json` |
+| Pool page | `app/[locale]/(authenticated)/pools/[poolId]/page.tsx` |
 
 ---
 
-## 4) Dominio (conceptos) y modelo mental
+## 6) Critical Invariants (NEVER break)
 
-### Entidades de alto nivel
-
-* **TournamentTemplate**: definición del torneo (equipos, estructura, reglas base, fixture base). Puede tener múltiples versiones.
-* **TournamentTemplateVersion**: snapshot versionado del template (inmutable una vez publicado).
-* **TournamentInstance**: instancia jugable basada en un template/version (ej. "WC 2026").
-* **Pool**: grupo de usuarios que compiten sobre una instancia (configurable: preset scoring, deadline, tz, visibilidad).
-* **PoolMember**: membresía usuario↔pool con rol (HOST/CO_ADMIN/PLAYER/CORPORATE_HOST) y estado (ACTIVE/LEFT/BANNED/PENDING_APPROVAL).
-* **Pick**: pronóstico del usuario por partido.
-* **Result**: resultado oficial por partido (publicado por host o Smart Sync) con **versionado** y razón para erratas.
-* **Organization**: empresa asociada a pools corporativos.
-* **AuditEvent**: eventos relevantes (creación pool, join, leave, publicar resultado, errata, etc.).
+1. **Deadline enforcement:** User cannot edit picks if `isLocked=true` (kickoff - deadline minutes reached).
+2. **Result versioning:** Every result change creates a new version. Corrections require `reason`. All versions are immutable.
+3. **Pool rules immutability:** Scoring configuration cannot change after pool has ACTIVE members.
+4. **Leave pool:** Only PLAYER can leave (not HOST/CORPORATE_HOST). Status → LEFT, points preserved, read-only mode.
+5. **Template immutability:** Published TournamentTemplateVersions are frozen snapshots.
+6. **Pool independence:** Each pool has its own `fixtureSnapshot`. Advancing phases in one pool does not affect others.
+7. **API-first results:** In AUTO mode, results come from API-Football. Host can only override existing results.
 
 ---
 
-## 5) Invariantes / reglas de negocio (NO romper)
+## 7) Workflow Protocol
 
-* Producto: **solo fútbol** (por ahora).
-* Pools soportan **scoring presets** (CUMULATIVE, BASIC, SIMPLE, CUSTOM).
-* `deadlineMinutesBeforeKickoff`:
-  * Default: **10 minutos**
-  * Configurable por pool
-  * El usuario **no puede** editar picks si `isLocked=true` (deadline alcanzado).
-* Resultados:
-  * Host/Co‑admins pueden publicar
-  * Players no
-  * Correcciones (errata) requieren `reason` (obligatorio para version > 1)
-  * Debe existir trazabilidad (versiones + actor + publishedAt)
-* Leave pool:
-  * Solo jugadores pueden salirse (HOST y CORPORATE_HOST NO pueden)
-  * Status cambia a LEFT, se registra leftAtUtc
-  * Conservan puntos en leaderboard, aparecen como "Retirado"
-  * No pueden hacer más picks, modo read-only
-* Reglas post‑creación:
-  * **No editable** después de crear la pool
+### Before writing ANY code:
+1. **Read relevant docs** in `/docs/` to understand current state.
+2. **Propose a plan** (3-7 bullets) and wait for user approval.
+3. **Never assume** — if unclear, ask. Better to ask 5 questions than make 1 wrong assumption.
+
+### While writing code:
+4. **Test against production** when possible (via Railway CLI or production DB queries). Never say "it should work" — verify.
+5. **Track progress** with the TodoWrite tool for multi-step tasks.
+6. **Commit atomically** — each commit should compile and deploy independently.
+
+### After writing code:
+7. **Verify in production** that the change works (API call, DB query, or user confirmation).
+8. **Update documentation** in the same session if any docs are affected.
+9. **Configure env vars** in Railway if new ones were introduced.
 
 ---
 
-## 6) Contratos críticos de API (DO NOT BREAK)
+## 8) Environment Variables
 
-> Mantener sincronizado con `docs/sot/API_SPEC.md`.
+All configurable values are documented in `docs/guides/DEPLOYMENT.md`. Key categories:
 
-### Auth
-* Token JWT en header: `Authorization: Bearer <token>`
-
-### Picks
-* `PUT /pools/:poolId/picks/:matchId`
-* Body: `{ "pick": { "type": "SCORE", "homeGoals": 2, "awayGoals": 1 } }`
-
-### Results
-* `PUT /pools/:poolId/results/:matchId`
-* Errata (version > 1): `reason` obligatorio
-
-### Pool Leave
-* `POST /pools/:poolId/leave` — jugador se retira voluntariamente
-
-### Me
-* `GET /me/pools` — incluye pools con status ACTIVE, PENDING_APPROVAL, y LEFT
+- **SITE_DOMAIN, FRONTEND_URL** — Domain configuration
+- **JWT_SECRET** — Auth signing key
+- **RESEND_API_KEY, RESEND_FROM_EMAIL** — Email service
+- **API_FOOTBALL_KEY** — Sports data
+- **RATE_LIMIT_*_MAX** — Rate limiting thresholds
+- **MATCH_SYNC_*_MIN** — Match sync timing
+- **NEXT_PUBLIC_*** — Frontend-exposed config (pricing, domain, etc.)
+- **BRAND_COLORS_JSON** — Runtime brand override (backend only)
 
 ---
 
-## 7) Frontend: estándares de UX/UI
+## 9) Communication
 
-* Tema **claro por defecto**.
-* Layout responsive (mobile y desktop).
-* Pick guardado → modo lectura. Botón "Modificar" solo si `!isLocked`.
-* `isLocked` incluye deadline + status LEFT.
-* Manejo de errores: nunca renderizar objetos crudos.
-* Indicadores de loading por acción.
-
----
-
-## 8) Backend: estándares
-
-* Validación estricta de input (Zod).
-* Auditoría obligatoria para acciones sensibles.
-* Migrations: cada cambio en Prisma debe venir con migración.
-* Scoring centralizado en `scoringAdvanced.ts`.
-
----
-
-## 9) Desarrollo local (Windows) — comandos
-
-### Backend
-
-```bat
-cd backend
-docker compose up -d
-npm install
-npx prisma migrate dev
-npm run dev
-```
-
-Seeds:
-
-```bat
-npm run seed:admin
-npm run seed:test-accounts
-npm run seed:wc2026-sandbox
-```
-
-### Frontend
-
-```bat
-cd frontend-next
-npm install
-npm run dev
-```
-
----
-
-## 10) Cuentas de prueba (NO hardcode)
-
-Las cuentas de prueba se crean por seed y se parametrizan por variables `TEST_*` en `backend/.env`.
-
-* `TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD`
-* `TEST_HOST_EMAIL / TEST_HOST_PASSWORD`
-* `TEST_PLAYER_EMAIL / TEST_PLAYER_PASSWORD`
-
-**Regla:** jamás commitear credenciales ni imprimir tokens en logs compartidos.
-
----
-
-## 11) Claude Code — modo agéntico pero seguro
-
-### Permisos
-
-* Permitir: Read/Edit + npm/node/npx + git status/diff/log.
-* Pedir confirmación: docker, git commit/push, deletes.
-* Denegar: `.env`, secrets, dumps.
-
-### Forma de trabajo esperada
-
-Antes de cambiar código:
-
-1. Identificar archivos exactos.
-2. Proponer plan corto (3–7 bullets).
-3. Implementar diff pequeño.
-4. Dar pasos de prueba (curl + UI).
-
----
-
-## 12) Prioridades actuales
-
-**Estado:** v0.6.0 — Corporate Self-Service MVP (2026-03-17)
-
-### Completado:
-- ✅ Corporate Self-Service (Organization, invites, activation, CSV upload)
-- ✅ Leave pool feature + dashboard tabs (En curso / Finalizadas)
-- ✅ Pricing section + /precios page
-- ✅ Locale-aware emails
-- ✅ i18n completo (ES/EN/PT)
-- ✅ SEO profesional
-- ✅ Limpieza de código y documentación (ADR-038, 2026-03-17)
-- ✅ Auditoría de código completa — 38 hallazgos resueltos (5 críticos, 12 altos, 13 medios, 8 bajos)
-
-### Roadmap v1.0:
-- Payment integration (Lemon Squeezy)
-- Corporate pool branding (splash, logo, email personalizado)
-- WC 2026 template preparation
-- UI Admin para templates sin código
+- **Language:** Communicate with the user in Spanish. Write code, comments, and documentation in English.
+- **Be direct.** Lead with the answer, not the reasoning.
+- **Admit mistakes immediately.** Never defend a wrong approach.
+- **Verify, don't assume.** "The database shows X" is better than "X should be there".

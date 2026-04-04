@@ -8,6 +8,54 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### WC 2026 Instance, Branding System, Hardcode Elimination, API-First Results (2026-04-03 — 2026-04-04)
+
+#### Added
+- **API-first results** — Host can no longer publish results manually. Results come from SmartSync. Host can override existing results with mandatory reason + email notification to all members
+- **Result override notification email** — `sendResultOverrideNotification()` sends to ALL active members with match description, previous/new result, reason, and pool link (ES/EN/PT)
+- **"In play" badge** — Shown on match cards when `MatchSyncState.syncStatus === IN_PROGRESS`
+- **Centralized branding** — `lib/brand.ts` in both frontend and backend. All colors, gradients, name, domain derive from single source. Backend supports runtime override via `BRAND_COLORS_JSON` env var
+- **Centralized configuration** — `lib/siteConfig.ts` (SITE_URL, SITE_NAME), `lib/validation.ts` (form constraints), `lib/timezones.ts`, `lib/schemas.ts` (Zod field schemas)
+- **`muteReminders` field** on Pool model — replaces hardcoded pool ID exclusion list
+- **`apiFootballId`** on `templateTeamSchema` for direct team-to-API mapping
+- **MATCH_SYNC constants** — Configurable sync windows via env vars
+- **SUPPORTED_LOCALES / DEFAULT_LOCALE** in `constants.ts`
+- **USER_RULES, PAGINATION, RESERVED_USERNAMES** constants centralized
+- **Phase display names** moved to i18n (ES/EN/PT) from hardcoded Spanish
+- **Deadline preset labels** internationalized via `t()` keys
+
+#### Changed
+- **WC 2026 seed completely rebuilt** — 48 confirmed teams (all playoffs resolved), 72 real fixtures from API-Football, official FIFA R32 bracket, real venues/kickoff times, MatchExternalMapping + MatchSyncState created
+- **Domain picks4all.com extracted** from 52+ frontend files to `SITE_URL` env var
+- **CORS and cookies** use `SITE_DOMAIN` env var instead of hardcoded domain
+- **Rate limits** (6 limiters) now configurable via env vars
+- **Email addresses** derive from `EMAIL_DOMAIN` env var
+- **Pricing constants** configurable via `NEXT_PUBLIC_*` env vars
+- **Team names in MatchCard** use `team.name` from API as primary source, static mapping as fallback only
+- **Pending result UI** redesigned with gradient card, icon, and descriptive text
+- **Override button** styled as warning (red) with email notification banner
+- **ResultService** refactored: `getReadyClient()` pattern for email, strict null checks
+- **CI workflow disabled** temporarily (Railway handles build validation)
+
+#### Fixed
+- **Chile replaced by Egypt** in WC 2026 Group G (Chile eliminated in CONMEBOL qualifying)
+- **R32 bracket corrected** to match official FIFA structure (was using simplified sequential bracket)
+- **R16/QF/SF connections** follow FIFA bracket paths (non-sequential)
+- **Duplicate "escalar puntos"** removed from wizard advanced rules (already in StepScoring)
+- **Double arrow** in wizard back button
+- **Capacity value** translation parameter mismatch (`{count}` vs `{max}`)
+- **Wizard draft** not clearing after pool creation (race condition with auto-save)
+- **FROM_EMAIL** no longer falls back to Resend test domain
+- **Brand gradient** deduplicated from ~30 inline occurrences to `colors.brandGradient`
+
+#### Removed
+- Hardcoded pool ID exclusion list from `deadlineReminderService.ts`
+- Hardcoded `railway.app` URL from API client fallback and CSP
+- `PHASE_DISPLAY_NAMES` hardcoded Spanish object (replaced by i18n)
+- `STEP_LABELS` hardcoded Spanish object (replaced by i18n)
+
+---
+
 ### Security & Infrastructure Audit (2026-03-18)
 
 #### Security

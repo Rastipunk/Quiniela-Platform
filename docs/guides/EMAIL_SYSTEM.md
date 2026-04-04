@@ -18,6 +18,8 @@ El sistema de notificaciones por email permite enviar comunicaciones automática
 | Deadline Reminder | Recordatorio de pronósticos pendientes | Sí (OFF por defecto) | Sí |
 | Result Published | Notificación de resultado publicado | Sí | Sí |
 | Pool Completed | Quiniela finalizada con ranking | Sí | Sí |
+| Result Override | Host modificó un resultado publicado por API | No (siempre activo) | No |
+| Pool Full | Pool alcanzó capacidad máxima (notifica al host) | No (siempre activo) | No |
 
 ## Arquitectura
 
@@ -36,6 +38,8 @@ Funciones principales:
 - `sendCorporateActivationEmail()` - Envía invitación corporativa con token de activación (30 días)
 - `sendCorporateInquiryConfirmationEmail()` - Confirma recepción de solicitud empresarial
 - `sendAdminNotification()` - Notifica al admin de eventos importantes (ej. nuevo feedback)
+- `sendResultOverrideNotification()` - Notifica a TODOS los miembros cuando el host modifica un resultado API-confirmed (incluye resultado anterior, nuevo, razón del cambio)
+- `sendPoolFullNotificationEmail()` - Notifica al host cuando su pool alcanza capacidad máxima
 
 Cada función:
 1. Verifica si el email está habilitado a nivel de plataforma

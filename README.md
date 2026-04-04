@@ -1,98 +1,85 @@
-# Picks4All — Free Football Prediction Pools
+# Picks4All
 
-[![Live](https://img.shields.io/badge/live-picks4all.com-brightgreen)](https://picks4all.com)
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-22+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+Multi-tournament football prediction platform. Create pools, invite friends, predict match results, and compete on leaderboards.
 
-Create free football prediction pools and compete with friends, family, or coworkers. Predict match results for **World Cup 2026**, **Champions League**, and more.
-
-Known as **quiniela** in Mexico, **polla futbolera** in Colombia, **prode** in Argentina, **penca** in Uruguay, and **porra** in Spain.
+**Live:** [picks4all.com](https://picks4all.com)
 
 ## Features
 
-- **Create pools** — Set up your own prediction pool with custom scoring rules and deadlines
-- **Invite with a code** — Share a simple invite code via WhatsApp or any messenger
-- **Predict match scores** — Enter your picks before each match deadline
-- **Live leaderboard** — Rankings update automatically after every match
-- **Multi-tournament** — World Cup 2026, Champions League, and more
-- **Multi-language** — Available in Spanish, English, and Portuguese
-- **Google Sign-In** — One-click login with your Google account
-- **Smart Sync** — Automatic score updates from live football data
-- **Corporate pools** — Enterprise self-service for company-wide prediction pools
-- **100% free** — Up to 20 participants per pool at no cost
+- **Pools** — Create or join prediction pools with custom scoring rules
+- **Predictions** — Score-based, outcome-based, or structural picks (group standings, knockout winners)
+- **Scoring** — 4 preset modes (Basic, Cumulative, Simple, Custom) with per-phase configuration
+- **Results** — Automatic via API-Football sync. Host can override with justification (all members notified)
+- **Leaderboard** — Real-time standings with tiebreaker logic
+- **Tournaments** — FIFA World Cup 2026 (48 teams, official FIFA bracket), UEFA Champions League 2025-26
+- **Corporate** — Enterprise self-service: inquiry, pool creation, employee activation via CSV/email
+- **i18n** — Spanish (default), English, Portuguese
+- **SEO** — Server-rendered public pages, JSON-LD, Open Graph, regional landing pages
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | Next.js 16 (App Router), React 19, TypeScript |
-| **Backend** | Node.js 22, Express, TypeScript |
-| **Database** | PostgreSQL 16, Prisma ORM |
-| **Auth** | JWT + Google Sign-In |
-| **i18n** | next-intl (Spanish, English, Portuguese) |
-| **Email** | Resend |
-| **Deployment** | Railway |
+| Frontend | Next.js 16 (App Router) + React 19 + TypeScript |
+| i18n | next-intl v4 |
+| Backend | Express 5 + TypeScript |
+| Database | PostgreSQL 16 + Prisma 6.19 |
+| Auth | JWT + Google Sign-In |
+| Email | Resend |
+| Sports Data | API-Football (api-sports.io) |
+| Hosting | Railway |
+| DNS | Cloudflare |
 
 ## Project Structure
 
 ```
 quiniela-platform/
-├── backend/          # Express API + Prisma + Smart Sync
-├── frontend-next/    # Next.js 16 App Router + i18n
-├── docs/             # Architecture, API spec, business rules
-└── infra/            # Docker Compose for local PostgreSQL
+├── backend/                # Express API
+│   ├── prisma/             # Schema + 38 migrations
+│   └── src/
+│       ├── routes/         # HTTP handlers (23 route files)
+│       ├── services/       # Business logic (24 service files)
+│       ├── lib/            # Utilities (brand, constants, email, scoring, etc.)
+│       ├── middleware/      # Auth, rate limiting
+│       ├── jobs/           # Cron: SmartSync, deadline reminders, phase sync
+│       └── scripts/        # Seeds and data migrations
+├── frontend-next/          # Next.js App
+│   └── src/
+│       ├── app/            # Routes (26 pages)
+│       ├── components/     # UI components (60+)
+│       ├── lib/            # Brand, theme, API client, validation, config
+│       ├── messages/       # i18n (18 namespaces x 3 locales)
+│       └── data/           # Static data (team flags)
+└── docs/                   # Documentation
+    ├── PRD.md              # Product definition
+    ├── ARCHITECTURE.md     # Technical architecture
+    ├── DATA_MODEL.md       # Database schema
+    ├── API_SPEC.md         # API contracts
+    ├── BUSINESS_RULES.md   # Business rules
+    ├── GLOSSARY.md         # Domain terminology
+    ├── DECISION_LOG.md     # Architectural decisions (ADRs)
+    └── guides/             # Setup, deployment, email, tournaments, OAuth
 ```
 
 ## Getting Started
 
-### Prerequisites
+See [docs/guides/SETUP.md](docs/guides/SETUP.md) for local development setup.
 
-- Node.js 22+
-- Docker (for local PostgreSQL)
-
-### Setup
-
-```bash
-# 1. Clone the repo
-git clone https://github.com/Rastipunk/Quiniela-Platform.git
-cd Quiniela-Platform
-
-# 2. Start the database
-cd backend
-docker compose up -d
-
-# 3. Backend
-npm install
-cp .env.example .env  # configure your environment variables
-npx prisma migrate dev
-npm run dev
-
-# 4. Frontend (in a new terminal)
-cd frontend-next
-npm install
-npm run dev
-```
-
-The app will be available at `http://localhost:3000`.
+See [docs/guides/DEPLOYMENT.md](docs/guides/DEPLOYMENT.md) for production deployment.
 
 ## Documentation
 
-- [Architecture](docs/sot/ARCHITECTURE.md) — System design, tech stack, deployment
-- [API Specification](docs/sot/API_SPEC.md) — All endpoints with examples
-- [Data Model](docs/sot/DATA_MODEL.md) — Database schema and relationships
-- [Business Rules](docs/sot/BUSINESS_RULES.md) — Scoring, deadlines, permissions
-
-## Contributing
-
-Contributions are welcome! Feel free to open an issue or submit a pull request.
+| Document | Description |
+|----------|------------|
+| [PRD](docs/PRD.md) | Product scope, features, user roles |
+| [Architecture](docs/ARCHITECTURE.md) | System design, tech stack, data flows |
+| [Data Model](docs/DATA_MODEL.md) | Database schema, models, relationships |
+| [API Spec](docs/API_SPEC.md) | REST endpoints, auth, error handling |
+| [Business Rules](docs/BUSINESS_RULES.md) | Invariants, validation, scoring logic |
+| [Glossary](docs/GLOSSARY.md) | Domain terminology |
+| [Decision Log](docs/DECISION_LOG.md) | Architectural decision records |
+| [CLAUDE.md](CLAUDE.md) | Development standards and quality requirements |
 
 ## License
 
-All rights reserved. See [LICENSE](LICENSE) for details.
-
----
-
-**[picks4all.com](https://picks4all.com)** — Free football prediction pools with friends.
+MIT

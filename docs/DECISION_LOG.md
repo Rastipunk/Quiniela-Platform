@@ -3955,14 +3955,80 @@ The platform is approaching its April 1st launch. Critical security and stabilit
 - [x] ADR-038: Limpieza de Código y Documentación v0.6.0 ✅ (2026-03-17)
 - [x] ADR-039: Security & Infrastructure Audit ✅ (2026-03-18)
 
-**v1.0:**
-- [ ] ADR-040: PWA + Service Worker
-- [ ] ADR-041: Redis caching layer
+- [x] ADR-040: WC 2026 Instance Rebuild with API Data ✅ (2026-04-03)
+- [x] ADR-041: Centralized Branding System ✅ (2026-04-04)
+- [x] ADR-042: Eliminate Hardcoded Values (4 rounds) ✅ (2026-04-04)
+- [x] ADR-043: API-First Results with Host Override ✅ (2026-04-04)
 
-**v2.0:**
-- [ ] ADR-042: Multi-sport support architecture
-- [ ] ADR-043: WebSocket for real-time updates
-- [ ] ADR-044: Facebook/Apple OAuth providers
+---
+
+## ADR-040: WC 2026 Instance Rebuild with API Data
+
+**Date:** 2026-04-03 | **Status:** Accepted
+
+**Context:** The WC 2026 tournament instance had placeholder teams (TBD), incorrect bracket structure, and no API-Football integration. The seed used fake kickoff times and venues.
+
+**Decision:** Rebuild the entire WC 2026 seed from API-Football data:
+- Replace all 7 placeholder teams with confirmed qualifiers (verified against ESPN, FIFA.com, NBC Sports)
+- Rebuild 72 group matches with real kickoff times, venues, home/away from API
+- Correct R32 bracket to match official FIFA structure (was using simplified sequential bracket)
+- Fix R16/QF/SF connections to follow FIFA bracket paths
+- Add `apiFootballId` to team schema for API sync
+- Create MatchExternalMapping + MatchSyncState for all group fixtures
+- Configure instance as AUTO mode (league=1, season=2026)
+
+**Consequences:** WC 2026 instance is now production-ready for automatic result sync when matches begin in June 2026.
+
+---
+
+## ADR-041: Centralized Branding System
+
+**Date:** 2026-04-04 | **Status:** Accepted
+
+**Context:** Brand colors (#667eea, #764ba2, #4f46e5) were duplicated across ~30 frontend files and backend email templates. Changing a brand color required modifying dozens of files across both services.
+
+**Decision:** Create `lib/brand.ts` in both frontend and backend as single source of truth:
+- Frontend: `brand.ts` → consumed by `theme.ts`, `siteConfig.ts`, icon files, OG images
+- Backend: `brand.ts` → consumed by `emailTemplates.ts`, `email.ts` (runtime override via `BRAND_COLORS_JSON` env var)
+- Future brand assets (logo URL, icon URL) will be added to `brand.ts` and propagate automatically
+
+**Consequences:** Brand changes require editing ONE file per service. Backend supports runtime rebranding without redeploy.
+
+---
+
+## ADR-042: Eliminate Hardcoded Values (4 Audit Rounds)
+
+**Date:** 2026-04-04 | **Status:** Accepted
+
+**Context:** Comprehensive audit found 28+ hardcoded values across the codebase including domain names (52 files), email addresses, rate limits, sync windows, pricing, and pool IDs.
+
+**Decision:** Systematic elimination across 4 rounds:
+- Round 1: Domain → SITE_URL/SITE_DOMAIN env vars, pool IDs → muteReminders DB field, rate limits → env vars, sync windows → MATCH_SYNC constants
+- Round 2: Pricing → NEXT_PUBLIC env vars, locales → SUPPORTED_LOCALES constant, phase names → i18n
+- Round 3: Magic numbers → constants.ts (pagination, user rules, reserved usernames), validation → shared schemas
+- Round 4: Brand colors → brand.ts, CSP legacy URL removed
+
+**Principles established:**
+- Primary data source = API/DB. Static mappings only as fallback.
+- Every env var has a sensible default.
+- Frontend validation mirrors backend Zod schemas via centralized `validation.ts`.
+
+---
+
+## ADR-043: API-First Results with Host Override
+
+**Date:** 2026-04-04 | **Status:** Accepted
+
+**Context:** Hosts could publish match results manually at any time. This created data integrity risks and inconsistency with the SmartSync automatic results system.
+
+**Decision:**
+- Block manual result publishing in AUTO mode. Results come exclusively from API-Football via SmartSync.
+- After API publishes a result, host CAN override with: mandatory reason + warning banner + email notification to ALL active pool members.
+- Each override creates a new PoolMatchResultVersion with source=HOST_OVERRIDE.
+- Legacy MANUAL mode instances are exempt (backwards compatibility).
+- "In play" badge shown when MatchSyncState is IN_PROGRESS.
+
+**Consequences:** Results are authoritative from API. Host overrides have full audit trail and transparency. All members are informed of any manual changes.
 
 ---
 
