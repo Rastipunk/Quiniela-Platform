@@ -41,11 +41,11 @@ const APP_NAME = "Picks4All";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 
-/** Returns null if email system is ready, or an error message if not */
-function emailSystemCheck(): string | null {
-  if (!resend) return "RESEND_API_KEY not configured";
-  if (!FROM_EMAIL) return "RESEND_FROM_EMAIL not configured";
-  return null;
+/** Returns the ready Resend client, or null with an error message */
+function getReadyClient(): { client: Resend; from: string } | null {
+  if (!resend) { console.error("❌ RESEND_API_KEY not configured"); return null; }
+  if (!FROM_EMAIL) { console.error("❌ RESEND_FROM_EMAIL not configured"); return null; }
+  return { client: resend, from: `${APP_NAME} <${FROM_EMAIL}>` };
 }
 
 // =========================================================================
@@ -183,17 +183,14 @@ export async function sendPasswordResetEmail(params: {
   username: string;
   resetToken: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${params.resetToken}`;
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: "Recupera tu contraseña",
       html: `
@@ -313,17 +310,14 @@ export async function sendVerificationEmail(params: {
   displayName: string;
   verificationToken: string;
 }): Promise<EmailResult> {
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const verificationUrl = `${FRONTEND_URL}/verify-email?token=${params.verificationToken}`;
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: `Verifica tu email - ${APP_NAME}`,
       html: `
@@ -448,19 +442,16 @@ export async function sendWelcomeEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const templateParams: WelcomeEmailParams = {
     displayName: params.displayName,
   };
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: `¡Bienvenido a ${APP_NAME}!`,
       html: getWelcomeTemplate(templateParams),
@@ -504,11 +495,8 @@ export async function sendPoolInvitationEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const templateParams: PoolInvitationEmailParams = {
     inviterName: params.inviterName,
@@ -518,8 +506,8 @@ export async function sendPoolInvitationEmail(params: {
   };
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: `${params.inviterName} te invitó a "${params.poolName}"`,
       html: getPoolInvitationTemplate(templateParams),
@@ -563,11 +551,8 @@ export async function sendDeadlineReminderEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const templateParams: DeadlineReminderEmailParams = {
     displayName: params.displayName,
@@ -578,8 +563,8 @@ export async function sendDeadlineReminderEmail(params: {
   };
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: `⏰ ${params.matchesCount} partido${params.matchesCount > 1 ? "s" : ""} sin pronóstico en "${params.poolName}"`,
       html: getDeadlineReminderTemplate(templateParams),
@@ -626,11 +611,8 @@ export async function sendResultPublishedEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const templateParams: ResultPublishedEmailParams = {
     displayName: params.displayName,
@@ -644,8 +626,8 @@ export async function sendResultPublishedEmail(params: {
   };
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: `📊 Resultado: ${params.matchDescription} (${params.result}) - ${params.pointsEarned} pts`,
       html: getResultPublishedTemplate(templateParams),
@@ -691,11 +673,8 @@ export async function sendPoolCompletedEmail(params: {
     return { success: true, skipped: true, reason };
   }
 
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const templateParams: PoolCompletedEmailParams = {
     displayName: params.displayName,
@@ -714,8 +693,8 @@ export async function sendPoolCompletedEmail(params: {
   else if (params.finalRank === 3) subjectEmoji = "🥉";
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: `${subjectEmoji} "${params.poolName}" terminó - Posición #${params.finalRank}`,
       html: getPoolCompletedTemplate(templateParams),
@@ -778,11 +757,8 @@ export async function sendCorporateInquiryConfirmationEmail(params: {
   companyName: string;
   locale?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const locale = params.locale || "es";
   const subjects: Record<string, string> = {
@@ -792,8 +768,8 @@ export async function sendCorporateInquiryConfirmationEmail(params: {
   };
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: subjects[locale] ?? subjects.es!,
       html: getCorporateInquiryConfirmationTemplate({
@@ -834,11 +810,8 @@ export async function sendCorporateActivationEmail(params: {
   logoBase64?: string | null;
   invitationMessage?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar email: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   const locale = params.locale || "es";
   const activationUrl = `${FRONTEND_URL}/activar-cuenta?token=${params.activationToken}`;
@@ -870,8 +843,8 @@ export async function sendCorporateActivationEmail(params: {
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: subjects[locale] ?? subjects.es!,
       html: getCorporateActivationTemplate({
@@ -912,11 +885,8 @@ export async function sendAdminNotification(params: {
   body: string;
   type: "feedback" | "corporate_inquiry" | "error";
 }): Promise<{ success: boolean; error?: string }> {
-  const checkErr = emailSystemCheck();
-  if (checkErr) {
-    console.error(`❌ No se puede enviar notificación admin: ${checkErr}`);
-    return { success: false, error: checkErr };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
   if (!ADMIN_EMAIL) {
     console.warn("⚠️  ADMIN_NOTIFICATION_EMAIL no configurada. Notificación omitida.");
     return { success: false, error: "ADMIN_NOTIFICATION_EMAIL not configured" };
@@ -931,9 +901,9 @@ export async function sendAdminNotification(params: {
   const label = typeLabels[params.type] || params.type;
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} Admin <${FROM_EMAIL}>`,
-      to: ADMIN_EMAIL,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from.replace(APP_NAME, `${APP_NAME} Admin`),
+      to: ADMIN_EMAIL!,
       subject: `[${label}] ${params.subject}`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
@@ -1004,8 +974,8 @@ export async function sendPoolFullNotificationEmail(params: {
   const poolUrl = `${FRONTEND_URL}/pools/${params.poolId}`;
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
       to: params.to,
       subject: subjects[loc],
       html: `
