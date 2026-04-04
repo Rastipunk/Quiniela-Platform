@@ -8,6 +8,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "../lib/constants";
 import { requireAuth } from "../middleware/requireAuth";
 import {
   sendData, sendOk, sendCreated, sendBadRequest,
@@ -72,7 +73,7 @@ const inquirySchema = z.object({
   contactPhone: z.string().max(30).optional(),
   employeeCount: z.enum(["1-50", "51-200", "201-500", "500+"]).optional(),
   message: z.string().max(2000).optional(),
-  locale: z.enum(["es", "en", "pt"]).default("es"),
+  locale: z.enum(SUPPORTED_LOCALES).default(DEFAULT_LOCALE),
 });
 
 const createCorporatePoolSchema = z.object({
@@ -93,7 +94,11 @@ const createCorporatePoolSchema = z.object({
     z.enum(["BASIC", "SIMPLE", "CUMULATIVE"]),
     PoolPickTypesConfigSchema,
   ]).optional(),
-  maxParticipants: z.number().int().min(100).max(10000).optional(),
+  maxParticipants: z.number().int().min(
+    parseInt(process.env.CORPORATE_POOL_MIN_PARTICIPANTS || "100", 10)
+  ).max(
+    parseInt(process.env.CORPORATE_POOL_MAX_PARTICIPANTS || "10000", 10)
+  ).optional(),
   emails: z.array(z.string().email()).max(500).optional(),
 });
 

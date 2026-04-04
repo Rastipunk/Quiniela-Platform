@@ -10,6 +10,7 @@ export function escapeHtml(str: string): string {
 
 import { Resend } from "resend";
 import { prisma } from "../db";
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "./constants";
 import {
   getWelcomeTemplate,
   getPoolInvitationTemplate,
@@ -37,7 +38,8 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
 if (!FROM_EMAIL && apiKey) {
   console.warn("⚠️  RESEND_FROM_EMAIL no configurada. Se requiere para enviar emails.");
 }
-const APP_NAME = "Picks4All";
+const APP_NAME = process.env.APP_NAME || "Picks4All";
+const SITE_DOMAIN = process.env.SITE_DOMAIN || "picks4all.com";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
 
@@ -760,7 +762,7 @@ export async function sendCorporateInquiryConfirmationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const locale = params.locale || "es";
+  const locale = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `Recibimos tu solicitud — ${APP_NAME}`,
     en: `We received your request — ${APP_NAME}`,
@@ -813,7 +815,7 @@ export async function sendCorporateActivationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const locale = params.locale || "es";
+  const locale = params.locale || DEFAULT_LOCALE;
   const activationUrl = `${FRONTEND_URL}/activar-cuenta?token=${params.activationToken}`;
 
   const subjects: Record<string, string> = {
@@ -947,7 +949,8 @@ export async function sendPoolFullNotificationEmail(params: {
   if (!ready) return { success: false, error: "Email service not configured" };
 
   type Locale = "es" | "en" | "pt";
-  const loc: Locale = (["es", "en", "pt"].includes(params.locale || "") ? params.locale : "es") as Locale;
+  type Loc = typeof SUPPORTED_LOCALES[number];
+  const loc: Loc = (SUPPORTED_LOCALES as readonly string[]).includes(params.locale || "") ? params.locale as Loc : DEFAULT_LOCALE;
   const subjects: Record<Locale, string> = {
     es: `Tu pool "${params.poolName}" está lleno`,
     en: `Your pool "${params.poolName}" is full`,
@@ -991,7 +994,7 @@ export async function sendPoolFullNotificationEmail(params: {
           </div>
           <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
           <p style="color:#9CA3AF;font-size:12px;text-align:center;">
-            ${APP_NAME} &middot; picks4all.com
+            ${APP_NAME} &middot; ${SITE_DOMAIN}
           </p>
         </div>
       `,

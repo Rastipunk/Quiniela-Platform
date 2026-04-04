@@ -6,7 +6,6 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import type { WizardStep } from "@/types/poolWizard";
-import { PHASE_DISPLAY_NAMES } from "@/types/poolWizard";
 
 // ── Scoring style display names ───────────────────────────
 const SCORING_LABELS: Record<string, string> = {

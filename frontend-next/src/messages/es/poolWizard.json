@@ -248,5 +248,22 @@
     "emailCount": "{count} email(s) agregados",
     "noEmails": "Sin invitaciones (puedes agregar después)",
     "note": "Podrás invitar jugadores y ajustar configuraciones después de crear el pool."
+  },
+  "phases": {
+    "group_stage": "Fase de Grupos",
+    "round_of_32": "Dieciseisavos",
+    "round_of_16": "Octavos de Final",
+    "quarter_finals": "Cuartos de Final",
+    "semi_finals": "Semifinales",
+    "final": "Final",
+    "finals": "Final",
+    "r32_leg1": "32avos (Ida)",
+    "r32_leg2": "32avos (Vuelta)",
+    "r16_leg1": "Octavos (Ida)",
+    "r16_leg2": "Octavos (Vuelta)",
+    "qf_leg1": "Cuartos (Ida)",
+    "qf_leg2": "Cuartos (Vuelta)",
+    "sf_leg1": "Semifinal (Ida)",
+    "sf_leg2": "Semifinal (Vuelta)"
   }
 }

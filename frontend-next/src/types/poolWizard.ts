@@ -114,25 +114,8 @@ export type WizardAction =
 
 // ── Recommended values ──────────────────────────────────────
 
-export const RECOMMENDED_DEADLINE = 10;
-export const RECOMMENDED_MAX_PARTICIPANTS_STANDARD = 20;
-export const RECOMMENDED_MAX_PARTICIPANTS_CORPORATE = 100;
+export const RECOMMENDED_DEADLINE = parseInt(process.env.NEXT_PUBLIC_DEFAULT_DEADLINE || "10", 10);
+export const RECOMMENDED_MAX_PARTICIPANTS_STANDARD = parseInt(process.env.NEXT_PUBLIC_PERSONAL_FREE_LIMIT || "20", 10);
+export const RECOMMENDED_MAX_PARTICIPANTS_CORPORATE = parseInt(process.env.NEXT_PUBLIC_CORPORATE_FREE_LIMIT || "100", 10);
 
-// ── Phase-to-display name (for preset labels) ────────────────
-
-export const PHASE_DISPLAY_NAMES: Record<string, string> = {
-  group_stage: "Fase de Grupos",
-  round_of_32: "Dieciseisavos",
-  round_of_16: "Octavos de Final",
-  quarter_finals: "Cuartos de Final",
-  semi_finals: "Semifinales",
-  final: "Final",
-  r32_leg1: "32avos (Ida)",
-  r32_leg2: "32avos (Vuelta)",
-  r16_leg1: "Octavos (Ida)",
-  r16_leg2: "Octavos (Vuelta)",
-  qf_leg1: "Cuartos (Ida)",
-  qf_leg2: "Cuartos (Vuelta)",
-  sf_leg1: "Semifinal (Ida)",
-  sf_leg2: "Semifinal (Vuelta)",
-};
+// Phase display names are in i18n: messages/{locale}/poolWizard.json → "phases"

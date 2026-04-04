@@ -21,7 +21,7 @@ const BRAND = {
   backgroundColor: "#F9FAFB", // Gray-50
   cardBackground: "#FFFFFF",
   baseUrl: process.env.FRONTEND_URL || "http://localhost:5173",
-  supportEmail: "soporte@picks4all.com",
+  supportEmail: `soporte@${process.env.EMAIL_DOMAIN || "picks4all.com"}`,
 };
 
 // Email domain — all contact addresses derive from this

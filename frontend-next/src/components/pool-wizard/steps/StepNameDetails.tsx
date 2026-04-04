@@ -10,11 +10,11 @@ import { RECOMMENDED_DEADLINE } from "@/types/poolWizard";
 
 // ── Deadline presets ──────────────────────────────────────────
 
-const DEADLINE_PRESETS: Array<{ label: string; value: number; recommended?: boolean }> = [
-  { label: "Al inicio", value: 0 },
-  { label: "10 min", value: 10, recommended: true },
-  { label: "1 hora", value: 60 },
-  { label: "1 día", value: 1440 },
+const DEADLINE_PRESETS: Array<{ labelKey: string; value: number; recommended?: boolean }> = [
+  { labelKey: "deadlineAtStart", value: 0 },
+  { labelKey: "deadline10min", value: 10, recommended: true },
+  { labelKey: "deadline1hr", value: 60 },
+  { labelKey: "deadline1day", value: 1440 },
 ];
 
 // ── Common timezones for dropdown ─────────────────────────────
@@ -183,7 +183,7 @@ export function StepNameDetails() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {opt.label}
+                  {t(opt.labelKey, { defaultMessage: opt.labelKey })}
                   {opt.recommended && (
                     <span style={{
                       fontSize: fontSize.xs,

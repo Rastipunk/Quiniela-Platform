@@ -3,13 +3,11 @@ import { clearToken, getToken, markSessionExpired } from "../auth";
 import { ApiError } from "../apiError";
 
 function getApiBase(): string {
+  // Primary: always prefer the env var (set in Railway for both services)
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (envUrl) return envUrl;
 
-  if (typeof window !== "undefined" && window.location.hostname.includes("railway.app")) {
-    return "https://quiniela-platform-production.up.railway.app";
-  }
-
+  // Fallback for local development only
   return "http://localhost:3000";
 }
 

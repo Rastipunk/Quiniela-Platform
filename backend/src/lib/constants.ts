@@ -37,6 +37,11 @@ export const MATCH_SYNC = {
   get FINISH_CHECK_MS() { return this.FINISH_CHECK_MINUTES * MS.MINUTE; },
 } as const;
 
+// ── Locales ──────────────────────────────────────────────────
+export const SUPPORTED_LOCALES = ["es", "en", "pt"] as const;
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+export const DEFAULT_LOCALE: SupportedLocale = "es";
+
 // ── Placeholder team prefixes (block picks) ─────────────────
 export const PLACEHOLDER_TEAM_PREFIXES = [
   "t_TBD",

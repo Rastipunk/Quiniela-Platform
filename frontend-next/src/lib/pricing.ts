@@ -12,13 +12,17 @@ export type PricingTier = {
   isFree: boolean;
 };
 
-const PERSONAL_FREE_LIMIT = 20;
-const CORPORATE_FREE_LIMIT = 100;
+// Pricing configuration — env vars allow updates without redeploy
+const envFloat = (key: string, fallback: number) => parseFloat(process.env[key] || String(fallback));
+const envInt = (key: string, fallback: number) => parseInt(process.env[key] || String(fallback), 10);
+
+export const PERSONAL_FREE_LIMIT = envInt("NEXT_PUBLIC_PERSONAL_FREE_LIMIT", 20);
+export const CORPORATE_FREE_LIMIT = envInt("NEXT_PUBLIC_CORPORATE_FREE_LIMIT", 100);
 const INCREMENT = 50;
-const BASE_PRICE = 6.99;
+const BASE_PRICE = envFloat("NEXT_PUBLIC_BASE_PRICE", 6.99);
 const PAIR_DISCOUNT = 0.4;
-const MIN_PRICE = 3.99;
-const CORPORATE_BASE_PRICE = 49.99;
+const MIN_PRICE = envFloat("NEXT_PUBLIC_MIN_PRICE", 3.99);
+const CORPORATE_BASE_PRICE = envFloat("NEXT_PUBLIC_CORPORATE_BASE_PRICE", 49.99);
 
 function roundPrice(n: number): number {
   return Math.round(n * 100) / 100;
