@@ -943,10 +943,8 @@ export async function sendPoolFullNotificationEmail(params: {
   maxParticipants: number;
   locale?: string;
 }): Promise<{ success: boolean; error?: string }> {
-  if (!resend) {
-    console.error("❌ No se puede enviar email pool full: RESEND_API_KEY no configurada");
-    return { success: false, error: "Email service not configured" };
-  }
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
 
   type Locale = "es" | "en" | "pt";
   const loc: Locale = (["es", "en", "pt"].includes(params.locale || "") ? params.locale : "es") as Locale;
