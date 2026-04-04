@@ -1,16 +1,19 @@
 // Design tokens — single source of truth for all style constants.
 // Import from "@/lib/theme" instead of hardcoding values.
+// Brand colors come from lib/brand.ts.
+
+import { BRAND } from "./brand";
 
 // ── Colors ──────────────────────────────────────────────────
 
 export const colors = {
-  // Brand
-  brand: "#4f46e5",
-  brandLight: "#667eea",
-  brandDark: "#312e81",
-  brandGradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  brandGradientAlt: "linear-gradient(135deg, #4f46e5, #7c3aed)",
-  brandBg: "rgba(79,70,229,0.08)",
+  // Brand (from lib/brand.ts)
+  brand: BRAND.primary,
+  brandLight: BRAND.primaryLight,
+  brandDark: BRAND.primaryDark,
+  brandGradient: BRAND.gradient,
+  brandGradientAlt: BRAND.gradientAlt,
+  brandBg: `${BRAND.primary}14`, // 8% opacity
 
   // Text
   text: "#111",

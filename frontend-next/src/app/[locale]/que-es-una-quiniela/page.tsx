@@ -94,7 +94,7 @@ const articleStyle = {
     marginBottom: 24,
   } as const,
   pullQuote: {
-    borderLeft: "4px solid #667eea",
+    borderLeft: `4px solid ${colors.brandLight}`,
     paddingLeft: 24,
     margin: "32px 0",
     fontStyle: "italic" as const,
@@ -274,7 +274,7 @@ export default async function QueEsUnaQuinielaPage() {
                 style={{
                   fontSize: "1.25rem",
                   fontWeight: 700,
-                  color: "#667eea",
+                  color: colors.brandLight,
                   marginBottom: 8,
                   marginTop: 32,
                 }}
@@ -392,7 +392,7 @@ export default async function QueEsUnaQuinielaPage() {
                               ? "1px solid var(--border)"
                               : "none",
                           fontWeight: 600,
-                          color: "#667eea",
+                          color: colors.brandLight,
                         }}
                       >
                         {item.term}

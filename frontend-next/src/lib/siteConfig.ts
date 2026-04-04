@@ -1,6 +1,8 @@
-// Centralized site configuration — single source of truth for domain, name, etc.
-// All values come from environment variables with sensible defaults.
+// Centralized site configuration — runtime values with brand defaults.
+// Brand identity comes from lib/brand.ts.
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://picks4all.com";
-export const SITE_NAME = "Picks4All";
-export const EMAIL_DOMAIN = process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "picks4all.com";
+import { BRAND } from "./brand";
+
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || `https://${BRAND.domain}`;
+export const SITE_NAME = BRAND.name;
+export const EMAIL_DOMAIN = process.env.NEXT_PUBLIC_EMAIL_DOMAIN || BRAND.domain;

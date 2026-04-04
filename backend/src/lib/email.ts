@@ -11,6 +11,7 @@ export function escapeHtml(str: string): string {
 import { Resend } from "resend";
 import { prisma } from "../db";
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "./constants";
+import { BRAND } from "./brand";
 import {
   getWelcomeTemplate,
   getPoolInvitationTemplate,
@@ -210,7 +211,7 @@ export async function sendPasswordResetEmail(params: {
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                   <!-- Header -->
                   <tr>
-                    <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
+                    <td style="padding: 40px 40px 20px; text-align: center; background: ${BRAND.gradient}; border-radius: 12px 12px 0 0;">
                       <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
                         ${APP_NAME}
                       </h1>
@@ -231,7 +232,7 @@ export async function sendPasswordResetEmail(params: {
                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                         <tr>
                           <td align="center">
-                            <a href="${resetUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">
+                            <a href="${resetUrl}" style="display: inline-block; padding: 16px 40px; background: ${BRAND.gradient}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px ${BRAND.primaryLight}66; transition: transform 0.2s;">
                               Restablecer mi contraseña
                             </a>
                           </td>
@@ -242,7 +243,7 @@ export async function sendPasswordResetEmail(params: {
                       <p style="margin: 30px 0 10px; color: #718096; font-size: 14px;">
                         O copia y pega este enlace en tu navegador:
                       </p>
-                      <p style="margin: 0 0 30px; padding: 12px; background-color: #f7fafc; border-radius: 6px; word-break: break-all; color: #667eea; font-size: 13px; font-family: monospace;">
+                      <p style="margin: 0 0 30px; padding: 12px; background-color: #f7fafc; border-radius: 6px; word-break: break-all; color: ${BRAND.primaryLight}; font-size: 13px; font-family: monospace;">
                         ${resetUrl}
                       </p>
 
@@ -337,7 +338,7 @@ export async function sendVerificationEmail(params: {
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                   <!-- Header -->
                   <tr>
-                    <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
+                    <td style="padding: 40px 40px 20px; text-align: center; background: ${BRAND.gradient}; border-radius: 12px 12px 0 0;">
                       <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
                         ${APP_NAME}
                       </h1>
@@ -370,7 +371,7 @@ export async function sendVerificationEmail(params: {
                       <p style="margin: 30px 0 10px; color: #718096; font-size: 14px;">
                         O copia y pega este enlace en tu navegador:
                       </p>
-                      <p style="margin: 0 0 30px; padding: 12px; background-color: #f7fafc; border-radius: 6px; word-break: break-all; color: #667eea; font-size: 13px; font-family: monospace;">
+                      <p style="margin: 0 0 30px; padding: 12px; background-color: #f7fafc; border-radius: 6px; word-break: break-all; color: ${BRAND.primaryLight}; font-size: 13px; font-family: monospace;">
                         ${verificationUrl}
                       </p>
 
@@ -909,7 +910,7 @@ export async function sendAdminNotification(params: {
       subject: `[${label}] ${params.subject}`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-          <h2 style="color:#1F2937;border-bottom:2px solid #4F46E5;padding-bottom:8px;">${label}</h2>
+          <h2 style="color:#1F2937;border-bottom:2px solid ${BRAND.primary};padding-bottom:8px;">${label}</h2>
           <div style="color:#374151;font-size:15px;line-height:1.6;">
             ${params.body}
           </div>
@@ -988,7 +989,7 @@ export async function sendPoolFullNotificationEmail(params: {
             ${messages[loc]}
           </p>
           <div style="text-align:center;margin:24px 0;">
-            <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:#4F46E5;color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
+            <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:${BRAND.primary};color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
               ${ctas[loc]}
             </a>
           </div>

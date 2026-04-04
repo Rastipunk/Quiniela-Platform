@@ -12,16 +12,22 @@
 // CONFIGURACIÓN DE MARCA
 // =========================================================================
 
+import { BRAND as B } from "./brand";
+
 const BRAND = {
-  name: "Picks4All",
-  primaryColor: "#4F46E5", // Indigo-600
-  secondaryColor: "#6366F1", // Indigo-500
-  textColor: "#1F2937", // Gray-800
-  mutedColor: "#6B7280", // Gray-500
-  backgroundColor: "#F9FAFB", // Gray-50
-  cardBackground: "#FFFFFF",
+  name: B.name,
+  primaryColor: B.primary,
+  primaryLight: B.primaryLight,
+  secondaryColor: B.secondary,
+  accent: B.accent,
+  gradient: B.gradient,
+  gradientAlt: B.gradientAlt,
+  textColor: B.text,
+  mutedColor: B.textMuted,
+  backgroundColor: B.background,
+  cardBackground: B.card,
   baseUrl: process.env.FRONTEND_URL || "http://localhost:5173",
-  supportEmail: `soporte@${process.env.EMAIL_DOMAIN || "picks4all.com"}`,
+  supportEmail: `soporte@${process.env.EMAIL_DOMAIN || B.domain}`,
 };
 
 // Email domain — all contact addresses derive from this
