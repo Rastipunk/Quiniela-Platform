@@ -98,7 +98,7 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
       auditCtx(req),
     );
 
-    if (source === "HOST_OVERRIDE" && parsed.data.reason) {
+    if ((source as string) === "HOST_OVERRIDE" && parsed.data.reason) {
       // Override: notify ALL members about the change
       const teams = extractTeams(pool.tournamentInstance.dataJson);
       const teamById = new Map(teams.map((t: any) => [t.id, t]));
