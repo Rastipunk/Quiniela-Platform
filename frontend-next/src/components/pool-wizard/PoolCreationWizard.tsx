@@ -187,8 +187,7 @@ function WizardInner() {
             gap: spacing.xs,
           }}
         >
-          <span style={{ fontSize: fontSize.lg }}>&#8592;</span>
-          {t("backToDashboard", { defaultMessage: "Volver al dashboard" })}
+          {t("backToDashboard", { defaultMessage: "← Volver a mis pools" })}
         </button>
       </div>
 
