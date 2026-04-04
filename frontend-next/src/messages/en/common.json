@@ -399,7 +399,8 @@
   },
   "activation": {
     "meta": {
-      "title": "Activate your account — Picks4All"
+      "title": "Activate your account — Picks4All",
+      "description": "Create your username and password to activate your corporate account on Picks4All."
     },
     "title": "Activate your account",
     "subtitle": "Create your username and password to start playing.",

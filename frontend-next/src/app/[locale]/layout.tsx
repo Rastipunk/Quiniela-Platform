@@ -47,9 +47,14 @@ export async function generateMetadata({
     keywords: [
       "quiniela",
       "sports pool",
+      "polla",
+      "prode",
       "penca",
       "football predictions",
+      "predictions with friends",
+      "free",
       "World Cup 2026",
+      "Mundial 2026",
       "Champions League",
     ],
     openGraph: {

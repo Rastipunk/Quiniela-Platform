@@ -399,7 +399,8 @@
   },
   "activation": {
     "meta": {
-      "title": "Ative sua conta — Picks4All"
+      "title": "Ative sua conta — Picks4All",
+      "description": "Crie seu usuário e senha para ativar sua conta corporativa no Picks4All."
     },
     "title": "Ative sua conta",
     "subtitle": "Crie seu usuário e senha para começar a jogar.",

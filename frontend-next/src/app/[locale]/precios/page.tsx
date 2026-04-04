@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PricingPageContent } from "./PricingPageContent";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { JsonLd } from "@/components/JsonLd";
 import { SITE_URL } from "@/lib/siteConfig";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,6 +22,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("pricing.title"),
     description: t("pricing.description"),
+    openGraph: {
+      title: t("pricing.title"),
+      description: t("pricing.description"),
+      url,
+      type: "website",
+      siteName: "Picks4All",
+    },
     alternates: {
       canonical: url,
       languages: {
@@ -46,6 +54,19 @@ export default async function PreciosPage() {
   };
   const breadcrumbPath = pathMap[locale] || pathMap.es;
 
+  const pricingJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "Picks4All",
+    applicationCategory: "SportsApplication",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+      description: "Free for pools up to 20 participants",
+    },
+  };
+
   return (
     <>
       <Breadcrumbs
@@ -54,6 +75,7 @@ export default async function PreciosPage() {
           { name: t("breadcrumbPricing"), url: `${baseUrl}${localePath}${breadcrumbPath}` },
         ]}
       />
+      <JsonLd data={pricingJsonLd} />
       <PricingPageContent />
     </>
   );

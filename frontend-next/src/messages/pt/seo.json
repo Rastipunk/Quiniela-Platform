@@ -16,52 +16,55 @@
     "description": "Descubra o que é uma penca esportiva, sua história e como se chama em cada país: quiniela, polla, prode, penca, porra. Tudo sobre previsões de futebol entre amigos."
   },
   "terms": {
-    "title": "Termos de Serviço — Picks4All",
-    "description": "Termos e condições de uso da plataforma Picks4All para pencas esportivas."
+    "title": "Termos de Serviço e Condições de Uso — Picks4All",
+    "description": "Termos e condições de uso da plataforma Picks4All. Regras para criar pencas e bolões esportivos grátis com amigos de forma segura e transparente."
   },
   "privacy": {
-    "title": "Política de Privacidade — Picks4All",
-    "description": "Como o Picks4All protege suas informações pessoais e dados de usuário em nossa plataforma de pencas esportivas."
+    "title": "Política de Privacidade e Proteção de Dados — Picks4All",
+    "description": "Como o Picks4All protege suas informações pessoais e dados de usuário. Política de privacidade completa da nossa plataforma de pencas e previsões esportivas."
   },
   "pricing": {
-    "title": "Preços — Picks4All",
-    "description": "Planos gratuitos e pagos para bolões esportivos. Até 20 jogadores grátis. Amplie seu bolão para grupos maiores."
+    "title": "Preços e Planos para Bolões Esportivos — Picks4All",
+    "description": "Planos gratuitos e pagos para bolões esportivos no Picks4All. Até 20 jogadores grátis por bolão. Amplie a capacidade do seu grupo com um pagamento único e acessível."
   },
   "refunds": {
-    "title": "Política de Reembolso — Picks4All",
-    "description": "Nossa política de reembolsos para pagamentos no Picks4All. Garantia de satisfação de 7 dias para capacidade não utilizada."
+    "title": "Política de Reembolso e Garantia de Satisfação — Picks4All",
+    "description": "Política de reembolsos para pagamentos no Picks4All. Garantia de satisfação de 7 dias para capacidade não utilizada. Processo simples e transparente para todos."
   },
   "login": {
     "title": "Entrar — Picks4All",
     "description": "Entre ou crie uma conta no Picks4All para participar de pencas de futebol com seus amigos."
   },
   "forgotPassword": {
-    "title": "Recuperar Senha"
+    "title": "Recuperar Senha",
+    "description": "Recupere o acesso à sua conta Picks4All. Insira seu email para receber um link de redefinição de senha."
   },
   "resetPassword": {
-    "title": "Redefinir Senha"
+    "title": "Redefinir Senha",
+    "description": "Defina uma nova senha para sua conta Picks4All."
   },
   "verifyEmail": {
-    "title": "Verificar Email"
+    "title": "Verificar Email",
+    "description": "Verifique seu endereço de email para ativar sua conta Picks4All."
   },
   "pollaFutbolera": {
     "title": "Polla Futbolera Online Gratis — Colombia, Chile, Venezuela",
-    "description": "Crea tu polla futbolera online gratis con amigos. La tradición colombiana y chilena de predicciones deportivas, ahora digital en Picks4All."
+    "description": "Crea tu polla futbolera online gratis con amigos. La tradición colombiana y chilena de predicciones deportivas del Mundial 2026, Champions League y más, ahora digital."
   },
   "prodeDeportivo": {
     "title": "Prode Deportivo Online Gratis — Argentina",
-    "description": "Juega al prode deportivo online gratis con amigos. La tradición argentina de pronósticos de fútbol, ahora digital en Picks4All."
+    "description": "Juega al prode deportivo online gratis con amigos. La tradición argentina de pronósticos de fútbol del Mundial 2026 y Champions League, ahora digital en Picks4All."
   },
   "pencaFutbol": {
     "title": "Penca de Futebol Online Grátis — Uruguai & Brasil",
-    "description": "Crie sua penca de futebol online grátis. A tradição de previsões esportivas entre amigos, agora digital no Picks4All."
+    "description": "Crie sua penca de futebol online grátis com amigos. A tradição de previsões esportivas da Copa do Mundo 2026 e Champions League, agora digital no Picks4All."
   },
   "porraDeportiva": {
     "title": "Porra Deportiva Online Gratis — España",
-    "description": "Crea tu porra deportiva online gratis con amigos. La tradición española de pronósticos de fútbol, ahora digital en Picks4All."
+    "description": "Crea tu porra deportiva online gratis con amigos. La tradición española de pronósticos de fútbol del Mundial 2026 y Champions League, ahora digital en Picks4All."
   },
   "footballPool": {
     "title": "Free Football Pool Online — Picks4All",
-    "description": "Create free football prediction pools with friends. Predict World Cup 2026 results, compete on leaderboards, and have fun."
+    "description": "Create free football prediction pools with friends. Predict World Cup 2026 and Champions League results, compete on custom leaderboards, and track your scores live."
   }
 }

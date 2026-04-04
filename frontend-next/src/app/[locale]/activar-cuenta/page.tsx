@@ -8,6 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("activation.meta");
   return {
     title: t("title"),
+    description: t("description"),
     robots: { index: false, follow: false },
   };
 }

@@ -7,7 +7,17 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dashboard/", "/pools/", "/admin/", "/profile/"],
+        disallow: [
+          "/dashboard/",
+          "/pools/",
+          "/admin/",
+          "/profile/",
+          "/login",
+          "/forgot-password",
+          "/verify-email",
+          "/reset-password",
+          "/activar-cuenta",
+        ],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

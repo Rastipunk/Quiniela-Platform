@@ -25,8 +25,6 @@ export async function generateMetadata(): Promise<Metadata> {
       canonical: url,
       languages: {
         es: `${baseUrl}/polla-futbolera`,
-        en: `${baseUrl}/en/polla-futbolera`,
-        pt: `${baseUrl}/pt/polla-futbolera`,
         "x-default": `${baseUrl}/polla-futbolera`,
       },
     },

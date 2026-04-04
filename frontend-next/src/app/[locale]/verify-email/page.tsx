@@ -7,6 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: t("verifyEmail.title"),
+    description: t("verifyEmail.description"),
     robots: { index: false, follow: false },
   };
 }

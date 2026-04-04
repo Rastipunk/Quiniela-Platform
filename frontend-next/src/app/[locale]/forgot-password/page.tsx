@@ -7,6 +7,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: t("forgotPassword.title"),
+    description: t("forgotPassword.description"),
     robots: { index: false, follow: false },
   };
 }

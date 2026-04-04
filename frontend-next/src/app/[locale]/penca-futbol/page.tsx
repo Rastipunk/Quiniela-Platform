@@ -25,8 +25,6 @@ export async function generateMetadata(): Promise<Metadata> {
       canonical: url,
       languages: {
         es: `${baseUrl}/penca-futbol`,
-        en: `${baseUrl}/en/penca-futbol`,
-        pt: `${baseUrl}/pt/penca-futbol`,
         "x-default": `${baseUrl}/penca-futbol`,
       },
     },
