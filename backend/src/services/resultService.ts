@@ -102,6 +102,7 @@ export async function publishResult(data: PublishResultInput, ctx: AuditContext)
   const instanceResultSourceMode = pool.tournamentInstance.resultSourceMode as ResultSourceMode;
 
   // 5) Transaction with FOR UPDATE locking
+  let resolvedSource: ResultSource = "HOST_MANUAL"; // will be set inside tx
   const saved = await prisma.$transaction(async (tx) => {
     // header (poolId+matchId) — lock row to serialize concurrent publications
     let header = await tx.poolMatchResult.findUnique({ where: { poolId_matchId: { poolId, matchId } } });
@@ -133,6 +134,7 @@ export async function publishResult(data: PublishResultInput, ctx: AuditContext)
       }
       source = "HOST_OVERRIDE";
     }
+    resolvedSource = source;
 
     // Override siempre requiere justificación
     if (source === "HOST_OVERRIDE" && !reason) {
@@ -180,7 +182,7 @@ export async function publishResult(data: PublishResultInput, ctx: AuditContext)
     userAgent: ctx.userAgent ?? null,
   }));
 
-  return { saved, pool, match, source: saved.currentVersion?.source ?? source };
+  return { saved, pool, match, source: resolvedSource };
 }
 
 // ─── sendResultNotifications ─────────────────────────────────
