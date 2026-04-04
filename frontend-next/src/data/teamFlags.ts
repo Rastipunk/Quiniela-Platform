@@ -13,24 +13,24 @@ export type TeamFlagMapping = {
 
 /**
  * Mapeo de banderas para FIFA World Cup 2026
- * Basado en el sorteo oficial del 5 de diciembre de 2025
- * Fuente: https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026
+ * Fuente: API-Football (api-sports.io) league=1, season=2026
+ * Verificado: 2026-04-03 contra ESPN, FIFA.com, NBC Sports
  *
  * Formato: 12 grupos (A-L) de 4 equipos cada uno
- * Equipos sin determinar marcados como "TBD" (To Be Determined)
+ * Todos los 48 equipos confirmados (playoffs resueltos)
  */
 export const WC2026_FLAGS: TeamFlagMapping = {
   // Grupo A
   "A1": { country: "México", iso2: "mx", flagUrl: "https://flagcdn.com/w40/mx.png" },
   "A2": { country: "Corea del Sur", iso2: "kr", flagUrl: "https://flagcdn.com/w40/kr.png" },
   "A3": { country: "Sudáfrica", iso2: "za", flagUrl: "https://flagcdn.com/w40/za.png" },
-  "A4": { country: "TBD (Playoff Europa D)", iso2: "xx", flagUrl: "" },
+  "A4": { country: "República Checa", iso2: "cz", flagUrl: "https://flagcdn.com/w40/cz.png" },
 
   // Grupo B
   "B1": { country: "Canadá", iso2: "ca", flagUrl: "https://flagcdn.com/w40/ca.png" },
   "B2": { country: "Qatar", iso2: "qa", flagUrl: "https://flagcdn.com/w40/qa.png" },
   "B3": { country: "Suiza", iso2: "ch", flagUrl: "https://flagcdn.com/w40/ch.png" },
-  "B4": { country: "TBD (Playoff Europa A)", iso2: "xx", flagUrl: "" },
+  "B4": { country: "Bosnia y Herzegovina", iso2: "ba", flagUrl: "https://flagcdn.com/w40/ba.png" },
 
   // Grupo C
   "C1": { country: "Brasil", iso2: "br", flagUrl: "https://flagcdn.com/w40/br.png" },
@@ -42,7 +42,7 @@ export const WC2026_FLAGS: TeamFlagMapping = {
   "D1": { country: "Estados Unidos", iso2: "us", flagUrl: "https://flagcdn.com/w40/us.png" },
   "D2": { country: "Australia", iso2: "au", flagUrl: "https://flagcdn.com/w40/au.png" },
   "D3": { country: "Paraguay", iso2: "py", flagUrl: "https://flagcdn.com/w40/py.png" },
-  "D4": { country: "TBD (Playoff Europa C)", iso2: "xx", flagUrl: "" },
+  "D4": { country: "Turquía", iso2: "tr", flagUrl: "https://flagcdn.com/w40/tr.png" },
 
   // Grupo E
   "E1": { country: "Alemania", iso2: "de", flagUrl: "https://flagcdn.com/w40/de.png" },
@@ -54,13 +54,13 @@ export const WC2026_FLAGS: TeamFlagMapping = {
   "F1": { country: "Países Bajos", iso2: "nl", flagUrl: "https://flagcdn.com/w40/nl.png" },
   "F2": { country: "Japón", iso2: "jp", flagUrl: "https://flagcdn.com/w40/jp.png" },
   "F3": { country: "Túnez", iso2: "tn", flagUrl: "https://flagcdn.com/w40/tn.png" },
-  "F4": { country: "TBD (Playoff Europa B)", iso2: "xx", flagUrl: "" },
+  "F4": { country: "Suecia", iso2: "se", flagUrl: "https://flagcdn.com/w40/se.png" },
 
   // Grupo G
-  "G1": { country: "Irán", iso2: "ir", flagUrl: "https://flagcdn.com/w40/ir.png" },
-  "G2": { country: "Nueva Zelanda", iso2: "nz", flagUrl: "https://flagcdn.com/w40/nz.png" },
-  "G3": { country: "Bélgica", iso2: "be", flagUrl: "https://flagcdn.com/w40/be.png" },
-  "G4": { country: "Chile", iso2: "cl", flagUrl: "https://flagcdn.com/w40/cl.png" },
+  "G1": { country: "Bélgica", iso2: "be", flagUrl: "https://flagcdn.com/w40/be.png" },
+  "G2": { country: "Egipto", iso2: "eg", flagUrl: "https://flagcdn.com/w40/eg.png" },
+  "G3": { country: "Irán", iso2: "ir", flagUrl: "https://flagcdn.com/w40/ir.png" },
+  "G4": { country: "Nueva Zelanda", iso2: "nz", flagUrl: "https://flagcdn.com/w40/nz.png" },
 
   // Grupo H
   "H1": { country: "España", iso2: "es", flagUrl: "https://flagcdn.com/w40/es.png" },
@@ -72,7 +72,7 @@ export const WC2026_FLAGS: TeamFlagMapping = {
   "I1": { country: "Francia", iso2: "fr", flagUrl: "https://flagcdn.com/w40/fr.png" },
   "I2": { country: "Senegal", iso2: "sn", flagUrl: "https://flagcdn.com/w40/sn.png" },
   "I3": { country: "Noruega", iso2: "no", flagUrl: "https://flagcdn.com/w40/no.png" },
-  "I4": { country: "TBD (Playoff Intercontinental 2)", iso2: "xx", flagUrl: "" },
+  "I4": { country: "Irak", iso2: "iq", flagUrl: "https://flagcdn.com/w40/iq.png" },
 
   // Grupo J
   "J1": { country: "Argentina", iso2: "ar", flagUrl: "https://flagcdn.com/w40/ar.png" },
@@ -84,7 +84,7 @@ export const WC2026_FLAGS: TeamFlagMapping = {
   "K1": { country: "Portugal", iso2: "pt", flagUrl: "https://flagcdn.com/w40/pt.png" },
   "K2": { country: "Uzbekistán", iso2: "uz", flagUrl: "https://flagcdn.com/w40/uz.png" },
   "K3": { country: "Colombia", iso2: "co", flagUrl: "https://flagcdn.com/w40/co.png" },
-  "K4": { country: "TBD (Playoff Intercontinental 1)", iso2: "xx", flagUrl: "" },
+  "K4": { country: "R.D. del Congo", iso2: "cd", flagUrl: "https://flagcdn.com/w40/cd.png" },
 
   // Grupo L
   "L1": { country: "Inglaterra", iso2: "gb-eng", flagUrl: "https://flagcdn.com/w40/gb-eng.png" },
