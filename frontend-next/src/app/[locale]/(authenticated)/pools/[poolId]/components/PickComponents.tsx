@@ -100,8 +100,8 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
   const { pick } = props;
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
-  const homeName = getCountryName(props.homeTeam.id, props.tournamentKey);
-  const awayName = getCountryName(props.awayTeam.id, props.tournamentKey);
+  const homeName = props.homeTeam.name || getCountryName(props.homeTeam.id, props.tournamentKey);
+  const awayName = props.awayTeam.name || getCountryName(props.awayTeam.id, props.tournamentKey);
 
   if (pick.type === "SCORE") {
     return (
@@ -201,8 +201,8 @@ function PickEditor(props: {
 
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
-  const homeName = getCountryName(props.homeTeam.id, props.tournamentKey);
-  const awayName = getCountryName(props.awayTeam.id, props.tournamentKey);
+  const homeName = props.homeTeam.name || getCountryName(props.homeTeam.id, props.tournamentKey);
+  const awayName = props.awayTeam.name || getCountryName(props.awayTeam.id, props.tournamentKey);
 
   const handleSave = () => {
     if (props.allowScorePick) {

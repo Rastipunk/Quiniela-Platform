@@ -46,7 +46,10 @@ export function MatchCard({
   const awayIsPlaceholder = isPlaceholder(m.awayTeam?.id || "");
   const hasAnyPlaceholder = homeIsPlaceholder || awayIsPlaceholder;
 
-  const matchTitle = `${getCountryName(m.homeTeam?.id, tournamentKey)} vs ${getCountryName(m.awayTeam?.id, tournamentKey)}`;
+  // Always prefer team.name from API; fall back to static mapping only if missing
+  const homeName = m.homeTeam?.name || getCountryName(m.homeTeam?.id, tournamentKey);
+  const awayName = m.awayTeam?.name || getCountryName(m.awayTeam?.id, tournamentKey);
+  const matchTitle = `${homeName} vs ${awayName}`;
 
   return (
     <div
@@ -80,7 +83,7 @@ export function MatchCard({
                   return flag?.flagUrl ? (
                     <img
                       src={flag.flagUrl}
-                      alt={getCountryName(m.homeTeam.id, tournamentKey)}
+                      alt={homeName}
                       style={{ width: 32, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
                     />
                   ) : (
@@ -90,7 +93,7 @@ export function MatchCard({
                   );
                 })()}
                 <span style={{ fontSize: 14, fontWeight: 500 }}>
-                  {getCountryName(m.homeTeam.id, tournamentKey)}
+                  {homeName}
                 </span>
               </>
             )}
@@ -110,14 +113,14 @@ export function MatchCard({
             ) : (
               <>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>
-                  {getCountryName(m.awayTeam.id, tournamentKey)}
+                  {awayName}
                 </span>
                 {(() => {
                   const flag = getTeamFlag(m.awayTeam.id.replace("t_", ""), tournamentKey);
                   return flag?.flagUrl ? (
                     <img
                       src={flag.flagUrl}
-                      alt={getCountryName(m.awayTeam.id, tournamentKey)}
+                      alt={awayName}
                       style={{ width: 32, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
                     />
                   ) : (
