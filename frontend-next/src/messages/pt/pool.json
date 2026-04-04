@@ -280,10 +280,11 @@
 
   "result": {
     "title": "Resultado",
-    "noResultHost": "Sem resultado (publique quando terminar)",
-    "noResultPlayer": "Aguardando resultado oficial",
-    "correctResult": "Corrigir resultado",
-    "publishCorrection": "Publicar correção",
+    "noResultHost": "Publicado automaticamente ao final da partida",
+    "noResultPlayer": "Publicado automaticamente ao final da partida",
+    "awaitingResult": "Pendente — publicado automaticamente",
+    "correctResult": "Modificar resultado",
+    "publishCorrection": "Confirmar modificação",
     "publishResult": "Publicar resultado",
     "cancel": "Cancelar",
     "penalties": "Pênaltis",
@@ -291,9 +292,11 @@
     "penaltiesLabel": "Pênaltis {team}",
     "teamWins": "{team} vence",
     "officialResult": "Resultado oficial",
-    "correctionLabel": "Correção",
-    "correctionPlaceholder": "Motivo da correção (obrigatório)",
-    "correctionRequired": "Para corrigir um resultado, você deve fornecer um motivo"
+    "correctionLabel": "Motivo da alteração",
+    "correctionPlaceholder": "Explique por que está modificando este resultado (obrigatório)",
+    "correctionRequired": "Você deve fornecer um motivo para modificar o resultado",
+    "overrideWarning": "Todos os participantes serão notificados por email sobre esta modificação.",
+    "inProgress": "Em jogo"
   },
 
   "leaderboard": {

@@ -19,6 +19,8 @@ import {
   handleAutoAdvance,
   getLeaderboard,
 } from "../services/resultService";
+import { sendResultOverrideNotification } from "../lib/email";
+import { extractTeams } from "../lib/fixture";
 import { ServiceError, type AuditContext } from "../services/authService";
 
 export const resultsRouter = Router();
@@ -86,7 +88,7 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
   }
 
   try {
-    const { saved, pool, match } = await publishResult(
+    const { saved, pool, match, source } = await publishResult(
       {
         poolId,
         matchId,
@@ -96,19 +98,66 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
       auditCtx(req),
     );
 
-    // Fire-and-forget: email notifications
-    sendResultNotifications({
-      poolId,
-      matchId,
-      homeGoals: parsed.data.homeGoals,
-      awayGoals: parsed.data.awayGoals,
-      pool: {
-        name: pool.name,
-        scoringPresetKey: pool.scoringPresetKey,
-        tournamentInstance: { dataJson: pool.tournamentInstance.dataJson },
-      },
-      match,
-    });
+    if (source === "HOST_OVERRIDE" && parsed.data.reason) {
+      // Override: notify ALL members about the change
+      const teams = extractTeams(pool.tournamentInstance.dataJson);
+      const teamById = new Map(teams.map((t: any) => [t.id, t]));
+      const homeName = teamById.get(match.homeTeamId)?.name ?? "Local";
+      const awayName = teamById.get(match.awayTeamId)?.name ?? "Visitante";
+      const matchDesc = `${homeName} vs ${awayName}`;
+
+      // Get previous result from version history
+      const { prisma } = await import("../db");
+      const prevVersions = await prisma.poolMatchResultVersion.findMany({
+        where: { resultId: saved.id },
+        orderBy: { versionNumber: "desc" },
+        take: 2,
+      });
+      const prev = prevVersions[1]; // second most recent = previous
+      const prevResult = prev ? `${prev.homeGoals} - ${prev.awayGoals}` : "N/A";
+      const newResult = `${parsed.data.homeGoals} - ${parsed.data.awayGoals}`;
+
+      // Get host name
+      const host = await prisma.user.findUnique({
+        where: { id: req.auth!.userId },
+        select: { displayName: true, username: true },
+      });
+      const hostName = host?.displayName || host?.username || "Host";
+
+      // Get ALL active members and send notification
+      const members = await prisma.poolMember.findMany({
+        where: { poolId, status: "ACTIVE" },
+        include: { user: { select: { email: true, displayName: true } } },
+      });
+
+      for (const member of members) {
+        sendResultOverrideNotification({
+          to: member.user.email,
+          memberName: member.user.displayName || "Jugador",
+          poolName: pool.name,
+          poolId,
+          matchDescription: matchDesc,
+          previousResult: prevResult,
+          newResult,
+          reason: parsed.data.reason,
+          hostName,
+        }).catch((err) => console.error("Override notification failed:", err));
+      }
+    } else {
+      // Normal result published (by API sync or legacy manual)
+      sendResultNotifications({
+        poolId,
+        matchId,
+        homeGoals: parsed.data.homeGoals,
+        awayGoals: parsed.data.awayGoals,
+        pool: {
+          name: pool.name,
+          scoringPresetKey: pool.scoringPresetKey,
+          tournamentInstance: { dataJson: pool.tournamentInstance.dataJson },
+        },
+        match,
+      });
+    }
 
     // Fire-and-forget: auto-advance logic
     handleAutoAdvance(

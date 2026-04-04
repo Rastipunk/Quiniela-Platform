@@ -122,27 +122,23 @@ export async function publishResult(data: PublishResultInput, ctx: AuditContext)
     let source: ResultSource;
 
     if (instanceResultSourceMode === "MANUAL") {
-      source = "HOST_MANUAL";
+      // Legacy: instancias manuales permiten publicación directa
+      source = last ? "HOST_OVERRIDE" : "HOST_MANUAL";
     } else {
+      // AUTO mode: el host SOLO puede hacer override de resultados existentes
       if (!last) {
-        source = "HOST_PROVISIONAL";
-      } else if (last.source === "API_CONFIRMED") {
-        source = "HOST_OVERRIDE";
-      } else if (last.source === "HOST_PROVISIONAL") {
-        source = "HOST_PROVISIONAL";
-      } else if (last.source === "HOST_OVERRIDE") {
-        source = "HOST_OVERRIDE";
-      } else {
-        source = "HOST_PROVISIONAL";
+        throw new ServiceError("RESULT_NOT_YET_AVAILABLE", 403, {
+          message: "Results are published automatically by the API. You can only modify a result after it has been published.",
+        });
       }
+      source = "HOST_OVERRIDE";
     }
 
-    // Validar reason según las reglas
-    if (nextVersion > 1 && !reason) {
-      throw new ServiceError("REASON_REQUIRED_FOR_ERRATA", 400, { message: "reason is required for errata (version > 1)" });
-    }
+    // Override siempre requiere justificación
     if (source === "HOST_OVERRIDE" && !reason) {
-      throw new ServiceError("REASON_REQUIRED_FOR_OVERRIDE", 400, { message: "reason is required for HOST_OVERRIDE" });
+      throw new ServiceError("REASON_REQUIRED_FOR_OVERRIDE", 400, {
+        message: "A reason is required when modifying a result. All participants will be notified.",
+      });
     }
 
     // crear versión con source
@@ -184,7 +180,7 @@ export async function publishResult(data: PublishResultInput, ctx: AuditContext)
     userAgent: ctx.userAgent ?? null,
   }));
 
-  return { saved, pool, match };
+  return { saved, pool, match, source: saved.currentVersion?.source ?? source };
 }
 
 // ─── sendResultNotifications ─────────────────────────────────

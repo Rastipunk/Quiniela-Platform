@@ -58,8 +58,8 @@ export async function getPoolOverview(
   const matchIds = matches.map((m) => m.id);
   const now = new Date();
 
-  // 4+5) My picks, results and overrides in parallel
-  const [myPredictions, results, matchOverrides] = await Promise.all([
+  // 4+5) My picks, results, overrides and sync states in parallel
+  const [myPredictions, results, matchOverrides, syncStates] = await Promise.all([
     prisma.prediction.findMany({
       where: { poolId, userId, matchId: { in: matchIds } },
     }),
@@ -68,8 +68,13 @@ export async function getPoolOverview(
       include: { currentVersion: true },
     }),
     prisma.poolMatchOverride.findMany({ where: { poolId } }),
+    prisma.matchSyncState.findMany({
+      where: { tournamentInstanceId: pool.tournamentInstanceId, internalMatchId: { in: matchIds } },
+      select: { internalMatchId: true, syncStatus: true, lastApiStatus: true },
+    }),
   ]);
   const overrideByMatchId = new Map(matchOverrides.map((o) => [o.matchId, o]));
+  const syncByMatchId = new Map(syncStates.map((s) => [s.internalMatchId, s]));
   const myPickByMatchId = new Map(myPredictions.map((p) => [p.matchId, typed<PickJson>(p.pickJson)]));
 
   const resultByMatchId = new Map<string, {
@@ -125,6 +130,8 @@ export async function getPoolOverview(
       result,
       scoringEnabled: override ? override.scoringEnabled : true,
       scoringOverrideReason: override?.reason ?? null,
+      matchSyncStatus: syncByMatchId.get(m.id)?.syncStatus ?? null,
+      resultSource: result ? (results.find(r => r.matchId === m.id)?.currentVersion?.source ?? null) : null,
     };
   });
 

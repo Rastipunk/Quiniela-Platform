@@ -280,10 +280,11 @@
 
   "result": {
     "title": "Result",
-    "noResultHost": "No result (publish when finished)",
-    "noResultPlayer": "Pending official result",
-    "correctResult": "Correct result",
-    "publishCorrection": "Publish correction",
+    "noResultHost": "Published automatically when the match ends",
+    "noResultPlayer": "Published automatically when the match ends",
+    "awaitingResult": "Pending — published automatically",
+    "correctResult": "Modify result",
+    "publishCorrection": "Confirm modification",
     "publishResult": "Publish result",
     "cancel": "Cancel",
     "penalties": "Penalties",
@@ -291,9 +292,11 @@
     "penaltiesLabel": "Penalties {team}",
     "teamWins": "{team} wins",
     "officialResult": "Official result",
-    "correctionLabel": "Correction",
-    "correctionPlaceholder": "Reason for correction (required)",
-    "correctionRequired": "To correct a result, you must provide a reason"
+    "correctionLabel": "Reason for change",
+    "correctionPlaceholder": "Explain why you are modifying this result (required)",
+    "correctionRequired": "You must provide a reason to modify the result",
+    "overrideWarning": "All participants will be notified by email about this modification.",
+    "inProgress": "In play"
   },
 
   "leaderboard": {

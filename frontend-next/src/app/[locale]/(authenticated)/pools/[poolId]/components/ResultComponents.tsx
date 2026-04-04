@@ -25,12 +25,14 @@ export function ResultSection(props: {
     <div style={{ border: "1px solid #f2f2f2", borderRadius: 10, padding: "8px 10px" }}>
       <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6, color: "#555" }}>{t("result.title")}</div>
 
-      {!hasResult && !editMode && (
+      {/* No result yet — show pending message (no form for anyone) */}
+      {!hasResult && (
         <div style={{ color: "#999", fontSize: 13, fontStyle: "italic" }}>
-          {props.isHost ? t("result.noResultHost") : t("result.noResultPlayer")}
+          {t("result.awaitingResult")}
         </div>
       )}
 
+      {/* Result exists — show it */}
       {hasResult && !editMode && (
         <>
           <ResultDisplay
@@ -46,11 +48,12 @@ export function ResultSection(props: {
                 marginTop: 10,
                 padding: "8px 12px",
                 borderRadius: 8,
-                border: "1px solid #666",
-                background: "#fff",
-                color: "#333",
+                border: "1px solid #e53e3e",
+                background: "#fff5f5",
+                color: "#c53030",
                 cursor: "pointer",
                 fontSize: 13,
+                fontWeight: 600,
               }}
             >
               ✏️ {t("result.correctResult")}
@@ -59,16 +62,31 @@ export function ResultSection(props: {
         </>
       )}
 
-      {props.isHost && (editMode || !hasResult) && (
-        <div style={{ marginTop: hasResult ? 10 : 0, borderTop: hasResult ? "1px solid #eee" : "none", paddingTop: hasResult ? 10 : 0 }}>
+      {/* Override editor — ONLY when result exists and host clicks edit */}
+      {props.isHost && hasResult && editMode && (
+        <div style={{ marginTop: 10, borderTop: "1px solid #eee", paddingTop: 10 }}>
+          {/* Warning banner */}
+          <div style={{
+            padding: "10px 14px",
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            borderRadius: 8,
+            marginBottom: 12,
+            fontSize: 13,
+            color: "#991b1b",
+            fontWeight: 600,
+            lineHeight: 1.5,
+          }}>
+            ⚠️ {t("result.overrideWarning")}
+          </div>
           <ResultEditor
             result={props.result}
-            requireReason={hasResult}
+            requireReason={true}
             onSave={(homeGoals, awayGoals, reason, homePenalties, awayPenalties) => {
               props.onSave(homeGoals, awayGoals, reason, homePenalties, awayPenalties);
               setEditMode(false);
             }}
-            onCancel={hasResult ? () => setEditMode(false) : undefined}
+            onCancel={() => setEditMode(false)}
             disabled={props.disabled}
             homeTeam={props.homeTeam}
             awayTeam={props.awayTeam}

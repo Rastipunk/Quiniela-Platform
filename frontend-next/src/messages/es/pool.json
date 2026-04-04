@@ -280,10 +280,11 @@
 
   "result": {
     "title": "Resultado",
-    "noResultHost": "Sin resultado (publicar cuando termine)",
-    "noResultPlayer": "Pendiente de resultado oficial",
-    "correctResult": "Corregir resultado",
-    "publishCorrection": "Publicar corrección",
+    "noResultHost": "Se publica automáticamente al finalizar el partido",
+    "noResultPlayer": "Se publica automáticamente al finalizar el partido",
+    "awaitingResult": "Pendiente — se publica automáticamente",
+    "correctResult": "Modificar resultado",
+    "publishCorrection": "Confirmar modificación",
     "publishResult": "Publicar resultado",
     "cancel": "Cancelar",
     "penalties": "Penalties",
@@ -291,9 +292,11 @@
     "penaltiesLabel": "Penalties {team}",
     "teamWins": "{team} gana",
     "officialResult": "Resultado oficial",
-    "correctionLabel": "Corrección",
-    "correctionPlaceholder": "Razón de la corrección (obligatorio)",
-    "correctionRequired": "Para corregir un resultado, debes proporcionar una razón"
+    "correctionLabel": "Razón del cambio",
+    "correctionPlaceholder": "Explica por qué modificas este resultado (obligatorio)",
+    "correctionRequired": "Debes proporcionar una razón para modificar el resultado",
+    "overrideWarning": "Todos los participantes serán notificados por email sobre esta modificación.",
+    "inProgress": "En juego"
   },
 
   "leaderboard": {

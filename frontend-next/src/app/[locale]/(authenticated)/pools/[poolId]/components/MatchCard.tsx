@@ -150,6 +150,19 @@ export function MatchCard({
               ⚠️ {t("scoringDisabledBadge")}
             </span>
           )}
+          {(m as any).matchSyncStatus === "IN_PROGRESS" && !m.result && (
+            <span style={{
+              padding: "4px 10px",
+              border: "1px solid #f59e0b",
+              borderRadius: 999,
+              background: "#fffbeb",
+              color: "#b45309",
+              fontWeight: 700,
+              animation: "pulse 2s infinite",
+            }}>
+              🔴 {t("result.inProgress")}
+            </span>
+          )}
         </div>
       </div>
 
