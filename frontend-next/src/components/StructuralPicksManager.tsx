@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { colors } from "@/lib/theme";
 import { GroupStandingsCard } from "./GroupStandingsCard";
 import { KnockoutMatchCard } from "./KnockoutMatchCard";
 import {
@@ -270,7 +271,7 @@ export function StructuralPicksManager({
           marginBottom: "2rem",
           padding: "1.5rem",
           background: phaseType === "GROUP"
-            ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+            ? colors.brandGradient
             : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
           borderRadius: 12,
           color: "white",
@@ -377,7 +378,7 @@ export function StructuralPicksManager({
               onClick={_onShowBreakdown}
               style={{
                 padding: "10px 20px",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: colors.brandGradient,
                 color: "white",
                 border: "none",
                 borderRadius: 8,

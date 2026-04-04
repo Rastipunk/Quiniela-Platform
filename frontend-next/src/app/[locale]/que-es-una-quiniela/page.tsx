@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { SITE_URL } from "@/lib/siteConfig";
+import { colors } from "@/lib/theme";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -520,7 +521,7 @@ export default async function QueEsUnaQuinielaPage() {
         {/* CTA */}
         <section className="seo-cta"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             color: "white",
             padding: "80px 40px",
             textAlign: "center",

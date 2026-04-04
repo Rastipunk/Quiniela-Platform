@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { colors } from "@/lib/theme";
 
 interface FAQItem {
   question: string;
@@ -57,7 +58,7 @@ export function FAQAccordion({ faqData }: FAQAccordionProps) {
                 border: "none",
                 background:
                   selectedCategory === category
-                    ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                    ? colors.brandGradient
                     : "var(--surface)",
                 color:
                   selectedCategory === category ? "white" : "var(--text)",

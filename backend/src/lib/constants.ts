@@ -42,6 +42,24 @@ export const SUPPORTED_LOCALES = ["es", "en", "pt"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: SupportedLocale = "es";
 
+// ── User profile rules ───────────────────────────────────────
+export const USER_RULES = {
+  USERNAME_CHANGE_COOLDOWN_DAYS: 30,
+  MIN_AGE: 13,
+  MAX_AGE: 120,
+} as const;
+
+// ── Pagination ───────────────────────────────────────────────
+export const PAGINATION = {
+  DEFAULT_LIMIT: 50,
+  MAX_LIMIT: 100,
+} as const;
+
+// ── Reserved usernames ───────────────────────────────────────
+export const RESERVED_USERNAMES = [
+  "admin", "root", "system", "quiniela", "api", "www",
+] as const;
+
 // ── Placeholder team prefixes (block picks) ─────────────────
 export const PLACEHOLDER_TEAM_PREFIXES = [
   "t_TBD",

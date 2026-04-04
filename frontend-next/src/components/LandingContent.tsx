@@ -7,6 +7,7 @@ import { useAuthPanel } from "@/contexts/AuthPanelContext";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 import { CORPORATE_BASE_PRICE } from "@/lib/pricing";
+import { colors } from "@/lib/theme";
 
 export function LandingContent() {
   const t = useTranslations("landing");
@@ -498,7 +499,7 @@ export function LandingContent() {
               href="/empresas"
               style={{
                 marginTop: 24,
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: colors.brandGradient,
                 color: "white",
                 border: "none",
                 borderRadius: 10,
@@ -594,7 +595,7 @@ export function LandingContent() {
       {/* Final CTA */}
       <section
         style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: colors.brandGradient,
           color: "white",
           padding: isMobile ? "60px 20px" : "80px 40px",
           textAlign: "center",
@@ -701,7 +702,7 @@ function StepCard({
           width: 56,
           height: 56,
           borderRadius: "50%",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: colors.brandGradient,
           color: "white",
           display: "flex",
           alignItems: "center",
@@ -836,7 +837,7 @@ function TournamentCard({
           onClick={onCta}
           style={{
             marginTop: 4,
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             color: "white",
             border: "none",
             borderRadius: 6,

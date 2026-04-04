@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { sendData, sendOk, sendBadRequest, sendNotFound } from "../lib/apiResponse";
+import { USER_RULES } from "../lib/constants";
 
 export const userProfileRouter = Router();
 
@@ -129,8 +130,8 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
         (Date.now() - currentUser.lastUsernameChangeAt.getTime()) /
         (1000 * 60 * 60 * 24);
 
-      if (daysSinceLastChange < 30) {
-        const daysRemaining = Math.ceil(30 - daysSinceLastChange);
+      if (daysSinceLastChange < USER_RULES.USERNAME_CHANGE_COOLDOWN_DAYS) {
+        const daysRemaining = Math.ceil(USER_RULES.USERNAME_CHANGE_COOLDOWN_DAYS - daysSinceLastChange);
         return sendBadRequest(res, "USERNAME_CHANGE_TOO_SOON", { daysRemaining });
       }
     }
@@ -148,11 +149,11 @@ userProfileRouter.patch("/me/profile", async (req, res) => {
     const actualAge =
       monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
 
-    if (actualAge < 13) {
+    if (actualAge < USER_RULES.MIN_AGE) {
       return sendBadRequest(res, "AGE_TOO_YOUNG");
     }
 
-    if (actualAge > 120) {
+    if (actualAge > USER_RULES.MAX_AGE) {
       return sendBadRequest(res, "AGE_INVALID", { message: "Por favor verifica tu fecha de nacimiento" });
     }
   }

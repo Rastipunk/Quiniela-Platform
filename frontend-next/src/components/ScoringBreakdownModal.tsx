@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { colors } from "@/lib/theme";
 import {
   getMatchBreakdown,
   getPhaseBreakdown,
@@ -129,7 +130,7 @@ export function ScoringBreakdownModal({
         {/* Header */}
         <div
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             padding: "1.25rem 1.5rem",
             color: "white",
             display: "flex",

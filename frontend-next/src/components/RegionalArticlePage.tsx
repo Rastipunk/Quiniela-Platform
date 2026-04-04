@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { RegisterButton } from "@/components/RegisterButton";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { colors } from "@/lib/theme";
 
 const articleStyle = {
   paragraph: {
@@ -165,7 +166,7 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
                     height: 36,
                     borderRadius: "50%",
                     background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      colors.brandGradient,
                     color: "white",
                     display: "flex",
                     alignItems: "center",
@@ -296,7 +297,7 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
         <section
           className="seo-cta"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             color: "white",
             padding: "80px 40px",
             textAlign: "center",

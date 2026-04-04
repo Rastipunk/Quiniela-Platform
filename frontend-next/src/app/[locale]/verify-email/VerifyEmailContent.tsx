@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { verifyEmail } from "@/lib/api";
+import { colors } from "@/lib/theme";
 
 type VerificationStatus = "loading" | "success" | "already_verified" | "error";
 
@@ -72,7 +73,7 @@ function VerifyEmailInner() {
 
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: colors.brandGradient,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",

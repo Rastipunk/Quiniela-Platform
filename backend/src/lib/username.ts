@@ -1,5 +1,6 @@
 // backend/src/lib/username.ts
 // Validaciones y utilidades para usernames
+import { RESERVED_USERNAMES } from "./constants";
 
 /**
  * Valida que un username cumpla con las reglas:
@@ -40,9 +41,7 @@ export function validateUsername(username: string): {
     };
   }
 
-  // Palabras reservadas (opcional, agregar más según necesidad)
-  const reserved = ["admin", "root", "system", "quiniela", "api", "www"];
-  if (reserved.includes(clean)) {
+  if ((RESERVED_USERNAMES as readonly string[]).includes(clean)) {
     return { valid: false, error: "Este username está reservado" };
   }
 

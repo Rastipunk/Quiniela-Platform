@@ -2,6 +2,7 @@
 
 import { type GroupSingleBreakdown } from "../../lib/api";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "../../hooks/useIsMobile";
+import { colors } from "@/lib/theme";
 
 interface BreakdownModalProps {
   groupName: string;
@@ -54,7 +55,7 @@ export function BreakdownModal({
         {/* Header */}
         <div
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             padding: "1rem 1.25rem",
             color: "white",
             display: "flex",

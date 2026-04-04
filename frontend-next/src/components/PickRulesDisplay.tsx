@@ -4,6 +4,7 @@
 // Sprint 2 - Advanced Pick Types System
 
 import { useTranslations } from "next-intl";
+import { colors } from "@/lib/theme";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
 
 interface StructuralConfig {
@@ -49,7 +50,7 @@ export function PickRulesDisplay({
   return (
     <div style={{ padding: "1rem 0" }}>
       <div style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: colors.brandGradient,
         padding: "1.5rem",
         borderRadius: 12,
         marginBottom: "2rem",

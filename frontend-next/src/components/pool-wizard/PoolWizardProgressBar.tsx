@@ -6,17 +6,6 @@ import { colors, radii } from "../../lib/theme";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import type { WizardStep } from "../../types/poolWizard";
 
-const STEP_LABELS: Record<WizardStep, string> = {
-  COMPANY_INFO: "Empresa",
-  TOURNAMENT: "Torneo",
-  NAME_DETAILS: "Detalles",
-  SCORING: "Puntuación",
-  ADVANCED_RULES: "Reglas",
-  CAPACITY: "Capacidad",
-  EMPLOYEE_INVITES: "Empleados",
-  SUMMARY: "Resumen",
-};
-
 const STEP_ICONS: Record<WizardStep, string> = {
   COMPANY_INFO: "🏢",
   TOURNAMENT: "🏆",
@@ -65,7 +54,7 @@ export function PoolWizardProgressBar() {
                 minWidth: 0,
                 flex: 1,
               }}
-              title={t(`steps.${step}`, { defaultMessage: STEP_LABELS[step] })}
+              title={t(`steps.${step}`)}
             >
               <div style={{
                 width: isMobile ? 28 : 36,
@@ -102,7 +91,7 @@ export function PoolWizardProgressBar() {
                   textOverflow: "ellipsis",
                   maxWidth: 80,
                 }}>
-                  {t(`steps.${step}`, { defaultMessage: STEP_LABELS[step] })}
+                  {t(`steps.${step}`)}
                 </span>
               )}
             </button>

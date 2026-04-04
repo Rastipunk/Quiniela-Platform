@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { FAQAccordion } from "@/components/FAQAccordion";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
+import { colors } from "@/lib/theme";
 import {
   POOL_REGION_COOKIE,
   DEFAULT_REGION,
@@ -203,7 +204,7 @@ export default async function FAQPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: colors.brandGradient,
               color: "white",
               padding: "16px 32px",
               borderRadius: 8,
@@ -220,7 +221,7 @@ export default async function FAQPage() {
         <section
           className="seo-cta"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             color: "white",
             padding: "80px 40px",
             textAlign: "center",

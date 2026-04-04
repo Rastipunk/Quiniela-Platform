@@ -5,6 +5,7 @@ import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
+import { colors } from "@/lib/theme";
 import {
   POOL_REGION_COOKIE,
   DEFAULT_REGION,
@@ -284,7 +285,7 @@ export default async function ComoFuncionaPage() {
             <span
               aria-hidden="true"
               style={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: colors.brandGradient,
                 color: "white",
                 width: 40,
                 height: 40,
@@ -480,7 +481,7 @@ export default async function ComoFuncionaPage() {
         <section
           className="seo-cta"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             color: "white",
             padding: "80px 40px",
             textAlign: "center",

@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { activateCorporateAccount, checkCorporateInvite } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
+import { colors } from "@/lib/theme";
 import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
 
 type Status = "form" | "submitting" | "success" | "error";
@@ -198,7 +199,7 @@ export function ActivationContent() {
             onClick={() => router.push(`/pools/${poolId}`)}
             style={{
               marginTop: 24,
-              background: "#4f46e5",
+              background: colors.brand,
               color: "white",
               padding: "12px 28px",
               borderRadius: 8,
@@ -235,10 +236,10 @@ export function ActivationContent() {
           <div
             style={{
               padding: "12px 16px",
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
+              background: colors.errorBg,
+              border: `1px solid ${colors.errorBorder}`,
               borderRadius: 8,
-              color: "#b91c1c",
+              color: colors.errorDark,
               fontSize: 13,
               marginBottom: 20,
             }}
@@ -254,7 +255,7 @@ export function ActivationContent() {
             padding: "14px 32px",
             borderRadius: 10,
             border: "none",
-            background: "#4f46e5",
+            background: colors.brand,
             color: "white",
             fontSize: 16,
             fontWeight: 700,
@@ -316,10 +317,10 @@ export function ActivationContent() {
         <div
           style={{
             padding: "12px 16px",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
+            background: colors.errorBg,
+            border: `1px solid ${colors.errorBorder}`,
             borderRadius: 8,
-            color: "#b91c1c",
+            color: colors.errorDark,
             fontSize: 13,
             marginBottom: 20,
           }}
@@ -383,7 +384,7 @@ export function ActivationContent() {
             required
           />
           {confirmPassword && password !== confirmPassword && (
-            <p style={{ color: "#dc2626", fontSize: 12, margin: "4px 0 0" }}>
+            <p style={{ color: colors.error, fontSize: 12, margin: "4px 0 0" }}>
               {t("passwordMismatch")}
             </p>
           )}
@@ -412,7 +413,7 @@ export function ActivationContent() {
             padding: "12px 24px",
             borderRadius: 8,
             border: "none",
-            background: canSubmit ? "#4f46e5" : "var(--border)",
+            background: canSubmit ? colors.brand : "var(--border)",
             color: canSubmit ? "white" : "var(--muted)",
             fontSize: 15,
             fontWeight: 700,

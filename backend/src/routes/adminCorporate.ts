@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "../db";
+import { PAGINATION } from "../lib/constants";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { writeAuditEvent } from "../lib/audit";
@@ -29,7 +30,7 @@ adminCorporateRouter.get("/inquiries", async (req, res) => {
   if (responded === "false") where.responded = false;
 
   const pageNum = Math.max(1, parseInt(page as string) || 1);
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+  const limitNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(limit as string) || PAGINATION.DEFAULT_LIMIT));
   const skip = (pageNum - 1) * limitNum;
 
   const [inquiries, total] = await Promise.all([
@@ -145,7 +146,7 @@ adminCorporateRouter.get("/organizations", async (req, res) => {
   }
 
   const pageNum = Math.max(1, parseInt(page as string) || 1);
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+  const limitNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(limit as string) || PAGINATION.DEFAULT_LIMIT));
   const skip = (pageNum - 1) * limitNum;
 
   const [organizations, total] = await Promise.all([

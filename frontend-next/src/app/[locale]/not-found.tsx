@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
+import { colors } from "@/lib/theme";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 
 export default function NotFound() {
@@ -61,7 +62,7 @@ export default function NotFound() {
         <Link
           href="/"
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             color: "white",
             padding: "12px 24px",
             borderRadius: 8,

@@ -45,14 +45,14 @@
   },
 
   "steps": {
-    "COMPANY_INFO": "Empresa",
-    "TOURNAMENT": "Torneo",
-    "NAME_DETAILS": "Detalles",
-    "SCORING": "Puntuación",
-    "ADVANCED_RULES": "Reglas",
-    "CAPACITY": "Capacidad",
-    "EMPLOYEE_INVITES": "Empleados",
-    "SUMMARY": "Resumen"
+    "COMPANY_INFO": "Company",
+    "TOURNAMENT": "Tournament",
+    "NAME_DETAILS": "Details",
+    "SCORING": "Scoring",
+    "ADVANCED_RULES": "Rules",
+    "CAPACITY": "Capacity",
+    "EMPLOYEE_INVITES": "Employees",
+    "SUMMARY": "Summary"
   },
 
   "nav": {

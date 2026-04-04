@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { colors } from "@/lib/theme";
 import {
   saveGroupStandingsPick,
   getGroupStandingsPick,
@@ -509,7 +510,7 @@ export function GroupStandingsCard({
               padding: isMobile ? "12px 20px" : "0.5rem 1rem",
               fontSize: isMobile ? 14 : 12,
               fontWeight: 600,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: colors.brandGradient,
               color: "white",
               border: "none",
               borderRadius: 8,

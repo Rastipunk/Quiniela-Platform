@@ -5,6 +5,7 @@ import { getTeamFlag, getCountryName } from "@/data/teamFlags";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import type { PoolOverview, PoolMatchCard } from "@/lib/poolTypes";
 import { fmtUtc, isPlaceholder, getPlaceholderName } from "./poolHelpers";
+import { colors } from "@/lib/theme";
 import { PickSection } from "./PickComponents";
 import { ResultSection } from "./ResultComponents";
 
@@ -249,7 +250,7 @@ export function MatchCard({
                 padding: isMobile ? "10px 16px" : "6px 12px",
                 borderRadius: 6,
                 border: "none",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                background: colors.brandGradient,
                 color: "white",
                 cursor: "pointer",
                 fontSize: 12,

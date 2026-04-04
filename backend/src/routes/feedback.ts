@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth, optionalAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { PAGINATION } from "../lib/constants";
 import { sendAdminNotification, escapeHtml } from "../lib/email";
 import rateLimit from "express-rate-limit";
 import { sendCreated, sendData, sendBadRequest } from "../lib/apiResponse";
@@ -95,7 +96,7 @@ feedbackRouter.get("/admin", requireAuth, requireAdmin, async (req, res) => {
   }
 
   const pageNum = Math.max(1, parseInt(page as string) || 1);
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 50));
+  const limitNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(limit as string) || PAGINATION.DEFAULT_LIMIT));
   const skip = (pageNum - 1) * limitNum;
 
   const [feedbacks, total] = await Promise.all([

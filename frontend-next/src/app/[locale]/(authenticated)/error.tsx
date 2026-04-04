@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { BrandLogo } from "@/components/BrandLogo";
+import { colors } from "@/lib/theme";
 
 export default function AuthenticatedError({
   reset,
@@ -51,7 +52,7 @@ export default function AuthenticatedError({
         <button
           onClick={reset}
           style={{
-            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            background: colors.brandGradient,
             color: "white",
             padding: "12px 24px",
             borderRadius: 8,
