@@ -5,7 +5,6 @@ import { colors, radii, spacing, fontSize, fontWeight } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
-import type { PhasePickConfig } from "@/types/pickConfig";
 
 export function StepAdvancedRules() {
   const t = useTranslations("poolWizard");
@@ -14,10 +13,6 @@ export function StepAdvancedRules() {
 
   const knockoutPhases = state.scoringConfig.filter(
     (p) => p.phaseId !== "group_stage" && !p.phaseId.includes("group")
-  );
-
-  const hasAutoScaling = state.scoringConfig.some(
-    (p) => p.matchPicks?.autoScaling?.enabled
   );
 
   // ── Toggle extra time for a phase ─────────────────────────
@@ -29,62 +24,6 @@ export function StepAdvancedRules() {
     );
     dispatch({ type: "UPDATE_SCORING_CONFIG", config: updated });
   }
-
-  // ── Toggle auto-scaling globally ──────────────────────────
-  function toggleAutoScaling() {
-    const newEnabled = !hasAutoScaling;
-    const updated = state.scoringConfig.map((p) => {
-      if (!p.matchPicks) return p;
-      const currentScaling = p.matchPicks.autoScaling;
-      return {
-        ...p,
-        matchPicks: {
-          ...p.matchPicks,
-          autoScaling: {
-            enabled: newEnabled,
-            basePhase: currentScaling?.basePhase || "group_stage",
-            multipliers: currentScaling?.multipliers || getDefaultMultipliers(),
-          },
-        },
-      };
-    });
-    dispatch({ type: "UPDATE_SCORING_CONFIG", config: updated });
-  }
-
-  // ── Update multiplier for a phase ─────────────────────────
-  function updateMultiplier(phaseId: string, value: number) {
-    const clamped = Math.max(1, Math.min(10, value));
-    const updated = state.scoringConfig.map((p) => {
-      if (!p.matchPicks?.autoScaling) return p;
-      return {
-        ...p,
-        matchPicks: {
-          ...p.matchPicks,
-          autoScaling: {
-            ...p.matchPicks.autoScaling,
-            multipliers: {
-              ...p.matchPicks.autoScaling.multipliers,
-              [phaseId]: clamped,
-            },
-          },
-        },
-      };
-    });
-    dispatch({ type: "UPDATE_SCORING_CONFIG", config: updated });
-  }
-
-  function getDefaultMultipliers(): Record<string, number> {
-    const multipliers: Record<string, number> = {};
-    state.scoringConfig.forEach((p, i) => {
-      multipliers[p.phaseId] = i === 0 ? 1 : Math.min(i + 1, 4);
-    });
-    return multipliers;
-  }
-
-  // Get current multipliers from the first phase that has them
-  const currentMultipliers =
-    state.scoringConfig.find((p) => p.matchPicks?.autoScaling?.multipliers)
-      ?.matchPicks?.autoScaling?.multipliers || {};
 
   // ── Styles ────────────────────────────────────────────────
 
@@ -204,118 +143,6 @@ export function StepAdvancedRules() {
           </div>
         </div>
       )}
-
-      {/* Phase multipliers section */}
-      <div style={sectionStyle}>
-        <div style={toggleRowStyle}>
-          <div style={{ flex: 1 }}>
-            <h3 style={{
-              margin: 0,
-              fontSize: fontSize.lg,
-              fontWeight: fontWeight.bold,
-              color: colors.text,
-            }}>
-              {t("advancedRules.scalingTitle", {
-                defaultMessage: "Escalar puntos por fase",
-              })}
-              {!hasAutoScaling && (
-                <span style={badgeStyle}>
-                  {t("advancedRules.recommended", { defaultMessage: "Recomendado" })}
-                </span>
-              )}
-            </h3>
-            <p style={{
-              margin: `${spacing.xs}px 0 0`,
-              fontSize: fontSize.md,
-              color: colors.textMuted,
-              lineHeight: 1.5,
-            }}>
-              {t("advancedRules.scalingDesc", {
-                defaultMessage:
-                  "Multiplica los puntos en fases avanzadas para que valgan mas que en la fase de grupos.",
-              })}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={toggleAutoScaling}
-            style={toggleTrackStyle(hasAutoScaling)}
-            aria-label="Toggle phase scoring multipliers"
-          >
-            <div style={toggleThumbStyle(hasAutoScaling)} />
-          </button>
-        </div>
-
-        {hasAutoScaling && (
-          <div style={{
-            marginTop: spacing.lg,
-            display: "flex",
-            flexDirection: "column",
-            gap: spacing.sm,
-          }}>
-            {state.scoringConfig.map((phase) => {
-              const multiplier = currentMultipliers[phase.phaseId] ?? 1;
-              const isBase = phase.phaseId === "group_stage" || phase.phaseId.includes("group");
-              return (
-                <div key={phase.phaseId} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: `${spacing.sm}px ${spacing.md}px`,
-                  borderRadius: radii.lg,
-                  background: isBase ? colors.brandBg : colors.white,
-                  border: `1px solid ${isBase ? colors.brand : colors.borderLight}`,
-                }}>
-                  <span style={{
-                    fontSize: fontSize.base,
-                    fontWeight: isBase ? fontWeight.semibold : fontWeight.normal,
-                    color: colors.textDark,
-                  }}>
-                    {phase.phaseName}
-                    {isBase && (
-                      <span style={{
-                        fontSize: fontSize.xs,
-                        color: colors.brand,
-                        marginLeft: spacing.sm,
-                      }}>
-                        (base)
-                      </span>
-                    )}
-                  </span>
-                  <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
-                    <span style={{
-                      fontSize: fontSize.md,
-                      color: colors.textMuted,
-                    }}>
-                      x
-                    </span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      step={1}
-                      value={multiplier}
-                      onChange={(e) =>
-                        updateMultiplier(phase.phaseId, parseInt(e.target.value, 10) || 1)
-                      }
-                      style={{
-                        width: 56,
-                        padding: `${spacing.xs}px ${spacing.sm}px`,
-                        borderRadius: radii.lg,
-                        border: `1px solid ${colors.borderMedium}`,
-                        fontSize: fontSize.base,
-                        fontWeight: fontWeight.semibold,
-                        textAlign: "center",
-                        outline: "none",
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
       {/* Info note */}
       <div style={{
