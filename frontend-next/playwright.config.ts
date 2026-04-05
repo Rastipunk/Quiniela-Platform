@@ -1,4 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import dotenv from "dotenv";
+import path from "path";
+
+// Load .env.local for test credentials
+dotenv.config({ path: path.resolve(__dirname, ".env.local") });
 
 /**
  * Playwright E2E test configuration for Picks4All.
