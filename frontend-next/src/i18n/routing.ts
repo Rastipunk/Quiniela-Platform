@@ -94,6 +94,11 @@ export const routing = defineRouting({
       en: "/world-cup-2026/pool-rules",
       pt: "/copa-do-mundo-2026/regras-bolao",
     },
+    "/mundial-2026/predicciones": {
+      es: "/mundial-2026/predicciones",
+      en: "/world-cup-2026/predictions",
+      pt: "/copa-do-mundo-2026/previsoes",
+    },
     // Pool creation wizard
     "/crear-pool": {
       es: "/crear-pool",

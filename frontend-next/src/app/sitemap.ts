@@ -163,6 +163,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: allLocales("/mundial-2026/reglas-quiniela", "/world-cup-2026/pool-rules", "/copa-do-mundo-2026/regras-bolao"),
     },
 
+    // Predicciones IA
+    {
+      url: `${baseUrl}/mundial-2026/predicciones`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      alternates: allLocales("/mundial-2026/predicciones", "/world-cup-2026/predictions", "/copa-do-mundo-2026/previsoes"),
+    },
+
     // --- Regional SEO pages (each in its target language only) ---
 
     // Spanish-language regional terms (no /en or /pt alternates)

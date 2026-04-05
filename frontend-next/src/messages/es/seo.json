@@ -90,5 +90,9 @@
   "worldCupRules": {
     "title": "Reglas de Quiniela del Mundial 2026 — Puntuación y Criterios",
     "description": "Entiende las reglas y sistemas de puntuación para tu quiniela del Mundial 2026. Resultado exacto, ganador, multiplicadores por fase y más."
+  },
+  "worldCupPredictions": {
+    "title": "Predicciones Mundial 2026 por IA — Fase de Grupos a la Final",
+    "description": "Predicciones del Mundial FIFA 2026 generadas por inteligencia artificial. Análisis grupo por grupo, fase eliminatoria completa y pronóstico del campeón."
   }
 }

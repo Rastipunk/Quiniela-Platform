@@ -90,5 +90,9 @@
   "worldCupRules": {
     "title": "World Cup 2026 Pool Rules — Scoring Systems & Criteria",
     "description": "Understand the rules and scoring systems for your World Cup 2026 prediction pool. Exact score, correct winner, phase multipliers, and more."
+  },
+  "worldCupPredictions": {
+    "title": "World Cup 2026 AI Predictions — Group Stage to Final",
+    "description": "AI-powered FIFA World Cup 2026 predictions. Group-by-group analysis, full knockout bracket forecast, and championship prediction backed by data."
   }
 }

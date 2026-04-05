@@ -90,5 +90,9 @@
   "worldCupRules": {
     "title": "Regras do Bolão da Copa 2026 — Pontuação e Critérios",
     "description": "Entenda as regras e sistemas de pontuação do seu bolão da Copa 2026. Placar exato, vencedor correto, multiplicadores por fase e mais."
+  },
+  "worldCupPredictions": {
+    "title": "Previsões Copa do Mundo 2026 por IA — Grupos até a Final",
+    "description": "Previsões da Copa do Mundo FIFA 2026 geradas por inteligência artificial. Análise grupo a grupo, chave completa e prognóstico do campeão."
   }
 }

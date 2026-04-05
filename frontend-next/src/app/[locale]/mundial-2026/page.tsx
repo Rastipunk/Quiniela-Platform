@@ -126,6 +126,12 @@ function getSubPages(locale: string): SubPage[] {
       href: `${prefix}/${wcSlug}/${locale === "en" ? "rules" : "reglas"}`,
       icon: "\uD83D\uDCDC",
     },
+    {
+      titleKey: "hub.subPages.predictionsTitle",
+      descKey: "hub.subPages.predictionsDesc",
+      href: `${prefix}/${wcSlug}/${locale === "en" ? "predictions" : locale === "pt" ? "previsoes" : "predicciones"}`,
+      icon: "\uD83E\uDD16",
+    },
   ];
 }
 
