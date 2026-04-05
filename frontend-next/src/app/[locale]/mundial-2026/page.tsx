@@ -329,6 +329,57 @@ export default async function Mundial2026Page() {
             <RegisterButton label={t("hub.hero.cta")} />
           </section>
 
+          {/* ═══════════ SUB-PAGE NAVIGATION BAR ═══════════ */}
+          <nav
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 50,
+              background: "var(--surface)",
+              borderBottom: "1px solid var(--border)",
+              padding: "0 16px",
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                maxWidth: 1100,
+                margin: "0 auto",
+                padding: "10px 0",
+                minWidth: "max-content",
+              }}
+            >
+              {subPages.map((page) => (
+                <a
+                  key={page.href}
+                  href={page.href}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 16px",
+                    borderRadius: 999,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text)",
+                    textDecoration: "none",
+                    fontSize: "0.85rem",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    transition: "background 0.15s, border-color 0.15s",
+                  }}
+                >
+                  <span style={{ fontSize: "1rem" }}>{page.icon}</span>
+                  {t(page.titleKey)}
+                </a>
+              ))}
+            </div>
+          </nav>
+
           {/* ═══════════ GROUPS OVERVIEW ═══════════ */}
           <section
             style={{
