@@ -713,5 +713,15 @@
     "publishResult": "Publicar resultado",
     "pendingResult": "Aguardando resultado",
     "advancesBadge": "avança"
+  },
+
+  "join": {
+    "joining": "Entrando no bolão...",
+    "joiningDesc": "Processando seu convite.",
+    "success": "Você entrou com sucesso!",
+    "successDesc": "Redirecionando para seu novo bolão...",
+    "error": "Não foi possível entrar",
+    "errorDesc": "O código de convite pode ser inválido ou ter expirado.",
+    "backToDashboard": "Ir para meus bolões"
   }
 }

@@ -713,5 +713,15 @@
     "publishResult": "Publicar resultado",
     "pendingResult": "Pendiente de resultado",
     "advancesBadge": "avanza"
+  },
+
+  "join": {
+    "joining": "Uniéndote a la pool...",
+    "joiningDesc": "Estamos procesando tu invitación.",
+    "success": "¡Te uniste exitosamente!",
+    "successDesc": "Redirigiendo a tu nueva pool...",
+    "error": "No se pudo unir",
+    "errorDesc": "El código de invitación puede ser inválido o haber expirado.",
+    "backToDashboard": "Ir a mis pools"
   }
 }

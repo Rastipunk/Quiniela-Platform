@@ -713,5 +713,15 @@
     "publishResult": "Publish result",
     "pendingResult": "Pending result",
     "advancesBadge": "advances"
+  },
+
+  "join": {
+    "joining": "Joining the pool...",
+    "joiningDesc": "Processing your invitation.",
+    "success": "You joined successfully!",
+    "successDesc": "Redirecting to your new pool...",
+    "error": "Could not join",
+    "errorDesc": "The invitation code may be invalid or expired.",
+    "backToDashboard": "Go to my pools"
   }
 }

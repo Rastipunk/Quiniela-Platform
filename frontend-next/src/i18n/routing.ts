@@ -108,6 +108,7 @@ export const routing = defineRouting({
     // App pages
     "/dashboard": "/dashboard",
     "/profile": "/profile",
+    "/pools/join": "/pools/join",
     "/pools/[poolId]": "/pools/[poolId]",
     "/admin/feedback": "/admin/feedback",
     "/admin/settings/email": "/admin/settings/email",
