@@ -18,7 +18,8 @@
     "script:migrate-extra-time": "ts-node-dev --transpile-only src/scripts/migrateExtraTimeConfig.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "keywords": [
     "picks4all",

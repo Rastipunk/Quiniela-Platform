@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["src/**/*.test.ts"],
+    exclude: ["src/__tests__/**"],
     coverage: {
       provider: "v8",
       include: ["src/lib/email.ts", "src/services/deadlineReminderService.ts"],
