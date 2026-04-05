@@ -600,16 +600,18 @@ export default async function PredictionsPage() {
             {/* Champion card */}
             <div
               style={{
-                background: `linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%)`,
-                borderRadius: 14,
-                padding: "24px 20px",
+                background: "var(--surface)",
+                border: `3px solid #FFD700`,
+                borderRadius: 20,
+                padding: "32px 24px",
                 maxWidth: 500,
                 margin: "0 auto",
+                boxShadow: "0 8px 32px rgba(255,215,0,0.2)",
               }}
             >
               <div
                 style={{
-                  fontSize: "2.2rem",
+                  fontSize: "2.5rem",
                   marginBottom: 8,
                 }}
                 aria-hidden="true"
@@ -622,25 +624,25 @@ export default async function PredictionsPage() {
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: 2,
-                  color: "rgba(0,0,0,0.5)",
-                  marginBottom: 6,
+                  color: "#b8860b",
+                  marginBottom: 10,
                 }}
               >
                 {t("predictions.champion.label")}
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16 }}>
                 <img
                   src="https://flagcdn.com/w80/ar.png"
                   alt="Argentina"
-                  width={48}
-                  height={32}
+                  width={52}
+                  height={35}
                   style={{ borderRadius: 4, objectFit: "cover" }}
                 />
                 <span
                   style={{
-                    fontSize: "1.6rem",
+                    fontSize: "1.8rem",
                     fontWeight: 800,
-                    color: "#1a1a1a",
+                    color: "var(--text)",
                   }}
                 >
                   {t("predictions.champion.team")}
@@ -648,31 +650,24 @@ export default async function PredictionsPage() {
               </div>
               <p
                 style={{
-                  color: "rgba(0,0,0,0.6)",
-                  fontSize: "0.85rem",
-                  lineHeight: 1.5,
-                  marginTop: 12,
-                  marginBottom: 0,
+                  color: "var(--muted)",
+                  fontSize: "0.9rem",
+                  lineHeight: 1.6,
+                  marginBottom: 16,
                 }}
               >
                 {t("predictions.champion.reasoning")}
               </p>
+              {/* Share buttons inline with champion */}
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <ShareButtons
+                  context="predictions"
+                  url={`${baseUrl}${localePath}${pagePath}`}
+                  size="sm"
+                />
+              </div>
             </div>
           </section>
-
-          {/* ═══════════ SHARE PREDICTIONS ═══════════ */}
-          <div style={{ textAlign: "center", marginTop: 24 }}>
-            <p style={{ color: "var(--muted)", fontSize: "0.85rem", marginBottom: 12 }}>
-              {t("predictions.share.label")}
-            </p>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <ShareButtons
-                context="predictions"
-                url={`${baseUrl}${localePath}${pagePath}`}
-                size="sm"
-              />
-            </div>
-          </div>
 
           {/* ═══════════ SUBSCRIBE CTA ═══════════ */}
           <section id="subscribe" style={{ padding: "0 24px 60px", maxWidth: 900, margin: "0 auto" }}>

@@ -102,7 +102,7 @@ export interface ShareButtonsProps {
   };
   /** Layout: inline row or stacked column */
   layout?: "row" | "column";
-  /** Show labels next to icons */
+  /** Show labels next to icons (default: false — icons only) */
   showLabels?: boolean;
   /** Size variant */
   size?: "sm" | "md";
@@ -115,7 +115,7 @@ export function ShareButtons({
   url,
   data,
   layout = "row",
-  showLabels = true,
+  showLabels = false,
   size = "md",
 }: ShareButtonsProps) {
   const t = useTranslations("share");
@@ -174,9 +174,12 @@ export function ShareButtons({
 
   const channels = getChannels(t);
   const isSmall = size === "sm";
-  const btnPadding = isSmall ? "8px 12px" : "10px 16px";
+  const btnPadding = showLabels
+    ? (isSmall ? "8px 12px" : "10px 16px")
+    : (isSmall ? "8px" : "10px");
   const fontSize = isSmall ? "0.8rem" : "0.88rem";
-  const iconGap = isSmall ? 4 : 6;
+  const iconGap = showLabels ? (isSmall ? 4 : 6) : 0;
+  const borderRadius = showLabels ? 10 : "50%";
 
   // On mobile, try native share first
   const supportsNativeShare = typeof navigator !== "undefined" && !!navigator.share;
@@ -201,7 +204,7 @@ export function ShareButtons({
             justifyContent: "center",
             gap: iconGap,
             padding: btnPadding,
-            borderRadius: 10,
+            borderRadius,
             border: "1px solid var(--border)",
             background: "var(--surface)",
             color: "var(--text)",
@@ -209,6 +212,7 @@ export function ShareButtons({
             fontSize,
             fontWeight: 600,
           }}
+          aria-label={t("nativeShare")}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="18" cy="5" r="3" />
@@ -234,7 +238,7 @@ export function ShareButtons({
             justifyContent: "center",
             gap: iconGap,
             padding: btnPadding,
-            borderRadius: 10,
+            borderRadius,
             border: "none",
             background: ch.color,
             color: "white",
@@ -258,7 +262,7 @@ export function ShareButtons({
           justifyContent: "center",
           gap: iconGap,
           padding: btnPadding,
-          borderRadius: 10,
+          borderRadius,
           border: "1px solid var(--border)",
           background: copied ? "#10b981" : "var(--surface)",
           color: copied ? "white" : "var(--text)",
