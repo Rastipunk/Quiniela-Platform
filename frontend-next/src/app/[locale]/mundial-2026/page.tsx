@@ -25,19 +25,19 @@ const GROUPS: Record<string, string[]> = {
   L: ["Inglaterra", "Croacia", "Ghana", "Panama"],
 };
 
-const GROUP_EMOJIS: Record<string, string[]> = {
-  A: ["\uD83C\uDDF2\uD83C\uDDFD", "\uD83C\uDDF0\uD83C\uDDF7", "\uD83C\uDDFF\uD83C\uDDE6", "\uD83C\uDDE8\uD83C\uDDFF"],
-  B: ["\uD83C\uDDE8\uD83C\uDDE6", "\uD83C\uDDE7\uD83C\uDDE6", "\uD83C\uDDF6\uD83C\uDDE6", "\uD83C\uDDE8\uD83C\uDDED"],
-  C: ["\uD83C\uDDE7\uD83C\uDDF7", "\uD83C\uDDF2\uD83C\uDDE6", "\uD83C\uDDED\uD83C\uDDF9", "\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74\uDB40\uDC7F"],
-  D: ["\uD83C\uDDFA\uD83C\uDDF8", "\uD83C\uDDF5\uD83C\uDDFE", "\uD83C\uDDE6\uD83C\uDDFA", "\uD83C\uDDF9\uD83C\uDDF7"],
-  E: ["\uD83C\uDDE9\uD83C\uDDEA", "\uD83C\uDDEA\uD83C\uDDE8", "\uD83C\uDDE8\uD83C\uDDEE", "\uD83C\uDDE8\uD83C\uDDFC"],
-  F: ["\uD83C\uDDF3\uD83C\uDDF1", "\uD83C\uDDEF\uD83C\uDDF5", "\uD83C\uDDF8\uD83C\uDDEA", "\uD83C\uDDF9\uD83C\uDDF3"],
-  G: ["\uD83C\uDDE7\uD83C\uDDEA", "\uD83C\uDDEA\uD83C\uDDEC", "\uD83C\uDDEE\uD83C\uDDF7", "\uD83C\uDDF3\uD83C\uDDFF"],
-  H: ["\uD83C\uDDEA\uD83C\uDDF8", "\uD83C\uDDFA\uD83C\uDDFE", "\uD83C\uDDE8\uD83C\uDDFB", "\uD83C\uDDF8\uD83C\uDDE6"],
-  I: ["\uD83C\uDDEB\uD83C\uDDF7", "\uD83C\uDDF8\uD83C\uDDF3", "\uD83C\uDDF3\uD83C\uDDF4", "\uD83C\uDDEE\uD83C\uDDF6"],
-  J: ["\uD83C\uDDE6\uD83C\uDDF7", "\uD83C\uDDE9\uD83C\uDDFF", "\uD83C\uDDE6\uD83C\uDDF9", "\uD83C\uDDEF\uD83C\uDDF4"],
-  K: ["\uD83C\uDDF5\uD83C\uDDF9", "\uD83C\uDDE8\uD83C\uDDF4", "\uD83C\uDDE8\uD83C\uDDE9", "\uD83C\uDDFA\uD83C\uDDFF"],
-  L: ["\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F", "\uD83C\uDDED\uD83C\uDDF7", "\uD83C\uDDEC\uD83C\uDDED", "\uD83C\uDDF5\uD83C\uDDE6"],
+const GROUP_FLAGS: Record<string, string[]> = {
+  A: ["mx", "kr", "za", "cz"],
+  B: ["ca", "ba", "qa", "ch"],
+  C: ["br", "ma", "ht", "gb-sct"],
+  D: ["us", "py", "au", "tr"],
+  E: ["de", "ec", "ci", "cw"],
+  F: ["nl", "jp", "se", "tn"],
+  G: ["be", "eg", "ir", "nz"],
+  H: ["es", "uy", "cv", "sa"],
+  I: ["fr", "sn", "no", "iq"],
+  J: ["ar", "dz", "at", "jo"],
+  K: ["pt", "co", "cd", "uz"],
+  L: ["gb-eng", "hr", "gh", "pa"],
 };
 
 /* ────────────────── Metadata ────────────────── */
@@ -402,9 +402,14 @@ export default async function Mundial2026Page() {
                           gap: 8,
                         }}
                       >
-                        <span aria-hidden="true">
-                          {GROUP_EMOJIS[letter]?.[i] ?? ""}
-                        </span>
+                        <img
+                          src={`https://flagcdn.com/w40/${GROUP_FLAGS[letter]?.[i] ?? "xx"}.png`}
+                          alt={team}
+                          width={24}
+                          height={16}
+                          style={{ borderRadius: 2, objectFit: "cover" }}
+                          loading="lazy"
+                        />
                         {team}
                       </li>
                     ))}
