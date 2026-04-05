@@ -723,5 +723,18 @@
     "error": "Não foi possível entrar",
     "errorDesc": "O código de convite pode ser inválido ou ter expirado.",
     "backToDashboard": "Ir para meus bolões"
+  },
+  "invite": {
+    "title": "{host} te convidou para um bolão",
+    "someone": "Alguém",
+    "members": "{count} participantes",
+    "active": "Ativo",
+    "joinNow": "Entrar agora",
+    "createAccountToJoin": "Criar conta gratuita para entrar",
+    "alreadyHaveAccount": "Já tenho uma conta — Entrar",
+    "expired": "Este convite não é mais válido ou expirou.",
+    "invalidTitle": "Convite não encontrado",
+    "invalidDesc": "Este link de convite pode ser inválido ou ter expirado. Peça a quem te convidou para enviar um novo.",
+    "goHome": "Ir para o início"
   }
 }

@@ -6,6 +6,7 @@ export const routing = defineRouting({
   localePrefix: "as-needed",
   pathnames: {
     "/": "/",
+    "/invite": "/invite",
     "/login": "/login",
     "/forgot-password": "/forgot-password",
     "/reset-password": "/reset-password",

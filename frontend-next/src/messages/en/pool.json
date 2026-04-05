@@ -723,5 +723,18 @@
     "error": "Could not join",
     "errorDesc": "The invitation code may be invalid or expired.",
     "backToDashboard": "Go to my pools"
+  },
+  "invite": {
+    "title": "{host} invited you to a prediction pool",
+    "someone": "Someone",
+    "members": "{count} participants",
+    "active": "Active",
+    "joinNow": "Join now",
+    "createAccountToJoin": "Create free account to join",
+    "alreadyHaveAccount": "Already have an account — Log in",
+    "expired": "This invitation is no longer valid or has expired.",
+    "invalidTitle": "Invitation not found",
+    "invalidDesc": "This invitation link may be invalid or expired. Ask the person who invited you to send a new one.",
+    "goHome": "Go to homepage"
   }
 }

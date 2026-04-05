@@ -279,7 +279,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               <div style={{ marginTop: 12 }}>
                 <ShareButtons
                   context="poolInvite"
-                  url={`${typeof window !== "undefined" ? window.location.origin : ""}/pools/join?code=${inviteCode}`}
+                  url={`${typeof window !== "undefined" ? window.location.origin : ""}/invite?code=${inviteCode}`}
                   data={{ poolName: overview.pool.name, inviteCode }}
                   size="sm"
                 />

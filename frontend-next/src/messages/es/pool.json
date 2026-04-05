@@ -723,5 +723,18 @@
     "error": "No se pudo unir",
     "errorDesc": "El código de invitación puede ser inválido o haber expirado.",
     "backToDashboard": "Ir a mis pools"
+  },
+  "invite": {
+    "title": "{host} te ha invitado a una quiniela",
+    "someone": "Alguien",
+    "members": "{count} participantes",
+    "active": "Activa",
+    "joinNow": "Unirme ahora",
+    "createAccountToJoin": "Crear cuenta gratuita para unirme",
+    "alreadyHaveAccount": "Ya tengo una cuenta — Iniciar sesión",
+    "expired": "Esta invitación ya no es válida o ha expirado.",
+    "invalidTitle": "Invitación no encontrada",
+    "invalidDesc": "El enlace de invitación puede ser inválido o haber expirado. Pide a quien te invitó que te envíe uno nuevo.",
+    "goHome": "Ir al inicio"
   }
 }

@@ -72,6 +72,59 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Public invite preview (no auth required)
+app.get("/invite-preview/:code", async (req, res) => {
+  try {
+    const invite = await prisma.poolInvite.findUnique({
+      where: { code: req.params.code },
+      select: {
+        id: true,
+        expiresAtUtc: true,
+        maxUses: true,
+        uses: true,
+        pool: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            tournamentInstance: {
+              select: { name: true },
+            },
+            _count: {
+              select: { members: { where: { status: "ACTIVE" } } },
+            },
+            members: {
+              where: { role: "HOST" },
+              take: 1,
+              select: {
+                user: { select: { displayName: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!invite) {
+      return sendNotFound(res, "NOT_FOUND", { message: "Invite not found" });
+    }
+
+    const expired = invite.expiresAtUtc && invite.expiresAtUtc.getTime() < Date.now();
+    const maxUsesReached = invite.maxUses != null && invite.uses >= invite.maxUses;
+
+    return sendOk(res, {
+      poolName: invite.pool.name,
+      tournamentName: invite.pool.tournamentInstance?.name || null,
+      hostName: invite.pool.members[0]?.user?.displayName || null,
+      memberCount: invite.pool._count.members,
+      status: invite.pool.status,
+      valid: !expired && !maxUsesReached && invite.pool.status !== "ARCHIVED",
+    });
+  } catch {
+    return sendInternal(res, "INTERNAL_ERROR");
+  }
+});
+
 // Stricter rate limiting for auth endpoints
 app.use("/auth/login", authLimiter);
 app.use("/auth/register", authLimiter);
