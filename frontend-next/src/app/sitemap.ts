@@ -107,6 +107,62 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: allLocales("/empresas", "/for-companies", "/para-empresas"),
     },
 
+    // --- World Cup 2026 Content Hub ---
+
+    // Hub principal
+    {
+      url: `${baseUrl}/mundial-2026`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "weekly",
+      priority: 0.9,
+      alternates: allLocales("/mundial-2026", "/world-cup-2026", "/copa-do-mundo-2026"),
+    },
+
+    // Grupos
+    {
+      url: `${baseUrl}/mundial-2026/grupos`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      alternates: allLocales("/mundial-2026/grupos", "/world-cup-2026/groups", "/copa-do-mundo-2026/grupos"),
+    },
+
+    // Calendario
+    {
+      url: `${baseUrl}/mundial-2026/calendario`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "weekly",
+      priority: 0.8,
+      alternates: allLocales("/mundial-2026/calendario", "/world-cup-2026/schedule", "/copa-do-mundo-2026/calendario"),
+    },
+
+    // Sedes
+    {
+      url: `${baseUrl}/mundial-2026/sedes`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "monthly",
+      priority: 0.7,
+      alternates: allLocales("/mundial-2026/sedes", "/world-cup-2026/venues", "/copa-do-mundo-2026/sedes"),
+    },
+
+    // Cómo hacer quiniela
+    {
+      url: `${baseUrl}/mundial-2026/como-hacer-quiniela`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      alternates: allLocales("/mundial-2026/como-hacer-quiniela", "/world-cup-2026/how-to-create-pool", "/copa-do-mundo-2026/como-criar-bolao"),
+    },
+
+    // Reglas
+    {
+      url: `${baseUrl}/mundial-2026/reglas-quiniela`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "monthly",
+      priority: 0.7,
+      alternates: allLocales("/mundial-2026/reglas-quiniela", "/world-cup-2026/pool-rules", "/copa-do-mundo-2026/regras-bolao"),
+    },
+
     // --- Regional SEO pages (each in its target language only) ---
 
     // Spanish-language regional terms (no /en or /pt alternates)

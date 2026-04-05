@@ -1,0 +1,390 @@
+{
+  "hub": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Mundial 2026"
+    },
+    "hero": {
+      "title": "Copa del Mundo FIFA 2026",
+      "subtitle": "El torneo más grande de la historia del fútbol llega a México, Estados Unidos y Canadá. 48 selecciones, 104 partidos, 16 sedes y millones de aficionados. Crea tu quiniela y compite con tus amigos.",
+      "cta": "Crear mi quiniela gratis",
+      "stats": {
+        "teams": "48",
+        "teamsLabel": "Selecciones",
+        "matches": "104",
+        "matchesLabel": "Partidos",
+        "venues": "16",
+        "venuesLabel": "Estadios",
+        "countries": "3",
+        "countriesLabel": "Países anfitriones"
+      }
+    },
+    "groups": {
+      "title": "Los 12 Grupos del Mundial 2026",
+      "subtitle": "Por primera vez en la historia, el Mundial contará con 12 grupos de 4 equipos cada uno. Los dos mejores de cada grupo y los 8 mejores terceros avanzarán a la ronda de 32.",
+      "viewAll": "Ver detalle de todos los grupos",
+      "groupLabel": "Grupo"
+    },
+    "howItWorks": {
+      "title": "¿Cómo funciona una quiniela del Mundial?",
+      "subtitle": "Organizar tu quiniela mundialista es muy sencillo. Sigue estos 4 pasos y estarás listo para disfrutar de cada partido con más emoción.",
+      "step1Title": "Crea tu quiniela",
+      "step1Desc": "Regístrate gratis en Picks4All y crea tu grupo privado para el Mundial 2026. Configura las reglas de puntuación a tu gusto: puntos exactos, resultado correcto, o sistema personalizado.",
+      "step2Title": "Invita a tus amigos",
+      "step2Desc": "Comparte el enlace de tu quiniela por WhatsApp, Telegram o email. Acepta a tus amigos, familiares y compañeros de trabajo. Hasta 20 jugadores gratis por grupo.",
+      "step3Title": "Predice los resultados",
+      "step3Desc": "Antes de cada partido, ingresa tu predicción del marcador. Desde la fase de grupos hasta la final, cada pronóstico suma puntos. ¿Quién conoce mejor el fútbol?",
+      "step4Title": "Sigue la tabla de posiciones",
+      "step4Desc": "Los resultados se actualizan automáticamente al terminar cada partido. Consulta la tabla de posiciones en tiempo real y presume tu posición en el leaderboard."
+    },
+    "features": {
+      "title": "¿Por qué elegir Picks4All para tu quiniela mundialista?",
+      "subtitle": "Picks4All es la plataforma ideal para organizar tu quiniela del Mundial 2026. Estas son algunas de las ventajas que te ofrecemos.",
+      "free": "100% Gratis hasta 20 jugadores",
+      "freeDesc": "No necesitas pagar nada para crear tu grupo y empezar a jugar. Invita hasta 20 amigos sin costo alguno. Solo pagas si quieres grupos más grandes.",
+      "auto": "Resultados automáticos",
+      "autoDesc": "Olvídate de actualizar marcadores manualmente. Picks4All se conecta a fuentes de datos en tiempo real para actualizar los resultados y calcular los puntos de cada jugador automáticamente.",
+      "custom": "Puntuación personalizable",
+      "customDesc": "Cada grupo es diferente. Personaliza cuántos puntos se dan por resultado exacto, por acertar el ganador o por predecir empates. Tú decides las reglas de tu quiniela.",
+      "multi": "Multi-idioma",
+      "multiDesc": "Picks4All está disponible en español, inglés y portugués. Invita a amigos de cualquier país y cada uno podrá usar la plataforma en su idioma preferido."
+    },
+    "subPages": {
+      "title": "Descubre más sobre el Mundial 2026",
+      "subtitle": "Explora nuestras guías completas sobre el torneo más esperado del fútbol mundial.",
+      "groupsTitle": "Grupos del Mundial",
+      "groupsDesc": "Las 48 selecciones clasificadas distribuidas en 12 grupos. Conoce los rivales de cada equipo y los calendarios de partidos.",
+      "calendarTitle": "Calendario completo",
+      "calendarDesc": "Fechas, horarios y sedes de los 104 partidos del Mundial 2026. Desde la fase de grupos hasta la gran final.",
+      "venuesTitle": "Sedes y estadios",
+      "venuesDesc": "Las 16 ciudades sede en México, Estados Unidos y Canadá. Capacidad, ubicación e historia de cada estadio.",
+      "guideTitle": "Cómo hacer tu quiniela",
+      "guideDesc": "Guía paso a paso para crear la quiniela perfecta del Mundial 2026. Consejos, reglas y mejores prácticas.",
+      "rulesTitle": "Reglas del Mundial",
+      "rulesDesc": "Formato del torneo, reglas de clasificación, sistema de desempate y todo lo que necesitas saber del nuevo formato FIFA."
+    },
+    "faq": {
+      "title": "Preguntas Frecuentes sobre Quinielas del Mundial 2026",
+      "q1": "¿Cuándo empieza el Mundial 2026?",
+      "a1": "La Copa del Mundo FIFA 2026 se celebrará del 11 de junio al 19 de julio de 2026 en México, Estados Unidos y Canadá. El partido inaugural se jugará en el Estadio Azteca de la Ciudad de México, y la final será en el MetLife Stadium de Nueva Jersey.",
+      "q2": "¿Es gratis crear una quiniela del Mundial en Picks4All?",
+      "a2": "Sí, crear tu quiniela del Mundial 2026 en Picks4All es completamente gratis para grupos de hasta 20 participantes. No necesitas tarjeta de crédito ni datos de pago. Solo regístrate, crea tu grupo e invita a tus amigos.",
+      "q3": "¿Cuántos equipos participan en el Mundial 2026?",
+      "a3": "El Mundial 2026 será el primero en la historia con 48 selecciones participantes, un aumento significativo respecto a las 32 del formato anterior. Los equipos se distribuyen en 12 grupos de 4, y los dos mejores de cada grupo más los 8 mejores terceros avanzan a la siguiente ronda.",
+      "q4": "¿Cómo se calculan los puntos en la quiniela?",
+      "a4": "Picks4All permite configurar el sistema de puntuación de tu quiniela. Por defecto, se otorgan 3 puntos por acertar el resultado exacto, 1 punto por acertar el ganador (o empate), y 0 puntos por fallar. El organizador puede personalizar estos valores al crear el grupo.",
+      "q5": "¿Puedo invitar amigos de otros países a mi quiniela?",
+      "a5": "¡Por supuesto! Picks4All está disponible en español, inglés y portugués. Tus amigos de cualquier parte del mundo pueden unirse a tu quiniela y usar la plataforma en su idioma preferido. Solo comparte el enlace de invitación."
+    },
+    "bottomCta": {
+      "title": "¡El Mundial se acerca! Crea tu quiniela ahora",
+      "description": "No esperes al último momento. Organiza tu quiniela del Mundial 2026 hoy mismo y asegúrate de que todos tus amigos estén listos para el torneo más grande del fútbol.",
+      "cta": "Crear mi quiniela gratis"
+    }
+  },
+  "groups": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Mundial 2026",
+      "groups": "Grupos"
+    },
+    "hero": {
+      "title": "Grupos del Mundial 2026 — Las 48 Selecciones",
+      "subtitle": "Por primera vez en la historia, la Copa del Mundo contará con 48 selecciones distribuidas en 12 grupos de 4 equipos. Conoce todos los grupos, rivales y el calendario de partidos de la fase de grupos del Mundial 2026."
+    },
+    "groupLabel": "Grupo",
+    "matchesTitle": "Partidos del grupo",
+    "matchday": "Jornada",
+    "vs": "vs",
+    "advancement": {
+      "title": "¿Cómo se clasifican los equipos de cada grupo?",
+      "description": "En el nuevo formato del Mundial 2026, los dos primeros de cada grupo (24 equipos) se clasifican directamente a la ronda de 32. Además, los 8 mejores terceros también avanzan, sumando 32 equipos para la fase eliminatoria.",
+      "pointsTitle": "Sistema de puntos en la fase de grupos:",
+      "win": "Victoria: 3 puntos",
+      "draw": "Empate: 1 punto",
+      "loss": "Derrota: 0 puntos",
+      "tiebreaker": "En caso de empate en puntos, se aplican los siguientes criterios: diferencia de goles, goles a favor, resultado del enfrentamiento directo, fair play y sorteo FIFA."
+    },
+    "cta": {
+      "title": "¿Listo para armar tu quiniela mundialista?",
+      "description": "Crea tu grupo gratis en Picks4All y predice los resultados de los 104 partidos del Mundial 2026. ¡Demuestra que sabes más de fútbol que tus amigos!",
+      "button": "Crear mi quiniela gratis"
+    }
+  },
+  "schedule": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Mundial 2026",
+      "schedule": "Calendario"
+    },
+    "hero": {
+      "title": "Calendario del Mundial 2026",
+      "subtitle": "Los 104 partidos del torneo más grande del fútbol. Del 11 de junio al 19 de julio de 2026."
+    },
+    "phases": {
+      "groupStage": "Fase de Grupos",
+      "roundOf32": "Dieciseisavos",
+      "roundOf16": "Octavos",
+      "quarterFinals": "Cuartos",
+      "semiFinals": "Semis",
+      "final": "Final"
+    },
+    "groupStage": {
+      "title": "Fase de Grupos",
+      "subtitle": "72 partidos — 12 grupos de 4 equipos",
+      "matchday": "Jornada {number}",
+      "group": "Grupo {letter}"
+    },
+    "knockout": {
+      "title": "Fase Eliminatoria",
+      "subtitle": "32 partidos — Del 28 de junio al 19 de julio",
+      "tbd": "Por definir",
+      "match": "Partido {number}",
+      "roundOf32Title": "Dieciseisavos de Final",
+      "roundOf32Dates": "28-30 de junio",
+      "roundOf32Matches": "16 partidos",
+      "roundOf16Title": "Octavos de Final",
+      "roundOf16Dates": "1-2 de julio",
+      "roundOf16Matches": "8 partidos",
+      "quarterFinalsTitle": "Cuartos de Final",
+      "quarterFinalsDates": "4-5 de julio",
+      "quarterFinalsMatches": "4 partidos",
+      "semiFinalsTitle": "Semifinales",
+      "semiFinalsDates": "8-9 de julio",
+      "semiFinalsMatches": "2 partidos",
+      "thirdPlaceTitle": "Tercer Puesto",
+      "thirdPlaceDates": "18 de julio",
+      "thirdPlaceMatches": "1 partido",
+      "finalTitle": "Final",
+      "finalDates": "19 de julio",
+      "finalMatches": "1 partido",
+      "finalVenue": "MetLife Stadium, East Rutherford"
+    },
+    "keyDates": {
+      "title": "Fechas Clave",
+      "groupStage": "Fase de grupos: 11-27 de junio",
+      "roundOf32": "Dieciseisavos: 28-30 de junio",
+      "roundOf16": "Octavos de final: 1-2 de julio",
+      "quarterFinals": "Cuartos de final: 4-5 de julio",
+      "semiFinals": "Semifinales: 8-9 de julio",
+      "thirdPlace": "Tercer puesto: 18 de julio",
+      "final": "Final: 19 de julio — MetLife Stadium"
+    },
+    "cta": {
+      "title": "Crea tu quiniela del Mundial 2026",
+      "description": "Invita a tus amigos, haz tus predicciones y compite en el torneo más grande del fútbol.",
+      "button": "Crear mi quiniela gratis"
+    },
+    "utc": "UTC",
+    "vs": "vs"
+  },
+  "venues": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Mundial 2026",
+      "venues": "Sedes"
+    },
+    "hero": {
+      "title": "Sedes del Mundial 2026",
+      "subtitle": "16 estadios en 3 países: Estados Unidos, México y Canadá"
+    },
+    "countries": {
+      "usa": "Estados Unidos",
+      "mexico": "México",
+      "canada": "Canadá"
+    },
+    "stadiumCount": "{count} estadios",
+    "capacity": "Capacidad: {number}",
+    "notable": "Destacado",
+    "venueMap": {
+      "title": "Sedes por País",
+      "usaCount": "11 estadios",
+      "mexicoCount": "3 estadios",
+      "canadaCount": "2 estadios"
+    },
+    "facts": {
+      "title": "Datos del Mundial 2026",
+      "totalVenues": "16 estadios en 16 ciudades",
+      "totalCapacity": "Capacidad total: más de 1.1 millones de espectadores",
+      "threeCountries": "Primer Mundial organizado por 3 países",
+      "largestVenue": "Estadio más grande: Estadio Azteca (87,523)",
+      "smallestVenue": "Estadio más pequeño: BMO Field (30,000)",
+      "finalVenue": "Sede de la final: MetLife Stadium"
+    },
+    "cta": {
+      "title": "Crea tu quiniela del Mundial 2026",
+      "description": "Elige tu sede favorita y compite con amigos prediciendo los resultados.",
+      "button": "Crear mi quiniela gratis"
+    }
+  },
+  "howTo": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Mundial 2026",
+      "howTo": "Cómo hacer tu quiniela"
+    },
+    "hero": {
+      "title": "Cómo hacer una quiniela del Mundial 2026",
+      "subtitle": "La guía que necesitas para organizar tu quiniela mundialista en Picks4All"
+    },
+    "intro": {
+      "p1": "Seamos honestos: llevas meses discutiendo con tus amigos sobre quién sabe más de fútbol. Que si Argentina repite, que si la selección anfitriona llega lejos, que si ese delantero está sobrevalorado. Pura teoría. El Mundial 2026 es la oportunidad perfecta para pasar de las palabras a los hechos.",
+      "p2": "Una quiniela mundialista convierte 104 partidos en una competencia personal entre tú y tu grupo. Cada predicción cuenta, cada gol importa, cada sorpresa duele (o te catapulta al primer lugar). Y lo mejor: organizar una en Picks4All toma menos de lo que tardas en discutir una alineación."
+    },
+    "process": {
+      "title": "Montar tu quiniela en 5 minutos",
+      "registration": {
+        "title": "Registro rápido",
+        "text": "Entra a picks4all.com y crea tu cuenta con email o Google. Son 30 segundos, sin formularios eternos ni verificaciones por SMS. Si ya tienes cuenta, sáltate este paso."
+      },
+      "tournament": {
+        "title": "Seleccionar el torneo",
+        "text": "Elige Copa del Mundo 2026 de la lista de torneos disponibles. El calendario ya está cargado con los 104 partidos, las 16 sedes y los horarios oficiales. No tienes que configurar nada de eso."
+      },
+      "scoring": {
+        "title": "Elegir tu sistema de puntuación",
+        "text": "Aquí es donde le das personalidad a tu quiniela. Tienes 4 opciones y cada una cambia completamente la dinámica del grupo. Más adelante te explico las diferencias en detalle."
+      },
+      "invite": {
+        "title": "Invitar al grupo",
+        "text": "Picks4All genera un código de invitación y un enlace directo. Mándalo por WhatsApp, pégalo en el grupo de Telegram del trabajo, o envíalo por email. Cada persona que entre verá los partidos y podrá empezar a hacer sus predicciones."
+      }
+    },
+    "during": {
+      "title": "¿Qué pasa durante el torneo?",
+      "p1": "Antes de cada partido, cada participante ingresa su predicción del marcador. Las predicciones se cierran automáticamente antes del inicio del partido — el organizador puede configurar si es 10 minutos, 1 hora o 1 día antes. Una vez cerrada, nadie puede ver lo que predijeron los demás hasta que el partido termine.",
+      "p2": "Los resultados llegan de la API oficial de fútbol. No hay intervención humana. Cuando termina el partido, los puntos se calculan automáticamente y la tabla de posiciones se actualiza al instante. Nadie puede manipular los resultados — ni siquiera el creador del grupo.",
+      "p3": "Si la API reporta un resultado incorrecto (pasa muy rara vez), el organizador puede solicitar una corrección. Pero tiene que explicar por qué, y todos los participantes reciben una notificación de que hubo un cambio. Transparencia total."
+    },
+    "scoring": {
+      "title": "Los 4 sistemas de puntuación",
+      "intro": "No todos los grupos son iguales. El sistema de puntuación define si tu quiniela premia la precisión quirúrgica o el instinto futbolero. Aquí van los 4 modos disponibles:",
+      "basic": {
+        "name": "Básico",
+        "description": "Para puristas. Aciertas el resultado exacto: 3 puntos. Aciertas el ganador (o empate) pero no el marcador: 1 punto. Fallas todo: 0. Así de simple. Sin complicaciones, sin excusas. Ideal para grupos grandes donde quieres reglas claras desde el primer partido."
+      },
+      "cumulative": {
+        "name": "Acumulativo",
+        "description": "Suma un bono extra cuando aciertas la diferencia de goles exacta, aunque no claves el marcador. Por ejemplo, si predijiste 3-1 y terminó 2-0, no acertaste el resultado exacto ni el marcador, pero sí la diferencia de 2 goles — y eso te da puntos. Premia el conocimiento más allá de la suerte."
+      },
+      "advanced": {
+        "name": "Avanzado",
+        "description": "Todo lo del Acumulativo, pero con multiplicadores por fase. La fase de grupos vale x1, octavos de final x1.5, cuartos x2, semifinales x2.5 y la final x3. Esto le da un giro dramático al torneo: alguien que viene atrás puede remontar con buenas predicciones en las eliminatorias. Las últimas rondas se sienten como partidos de vida o muerte."
+      },
+      "custom": {
+        "name": "Personalizado",
+        "description": "Tú decides cuántos puntos vale cada tipo de acierto. ¿Quieres dar 5 puntos por resultado exacto y 0 por acertar el ganador? Adelante. ¿Quieres que un empate acertado valga más que una victoria? También. Control total para quinielas con reglas de la casa."
+      }
+    },
+    "tips": {
+      "title": "Consejos de alguien que ha organizado unas cuantas",
+      "p1": "Elige el sistema de puntuación antes de invitar a nadie. Parece obvio, pero si ya tienes 15 personas en el grupo y quieres cambiar las reglas, vas a tener una rebelión. Decide primero, comunica las reglas claras, y luego abre las puertas.",
+      "p2": "El sistema Avanzado es el que genera más emoción, pero requiere gente que vaya a seguir el torneo de principio a fin. Si tu grupo es casual — la mitad va a olvidar hacer predicciones después de la fase de grupos — quédate con Básico o Acumulativo. La diversión está en la participación, no en la complejidad.",
+      "p3": "Manda el enlace de invitación con tiempo. No esperes al primer partido para armar el grupo. Si la gente se registra una semana antes, pueden explorar la plataforma, entender las reglas y estar listos desde el pitazo inicial del partido inaugural en el Azteca.",
+      "p4": "Si tienes un grupo de WhatsApp, ponle nombre a la quiniela con algo que los identifique. \"Quiniela del trabajo\" está bien, pero \"Los Expertos del Café\" genera más compromiso. La competencia entre amigos funciona mejor cuando tiene identidad."
+    },
+    "cta": {
+      "text": "El Mundial 2026 arranca el 11 de junio. 48 selecciones, 104 partidos, 16 sedes en tres países. Tu quiniela puede estar lista en 5 minutos.",
+      "button": "Crear mi quiniela gratis"
+    },
+    "jsonLd": {
+      "name": "Cómo hacer una quiniela del Mundial 2026 en Picks4All",
+      "description": "Guía paso a paso para crear tu quiniela del Mundial 2026: registro, configuración del torneo, sistema de puntuación e invitación de amigos.",
+      "steps": [
+        { "name": "Crear cuenta", "text": "Regístrate en picks4all.com con email o Google en menos de 30 segundos." },
+        { "name": "Seleccionar torneo", "text": "Elige Copa del Mundo 2026 de la lista de torneos disponibles." },
+        { "name": "Configurar puntuación", "text": "Elige entre los 4 sistemas de puntuación: Básico, Acumulativo, Avanzado o Personalizado." },
+        { "name": "Invitar amigos", "text": "Comparte el código o enlace de invitación por WhatsApp, Telegram o email." },
+        { "name": "Hacer predicciones", "text": "Antes de cada partido, ingresa tu predicción del marcador y sigue la tabla de posiciones." }
+      ],
+      "tool": "Picks4All — Plataforma de quinielas deportivas"
+    }
+  },
+  "rules": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Mundial 2026",
+      "rules": "Reglas de la quiniela"
+    },
+    "hero": {
+      "title": "Reglas de la quiniela del Mundial 2026",
+      "subtitle": "Todo lo que necesitas saber sobre cómo se puntúa, cuándo se cierran las predicciones y cómo funciona la tabla de posiciones"
+    },
+    "whatIs": {
+      "title": "¿Qué es una quiniela?",
+      "p1": "Es un juego de predicciones entre amigos. Antes de cada partido, cada participante escribe el marcador que cree que va a terminar el encuentro — por ejemplo, Argentina 2 - México 1. Si acierta, gana puntos. Al final del torneo, quien tenga más puntos gana.",
+      "p2": "Dependiendo del país, la conocerás con otro nombre: polla en Colombia y Chile, prode en Argentina, penca en Uruguay, porra en España, bolão en Brasil, football pool en el mundo anglosajón. El concepto es el mismo en todas partes: demostrar que sabes más de fútbol que los demás."
+    },
+    "scoring": {
+      "title": "Cómo se calculan los puntos",
+      "exact": {
+        "title": "Resultado exacto",
+        "text": "El premio gordo. Predijiste 2-1 y terminó 2-1. Esto es lo más difícil y lo que más puntos da. En el sistema básico, son 3 puntos."
+      },
+      "winner": {
+        "title": "Ganador correcto",
+        "text": "No clavaste el marcador, pero acertaste quién ganaba (o que iba a empatar). Dijiste México 1-0 y terminó México 3-2: no fue exacto, pero sabías que México ganaba. En el sistema básico, 1 punto."
+      },
+      "difference": {
+        "title": "Diferencia de goles",
+        "text": "Solo en los modos Acumulativo y Avanzado. Si acertaste la diferencia de goles entre los equipos — aunque el marcador sea diferente — ganas un bono. Predijiste 3-1 (diferencia de 2) y terminó 2-0 (diferencia de 2): no es exacto, pero tu lectura del partido fue buena."
+      },
+      "miss": {
+        "title": "Fallo completo",
+        "text": "Dijiste que ganaba el equipo A y ganó el B. Predijiste empate y hubo goleada. 0 puntos. Pasa seguido, no te preocupes — la gracia está en que a todos les pasa."
+      }
+    },
+    "multipliers": {
+      "title": "Multiplicadores por fase",
+      "intro": "En el modo Avanzado, los puntos valen más conforme avanza el torneo. La lógica es simple: predecir un resultado de fase de grupos, cuando todavía hay 48 equipos y mucha información disponible, no es lo mismo que predecir una semifinal donde todo puede pasar.",
+      "table": {
+        "phase": "Fase",
+        "multiplier": "Multiplicador",
+        "groups": "Fase de grupos",
+        "groupsMultiplier": "x1",
+        "r32": "Ronda de 32",
+        "r32Multiplier": "x1.5",
+        "quarters": "Cuartos de final",
+        "quartersMultiplier": "x2",
+        "semis": "Semifinales",
+        "semisMultiplier": "x2.5",
+        "thirdPlace": "Tercer puesto",
+        "thirdPlaceMultiplier": "x2.5",
+        "final": "Final",
+        "finalMultiplier": "x3"
+      },
+      "example": "Si aciertas un resultado exacto en la final (3 puntos base x3 multiplicador), son 9 puntos de un solo partido. Un acierto así puede cambiar la tabla completa. Por eso las últimas rondas del Avanzado son pura adrenalina."
+    },
+    "deadlines": {
+      "title": "Cierre de predicciones",
+      "p1": "Cada partido tiene una fecha límite para hacer tu predicción. Por defecto, se cierra 10 minutos antes del inicio del partido. El organizador puede cambiarlo: 30 minutos, 1 hora, incluso 1 día antes.",
+      "p2": "Mientras la predicción esté abierta, puedes cambiarla tantas veces como quieras. Nadie ve lo que los demás predijeron hasta que se cierra el plazo. Sin trampas posibles.",
+      "p3": "Si no ingresas una predicción antes del cierre, simplemente no sumas puntos por ese partido. No hay penalización, pero tampoco hay segunda oportunidad."
+    },
+    "results": {
+      "title": "De dónde vienen los resultados",
+      "p1": "Los resultados se actualizan automáticamente desde la API oficial de datos de fútbol. No hay una persona atrás actualizando marcadores a mano. Cuando el árbitro pita el final, los puntos se calculan solos.",
+      "p2": "El creador del grupo no puede inventar ni modificar resultados libremente. Si hay un error en la API (algo que ocurre muy rara vez), el organizador puede solicitar una corrección. Pero tiene que escribir una justificación, y todos los participantes reciben una notificación explicando el cambio. Todo queda registrado."
+    },
+    "leaderboard": {
+      "title": "La tabla de posiciones",
+      "p1": "Los puntos son acumulativos a lo largo de todo el torneo. Después de cada partido, la tabla se actualiza automáticamente. Puedes ver quién va primero, cuántos puntos tiene cada participante, y cuántos aciertos exactos ha tenido.",
+      "p2": "En caso de empate en puntos entre dos o más participantes, se aplican estos criterios en orden: mayor número de resultados exactos, mayor número de ganadores correctos, y el orden en que se unieron al grupo (quien entró primero desempata a favor)."
+    },
+    "cta": {
+      "text": "Ya conoces las reglas. 48 selecciones, 104 partidos, y tu reputación futbolera en juego. Solo falta crear tu grupo.",
+      "button": "Crear mi quiniela gratis"
+    },
+    "jsonLd": {
+      "headline": "Reglas de la quiniela del Mundial 2026 — Cómo funciona la puntuación",
+      "description": "Guía completa de las reglas de una quiniela mundialista en Picks4All: sistemas de puntuación, multiplicadores por fase, cierre de predicciones y tabla de posiciones.",
+      "author": "Picks4All"
+    }
+  },
+  "common": {
+    "breadcrumbHome": "Inicio",
+    "breadcrumbWorldCup": "Mundial 2026",
+    "group": "Grupo",
+    "back": "Volver"
+  }
+}

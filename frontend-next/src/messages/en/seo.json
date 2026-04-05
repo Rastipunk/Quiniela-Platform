@@ -66,5 +66,29 @@
   "footballPool": {
     "title": "Free Football Pool Online — Picks4All",
     "description": "Create free football prediction pools with friends. Predict World Cup 2026 and Champions League results, compete on custom leaderboards, and track your scores live."
+  },
+  "worldCup": {
+    "title": "Free World Cup 2026 Prediction Pool — Create Yours on Picks4All",
+    "description": "Create your free World Cup 2026 prediction pool. 48 teams, 104 matches, automatic results. Compete with friends predicting FIFA World Cup 2026 scores."
+  },
+  "worldCupGroups": {
+    "title": "World Cup 2026 Groups — All 48 Teams in 12 Groups",
+    "description": "See all 12 groups of the FIFA World Cup 2026 with the 48 qualified teams. Matches, schedules, and matchups for the complete group stage."
+  },
+  "worldCupSchedule": {
+    "title": "World Cup 2026 Schedule — All 104 Match Times & Dates",
+    "description": "Full FIFA World Cup 2026 schedule. All 104 matches with dates, local kickoff times, and stadiums. Group stage and knockout rounds included."
+  },
+  "worldCupVenues": {
+    "title": "World Cup 2026 Venues — 16 Stadiums in USA, Mexico & Canada",
+    "description": "All 16 FIFA World Cup 2026 stadiums across the United States, Mexico, and Canada. Cities, capacities, and matches assigned to each venue."
+  },
+  "worldCupHowTo": {
+    "title": "How to Create a World Cup 2026 Pool — Complete Guide",
+    "description": "Learn how to create your free World Cup 2026 prediction pool step by step. Invite friends, choose scoring, and compete with automatic results."
+  },
+  "worldCupRules": {
+    "title": "World Cup 2026 Pool Rules — Scoring Systems & Criteria",
+    "description": "Understand the rules and scoring systems for your World Cup 2026 prediction pool. Exact score, correct winner, phase multipliers, and more."
   }
 }

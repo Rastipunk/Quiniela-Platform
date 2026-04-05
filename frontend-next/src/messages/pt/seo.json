@@ -66,5 +66,29 @@
   "footballPool": {
     "title": "Free Football Pool Online — Picks4All",
     "description": "Create free football prediction pools with friends. Predict World Cup 2026 and Champions League results, compete on custom leaderboards, and track your scores live."
+  },
+  "worldCup": {
+    "title": "Bolão da Copa do Mundo 2026 Grátis — Crie o Seu no Picks4All",
+    "description": "Crie seu bolão da Copa do Mundo 2026 grátis. 48 seleções, 104 jogos, resultados automáticos. Desafie amigos com palpites para a Copa do Mundo FIFA 2026."
+  },
+  "worldCupGroups": {
+    "title": "Grupos da Copa do Mundo 2026 — 48 Seleções em 12 Grupos",
+    "description": "Confira os 12 grupos da Copa do Mundo FIFA 2026 com as 48 seleções classificadas. Jogos, horários e confrontos da fase de grupos completa."
+  },
+  "worldCupSchedule": {
+    "title": "Calendário da Copa 2026 — Horários dos 104 Jogos",
+    "description": "Calendário completo da Copa do Mundo FIFA 2026. Todos os 104 jogos com datas, horários no seu fuso e estádios. Fase de grupos e mata-mata."
+  },
+  "worldCupVenues": {
+    "title": "Sedes da Copa 2026 — 16 Estádios nos EUA, México e Canadá",
+    "description": "Os 16 estádios da Copa do Mundo FIFA 2026 nos Estados Unidos, México e Canadá. Cidades, capacidade e jogos de cada sede."
+  },
+  "worldCupHowTo": {
+    "title": "Como Criar um Bolão da Copa do Mundo 2026 — Guia Completo",
+    "description": "Aprenda a criar seu bolão da Copa 2026 grátis passo a passo. Convide amigos, escolha a pontuação e dispute com palpites automáticos."
+  },
+  "worldCupRules": {
+    "title": "Regras do Bolão da Copa 2026 — Pontuação e Critérios",
+    "description": "Entenda as regras e sistemas de pontuação do seu bolão da Copa 2026. Placar exato, vencedor correto, multiplicadores por fase e mais."
   }
 }

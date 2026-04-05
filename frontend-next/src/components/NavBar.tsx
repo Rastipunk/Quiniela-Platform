@@ -154,6 +154,18 @@ export function NavBar() {
           </Link>
 
           <Link
+            href="/mundial-2026"
+            style={{
+              color: "white",
+              textDecoration: "none",
+              fontSize: "1rem",
+              fontWeight: fw.semibold,
+            }}
+          >
+            {t("worldCup")}
+          </Link>
+
+          <Link
             href="/empresas"
             style={{
               color: "rgba(255,255,255,0.7)",
@@ -550,6 +562,26 @@ export function NavBar() {
                 }}
               >
                 {t("faq")}
+              </Link>
+
+              <Link
+                href="/mundial-2026"
+                onClick={() => setShowMobileMenu(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  padding: "1rem",
+                  color: "white",
+                  textDecoration: "none",
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                  minHeight: TOUCH_TARGET.comfortable,
+                  borderLeft: "3px solid transparent",
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {t("worldCup")}
               </Link>
 
               <Link

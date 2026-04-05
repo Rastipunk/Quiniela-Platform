@@ -1,0 +1,390 @@
+{
+  "hub": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Copa do Mundo 2026"
+    },
+    "hero": {
+      "title": "Copa do Mundo FIFA 2026",
+      "subtitle": "O maior torneio da historia do futebol chega ao Mexico, Estados Unidos e Canada. 48 selecoes, 104 jogos, 16 sedes e milhoes de torcedores. Crie seu bolao e compita com seus amigos.",
+      "cta": "Criar meu bolao gratis",
+      "stats": {
+        "teams": "48",
+        "teamsLabel": "Selecoes",
+        "matches": "104",
+        "matchesLabel": "Jogos",
+        "venues": "16",
+        "venuesLabel": "Estadios",
+        "countries": "3",
+        "countriesLabel": "Paises-sede"
+      }
+    },
+    "groups": {
+      "title": "Os 12 Grupos da Copa do Mundo 2026",
+      "subtitle": "Pela primeira vez na historia, a Copa do Mundo tera 12 grupos de 4 equipes cada. Os dois melhores de cada grupo e os 8 melhores terceiros avancam para as oitavas de final.",
+      "viewAll": "Ver detalhes de todos os grupos",
+      "groupLabel": "Grupo"
+    },
+    "howItWorks": {
+      "title": "Como funciona um bolao da Copa do Mundo?",
+      "subtitle": "Organizar seu bolao da Copa e muito simples. Siga estes 4 passos e estara pronto para curtir cada jogo com mais emocao.",
+      "step1Title": "Crie seu bolao",
+      "step1Desc": "Cadastre-se gratis no Picks4All e crie seu grupo privado para a Copa do Mundo 2026. Configure as regras de pontuacao como preferir: placar exato, resultado correto ou sistema personalizado.",
+      "step2Title": "Convide seus amigos",
+      "step2Desc": "Compartilhe o link do seu bolao pelo WhatsApp, Telegram ou email. Adicione amigos, familiares e colegas de trabalho. Ate 20 jogadores gratis por grupo.",
+      "step3Title": "Faca seus palpites",
+      "step3Desc": "Antes de cada jogo, insira sua previsao do placar. Da fase de grupos ate a final, cada palpite soma pontos. Quem entende mais de futebol?",
+      "step4Title": "Acompanhe a classificacao",
+      "step4Desc": "Os resultados sao atualizados automaticamente ao final de cada jogo. Confira a classificacao em tempo real e mostre sua posicao no ranking."
+    },
+    "features": {
+      "title": "Por que escolher o Picks4All para seu bolao da Copa?",
+      "subtitle": "Picks4All e a plataforma ideal para organizar seu bolao da Copa do Mundo 2026. Veja algumas vantagens que oferecemos.",
+      "free": "100% Gratis ate 20 jogadores",
+      "freeDesc": "Voce nao precisa pagar nada para criar seu grupo e comecar a jogar. Convide ate 20 amigos sem custo. So paga se quiser grupos maiores.",
+      "auto": "Resultados automaticos",
+      "autoDesc": "Esqueca de atualizar placares manualmente. O Picks4All se conecta a fontes de dados em tempo real para atualizar resultados e calcular pontos automaticamente.",
+      "custom": "Pontuacao personalizavel",
+      "customDesc": "Cada grupo e diferente. Personalize quantos pontos sao dados por placar exato, por acertar o vencedor ou por prever empates. Voce decide as regras.",
+      "multi": "Multi-idioma",
+      "multiDesc": "Picks4All esta disponivel em espanhol, ingles e portugues. Convide amigos de qualquer pais e cada um pode usar a plataforma no idioma que preferir."
+    },
+    "subPages": {
+      "title": "Descubra mais sobre a Copa do Mundo 2026",
+      "subtitle": "Explore nossos guias completos sobre o torneio mais esperado do futebol mundial.",
+      "groupsTitle": "Grupos da Copa",
+      "groupsDesc": "As 48 selecoes classificadas distribuidas em 12 grupos. Conheca os rivais de cada equipe e os calendarios de jogos.",
+      "calendarTitle": "Calendario completo",
+      "calendarDesc": "Datas, horarios e sedes dos 104 jogos da Copa do Mundo 2026. Da fase de grupos ate a grande final.",
+      "venuesTitle": "Sedes e estadios",
+      "venuesDesc": "As 16 cidades-sede no Mexico, Estados Unidos e Canada. Capacidade, localizacao e historia de cada estadio.",
+      "guideTitle": "Como fazer seu bolao",
+      "guideDesc": "Guia passo a passo para criar o bolao perfeito da Copa do Mundo 2026. Dicas, regras e melhores praticas.",
+      "rulesTitle": "Regras da Copa",
+      "rulesDesc": "Formato do torneio, regras de classificacao, sistema de desempate e tudo que voce precisa saber sobre o novo formato FIFA."
+    },
+    "faq": {
+      "title": "Perguntas Frequentes sobre Boloes da Copa do Mundo 2026",
+      "q1": "Quando comeca a Copa do Mundo 2026?",
+      "a1": "A Copa do Mundo FIFA 2026 sera realizada de 11 de junho a 19 de julho de 2026 no Mexico, Estados Unidos e Canada. O jogo de abertura sera no Estadio Azteca na Cidade do Mexico, e a final sera no MetLife Stadium em Nova Jersey.",
+      "q2": "E gratis criar um bolao da Copa no Picks4All?",
+      "a2": "Sim, criar seu bolao da Copa do Mundo 2026 no Picks4All e completamente gratis para grupos de ate 20 participantes. Nao precisa de cartao de credito. Basta se cadastrar, criar seu grupo e convidar seus amigos.",
+      "q3": "Quantas equipes participam da Copa do Mundo 2026?",
+      "a3": "A Copa do Mundo 2026 sera a primeira na historia com 48 selecoes participantes, um aumento significativo em relacao as 32 do formato anterior. As equipes sao distribuidas em 12 grupos de 4, e os dois melhores de cada grupo mais os 8 melhores terceiros avancam.",
+      "q4": "Como os pontos sao calculados no bolao?",
+      "a4": "O Picks4All permite configurar o sistema de pontuacao do seu bolao. Por padrao, sao 3 pontos por placar exato, 1 ponto por acertar o vencedor (ou empate), e 0 pontos por erro. O organizador pode personalizar esses valores ao criar o grupo.",
+      "q5": "Posso convidar amigos de outros paises para meu bolao?",
+      "a5": "Claro! O Picks4All esta disponivel em espanhol, ingles e portugues. Seus amigos de qualquer parte do mundo podem participar do seu bolao no idioma que preferirem. Basta compartilhar o link de convite."
+    },
+    "bottomCta": {
+      "title": "A Copa esta chegando! Crie seu bolao agora",
+      "description": "Nao espere ate o ultimo momento. Organize seu bolao da Copa do Mundo 2026 hoje e garanta que todos os seus amigos estejam prontos para o maior torneio do futebol.",
+      "cta": "Criar meu bolao gratis"
+    }
+  },
+  "groups": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Copa do Mundo 2026",
+      "groups": "Grupos"
+    },
+    "hero": {
+      "title": "Grupos da Copa do Mundo 2026 — As 48 Selecoes",
+      "subtitle": "Pela primeira vez na historia, a Copa do Mundo tera 48 selecoes distribuidas em 12 grupos de 4 equipes. Conheca todos os grupos, rivais e o calendario de jogos da fase de grupos da Copa 2026."
+    },
+    "groupLabel": "Grupo",
+    "matchesTitle": "Jogos do grupo",
+    "matchday": "Rodada",
+    "vs": "vs",
+    "advancement": {
+      "title": "Como as equipes se classificam em cada grupo?",
+      "description": "No novo formato da Copa do Mundo 2026, os dois primeiros de cada grupo (24 equipes) se classificam diretamente para as oitavas. Alem disso, os 8 melhores terceiros tambem avancam, somando 32 equipes para a fase eliminatoria.",
+      "pointsTitle": "Sistema de pontos na fase de grupos:",
+      "win": "Vitoria: 3 pontos",
+      "draw": "Empate: 1 ponto",
+      "loss": "Derrota: 0 pontos",
+      "tiebreaker": "Em caso de empate em pontos, aplicam-se os seguintes criterios: saldo de gols, gols marcados, confronto direto, fair play e sorteio FIFA."
+    },
+    "cta": {
+      "title": "Pronto para montar seu bolao da Copa?",
+      "description": "Crie seu grupo gratis no Picks4All e faca seus palpites para os 104 jogos da Copa do Mundo 2026. Prove que voce entende mais de futebol que seus amigos!",
+      "button": "Criar meu bolao gratis"
+    }
+  },
+  "schedule": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Copa do Mundo 2026",
+      "schedule": "Calendario"
+    },
+    "hero": {
+      "title": "Calendario da Copa do Mundo 2026",
+      "subtitle": "Todos os 104 jogos do maior torneio de futebol. De 11 de junho a 19 de julho de 2026."
+    },
+    "phases": {
+      "groupStage": "Fase de Grupos",
+      "roundOf32": "32 avos",
+      "roundOf16": "Oitavas",
+      "quarterFinals": "Quartas",
+      "semiFinals": "Semis",
+      "final": "Final"
+    },
+    "groupStage": {
+      "title": "Fase de Grupos",
+      "subtitle": "72 jogos — 12 grupos de 4 equipes",
+      "matchday": "Rodada {number}",
+      "group": "Grupo {letter}"
+    },
+    "knockout": {
+      "title": "Fase Eliminatoria",
+      "subtitle": "32 jogos — 28 de junho a 19 de julho",
+      "tbd": "A definir",
+      "match": "Jogo {number}",
+      "roundOf32Title": "32 avos de Final",
+      "roundOf32Dates": "28-30 de junho",
+      "roundOf32Matches": "16 jogos",
+      "roundOf16Title": "Oitavas de Final",
+      "roundOf16Dates": "1-2 de julho",
+      "roundOf16Matches": "8 jogos",
+      "quarterFinalsTitle": "Quartas de Final",
+      "quarterFinalsDates": "4-5 de julho",
+      "quarterFinalsMatches": "4 jogos",
+      "semiFinalsTitle": "Semifinais",
+      "semiFinalsDates": "8-9 de julho",
+      "semiFinalsMatches": "2 jogos",
+      "thirdPlaceTitle": "Terceiro Lugar",
+      "thirdPlaceDates": "18 de julho",
+      "thirdPlaceMatches": "1 jogo",
+      "finalTitle": "Final",
+      "finalDates": "19 de julho",
+      "finalMatches": "1 jogo",
+      "finalVenue": "MetLife Stadium, East Rutherford"
+    },
+    "keyDates": {
+      "title": "Datas Importantes",
+      "groupStage": "Fase de grupos: 11-27 de junho",
+      "roundOf32": "32 avos: 28-30 de junho",
+      "roundOf16": "Oitavas de final: 1-2 de julho",
+      "quarterFinals": "Quartas de final: 4-5 de julho",
+      "semiFinals": "Semifinais: 8-9 de julho",
+      "thirdPlace": "Terceiro lugar: 18 de julho",
+      "final": "Final: 19 de julho — MetLife Stadium"
+    },
+    "cta": {
+      "title": "Crie sua penca da Copa do Mundo 2026",
+      "description": "Convide seus amigos, faca suas previsoes e compita no maior torneio de futebol.",
+      "button": "Criar minha penca gratis"
+    },
+    "utc": "UTC",
+    "vs": "vs"
+  },
+  "venues": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Copa do Mundo 2026",
+      "venues": "Sedes"
+    },
+    "hero": {
+      "title": "Sedes da Copa do Mundo 2026",
+      "subtitle": "16 estadios em 3 paises: Estados Unidos, Mexico e Canada"
+    },
+    "countries": {
+      "usa": "Estados Unidos",
+      "mexico": "Mexico",
+      "canada": "Canada"
+    },
+    "stadiumCount": "{count} estadios",
+    "capacity": "Capacidade: {number}",
+    "notable": "Destaque",
+    "venueMap": {
+      "title": "Sedes por Pais",
+      "usaCount": "11 estadios",
+      "mexicoCount": "3 estadios",
+      "canadaCount": "2 estadios"
+    },
+    "facts": {
+      "title": "Dados da Copa do Mundo 2026",
+      "totalVenues": "16 estadios em 16 cidades",
+      "totalCapacity": "Capacidade total: mais de 1,1 milhao de espectadores",
+      "threeCountries": "Primeira Copa do Mundo organizada por 3 paises",
+      "largestVenue": "Maior estadio: Estadio Azteca (87.523)",
+      "smallestVenue": "Menor estadio: BMO Field (30.000)",
+      "finalVenue": "Sede da final: MetLife Stadium"
+    },
+    "cta": {
+      "title": "Crie sua penca da Copa do Mundo 2026",
+      "description": "Escolha sua sede favorita e compita com amigos prevendo os resultados.",
+      "button": "Criar minha penca gratis"
+    }
+  },
+  "howTo": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Copa do Mundo 2026",
+      "howTo": "Como criar seu bolao"
+    },
+    "hero": {
+      "title": "Como criar um bolao da Copa do Mundo 2026",
+      "subtitle": "O guia que voce precisa para organizar seu bolao da Copa no Picks4All"
+    },
+    "intro": {
+      "p1": "Vamos ser honestos: faz meses que voce discute com seus amigos sobre quem entende mais de futebol. Que se a Argentina repete, que se a selecao anfitria vai longe, que se aquele atacante esta supervalorizado. Pura teoria. A Copa do Mundo 2026 e a oportunidade perfeita para passar das palavras aos fatos.",
+      "p2": "Um bolao da Copa transforma 104 jogos em uma competicao pessoal entre voce e seu grupo. Cada palpite conta, cada gol importa, cada surpresa doi (ou te catapulta ao primeiro lugar). E o melhor: organizar um no Picks4All leva menos tempo do que discutir uma escalacao."
+    },
+    "process": {
+      "title": "Monte seu bolao em 5 minutos",
+      "registration": {
+        "title": "Cadastro rapido",
+        "text": "Entre em picks4all.com e crie sua conta com email ou Google. Sao 30 segundos, sem formularios interminaveis nem verificacoes por SMS. Ja tem conta? Pule essa etapa."
+      },
+      "tournament": {
+        "title": "Selecionar o torneio",
+        "text": "Escolha Copa do Mundo 2026 na lista de torneios disponiveis. O calendario ja esta carregado com os 104 jogos, as 16 sedes e os horarios oficiais. Nao precisa configurar nada disso."
+      },
+      "scoring": {
+        "title": "Escolher seu sistema de pontuacao",
+        "text": "Aqui e onde voce da personalidade ao seu bolao. Voce tem 4 opcoes e cada uma muda completamente a dinamica do grupo. Mais adiante explico as diferencas em detalhe."
+      },
+      "invite": {
+        "title": "Convidar o grupo",
+        "text": "O Picks4All gera um codigo de convite e um link direto. Mande pelo WhatsApp, coloque no grupo do Telegram do trabalho, ou envie por email. Cada pessoa que entrar vera os jogos e podera comecar a fazer seus palpites."
+      }
+    },
+    "during": {
+      "title": "O que acontece durante o torneio?",
+      "p1": "Antes de cada jogo, cada participante registra seu palpite do placar. Os palpites fecham automaticamente antes do inicio do jogo — o organizador pode configurar se e 10 minutos, 1 hora ou 1 dia antes. Uma vez fechado, ninguem pode ver o que os outros palpitaram ate o jogo terminar.",
+      "p2": "Os resultados vem da API oficial de futebol. Nao ha intervencao humana. Quando o jogo termina, os pontos sao calculados automaticamente e a classificacao se atualiza na hora. Ninguem pode manipular os resultados — nem mesmo o criador do grupo.",
+      "p3": "Se a API reportar um resultado incorreto (acontece muito raramente), o organizador pode solicitar uma correcao. Mas precisa explicar por que, e todos os participantes recebem uma notificacao sobre a mudanca. Transparencia total."
+    },
+    "scoring": {
+      "title": "Os 4 sistemas de pontuacao",
+      "intro": "Nem todos os grupos sao iguais. O sistema de pontuacao define se seu bolao premia a precisao cirurgica ou o instinto futeboleiro. Aqui vao os 4 modos disponiveis:",
+      "basic": {
+        "name": "Basico",
+        "description": "Para puristas. Acertou o placar exato: 3 pontos. Acertou o vencedor (ou empate) mas nao o placar: 1 ponto. Errou tudo: 0. Simples assim. Sem complicacoes, sem desculpas. Ideal para grupos grandes onde voce quer regras claras desde o primeiro jogo."
+      },
+      "cumulative": {
+        "name": "Acumulativo",
+        "description": "Soma um bonus extra quando voce acerta a diferenca de gols exata, mesmo sem acertar o placar. Por exemplo, se voce palpitou 3-1 e terminou 2-0, nao acertou o placar exato, mas sim a diferenca de 2 gols — e isso da pontos. Premia o conhecimento alem da sorte."
+      },
+      "advanced": {
+        "name": "Avancado",
+        "description": "Tudo do Acumulativo, mas com multiplicadores por fase. A fase de grupos vale x1, oitavas x1.5, quartas x2, semifinais x2.5 e a final x3. Isso da uma virada dramatica ao torneio: alguem que vem atras pode se recuperar com bons palpites nas eliminatorias. As ultimas rodadas parecem jogos de vida ou morte."
+      },
+      "custom": {
+        "name": "Personalizado",
+        "description": "Voce decide quantos pontos vale cada tipo de acerto. Quer dar 5 pontos por placar exato e 0 por acertar o vencedor? Va em frente. Quer que um empate acertado valha mais que uma vitoria? Tambem pode. Controle total para boloes com regras da casa."
+      }
+    },
+    "tips": {
+      "title": "Dicas de quem ja organizou alguns",
+      "p1": "Escolha o sistema de pontuacao antes de convidar alguem. Parece obvio, mas se voce ja tem 15 pessoas no grupo e quer mudar as regras, vai ter uma revolta. Decida primeiro, comunique as regras com clareza, e depois abra as portas.",
+      "p2": "O sistema Avancado e o que gera mais emocao, mas precisa de gente que vai acompanhar o torneio do inicio ao fim. Se seu grupo e casual — metade vai esquecer de fazer palpites depois da fase de grupos — fique com Basico ou Acumulativo. A diversao esta na participacao, nao na complexidade.",
+      "p3": "Mande o link de convite com antecedencia. Nao espere o primeiro jogo para montar o grupo. Se o pessoal se cadastrar uma semana antes, podem explorar a plataforma, entender as regras e estar prontos desde o apito inicial do jogo inaugural no Azteca.",
+      "p4": "Se voce tem um grupo de WhatsApp, de um nome ao bolao que identifique o grupo. \"Bolao do trabalho\" esta bem, mas \"Os Especialistas do Cafe\" gera mais compromisso. A competicao entre amigos funciona melhor quando tem identidade."
+    },
+    "cta": {
+      "text": "A Copa do Mundo 2026 comeca em 11 de junho. 48 selecoes, 104 jogos, 16 sedes em tres paises. Seu bolao pode estar pronto em 5 minutos.",
+      "button": "Criar meu bolao gratis"
+    },
+    "jsonLd": {
+      "name": "Como criar um bolao da Copa do Mundo 2026 no Picks4All",
+      "description": "Guia passo a passo para criar seu bolao da Copa do Mundo 2026: cadastro, configuracao do torneio, sistema de pontuacao e convite de amigos.",
+      "steps": [
+        { "name": "Criar conta", "text": "Cadastre-se em picks4all.com com email ou Google em menos de 30 segundos." },
+        { "name": "Selecionar torneio", "text": "Escolha Copa do Mundo 2026 na lista de torneios disponiveis." },
+        { "name": "Configurar pontuacao", "text": "Escolha entre os 4 sistemas de pontuacao: Basico, Acumulativo, Avancado ou Personalizado." },
+        { "name": "Convidar amigos", "text": "Compartilhe o codigo ou link de convite por WhatsApp, Telegram ou email." },
+        { "name": "Fazer palpites", "text": "Antes de cada jogo, registre seu palpite do placar e acompanhe a classificacao." }
+      ],
+      "tool": "Picks4All — Plataforma de boloes esportivos"
+    }
+  },
+  "rules": {
+    "breadcrumbs": {
+      "home": "Inicio",
+      "worldCup": "Copa do Mundo 2026",
+      "rules": "Regras do bolao"
+    },
+    "hero": {
+      "title": "Regras do bolao da Copa do Mundo 2026",
+      "subtitle": "Tudo que voce precisa saber sobre pontuacao, prazos dos palpites e como funciona a classificacao"
+    },
+    "whatIs": {
+      "title": "O que e um bolao?",
+      "p1": "E um jogo de palpites entre amigos. Antes de cada jogo, cada participante escreve o placar que acha que vai terminar a partida — por exemplo, Argentina 2 - Mexico 1. Se acertar, ganha pontos. No final do torneio, quem tiver mais pontos vence.",
+      "p2": "Dependendo do pais, voce conhece com outro nome: quiniela no Mexico e America Central, polla na Colombia e Chile, prode na Argentina, penca no Uruguai, porra na Espanha, football pool no mundo anglofono. O conceito e o mesmo em todo lugar: provar que voce entende mais de futebol que os outros."
+    },
+    "scoring": {
+      "title": "Como os pontos sao calculados",
+      "exact": {
+        "title": "Placar exato",
+        "text": "O premio maior. Voce palpitou 2-1 e terminou 2-1. Isso e o mais dificil e o que da mais pontos. No sistema basico, sao 3 pontos."
+      },
+      "winner": {
+        "title": "Vencedor correto",
+        "text": "Nao acertou o placar, mas acertou quem ganhava (ou que ia empatar). Voce disse Mexico 1-0 e terminou Mexico 3-2: nao foi exato, mas voce sabia que o Mexico ganhava. No sistema basico, 1 ponto."
+      },
+      "difference": {
+        "title": "Diferenca de gols",
+        "text": "Apenas nos modos Acumulativo e Avancado. Se voce acertou a diferenca de gols entre as equipes — mesmo que o placar seja diferente — ganha um bonus. Palpitou 3-1 (diferenca de 2) e terminou 2-0 (diferenca de 2): nao e exato, mas sua leitura do jogo foi boa."
+      },
+      "miss": {
+        "title": "Erro completo",
+        "text": "Voce disse que o time A ganhava e o B ganhou. Palpitou empate e teve goleada. 0 pontos. Acontece sempre, nao se preocupe — a graca e que acontece com todo mundo."
+      }
+    },
+    "multipliers": {
+      "title": "Multiplicadores por fase",
+      "intro": "No modo Avancado, os pontos valem mais conforme o torneio avanca. A logica e simples: prever um resultado da fase de grupos, quando ainda ha 48 equipes e muita informacao disponivel, nao e o mesmo que prever uma semifinal onde tudo pode acontecer.",
+      "table": {
+        "phase": "Fase",
+        "multiplier": "Multiplicador",
+        "groups": "Fase de grupos",
+        "groupsMultiplier": "x1",
+        "r32": "Fase de 32",
+        "r32Multiplier": "x1.5",
+        "quarters": "Quartas de final",
+        "quartersMultiplier": "x2",
+        "semis": "Semifinais",
+        "semisMultiplier": "x2.5",
+        "thirdPlace": "Terceiro lugar",
+        "thirdPlaceMultiplier": "x2.5",
+        "final": "Final",
+        "finalMultiplier": "x3"
+      },
+      "example": "Se voce acerta um placar exato na final (3 pontos base x3 multiplicador), sao 9 pontos em um unico jogo. Um acerto assim pode virar a classificacao inteira. Por isso as ultimas rodadas do Avancado sao pura adrenalina."
+    },
+    "deadlines": {
+      "title": "Fechamento dos palpites",
+      "p1": "Cada jogo tem um prazo para fazer seu palpite. Por padrao, fecha 10 minutos antes do inicio do jogo. O organizador pode mudar: 30 minutos, 1 hora, ate 1 dia antes.",
+      "p2": "Enquanto o palpite estiver aberto, voce pode muda-lo quantas vezes quiser. Ninguem ve o que os outros palpitaram ate o prazo fechar. Sem trapacas possiveis.",
+      "p3": "Se voce nao registrar um palpite antes do fechamento, simplesmente nao soma pontos naquele jogo. Nao ha penalidade, mas tambem nao ha segunda chance."
+    },
+    "results": {
+      "title": "De onde vem os resultados",
+      "p1": "Os resultados sao atualizados automaticamente pela API oficial de dados de futebol. Nao ha uma pessoa atualizando placares manualmente. Quando o arbitro apita o final, os pontos se calculam sozinhos.",
+      "p2": "O criador do grupo nao pode inventar nem modificar resultados livremente. Se houver um erro na API (algo que ocorre muito raramente), o organizador pode solicitar uma correcao. Mas precisa escrever uma justificativa, e todos os participantes recebem uma notificacao explicando a mudanca. Tudo fica registrado."
+    },
+    "leaderboard": {
+      "title": "A classificacao",
+      "p1": "Os pontos sao acumulativos ao longo de todo o torneio. Depois de cada jogo, a classificacao se atualiza automaticamente. Voce pode ver quem esta na frente, quantos pontos cada participante tem, e quantos acertos exatos conseguiu.",
+      "p2": "Em caso de empate em pontos entre dois ou mais participantes, aplicam-se estes criterios em ordem: maior numero de placares exatos, maior numero de vencedores corretos, e a ordem em que entraram no grupo (quem entrou primeiro desempata a favor)."
+    },
+    "cta": {
+      "text": "Agora voce conhece as regras. 48 selecoes, 104 jogos, e sua reputacao futeboleira em jogo. So falta criar seu grupo.",
+      "button": "Criar meu bolao gratis"
+    },
+    "jsonLd": {
+      "headline": "Regras do bolao da Copa do Mundo 2026 — Como funciona a pontuacao",
+      "description": "Guia completo das regras de um bolao da Copa no Picks4All: sistemas de pontuacao, multiplicadores por fase, fechamento de palpites e classificacao.",
+      "author": "Picks4All"
+    }
+  },
+  "common": {
+    "breadcrumbHome": "Início",
+    "breadcrumbWorldCup": "Copa do Mundo 2026",
+    "group": "Grupo",
+    "back": "Voltar"
+  }
+}

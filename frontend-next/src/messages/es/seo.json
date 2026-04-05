@@ -66,5 +66,29 @@
   "footballPool": {
     "title": "Free Football Pool Online — Picks4All",
     "description": "Create free football prediction pools with friends. Predict World Cup 2026 and Champions League results, compete on custom leaderboards, and track your scores live."
+  },
+  "worldCup": {
+    "title": "Quiniela del Mundial 2026 Gratis — Crea la Tuya en Picks4All",
+    "description": "Crea tu quiniela del Mundial 2026 gratis. 48 selecciones, 104 partidos, resultados automáticos. Compite con amigos prediciendo resultados del mundial FIFA 2026."
+  },
+  "worldCupGroups": {
+    "title": "Grupos del Mundial 2026 — 48 Selecciones y 12 Grupos Completos",
+    "description": "Consulta los 12 grupos del Mundial FIFA 2026 con las 48 selecciones clasificadas. Partidos, horarios y enfrentamientos de la fase de grupos completa."
+  },
+  "worldCupSchedule": {
+    "title": "Calendario del Mundial 2026 — Horarios de los 104 Partidos",
+    "description": "Calendario completo del Mundial FIFA 2026. Los 104 partidos con fechas, horarios en tu zona horaria y estadios. Fase de grupos y eliminatorias."
+  },
+  "worldCupVenues": {
+    "title": "Sedes del Mundial 2026 — 16 Estadios en USA, México y Canadá",
+    "description": "Los 16 estadios del Mundial FIFA 2026 en Estados Unidos, México y Canadá. Ciudades, capacidad y partidos asignados a cada sede."
+  },
+  "worldCupHowTo": {
+    "title": "Cómo Hacer una Quiniela del Mundial 2026 — Guía Completa",
+    "description": "Aprende a crear tu quiniela del Mundial 2026 gratis paso a paso. Invita amigos, elige puntuación y compite con predicciones automáticas."
+  },
+  "worldCupRules": {
+    "title": "Reglas de Quiniela del Mundial 2026 — Puntuación y Criterios",
+    "description": "Entiende las reglas y sistemas de puntuación para tu quiniela del Mundial 2026. Resultado exacto, ganador, multiplicadores por fase y más."
   }
 }

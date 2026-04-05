@@ -150,6 +150,17 @@ export function Footer() {
             {t("explore")}
           </div>
           <Link
+            href="/mundial-2026"
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("worldCup")}
+          </Link>
+          <Link
             href="/como-funciona"
             style={{
               fontSize: 13,

@@ -1,0 +1,390 @@
+{
+  "hub": {
+    "breadcrumbs": {
+      "home": "Home",
+      "worldCup": "World Cup 2026"
+    },
+    "hero": {
+      "title": "FIFA World Cup 2026",
+      "subtitle": "The biggest tournament in football history comes to Mexico, the United States and Canada. 48 teams, 104 matches, 16 venues and millions of fans. Create your prediction pool and compete with your friends.",
+      "cta": "Create my free pool",
+      "stats": {
+        "teams": "48",
+        "teamsLabel": "Teams",
+        "matches": "104",
+        "matchesLabel": "Matches",
+        "venues": "16",
+        "venuesLabel": "Venues",
+        "countries": "3",
+        "countriesLabel": "Host countries"
+      }
+    },
+    "groups": {
+      "title": "The 12 Groups of the 2026 World Cup",
+      "subtitle": "For the first time in history, the World Cup will feature 12 groups of 4 teams each. The top two from each group and the 8 best third-placed teams advance to the round of 32.",
+      "viewAll": "View all groups in detail",
+      "groupLabel": "Group"
+    },
+    "howItWorks": {
+      "title": "How does a World Cup prediction pool work?",
+      "subtitle": "Organizing your World Cup pool is very simple. Follow these 4 steps and you'll be ready to enjoy every match with more excitement.",
+      "step1Title": "Create your pool",
+      "step1Desc": "Sign up for free on Picks4All and create your private group for the 2026 World Cup. Configure the scoring rules to your liking: exact scores, correct results, or a custom system.",
+      "step2Title": "Invite your friends",
+      "step2Desc": "Share your pool link via WhatsApp, Telegram or email. Add your friends, family and coworkers. Up to 20 players free per group.",
+      "step3Title": "Predict the results",
+      "step3Desc": "Before each match, enter your score prediction. From the group stage to the final, every prediction earns points. Who knows football best?",
+      "step4Title": "Follow the leaderboard",
+      "step4Desc": "Results are updated automatically after each match. Check the leaderboard in real time and show off your position."
+    },
+    "features": {
+      "title": "Why choose Picks4All for your World Cup pool?",
+      "subtitle": "Picks4All is the ideal platform for organizing your 2026 World Cup pool. Here are some of the advantages we offer.",
+      "free": "100% Free up to 20 players",
+      "freeDesc": "You don't need to pay anything to create your group and start playing. Invite up to 20 friends at no cost. You only pay if you want larger groups.",
+      "auto": "Automatic results",
+      "autoDesc": "Forget about updating scores manually. Picks4All connects to real-time data sources to update results and calculate each player's points automatically.",
+      "custom": "Customizable scoring",
+      "customDesc": "Every group is different. Customize how many points are awarded for exact results, correct winners, or predicted draws. You decide the rules.",
+      "multi": "Multi-language",
+      "multiDesc": "Picks4All is available in Spanish, English and Portuguese. Invite friends from any country and each one can use the platform in their preferred language."
+    },
+    "subPages": {
+      "title": "Discover more about the 2026 World Cup",
+      "subtitle": "Explore our complete guides about the most anticipated football tournament in the world.",
+      "groupsTitle": "World Cup Groups",
+      "groupsDesc": "The 48 qualified teams distributed across 12 groups. Discover each team's rivals and match schedules.",
+      "calendarTitle": "Full schedule",
+      "calendarDesc": "Dates, times and venues for all 104 matches of the 2026 World Cup. From the group stage to the grand final.",
+      "venuesTitle": "Venues and stadiums",
+      "venuesDesc": "The 16 host cities in Mexico, the United States and Canada. Capacity, location and history of each stadium.",
+      "guideTitle": "How to create your pool",
+      "guideDesc": "Step-by-step guide to creating the perfect 2026 World Cup pool. Tips, rules and best practices.",
+      "rulesTitle": "World Cup rules",
+      "rulesDesc": "Tournament format, qualification rules, tiebreaker system and everything you need to know about the new FIFA format."
+    },
+    "faq": {
+      "title": "Frequently Asked Questions about World Cup 2026 Pools",
+      "q1": "When does the 2026 World Cup start?",
+      "a1": "The FIFA World Cup 2026 will take place from June 11 to July 19, 2026 in Mexico, the United States and Canada. The opening match will be played at the Estadio Azteca in Mexico City, and the final will be held at MetLife Stadium in New Jersey.",
+      "q2": "Is it free to create a World Cup pool on Picks4All?",
+      "a2": "Yes, creating your 2026 World Cup pool on Picks4All is completely free for groups of up to 20 participants. No credit card or payment details required. Just sign up, create your group and invite your friends.",
+      "q3": "How many teams participate in the 2026 World Cup?",
+      "a3": "The 2026 World Cup will be the first in history with 48 participating teams, a significant increase from the previous 32-team format. Teams are distributed across 12 groups of 4, and the top two from each group plus the 8 best third-placed teams advance to the next round.",
+      "q4": "How are points calculated in the pool?",
+      "a4": "Picks4All lets you configure your pool's scoring system. By default, 3 points are awarded for an exact result, 1 point for a correct winner (or draw), and 0 points for a miss. The organizer can customize these values when creating the group.",
+      "q5": "Can I invite friends from other countries to my pool?",
+      "a5": "Absolutely! Picks4All is available in Spanish, English and Portuguese. Your friends from anywhere in the world can join your pool and use the platform in their preferred language. Just share the invitation link."
+    },
+    "bottomCta": {
+      "title": "The World Cup is coming! Create your pool now",
+      "description": "Don't wait until the last minute. Organize your 2026 World Cup pool today and make sure all your friends are ready for the biggest football tournament.",
+      "cta": "Create my free pool"
+    }
+  },
+  "groups": {
+    "breadcrumbs": {
+      "home": "Home",
+      "worldCup": "World Cup 2026",
+      "groups": "Groups"
+    },
+    "hero": {
+      "title": "2026 World Cup Groups — All 48 Teams",
+      "subtitle": "For the first time in history, the World Cup will feature 48 teams distributed across 12 groups of 4. Discover all the groups, rivals and the group stage match schedule for the 2026 World Cup."
+    },
+    "groupLabel": "Group",
+    "matchesTitle": "Group matches",
+    "matchday": "Matchday",
+    "vs": "vs",
+    "advancement": {
+      "title": "How do teams qualify from each group?",
+      "description": "In the new 2026 World Cup format, the top two from each group (24 teams) qualify directly for the round of 32. Additionally, the 8 best third-placed teams also advance, making 32 teams for the knockout stage.",
+      "pointsTitle": "Group stage points system:",
+      "win": "Win: 3 points",
+      "draw": "Draw: 1 point",
+      "loss": "Loss: 0 points",
+      "tiebreaker": "In case of a tie on points, the following criteria apply: goal difference, goals scored, head-to-head result, fair play and FIFA draw."
+    },
+    "cta": {
+      "title": "Ready to set up your World Cup pool?",
+      "description": "Create your free group on Picks4All and predict the results of all 104 matches of the 2026 World Cup. Prove you know more about football than your friends!",
+      "button": "Create my free pool"
+    }
+  },
+  "schedule": {
+    "breadcrumbs": {
+      "home": "Home",
+      "worldCup": "World Cup 2026",
+      "schedule": "Schedule"
+    },
+    "hero": {
+      "title": "2026 World Cup Schedule",
+      "subtitle": "All 104 matches of the biggest football tournament. From June 11 to July 19, 2026."
+    },
+    "phases": {
+      "groupStage": "Group Stage",
+      "roundOf32": "Round of 32",
+      "roundOf16": "Round of 16",
+      "quarterFinals": "Quarters",
+      "semiFinals": "Semis",
+      "final": "Final"
+    },
+    "groupStage": {
+      "title": "Group Stage",
+      "subtitle": "72 matches — 12 groups of 4 teams",
+      "matchday": "Matchday {number}",
+      "group": "Group {letter}"
+    },
+    "knockout": {
+      "title": "Knockout Stage",
+      "subtitle": "32 matches — June 28 to July 19",
+      "tbd": "To be determined",
+      "match": "Match {number}",
+      "roundOf32Title": "Round of 32",
+      "roundOf32Dates": "June 28-30",
+      "roundOf32Matches": "16 matches",
+      "roundOf16Title": "Round of 16",
+      "roundOf16Dates": "July 1-2",
+      "roundOf16Matches": "8 matches",
+      "quarterFinalsTitle": "Quarter-Finals",
+      "quarterFinalsDates": "July 4-5",
+      "quarterFinalsMatches": "4 matches",
+      "semiFinalsTitle": "Semi-Finals",
+      "semiFinalsDates": "July 8-9",
+      "semiFinalsMatches": "2 matches",
+      "thirdPlaceTitle": "Third Place",
+      "thirdPlaceDates": "July 18",
+      "thirdPlaceMatches": "1 match",
+      "finalTitle": "Final",
+      "finalDates": "July 19",
+      "finalMatches": "1 match",
+      "finalVenue": "MetLife Stadium, East Rutherford"
+    },
+    "keyDates": {
+      "title": "Key Dates",
+      "groupStage": "Group stage: June 11-27",
+      "roundOf32": "Round of 32: June 28-30",
+      "roundOf16": "Round of 16: July 1-2",
+      "quarterFinals": "Quarter-finals: July 4-5",
+      "semiFinals": "Semi-finals: July 8-9",
+      "thirdPlace": "Third place: July 18",
+      "final": "Final: July 19 — MetLife Stadium"
+    },
+    "cta": {
+      "title": "Create your World Cup 2026 pool",
+      "description": "Invite your friends, make your predictions and compete in the biggest football tournament.",
+      "button": "Create my free pool"
+    },
+    "utc": "UTC",
+    "vs": "vs"
+  },
+  "venues": {
+    "breadcrumbs": {
+      "home": "Home",
+      "worldCup": "World Cup 2026",
+      "venues": "Venues"
+    },
+    "hero": {
+      "title": "2026 World Cup Venues",
+      "subtitle": "16 stadiums across 3 countries: United States, Mexico and Canada"
+    },
+    "countries": {
+      "usa": "United States",
+      "mexico": "Mexico",
+      "canada": "Canada"
+    },
+    "stadiumCount": "{count} stadiums",
+    "capacity": "Capacity: {number}",
+    "notable": "Notable",
+    "venueMap": {
+      "title": "Venues by Country",
+      "usaCount": "11 stadiums",
+      "mexicoCount": "3 stadiums",
+      "canadaCount": "2 stadiums"
+    },
+    "facts": {
+      "title": "World Cup 2026 Facts",
+      "totalVenues": "16 stadiums in 16 cities",
+      "totalCapacity": "Total capacity: over 1.1 million spectators",
+      "threeCountries": "First World Cup hosted by 3 countries",
+      "largestVenue": "Largest stadium: Estadio Azteca (87,523)",
+      "smallestVenue": "Smallest stadium: BMO Field (30,000)",
+      "finalVenue": "Final venue: MetLife Stadium"
+    },
+    "cta": {
+      "title": "Create your World Cup 2026 pool",
+      "description": "Pick your favorite venue and compete with friends predicting the results.",
+      "button": "Create my free pool"
+    }
+  },
+  "howTo": {
+    "breadcrumbs": {
+      "home": "Home",
+      "worldCup": "World Cup 2026",
+      "howTo": "How to create your pool"
+    },
+    "hero": {
+      "title": "How to create a World Cup 2026 prediction pool",
+      "subtitle": "The guide you need to set up your World Cup pool on Picks4All"
+    },
+    "intro": {
+      "p1": "Let's be honest: you've been arguing with your friends for months about who knows more about football. Whether Argentina repeats, whether the host nation makes a deep run, whether that striker is overrated. All talk. The 2026 World Cup is the perfect chance to put your money where your mouth is.",
+      "p2": "A World Cup prediction pool turns 104 matches into a personal competition between you and your group. Every prediction counts, every goal matters, every upset hurts (or launches you to the top). And the best part: setting one up on Picks4All takes less time than debating a starting lineup."
+    },
+    "process": {
+      "title": "Set up your pool in 5 minutes",
+      "registration": {
+        "title": "Quick registration",
+        "text": "Head to picks4all.com and create your account with email or Google. Takes 30 seconds, no endless forms or SMS verifications. Already have an account? Skip ahead."
+      },
+      "tournament": {
+        "title": "Select the tournament",
+        "text": "Choose World Cup 2026 from the list of available tournaments. The calendar is already loaded with all 104 matches, 16 venues, and official kickoff times. Nothing to configure there."
+      },
+      "scoring": {
+        "title": "Choose your scoring system",
+        "text": "This is where you give your pool its personality. You have 4 options and each one completely changes the group dynamic. I'll break down the differences further below."
+      },
+      "invite": {
+        "title": "Invite your group",
+        "text": "Picks4All generates an invite code and a direct link. Send it on WhatsApp, drop it in the work Telegram group, or email it out. Everyone who joins can see the matches and start making predictions."
+      }
+    },
+    "during": {
+      "title": "What happens during the tournament?",
+      "p1": "Before each match, every participant enters their score prediction. Predictions lock automatically before kickoff — the organizer can configure whether it's 10 minutes, 1 hour, or 1 day before. Once locked, nobody can see what others predicted until the match ends.",
+      "p2": "Results come from the official football data API. No human intervention. When the match ends, points are calculated automatically and the leaderboard updates instantly. Nobody can manipulate results — not even the group creator.",
+      "p3": "If the API reports an incorrect result (happens very rarely), the organizer can request a correction. But they have to explain why, and every participant gets a notification about the change. Full transparency."
+    },
+    "scoring": {
+      "title": "The 4 scoring systems",
+      "intro": "Not all groups are the same. The scoring system determines whether your pool rewards surgical precision or football instinct. Here are the 4 available modes:",
+      "basic": {
+        "name": "Basic",
+        "description": "For purists. You nail the exact score: 3 points. You get the winner right (or draw) but not the scoreline: 1 point. You miss everything: 0. That simple. No complications, no excuses. Perfect for large groups where you want clear rules from match one."
+      },
+      "cumulative": {
+        "name": "Cumulative",
+        "description": "Adds an extra bonus when you get the exact goal difference right, even if the scoreline is off. For example, if you predicted 3-1 and it ended 2-0, you didn't get the exact score, but you nailed the 2-goal difference — and that earns you points. Rewards knowledge beyond luck."
+      },
+      "advanced": {
+        "name": "Advanced",
+        "description": "Everything from Cumulative, but with phase multipliers. Group stage is worth x1, round of 32 x1.5, quarters x2, semi-finals x2.5, and the final x3. This gives the tournament a dramatic twist: someone trailing can come back with strong knockout predictions. The later rounds feel like do-or-die matches."
+      },
+      "custom": {
+        "name": "Custom",
+        "description": "You decide how many points each type of hit is worth. Want to give 5 points for an exact score and 0 for a correct winner? Go ahead. Want a correct draw prediction to be worth more than a correct win? Also fine. Full control for pools with house rules."
+      }
+    },
+    "tips": {
+      "title": "Tips from someone who's organized a few",
+      "p1": "Pick your scoring system before inviting anyone. Seems obvious, but if you already have 15 people in the group and want to change the rules, you'll have a revolt on your hands. Decide first, communicate the rules clearly, then open the doors.",
+      "p2": "The Advanced system generates the most excitement, but it needs people who'll follow the tournament from start to finish. If your group is casual — half of them will forget to make predictions after the group stage — stick with Basic or Cumulative. The fun is in participation, not complexity.",
+      "p3": "Send the invite link early. Don't wait until the first match to assemble the group. If people sign up a week ahead, they can explore the platform, understand the rules, and be ready from the opening whistle at the Azteca.",
+      "p4": "If you have a WhatsApp group, give your pool a name that means something to the group. 'Work pool' is fine, but 'The Coffee Experts' builds more commitment. Competition between friends works better when it has an identity."
+    },
+    "cta": {
+      "text": "The 2026 World Cup kicks off June 11. 48 teams, 104 matches, 16 venues across three countries. Your pool can be ready in 5 minutes.",
+      "button": "Create my free pool"
+    },
+    "jsonLd": {
+      "name": "How to create a World Cup 2026 prediction pool on Picks4All",
+      "description": "Step-by-step guide to creating your World Cup 2026 prediction pool: registration, tournament setup, scoring system, and inviting friends.",
+      "steps": [
+        { "name": "Create account", "text": "Sign up on picks4all.com with email or Google in under 30 seconds." },
+        { "name": "Select tournament", "text": "Choose World Cup 2026 from the list of available tournaments." },
+        { "name": "Configure scoring", "text": "Choose from 4 scoring systems: Basic, Cumulative, Advanced, or Custom." },
+        { "name": "Invite friends", "text": "Share the invite code or link via WhatsApp, Telegram, or email." },
+        { "name": "Make predictions", "text": "Before each match, enter your score prediction and follow the leaderboard." }
+      ],
+      "tool": "Picks4All — Sports prediction platform"
+    }
+  },
+  "rules": {
+    "breadcrumbs": {
+      "home": "Home",
+      "worldCup": "World Cup 2026",
+      "rules": "Pool rules"
+    },
+    "hero": {
+      "title": "World Cup 2026 prediction pool rules",
+      "subtitle": "Everything you need to know about scoring, prediction deadlines, and how the leaderboard works"
+    },
+    "whatIs": {
+      "title": "What is a prediction pool?",
+      "p1": "It's a prediction game between friends. Before each match, every participant writes down the score they think the match will end with — for example, Argentina 2 - Mexico 1. If they get it right, they earn points. At the end of the tournament, whoever has the most points wins.",
+      "p2": "Depending on where you're from, you might know it by a different name: quiniela in Mexico and Central America, polla in Colombia and Chile, prode in Argentina, penca in Uruguay, porra in Spain, bolao in Brazil. The concept is the same everywhere: prove you know more about football than everyone else."
+    },
+    "scoring": {
+      "title": "How points are calculated",
+      "exact": {
+        "title": "Exact score",
+        "text": "The jackpot. You predicted 2-1 and it ended 2-1. This is the hardest to get and awards the most points. In the basic system, that's 3 points."
+      },
+      "winner": {
+        "title": "Correct winner",
+        "text": "You didn't nail the scoreline, but you got the winner right (or that it would be a draw). You said Mexico 1-0 and it ended Mexico 3-2: not exact, but you knew Mexico would win. In the basic system, 1 point."
+      },
+      "difference": {
+        "title": "Goal difference",
+        "text": "Only in Cumulative and Advanced modes. If you got the goal difference between the teams right — even if the scoreline was different — you earn a bonus. You predicted 3-1 (difference of 2) and it ended 2-0 (difference of 2): not exact, but your read of the match was on point."
+      },
+      "miss": {
+        "title": "Complete miss",
+        "text": "You said Team A would win and Team B won. You predicted a draw and it was a blowout. 0 points. Happens to everyone all the time — that's part of the fun."
+      }
+    },
+    "multipliers": {
+      "title": "Phase multipliers",
+      "intro": "In Advanced mode, points are worth more as the tournament progresses. The logic is simple: predicting a group stage result when there are still 48 teams and plenty of information available isn't the same as predicting a semi-final where anything can happen.",
+      "table": {
+        "phase": "Phase",
+        "multiplier": "Multiplier",
+        "groups": "Group stage",
+        "groupsMultiplier": "x1",
+        "r32": "Round of 32",
+        "r32Multiplier": "x1.5",
+        "quarters": "Quarter-finals",
+        "quartersMultiplier": "x2",
+        "semis": "Semi-finals",
+        "semisMultiplier": "x2.5",
+        "thirdPlace": "Third place",
+        "thirdPlaceMultiplier": "x2.5",
+        "final": "Final",
+        "finalMultiplier": "x3"
+      },
+      "example": "If you nail an exact score in the final (3 base points x3 multiplier), that's 9 points from a single match. A hit like that can flip the entire table. That's why the late rounds in Advanced mode are pure adrenaline."
+    },
+    "deadlines": {
+      "title": "Prediction deadlines",
+      "p1": "Each match has a deadline for submitting your prediction. By default, it locks 10 minutes before kickoff. The organizer can change this: 30 minutes, 1 hour, even 1 day before.",
+      "p2": "While predictions are open, you can change yours as many times as you want. Nobody sees what others predicted until the deadline passes. No cheating possible.",
+      "p3": "If you don't submit a prediction before the deadline, you simply don't earn points for that match. No penalty, but no second chances either."
+    },
+    "results": {
+      "title": "Where do results come from?",
+      "p1": "Results update automatically from the official football data API. There's no person behind the scenes updating scores by hand. When the referee blows the final whistle, points calculate themselves.",
+      "p2": "The group creator can't invent or freely modify results. If there's an API error (something that very rarely happens), the organizer can request a correction. But they have to write a justification, and every participant receives a notification explaining the change. Everything is on the record."
+    },
+    "leaderboard": {
+      "title": "The leaderboard",
+      "p1": "Points accumulate throughout the entire tournament. After each match, the leaderboard updates automatically. You can see who's leading, how many points each participant has, and how many exact scores they've hit.",
+      "p2": "In case of a tie between two or more participants, these criteria apply in order: most exact scores, most correct winners, and the order they joined the group (whoever joined first wins the tiebreaker)."
+    },
+    "cta": {
+      "text": "Now you know the rules. 48 teams, 104 matches, and your football reputation on the line. All that's left is creating your group.",
+      "button": "Create my free pool"
+    },
+    "jsonLd": {
+      "headline": "World Cup 2026 prediction pool rules — How scoring works",
+      "description": "Complete guide to World Cup prediction pool rules on Picks4All: scoring systems, phase multipliers, prediction deadlines, and leaderboard.",
+      "author": "Picks4All"
+    }
+  },
+  "common": {
+    "breadcrumbHome": "Home",
+    "breadcrumbWorldCup": "World Cup 2026",
+    "group": "Group",
+    "back": "Back"
+  }
+}

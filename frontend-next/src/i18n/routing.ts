@@ -63,6 +63,37 @@ export const routing = defineRouting({
       en: "/activate-account",
       pt: "/ativar-conta",
     },
+    // World Cup 2026 content hub
+    "/mundial-2026": {
+      es: "/mundial-2026",
+      en: "/world-cup-2026",
+      pt: "/copa-do-mundo-2026",
+    },
+    "/mundial-2026/grupos": {
+      es: "/mundial-2026/grupos",
+      en: "/world-cup-2026/groups",
+      pt: "/copa-do-mundo-2026/grupos",
+    },
+    "/mundial-2026/calendario": {
+      es: "/mundial-2026/calendario",
+      en: "/world-cup-2026/schedule",
+      pt: "/copa-do-mundo-2026/calendario",
+    },
+    "/mundial-2026/sedes": {
+      es: "/mundial-2026/sedes",
+      en: "/world-cup-2026/venues",
+      pt: "/copa-do-mundo-2026/sedes",
+    },
+    "/mundial-2026/como-hacer-quiniela": {
+      es: "/mundial-2026/como-hacer-quiniela",
+      en: "/world-cup-2026/how-to-create-pool",
+      pt: "/copa-do-mundo-2026/como-criar-bolao",
+    },
+    "/mundial-2026/reglas-quiniela": {
+      es: "/mundial-2026/reglas-quiniela",
+      en: "/world-cup-2026/pool-rules",
+      pt: "/copa-do-mundo-2026/regras-bolao",
+    },
     // Pool creation wizard
     "/crear-pool": {
       es: "/crear-pool",
