@@ -124,7 +124,7 @@ function getSubPages(locale: string): SubPage[] {
     {
       titleKey: "hub.subPages.rulesTitle",
       descKey: "hub.subPages.rulesDesc",
-      href: `${prefix}/${wcSlug}/${locale === "en" ? "rules" : "reglas"}`,
+      href: `${prefix}/${wcSlug}/${locale === "en" ? "pool-rules" : locale === "pt" ? "regras-bolao" : "reglas-quiniela"}`,
       icon: "\uD83D\uDCDC",
     },
     {
