@@ -42,6 +42,13 @@ export default defineConfig({
     locale: "es",
   },
 
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.05,
+      animations: "disabled",
+    },
+  },
+
   projects: [
     {
       name: "desktop-chrome",
@@ -52,6 +59,7 @@ export default defineConfig({
       name: "mobile-chrome",
       use: { ...devices["Pixel 5"] },
       testMatch: ["**/responsive.spec.ts"],
+      testIgnore: ["**/visual-regression.spec.ts"],
     },
   ],
 });
