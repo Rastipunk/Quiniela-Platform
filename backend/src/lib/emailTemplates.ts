@@ -787,6 +787,119 @@ export function getCorporateActivationTemplate({
 }
 
 // =========================================================================
+// TEMPLATE: PREDICTION UPDATE EMAIL
+// =========================================================================
+
+export interface PredictionUpdateEmailParams {
+  displayName: string;
+  locale: string;
+  changes: Array<{ type: string; description: string }>;
+  predictionUrl: string;
+  unsubscribeUrl: string;
+}
+
+export function getPredictionUpdateTemplate(params: PredictionUpdateEmailParams): { subject: string; html: string } {
+  const { displayName, locale, changes, predictionUrl, unsubscribeUrl } = params;
+
+  type Locale = "es" | "en" | "pt";
+  const loc = (["es", "en", "pt"].includes(locale) ? locale : "es") as Locale;
+
+  const subjects: Record<Locale, string> = {
+    es: "La predicción del Mundial 2026 se ha actualizado",
+    en: "The World Cup 2026 prediction has been updated",
+    pt: "A previsão da Copa do Mundo 2026 foi atualizada",
+  };
+
+  const headings: Record<Locale, string> = {
+    es: "Predicción actualizada",
+    en: "Prediction updated",
+    pt: "Previsão atualizada",
+  };
+
+  const greetings: Record<Locale, string> = {
+    es: `Hola ${displayName},`,
+    en: `Hi ${displayName},`,
+    pt: `Olá ${displayName},`,
+  };
+
+  const intros: Record<Locale, string> = {
+    es: "Nuestra predicción AI del Mundial 2026 ha sido actualizada con los siguientes cambios:",
+    en: "Our AI prediction for the World Cup 2026 has been updated with the following changes:",
+    pt: "Nossa previsão de IA para a Copa do Mundo 2026 foi atualizada com as seguintes mudanças:",
+  };
+
+  const ctas: Record<Locale, string> = {
+    es: "Ver predicción completa",
+    en: "View full prediction",
+    pt: "Ver previsão completa",
+  };
+
+  const unsubTexts: Record<Locale, string> = {
+    es: "No quiero recibir más estas actualizaciones",
+    en: "I don't want to receive these updates anymore",
+    pt: "Não quero mais receber essas atualizações",
+  };
+
+  const footerTexts: Record<Locale, string> = {
+    es: "Recibes este email porque te suscribiste a actualizaciones de predicciones.",
+    en: "You are receiving this email because you subscribed to prediction updates.",
+    pt: "Você está recebendo este email porque se inscreveu para atualizações de previsões.",
+  };
+
+  // Build changes list HTML
+  const changesHtml = changes.map((c) => `
+    <tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #E5E7EB;">
+        <span style="display:inline-block;background-color:${BRAND.primaryLight}22;color:${BRAND.primaryColor};font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;margin-right:8px;">${c.type}</span>
+        <span style="color:${BRAND.textColor};font-size:14px;">${c.description}</span>
+      </td>
+    </tr>
+  `).join("");
+
+  const content = `
+    ${getHeading(headings[loc])}
+
+    ${getParagraph(greetings[loc])}
+
+    ${getParagraph(intros[loc])}
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0 24px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+      ${changesHtml}
+    </table>
+
+    ${getButton(ctas[loc], predictionUrl)}
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 0;">
+      <tr>
+        <td align="center">
+          <a href="${unsubscribeUrl}" style="font-size:13px;color:${BRAND.mutedColor};text-decoration:underline;">
+            ${unsubTexts[loc]}
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding-top:8px;">
+          <p style="margin:0;font-size:12px;color:${BRAND.mutedColor};">
+            ${footerTexts[loc]}
+          </p>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const preheaders: Record<Locale, string> = {
+    es: "Hay cambios en la predicción AI del Mundial 2026. Revísalos ahora.",
+    en: "There are changes to the World Cup 2026 AI prediction. Check them out.",
+    pt: "Há mudanças na previsão de IA da Copa do Mundo 2026. Confira agora.",
+  };
+
+  return {
+    subject: subjects[loc],
+    html: getEmailWrapper(content, preheaders[loc]),
+  };
+}
+
+// =========================================================================
 // EXPORT DE CONSTANTES PARA USO EXTERNO
 // =========================================================================
 

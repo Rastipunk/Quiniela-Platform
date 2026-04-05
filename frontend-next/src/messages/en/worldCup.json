@@ -392,7 +392,20 @@
     "hero": {
       "badge": "Powered by artificial intelligence",
       "title": "AI prediction for the 2026 World Cup",
-      "subtitle": "A data-driven analysis that cross-references FIFA rankings, historical World Cup performance, recent form, squad depth, and the home advantage factor for the United States, Mexico, and Canada. Not a crystal ball — it's machine learning applied to football."
+      "subtitle": "A data-driven analysis that cross-references FIFA rankings, historical World Cup performance, recent form, squad depth, and the home advantage factor for the United States, Mexico, and Canada. Not a crystal ball — it's machine learning applied to football.",
+      "seePrediction": "See champion prediction",
+      "seeMethodology": "See methodology"
+    },
+    "subscribe": {
+      "title": "Activate AI Predictor",
+      "desc": "We update the prediction after each World Cup matchday. We'll email you when it changes.",
+      "activeTitle": "AI Predictor active",
+      "activeDesc": "We'll email you every time the prediction is updated with new data.",
+      "activate": "Activate predictor",
+      "unsubscribe": "Deactivate predictor",
+      "createAccount": "Create account & activate",
+      "confirmed": "Predictor activated! We'll notify you by email.",
+      "accountRequired": "You need a free account to activate the predictor."
     },
     "methodology": {
       "title": "What data powers this prediction",

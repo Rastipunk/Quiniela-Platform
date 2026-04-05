@@ -4,6 +4,7 @@ import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
+import { PredictionSubscribeButton } from "@/components/PredictionSubscribeButton";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
 import { BRAND } from "@/lib/brand";
@@ -413,100 +414,345 @@ export default async function PredictionsPage() {
             >
               {t("predictions.hero.subtitle")}
             </p>
+
+            {/* Hero action buttons */}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                justifyContent: "center",
+                flexWrap: "wrap",
+                marginTop: 32,
+              }}
+            >
+              <a
+                href="#champion"
+                style={{
+                  background: "white",
+                  color: BRAND.primary,
+                  padding: "12px 24px",
+                  borderRadius: 12,
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  textDecoration: "none",
+                  border: "none",
+                }}
+              >
+                {t("predictions.hero.seePrediction")}
+              </a>
+              <a
+                href="#methodology"
+                style={{
+                  background: "rgba(255,255,255,0.15)",
+                  color: "white",
+                  padding: "12px 24px",
+                  borderRadius: 12,
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  textDecoration: "none",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                }}
+              >
+                {t("predictions.hero.seeMethodology")}
+              </a>
+            </div>
           </section>
 
-          {/* ═══════════ METHODOLOGY ═══════════ */}
+          {/* ═══════════ CHAMPION REVEAL ═══════════ */}
           <section
+            id="champion"
             style={{
               padding: "80px 24px",
               maxWidth: 900,
               margin: "0 auto",
+              textAlign: "center",
             }}
           >
-            <h2
-              style={{
-                fontSize: "1.8rem",
-                fontWeight: 700,
-                marginBottom: 20,
-                color: "var(--text)",
-              }}
-            >
-              {t("predictions.methodology.title")}
-            </h2>
-            <p
-              style={{
-                color: "var(--muted)",
-                lineHeight: 1.8,
-                fontSize: "1rem",
-                marginBottom: 24,
-              }}
-            >
-              {t("predictions.methodology.intro")}
-            </p>
-
+            {/* The Final */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                gap: 16,
-                marginBottom: 32,
+                background: "var(--surface)",
+                border: `2px solid ${BRAND.primary}`,
+                borderRadius: 20,
+                padding: "32px 24px",
+                maxWidth: 500,
+                margin: "0 auto 32px",
               }}
             >
-              {(["rankings", "history", "form", "squad", "home", "h2h"] as const).map(
-                (key) => (
-                  <div
-                    key={key}
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 12,
-                      padding: "20px 18px",
-                    }}
-                  >
-                    <h3
-                      style={{
-                        fontSize: "0.95rem",
-                        fontWeight: 700,
-                        marginBottom: 8,
-                        color: "var(--text)",
-                      }}
-                    >
-                      {t(`predictions.methodology.${key}Title`)}
-                    </h3>
-                    <p
-                      style={{
-                        color: "var(--muted)",
-                        lineHeight: 1.6,
-                        fontSize: "0.88rem",
-                        margin: 0,
-                      }}
-                    >
-                      {t(`predictions.methodology.${key}Desc`)}
-                    </p>
-                  </div>
-                ),
-              )}
-            </div>
-
-            <div
-              style={{
-                background: `linear-gradient(135deg, ${BRAND.primary}0a, ${BRAND.secondary}0a)`,
-                border: `1px solid ${BRAND.primary}30`,
-                borderRadius: 12,
-                padding: "20px 24px",
-              }}
-            >
-              <p
+              <div
                 style={{
-                  color: "var(--text)",
-                  lineHeight: 1.7,
-                  fontSize: "0.95rem",
-                  margin: 0,
-                  fontStyle: "italic",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: 2,
+                  color: BRAND.primary,
+                  marginBottom: 16,
                 }}
               >
-                {t("predictions.methodology.aiNote")}
+                {t("predictions.knockout.final")}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 24,
+                }}
+              >
+                <div style={{ textAlign: "center" }}>
+                  <img
+                    src={`https://flagcdn.com/w80/${FINAL_MATCH.flagA}.png`}
+                    alt={FINAL_MATCH.teamA}
+                    width={56}
+                    height={37}
+                    style={{ borderRadius: 4, objectFit: "cover", marginBottom: 8 }}
+                  />
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "1rem",
+                      color: "var(--text)",
+                    }}
+                  >
+                    {t("predictions.knockout.finalTeamA")}
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontSize: "1.5rem",
+                    fontWeight: 300,
+                    color: "var(--muted)",
+                  }}
+                >
+                  vs
+                </span>
+                <div style={{ textAlign: "center" }}>
+                  <img
+                    src={`https://flagcdn.com/w80/${FINAL_MATCH.flagB}.png`}
+                    alt={FINAL_MATCH.teamB}
+                    width={56}
+                    height={37}
+                    style={{ borderRadius: 4, objectFit: "cover", marginBottom: 8 }}
+                  />
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "1rem",
+                      color: "var(--text)",
+                    }}
+                  >
+                    {t("predictions.knockout.finalTeamB")}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Champion card */}
+            <div
+              style={{
+                background: `linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%)`,
+                borderRadius: 14,
+                padding: "24px 20px",
+                maxWidth: 500,
+                margin: "0 auto",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "2.2rem",
+                  marginBottom: 8,
+                }}
+                aria-hidden="true"
+              >
+                🏆
+              </div>
+              <div
+                style={{
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: 2,
+                  color: "rgba(0,0,0,0.5)",
+                  marginBottom: 6,
+                }}
+              >
+                {t("predictions.champion.label")}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+                <img
+                  src="https://flagcdn.com/w80/ar.png"
+                  alt="Argentina"
+                  width={48}
+                  height={32}
+                  style={{ borderRadius: 4, objectFit: "cover" }}
+                />
+                <span
+                  style={{
+                    fontSize: "1.6rem",
+                    fontWeight: 800,
+                    color: "#1a1a1a",
+                  }}
+                >
+                  {t("predictions.champion.team")}
+                </span>
+              </div>
+              <p
+                style={{
+                  color: "rgba(0,0,0,0.6)",
+                  fontSize: "0.85rem",
+                  lineHeight: 1.5,
+                  marginTop: 12,
+                  marginBottom: 0,
+                }}
+              >
+                {t("predictions.champion.reasoning")}
               </p>
+            </div>
+          </section>
+
+          {/* ═══════════ SUBSCRIBE CTA ═══════════ */}
+          <section style={{ padding: "0 24px 60px", maxWidth: 900, margin: "0 auto" }}>
+            <PredictionSubscribeButton />
+          </section>
+
+          {/* ═══════════ KNOCKOUT BRACKET ═══════════ */}
+          <section
+            style={{
+              background: "var(--surface)",
+              padding: "80px 24px",
+            }}
+          >
+            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+              <h2
+                style={{
+                  fontSize: "1.8rem",
+                  fontWeight: 700,
+                  marginBottom: 12,
+                  color: "var(--text)",
+                  textAlign: "center",
+                }}
+              >
+                {t("predictions.knockout.title")}
+              </h2>
+              <p
+                style={{
+                  color: "var(--muted)",
+                  textAlign: "center",
+                  maxWidth: 700,
+                  margin: "0 auto 48px",
+                  lineHeight: 1.7,
+                }}
+              >
+                {t("predictions.knockout.subtitle")}
+              </p>
+
+              {/* Round of 32 */}
+              <h3
+                style={{
+                  fontSize: "1.2rem",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  marginBottom: 16,
+                  paddingBottom: 8,
+                  borderBottom: `2px solid ${BRAND.primary}`,
+                  display: "inline-block",
+                }}
+              >
+                {t("predictions.knockout.r32")}
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: 12,
+                  marginBottom: 48,
+                }}
+              >
+                {R32_MATCHES.map((m, i) => (
+                  <KnockoutMatchCard key={i} match={m} />
+                ))}
+              </div>
+
+              {/* Round of 16 */}
+              <h3
+                style={{
+                  fontSize: "1.2rem",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  marginBottom: 16,
+                  paddingBottom: 8,
+                  borderBottom: `2px solid ${BRAND.primary}`,
+                  display: "inline-block",
+                }}
+              >
+                {t("predictions.knockout.r16")}
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: 12,
+                  marginBottom: 48,
+                }}
+              >
+                {R16_MATCHES.map((m, i) => (
+                  <KnockoutMatchCard key={i} match={m} />
+                ))}
+              </div>
+
+              {/* Quarter Finals */}
+              <h3
+                style={{
+                  fontSize: "1.2rem",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  marginBottom: 16,
+                  paddingBottom: 8,
+                  borderBottom: `2px solid ${BRAND.primary}`,
+                  display: "inline-block",
+                }}
+              >
+                {t("predictions.knockout.qf")}
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                  gap: 12,
+                  marginBottom: 48,
+                }}
+              >
+                {QF_MATCHES.map((m, i) => (
+                  <KnockoutMatchCard key={i} match={m} />
+                ))}
+              </div>
+
+              {/* Semi Finals */}
+              <h3
+                style={{
+                  fontSize: "1.2rem",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  marginBottom: 16,
+                  paddingBottom: 8,
+                  borderBottom: `2px solid ${BRAND.primary}`,
+                  display: "inline-block",
+                }}
+              >
+                {t("predictions.knockout.sf")}
+              </h3>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                  gap: 16,
+                  marginBottom: 48,
+                }}
+              >
+                {SF_MATCHES.map((m, i) => (
+                  <KnockoutMatchCard key={i} match={m} />
+                ))}
+              </div>
             </div>
           </section>
 
@@ -693,288 +939,6 @@ export default async function PredictionsPage() {
             </div>
           </section>
 
-          {/* ═══════════ KNOCKOUT BRACKET ═══════════ */}
-          <section
-            style={{
-              background: "var(--surface)",
-              padding: "80px 24px",
-            }}
-          >
-            <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-              <h2
-                style={{
-                  fontSize: "1.8rem",
-                  fontWeight: 700,
-                  marginBottom: 12,
-                  color: "var(--text)",
-                  textAlign: "center",
-                }}
-              >
-                {t("predictions.knockout.title")}
-              </h2>
-              <p
-                style={{
-                  color: "var(--muted)",
-                  textAlign: "center",
-                  maxWidth: 700,
-                  margin: "0 auto 48px",
-                  lineHeight: 1.7,
-                }}
-              >
-                {t("predictions.knockout.subtitle")}
-              </p>
-
-              {/* Round of 32 */}
-              <h3
-                style={{
-                  fontSize: "1.2rem",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  marginBottom: 16,
-                  paddingBottom: 8,
-                  borderBottom: `2px solid ${BRAND.primary}`,
-                  display: "inline-block",
-                }}
-              >
-                {t("predictions.knockout.r32")}
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                  gap: 12,
-                  marginBottom: 48,
-                }}
-              >
-                {R32_MATCHES.map((m, i) => (
-                  <KnockoutMatchCard key={i} match={m} />
-                ))}
-              </div>
-
-              {/* Round of 16 */}
-              <h3
-                style={{
-                  fontSize: "1.2rem",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  marginBottom: 16,
-                  paddingBottom: 8,
-                  borderBottom: `2px solid ${BRAND.primary}`,
-                  display: "inline-block",
-                }}
-              >
-                {t("predictions.knockout.r16")}
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                  gap: 12,
-                  marginBottom: 48,
-                }}
-              >
-                {R16_MATCHES.map((m, i) => (
-                  <KnockoutMatchCard key={i} match={m} />
-                ))}
-              </div>
-
-              {/* Quarter Finals */}
-              <h3
-                style={{
-                  fontSize: "1.2rem",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  marginBottom: 16,
-                  paddingBottom: 8,
-                  borderBottom: `2px solid ${BRAND.primary}`,
-                  display: "inline-block",
-                }}
-              >
-                {t("predictions.knockout.qf")}
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                  gap: 12,
-                  marginBottom: 48,
-                }}
-              >
-                {QF_MATCHES.map((m, i) => (
-                  <KnockoutMatchCard key={i} match={m} />
-                ))}
-              </div>
-
-              {/* Semi Finals */}
-              <h3
-                style={{
-                  fontSize: "1.2rem",
-                  fontWeight: 700,
-                  color: "var(--text)",
-                  marginBottom: 16,
-                  paddingBottom: 8,
-                  borderBottom: `2px solid ${BRAND.primary}`,
-                  display: "inline-block",
-                }}
-              >
-                {t("predictions.knockout.sf")}
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                  gap: 16,
-                  marginBottom: 48,
-                }}
-              >
-                {SF_MATCHES.map((m, i) => (
-                  <KnockoutMatchCard key={i} match={m} />
-                ))}
-              </div>
-
-              {/* ═══════════ THE FINAL ═══════════ */}
-              <div
-                style={{
-                  background: "var(--bg)",
-                  border: `2px solid ${BRAND.primary}`,
-                  borderRadius: 20,
-                  padding: "32px 24px",
-                  textAlign: "center",
-                  maxWidth: 500,
-                  margin: "0 auto",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: 2,
-                    color: BRAND.primary,
-                    marginBottom: 16,
-                  }}
-                >
-                  {t("predictions.knockout.final")}
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 24,
-                    marginBottom: 24,
-                  }}
-                >
-                  <div style={{ textAlign: "center" }}>
-                    <img
-                      src={`https://flagcdn.com/w80/${FINAL_MATCH.flagA}.png`}
-                      alt={FINAL_MATCH.teamA}
-                      width={56}
-                      height={37}
-                      style={{ borderRadius: 4, objectFit: "cover", marginBottom: 8 }}
-                    />
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: "1rem",
-                        color: "var(--text)",
-                      }}
-                    >
-                      {t("predictions.knockout.finalTeamA")}
-                    </div>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: "1.5rem",
-                      fontWeight: 300,
-                      color: "var(--muted)",
-                    }}
-                  >
-                    vs
-                  </span>
-                  <div style={{ textAlign: "center" }}>
-                    <img
-                      src={`https://flagcdn.com/w80/${FINAL_MATCH.flagB}.png`}
-                      alt={FINAL_MATCH.teamB}
-                      width={56}
-                      height={37}
-                      style={{ borderRadius: 4, objectFit: "cover", marginBottom: 8 }}
-                    />
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: "1rem",
-                        color: "var(--text)",
-                      }}
-                    >
-                      {t("predictions.knockout.finalTeamB")}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Champion reveal */}
-                <div
-                  style={{
-                    background: `linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%)`,
-                    borderRadius: 14,
-                    padding: "24px 20px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "2.2rem",
-                      marginBottom: 8,
-                    }}
-                    aria-hidden="true"
-                  >
-                    🏆
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: 2,
-                      color: "rgba(0,0,0,0.5)",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {t("predictions.champion.label")}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-                    <img
-                      src="https://flagcdn.com/w80/ar.png"
-                      alt="Argentina"
-                      width={48}
-                      height={32}
-                      style={{ borderRadius: 4, objectFit: "cover" }}
-                    />
-                    <span
-                      style={{
-                        fontSize: "1.6rem",
-                        fontWeight: 800,
-                        color: "#1a1a1a",
-                      }}
-                    >
-                      {t("predictions.champion.team")}
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      color: "rgba(0,0,0,0.6)",
-                      fontSize: "0.85rem",
-                      lineHeight: 1.5,
-                      marginTop: 12,
-                      marginBottom: 0,
-                    }}
-                  >
-                    {t("predictions.champion.reasoning")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
           {/* ═══════════ DETAILED ANALYSIS ═══════════ */}
           <section
             style={{
@@ -998,6 +962,102 @@ export default async function PredictionsPage() {
               <p>{t("predictions.analysis.p2")}</p>
               <p>{t("predictions.analysis.p3")}</p>
               <p>{t("predictions.analysis.p4")}</p>
+            </div>
+          </section>
+
+          {/* ═══════════ METHODOLOGY ═══════════ */}
+          <section
+            id="methodology"
+            style={{
+              padding: "80px 24px",
+              maxWidth: 900,
+              margin: "0 auto",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "1.8rem",
+                fontWeight: 700,
+                marginBottom: 20,
+                color: "var(--text)",
+              }}
+            >
+              {t("predictions.methodology.title")}
+            </h2>
+            <p
+              style={{
+                color: "var(--muted)",
+                lineHeight: 1.8,
+                fontSize: "1rem",
+                marginBottom: 24,
+              }}
+            >
+              {t("predictions.methodology.intro")}
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: 16,
+                marginBottom: 32,
+              }}
+            >
+              {(["rankings", "history", "form", "squad", "home", "h2h"] as const).map(
+                (key) => (
+                  <div
+                    key={key}
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: "20px 18px",
+                    }}
+                  >
+                    <h3
+                      style={{
+                        fontSize: "0.95rem",
+                        fontWeight: 700,
+                        marginBottom: 8,
+                        color: "var(--text)",
+                      }}
+                    >
+                      {t(`predictions.methodology.${key}Title`)}
+                    </h3>
+                    <p
+                      style={{
+                        color: "var(--muted)",
+                        lineHeight: 1.6,
+                        fontSize: "0.88rem",
+                        margin: 0,
+                      }}
+                    >
+                      {t(`predictions.methodology.${key}Desc`)}
+                    </p>
+                  </div>
+                ),
+              )}
+            </div>
+
+            <div
+              style={{
+                background: `linear-gradient(135deg, ${BRAND.primary}0a, ${BRAND.secondary}0a)`,
+                border: `1px solid ${BRAND.primary}30`,
+                borderRadius: 12,
+                padding: "20px 24px",
+              }}
+            >
+              <p
+                style={{
+                  color: "var(--text)",
+                  lineHeight: 1.7,
+                  fontSize: "0.95rem",
+                  margin: 0,
+                  fontStyle: "italic",
+                }}
+              >
+                {t("predictions.methodology.aiNote")}
+              </p>
             </div>
           </section>
 

@@ -392,7 +392,20 @@
     "hero": {
       "badge": "Previsao gerada por inteligencia artificial",
       "title": "Previsao da Copa do Mundo 2026 por inteligencia artificial",
-      "subtitle": "Uma analise baseada em dados que cruza rankings FIFA, desempenho historico em Copas, forma recente de cada selecao, profundidade de elenco e o fator local de Estados Unidos, Mexico e Canada. Nao e bola de cristal: e machine learning aplicado ao futebol."
+      "subtitle": "Uma analise baseada em dados que cruza rankings FIFA, desempenho historico em Copas, forma recente de cada selecao, profundidade de elenco e o fator local de Estados Unidos, Mexico e Canada. Nao e bola de cristal: e machine learning aplicado ao futebol.",
+      "seePrediction": "Ver previsao do campeao",
+      "seeMethodology": "Ver metodologia"
+    },
+    "subscribe": {
+      "title": "Ative o Preditor IA",
+      "desc": "Atualizamos a previsao apos cada rodada da Copa. Avisamos por e-mail quando mudar.",
+      "activeTitle": "Preditor IA ativado",
+      "activeDesc": "Avisaremos por e-mail cada vez que a previsao for atualizada.",
+      "activate": "Ativar preditor",
+      "unsubscribe": "Desativar preditor",
+      "createAccount": "Criar conta e ativar",
+      "confirmed": "Preditor ativado! Avisaremos por e-mail.",
+      "accountRequired": "Voce precisa de uma conta gratuita para ativar o preditor."
     },
     "methodology": {
       "title": "Quais dados alimentam esta previsao",

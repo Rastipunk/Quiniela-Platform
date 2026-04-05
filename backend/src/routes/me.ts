@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { sendData, sendOk, sendNotFound, sendBadRequest, sendInternal } from "../lib/apiResponse";
+import { writeAuditEvent } from "../lib/audit";
+import { fireAndForget } from "../lib/asyncHelpers";
 
 export const meRouter = Router();
 
@@ -93,6 +95,7 @@ meRouter.get("/email-preferences", async (req, res) => {
         emailDeadlineReminders: true,
         emailResultNotifications: true,
         emailPoolCompletions: true,
+        predictionUpdates: true,
       },
     }),
     prisma.platformSettings.findUnique({
@@ -126,6 +129,7 @@ meRouter.get("/email-preferences", async (req, res) => {
       emailDeadlineReminders: user.emailDeadlineReminders,
       emailResultNotifications: user.emailResultNotifications,
       emailPoolCompletions: user.emailPoolCompletions,
+      predictionUpdates: user.predictionUpdates,
     },
     // Indica qué tipos de email están habilitados a nivel de plataforma
     // Si un tipo está deshabilitado por admin, el usuario no puede recibirlo
@@ -137,6 +141,7 @@ meRouter.get("/email-preferences", async (req, res) => {
       emailDeadlineReminders: "Recordatorios de deadline para hacer pronósticos",
       emailResultNotifications: "Notificaciones de resultados publicados",
       emailPoolCompletions: "Notificaciones de quinielas finalizadas",
+      predictionUpdates: "Actualizaciones de predicciones AI del Mundial 2026",
     },
   });
 });
@@ -185,5 +190,66 @@ meRouter.put("/email-preferences", async (req, res) => {
   } catch (error) {
     console.error("Error updating email preferences:", error);
     return sendInternal(res, "INTERNAL_ERROR", { message: "Error al actualizar preferencias de email." });
+  }
+});
+
+// =========================================================================
+// PREDICTION SUBSCRIPTION
+// =========================================================================
+
+const predictionSubscriptionSchema = z.object({
+  enabled: z.boolean(),
+});
+
+// GET /me/prediction-subscription
+// Returns current prediction subscription status
+meRouter.get("/prediction-subscription", async (req, res) => {
+  const userId = req.auth!.userId;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { predictionUpdates: true },
+  });
+
+  if (!user) {
+    return sendNotFound(res, "USER_NOT_FOUND", { message: "Usuario no encontrado." });
+  }
+
+  return sendData(res, { enabled: user.predictionUpdates });
+});
+
+// PUT /me/prediction-subscription
+// Toggle prediction update subscription
+meRouter.put("/prediction-subscription", async (req, res) => {
+  const userId = req.auth!.userId;
+
+  const parseResult = predictionSubscriptionSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parseResult.error.flatten().fieldErrors });
+  }
+
+  const { enabled } = parseResult.data;
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { predictionUpdates: enabled },
+      select: { predictionUpdates: true },
+    });
+
+    // Audit event for subscription change
+    fireAndForget("audit:prediction-subscription", writeAuditEvent({
+      actorUserId: userId,
+      action: enabled ? "prediction_subscription_enabled" : "prediction_subscription_disabled",
+      entityType: "User",
+      entityId: userId,
+      ip: req.ip ?? null,
+      userAgent: req.get("user-agent") ?? null,
+    }));
+
+    return sendData(res, { enabled: updatedUser.predictionUpdates });
+  } catch (error) {
+    console.error("Error updating prediction subscription:", error);
+    return sendInternal(res, "INTERNAL_ERROR", { message: "Error al actualizar suscripción de predicciones." });
   }
 });

@@ -20,6 +20,7 @@ import {
   getPoolCompletedTemplate,
   getCorporateInquiryConfirmationTemplate,
   getCorporateActivationTemplate,
+  getPredictionUpdateTemplate,
   WelcomeEmailParams,
   PoolInvitationEmailParams,
   DeadlineReminderEmailParams,
@@ -1120,6 +1121,56 @@ export async function sendResultOverrideNotification(params: {
     return { success: true };
   } catch (err) {
     console.error("❌ Exception override notification:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// PREDICTION UPDATE EMAIL
+// =========================================================================
+
+/**
+ * Sends a prediction update notification email to a subscribed user.
+ * Not subject to standard email preference checks — uses its own predictionUpdates field.
+ */
+export async function sendPredictionUpdateEmail(params: {
+  to: string;
+  displayName: string;
+  locale: string;
+  changes: Array<{ type: string; description: string }>;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || DEFAULT_LOCALE;
+  const predictionUrl = `${FRONTEND_URL}/predicciones`;
+  const unsubscribeUrl = `${FRONTEND_URL}/profile`;
+
+  const { subject, html } = getPredictionUpdateTemplate({
+    displayName: params.displayName,
+    locale: loc,
+    changes: params.changes,
+    predictionUrl,
+    unsubscribeUrl,
+  });
+
+  try {
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
+      to: params.to,
+      subject: `🔮 ${subject} — ${APP_NAME}`,
+      html,
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar prediction update email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Prediction update email enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar prediction update email:", err);
     return { success: false, error: String(err) };
   }
 }

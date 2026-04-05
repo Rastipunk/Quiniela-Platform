@@ -22,6 +22,11 @@ import {
   auditR16LatePicks,
   fixR16Integrity,
 } from "../services/adminService";
+import { prisma } from "../db";
+import { sendPredictionUpdateEmail } from "../lib/email";
+import { writeAuditEvent } from "../lib/audit";
+import { fireAndForget } from "../lib/asyncHelpers";
+import { DEFAULT_LOCALE } from "../lib/constants";
 
 // Sub-routers — all admin-related routes composed here
 import { adminTemplatesRouter } from "./adminTemplates";
@@ -132,4 +137,98 @@ adminRouter.post("/fix-r16-integrity", requireAuth, requireAdmin, async (req, re
   } catch (err) {
     return handleServiceError(res, err);
   }
+});
+
+// ─── Prediction Update Mass Send ────────────────────────────
+
+const predictionUpdateSchema = z.object({
+  changes: z.array(z.object({
+    type: z.string().min(1).max(100),
+    description: z.string().min(1).max(500),
+  })).min(1).max(50),
+});
+
+const PREDICTION_EMAIL_BATCH_SIZE = 10;
+const PREDICTION_EMAIL_BATCH_DELAY_MS = 1_000;
+
+// POST /admin/prediction-update — Send prediction update email to all subscribers
+adminRouter.post("/prediction-update", requireAuth, requireAdmin, async (req, res) => {
+  const parsed = predictionUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten().fieldErrors });
+  }
+
+  const { changes } = parsed.data;
+
+  // Query all subscribed users
+  const subscribers = await prisma.user.findMany({
+    where: {
+      predictionUpdates: true,
+      status: "ACTIVE",
+      emailNotificationsEnabled: true,
+    },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+    },
+  });
+
+  if (subscribers.length === 0) {
+    return sendOk(res, { message: "No subscribers found.", emailsSent: 0 });
+  }
+
+  // Audit event for the mass send
+  fireAndForget("audit:prediction-update-send", writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "prediction_update_mass_send",
+    entityType: "PredictionUpdate",
+    dataJson: { subscriberCount: subscribers.length, changesCount: changes.length },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  }));
+
+  // Fire-and-forget: send emails in batches to avoid rate limits
+  const totalSubscribers = subscribers.length;
+
+  fireAndForget("prediction-update-emails", (async () => {
+    let sent = 0;
+    let failed = 0;
+
+    for (let i = 0; i < subscribers.length; i += PREDICTION_EMAIL_BATCH_SIZE) {
+      const batch = subscribers.slice(i, i + PREDICTION_EMAIL_BATCH_SIZE);
+
+      const results = await Promise.allSettled(
+        batch.map((user) =>
+          sendPredictionUpdateEmail({
+            to: user.email,
+            displayName: user.displayName,
+            locale: DEFAULT_LOCALE,
+            changes,
+          })
+        )
+      );
+
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value.success) {
+          sent++;
+        } else {
+          failed++;
+        }
+      }
+
+      // Delay between batches (skip after last batch)
+      if (i + PREDICTION_EMAIL_BATCH_SIZE < subscribers.length) {
+        await new Promise((resolve) => setTimeout(resolve, PREDICTION_EMAIL_BATCH_DELAY_MS));
+      }
+    }
+
+    console.log(`✅ Prediction update mass send complete: ${sent} sent, ${failed} failed out of ${totalSubscribers}`);
+  })());
+
+  // Return immediately — emails are sent in background
+  return sendOk(res, {
+    message: "Prediction update emails queued.",
+    emailsQueued: totalSubscribers,
+  });
 });

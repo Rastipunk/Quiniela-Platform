@@ -96,6 +96,13 @@ model User {
   emailResultNotifications Boolean @default(true) // Resultados publicados
   emailPoolCompletions     Boolean @default(true) // Pool completado
 
+  // =========================================================================
+  // PREDICTION SUBSCRIPTION
+  // Comentario en español: suscripción a actualizaciones de predicciones AI (Mundial 2026)
+  // =========================================================================
+
+  predictionUpdates Boolean @default(false) // Subscribed to AI prediction update emails
+
   createdAtUtc DateTime     @default(now())
   updatedAtUtc DateTime     @updatedAt
   predictions  Prediction[]
