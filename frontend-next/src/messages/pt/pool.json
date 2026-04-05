@@ -725,6 +725,11 @@
     "backToDashboard": "Ir para meus bolões"
   },
   "invite": {
+    "title": "Convites",
+    "createCode": "Criar código",
+    "codeCopied": "Código (copiado se o navegador permitiu):"
+  },
+  "inviteLanding": {
     "title": "{host} te convidou para um bolão",
     "someone": "Alguém",
     "members": "{count} participantes",

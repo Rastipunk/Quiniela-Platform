@@ -725,6 +725,11 @@
     "backToDashboard": "Go to my pools"
   },
   "invite": {
+    "title": "Invitations",
+    "createCode": "Create code",
+    "codeCopied": "Code (copied if browser allowed):"
+  },
+  "inviteLanding": {
     "title": "{host} invited you to a prediction pool",
     "someone": "Someone",
     "members": "{count} participants",

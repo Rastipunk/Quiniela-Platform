@@ -69,10 +69,10 @@ function InviteContent() {
         }}>
           <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>😕</div>
           <h1 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 8 }}>
-            {t("invite.invalidTitle")}
+            {t("inviteLanding.invalidTitle")}
           </h1>
           <p style={{ color: "var(--muted)", fontSize: "0.95rem", marginBottom: 24, lineHeight: 1.6 }}>
-            {t("invite.invalidDesc")}
+            {t("inviteLanding.invalidDesc")}
           </p>
           <Link
             href="/"
@@ -81,7 +81,7 @@ function InviteContent() {
               padding: "12px 24px", borderRadius: 12, fontWeight: 700, textDecoration: "none",
             }}
           >
-            {t("invite.goHome")}
+            {t("inviteLanding.goHome")}
           </Link>
         </div>
       </div>
@@ -105,7 +105,7 @@ function InviteContent() {
 
         {/* Invite message */}
         <h1 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: 12, lineHeight: 1.3, color: "var(--text)" }}>
-          {t("invite.title", { host: preview.hostName || t("invite.someone") })}
+          {t("inviteLanding.title", { host: preview.hostName || t("inviteLanding.someone") })}
         </h1>
 
         {/* Pool card */}
@@ -124,9 +124,9 @@ function InviteContent() {
           <div style={{
             display: "flex", gap: 16, fontSize: "0.82rem", color: "var(--muted)",
           }}>
-            <span>👥 {t("invite.members", { count: preview.memberCount })}</span>
+            <span>👥 {t("inviteLanding.members", { count: preview.memberCount })}</span>
             {preview.valid && (
-              <span style={{ color: "#10b981" }}>✓ {t("invite.active")}</span>
+              <span style={{ color: "#10b981" }}>✓ {t("inviteLanding.active")}</span>
             )}
           </div>
         </div>
@@ -142,7 +142,7 @@ function InviteContent() {
                 textDecoration: "none", marginBottom: 12,
               }}
             >
-              {t("invite.joinNow")}
+              {t("inviteLanding.joinNow")}
             </a>
           ) : (
             <>
@@ -154,7 +154,7 @@ function InviteContent() {
                   textDecoration: "none", marginBottom: 12,
                 }}
               >
-                {t("invite.createAccountToJoin")}
+                {t("inviteLanding.createAccountToJoin")}
               </a>
               <a
                 href={loginUrl}
@@ -163,13 +163,13 @@ function InviteContent() {
                   fontWeight: 600, textDecoration: "none",
                 }}
               >
-                {t("invite.alreadyHaveAccount")}
+                {t("inviteLanding.alreadyHaveAccount")}
               </a>
             </>
           )
         ) : (
           <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-            {t("invite.expired")}
+            {t("inviteLanding.expired")}
           </p>
         )}
       </div>

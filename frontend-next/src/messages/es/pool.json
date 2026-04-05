@@ -725,6 +725,11 @@
     "backToDashboard": "Ir a mis pools"
   },
   "invite": {
+    "title": "Invitaciones",
+    "createCode": "Crear código",
+    "codeCopied": "Código (copiado si el navegador lo permitió):"
+  },
+  "inviteLanding": {
     "title": "{host} te ha invitado a una quiniela",
     "someone": "Alguien",
     "members": "{count} participantes",
