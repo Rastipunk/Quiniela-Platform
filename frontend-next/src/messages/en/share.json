@@ -1,0 +1,11 @@
+{
+  "nativeShare": "Share",
+  "copyLink": "Copy link",
+  "copied": "Copied",
+  "shareTitle": "Share",
+  "poolInvite": "Join my prediction pool \"{poolName}\" on Picks4All. Use code {code} to join.",
+  "predictions": "Picks4All AI predicts who wins the 2026 World Cup. Check the full bracket.",
+  "worldCupHub": "Everything about the 2026 World Cup: groups, schedule, venues, and AI predictions. Create your free pool.",
+  "leaderboard": "I'm ranked #{rank} out of {total} in my pool \"{poolName}\". Think you can beat me?",
+  "generic": "Create free sports prediction pools with your friends on Picks4All."
+}

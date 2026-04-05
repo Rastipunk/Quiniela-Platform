@@ -7,6 +7,7 @@ import { NotificationBanner } from "@/components/NotificationBanner";
 import { getMatchPicks, setScoringOverride, type MatchPicksResponse } from "@/lib/api";
 import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { formatPhaseName, formatPhaseFullName, isPlaceholder } from "./poolHelpers";
+import { ShareButtons } from "@/components/ShareButtons";
 import { MatchCard } from "./MatchCard";
 import { MatchPicksModal, type MatchPicksModalData } from "./MatchPicksModal";
 import { ScoringOverrideModal, type ScoringOverrideModalData } from "./ScoringOverrideModal";
@@ -275,6 +276,14 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
             <div style={{ marginTop: 10, fontSize: 13 }}>
               <div style={{ color: "#666" }}>{t("invite.codeCopied")}</div>
               <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 1 }}>{inviteCode}</div>
+              <div style={{ marginTop: 12 }}>
+                <ShareButtons
+                  context="poolInvite"
+                  url={`${typeof window !== "undefined" ? window.location.origin : ""}/pools/join?code=${inviteCode}`}
+                  data={{ poolName: overview.pool.name, inviteCode }}
+                  size="sm"
+                />
+              </div>
             </div>
           )}
         </div>

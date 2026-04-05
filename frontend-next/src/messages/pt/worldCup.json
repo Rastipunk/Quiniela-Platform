@@ -82,6 +82,9 @@
       "title": "A Copa esta chegando! Crie seu bolao agora",
       "description": "Nao espere ate o ultimo momento. Organize seu bolao da Copa do Mundo 2026 hoje e garanta que todos os seus amigos estejam prontos para o maior torneio do futebol.",
       "cta": "Criar meu bolao gratis"
+    },
+    "share": {
+      "label": "Compartilhe com amigos"
     }
   },
   "groups": {
@@ -528,6 +531,9 @@
       "label": "Campeao do Mundo 2026",
       "team": "Argentina",
       "reasoning": "Argentina defende o titulo com a geracao mais completa da sua historia. Messi na sua ultima Copa, uma defesa solida com Martinez e Romero, e um meio-campo que controla jogos. Os dados respaldam o campeao defensor: 82% de vitorias recentes, 3 titulos mundiais e a lideranca do ranking FIFA."
+    },
+    "share": {
+      "label": "Compartilhe esta previsao"
     },
     "analysis": {
       "title": "Analise detalhada: por que a Argentina ganha a Copa do Mundo 2026",

@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { MobileLeaderboard } from "@/components/MobileLeaderboard";
 import { PlayerSummary } from "@/components/PlayerSummary";
+import { ShareButtons } from "@/components/ShareButtons";
 import type { PoolOverview } from "@/lib/api";
 import type { PlayerSummaryModalData } from "./poolTypes";
 import { formatPhaseName, formatPhaseFullName } from "./poolHelpers";
@@ -21,11 +22,26 @@ export function PoolLeaderboardTab({
   const t = useTranslations("pool");
   const verbose = false;
 
+  const myUserId = overview.myMembership?.userId;
+  const myRow = overview.leaderboard.rows.find((r) => r.userId === myUserId);
+  const myRank = myRow?.rank;
+
   return (
     <>
       <div style={{ marginTop: 14, padding: isMobile ? 12 : 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20, fontWeight: 900 }}>{t("leaderboard.title")}</h3>
+          <ShareButtons
+            context="leaderboard"
+            url={typeof window !== "undefined" ? window.location.href : ""}
+            data={{
+              poolName: overview.pool.name,
+              rank: myRank,
+              totalMembers: overview.counts.membersActive,
+            }}
+            size="sm"
+            showLabels={false}
+          />
         </div>
 
         {isMobile ? (

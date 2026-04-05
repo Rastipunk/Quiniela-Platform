@@ -82,6 +82,9 @@
       "title": "The World Cup is coming! Create your pool now",
       "description": "Don't wait until the last minute. Organize your 2026 World Cup pool today and make sure all your friends are ready for the biggest football tournament.",
       "cta": "Create my free pool"
+    },
+    "share": {
+      "label": "Share with friends"
     }
   },
   "groups": {
@@ -528,6 +531,9 @@
       "label": "2026 World Champion",
       "team": "Argentina",
       "reasoning": "Argentina defends their title with the most complete generation in their history. Messi in his final World Cup, a solid defence with Martinez and Romero, and a midfield that controls matches. The data backs the defending champion: 82% recent win rate, 3 World Cup titles, and the top FIFA ranking."
+    },
+    "share": {
+      "label": "Share this prediction"
     },
     "analysis": {
       "title": "Detailed analysis: why Argentina wins the 2026 World Cup",

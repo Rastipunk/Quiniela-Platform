@@ -4,6 +4,7 @@ import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
+import { ShareButtons } from "@/components/ShareButtons";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
 import { BRAND } from "@/lib/brand";
@@ -830,6 +831,20 @@ export default async function Mundial2026Page() {
               ))}
             </div>
           </section>
+
+          {/* ═══════════ SHARE ═══════════ */}
+          <div style={{ textAlign: "center", marginTop: 32, marginBottom: 16 }}>
+            <p style={{ color: "var(--muted)", fontSize: "0.85rem", marginBottom: 12 }}>
+              {t("hub.share.label")}
+            </p>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <ShareButtons
+                context="worldCupHub"
+                url={`${baseUrl}${localePath}${pagePath}`}
+                size="sm"
+              />
+            </div>
+          </div>
 
           {/* ═══════════ BOTTOM CTA ═══════════ */}
           <section

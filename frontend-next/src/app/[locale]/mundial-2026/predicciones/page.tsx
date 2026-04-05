@@ -5,6 +5,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { PredictionSubscribeButton } from "@/components/PredictionSubscribeButton";
+import { ShareButtons } from "@/components/ShareButtons";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
 import { BRAND } from "@/lib/brand";
@@ -658,6 +659,20 @@ export default async function PredictionsPage() {
               </p>
             </div>
           </section>
+
+          {/* ═══════════ SHARE PREDICTIONS ═══════════ */}
+          <div style={{ textAlign: "center", marginTop: 24 }}>
+            <p style={{ color: "var(--muted)", fontSize: "0.85rem", marginBottom: 12 }}>
+              {t("predictions.share.label")}
+            </p>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <ShareButtons
+                context="predictions"
+                url={`${baseUrl}${localePath}${pagePath}`}
+                size="sm"
+              />
+            </div>
+          </div>
 
           {/* ═══════════ SUBSCRIBE CTA ═══════════ */}
           <section id="subscribe" style={{ padding: "0 24px 60px", maxWidth: 900, margin: "0 auto" }}>
