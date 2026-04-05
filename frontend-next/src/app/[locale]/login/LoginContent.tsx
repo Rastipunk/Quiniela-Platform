@@ -6,6 +6,7 @@ import { consumeSessionExpiredFlag, setToken } from "@/lib/auth";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 
 // Tipos para Google Identity Services
@@ -28,6 +29,8 @@ export default function LoginContent() {
   const expired = useMemo(() => consumeSessionExpiredFlag(), []);
   const isMobile = useIsMobile();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
 
   const [mode, setMode] = useState<"login" | "register">("login");
 
@@ -53,7 +56,12 @@ export default function LoginContent() {
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   function onLoggedIn() {
-    router.push("/dashboard");
+    if (redirectTo) {
+      // Dynamic redirect — use window.location for arbitrary paths
+      window.location.href = redirectTo;
+    } else {
+      router.push("/dashboard");
+    }
   }
 
   // Google Sign In callback
