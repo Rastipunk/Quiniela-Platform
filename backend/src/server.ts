@@ -17,7 +17,7 @@ import { pickPresetsRouter } from "./routes/pickPresets";
 import { legalRouter } from "./routes/legal";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
-import { sendOk, sendForbidden, sendInternal } from "./lib/apiResponse";
+import { sendOk, sendForbidden, sendInternal, sendNotFound } from "./lib/apiResponse";
 import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
