@@ -84,6 +84,7 @@ docs/
     ├── DEPLOYMENT.md         # Railway deployment and env vars
     ├── EMAIL_SYSTEM.md       # Email notification system
     ├── TOURNAMENT_SYSTEM.md  # Tournaments, phases, advancement, sync
+    ├── PREDICTION_UPDATES.md # AI prediction update and subscriber notification process
     └── GOOGLE_OAUTH.md       # Google OAuth configuration
 CLAUDE.md                     # This file — development standards
 README.md                     # Repository entry point
