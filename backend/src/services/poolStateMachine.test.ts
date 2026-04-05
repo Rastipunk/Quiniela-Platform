@@ -236,11 +236,11 @@ describe("transitionToArchived", () => {
     });
   });
 
-  it("throws if pool is not COMPLETED", async () => {
-    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "ACTIVE" });
+  it("throws if pool is already ARCHIVED", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "ARCHIVED" });
 
     await expect(transitionToArchived("pool-1", "user-1")).rejects.toThrow(
-      "Pool must be COMPLETED to archive"
+      "Pool is already archived"
     );
   });
 

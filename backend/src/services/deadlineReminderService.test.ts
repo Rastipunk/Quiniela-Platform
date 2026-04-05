@@ -171,7 +171,7 @@ describe("processDeadlineReminders", () => {
 
       expect(prisma.pool.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { status: "ACTIVE" },
+          where: { status: "ACTIVE", muteReminders: false },
         })
       );
     });
