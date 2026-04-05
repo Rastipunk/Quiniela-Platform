@@ -394,7 +394,12 @@
       "title": "Prediccion del Mundial 2026 por inteligencia artificial",
       "subtitle": "Un analisis basado en datos que cruza rankings FIFA, rendimiento historico en Mundiales, forma reciente de cada seleccion, profundidad de plantilla y el factor local de Estados Unidos, Mexico y Canada. No es una bola de cristal: es machine learning aplicado al futbol.",
       "seePrediction": "Ver prediccion del campeon",
-      "seeMethodology": "¿En que se basa?"
+      "seeMethodology": "¿En qué se basa?",
+      "subscribePitch": {
+        "title": "Predictor IA — Actualización automática",
+        "desc": "Esta predicción se actualiza después de cada jornada del Mundial con datos reales. Activa el Predictor IA y te avisamos por correo cada vez que cambie la predicción del campeón o del bracket eliminatorio.",
+        "cta": "Activar Predictor IA"
+      }
     },
     "subscribe": {
       "title": "Activa el Predictor IA",

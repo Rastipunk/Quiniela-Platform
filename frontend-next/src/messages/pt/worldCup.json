@@ -394,7 +394,12 @@
       "title": "Previsao da Copa do Mundo 2026 por inteligencia artificial",
       "subtitle": "Uma analise baseada em dados que cruza rankings FIFA, desempenho historico em Copas, forma recente de cada selecao, profundidade de elenco e o fator local de Estados Unidos, Mexico e Canada. Nao e bola de cristal: e machine learning aplicado ao futebol.",
       "seePrediction": "Ver previsao do campeao",
-      "seeMethodology": "Ver metodologia"
+      "seeMethodology": "Ver metodologia",
+      "subscribePitch": {
+        "title": "Preditor IA — Atualização automática",
+        "desc": "Esta previsão é atualizada após cada rodada da Copa com resultados reais. Ative o Preditor IA e avisaremos por e-mail quando a previsão do campeão ou da chave eliminatória mudar.",
+        "cta": "Ativar Preditor IA"
+      }
     },
     "subscribe": {
       "title": "Ative o Preditor IA",

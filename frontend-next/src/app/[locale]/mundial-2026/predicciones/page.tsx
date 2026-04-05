@@ -429,31 +429,80 @@ export default async function PredictionsPage() {
                 href="#champion"
                 style={{
                   background: "white",
-                  color: BRAND.primary,
-                  padding: "12px 24px",
+                  color: "#1a1a1a",
+                  padding: "14px 28px",
                   borderRadius: 12,
                   fontWeight: 700,
-                  fontSize: "0.95rem",
+                  fontSize: "1rem",
                   textDecoration: "none",
                   border: "none",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
                 }}
               >
-                {t("predictions.hero.seePrediction")}
+                🏆 {t("predictions.hero.seePrediction")}
               </a>
               <a
                 href="#methodology"
                 style={{
-                  background: "rgba(255,255,255,0.15)",
+                  background: "rgba(255,255,255,0.2)",
                   color: "white",
-                  padding: "12px 24px",
+                  padding: "14px 28px",
                   borderRadius: 12,
                   fontWeight: 600,
-                  fontSize: "0.95rem",
+                  fontSize: "1rem",
                   textDecoration: "none",
-                  border: "1px solid rgba(255,255,255,0.3)",
+                  border: "2px solid rgba(255,255,255,0.5)",
                 }}
               >
                 {t("predictions.hero.seeMethodology")}
+              </a>
+            </div>
+
+            {/* Subscription pitch in hero */}
+            <div
+              style={{
+                marginTop: 48,
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: 16,
+                padding: "20px 28px",
+                maxWidth: 600,
+                marginLeft: "auto",
+                marginRight: "auto",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: "1.2rem" }}>🤖</span>
+                <span style={{ fontWeight: 700, fontSize: "1rem" }}>
+                  {t("predictions.hero.subscribePitch.title")}
+                </span>
+              </div>
+              <p
+                style={{
+                  fontSize: "0.9rem",
+                  color: "rgba(255,255,255,0.85)",
+                  lineHeight: 1.6,
+                  marginBottom: 0,
+                }}
+              >
+                {t("predictions.hero.subscribePitch.desc")}
+              </p>
+              <a
+                href="#subscribe"
+                style={{
+                  display: "inline-block",
+                  marginTop: 14,
+                  background: "white",
+                  color: "#1a1a1a",
+                  padding: "10px 24px",
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  textDecoration: "none",
+                }}
+              >
+                {t("predictions.hero.subscribePitch.cta")}
               </a>
             </div>
           </section>
@@ -611,7 +660,7 @@ export default async function PredictionsPage() {
           </section>
 
           {/* ═══════════ SUBSCRIBE CTA ═══════════ */}
-          <section style={{ padding: "0 24px 60px", maxWidth: 900, margin: "0 auto" }}>
+          <section id="subscribe" style={{ padding: "0 24px 60px", maxWidth: 900, margin: "0 auto" }}>
             <PredictionSubscribeButton />
           </section>
 

@@ -394,7 +394,12 @@
       "title": "AI prediction for the 2026 World Cup",
       "subtitle": "A data-driven analysis that cross-references FIFA rankings, historical World Cup performance, recent form, squad depth, and the home advantage factor for the United States, Mexico, and Canada. Not a crystal ball — it's machine learning applied to football.",
       "seePrediction": "See champion prediction",
-      "seeMethodology": "See methodology"
+      "seeMethodology": "See methodology",
+      "subscribePitch": {
+        "title": "AI Predictor — Auto-updated",
+        "desc": "This prediction updates after each World Cup matchday with real results. Activate the AI Predictor and we'll email you whenever the champion prediction or knockout bracket changes.",
+        "cta": "Activate AI Predictor"
+      }
     },
     "subscribe": {
       "title": "Activate AI Predictor",
