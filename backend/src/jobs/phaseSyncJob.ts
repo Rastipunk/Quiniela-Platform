@@ -121,8 +121,11 @@ async function runPhaseSyncCheck(): Promise<void> {
 export function startPhaseSyncJob(): void {
   if (scheduledTask) return;
 
-  scheduledTask = cron.schedule(PHASE_SYNC_CRON, async () => {
-    await runPhaseSyncCheck();
+  scheduledTask = cron.schedule(PHASE_SYNC_CRON, () => {
+    console.log(`[PhaseSyncJob] Cron triggered at ${new Date().toISOString()}`);
+    runPhaseSyncCheck().catch((err) => {
+      console.error("[PhaseSyncJob] Unhandled error:", err instanceof Error ? err.message : err);
+    });
   });
 
   console.log(`[PhaseSyncJob] Scheduled phase sync check: ${PHASE_SYNC_CRON} (every 12h)`);
