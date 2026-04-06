@@ -27,8 +27,7 @@ async function runPhaseSyncCheck(): Promise<void> {
       include: { tournamentInstance: { select: { name: true } } },
     });
 
-    if (pending.length === 0) return;
-
+    if (pending.length > 0) {
     console.log(`[PhaseSyncJob] Found ${pending.length} pending phase sync(s)`);
 
     for (const record of pending) {
@@ -95,6 +94,7 @@ async function runPhaseSyncCheck(): Promise<void> {
         }
       }
     }
+    } // end if (pending.length > 0)
   } catch (error) {
     console.error("[PhaseSyncJob] Error:", error instanceof Error ? error.message : error);
   }
