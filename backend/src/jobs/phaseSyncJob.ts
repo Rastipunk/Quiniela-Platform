@@ -107,11 +107,20 @@ async function runPhaseSyncCheck(): Promise<void> {
       select: { id: true, name: true },
     });
 
+    console.log(`[PhaseSyncJob] Found ${autoInstances.length} AUTO instance(s) for fixture verification`);
+
     const smartSync = getSmartSyncService();
-    if (smartSync.isAvailable()) {
+    const available = smartSync.isAvailable();
+    console.log(`[PhaseSyncJob] SmartSync available: ${available}`);
+
+    if (available) {
       for (const inst of autoInstances) {
+        console.log(`[PhaseSyncJob] Verifying fixtures for: ${inst.name}`);
         await smartSync.verifyUpcomingFixtures(inst.id);
       }
+      console.log("[PhaseSyncJob] Fixture verification complete");
+    } else {
+      console.log("[PhaseSyncJob] SmartSync not available — skipping fixture verification");
     }
   } catch (error) {
     console.error("[PhaseSyncJob] Fixture verification error:", error instanceof Error ? error.message : error);
