@@ -61,6 +61,11 @@ export default function AdminEmailSettingsContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Scores service toggle
+  const [scoresEnabled, setScoresEnabled] = useState(false);
+  const [scoresLoading, setScoresLoading] = useState(true);
+  const [scoresSaving, setScoresSaving] = useState(false);
+
   useEffect(() => () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
   }, []);
@@ -102,7 +107,45 @@ export default function AdminEmailSettingsContent() {
 
   useEffect(() => {
     fetchSettings();
+    // Fetch scores toggle
+    const token = getToken();
+    if (token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/admin/settings/scores`, {
+        headers: { Cookie: `p4a_token=${token}` },
+        credentials: "include",
+      })
+        .then((r) => r.json())
+        .then((data) => { if (data.scoresServiceEnabled !== undefined) setScoresEnabled(data.scoresServiceEnabled); })
+        .catch(() => {})
+        .finally(() => setScoresLoading(false));
+    }
   }, [fetchSettings]);
+
+  const handleScoresToggle = async () => {
+    const token = getToken();
+    if (!token) return;
+    const newValue = !scoresEnabled;
+    setScoresEnabled(newValue); // optimistic
+    setScoresSaving(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/admin/settings/scores`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Cookie: `p4a_token=${token}` },
+        credentials: "include",
+        body: JSON.stringify({ enabled: newValue }),
+      });
+      const data = await res.json();
+      setScoresEnabled(data.scoresServiceEnabled);
+      setSuccess(newValue ? "Scores service activado" : "Scores service desactivado");
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(null), 3000);
+    } catch {
+      setScoresEnabled(!newValue); // revert
+      setError("Error al cambiar configuración de scores");
+    } finally {
+      setScoresSaving(false);
+    }
+  };
 
   const handleToggle = async (key: keyof PlatformEmailSettings) => {
     if (!settings) return;
@@ -373,6 +416,78 @@ export default function AdminEmailSettingsContent() {
             )}
           </div>
         )}
+
+        {/* SCORES SERVICE TOGGLE */}
+        <div style={cardStyle}>
+          <div style={{ marginBottom: 8, fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
+            SCORES EN TIEMPO REAL
+          </div>
+          <div style={{
+            ...toggleRowStyle,
+            borderBottom: "none",
+          }}>
+            <div style={toggleInfoStyle}>
+              <div style={toggleLabelStyle}>
+                Servicio de Scores en Vivo
+                {scoresEnabled && (
+                  <span style={{
+                    marginLeft: 8,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    background: "#ecfdf5",
+                    color: "#059669",
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}>
+                    ACTIVO
+                  </span>
+                )}
+              </div>
+              <div style={toggleDescStyle}>
+                Obtiene resultados provisionales en tiempo real via web scraping (picks4all-scores).
+                Los resultados se muestran como &quot;Provisional&quot; hasta que API-Football confirme.
+                Consulta cada 15 segundos durante partidos activos.
+              </div>
+            </div>
+            <div style={switchContainerStyle}>
+              <label style={{
+                display: "block",
+                width: "100%",
+                height: "100%",
+                cursor: scoresSaving || scoresLoading ? "not-allowed" : "pointer",
+                opacity: scoresSaving || scoresLoading ? 0.6 : 1,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={scoresEnabled}
+                  onChange={handleScoresToggle}
+                  disabled={scoresSaving || scoresLoading}
+                  style={{ display: "none" }}
+                />
+                <div style={{
+                  width: 48,
+                  height: 28,
+                  backgroundColor: scoresEnabled ? "#059669" : "#d1d5db",
+                  borderRadius: 14,
+                  position: "relative",
+                  transition: "background-color 0.2s",
+                }}>
+                  <div style={{
+                    position: "absolute",
+                    top: 2,
+                    left: scoresEnabled ? 22 : 2,
+                    width: 24,
+                    height: 24,
+                    backgroundColor: "#fff",
+                    borderRadius: "50%",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    transition: "left 0.2s",
+                  }} />
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
 
         <div style={cardStyle}>
           <div style={{ marginBottom: 8, fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
