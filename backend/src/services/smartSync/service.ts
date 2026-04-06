@@ -432,6 +432,11 @@ export class SmartSyncService {
         continue;
       }
 
+      // Log upgrade from SCRAPER_PROVISIONAL → API_CONFIRMED
+      if (existingResult?.currentVersion?.source === "SCRAPER_PROVISIONAL") {
+        console.log(`[SmartSync] Upgrading ${matchState.internalMatchId} from SCRAPER_PROVISIONAL → API_CONFIRMED`);
+      }
+
       // Create/update result
       await prisma.$transaction(async (tx) => {
         let headerId: string;

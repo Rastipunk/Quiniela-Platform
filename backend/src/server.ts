@@ -23,6 +23,8 @@ import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimite
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 import { startPhaseSyncJob, stopPhaseSyncJob } from "./jobs/phaseSyncJob";
+import { startLiveScoresJob, stopLiveScoresJob } from "./jobs/liveScoresJob";
+import { startFixtureTrackingJob, stopFixtureTrackingJob } from "./jobs/fixtureTrackingJob";
 import { prisma } from "./db";
 
 const app = express();
@@ -257,6 +259,8 @@ const server = app.listen(PORT, () => {
   startSmartSyncJob();
   startDeadlineReminderJob();
   startPhaseSyncJob();
+  startFixtureTrackingJob();
+  startLiveScoresJob();
 });
 
 // Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)
@@ -274,6 +278,8 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopSmartSyncJob();
   stopDeadlineReminderJob();
   stopPhaseSyncJob();
+  stopLiveScoresJob();
+  stopFixtureTrackingJob();
 
   // 3. Disconnect Prisma (closes DB connection pool)
   try {

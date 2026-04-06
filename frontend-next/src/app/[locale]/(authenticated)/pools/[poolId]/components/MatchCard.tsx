@@ -228,6 +228,7 @@ export function MatchCard({
           {/* Result + Host */}
           <ResultSection
             result={m.result}
+            resultSource={m.resultSource}
             isHost={isHost}
             onSave={(homeGoals, awayGoals, reason, homePenalties, awayPenalties) =>
               saveResult({

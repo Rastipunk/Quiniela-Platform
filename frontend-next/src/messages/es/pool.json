@@ -284,6 +284,7 @@
     "noResultPlayer": "Se publica automáticamente al finalizar el partido",
     "awaitingResult": "Resultado pendiente",
     "autoUpdateHint": "Se actualizará automáticamente al finalizar el partido",
+    "provisional": "En vivo · Provisional",
     "correctResult": "Modificar resultado",
     "publishCorrection": "Confirmar modificación",
     "publishResult": "Publicar resultado",

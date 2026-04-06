@@ -284,6 +284,7 @@
     "noResultPlayer": "Published automatically when the match ends",
     "awaitingResult": "Result pending",
     "autoUpdateHint": "Will update automatically when the match ends",
+    "provisional": "Live · Provisional",
     "correctResult": "Modify result",
     "publishCorrection": "Confirm modification",
     "publishResult": "Publish result",

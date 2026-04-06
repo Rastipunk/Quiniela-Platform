@@ -24,6 +24,7 @@ import {
   getDeadlineReminderStats,
 } from "../services/deadlineReminderService";
 import { sendData, sendOk, sendBadRequest, sendInternal } from "../lib/apiResponse";
+import { fireAndForget } from "../lib/asyncHelpers";
 
 // Tipo extendido de Request con autenticación
 interface AuthenticatedRequest extends Request {
@@ -413,6 +414,64 @@ router.get(
     } catch (error) {
       console.error("Error fetching reminder stats:", error);
       return sendInternal(res, "Error al obtener estadísticas de recordatorios.");
+    }
+  }
+);
+
+// =========================================================================
+// GET /admin/settings/scores
+// Estado del toggle del servicio de scores en tiempo real
+// =========================================================================
+
+router.get(
+  "/scores",
+  async (_req: AuthenticatedRequest, res: Response) => {
+    try {
+      const settings = await prisma.platformSettings.findUnique({
+        where: { id: "singleton" },
+        select: { scoresServiceEnabled: true },
+      });
+      return sendData(res, { scoresServiceEnabled: settings?.scoresServiceEnabled ?? false });
+    } catch (error) {
+      console.error("Error fetching scores settings:", error);
+      return sendInternal(res, "Error al obtener configuración de scores.");
+    }
+  }
+);
+
+// =========================================================================
+// PUT /admin/settings/scores
+// Activar/desactivar servicio de scores en tiempo real
+// =========================================================================
+
+router.put(
+  "/scores",
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { enabled } = req.body;
+      if (typeof enabled !== "boolean") {
+        return sendBadRequest(res, "VALIDATION_ERROR", { message: "enabled must be a boolean" });
+      }
+
+      await prisma.platformSettings.upsert({
+        where: { id: "singleton" },
+        create: { id: "singleton", scoresServiceEnabled: enabled, updatedById: req.auth?.userId },
+        update: { scoresServiceEnabled: enabled, updatedById: req.auth?.userId },
+      });
+
+      fireAndForget("[AdminSettings]", writeAuditEvent({
+        actorUserId: req.auth?.userId!,
+        action: "PLATFORM_SETTING_CHANGED",
+        entityType: "PlatformSettings",
+        entityId: "singleton",
+        dataJson: { field: "scoresServiceEnabled", value: enabled },
+      }));
+
+      console.log(`[AdminSettings] Scores service ${enabled ? "ENABLED" : "DISABLED"} by ${req.auth?.userId}`);
+      return sendData(res, { scoresServiceEnabled: enabled });
+    } catch (error) {
+      console.error("Error updating scores settings:", error);
+      return sendInternal(res, "Error al actualizar configuración de scores.");
     }
   }
 );

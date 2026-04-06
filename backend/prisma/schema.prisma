@@ -214,10 +214,11 @@ enum ResultSourceMode {
 }
 
 enum ResultSource {
-  HOST_MANUAL      // Host ingresó en instancia MANUAL (comportamiento existente)
-  HOST_PROVISIONAL // Host ingresó en instancia AUTO mientras espera resultado de API
-  API_CONFIRMED    // Resultado confirmado de API-Football (autoritativo)
-  HOST_OVERRIDE    // Host corrigió un resultado de API (errata con reason obligatorio)
+  HOST_MANUAL         // Host ingresó en instancia MANUAL (comportamiento existente)
+  HOST_PROVISIONAL    // Host ingresó en instancia AUTO mientras espera resultado de API
+  API_CONFIRMED       // Resultado confirmado de API-Football (autoritativo)
+  HOST_OVERRIDE       // Host corrigió un resultado de API (errata con reason obligatorio)
+  SCRAPER_PROVISIONAL // Score en vivo desde servicio de scraping (picks4all-scores)
 }
 
 enum SyncStatus {
@@ -711,6 +712,12 @@ model PlatformSettings {
   emailDeadlineReminderEnabled Boolean @default(false) // Recordatorio de deadline (desactivado por defecto)
   emailResultPublishedEnabled  Boolean @default(true) // Notificación de resultado publicado
   emailPoolCompletedEnabled    Boolean @default(true) // Notificación de pool completado
+
+  // =========================================================================
+  // SCORES SERVICE (picks4all-scores integration)
+  // =========================================================================
+
+  scoresServiceEnabled Boolean @default(false) // Toggle: activar/desactivar servicio de scores en vivo
 
   // Audit trail
   updatedAt   DateTime @updatedAt

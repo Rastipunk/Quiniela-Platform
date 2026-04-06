@@ -144,6 +144,8 @@ export interface PoolMatchCard {
   awayTeam: PoolTeamRef;
   myPick: PoolMatchPick | null;
   result: PoolMatchResult | null;
+  resultSource: string | null;
+  matchSyncStatus: string | null;
   scoringEnabled: boolean;
   scoringOverrideReason: string | null;
 }

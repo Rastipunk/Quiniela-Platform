@@ -1,0 +1,414 @@
+/**
+ * Live Scores Job
+ *
+ * THE CORE integration with picks4all-scores.
+ * Polls every 15 seconds (configurable) for live scores from the scraping service,
+ * and publishes SCRAPER_PROVISIONAL results to pools.
+ *
+ * Guard: isRunning flag prevents overlapping polls.
+ * Each poll checks PlatformSettings.scoresServiceEnabled before proceeding.
+ */
+
+import { Prisma } from "@prisma/client";
+import { prisma } from "../db";
+import { getScoresServiceClient, LiveScore } from "../services/scoresService";
+import { writeAuditEvent } from "../lib/audit";
+import { fireAndForget } from "../lib/asyncHelpers";
+import { FINISHED_STATUSES } from "../services/apiFootball/types";
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const envInt = (key: string, fallback: number): number =>
+  parseInt(process.env[key] || String(fallback), 10);
+
+const envStr = (key: string, fallback: string): string =>
+  process.env[key] || fallback;
+
+const POLL_INTERVAL_MS = envInt("SCORES_POLL_INTERVAL_MS", 15_000);
+const MIN_CONFIDENCE = envStr("SCORES_MIN_CONFIDENCE", "MEDIUM") as LiveScore["confidence"];
+
+/** Confidence hierarchy for comparison */
+const CONFIDENCE_LEVELS: Record<LiveScore["confidence"], number> = {
+  VERY_HIGH: 4,
+  HIGH: 3,
+  MEDIUM: 2,
+  LOW: 1,
+  NONE: 0,
+};
+
+// ============================================================================
+// Job State
+// ============================================================================
+
+let intervalId: NodeJS.Timeout | null = null;
+let isRunning = false;
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface FixtureMapEntry {
+  internalMatchId: string;
+  tournamentInstanceId: string;
+  poolIds: string[];
+  kickoffUtc: string;
+}
+
+// ============================================================================
+// Core: Build Fixture Map
+// ============================================================================
+
+/**
+ * Build a Map<apiFootballFixtureId, FixtureMapEntry> for all matches
+ * in the active window (-3h to +4h from now).
+ */
+async function buildFixtureMap(): Promise<Map<number, FixtureMapEntry>> {
+  const map = new Map<number, FixtureMapEntry>();
+
+  // 1. Get all AUTO, syncEnabled, ACTIVE instances
+  const instances = await prisma.tournamentInstance.findMany({
+    where: {
+      resultSourceMode: "AUTO",
+      syncEnabled: true,
+      status: "ACTIVE",
+    },
+    select: {
+      id: true,
+      dataJson: true,
+      matchMappings: {
+        select: {
+          internalMatchId: true,
+          apiFootballFixtureId: true,
+        },
+      },
+      pools: {
+        where: { status: "ACTIVE" },
+        select: { id: true },
+      },
+    },
+  });
+
+  const now = Date.now();
+  const windowStart = now - 3 * 60 * 60_000; // 3h ago
+  const windowEnd = now + 4 * 60 * 60_000; // 4h ahead
+
+  for (const inst of instances) {
+    const poolIds = inst.pools.map((p) => p.id);
+    if (poolIds.length === 0) continue;
+
+    const data = inst.dataJson as {
+      matches?: Array<{
+        id: string;
+        kickoffUtc?: string;
+      }>;
+    } | null;
+
+    if (!data?.matches) continue;
+
+    // Index matches by id for fast lookup
+    const matchByIdMap = new Map<string, string>();
+    for (const m of data.matches) {
+      if (m.kickoffUtc) {
+        matchByIdMap.set(m.id, m.kickoffUtc);
+      }
+    }
+
+    for (const mapping of inst.matchMappings) {
+      const kickoffUtc = matchByIdMap.get(mapping.internalMatchId);
+      if (!kickoffUtc) continue;
+
+      const kickoff = new Date(kickoffUtc).getTime();
+      if (kickoff < windowStart || kickoff > windowEnd) continue;
+
+      map.set(mapping.apiFootballFixtureId, {
+        internalMatchId: mapping.internalMatchId,
+        tournamentInstanceId: inst.id,
+        poolIds,
+        kickoffUtc,
+      });
+    }
+  }
+
+  return map;
+}
+
+// ============================================================================
+// Core: Process a Live Score
+// ============================================================================
+
+async function processLiveScore(
+  entry: FixtureMapEntry,
+  score: LiveScore
+): Promise<void> {
+  const isFinished = FINISHED_STATUSES.includes(score.status as typeof FINISHED_STATUSES[number]);
+
+  // Update MatchSyncState if it exists
+  try {
+    await prisma.matchSyncState.updateMany({
+      where: {
+        tournamentInstanceId: entry.tournamentInstanceId,
+        internalMatchId: entry.internalMatchId,
+      },
+      data: {
+        lastApiStatus: score.status,
+        lastCheckedAtUtc: new Date(),
+        ...(isFinished
+          ? { syncStatus: "COMPLETED", completedAtUtc: new Date() }
+          : { syncStatus: "IN_PROGRESS" }),
+      },
+    });
+  } catch {
+    // MatchSyncState may not exist for all matches — non-critical
+  }
+
+  // For each pool, create/update SCRAPER_PROVISIONAL result
+  for (const poolId of entry.poolIds) {
+    try {
+      await publishScraperResult(poolId, entry, score, isFinished);
+    } catch (error) {
+      console.error(
+        `[LiveScoresJob] Error publishing result for pool ${poolId}, match ${entry.internalMatchId}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+}
+
+async function publishScraperResult(
+  poolId: string,
+  entry: FixtureMapEntry,
+  score: LiveScore,
+  isFinished: boolean
+): Promise<void> {
+  // a. Get existing PoolMatchResult
+  const existingResult = await prisma.poolMatchResult.findUnique({
+    where: {
+      poolId_matchId: { poolId, matchId: entry.internalMatchId },
+    },
+    include: { currentVersion: true },
+  });
+
+  // b. Skip if already has API_CONFIRMED or HOST_OVERRIDE (authoritative sources)
+  if (existingResult?.currentVersion?.source === "API_CONFIRMED") {
+    return;
+  }
+  if (existingResult?.currentVersion?.source === "HOST_OVERRIDE") {
+    return;
+  }
+
+  // c. Skip if SCRAPER_PROVISIONAL with same score already exists (no change)
+  if (existingResult?.currentVersion?.source === "SCRAPER_PROVISIONAL") {
+    const cv = existingResult.currentVersion;
+    if (
+      cv.homeGoals === score.homeGoals &&
+      cv.awayGoals === score.awayGoals &&
+      cv.homePenalties === score.penaltyHome &&
+      cv.awayPenalties === score.penaltyAway
+    ) {
+      return; // Score unchanged — no new version needed
+    }
+  }
+
+  // d. For AET/PEN matches, store the 90-minute score separately
+  const wentToExtraTime = score.status === "AET" || score.status === "PEN";
+  const homeGoals90 = wentToExtraTime ? score.fulltimeHome : null;
+  const awayGoals90 = wentToExtraTime ? score.fulltimeAway : null;
+
+  // Build externalDataJson snapshot
+  const externalDataJson: Prisma.InputJsonValue = {
+    apiFootballFixtureId: score.apiFootballFixtureId,
+    status: score.status,
+    elapsed: score.elapsed,
+    extra: score.extra,
+    confidence: score.confidence,
+    sourcesAgreeing: score.sourcesAgreeing,
+    sourcesTotal: score.sourcesTotal,
+    lastUpdated: score.lastUpdated,
+    homeTeamName: score.homeTeamName,
+    awayTeamName: score.awayTeamName,
+    score: {
+      halftime: { home: score.halftimeHome, away: score.halftimeAway },
+      fulltime: { home: score.fulltimeHome, away: score.fulltimeAway },
+      extratime: { home: score.extratimeHome, away: score.extratimeAway },
+      penalty: { home: score.penaltyHome, away: score.penaltyAway },
+    },
+    isFinished,
+  };
+
+  // e. Create version in transaction (same pattern as SmartSync publishResult)
+  await prisma.$transaction(async (tx) => {
+    let headerId: string;
+
+    if (existingResult) {
+      // Lock the header row to serialize concurrent result publications
+      await tx.$queryRaw`SELECT id FROM "PoolMatchResult" WHERE id = ${existingResult.id} FOR UPDATE`;
+      headerId = existingResult.id;
+    } else {
+      const created = await tx.poolMatchResult.create({
+        data: { poolId, matchId: entry.internalMatchId },
+      });
+      headerId = created.id;
+    }
+
+    const lastVersion = await tx.poolMatchResultVersion.findFirst({
+      where: { resultId: headerId },
+      orderBy: { versionNumber: "desc" },
+    });
+    const nextVersion = (lastVersion?.versionNumber ?? 0) + 1;
+
+    const version = await tx.poolMatchResultVersion.create({
+      data: {
+        resultId: headerId,
+        versionNumber: nextVersion,
+        status: "PUBLISHED",
+        homeGoals: score.homeGoals,
+        awayGoals: score.awayGoals,
+        homeGoals90,
+        awayGoals90,
+        homePenalties: score.penaltyHome,
+        awayPenalties: score.penaltyAway,
+        source: "SCRAPER_PROVISIONAL",
+        externalFixtureId: score.apiFootballFixtureId,
+        externalDataJson,
+        createdByUserId: null,
+      },
+    });
+
+    await tx.poolMatchResult.update({
+      where: { id: headerId },
+      data: { currentVersionId: version.id },
+    });
+  });
+
+  // f. Fire-and-forget audit event
+  fireAndForget(
+    "LiveScoresJob:audit",
+    writeAuditEvent({
+      actorUserId: null,
+      action: "RESULT_SYNCED_FROM_SCRAPER",
+      entityType: "PoolMatchResult",
+      entityId: entry.internalMatchId,
+      poolId,
+      dataJson: {
+        matchId: entry.internalMatchId,
+        fixtureId: score.apiFootballFixtureId,
+        homeGoals: score.homeGoals,
+        awayGoals: score.awayGoals,
+        confidence: score.confidence,
+        status: score.status,
+        sourcesAgreeing: score.sourcesAgreeing,
+        sourcesTotal: score.sourcesTotal,
+        isFinished,
+      },
+    })
+  );
+
+  console.log(
+    `[LiveScoresJob] Published SCRAPER_PROVISIONAL for ${entry.internalMatchId} ` +
+      `(pool ${poolId}): ${score.homeGoals}-${score.awayGoals} ` +
+      `[${score.status}, confidence=${score.confidence}]`
+  );
+}
+
+// ============================================================================
+// Core: Poll Loop
+// ============================================================================
+
+async function pollLiveScores(): Promise<void> {
+  // 1. Check platform toggle
+  const settings = await prisma.platformSettings.findUnique({
+    where: { id: "singleton" },
+  });
+  if (!settings?.scoresServiceEnabled) {
+    return;
+  }
+
+  // 2. Get client
+  const client = getScoresServiceClient();
+  if (!client.isAvailable()) {
+    return;
+  }
+
+  // 3. Build fixtureId -> match mapping
+  const fixtureMap = await buildFixtureMap();
+  if (fixtureMap.size === 0) {
+    return;
+  }
+
+  // 4. Fetch live scores
+  const response = await client.getLiveScores();
+
+  // 5. Process each match
+  let processed = 0;
+  for (const score of response.matches) {
+    // Skip scores below minimum confidence
+    if (
+      CONFIDENCE_LEVELS[score.confidence] <
+      CONFIDENCE_LEVELS[MIN_CONFIDENCE]
+    ) {
+      continue;
+    }
+
+    const entry = fixtureMap.get(score.apiFootballFixtureId);
+    if (!entry) continue;
+
+    await processLiveScore(entry, score);
+    processed++;
+  }
+
+  if (processed > 0) {
+    console.log(
+      `[LiveScoresJob] Processed ${processed}/${response.matches.length} scores ` +
+        `(sources: ${response.activeSources}/${response.totalSources})`
+    );
+  }
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+export function startLiveScoresJob(): void {
+  if (intervalId) {
+    console.log("[LiveScoresJob] Already running");
+    return;
+  }
+
+  intervalId = setInterval(() => {
+    if (isRunning) return; // Skip if previous run still active
+    isRunning = true;
+    pollLiveScores()
+      .catch((err) =>
+        console.error(
+          "[LiveScoresJob] Error:",
+          err instanceof Error ? err.message : String(err)
+        )
+      )
+      .finally(() => {
+        isRunning = false;
+      });
+  }, POLL_INTERVAL_MS);
+
+  console.log(
+    `[LiveScoresJob] Started — polling every ${POLL_INTERVAL_MS}ms ` +
+      `(min confidence: ${MIN_CONFIDENCE})`
+  );
+}
+
+export function stopLiveScoresJob(): void {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+    console.log("[LiveScoresJob] Stopped");
+  }
+}
+
+/**
+ * Trigger a single poll manually (for admin/testing).
+ */
+export async function triggerManualPoll(): Promise<void> {
+  console.log("[LiveScoresJob] Manual poll triggered");
+  await pollLiveScores();
+}
