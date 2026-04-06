@@ -125,6 +125,85 @@ app.get("/invite-preview/:code", async (req, res) => {
   }
 });
 
+// Service-to-service endpoint for picks4all-scores scraping service
+// Authenticated via shared API key (SCORES_SERVICE_API_KEY env var)
+app.get("/api/active-matches", async (req, res) => {
+  const apiKey = process.env.SCORES_SERVICE_API_KEY;
+  if (!apiKey) return sendNotFound(res, "NOT_CONFIGURED");
+
+  const provided = req.headers["x-api-key"] || req.query.key;
+  if (provided !== apiKey) return sendForbidden(res, "INVALID_API_KEY");
+
+  try {
+    // Find all AUTO instances with sync enabled
+    const instances = await prisma.tournamentInstance.findMany({
+      where: { resultSourceMode: "AUTO", syncEnabled: true, status: "ACTIVE" },
+      select: {
+        id: true,
+        name: true,
+        apiFootballLeagueId: true,
+        apiFootballSeasonId: true,
+        dataJson: true,
+        matchMappings: {
+          select: { internalMatchId: true, apiFootballFixtureId: true },
+        },
+      },
+    });
+
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 3 * 60 * 60_000); // 3h ago (in-progress matches)
+    const windowEnd = new Date(now.getTime() + 24 * 60 * 60_000);  // Next 24h
+
+    const activeMatches: Array<{
+      fixtureId: number;
+      internalMatchId: string;
+      instanceId: string;
+      instanceName: string;
+      homeTeamName: string;
+      awayTeamName: string;
+      kickoffUtc: string;
+      leagueId: number | null;
+      season: number | null;
+    }> = [];
+
+    for (const inst of instances) {
+      const data = inst.dataJson as { matches?: Array<{ id: string; homeTeamId: string; awayTeamId: string; kickoffUtc?: string }>; teams?: Array<{ id: string; name: string }> };
+      const teams = data.teams || [];
+      const matches = data.matches || [];
+      const teamName = (id: string) => teams.find(t => t.id === id)?.name ?? id;
+
+      for (const mapping of inst.matchMappings) {
+        const match = matches.find(m => m.id === mapping.internalMatchId);
+        if (!match?.kickoffUtc) continue;
+
+        const kickoff = new Date(match.kickoffUtc);
+        if (kickoff < windowStart || kickoff > windowEnd) continue;
+
+        activeMatches.push({
+          fixtureId: mapping.apiFootballFixtureId,
+          internalMatchId: mapping.internalMatchId,
+          instanceId: inst.id,
+          instanceName: inst.name,
+          homeTeamName: teamName(match.homeTeamId),
+          awayTeamName: teamName(match.awayTeamId),
+          kickoffUtc: match.kickoffUtc,
+          leagueId: inst.apiFootballLeagueId,
+          season: inst.apiFootballSeasonId,
+        });
+      }
+    }
+
+    return sendOk(res, {
+      matches: activeMatches,
+      windowStart: windowStart.toISOString(),
+      windowEnd: windowEnd.toISOString(),
+      timestamp: now.toISOString(),
+    });
+  } catch {
+    return sendInternal(res, "INTERNAL_ERROR");
+  }
+});
+
 // Stricter rate limiting for auth endpoints
 app.use("/auth/login", authLimiter);
 app.use("/auth/register", authLimiter);
