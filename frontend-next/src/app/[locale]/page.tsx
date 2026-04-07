@@ -65,7 +65,7 @@ export default async function LandingPage() {
           offers: {
             "@type": "Offer",
             price: "0",
-            priceCurrency: "USD",
+            priceCurrency: "COP",
           },
           publisher: {
             "@type": "Organization",

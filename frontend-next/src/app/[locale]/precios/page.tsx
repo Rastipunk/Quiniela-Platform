@@ -62,7 +62,7 @@ export default async function PreciosPage() {
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "USD",
+      priceCurrency: "COP",
       description: "Free for pools up to 20 participants",
     },
   };

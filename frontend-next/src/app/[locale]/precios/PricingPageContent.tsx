@@ -6,6 +6,7 @@ import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import {
   getPersonalTiers,
   getCorporateTiers,
+  formatCOP,
   CORPORATE_FREE_LIMIT,
   CORPORATE_BASE_PRICE,
 } from "@/lib/pricing";
@@ -162,7 +163,7 @@ export function PricingPageContent() {
                       </span>
                     ) : (
                       <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
-                        ${tier.totalPrice.toFixed(2)}
+                        {formatCOP(tier.totalPrice)}
                       </span>
                     )}
                   </div>
@@ -290,7 +291,7 @@ export function PricingPageContent() {
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ fontSize: 13, color: "var(--muted)", textDecoration: "line-through" }}>
-                              ${CORPORATE_BASE_PRICE.toFixed(2)}
+                              {formatCOP(CORPORATE_BASE_PRICE)}
                             </span>
                             <span style={{ fontSize: 16, fontWeight: 800, color: "#16a34a" }}>
                               $0
@@ -299,7 +300,7 @@ export function PricingPageContent() {
                         </div>
                       ) : (
                         <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
-                          ${tier.totalPrice.toFixed(2)}
+                          {formatCOP(tier.totalPrice)}
                         </span>
                       )}
                     </div>

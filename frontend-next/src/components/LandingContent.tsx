@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
-import { CORPORATE_BASE_PRICE } from "@/lib/pricing";
+import { CORPORATE_BASE_PRICE, formatCOP } from "@/lib/pricing";
 import { colors } from "@/lib/theme";
 
 export function LandingContent() {
@@ -466,7 +466,7 @@ export function LandingContent() {
               </h3>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: 13, color: "var(--muted)", textDecoration: "line-through" }}>
-                  ${CORPORATE_BASE_PRICE.toFixed(2)}
+                  {formatCOP(CORPORATE_BASE_PRICE)}
                 </span>
                 <span
                   style={{
