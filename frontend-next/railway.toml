@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm install && npm run build && cp -r .next/static .next/standalone/.next/static && ([ -d public ] && cp -r public .next/standalone/public || true)"
+buildCommand = "npm install && npm run build && cp -r .next/static .next/standalone/.next/static && rm -rf .next/standalone/public && cp -r public .next/standalone/public && echo 'Brand assets copied:' && ls .next/standalone/public/brand/ | wc -l"
 
 [deploy]
 startCommand = "node .next/standalone/server.js"
