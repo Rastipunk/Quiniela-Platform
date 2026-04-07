@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { BrandLogo } from "./BrandLogo";
+import { BrandIsotipo } from "./BrandLogo";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import type { PoolRegion } from "@/lib/poolTerms";
 
@@ -54,7 +54,7 @@ export function Footer() {
               gap: 8,
             }}
           >
-            <BrandLogo size={22} />
+            <BrandIsotipo size={28} variant="degradado" />
             Picks4All
           </div>
           <p

@@ -1,11 +1,17 @@
 import { ImageResponse } from "next/og";
 import { BRAND } from "@/lib/brand";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export const alt = `${BRAND.name} — Quinielas Deportivas Gratis con Amigos`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function Image() {
+  // Load the official isotipo as base64 — uses the new brand asset
+  const isotipoPath = join(process.cwd(), "public", "brand", "isotipo-degradado-500.png");
+  const isotipoBase64 = `data:image/png;base64,${readFileSync(isotipoPath).toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -28,26 +34,17 @@ export default function Image() {
             marginBottom: 40,
           }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={isotipoBase64}
+            alt="Picks4All"
+            width={120}
+            height={120}
+            style={{ marginRight: 24, borderRadius: 24 }}
+          />
           <div
             style={{
-              width: 80,
-              height: 80,
-              borderRadius: "50%",
-              background: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 44,
-              fontWeight: 800,
-              color: BRAND.secondary,
-              marginRight: 20,
-            }}
-          >
-            P
-          </div>
-          <div
-            style={{
-              fontSize: 72,
+              fontSize: 96,
               fontWeight: 800,
               color: "white",
               letterSpacing: "-2px",

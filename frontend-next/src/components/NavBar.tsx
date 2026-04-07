@@ -6,7 +6,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { clearToken, getToken } from "@/lib/auth";
 import { getUserProfile, logout as apiLogout, type UserProfile } from "@/lib/api";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
-import { BrandLogo } from "./BrandLogo";
+import { BrandLogotipo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
 import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
 
@@ -113,17 +113,13 @@ export function NavBar() {
       <Link
         href="/"
         style={{
-          fontSize: isMobile ? "1.25rem" : "1.5rem",
-          fontWeight: "bold",
-          color: "white",
           textDecoration: "none",
           display: "flex",
           alignItems: "center",
-          gap: "0.5rem",
           ...mobileInteractiveStyles.tapHighlight,
         }}
       >
-        <BrandLogo size={isMobile ? 26 : 30} /> Picks4All
+        <BrandLogotipo height={isMobile ? 32 : 40} variant="blanco" />
       </Link>
 
       {/* Desktop Navigation */}
