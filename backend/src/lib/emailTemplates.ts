@@ -111,18 +111,16 @@ export function getEmailWrapper(content: string, preheader?: string): string {
       <td align="center" style="padding:40px 20px;">
         <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color:${BRAND.cardBackground};border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
 
-          <!-- Header con isotipo + marca -->
+          <!-- Header con isotipo + logotipo -->
           <tr>
             <td align="center" style="padding:32px 40px 24px;border-bottom:1px solid #E5E7EB;">
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
                 <tr>
-                  <td style="vertical-align:middle;padding-right:14px;">
-                    <img src="${BRAND.baseUrl}/brand/isotipo-degradado-180.png" alt="${BRAND.name}" width="56" height="56" style="display:block;border-radius:12px;" />
+                  <td style="vertical-align:middle;padding-right:12px;">
+                    <img src="${BRAND.baseUrl}/brand/isotipo-degradado-180.png" alt="" width="56" height="56" style="display:block;border-radius:12px;" />
                   </td>
                   <td style="vertical-align:middle;">
-                    <h1 style="margin:0;font-size:28px;font-weight:700;color:${BRAND.primaryColor};letter-spacing:-0.5px;line-height:1;">
-                      ${BRAND.name}
-                    </h1>
+                    <img src="${BRAND.baseUrl}/brand/logotipo-degradado-120.png" alt="${BRAND.name}" height="42" style="display:block;height:42px;width:auto;" />
                   </td>
                 </tr>
               </table>
