@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
-import { BrandLogotipo } from "./BrandLogo";
+import { BrandIsotipo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
 
 interface PublicNavbarProps {
@@ -50,10 +50,26 @@ export function PublicNavbar({ onOpenAuth }: PublicNavbarProps) {
           textDecoration: "none",
           display: "flex",
           alignItems: "center",
+          gap: isMobile ? 10 : 12,
           ...mobileInteractiveStyles.tapHighlight,
         }}
       >
-        <BrandLogotipo height={isMobile ? 32 : 40} variant="blanco" />
+        <BrandIsotipo
+          size={isMobile ? 38 : 44}
+          variant="degradado"
+          className="brand-isotipo-rounded"
+        />
+        <span
+          style={{
+            fontSize: isMobile ? "1.2rem" : "1.45rem",
+            fontWeight: 800,
+            color: "white",
+            letterSpacing: "-0.02em",
+            lineHeight: 1,
+          }}
+        >
+          Picks4All
+        </span>
       </Link>
 
       {/* Desktop Navigation */}

@@ -14,6 +14,8 @@ interface BrandIsotipoProps {
   variant?: "degradado" | "transparente-blanca" | "transparente-degradado";
   /** Optional className */
   className?: string;
+  /** Border radius in pixels (default: scales with size) */
+  borderRadius?: number;
 }
 
 /**
@@ -22,11 +24,13 @@ interface BrandIsotipoProps {
  * - transparente-blanca: transparent bg, white P (use on dark backgrounds only)
  * - transparente-degradado: transparent bg, gradient P (use on light backgrounds only)
  */
-export function BrandIsotipo({ size = 32, variant = "degradado", className }: BrandIsotipoProps) {
+export function BrandIsotipo({ size = 32, variant = "degradado", className, borderRadius }: BrandIsotipoProps) {
   // Choose the best size variant available
   const fileSize = size <= 40 ? 32 : size <= 200 ? 180 : size <= 400 ? 320 : 500;
   const ext = variant === "degradado" ? "png" : "svg";
   const src = `/brand/isotipo-${variant}-${fileSize}.${ext}`;
+  // Default radius scales with size (about 22% — modern app icon style)
+  const radius = borderRadius ?? Math.round(size * 0.22);
 
   return (
     <img
@@ -35,7 +39,11 @@ export function BrandIsotipo({ size = 32, variant = "degradado", className }: Br
       width={size}
       height={size}
       className={className}
-      style={{ display: "inline-block", flexShrink: 0 }}
+      style={{
+        display: "inline-block",
+        flexShrink: 0,
+        borderRadius: radius,
+      }}
     />
   );
 }
