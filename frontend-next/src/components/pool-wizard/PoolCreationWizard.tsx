@@ -224,12 +224,20 @@ function WizardInner() {
   );
 }
 
-// ── Outer wrapper (reads mode from URL, provides context) ──
-export default function PoolCreationWizard() {
+// ── Outer wrapper ──
+//
+// Mode resolution priority:
+//   1. Explicit `mode` prop (when mounted from a dedicated route like /empresas/crear)
+//   2. `?mode=corporate` URL search param (when mounted from a generic creation route)
+//   3. Default to "standard"
+//
+// Using a prop guarantees the wizard renders correctly even on routes that
+// don't pass query params (the /empresas/crear page) without forcing a redirect.
+export default function PoolCreationWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   const searchParams = useSearchParams();
   const modeParam = searchParams.get("mode");
   const mode: WizardMode =
-    modeParam === "corporate" ? "corporate" : "standard";
+    modeProp ?? (modeParam === "corporate" ? "corporate" : "standard");
 
   return (
     <PoolWizardProvider mode={mode}>

@@ -6,13 +6,14 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { submitFeedback } from "@/lib/api";
 
 interface FeedbackModalProps {
-  type: "BUG" | "SUGGESTION";
+  type?: "BUG" | "SUGGESTION";
   onClose: () => void;
 }
 
-export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
+export function FeedbackModal({ type: initialType = "BUG", onClose }: FeedbackModalProps) {
   const t = useTranslations("feedback");
   const isMobile = useIsMobile();
+  const [type, setType] = useState<"BUG" | "SUGGESTION">(initialType);
   const [message, setMessage] = useState("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -159,6 +160,45 @@ export function FeedbackModal({ type, onClose }: FeedbackModalProps) {
             >
               {title}
             </h3>
+
+            {/* Type toggle */}
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginBottom: 16,
+                background: "var(--surface, #f3f4f6)",
+                padding: 4,
+                borderRadius: 10,
+              }}
+            >
+              {(["BUG", "SUGGESTION"] as const).map((opt) => {
+                const active = type === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setType(opt)}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "0.85rem",
+                      fontWeight: 600,
+                      background: active ? "var(--text, #111)" : "transparent",
+                      color: active ? "var(--bg, #fff)" : "var(--muted, #6b7280)",
+                      transition: "background 0.15s ease, color 0.15s ease",
+                    }}
+                  >
+                    {opt === "BUG"
+                      ? `\uD83D\uDC1B ${t("bugTitle")}`
+                      : `\uD83D\uDCA1 ${t("suggestionTitle")}`}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Message */}
             <textarea

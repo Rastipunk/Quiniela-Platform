@@ -5,7 +5,6 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 import { routing } from "@/i18n/routing";
-import { BetaFeedbackBar } from "@/components/BetaFeedbackBar";
 import { JsonLd } from "@/components/JsonLd";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
@@ -138,7 +137,6 @@ export default async function LocaleLayout({
                 description: t("orgDescription"),
               }}
             />
-            <BetaFeedbackBar />
             {children}
           </PoolTermProvider>
         </NextIntlClientProvider>

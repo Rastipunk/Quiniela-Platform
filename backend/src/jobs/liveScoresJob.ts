@@ -29,6 +29,21 @@ const envStr = (key: string, fallback: string): string =>
 const POLL_INTERVAL_MS = envInt("SCORES_POLL_INTERVAL_MS", 15_000);
 const MIN_CONFIDENCE = envStr("SCORES_MIN_CONFIDENCE", "MEDIUM") as LiveScore["confidence"];
 
+/**
+ * Active polling window relative to a match's kickoff.
+ *
+ * - PRE: how many hours BEFORE kickoff we start asking the scraping service
+ *        about a fixture. Must be wide enough that the cron picks up matches
+ *        well before kickoff (e.g. so that morning-of-game cron runs already
+ *        track evening matches). Default: 12h.
+ * - POST: how many hours AFTER kickoff we keep polling, to catch late
+ *         finishers, ET, penalties, and source disagreements. Default: 3h.
+ *
+ * Both are env-configurable so we can widen/tighten without redeploying code.
+ */
+const WINDOW_PRE_MS = envInt("SCORES_WINDOW_PRE_HOURS", 12) * 60 * 60_000;
+const WINDOW_POST_MS = envInt("SCORES_WINDOW_POST_HOURS", 3) * 60 * 60_000;
+
 /** Confidence hierarchy for comparison */
 const CONFIDENCE_LEVELS: Record<LiveScore["confidence"], number> = {
   VERY_HIGH: 4,
@@ -91,8 +106,11 @@ async function buildFixtureMap(): Promise<Map<number, FixtureMapEntry>> {
   });
 
   const now = Date.now();
-  const windowStart = now - 3 * 60 * 60_000; // 3h ago
-  const windowEnd = now + 4 * 60 * 60_000; // 4h ahead
+  // A fixture is "active" if its kickoff is within the polling window:
+  // from WINDOW_POST_MS hours ago (catch late finishers / ET) up to
+  // WINDOW_PRE_MS hours ahead (start tracking before kickoff).
+  const windowStart = now - WINDOW_POST_MS;
+  const windowEnd = now + WINDOW_PRE_MS;
 
   for (const inst of instances) {
     const poolIds = inst.pools.map((p) => p.id);

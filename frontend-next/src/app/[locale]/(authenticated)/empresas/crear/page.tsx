@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
-import { CorporatePoolCreation } from "@/components/CorporatePoolCreation";
+import PoolCreationWizard from "@/components/pool-wizard/PoolCreationWizard";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -21,5 +21,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function CorporateCreatePage() {
-  return <CorporatePoolCreation />;
+  return <PoolCreationWizard mode="corporate" />;
 }

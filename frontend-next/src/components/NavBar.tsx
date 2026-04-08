@@ -8,6 +8,7 @@ import { getUserProfile, logout as apiLogout, type UserProfile } from "@/lib/api
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { BrandIsotipo, BrandLogotipo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
+import { FeedbackModal } from "./FeedbackModal";
 import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
 
 export function NavBar() {
@@ -16,6 +17,7 @@ export function NavBar() {
   const isMobile = useIsMobile();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -324,6 +326,33 @@ export function NavBar() {
                       </Link>
                     </>
                   )}
+
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowFeedback(true);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem 1rem",
+                      background: "white",
+                      border: "none",
+                      color: colors.textDark,
+                      textAlign: "left",
+                      cursor: "pointer",
+                      fontSize: "0.95rem",
+                      borderBottom: "1px solid #eee",
+                      minHeight: TOUCH_TARGET.minimum,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#f5f5f5";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "white";
+                    }}
+                  >
+                    {"\uD83D\uDCAC"} {t("helpReport")}
+                  </button>
 
                   <button
                     onClick={handleLogout}
@@ -663,6 +692,33 @@ export function NavBar() {
               </div>
             </div>
 
+            {/* Help / Report */}
+            <div style={{ padding: "0 1rem", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+              <button
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  setShowFeedback(true);
+                }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                  padding: "1rem 0",
+                  background: "transparent",
+                  border: "none",
+                  color: "rgba(255,255,255,0.85)",
+                  fontSize: "1rem",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  minHeight: TOUCH_TARGET.comfortable,
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {"\uD83D\uDCAC"} {t("helpReport")}
+              </button>
+            </div>
+
             {/* Logout */}
             <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
               <button
@@ -708,6 +764,10 @@ export function NavBar() {
           }
         `}
       </style>
+
+      {showFeedback && (
+        <FeedbackModal type="BUG" onClose={() => setShowFeedback(false)} />
+      )}
     </nav>
   );
 }
