@@ -199,13 +199,19 @@ function WizardInner() {
         <Suspense fallback={<StepLoader />}>{renderStep()}</Suspense>
       </div>
 
-      {/* Navigation buttons */}
+      {/* Navigation buttons — sticky at bottom so they're always reachable */}
       <div
         style={{
+          position: "sticky",
+          bottom: 0,
+          zIndex: 20,
+          background: "var(--bg, #fff)",
+          borderTop: `1px solid ${colors.borderLight}`,
+          padding: isMobile ? "12px 16px" : "16px 24px",
           maxWidth: 720,
           margin: "0 auto",
           width: "100%",
-          padding: isMobile ? "0 16px" : "0 24px",
+          boxSizing: "border-box",
         }}
       >
         <PoolWizardNavButtons

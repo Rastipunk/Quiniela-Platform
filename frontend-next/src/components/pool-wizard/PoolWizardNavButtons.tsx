@@ -33,9 +33,6 @@ export function PoolWizardNavButtons({ onSubmit, submitLabel, submitBusy }: Prop
       display: "flex",
       justifyContent: "space-between",
       gap: 12,
-      padding: isMobile ? "16px 0 0" : "24px 0 0",
-      borderTop: `1px solid ${colors.borderLight}`,
-      marginTop: isMobile ? 16 : 24,
     }}>
       {/* Back button */}
       {!isFirstStep ? (
