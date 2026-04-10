@@ -64,6 +64,10 @@ const inquiryLimiter = rateLimit({
   message: { error: "RATE_LIMITED" },
 });
 
+// ─── Corporate pool capacity limits ──────────────────────────
+const CORP_MIN_PARTICIPANTS = envInt("CORPORATE_POOL_MIN_PARTICIPANTS", 100);
+const CORP_MAX_PARTICIPANTS = envInt("CORPORATE_POOL_MAX_PARTICIPANTS", 10000);
+
 // ─── Schemas ─────────────────────────────────────────────────
 
 const inquirySchema = z.object({
@@ -94,11 +98,7 @@ const createCorporatePoolSchema = z.object({
     z.enum(["BASIC", "SIMPLE", "CUMULATIVE"]),
     PoolPickTypesConfigSchema,
   ]).optional(),
-  maxParticipants: z.number().int().min(
-    parseInt(process.env.CORPORATE_POOL_MIN_PARTICIPANTS || "100", 10)
-  ).max(
-    parseInt(process.env.CORPORATE_POOL_MAX_PARTICIPANTS || "10000", 10)
-  ).optional(),
+  maxParticipants: z.number().int().min(CORP_MIN_PARTICIPANTS).max(CORP_MAX_PARTICIPANTS).optional(),
   emails: z.array(z.string().email()).max(500).optional(),
 });
 

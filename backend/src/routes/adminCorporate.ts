@@ -22,15 +22,22 @@ adminCorporateRouter.use(requireAuth, requireAdmin);
 // =========================================================================
 
 // GET /admin/corporate/inquiries — Listar inquiries
-adminCorporateRouter.get("/inquiries", async (req, res) => {
-  const { responded, page = "1", limit = "50" } = req.query;
+const inquiryQuerySchema = z.object({
+  responded: z.enum(["true", "false"]).optional(),
+  page: z.string().default("1"),
+  limit: z.string().default("50"),
+});
 
-  const where: any = {};
+adminCorporateRouter.get("/inquiries", async (req, res) => {
+  const parsed = inquiryQuerySchema.safeParse(req.query);
+  const { responded, page, limit } = parsed.success ? parsed.data : { responded: undefined, page: "1", limit: "50" };
+
+  const where: Prisma.OrganizationInquiryWhereInput = {};
   if (responded === "true") where.responded = true;
   if (responded === "false") where.responded = false;
 
-  const pageNum = Math.max(1, parseInt(page as string) || 1);
-  const limitNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(limit as string) || PAGINATION.DEFAULT_LIMIT));
+  const pageNum = Math.max(1, parseInt(page) || 1);
+  const limitNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(limit) || PAGINATION.DEFAULT_LIMIT));
   const skip = (pageNum - 1) * limitNum;
 
   const [inquiries, total] = await Promise.all([

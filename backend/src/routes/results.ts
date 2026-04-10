@@ -13,6 +13,7 @@ import {
   sendData, sendBadRequest, sendForbidden, sendNotFound,
   sendConflict, sendUnauthorized, sendInternal,
 } from "../lib/apiResponse";
+import { fireAndForget } from "../lib/asyncHelpers";
 import {
   publishResult,
   sendResultNotifications,
@@ -131,7 +132,7 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
       });
 
       for (const member of members) {
-        sendResultOverrideNotification({
+        fireAndForget("result-override-email", sendResultOverrideNotification({
           to: member.user.email,
           memberName: member.user.displayName || "Jugador",
           poolName: pool.name,
@@ -141,7 +142,7 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
           newResult,
           reason: parsed.data.reason,
           hostName,
-        }).catch((err) => console.error("Override notification failed:", err));
+        }));
       }
     } else {
       // Normal result published (by API sync or legacy manual)

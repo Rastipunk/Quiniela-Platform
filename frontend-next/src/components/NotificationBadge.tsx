@@ -25,12 +25,14 @@ export function NotificationBadge({
 
   return (
     <span
+      role="status"
+      aria-label={`${count > 99 ? "99+" : count} notifications`}
       style={{
         position: "absolute",
         top: -6,
         right: -8,
-        background: colors.brand, // Azul primary de la app
-        color: "#ffffff",
+        background: colors.brand,
+        color: colors.white,
         borderRadius: 9,
         minWidth: dimensions.minWidth,
         height: dimensions.height,
