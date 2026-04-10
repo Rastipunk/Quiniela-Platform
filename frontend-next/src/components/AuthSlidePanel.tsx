@@ -393,6 +393,14 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
             <button type="button" onClick={() => setMode("register")} style={tabButtonStyle(mode === "register")}>{t("registerTab")}</button>
           </div>
 
+          {/* Google Sign-In — prominent at top */}
+          <div ref={googleButtonRef} style={{ display: "flex", justifyContent: "center", marginBottom: 8 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, color: "var(--muted)", fontSize: 12 }}>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span>{mode === "login" ? t("orContinueWith") : t("orRegisterWithEmail")}</span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          </div>
+
           <form onSubmit={onSubmit}>
             <label style={{ display: "grid", gap: 4, marginBottom: 12 }}>
               <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>{t("email")}</span>
@@ -453,14 +461,6 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
             )}
           </form>
 
-          <div style={{ marginTop: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, color: "var(--muted)", fontSize: 12 }}>
-              <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-              <span>{t("orContinueWith")}</span>
-              <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-            </div>
-            <div ref={googleButtonRef} style={{ display: "flex", justifyContent: "center" }} />
-          </div>
 
           <div style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: "var(--muted)" }}>
             <Link href="/login" onClick={onClose} style={{ color: "#667eea", textDecoration: "none" }}>
