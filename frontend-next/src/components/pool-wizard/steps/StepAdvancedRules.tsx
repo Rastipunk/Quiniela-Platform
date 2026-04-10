@@ -5,6 +5,7 @@ import { colors, radii, spacing, fontSize, fontWeight } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 
 export function StepAdvancedRules() {
   const t = useTranslations("poolWizard");
@@ -41,31 +42,6 @@ export function StepAdvancedRules() {
     justifyContent: "space-between",
     gap: spacing.md,
   };
-
-  const toggleTrackStyle = (on: boolean): React.CSSProperties => ({
-    position: "relative",
-    width: 48,
-    height: 26,
-    borderRadius: 13,
-    background: on ? colors.successAlt : colors.disabled,
-    cursor: "pointer",
-    transition: "background 0.2s ease",
-    flexShrink: 0,
-    border: "none",
-    padding: 0,
-  });
-
-  const toggleThumbStyle = (on: boolean): React.CSSProperties => ({
-    position: "absolute",
-    top: 3,
-    left: on ? 25 : 3,
-    width: 20,
-    height: 20,
-    borderRadius: "50%",
-    background: colors.white,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-    transition: "left 0.2s ease",
-  });
 
   const badgeStyle: React.CSSProperties = {
     display: "inline-block",
@@ -130,14 +106,12 @@ export function StepAdvancedRules() {
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleExtraTime(phase.phaseId)}
-                  style={toggleTrackStyle(!!phase.includeExtraTime)}
-                  aria-label={`Toggle extra time for ${phase.phaseName}`}
-                >
-                  <div style={toggleThumbStyle(!!phase.includeExtraTime)} />
-                </button>
+                <ToggleSwitch
+                  checked={!!phase.includeExtraTime}
+                  onChange={() => toggleExtraTime(phase.phaseId)}
+                  activeColor={colors.successAlt}
+                  ariaLabel={`Toggle extra time for ${phase.phaseName}`}
+                />
               </div>
             ))}
           </div>

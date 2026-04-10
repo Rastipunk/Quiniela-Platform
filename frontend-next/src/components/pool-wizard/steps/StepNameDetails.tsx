@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import { RECOMMENDED_DEADLINE } from "@/types/poolWizard";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 
 // ── Deadline presets ──────────────────────────────────────────
 
@@ -301,39 +302,10 @@ export function StepNameDetails() {
               </p>
             </div>
 
-            {/* Toggle switch */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={state.requireApproval}
-              onClick={() => setField("requireApproval", !state.requireApproval)}
-              style={{
-                position: "relative",
-                width: 48,
-                height: 26,
-                borderRadius: radii.pill,
-                border: "none",
-                background: state.requireApproval ? colors.brand : colors.disabled,
-                cursor: "pointer",
-                transition: "background 0.25s ease",
-                flexShrink: 0,
-                padding: 0,
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  top: 3,
-                  left: state.requireApproval ? 25 : 3,
-                  width: 20,
-                  height: 20,
-                  borderRadius: radii.circle as string,
-                  background: colors.white,
-                  boxShadow: shadows.card,
-                  transition: "left 0.25s ease",
-                }}
-              />
-            </button>
+            <ToggleSwitch
+              checked={state.requireApproval}
+              onChange={(v) => setField("requireApproval", v)}
+            />
           </div>
         </div>
       </div>

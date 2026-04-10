@@ -16,6 +16,7 @@ import type {
 } from "@/types/pickConfig";
 import type { PickConfigPresetKey } from "@/types/pickConfig";
 import type { InstancePhase } from "@/types/poolWizard";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -1403,31 +1404,11 @@ export function StepScoring() {
                   }
                 </div>
               </div>
-              <div
-                onClick={handleToggleScaling}
-                style={{
-                  position: "relative",
-                  width: 48,
-                  height: 26,
-                  borderRadius: radii.pill,
-                  background: scalingEnabled ? colors.brand : colors.disabled,
-                  cursor: "pointer",
-                  transition: "background 0.2s ease",
-                  flexShrink: 0,
-                  marginLeft: spacing.md,
-                }}
-              >
-                <div style={{
-                  position: "absolute",
-                  top: 3,
-                  left: scalingEnabled ? 24 : 3,
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  background: colors.white,
-                  boxShadow: shadows.sm,
-                  transition: "left 0.2s ease",
-                }} />
+              <div style={{ marginLeft: spacing.md }}>
+                <ToggleSwitch
+                  checked={scalingEnabled}
+                  onChange={handleToggleScaling}
+                />
               </div>
             </div>
 

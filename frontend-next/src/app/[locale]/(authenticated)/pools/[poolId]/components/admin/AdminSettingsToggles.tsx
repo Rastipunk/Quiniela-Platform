@@ -5,6 +5,7 @@ import { updatePoolSettings } from "@/lib/api";
 import type { PoolOverview } from "@/lib/api";
 import type { PhaseData } from "../poolTypes";
 import { formatPhaseFullName } from "../poolHelpers";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import {
   colors, fontSize, fontWeight, radii, shadows, spacing,
   adminSectionStyle, adminHeadingStyle, toggleTrackStyle, toggleThumbStyle,
@@ -39,8 +40,10 @@ export function AdminSettingsToggles({
           {t("admin.autoAdvance.description")}
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
-          <div
-            onClick={async () => {
+          <ToggleSwitch
+            checked={overview.pool.autoAdvanceEnabled}
+            disabled={busyKey === "auto-advance-toggle"}
+            onChange={async () => {
               if (busyKey === "auto-advance-toggle" || !token || !poolId) return;
               setBusyKey("auto-advance-toggle");
               setError(null);
@@ -55,12 +58,7 @@ export function AdminSettingsToggles({
                 setBusyKey(null);
               }
             }}
-            style={toggleTrackStyle(overview.pool.autoAdvanceEnabled, busyKey === "auto-advance-toggle")}
-          >
-            <div
-              style={toggleThumbStyle(overview.pool.autoAdvanceEnabled)}
-            />
-          </div>
+          />
           <div>
             <div style={{ fontWeight: fontWeight.semibold, color: colors.textDark }}>
               {overview.pool.autoAdvanceEnabled ? `✅ ${t("admin.autoAdvance.enabled")}` : `❌ ${t("admin.autoAdvance.disabled")}`}
@@ -83,8 +81,10 @@ export function AdminSettingsToggles({
           {t("admin.approval.description")}
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
-          <div
-            onClick={async () => {
+          <ToggleSwitch
+            checked={overview.pool.requireApproval}
+            disabled={busyKey === "require-approval-toggle"}
+            onChange={async () => {
               if (busyKey === "require-approval-toggle" || !token || !poolId) return;
               setBusyKey("require-approval-toggle");
               setError(null);
@@ -98,12 +98,7 @@ export function AdminSettingsToggles({
                 setBusyKey(null);
               }
             }}
-            style={toggleTrackStyle(overview.pool.requireApproval, busyKey === "require-approval-toggle")}
-          >
-            <div
-              style={toggleThumbStyle(overview.pool.requireApproval)}
-            />
-          </div>
+          />
           <div>
             <div style={{ fontWeight: fontWeight.semibold, color: colors.textDark }}>
               {overview.pool.requireApproval ? `✅ ${t("admin.approval.required")}` : `❌ ${t("admin.approval.direct")}`}
@@ -180,8 +175,12 @@ export function AdminSettingsToggles({
                       opacity: locked ? 0.7 : 1,
                     }}
                   >
-                    <div
-                      onClick={async () => {
+                    <ToggleSwitch
+                      checked={includeET}
+                      disabled={locked || busyKey === `et-${pc.phaseId}`}
+                      activeColor={colors.blue}
+                      size="small"
+                      onChange={async () => {
                         if (locked || busyKey === `et-${pc.phaseId}` || !token || !poolId) return;
                         setBusyKey(`et-${pc.phaseId}`);
                         setError(null);
@@ -200,31 +199,7 @@ export function AdminSettingsToggles({
                           setBusyKey(null);
                         }
                       }}
-                      style={{
-                        position: "relative",
-                        width: 40,
-                        height: 20,
-                        borderRadius: radii.xl,
-                        background: locked ? colors.disabledDark : includeET ? colors.blue : colors.disabled,
-                        cursor: locked ? "not-allowed" : busyKey === `et-${pc.phaseId}` ? "wait" : "pointer",
-                        transition: "background 0.3s ease",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 2,
-                          left: includeET ? 22 : 2,
-                          width: 16,
-                          height: 16,
-                          borderRadius: radii.circle as string,
-                          background: colors.white,
-                          boxShadow: shadows.sm,
-                          transition: "left 0.3s ease",
-                        }}
-                      />
-                    </div>
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: fontWeight.semibold, fontSize: fontSize.md, color: colors.textDark }}>
                         {phaseName}

@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
+import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 
 // Tipo definido localmente para evitar issues de Vite con type exports
 type UserEmailPreferences = {
@@ -259,47 +260,11 @@ export function EmailPreferencesSection() {
                 <div style={itemDescStyle}>{item.description}</div>
               </div>
 
-              <label
-                style={{
-                  display: "block",
-                  width: 48,
-                  height: 26,
-                  flexShrink: 0,
-                  cursor: isDisabledByMaster || saving ? "not-allowed" : "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => handleToggle(item.key)}
-                  disabled={isDisabledByMaster || saving}
-                  style={{ display: "none" }}
-                />
-                <div
-                  style={{
-                    width: 48,
-                    height: 26,
-                    backgroundColor: isChecked ? "#4f46e5" : "#cbd5e1",
-                    borderRadius: 13,
-                    position: "relative",
-                    transition: "background-color 0.2s ease",
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 3,
-                      left: isChecked ? 25 : 3,
-                      width: 20,
-                      height: 20,
-                      backgroundColor: "#fff",
-                      borderRadius: "50%",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                      transition: "left 0.2s ease",
-                    }}
-                  />
-                </div>
-              </label>
+              <ToggleSwitch
+                checked={isChecked}
+                onChange={() => handleToggle(item.key)}
+                disabled={isDisabledByMaster || saving}
+              />
             </div>
           </div>
         );
