@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import Script from "next/script";
 import { routing } from "@/i18n/routing";
 import { JsonLd } from "@/components/JsonLd";
+import { CookieConsent } from "@/components/CookieConsent";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
@@ -138,8 +139,25 @@ export default async function LocaleLayout({
               }}
             />
             {children}
+            <CookieConsent />
           </PoolTermProvider>
         </NextIntlClientProvider>
+        {/* Google Consent Mode v2 defaults — MUST come before GTM loads */}
+        {process.env.NEXT_PUBLIC_GTM_ID && (
+          <Script id="gtm-consent-defaults" strategy="beforeInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('consent', 'default', {
+                'analytics_storage': 'denied',
+                'ad_storage': 'denied',
+                'ad_user_data': 'denied',
+                'ad_personalization': 'denied',
+                'wait_for_update': 500
+              });
+            `}
+          </Script>
+        )}
         {/* Google Tag Manager — manages GA4 + all other tags from GTM console */}
         {process.env.NEXT_PUBLIC_GTM_ID && (
           <Script id="gtm" strategy="afterInteractive">
