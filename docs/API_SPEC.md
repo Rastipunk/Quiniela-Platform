@@ -538,6 +538,45 @@ Respects user email preferences. Returns `skipped: true` if user disabled notifi
 
 ---
 
+### 5.10b Invite Preview (Public)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/invite-preview/:code` | No | Preview pool info before joining |
+
+**Response (200):**
+```json
+{
+  "valid": true,
+  "pool": { "name": "Pool Name", "memberCount": 5, "maxParticipants": 20, "tournament": "World Cup 2026" },
+  "host": { "displayName": "HostName" },
+  "expired": false
+}
+```
+
+**Errors:** `NOT_FOUND` (invalid code)
+
+---
+
+### 5.10c Service-to-Service: Active Matches
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/active-matches` | API Key (Bearer) | Returns active matches for picks4all-scores service |
+
+**Auth:** `Authorization: Bearer ${SCORES_SERVICE_API_KEY}` — NOT user JWT.
+
+**Response (200):**
+```json
+{
+  "matches": [
+    { "fixtureId": 1234567, "homeTeam": "Mexico", "awayTeam": "South Africa", "kickoffUtc": "2026-06-11T19:00:00Z" }
+  ]
+}
+```
+
+---
+
 ### 5.11 Pool Admin
 
 All require HOST or CO_ADMIN role.

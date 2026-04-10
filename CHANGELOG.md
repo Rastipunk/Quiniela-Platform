@@ -6,7 +6,62 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
-## [Unreleased]
+## [0.8.0] — 2026-04-10
+
+### Production Readiness, Analytics, Scores Rework, Code Quality
+
+#### Added
+- **Google Tag Manager (GTM)** — `GTM-TJ86QBFG` replaces direct GA4 script. Manages GA4 + future pixels from GTM console
+- **18 custom analytics events** — sign_up, login, pool_created, pool_joined, pick_saved, invite_code_created, wizard_step, cta_clicked, feedback_submitted, share_pool, pricing_page_viewed, language_changed, corporate_inquiry, error_displayed, pool_viewed, tab_changed, page_view, consent_update
+- **4 GA4 conversions** — sign_up, pool_created, pool_joined, corporate_inquiry marked as key events
+- **Cookie consent banner** — GDPR-compliant with GTM Consent Mode v2, auto-accept for authenticated users, DNT respect, i18n ES/EN/PT
+- **User ID tracking** — Cross-device dedup via `setAnalyticsUserId()` on login/register
+- **`useLiveRefresh` hook** — Auto-polls pool overview every 15s when any match is live
+- **`ToggleSwitch` component** — Shared UI component replacing 16+ ad-hoc toggle implementations
+- **`CookieConsent` component** — Global consent banner with accept/reject
+- **`analytics.ts` utility** — Centralized `trackEvent()` via GTM dataLayer
+- **Friendly pending approval page** — Amber card with guidance instead of red error
+- **Friendly POOL_DRAFT error** — Clear message about needing players before picks
+- **Scores integration doc** — `docs/guides/SCORES_INTEGRATION.md`
+
+#### Changed
+- **Scores: scraper-first architecture** — picks4all-scores is now primary source. API-Football is fallback only (activates 30min after estimated FT)
+- **Scores: polling window** — Only polls AFTER kickoff (was 12h before). 5min buffer for early starts
+- **Scores: 5-minute grace period** after FT before finalizing result as API_CONFIRMED
+- **Scores: fixture tracking** — 24h lookahead (was 12h), deduplication via `trackedAtUtc`, admin email on failure
+- **Corporate wizard unified** — `/empresas/crear` now uses `PoolCreationWizard` with `mode="corporate"`, sharing the same scoring UI as personal
+- **Wizard nav buttons** — Sticky at bottom (always visible without scrolling)
+- **Google Sign-In** — Moved above the form in auth panel (was buried below)
+- **Landing grids** — CSS-only responsive (no JS/SSR mismatch), 1 column on mobile
+- **Pricing** — Migrated from USD to COP at TRM 4000, tiers extended to 1500
+- **Instance name** — "WC 2026 (Sandbox Instance)" → "World Cup 2026"
+- **Privacy Policy** — Updated Section 11 (Cookies) to document GA4, GTM, consent banner
+- **`colors.blue`** in theme.ts now points to brand primary (was Bootstrap #007bff)
+
+#### Fixed
+- **762 hardcoded hex colors** replaced with theme tokens across 51+ files
+- **Horizontal overflow on mobile** — `overflow-x: hidden` on html/body
+- **BetaFeedbackBar removed** — Replaced with discrete "Help & reports" in NavBar dropdown
+- **Mundial data cleaned** — Removed test results, reset MatchSyncState to PENDING
+- **Wizard summary i18n bug** — `pickTypes` count was showing raw translation key
+- **RegisterButton** — Hardcoded Spanish label/aria replaced with i18n (ES/EN/PT)
+- **NotificationBadge** — Added `role="status"` + `aria-label` for accessibility
+- **Backend: `pickPresets.ts`** — `res.json()` → `sendData()` for consistent API response
+- **Backend: `adminCorporate.ts`** — Added Zod validation for query params
+- **Backend: `corporate.ts`** — Extracted env vars to module-level constants
+- **Backend: `results.ts`** — Replaced `console.error` with `fireAndForget` pattern
+
+#### Removed
+- `BetaFeedbackBar.tsx` — Replaced by NavBar dropdown item
+- `components/corporate/` directory (8 files) — Replaced by unified pool wizard
+- `components/CorporatePoolCreation.tsx` barrel — No longer needed
+- Dead code: `sendGone()`, `sendTooMany()` from apiResponse.ts
+- Dead code: `startResultSyncJob()`, `stopResultSyncJob()`, `triggerManualSync()` from resultSyncJob.ts
+- 4 accidental `desktop.ini` files from git
+
+---
+
+## [0.7.0] — 2026-04-04
 
 ### WC 2026 Instance, Branding System, Hardcode Elimination, API-First Results (2026-04-03 — 2026-04-04)
 

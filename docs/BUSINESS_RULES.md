@@ -331,21 +331,36 @@ For SIMPLE preset and custom configs with structural picks:
 
 ### 5.2 Result Source Tracking
 
-**Enum:** `HOST_MANUAL | HOST_PROVISIONAL | API_CONFIRMED | HOST_OVERRIDE`
+**Enum:** `HOST_MANUAL | HOST_PROVISIONAL | API_CONFIRMED | HOST_OVERRIDE | SCRAPER_PROVISIONAL`
 
-| Instance Mode | Previous Result | New Source |
-|---------------|----------------|------------|
-| MANUAL | Any | `HOST_MANUAL` |
-| AUTO | None | `HOST_PROVISIONAL` |
-| AUTO | `API_CONFIRMED` | `HOST_OVERRIDE` (requires reason + notifies all members) |
-| AUTO | `HOST_PROVISIONAL` | `HOST_PROVISIONAL` |
-| AUTO | `HOST_OVERRIDE` | `HOST_OVERRIDE` |
+**Source Hierarchy (highest priority first):**
 
-**API-first enforcement (AUTO mode):**
+```
+HOST_OVERRIDE        → Host corrected a result (requires reason + email to all)
+API_CONFIRMED        → Finalized by scraper grace period or API-Football fallback
+SCRAPER_PROVISIONAL  → Live score from picks4all-scores (during match)
+HOST_PROVISIONAL     → Host entered in AUTO mode (awaiting confirmation)
+HOST_MANUAL          → Host entered in MANUAL mode
+```
 
-- The host **cannot** publish results from scratch in AUTO mode. Results must come from the SmartSync system.
-- The host **can** override an existing API-confirmed result, but must provide a reason. A warning is shown and an email notification is sent to all pool members.
-- Legacy MANUAL mode instances are exempt from API-first enforcement.
+Higher-priority sources are NEVER overwritten by lower-priority ones.
+
+| Instance Mode | Scenario | Source |
+|---------------|----------|--------|
+| AUTO | Match in progress (scraper polling) | `SCRAPER_PROVISIONAL` |
+| AUTO | Match ended + 5min grace period passed | `API_CONFIRMED` (upgraded from SCRAPER_PROVISIONAL) |
+| AUTO | Scraper failed + 30min fallback | `API_CONFIRMED` (from API-Football) |
+| AUTO | Host corrects existing result | `HOST_OVERRIDE` (requires reason + notifies all) |
+| MANUAL | Host publishes | `HOST_MANUAL` |
+
+**Scraper-first enforcement (AUTO mode):**
+
+- picks4all-scores is the **primary** scoring source. It polls live scores every 15 seconds during matches.
+- After FT, a 5-minute grace period ensures score stability before finalizing as `API_CONFIRMED`.
+- API-Football is a **fallback only** — activates 30 minutes after estimated FT if the scraper hasn't reported.
+- The host **cannot** publish results from scratch in AUTO mode. Results must come from the scraper or API-Football.
+- The host **can** override an existing confirmed result, but must provide a reason. A warning is shown and an email notification is sent to all pool members.
+- Legacy MANUAL mode instances are exempt from scraper-first enforcement.
 
 ### 5.3 Version Immutability
 
@@ -740,13 +755,18 @@ PENDING -> IN_PROGRESS -> AWAITING_FINISH -> COMPLETED
 
 ### 10.3 Result Source Determination
 
-When SmartSync publishes a result:
+**Primary path (picks4all-scores scraper):**
+1. During match: `liveScoresJob` publishes `SCRAPER_PROVISIONAL` every 15s.
+2. After FT + 5min grace: `liveScoresJob` upgrades to `API_CONFIRMED` via `finalizeResult()`.
+3. Publishes to ALL pools linked to the instance.
 
-- Source: `API_CONFIRMED`.
-- Publishes to ALL pools linked to the instance.
-- Triggers scoring recalculation, email notifications, and auto-advance checks.
-- If host had a `HOST_PROVISIONAL` result, it is superseded by `API_CONFIRMED`.
-- If host had a `HOST_OVERRIDE`, SmartSync does NOT overwrite it.
+**Fallback path (API-Football via SmartSync):**
+1. Only activates if scraper hasn't reported 30min after estimated FT.
+2. Source: `API_CONFIRMED`.
+3. Can upgrade `SCRAPER_PROVISIONAL` or `HOST_PROVISIONAL` to `API_CONFIRMED`.
+4. If host had a `HOST_OVERRIDE`, SmartSync does NOT overwrite it.
+
+Both paths trigger scoring recalculation and auto-advance checks on completion.
 
 ### 10.4 Match External Mapping
 
