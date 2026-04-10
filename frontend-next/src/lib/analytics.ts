@@ -37,3 +37,14 @@ export function trackPageView(path: string, title?: string): void {
     page_title: title,
   });
 }
+
+/**
+ * Set the authenticated user ID for cross-device tracking.
+ * GA4 uses this to deduplicate users across devices/sessions.
+ * Call after login/register. Pass null on logout to clear.
+ */
+export function setAnalyticsUserId(userId: string | null): void {
+  if (typeof window === "undefined") return;
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ user_id: userId });
+}
