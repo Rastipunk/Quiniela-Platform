@@ -317,22 +317,23 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
     ...mobileInteractiveStyles.tapHighlight,
   });
 
-  const checkboxLabelStyle = {
+  const checkboxLabelStyle: React.CSSProperties = {
     display: "flex",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 12,
     cursor: "pointer",
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 1.4,
   };
 
-  const checkboxStyle = {
-    width: 16,
-    height: 16,
-    marginTop: 2,
+  const checkboxStyle: React.CSSProperties = {
+    width: 20,
+    height: 20,
+    minWidth: 20,
     cursor: "pointer",
     flexShrink: 0,
+    accentColor: colors.brand,
   };
 
   const ConsentCheckboxes = ({ inModal = false }: { inModal?: boolean }) => (
