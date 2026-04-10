@@ -15,6 +15,7 @@ import { getScoresServiceClient, LiveScore } from "../services/scoresService";
 import { writeAuditEvent } from "../lib/audit";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { FINISHED_STATUSES } from "../services/apiFootball/types";
+import { SCORES } from "../lib/constants";
 
 // ============================================================================
 // Configuration
@@ -32,16 +33,18 @@ const MIN_CONFIDENCE = envStr("SCORES_MIN_CONFIDENCE", "MEDIUM") as LiveScore["c
 /**
  * Active polling window relative to a match's kickoff.
  *
- * - PRE: how many hours BEFORE kickoff we start asking the scraping service
- *        about a fixture. Must be wide enough that the cron picks up matches
- *        well before kickoff (e.g. so that morning-of-game cron runs already
- *        track evening matches). Default: 12h.
+ * - PRE: Only poll matches whose kickoff has already passed (or is within
+ *        a small buffer). Default: 0h + 5min buffer.
+ *        The scraper only returns data for matches that have actually started,
+ *        so polling before kickoff is wasteful.
  * - POST: how many hours AFTER kickoff we keep polling, to catch late
  *         finishers, ET, penalties, and source disagreements. Default: 3h.
  *
  * Both are env-configurable so we can widen/tighten without redeploying code.
  */
-const WINDOW_PRE_MS = envInt("SCORES_WINDOW_PRE_HOURS", 12) * 60 * 60_000;
+const WINDOW_PRE_HOURS_MS = envInt("SCORES_WINDOW_PRE_HOURS", 0) * 60 * 60_000;
+const WINDOW_PRE_MINUTES_MS = envInt("SCORES_WINDOW_PRE_MINUTES", 5) * 60_000;
+const WINDOW_PRE_MS = Math.max(WINDOW_PRE_HOURS_MS, WINDOW_PRE_MINUTES_MS);
 const WINDOW_POST_MS = envInt("SCORES_WINDOW_POST_HOURS", 3) * 60 * 60_000;
 
 /** Confidence hierarchy for comparison */
@@ -161,8 +164,46 @@ async function processLiveScore(
   score: LiveScore
 ): Promise<void> {
   const isFinished = FINISHED_STATUSES.includes(score.status as typeof FINISHED_STATUSES[number]);
+  const now = new Date();
 
-  // Update MatchSyncState if it exists
+  // Read current MatchSyncState (needed for grace period logic)
+  const syncState = await prisma.matchSyncState.findFirst({
+    where: {
+      tournamentInstanceId: entry.tournamentInstanceId,
+      internalMatchId: entry.internalMatchId,
+    },
+  });
+
+  // Determine new sync status based on grace period logic
+  let newSyncStatus: string;
+  let newGraceEndUtc: Date | null = syncState?.graceEndUtc ?? null;
+  let newCompletedAtUtc: Date | null = null;
+  let shouldFinalize = false;
+
+  if (isFinished) {
+    if (!syncState?.graceEndUtc) {
+      // FT detected for the first time → start grace period
+      newSyncStatus = "AWAITING_FINISH";
+      newGraceEndUtc = new Date(now.getTime() + SCORES.GRACE_PERIOD_MS);
+    } else if (now.getTime() >= syncState.graceEndUtc.getTime()) {
+      // Grace period expired → finalize
+      newSyncStatus = "COMPLETED";
+      newCompletedAtUtc = now;
+      shouldFinalize = true;
+    } else {
+      // Still within grace period — keep polling
+      newSyncStatus = "AWAITING_FINISH";
+    }
+  } else {
+    // Match still in progress
+    newSyncStatus = "IN_PROGRESS";
+    // If score changes during grace period, reset it
+    if (syncState?.graceEndUtc) {
+      newGraceEndUtc = null; // score changed → match not actually finished
+    }
+  }
+
+  // Update MatchSyncState with live data + status
   try {
     await prisma.matchSyncState.updateMany({
       where: {
@@ -171,20 +212,28 @@ async function processLiveScore(
       },
       data: {
         lastApiStatus: score.status,
-        lastCheckedAtUtc: new Date(),
-        ...(isFinished
-          ? { syncStatus: "COMPLETED", completedAtUtc: new Date() }
-          : { syncStatus: "IN_PROGRESS" }),
+        lastCheckedAtUtc: now,
+        lastElapsed: score.elapsed,
+        lastLiveDataJson: score as unknown as Prisma.InputJsonValue,
+        syncStatus: newSyncStatus as any,
+        graceEndUtc: newGraceEndUtc,
+        ...(newCompletedAtUtc ? { completedAtUtc: newCompletedAtUtc } : {}),
       },
     });
   } catch {
     // MatchSyncState may not exist for all matches — non-critical
   }
 
-  // For each pool, create/update SCRAPER_PROVISIONAL result
+  // For each pool, create/update result
   for (const poolId of entry.poolIds) {
     try {
-      await publishScraperResult(poolId, entry, score, isFinished);
+      if (shouldFinalize) {
+        // Grace period expired — upgrade SCRAPER_PROVISIONAL → API_CONFIRMED
+        await finalizeResult(poolId, entry, score);
+      } else {
+        // Match in progress or grace period ongoing — publish provisional
+        await publishScraperResult(poolId, entry, score, isFinished);
+      }
     } catch (error) {
       console.error(
         `[LiveScoresJob] Error publishing result for pool ${poolId}, match ${entry.internalMatchId}:`,
@@ -327,6 +376,90 @@ async function publishScraperResult(
     `[LiveScoresJob] Published SCRAPER_PROVISIONAL for ${entry.internalMatchId} ` +
       `(pool ${poolId}): ${score.homeGoals}-${score.awayGoals} ` +
       `[${score.status}, confidence=${score.confidence}]`
+  );
+}
+
+// ============================================================================
+// Core: Finalize Result (grace period expired → upgrade to API_CONFIRMED)
+// ============================================================================
+
+/**
+ * After the 5-minute grace period, upgrade the last SCRAPER_PROVISIONAL
+ * to API_CONFIRMED — making it the authoritative result.
+ */
+async function finalizeResult(
+  poolId: string,
+  entry: FixtureMapEntry,
+  score: LiveScore
+): Promise<void> {
+  const existingResult = await prisma.poolMatchResult.findUnique({
+    where: {
+      poolId_matchId: { poolId, matchId: entry.internalMatchId },
+    },
+    include: { currentVersion: true },
+  });
+
+  // Only finalize if current source is SCRAPER_PROVISIONAL
+  if (!existingResult?.currentVersion) return;
+  if (existingResult.currentVersion.source !== "SCRAPER_PROVISIONAL") return;
+
+  const cv = existingResult.currentVersion;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "PoolMatchResult" WHERE id = ${existingResult.id} FOR UPDATE`;
+
+    const lastVersion = await tx.poolMatchResultVersion.findFirst({
+      where: { resultId: existingResult.id },
+      orderBy: { versionNumber: "desc" },
+    });
+    const nextVersion = (lastVersion?.versionNumber ?? 0) + 1;
+
+    const version = await tx.poolMatchResultVersion.create({
+      data: {
+        resultId: existingResult.id,
+        versionNumber: nextVersion,
+        status: "PUBLISHED",
+        homeGoals: cv.homeGoals,
+        awayGoals: cv.awayGoals,
+        homeGoals90: cv.homeGoals90,
+        awayGoals90: cv.awayGoals90,
+        homePenalties: cv.homePenalties,
+        awayPenalties: cv.awayPenalties,
+        source: "API_CONFIRMED",
+        externalFixtureId: cv.externalFixtureId,
+        externalDataJson: score as unknown as Prisma.InputJsonValue,
+        createdByUserId: null,
+      },
+    });
+
+    await tx.poolMatchResult.update({
+      where: { id: existingResult.id },
+      data: { currentVersionId: version.id },
+    });
+  });
+
+  fireAndForget(
+    "LiveScoresJob:finalize-audit",
+    writeAuditEvent({
+      actorUserId: null,
+      action: "RESULT_FINALIZED_BY_SCRAPER",
+      entityType: "PoolMatchResult",
+      entityId: entry.internalMatchId,
+      poolId,
+      dataJson: {
+        matchId: entry.internalMatchId,
+        homeGoals: cv.homeGoals,
+        awayGoals: cv.awayGoals,
+        status: score.status,
+        confidence: score.confidence,
+      },
+    })
+  );
+
+  console.log(
+    `[LiveScoresJob] Finalized ${entry.internalMatchId} ` +
+      `(pool ${poolId}): ${cv.homeGoals}-${cv.awayGoals} → API_CONFIRMED ` +
+      `[grace period complete]`
   );
 }
 

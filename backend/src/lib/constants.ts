@@ -37,6 +37,14 @@ export const MATCH_SYNC = {
   get FINISH_CHECK_MS() { return this.FINISH_CHECK_MINUTES * MS.MINUTE; },
 } as const;
 
+// ── Scores service (picks4all-scores integration) ────────────
+export const SCORES = {
+  /** Grace period after FT before finalizing result (ms) */
+  GRACE_PERIOD_MS: envInt("SCORES_GRACE_PERIOD_MS", 5 * 60_000), // 5 min
+  /** Delay after estimated FT before API-Football fallback activates (ms) */
+  FALLBACK_DELAY_MS: envInt("SCORES_FALLBACK_DELAY_MS", 30 * 60_000), // 30 min
+} as const;
+
 // ── Locales ──────────────────────────────────────────────────
 export const SUPPORTED_LOCALES = ["es", "en", "pt"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];

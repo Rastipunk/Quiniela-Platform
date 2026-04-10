@@ -14,6 +14,7 @@
 import * as cron from "node-cron";
 import { prisma } from "../db";
 import { getScoresServiceClient, TrackFixture } from "../services/scoresService";
+import { sendAdminNotification } from "../lib/email";
 
 // ============================================================================
 // Configuration
@@ -26,7 +27,7 @@ const envInt = (key: string, fallback: number): number =>
   parseInt(process.env[key] || String(fallback), 10);
 
 /** How many hours ahead to look for upcoming matches */
-const SCORES_TRACK_WINDOW_HOURS = envInt("SCORES_TRACK_WINDOW_HOURS", 12);
+const SCORES_TRACK_WINDOW_HOURS = envInt("SCORES_TRACK_WINDOW_HOURS", 24);
 
 // ============================================================================
 // Job State
@@ -96,7 +97,7 @@ async function runFixtureTracking(): Promise<void> {
     // Also include matches that started up to 3h ago (may still be in progress)
     const windowStart = new Date(now.getTime() - 3 * 60 * 60_000);
 
-    const fixtures: TrackFixture[] = [];
+    const fixtures: (TrackFixture & { _internalMatchId: string })[] = [];
 
     for (const inst of instances) {
       const data = inst.dataJson as {
@@ -142,7 +143,8 @@ async function runFixtureTracking(): Promise<void> {
           homeTeamId,
           awayTeamId,
           kickoffUtc: match.kickoffUtc,
-        });
+          _internalMatchId: mapping.internalMatchId,
+        } as TrackFixture & { _internalMatchId: string });
       }
     }
 
@@ -150,16 +152,49 @@ async function runFixtureTracking(): Promise<void> {
       return;
     }
 
-    // 4. Send to scores service
-    const result = await client.trackFixtures(fixtures);
+    // 4. Dedup: skip fixtures already tracked (trackedAtUtc is set)
+    const alreadyTracked = await prisma.matchSyncState.findMany({
+      where: {
+        internalMatchId: { in: fixtures.map((f) => f._internalMatchId!) },
+        trackedAtUtc: { not: null },
+      },
+      select: { internalMatchId: true },
+    });
+    const trackedSet = new Set(alreadyTracked.map((s) => s.internalMatchId));
+    const newFixtures = fixtures.filter((f) => !trackedSet.has(f._internalMatchId!));
+
+    // Clean internal-only field before sending to external API
+    const toSend: TrackFixture[] = newFixtures.map(({ _internalMatchId, ...rest }) => rest);
+
+    if (toSend.length === 0) {
+      console.log(`[FixtureTrackingJob] All ${fixtures.length} fixtures already tracked, skipping`);
+      return;
+    }
+
+    // 5. Send to scores service
+    const result = await client.trackFixtures(toSend);
     console.log(
-      `[FixtureTrackingJob] Sent ${fixtures.length} fixtures for tracking: ${result.message}`
+      `[FixtureTrackingJob] Sent ${toSend.length} new fixtures (${trackedSet.size} already tracked): ${result.message}`
     );
+
+    // 6. Mark successfully tracked fixtures
+    const trackedIds = newFixtures.map((f) => f._internalMatchId!);
+    if (trackedIds.length > 0) {
+      await prisma.matchSyncState.updateMany({
+        where: { internalMatchId: { in: trackedIds } },
+        data: { trackedAtUtc: new Date() },
+      });
+    }
   } catch (error) {
-    console.error(
-      "[FixtureTrackingJob] Error:",
-      error instanceof Error ? error.message : String(error)
-    );
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("[FixtureTrackingJob] Error:", errMsg);
+
+    // Notify admin on tracking failure
+    sendAdminNotification({
+      subject: "Fixture tracking failed",
+      body: `<p>The fixture tracking job failed to register fixtures with picks4all-scores.</p><p><strong>Error:</strong> ${errMsg}</p><p>Check the scores service health and retry manually if needed.</p>`,
+      type: "error",
+    }).catch(() => {}); // fire-and-forget
   } finally {
     isRunning = false;
   }

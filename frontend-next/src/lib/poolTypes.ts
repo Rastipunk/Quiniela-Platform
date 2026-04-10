@@ -148,6 +148,10 @@ export interface PoolMatchCard {
   matchSyncStatus: string | null;
   scoringEnabled: boolean;
   scoringOverrideReason: string | null;
+  // Live data from picks4all-scores
+  elapsed: number | null;
+  matchStatus: string | null;
+  isLive: boolean;
 }
 
 export interface ScoringConfig {

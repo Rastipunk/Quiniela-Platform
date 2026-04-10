@@ -21,26 +21,11 @@ export function ResultSection(props: {
   const [editMode, setEditMode] = useState(false);
 
   const hasResult = !!props.result;
-  const isProvisional = props.resultSource === "SCRAPER_PROVISIONAL";
 
   return (
     <div style={{ border: "1px solid #f2f2f2", borderRadius: 10, padding: "8px 10px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
         <div style={{ fontWeight: 700, fontSize: 12, color: "#555" }}>{t("result.title")}</div>
-        {isProvisional && (
-          <span style={{
-            padding: "2px 8px",
-            borderRadius: 999,
-            background: "#fef3c7",
-            border: "1px solid #f59e0b",
-            color: "#92400e",
-            fontSize: 10,
-            fontWeight: 700,
-            animation: "pulse 2s infinite",
-          }}>
-            ⚡ {t("result.provisional")}
-          </span>
-        )}
       </div>
 
       {/* No result yet — informative pending state */}

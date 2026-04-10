@@ -150,17 +150,25 @@ export function MatchCard({
               ⚠️ {t("scoringDisabledBadge")}
             </span>
           )}
-          {(m as any).matchSyncStatus === "IN_PROGRESS" && !m.result && (
+          {(m as any).isLive && (
             <span style={{
               padding: "4px 10px",
-              border: "1px solid #f59e0b",
+              border: "1px solid #ef4444",
               borderRadius: 999,
-              background: "#fffbeb",
-              color: "#b45309",
+              background: "#fef2f2",
+              color: "#dc2626",
               fontWeight: 700,
               animation: "pulse 2s infinite",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
             }}>
-              🔴 {t("result.inProgress")}
+              {"\uD83D\uDD34"} {t("result.inProgress")}
+              {(m as any).elapsed != null && (
+                <span style={{ fontWeight: 800 }}>
+                  {(m as any).matchStatus === "HT" ? "HT" : `${(m as any).elapsed}'`}
+                </span>
+              )}
             </span>
           )}
         </div>

@@ -833,7 +833,13 @@ model MatchSyncState {
   
   // API response cache
   lastApiStatus         String?    // e.g., "1H", "HT", "2H", "FT"
-  
+
+  // Live tracking fields (picks4all-scores integration)
+  trackedAtUtc          DateTime?  // When scraper confirmed tracking
+  graceEndUtc           DateTime?  // Grace period expiry after FT detected
+  lastElapsed           Int?       // Cached elapsed minute for live display
+  lastLiveDataJson      Json?      // Full LiveScore payload for overview API
+
   createdAtUtc          DateTime @default(now())
   updatedAtUtc          DateTime @updatedAt
   

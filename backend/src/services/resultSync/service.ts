@@ -7,6 +7,7 @@
 
 import { prisma } from "../../db";
 import { writeAuditEvent } from "../../lib/audit";
+import { MATCH_SYNC, SCORES } from "../../lib/constants";
 import {
   ApiFootballClient,
   getApiFootballClient,
@@ -246,8 +247,29 @@ export class ResultSyncService {
         `[ResultSync] Instance ${instance.name}: ${eligibleMappings.length} pending (${kickoffEligibleMappings.length} kickoff passed, ${confirmedMatchIds.size} already confirmed)`
       );
 
+      // ── Scraper-first gate: skip matches where scraper already handled result
+      // or fallback window hasn't opened yet ──
+      const nowMs = Date.now();
+      const syncStates = await prisma.matchSyncState.findMany({
+        where: {
+          tournamentInstanceId: instanceId,
+          internalMatchId: { in: eligibleMappings.map((m) => m.internalMatchId) },
+        },
+        select: { internalMatchId: true, syncStatus: true, kickoffUtc: true },
+      });
+      const syncByMatch = new Map(syncStates.map((s) => [s.internalMatchId, s]));
+
+      const fallbackEligible = eligibleMappings.filter((m) => {
+        const ss = syncByMatch.get(m.internalMatchId);
+        if (!ss) return true; // No sync state → let API-Football handle
+        if (ss.syncStatus === "COMPLETED") return false; // Scraper finalized
+        const estimatedEnd = ss.kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS;
+        const fallbackAt = estimatedEnd + SCORES.FALLBACK_DELAY_MS;
+        return nowMs >= fallbackAt; // Only if past fallback window
+      });
+
       // Get fixture IDs that have mappings and are eligible
-      const fixtureIds = eligibleMappings.map((m) => m.apiFootballFixtureId);
+      const fixtureIds = fallbackEligible.map((m) => m.apiFootballFixtureId);
 
       if (fixtureIds.length === 0) {
         result.status = "COMPLETED";

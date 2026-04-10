@@ -15,6 +15,7 @@ import { ScoringBreakdownModal } from "@/components/ScoringBreakdownModal";
 import { PlayerSummary } from "@/components/PlayerSummary";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 import { getPendingMembers } from "@/lib/api";
+import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 
 // Dynamic imports for heavy tab components (HI-06)
 const PoolAdminTab = dynamic(() => import("./components/PoolAdminTab").then(m => ({ default: m.PoolAdminTab })), {
@@ -178,6 +179,16 @@ export default function PoolPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolId, verbose]);
+
+  // Auto-refresh when any match is live (polls every 15s)
+  const liveRefetch = useCallback(async () => {
+    if (!token || !poolId) return;
+    try {
+      const data = await getPoolOverview(token, poolId, verbose);
+      setOverview(data);
+    } catch { /* silent — don't overwrite existing data on refresh failure */ }
+  }, [token, poolId, verbose]);
+  useLiveRefresh(overview?.matches ?? [], liveRefetch);
 
   // ── Computed values ──
   const phases = useMemo((): PoolFixturePhase[] => {

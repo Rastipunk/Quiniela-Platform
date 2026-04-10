@@ -11,7 +11,7 @@
  */
 
 import { prisma } from "../../db";
-import { MATCH_SYNC } from "../../lib/constants";
+import { MATCH_SYNC, SCORES } from "../../lib/constants";
 import { MatchSyncStatus } from "@prisma/client";
 import {
   ApiFootballClient,
@@ -261,6 +261,18 @@ export class SmartSyncService {
           data: { syncStatus: "SKIPPED" },
         });
         continue;
+      }
+
+      // ── Scraper-first gate: skip if scraper already handled this match ──
+      // API-Football is fallback only — don't spend credits if picks4all-scores
+      // already finalized the result or the fallback window hasn't opened yet.
+      if (matchState.syncStatus === ("COMPLETED" as MatchSyncStatus)) {
+        continue; // Scraper finalized → no API-Football call needed
+      }
+      const estimatedEnd = matchState.kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS;
+      const fallbackActivatesAt = estimatedEnd + SCORES.FALLBACK_DELAY_MS;
+      if (now.getTime() < fallbackActivatesAt) {
+        continue; // Too early for fallback — give scraper more time
       }
 
       try {
