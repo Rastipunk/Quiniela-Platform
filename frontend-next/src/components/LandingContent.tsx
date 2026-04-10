@@ -8,6 +8,7 @@ import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 import { CORPORATE_BASE_PRICE, formatCOP } from "@/lib/pricing";
 import { colors } from "@/lib/theme";
+import { trackEvent } from "@/lib/analytics";
 
 export function LandingContent() {
   const t = useTranslations("landing");
@@ -64,7 +65,7 @@ export function LandingContent() {
             }}
           >
             <button
-              onClick={() => openAuthPanel("register")}
+              onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
               style={{
                 background: "white",
                 color: "#1a1a1a",
@@ -370,7 +371,7 @@ export function LandingContent() {
             </div>
 
             <button
-              onClick={() => openAuthPanel("register")}
+              onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
               style={{
                 marginTop: 24,
                 background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
@@ -629,7 +630,7 @@ export function LandingContent() {
           {t("final.hint", poolParams)}
         </p>
         <button
-          onClick={() => openAuthPanel("register")}
+          onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
           style={{
             background: "white",
             color: "#764ba2",

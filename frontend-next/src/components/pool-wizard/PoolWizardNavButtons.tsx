@@ -4,6 +4,7 @@ import { useWizard } from "./PoolWizardContext";
 import { useTranslations } from "next-intl";
 import { colors, radii } from "../../lib/theme";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { trackEvent } from "@/lib/analytics";
 
 interface Props {
   onSubmit?: () => void;
@@ -70,7 +71,10 @@ export function PoolWizardNavButtons({ onSubmit, submitLabel, submitBusy }: Prop
         </button>
       ) : (
         <button
-          onClick={goNext}
+          onClick={() => {
+            trackEvent("wizard_step", { step_name: state.currentStep, mode: state.mode });
+            goNext();
+          }}
           disabled={!canGoNext}
           style={{
             ...buttonBase,

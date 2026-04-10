@@ -16,6 +16,7 @@ import { PlayerSummary } from "@/components/PlayerSummary";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 import { getPendingMembers } from "@/lib/api";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
+import { trackEvent } from "@/lib/analytics";
 
 // Dynamic imports for heavy tab components (HI-06)
 const PoolAdminTab = dynamic(() => import("./components/PoolAdminTab").then(m => ({ default: m.PoolAdminTab })), {
@@ -342,6 +343,7 @@ export default function PoolPage() {
     try {
       const inv = await createInvite(token, poolId);
       setInviteCode(inv.code);
+      trackEvent("invite_code_created");
       try { await navigator.clipboard.writeText(inv.code); } catch {}
     } catch (e) {
       setError(friendlyError(e));
@@ -365,6 +367,7 @@ export default function PoolPage() {
         normalizedPick = { ...pick, homeGoals: hg, awayGoals: ag };
       }
       await upsertPick(token, poolId, matchId, { pick: normalizedPick });
+      trackEvent("pick_saved", { match_id: matchId, pick_type: normalizedPick.type });
       await load();
       refetchNotifications();
     } catch (e) {

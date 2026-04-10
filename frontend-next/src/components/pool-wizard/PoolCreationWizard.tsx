@@ -17,6 +17,7 @@ import { PoolWizardNavButtons } from "./PoolWizardNavButtons";
 import { createPool } from "@/lib/api/pools";
 import { createCorporatePool } from "@/lib/api/corporate";
 import type { WizardMode } from "@/types/poolWizard";
+import { trackEvent } from "@/lib/analytics";
 
 // ── Dynamic step imports (code-split each step) ────────────
 const StepCompanyInfo = lazy(
@@ -123,6 +124,12 @@ function WizardInner() {
       }
 
       clearWizardDraft();
+      trackEvent("pool_created", {
+        pool_type: state.mode,
+        tournament: state.instanceName,
+        capacity: state.maxParticipants,
+        scoring_style: state.scoringStyle,
+      });
       router.push(`/pools/${poolId}`);
     } catch (err) {
       const message =

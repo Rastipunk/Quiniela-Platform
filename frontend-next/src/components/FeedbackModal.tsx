@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { submitFeedback } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 
 interface FeedbackModalProps {
   type?: "BUG" | "SUGGESTION";
@@ -81,6 +82,7 @@ export function FeedbackModal({ type: initialType = "BUG", onClose }: FeedbackMo
         wantsContact ? phoneNumber.trim() || undefined : undefined
       );
       setStatus("success");
+      trackEvent("feedback_submitted", { type });
     } catch (err: any) {
       setStatus("error");
       setErrorMsg(err.message || t("submitError"));

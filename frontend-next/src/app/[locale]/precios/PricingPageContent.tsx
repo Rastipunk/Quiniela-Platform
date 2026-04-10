@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
+import { trackEvent } from "@/lib/analytics";
 import {
   getPersonalTiers,
   getCorporateTiers,
@@ -32,6 +34,7 @@ function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean
 export function PricingPageContent() {
   const t = useTranslations("pricingPage");
   const f = useTranslations("landing");
+  useEffect(() => { trackEvent("pricing_page_viewed"); }, []);
   const personalTiers = getPersonalTiers(300);
   const corporateTiers = getCorporateTiers(300);
 

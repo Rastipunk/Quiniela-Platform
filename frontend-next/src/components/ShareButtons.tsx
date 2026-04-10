@@ -1,6 +1,7 @@
 "use client";
 
 import { colors } from "@/lib/theme";
+import { trackEvent } from "@/lib/analytics";
 
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
@@ -150,6 +151,7 @@ export function ShareButtons({
     const text = shareText();
     try {
       await navigator.share({ title: text, url });
+      trackEvent("share_pool", { platform: "native_share", context });
     } catch {
       // User cancelled or not supported — fall through to buttons
     }
@@ -159,6 +161,7 @@ export function ShareButtons({
     const text = shareText();
     try {
       await navigator.clipboard.writeText(`${text}\n${url}`);
+      trackEvent("share_pool", { platform: "copy_link", context });
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
