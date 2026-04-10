@@ -57,6 +57,7 @@ export default function PoolPage() {
   const selectedGroup: string | null = searchParams.get("group") || null;
 
   const setActiveTab = useCallback((tab: PoolTab) => {
+    trackEvent("tab_changed", { tab });
     const params = new URLSearchParams(searchParams.toString());
     if (tab === "partidos") params.delete("tab"); else params.set("tab", tab);
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -85,7 +86,9 @@ export default function PoolPage() {
     if (err?.status === 404) return t("httpErrors.NOT_FOUND");
     if (err?.status === 401) return t("httpErrors.UNAUTHORIZED");
     if (msg.startsWith("HTTP ")) return t("httpErrors.GENERIC");
-    return msg || t("httpErrors.GENERIC");
+    const friendly = msg || t("httpErrors.GENERIC");
+    trackEvent("error_displayed", { error_code: msg, status: err?.status, page: "pool" });
+    return friendly;
   }
 
   // ── Core state ──
@@ -136,6 +139,7 @@ export default function PoolPage() {
     try {
       const data = await getPoolOverview(token, poolId, verbose);
       setOverview(data);
+      trackEvent("pool_viewed", { pool_name: data.pool.name, tournament: data.tournamentInstance.name, role: data.myMembership.role });
 
       if (data.pool.organization && typeof sessionStorage !== "undefined") {
         const key = `corporate-splash-${poolId}`;

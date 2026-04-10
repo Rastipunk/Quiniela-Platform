@@ -7,6 +7,7 @@ import { getToken } from "@/lib/auth";
 import { joinPool } from "@/lib/api/pools";
 import { ApiError } from "@/lib/apiError";
 import { colors } from "@/lib/theme";
+import { trackEvent } from "@/lib/analytics";
 
 function JoinPoolInner() {
   const searchParams = useSearchParams();
@@ -37,6 +38,7 @@ function JoinPoolInner() {
         if (cancelled) return;
         setPoolId(res.poolId);
         setStatus("success");
+        trackEvent("pool_joined", { method: "invite_code" });
         setTimeout(() => {
           router.replace(`/pools/${res.poolId}`);
         }, 1500);

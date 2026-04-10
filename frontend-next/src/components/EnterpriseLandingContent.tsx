@@ -6,6 +6,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
+import { trackEvent } from "@/lib/analytics";
 
 export function EnterpriseLandingContent() {
   const t = useTranslations("enterprise");
@@ -16,6 +17,7 @@ export function EnterpriseLandingContent() {
   const { params: poolParams } = usePoolTerm();
 
   const handleCta = () => {
+    trackEvent("corporate_inquiry", { authenticated: isAuthenticated });
     if (isAuthenticated) {
       router.push("/empresas/crear");
     } else {

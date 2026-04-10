@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { routing, type Locale } from "@/i18n/routing";
 import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
+import { trackEvent } from "@/lib/analytics";
 
 /* ── SVG Flag Components ── */
 
@@ -81,6 +82,7 @@ export function LanguageSelector({ variant = "dark" }: { variant?: "dark" | "lig
     }
     setOpen(false);
     setIsPending(true);
+    trackEvent("language_changed", { from_locale: currentLocale, to_locale: next });
 
     // Use the browser's actual URL to reliably switch locale on any route,
     // including dynamic ones like /pools/[poolId].
