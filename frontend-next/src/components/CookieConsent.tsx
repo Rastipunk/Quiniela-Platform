@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { getToken } from "@/lib/auth";
 
 const CONSENT_KEY = "p4a_cookie_consent";
 type ConsentState = "granted" | "denied" | null;
@@ -35,6 +36,16 @@ function updateGtmConsent(consent: "granted" | "denied") {
 }
 
 /**
+ * Auto-accept analytics consent for authenticated users.
+ * Call this after successful login or registration.
+ */
+export function acceptAnalyticsConsent(): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CONSENT_KEY, "granted");
+  updateGtmConsent("granted");
+}
+
+/**
  * Cookie consent banner — bottom of screen, minimal and professional.
  *
  * - Shows once per device until user accepts or rejects
@@ -49,8 +60,6 @@ export function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Respect Do Not Track
-    const dnt = navigator.doNotTrack === "1";
     const stored = getStoredConsent();
 
     if (stored) {
@@ -59,15 +68,25 @@ export function CookieConsent() {
       return;
     }
 
+    // Authenticated users auto-accept analytics.
+    // By registering/logging in they accepted the ToS which discloses
+    // analytics usage (Privacy Policy §11). This also covers new devices.
+    const token = getToken();
+    if (token) {
+      localStorage.setItem(CONSENT_KEY, "granted");
+      updateGtmConsent("granted");
+      return;
+    }
+
+    // Respect Do Not Track for anonymous visitors
+    const dnt = navigator.doNotTrack === "1";
     if (dnt) {
-      // DNT enabled and no stored choice — deny by default, don't show banner
       localStorage.setItem(CONSENT_KEY, "denied");
       updateGtmConsent("denied");
       return;
     }
 
-    // No stored preference, no DNT → show banner
-    // Set default to denied until user accepts (Consent Mode v2 best practice)
+    // Anonymous visitor, no stored preference, no DNT → show banner
     updateGtmConsent("denied");
     setVisible(true);
   }, []);

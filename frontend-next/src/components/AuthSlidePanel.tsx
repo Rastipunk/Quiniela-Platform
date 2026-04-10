@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { login, register, loginWithGoogle, type RegisterConsentOptions } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
+import { acceptAnalyticsConsent } from "@/components/CookieConsent";
 import { setToken } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
@@ -109,6 +110,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const result = await loginWithGoogle(response.credential, timezone);
       setToken(result.token);
+      acceptAnalyticsConsent();
       trackEvent("login", { method: "google" });
       onLoggedIn();
     } catch (err: any) {
@@ -156,6 +158,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
 
       const result = await loginWithGoogle(pendingGoogleCredential, timezone, consent);
       setToken(result.token);
+      acceptAnalyticsConsent();
       trackEvent("sign_up", { method: "google" });
       onLoggedIn();
     } catch (err: any) {
@@ -252,11 +255,13 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
 
         const res = await register(em, user, displayName.trim(), password, timezone, consent);
         setToken(res.token);
+        acceptAnalyticsConsent();
         trackEvent("sign_up", { method: "email" });
         onLoggedIn();
       } else {
         const res = await login(em, password);
         setToken(res.token);
+        acceptAnalyticsConsent();
         trackEvent("login", { method: "email" });
         onLoggedIn();
       }
