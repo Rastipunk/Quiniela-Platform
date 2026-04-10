@@ -2,6 +2,11 @@
   "loading": "Loading overview...",
   "poolIdMissing": "PoolId missing",
   "backToDashboard": "← My Pools",
+  "pendingApproval": {
+    "title": "Your request is pending",
+    "description": "The pool admin hasn't approved your request to join yet. You'll receive a notification once accepted.",
+    "hint": "If you need immediate access, contact the person who invited you."
+  },
   "httpErrors": {
     "FORBIDDEN": "You don't have permission to access this content.",
     "NOT_FOUND": "This resource was not found.",

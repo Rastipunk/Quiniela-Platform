@@ -77,6 +77,7 @@ export default function PoolPage() {
   function friendlyError(e: unknown): string {
     const err = e as { message?: string; status?: number };
     const msg = err?.message ?? "";
+    if (msg === "PENDING_APPROVAL") return "PENDING_APPROVAL";
     if (msg === "FORBIDDEN" || err?.status === 403) return t("httpErrors.FORBIDDEN");
     if (err?.status === 404) return t("httpErrors.NOT_FOUND");
     if (err?.status === 401) return t("httpErrors.UNAUTHORIZED");
@@ -403,11 +404,31 @@ export default function PoolPage() {
         </Link>
       </div>
 
-      {error && (
+      {error && error === "PENDING_APPROVAL" ? (
+        <div style={{
+          marginTop: 24,
+          padding: isMobile ? 24 : 32,
+          borderRadius: radii["2xl"],
+          background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+          border: "1px solid #fde68a",
+          textAlign: "center",
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>&#9203;</div>
+          <h3 style={{ margin: "0 0 8px", fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: "#92400e" }}>
+            {t("pendingApproval.title")}
+          </h3>
+          <p style={{ margin: "0 0 16px", fontSize: fontSize.base, color: "#a16207", lineHeight: 1.5 }}>
+            {t("pendingApproval.description")}
+          </p>
+          <p style={{ margin: 0, fontSize: fontSize.sm, color: "#b45309" }}>
+            {t("pendingApproval.hint")}
+          </p>
+        </div>
+      ) : error ? (
         <div style={{ marginTop: 12, padding: 12, borderRadius: radii["2xl"], background: "#fee", border: "1px solid #fbb", color: "#700" }}>
           {error}
         </div>
-      )}
+      ) : null}
 
       {!overview && !error && <p style={{ marginTop: 16 }}>{t("loading")}</p>}
 

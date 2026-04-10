@@ -2,6 +2,11 @@
   "loading": "Carregando overview...",
   "poolIdMissing": "PoolId ausente",
   "backToDashboard": "← Meus Pools",
+  "pendingApproval": {
+    "title": "Sua solicitação está pendente",
+    "description": "O administrador deste pool ainda não aprovou sua solicitação. Você receberá uma notificação quando for aceito.",
+    "hint": "Se precisar de acesso imediato, entre em contato com quem te convidou."
+  },
   "httpErrors": {
     "FORBIDDEN": "Você não tem permissão para acessar este conteúdo.",
     "NOT_FOUND": "Este recurso não foi encontrado.",

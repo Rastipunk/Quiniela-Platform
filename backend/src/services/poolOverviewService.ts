@@ -34,7 +34,20 @@ export async function getPoolOverview(
   const myMembership = await prisma.poolMember.findFirst({
     where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
   });
-  if (!myMembership) throw new ServiceError("FORBIDDEN", 403);
+  if (!myMembership) {
+    // Check if user is pending approval — return a distinct code so the
+    // frontend can show a friendly "waiting" message instead of an error.
+    const pending = await prisma.poolMember.findFirst({
+      where: { poolId, userId, status: "PENDING_APPROVAL" },
+      include: { pool: { select: { name: true } } },
+    });
+    if (pending) {
+      throw new ServiceError("PENDING_APPROVAL", 403, {
+        poolName: pending.pool.name,
+      });
+    }
+    throw new ServiceError("FORBIDDEN", 403);
+  }
 
   // 2) Pool + instance
   const pool = await prisma.pool.findUnique({
