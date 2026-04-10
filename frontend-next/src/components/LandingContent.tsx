@@ -179,7 +179,7 @@ export function LandingContent() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))",
             gap: 24,
           }}
         >
@@ -249,7 +249,7 @@ export function LandingContent() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))",
               gap: 32,
             }}
           >
@@ -322,7 +322,7 @@ export function LandingContent() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))",
             gap: 24,
             alignItems: "stretch",
           }}
@@ -572,8 +572,8 @@ export function LandingContent() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
-            gap: isMobile ? 12 : 16,
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 150px), 1fr))",
+            gap: 16,
           }}
         >
           {TOURNAMENT_CATALOG.map((tournament) => (

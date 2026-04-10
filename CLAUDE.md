@@ -45,6 +45,13 @@
 - **Single source of truth.** Every piece of data lives in ONE place. If it's in the database, don't also hardcode it in the frontend.
 - **Separation of concerns.** Each file has ONE responsibility. Components >500 lines must be split. Services >800 lines must be decomposed.
 
+### Responsive / Mobile-First
+- **Mobile is the primary viewport.** Every component, page, and layout MUST render correctly on 360px–430px screens. No horizontal scroll, no overflowing elements, no truncated content.
+- **Test on mobile widths first** before verifying desktop. Use `useIsMobile()` hook for breakpoint-aware layout.
+- **Never use `100vw`** for widths — it includes scrollbar and causes horizontal overflow on mobile. Use `100%` or explicit `max-width` instead.
+- **All interactive elements** must meet minimum touch targets (`TOUCH_TARGET.minimum` = 44px).
+- **`overflow-x: hidden`** is set globally on `html, body`. Individual components must not produce content wider than the viewport.
+
 ### Internationalization (i18n)
 - **Every user-facing string** must use `t()` from next-intl. No hardcoded text in TSX components.
 - **All three locales** (ES/EN/PT) must have complete translations. Never add a key to one locale without adding it to all three.
