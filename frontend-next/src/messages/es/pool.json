@@ -98,7 +98,7 @@
 
   "tabs": {
     "matches": "Partidos",
-    "leaderboard": "Leaderboard",
+    "leaderboard": "Posiciones",
     "summary": "Mi Resumen",
     "rules": "Reglas",
     "admin": "Administración",
@@ -242,9 +242,10 @@
   },
 
   "filters": {
-    "searchPlaceholder": "Buscar por equipo / grupo / roundLabel...",
+    "title": "Filtros",
+    "searchPlaceholder": "Buscar por equipo / grupo...",
     "onlyOpen": "Solo OPEN",
-    "noPick": "Sin pick",
+    "noPick": "Sin predicción",
     "noResult": "Solo sin resultado",
     "total": "Total",
     "matches": "partidos",
@@ -264,11 +265,11 @@
     "open": "OPEN",
     "matchLabel": "Partido {id}",
     "kickoff": "Inicio",
-    "deadline": "Cierre de picks",
+    "deadline": "Cierre de predicciones",
     "pendingTitle": "Partido Pendiente",
     "pendingDesc": "Este partido se habilitará cuando se definan los equipos participantes.",
     "viewBreakdown": "Ver desglose",
-    "viewOtherPicks": "Ver picks de otros"
+    "viewOtherPicks": "Ver predicciones de otros"
   },
 
   "pick": {
@@ -320,7 +321,7 @@
   },
 
   "matchPicks": {
-    "title": "Picks",
+    "title": "Predicciones",
     "loading": "Cargando picks...",
     "error": "Error",
     "notUnlocked": "El deadline aún no ha pasado. Solo puedes ver tu propio pick.",
@@ -397,7 +398,7 @@
   },
 
   "notifications": {
-    "urgentPicks": "Tienes {count} partido sin pick que cierra en las próximas horas ({details}).",
+    "urgentPicks": "Tienes {count} partido sin predicción que cierra en las próximas horas ({details}).",
     "urgentPicksPlural": "Tienes {count} partidos sin pick que cierran en las próximas horas ({details}).",
     "countInPhase": "{count} en {phase}",
     "pendingResults": "{count} partido jugado sin resultado publicado.",
@@ -541,7 +542,7 @@
     "close": "Cerrar",
     "headerHome": "Local",
     "headerAway": "Visitante",
-    "headerPick": "Pick",
+    "headerPick": "Predicción",
     "headerResult": "Res.",
     "headerPts": "Pts",
     "statusScored": "Puntuado",
@@ -571,7 +572,7 @@
     "withoutScoresDesc": "Los jugadores predicen posiciones finales o quién avanza.",
     "withoutScoresMore": "Más estratégico",
     "withoutScoresLess": "Menos mantenimiento",
-    "pickTypes": "Tipos de Picks",
+    "pickTypes": "Tipos de Predicción",
     "pickTypesDesc": "Activa los tipos de picks permitidos.",
     "pickTypesDescFull": "Activa los tipos de picks que quieres permitir. Puedes tener varios activos simultáneamente.",
     "pointsLabel": "Puntos",

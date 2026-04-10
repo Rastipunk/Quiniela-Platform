@@ -291,35 +291,37 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         </div>
       )}
 
-      {/* Tab Content: Partidos - UX toolbar */}
+      {/* Tab Content: Partidos - Collapsible filters */}
       {!requiresStructuralPicks && (
-        <div style={{ marginTop: 14, padding: 12, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("filters.searchPlaceholder")}
-              style={{ flex: "1 1 280px", padding: 10, borderRadius: 12, border: "1px solid #ddd" }}
-            />
-            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
-              <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
-              {t("filters.onlyOpen")}
-            </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
-              <input type="checkbox" checked={onlyNoPick} onChange={(e) => setOnlyNoPick(e.target.checked)} />
-              {t("filters.noPick")}
-            </label>
-            {overview?.permissions?.canManageResults && (
+        <details style={{ marginTop: 10 }}>
+          <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: colors.textMuted, padding: "8px 0", display: "flex", alignItems: "center", gap: 6 }}>
+            {"\uD83D\uDD0D"} {t("filters.title", { defaultMessage: "Filtros" })} ({filteredMatches.length} {t("filters.matches")})
+          </summary>
+          <div style={{ padding: 12, border: `1px solid ${colors.borderLight}`, borderRadius: 12, background: colors.white, marginTop: 4 }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("filters.searchPlaceholder")}
+                style={{ flex: "1 1 280px", padding: 10, borderRadius: 12, border: `1px solid ${colors.borderLight}` }}
+              />
               <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
-                <input type="checkbox" checked={onlyNoResult} onChange={(e) => setOnlyNoResult(e.target.checked)} />
-                {t("filters.noResult")}
+                <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
+                {t("filters.onlyOpen")}
               </label>
-            )}
-            <div style={{ fontSize: 12, color: colors.textMuted }}>
-              {t("filters.total")}: <b>{filteredMatches.length}</b> {t("filters.matches")} • {t("filters.suggestedGroup")}: <b>{nextOpenGroup}</b>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
+                <input type="checkbox" checked={onlyNoPick} onChange={(e) => setOnlyNoPick(e.target.checked)} />
+                {t("filters.noPick")}
+              </label>
+              {overview?.permissions?.canManageResults && (
+                <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
+                  <input type="checkbox" checked={onlyNoResult} onChange={(e) => setOnlyNoResult(e.target.checked)} />
+                  {t("filters.noResult")}
+                </label>
+              )}
             </div>
           </div>
-        </div>
+        </details>
       )}
 
       {/* Tab Content: Partidos - Structural Picks Manager (SIMPLE preset) */}
@@ -431,11 +433,22 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               </div>
             );
             if (noGroups) return matchList;
+            // When a specific group is selected → show matches directly (no collapse)
+            if (selectedGroup) {
+              return (
+                <div key={g} style={{ border: `1px solid ${colors.borderLight}`, borderRadius: 14, background: colors.white, padding: 12 }}>
+                  <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                    {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })} ({matchesByGroup[g]?.length ?? 0})
+                  </div>
+                  {matchList}
+                </div>
+              );
+            }
+            // "Todos" view → all groups collapsed
             return (
               <details
                 key={g}
-                open={g === nextOpenGroup}
-                style={{ border: "1px solid #ddd", borderRadius: 14, background: colors.white, padding: 12 }}
+                style={{ border: `1px solid ${colors.borderLight}`, borderRadius: 14, background: colors.white, padding: 12 }}
               >
                 <summary style={{ cursor: "pointer", fontWeight: 900 }}>
                   {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })} ({matchesByGroup[g]?.length ?? 0})

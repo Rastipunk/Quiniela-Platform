@@ -413,10 +413,10 @@ export default function PoolPage() {
         <Link
           href="/dashboard"
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            color: colors.blue, textDecoration: "none", fontWeight: fontWeight.semibold, fontSize: fontSize.base,
-            padding: "6px 12px", borderRadius: radii.lg, background: "#f0f7ff",
-            border: "1px solid #007bff30", transition: "background 0.15s ease",
+            display: "inline-flex", alignItems: "center", gap: 4,
+            color: colors.brand, textDecoration: "none", fontWeight: fontWeight.medium, fontSize: fontSize.sm,
+            padding: "4px 8px", borderRadius: radii.md,
+            transition: "background 0.15s ease",
           }}
         >
           {t("backToDashboard")}
@@ -620,21 +620,21 @@ export default function PoolPage() {
 
           {/* Tab Navigation */}
           <div style={{
-            marginTop: isMobile ? 12 : 16, paddingTop: 8, borderBottom: "2px solid #e0e0e0",
-            display: "flex", gap: isMobile ? 4 : 8, overflowX: "auto", overflowY: "visible",
+            marginTop: isMobile ? 8 : 12, paddingTop: 4,
+            display: "flex", gap: 6, overflowX: "auto", overflowY: "visible",
             WebkitOverflowScrolling: "touch",
-            ...mobileInteractiveStyles.tapHighlight,
+            paddingBottom: 4,
           }}>
             {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" ? ["jugadores" as const] : []), ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {
               const badgeCount = tabBadges[tab] || 0;
               const isUrgent = tab === "partidos" && hasUrgent;
               const tabLabels: Record<string, string> = {
-                partidos: isMobile ? "⚽" : `⚽ ${t("tabs.matches")}`,
-                leaderboard: isMobile ? "📊" : `📊 ${t("tabs.leaderboard")}`,
-                resumen: isMobile ? "📈" : `📈 ${t("tabs.summary")}`,
-                reglas: isMobile ? "📋" : `📋 ${t("tabs.rules")}`,
-                jugadores: isMobile ? "👥" : `👥 ${t("tabs.players")}`,
-                admin: isMobile ? "⚙️" : `⚙️ ${t("tabs.admin")}`,
+                partidos: `⚽ ${t("tabs.matches")}`,
+                leaderboard: `📊 ${t("tabs.leaderboard")}`,
+                resumen: `📈 ${t("tabs.summary")}`,
+                reglas: `📋 ${t("tabs.rules")}`,
+                jugadores: `👥 ${t("tabs.players")}`,
+                admin: `⚙️ ${t("tabs.admin")}`,
               };
               return (
                 <button
@@ -642,17 +642,18 @@ export default function PoolPage() {
                   onClick={() => setActiveTab(tab)}
                   style={{
                     position: "relative",
-                    padding: isMobile ? "12px 16px" : "12px 24px",
-                    border: "none",
-                    borderBottom: activeTab === tab ? `3px solid ${colors.blue}` : "3px solid transparent",
-                    background: "transparent",
-                    color: activeTab === tab ? colors.blue : colors.textMuted,
-                    fontWeight: activeTab === tab ? fontWeight.semibold : fontWeight.normal,
-                    fontSize: isMobile ? 18 : 16,
+                    padding: isMobile ? "8px 14px" : "10px 18px",
+                    border: activeTab === tab ? "none" : `1px solid ${colors.borderLight}`,
+                    borderRadius: radii.pill,
+                    background: activeTab === tab ? colors.brand : colors.white,
+                    color: activeTab === tab ? colors.white : colors.textMuted,
+                    fontWeight: fontWeight.semibold,
+                    fontSize: isMobile ? 12 : 14,
                     cursor: "pointer",
                     transition: "all 0.2s",
                     flexShrink: 0,
                     minHeight: TOUCH_TARGET.minimum,
+                    whiteSpace: "nowrap",
                     ...mobileInteractiveStyles.tapHighlight,
                   }}
                   title={tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -664,17 +665,6 @@ export default function PoolPage() {
             })}
           </div>
 
-          {/* Mobile tab label */}
-          {isMobile && (
-            <div style={{ marginTop: 12, fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.blue, textAlign: "center" }}>
-              {activeTab === "partidos" && t("tabs.matches")}
-              {activeTab === "leaderboard" && t("tabs.leaderboard")}
-              {activeTab === "resumen" && t("tabs.summary")}
-              {activeTab === "reglas" && t("tabs.rules")}
-              {activeTab === "jugadores" && t("tabs.players")}
-              {activeTab === "admin" && t("tabs.admin")}
-            </div>
-          )}
 
           {/* ── Tab Content ── */}
 
