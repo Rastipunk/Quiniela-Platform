@@ -78,7 +78,7 @@ function BreakdownPopover({ breakdown, onClose }: {
         right: 0,
         top: "100%",
         marginTop: 4,
-        backgroundColor: "#fff",
+        backgroundColor: colors.white,
         border: "1px solid #ddd",
         borderRadius: 8,
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
@@ -89,7 +89,7 @@ function BreakdownPopover({ breakdown, onClose }: {
       }}
     >
       {matched.length === 0 ? (
-        <div style={{ fontSize: 12, color: "#999" }}>{t("scoringBreakdown.noHits")}</div>
+        <div style={{ fontSize: 12, color: colors.textLight }}>{t("scoringBreakdown.noHits")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {matched.map((b, idx) => (
@@ -104,7 +104,7 @@ function BreakdownPopover({ breakdown, onClose }: {
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: 12, color: "#333" }}>{typeTranslationKeys[b.type] ? tDynamic(typeTranslationKeys[b.type]) : b.type}</span>
+              <span style={{ fontSize: 12, color: colors.textDark }}>{typeTranslationKeys[b.type] ? tDynamic(typeTranslationKeys[b.type]) : b.type}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: typeColors[b.type] ?? colors.textMuted, marginLeft: "auto" }}>
                 +{b.points}
               </span>
@@ -140,7 +140,7 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
 
   const statusColor = statusColors[match.status] ?? statusColors.LOCKED;
   const hasBreakdown = match.status === "SCORED" && match.breakdown?.some((b) => b.matched);
-  const rowBg = match.status === "SCORED" && match.pointsEarned > 0 ? "#f8fff8" : "#fff";
+  const rowBg = match.status === "SCORED" && match.pointsEarned > 0 ? "#f8fff8" : colors.white;
 
   // Shared style for all cells in this row (continuous background, no gaps)
   const cell: React.CSSProperties = {
@@ -163,7 +163,7 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
             showName={true}
           />
         ) : (
-          <span style={{ color: "#999", fontSize: isMobile ? 12 : 13 }}>TBD</span>
+          <span style={{ color: colors.textLight, fontSize: isMobile ? 12 : 13 }}>TBD</span>
         )}
       </div>
 
@@ -182,14 +182,14 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
             showName={true}
           />
         ) : (
-          <span style={{ color: "#999", fontSize: isMobile ? 12 : 13 }}>TBD</span>
+          <span style={{ color: colors.textLight, fontSize: isMobile ? 12 : 13 }}>TBD</span>
         )}
       </div>
 
       {/* Mi Pick */}
       <div style={{ ...cell, justifyContent: "center" }}>
         {match.pick ? (
-          <span style={{ fontWeight: 600, color: "#333", fontSize: isMobile ? 13 : 14 }}>
+          <span style={{ fontWeight: 600, color: colors.textDark, fontSize: isMobile ? 13 : 14 }}>
             {match.pick.homeGoals}-{match.pick.awayGoals}
           </span>
         ) : (
@@ -281,7 +281,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
           justifyContent: "space-between",
           alignItems: "center",
           padding: isMobile ? "14px 12px" : "12px 16px",
-          backgroundColor: "#f8f9fa",
+          backgroundColor: colors.bgLight,
           cursor: "pointer",
           borderBottom: expanded ? "1px solid #ddd" : "none",
           minHeight: isMobile ? TOUCH_TARGET.comfortable : undefined,
@@ -292,7 +292,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
           <span style={{ fontSize: isMobile ? 14 : 18 }}>{expanded ? "▼" : "▶"}</span>
           <div>
             <div style={{ fontWeight: 600, fontSize: isMobile ? 14 : 16 }}>{phase.phaseName}</div>
-            <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>
+            <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>
               {t("playerSummaryView.scoredOfTotal", { scored: phase.scoredCount, total: phase.matchCount })}
             </div>
           </div>
@@ -301,7 +301,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
         <div style={{ textAlign: "right" }}>
           <div style={{ fontWeight: 700, fontSize: isMobile ? 18 : 20, color: colors.brand }}>{phase.totalPoints} pts</div>
           {phase.maxPossiblePoints > 0 && (
-            <div style={{ fontSize: 11, color: "#666" }}>
+            <div style={{ fontSize: 11, color: colors.textMuted }}>
               {successRate}%
             </div>
           )}
@@ -337,7 +337,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
                     paddingRight: h.pr ?? (isMobile ? 3 : 4),
                     fontSize: isMobile ? 10 : 11,
                     fontWeight: 600,
-                    color: "#666",
+                    color: colors.textMuted,
                     textTransform: "uppercase",
                     letterSpacing: "0.03em",
                     textAlign: h.align,
@@ -424,7 +424,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
           alignItems: isMobile ? "stretch" : "center",
           gap: isMobile ? 12 : 0,
           padding: isMobile ? 16 : 20,
-          backgroundColor: "#f8f9fa",
+          backgroundColor: colors.bgLight,
           borderRadius: 12,
           marginBottom: isMobile ? 16 : 20,
         }}
@@ -438,7 +438,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
               <h2 style={{ margin: 0, fontSize: isMobile ? 18 : 24 }}>
                 {data.isViewingSelf ? t("playerSummaryView.mySummary") : data.player.displayName}
               </h2>
-              <div style={{ color: "#666", fontSize: isMobile ? 13 : 14 }}>
+              <div style={{ color: colors.textMuted, fontSize: isMobile ? 13 : 14 }}>
                 #{data.player.rank} • {data.player.role}
               </div>
             </div>
@@ -447,7 +447,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
 
         <div style={{ textAlign: isMobile ? "center" : "right" }}>
           <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: colors.brand }}>{data.player.totalPoints}</div>
-          <div style={{ fontSize: isMobile ? 13 : 14, color: "#666" }}>{t("playerSummaryView.totalPoints")}</div>
+          <div style={{ fontSize: isMobile ? 13 : 14, color: colors.textMuted }}>{t("playerSummaryView.totalPoints")}</div>
         </div>
       </div>
 
@@ -462,21 +462,21 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
       >
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.infoBgLight, borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "#0056b3" }}>{data.player.rank}°</div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.position")}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.position")}</div>
         </div>
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.successBg, borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.successDark }}>{data.player.totalPoints}</div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.pointsLabel")}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.pointsLabel")}</div>
         </div>
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.warningBg, borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.warningDark }}>{totalScored}</div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.scored")}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.scored")}</div>
         </div>
         <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.errorBgAlt, borderRadius: 8, textAlign: "center" }}>
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.errorDarkest }}>
             {totalMaxPoints > 0 ? Math.round((data.player.totalPoints / totalMaxPoints) * 100) : 0}%
           </div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: "#666" }}>{t("playerSummaryView.effectiveness")}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.effectiveness")}</div>
         </div>
       </div>
 
@@ -498,9 +498,9 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
       )}
 
       {/* Fases */}
-      <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: "#333" }}>{t("playerSummaryView.phaseBreakdown")}</h3>
+      <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: colors.textDark }}>{t("playerSummaryView.phaseBreakdown")}</h3>
       {data.phases.length === 0 ? (
-        <div style={{ padding: isMobile ? 20 : 40, textAlign: "center", color: "#666" }}>
+        <div style={{ padding: isMobile ? 20 : 40, textAlign: "center", color: colors.textMuted }}>
           {t("playerSummaryView.noMatchesVisible")}
         </div>
       ) : (
@@ -523,7 +523,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
             style={{
               padding: isMobile ? "14px 40px" : "10px 30px",
               backgroundColor: colors.textMuted,
-              color: "#fff",
+              color: colors.white,
               border: "none",
               borderRadius: 8,
               fontSize: isMobile ? 16 : 14,

@@ -32,6 +32,5 @@ pickPresetsRouter.get("/:key", async (req, res) => {
     return sendNotFound(res, `Preset ${key} not found`);
   }
 
-  // eslint-disable-next-line -- preset is a plain object, sendData expects Record
-  return res.json(preset);
+  return sendData(res, preset as unknown as Record<string, unknown>);
 });

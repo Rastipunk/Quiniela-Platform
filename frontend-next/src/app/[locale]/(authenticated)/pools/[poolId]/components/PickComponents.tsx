@@ -31,10 +31,10 @@ export function PickSection(props: {
 
   return (
     <div style={{ border: "1px solid #f2f2f2", borderRadius: radii.xl, padding: "8px 10px" }}>
-      <div style={{ fontWeight: fontWeight.bold, fontSize: fontSize.sm, marginBottom: 6, color: "#555" }}>{t("pick.myPick")}</div>
+      <div style={{ fontWeight: fontWeight.bold, fontSize: fontSize.sm, marginBottom: 6, color: colors.textMuted }}>{t("pick.myPick")}</div>
 
       {props.isLocked && !hasPick && (
-        <div style={{ color: "#999", fontSize: 13, fontStyle: "italic" }}>🔒 {t("pick.noPick")}</div>
+        <div style={{ color: colors.textLight, fontSize: 13, fontStyle: "italic" }}>🔒 {t("pick.noPick")}</div>
       )}
 
       {props.isLocked && hasPick && (
@@ -61,8 +61,8 @@ export function PickSection(props: {
               padding: "8px 12px",
               borderRadius: 8,
               border: "1px solid #666",
-              background: "#fff",
-              color: "#333",
+              background: colors.white,
+              color: colors.textDark,
               cursor: "pointer",
               fontSize: 13,
             }}
@@ -89,7 +89,7 @@ export function PickSection(props: {
       )}
 
       {!props.isLocked && !hasPick && !editMode && (
-        <div style={{ color: "#999", fontSize: 13, fontStyle: "italic" }}>{t("pick.noPickYet")}</div>
+        <div style={{ color: colors.textLight, fontSize: 13, fontStyle: "italic" }}>{t("pick.noPickYet")}</div>
       )}
     </div>
   );
@@ -116,18 +116,18 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
               style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
-            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
               <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 36, fontWeight: 900, color: "#111" }}>{pick.homeGoals}</span>
+          <span style={{ fontSize: 36, fontWeight: 900, color: colors.text }}>{pick.homeGoals}</span>
         </div>
 
-        <span style={{ fontSize: 20, fontWeight: 700, color: "#999", margin: "0 4px" }}>-</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: colors.textLight, margin: "0 4px" }}>-</span>
 
         {/* Away team score + flag */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 36, fontWeight: 900, color: "#111" }}>{pick.awayGoals}</span>
+          <span style={{ fontSize: 36, fontWeight: 900, color: colors.text }}>{pick.awayGoals}</span>
           {awayFlag?.flagUrl ? (
             <img
               src={awayFlag.flagUrl}
@@ -136,7 +136,7 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
               style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
-            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
               <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
@@ -165,8 +165,8 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
             fontSize: 16,
             fontWeight: 700,
             textAlign: "center",
-            color: "#111",
-            background: "#f9f9f9",
+            color: colors.text,
+            background: colors.bgLighter,
             borderRadius: 8,
           }}
         >
@@ -176,7 +176,7 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
     );
   }
 
-  return <pre style={{ margin: 0, fontSize: 12, color: "#666" }}>{JSON.stringify(pick, null, 2)}</pre>;
+  return <pre style={{ margin: 0, fontSize: 12, color: colors.textMuted }}>{JSON.stringify(pick, null, 2)}</pre>;
 }
 
 function PickEditor(props: {
@@ -221,11 +221,11 @@ function PickEditor(props: {
             {homeFlag?.flagUrl ? (
               <img src={homeFlag.flagUrl} alt={homeName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
             ) : (
-              <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+              <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
                 <span style={{ fontSize: 18 }}>⚽</span>
               </div>
             )}
-            <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{homeName}</span>
+            <span style={{ fontSize: 10, color: colors.textMuted, fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{homeName}</span>
           </div>
           {/* Score inputs */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
@@ -233,7 +233,7 @@ function PickEditor(props: {
               type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} placeholder="0"
               style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
             />
-            <span style={{ fontWeight: 900, fontSize: 18, color: "#666" }}>-</span>
+            <span style={{ fontWeight: 900, fontSize: 18, color: colors.textMuted }}>-</span>
             <input
               type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} placeholder="0"
               style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
@@ -244,11 +244,11 @@ function PickEditor(props: {
             {awayFlag?.flagUrl ? (
               <img src={awayFlag.flagUrl} alt={awayName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
             ) : (
-              <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+              <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
                 <span style={{ fontSize: 18 }}>⚽</span>
               </div>
             )}
-            <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{awayName}</span>
+            <span style={{ fontSize: 10, color: colors.textMuted, fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{awayName}</span>
           </div>
         </div>
       ) : (
@@ -273,8 +273,8 @@ function PickEditor(props: {
             padding: 10,
             borderRadius: 10,
             border: "1px solid #111",
-            background: "#111",
-            color: "#fff",
+            background: colors.text,
+            color: colors.white,
             cursor: "pointer",
             fontWeight: 600,
             minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
@@ -290,8 +290,8 @@ function PickEditor(props: {
               padding: "8px 16px",
               borderRadius: 10,
               border: "1px solid #999",
-              background: "#fff",
-              color: "#666",
+              background: colors.white,
+              color: colors.textMuted,
               cursor: "pointer",
               minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
               ...mobileInteractiveStyles.tapHighlight,

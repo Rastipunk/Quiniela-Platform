@@ -143,7 +143,7 @@ export function CreateJoinPanel({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "#f5f5f5",
+              background: colors.bgLight,
               border: "none",
               borderRadius: radii.xl,
               fontSize: fontSize["2xl"],
@@ -160,7 +160,7 @@ export function CreateJoinPanel({
         {panel === "CREATE" && !showWizard && createStep === 1 && (
           <div style={{ display: "grid", gap: 14 }}>
             <div style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.tournamentLabel")}</span>
+              <span style={{ fontSize: 13, color: colors.textDark, fontWeight: 500 }}>{t("createPanel.tournamentLabel")}</span>
               <div
                 style={{
                   display: "grid",
@@ -243,7 +243,7 @@ export function CreateJoinPanel({
             </div>
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.poolNameLabel")}</span>
+              <span style={{ fontSize: 13, color: colors.textDark, fontWeight: 500 }}>{t("createPanel.poolNameLabel")}</span>
               <input
                 value={poolName}
                 onChange={(e) => setPoolName(e.target.value)}
@@ -253,7 +253,7 @@ export function CreateJoinPanel({
             </label>
 
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.descriptionLabel")}</span>
+              <span style={{ fontSize: 13, color: colors.textDark, fontWeight: 500 }}>{t("createPanel.descriptionLabel")}</span>
               <input
                 value={poolDesc}
                 onChange={(e) => setPoolDesc(e.target.value)}
@@ -264,7 +264,7 @@ export function CreateJoinPanel({
 
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>
+                <span style={{ fontSize: 13, color: colors.textDark, fontWeight: 500 }}>
                   {t("createPanel.deadlineLabel")}
                 </span>
                 <input
@@ -278,7 +278,7 @@ export function CreateJoinPanel({
               </label>
 
               <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("createPanel.timezoneLabel")}</span>
+                <span style={{ fontSize: 13, color: colors.textDark, fontWeight: 500 }}>{t("createPanel.timezoneLabel")}</span>
                 <input
                   value={timeZone}
                   onChange={(e) => setTimeZone(e.target.value)}
@@ -462,7 +462,7 @@ export function CreateJoinPanel({
         {panel === "JOIN" && (
           <div style={{ display: "grid", gap: 14 }}>
             <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 13, color: "#444", fontWeight: 500 }}>{t("joinPanel.inviteCodeLabel")}</span>
+              <span style={{ fontSize: 13, color: colors.textDark, fontWeight: 500 }}>{t("joinPanel.inviteCodeLabel")}</span>
               <input
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}

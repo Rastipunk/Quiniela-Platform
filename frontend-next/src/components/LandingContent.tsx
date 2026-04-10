@@ -347,8 +347,8 @@ export function LandingContent() {
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#16a34a",
-                  background: "#dcfce7",
+                  color: colors.successAlt,
+                  background: colors.successBgLight,
                   padding: "3px 10px",
                   borderRadius: 999,
                 }}
@@ -410,7 +410,7 @@ export function LandingContent() {
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#4f46e5",
+                  color: colors.brand,
                   background: "#e0e7ff",
                   padding: "3px 10px",
                   borderRadius: 999,
@@ -444,7 +444,7 @@ export function LandingContent() {
               }}
             >
               <span style={{ fontSize: 18 }}>&#128274;</span>
-              <span style={{ fontWeight: 700, fontSize: 15, color: "#4f46e5" }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: colors.brand }}>
                 {t("pricing.comingSoon")}
               </span>
             </div>
@@ -473,8 +473,8 @@ export function LandingContent() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#16a34a",
-                    background: "#dcfce7",
+                    color: colors.successAlt,
+                    background: colors.successBgLight,
                     padding: "3px 10px",
                     borderRadius: 999,
                   }}
@@ -735,7 +735,7 @@ function StepCard({
 function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-      <span style={{ color: "#22c55e", fontSize: 16, lineHeight: 1.3, flexShrink: 0 }}>&#10003;</span>
+      <span style={{ color: colors.successAlt, fontSize: 16, lineHeight: 1.3, flexShrink: 0 }}>&#10003;</span>
       <span
         style={{
           fontSize: 14,
@@ -797,7 +797,7 @@ function TournamentCard({
             position: "absolute",
             top: isMobile ? 6 : 8,
             right: isMobile ? 6 : 8,
-            background: "#6b7280",
+            background: colors.textLighter,
             color: "white",
             fontSize: isMobile ? "0.6rem" : "0.65rem",
             fontWeight: 600,

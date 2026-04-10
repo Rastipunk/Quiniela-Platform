@@ -79,7 +79,7 @@ export function ToggleSwitch({
           width: ts,
           height: ts,
           borderRadius: "50%",
-          background: "#fff",
+          background: colors.white,
           boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
           transition: "left 0.2s ease",
           pointerEvents: "none",

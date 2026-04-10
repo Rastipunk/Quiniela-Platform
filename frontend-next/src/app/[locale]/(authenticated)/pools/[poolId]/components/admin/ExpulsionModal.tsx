@@ -67,11 +67,11 @@ export function ExpulsionModal({ data, onClose, poolId, token, busyKey, setBusyK
               </div>
               <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
                 <button type="button" onClick={onClose} disabled={busyKey !== null}
-                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "1px solid #ddd", background: "#fff", color: "#333", cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
+                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "1px solid #ddd", background: colors.white, color: colors.textDark, cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
                   {t("expulsion.cancel")}
                 </button>
                 <button type="submit" disabled={busyKey !== null}
-                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "none", background: busyKey ? "#ccc" : colors.warning, color: "#fff", cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
+                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "none", background: busyKey ? colors.disabled : colors.warning, color: colors.white, cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
                   {busyKey ? `⏳ ${t("expulsion.kicking")}` : `👋 ${t("expulsion.kickButton")}`}
                 </button>
               </div>
@@ -119,7 +119,7 @@ export function ExpulsionModal({ data, onClose, poolId, token, busyKey, setBusyK
               style={{ display: "grid", gap: 12 }}
             >
               <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#333" }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: colors.textDark }}>
                   {t("expulsion.banReasonLabel")}
                 </label>
                 <textarea name="reason" required rows={3} placeholder={t("expulsion.banReasonPlaceholder")}
@@ -134,11 +134,11 @@ export function ExpulsionModal({ data, onClose, poolId, token, busyKey, setBusyK
               </div>
               <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
                 <button type="button" onClick={onClose} disabled={busyKey !== null}
-                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "1px solid #ddd", background: "#fff", color: "#333", cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
+                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "1px solid #ddd", background: colors.white, color: colors.textDark, cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
                   {t("expulsion.cancel")}
                 </button>
                 <button type="submit" disabled={busyKey !== null}
-                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "none", background: busyKey ? "#ccc" : colors.errorAlt, color: "#fff", cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
+                  style={{ flex: 1, padding: 12, borderRadius: 6, border: "none", background: busyKey ? colors.disabled : colors.errorAlt, color: colors.white, cursor: busyKey ? "wait" : "pointer", fontSize: 14, fontWeight: 600 }}>
                   {busyKey ? `⏳ ${t("expulsion.banning")}` : `🚫 ${t("expulsion.banButton")}`}
                 </button>
               </div>

@@ -310,7 +310,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
     fontWeight: fw.medium,
     minHeight: TOUCH_TARGET.minimum,
     background: isActive ? colors.brandGradient : "transparent",
-    color: isActive ? "#fff" : colors.varText,
+    color: isActive ? colors.white : colors.varText,
     border: isActive ? "none" : `1px solid ${colors.varBorder}`,
     borderRadius: radii.lg,
     cursor: "pointer",

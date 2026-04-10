@@ -439,7 +439,7 @@ export default function PoolPage() {
           <p style={{ margin: "0 0 16px", fontSize: fontSize.base, color: "#a16207", lineHeight: 1.5 }}>
             {t("pendingApproval.description")}
           </p>
-          <p style={{ margin: 0, fontSize: fontSize.sm, color: "#b45309" }}>
+          <p style={{ margin: 0, fontSize: fontSize.sm, color: colors.warningDarker }}>
             {t("pendingApproval.hint")}
           </p>
         </div>
@@ -465,7 +465,7 @@ export default function PoolPage() {
             <h3 style={{ margin: "0 0 12px", fontSize: fontSize["3xl"], fontWeight: fontWeight.extrabold, color: colors.error }}>
               {t("admin.capacity.fullTitle")}
             </h3>
-            <p style={{ margin: "0 0 20px", fontSize: fontSize.base, color: "#374151", lineHeight: 1.6 }}>
+            <p style={{ margin: "0 0 20px", fontSize: fontSize.base, color: colors.textDark, lineHeight: 1.6 }}>
               {t("admin.capacity.fullMessage", { max: overview.pool.maxParticipants })}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -477,7 +477,7 @@ export default function PoolPage() {
               </button>
               <button
                 onClick={() => setShowCapacityPopup(false)}
-                style={{ padding: "10px 24px", borderRadius: radii.xl, border: `1px solid ${colors.borderMedium}`, background: "transparent", color: "#374151", fontSize: fontSize.base, fontWeight: fontWeight.semibold, cursor: "pointer" }}
+                style={{ padding: "10px 24px", borderRadius: radii.xl, border: `1px solid ${colors.borderMedium}`, background: "transparent", color: colors.textDark, fontSize: fontSize.base, fontWeight: fontWeight.semibold, cursor: "pointer" }}
               >
                 {t("admin.capacity.fullDismiss")}
               </button>
@@ -516,7 +516,7 @@ export default function PoolPage() {
                   <img src={org.logoBase64} alt={org.name} style={{ position: "relative", maxHeight: 200, maxWidth: 320, borderRadius: 16, objectFit: "contain", border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }} />
                 </div>
               ) : (
-                <div style={{ width: 180, height: 180, borderRadius: 24, marginBottom: 28, background: "linear-gradient(135deg, #4f46e5, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72, fontWeight: 800, color: "#fff", border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }}>
+                <div style={{ width: 180, height: 180, borderRadius: 24, marginBottom: 28, background: "linear-gradient(135deg, #4f46e5, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72, fontWeight: 800, color: colors.white, border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }}>
                   {org.name.charAt(0).toUpperCase()}
                 </div>
               )}

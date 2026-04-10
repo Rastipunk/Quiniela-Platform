@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -16,7 +18,7 @@ import {
 function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-      <span style={{ color: "#22c55e", fontSize: 15, lineHeight: 1.3, flexShrink: 0 }}>&#10003;</span>
+      <span style={{ color: colors.successAlt, fontSize: 15, lineHeight: 1.3, flexShrink: 0 }}>&#10003;</span>
       <span
         style={{
           fontSize: 14,
@@ -95,7 +97,7 @@ export function PricingPageContent() {
             style={{
               padding: "16px 20px",
               borderRadius: 12,
-              background: "#f0fdf4",
+              background: colors.successBgAlt,
               border: "1px solid #bbf7d0",
               marginBottom: 16,
             }}
@@ -119,7 +121,7 @@ export function PricingPageContent() {
                   padding: "14px 20px",
                   borderRadius: 12,
                   border: tier.isFree ? "2px solid #86efac" : "1px solid var(--border)",
-                  background: tier.isFree ? "#f0fdf4" : "var(--surface)",
+                  background: tier.isFree ? colors.successBgAlt : "var(--surface)",
                   overflow: "hidden",
                 }}
               >
@@ -134,8 +136,8 @@ export function PricingPageContent() {
                           marginLeft: 10,
                           fontSize: 11,
                           fontWeight: 700,
-                          color: "#16a34a",
-                          background: "#dcfce7",
+                          color: colors.successAlt,
+                          background: colors.successBgLight,
                           padding: "2px 8px",
                           borderRadius: 999,
                         }}
@@ -149,8 +151,8 @@ export function PricingPageContent() {
                           marginLeft: 8,
                           fontSize: 11,
                           fontWeight: 700,
-                          color: "#16a34a",
-                          background: "#dcfce7",
+                          color: colors.successAlt,
+                          background: colors.successBgLight,
                           padding: "2px 8px",
                           borderRadius: 999,
                         }}
@@ -161,7 +163,7 @@ export function PricingPageContent() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     {tier.isFree ? (
-                      <span style={{ fontSize: 16, fontWeight: 700, color: "#16a34a" }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: colors.successAlt }}>
                         {t("free")}
                       </span>
                     ) : (
@@ -194,7 +196,7 @@ export function PricingPageContent() {
                     }}
                   >
                     <span style={{ fontSize: 14 }}>&#128274;</span>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: "#4f46e5" }}>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
                       {t("comingSoon")}
                     </span>
                   </div>
@@ -247,7 +249,7 @@ export function PricingPageContent() {
                     padding: "14px 20px",
                     borderRadius: 12,
                     border: isBase ? "2px solid #86efac" : "1px solid var(--border)",
-                    background: isBase ? "#f0fdf4" : "var(--surface)",
+                    background: isBase ? colors.successBgAlt : "var(--surface)",
                     overflow: "hidden",
                   }}
                 >
@@ -264,8 +266,8 @@ export function PricingPageContent() {
                             marginLeft: 10,
                             fontSize: 11,
                             fontWeight: 700,
-                            color: "#16a34a",
-                            background: "#dcfce7",
+                            color: colors.successAlt,
+                            background: colors.successBgLight,
                             padding: "2px 8px",
                             borderRadius: 999,
                           }}
@@ -279,8 +281,8 @@ export function PricingPageContent() {
                             marginLeft: 8,
                             fontSize: 11,
                             fontWeight: 700,
-                            color: "#16a34a",
-                            background: "#dcfce7",
+                            color: colors.successAlt,
+                            background: colors.successBgLight,
                             padding: "2px 8px",
                             borderRadius: 999,
                           }}
@@ -296,7 +298,7 @@ export function PricingPageContent() {
                             <span style={{ fontSize: 13, color: "var(--muted)", textDecoration: "line-through" }}>
                               {formatCOP(CORPORATE_BASE_PRICE)}
                             </span>
-                            <span style={{ fontSize: 16, fontWeight: 800, color: "#16a34a" }}>
+                            <span style={{ fontSize: 16, fontWeight: 800, color: colors.successAlt }}>
                               $0
                             </span>
                           </div>
@@ -331,7 +333,7 @@ export function PricingPageContent() {
                       }}
                     >
                       <span style={{ fontSize: 14 }}>&#128274;</span>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "#4f46e5" }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
                         {t("comingSoon")}
                       </span>
                     </div>
@@ -362,7 +364,7 @@ export function PricingPageContent() {
               display: "inline-block",
               padding: "14px 32px",
               borderRadius: 10,
-              background: "#4f46e5",
+              background: colors.brand,
               color: "white",
               fontSize: 16,
               fontWeight: 700,

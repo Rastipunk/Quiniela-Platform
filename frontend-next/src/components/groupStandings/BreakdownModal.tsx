@@ -88,7 +88,7 @@ export function BreakdownModal({
         {/* Body */}
         <div style={{ padding: "1.25rem", overflowY: "auto", flex: 1 }}>
           {loadingBreakdown && (
-            <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+            <div style={{ textAlign: "center", padding: "2rem", color: colors.textMuted }}>
               {t("groupStandings.loadingBreakdown")}
             </div>
           )}
@@ -153,9 +153,9 @@ export function BreakdownModal({
                         alignItems: "center",
                         gap: 8,
                         padding: "0.5rem 0.75rem",
-                        background: pos.matched ? colors.successBg : "#fff",
+                        background: pos.matched ? colors.successBg : colors.white,
                         borderRadius: 6,
-                        border: `1px solid ${pos.matched ? colors.successBorderAlt : "#e5e7eb"}`,
+                        border: `1px solid ${pos.matched ? colors.successBorderAlt : colors.borderLight}`,
                       }}
                     >
                       <span style={{ fontWeight: 700, width: 24, fontSize: 14 }}>{pos.position}°</span>
@@ -186,9 +186,9 @@ export function BreakdownModal({
                       style={{
                         marginTop: "0.5rem",
                         padding: "0.5rem 0.75rem",
-                        background: breakdownData.bonusPerfectGroup.achieved ? colors.successBg : "#f8f9fa",
+                        background: breakdownData.bonusPerfectGroup.achieved ? colors.successBg : colors.bgLight,
                         borderRadius: 6,
-                        border: `1px solid ${breakdownData.bonusPerfectGroup.achieved ? colors.successBorderAlt : "#e5e7eb"}`,
+                        border: `1px solid ${breakdownData.bonusPerfectGroup.achieved ? colors.successBorderAlt : colors.borderLight}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",

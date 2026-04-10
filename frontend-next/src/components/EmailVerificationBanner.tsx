@@ -81,8 +81,8 @@ export function EmailVerificationBanner({
   };
 
   const buttonStyle: React.CSSProperties = {
-    background: "#f59e0b",
-    color: "#fff",
+    background: colors.warning,
+    color: colors.white,
     border: "none",
     borderRadius: 6,
     padding: "8px 16px",
@@ -94,11 +94,11 @@ export function EmailVerificationBanner({
   };
 
   const successStyle: React.CSSProperties = {
-    background: "#d1fae5",
+    background: colors.successBgLight,
     border: "1px solid #10b981",
     borderRadius: 6,
     padding: "8px 12px",
-    color: "#065f46",
+    color: colors.successDarker,
     fontSize: 13,
     marginTop: 8,
   };
@@ -108,7 +108,7 @@ export function EmailVerificationBanner({
     border: "1px solid #ef4444",
     borderRadius: 6,
     padding: "8px 12px",
-    color: "#b91c1c",
+    color: colors.errorDark,
     fontSize: 13,
     marginTop: 8,
   };

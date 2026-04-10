@@ -41,7 +41,7 @@ export function PickRulesDisplay({
   // Guard: verificar que pickTypesConfig es un array válido
   if (!pickTypesConfig || !Array.isArray(pickTypesConfig)) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "#666" }}>
+      <div style={{ padding: "2rem", textAlign: "center", color: colors.textMuted }}>
         {t("configNoRules")}
       </div>
     );
@@ -146,7 +146,7 @@ export function PickRulesDisplay({
                       </span>
                       <span style={{ fontSize: 14 }}>
                         {t("points")} - <strong>{tDynamic(`pickTypeNames.${type.key}`)}</strong>{" "}
-                        <span style={{ color: "#666", fontSize: 13 }}>{tDynamic(`pickTypeDescriptions.${type.key}`)}</span>
+                        <span style={{ color: colors.textMuted, fontSize: 13 }}>{tDynamic(`pickTypeDescriptions.${type.key}`)}</span>
                       </span>
                     </div>
                   ))}
@@ -207,32 +207,32 @@ export function PickRulesDisplay({
                   {/* Soportar nuevo formato (pointsPosition1-4) y legacy (pointsPerExactPosition) */}
                   {cfg.pointsPosition1 !== undefined ? (
                     <>
-                      <div style={{ color: "#666", fontSize: 13 }}>
+                      <div style={{ color: colors.textMuted, fontSize: 13 }}>
                         • 🥇 {t("rulesDisplay.positionPoints1", { points: cfg.pointsPosition1 })}
                       </div>
-                      <div style={{ color: "#666", fontSize: 13 }}>
+                      <div style={{ color: colors.textMuted, fontSize: 13 }}>
                         • 🥈 {t("rulesDisplay.positionPoints2", { points: cfg.pointsPosition2 })}
                       </div>
-                      <div style={{ color: "#666", fontSize: 13 }}>
+                      <div style={{ color: colors.textMuted, fontSize: 13 }}>
                         • 🥉 {t("rulesDisplay.positionPoints3", { points: cfg.pointsPosition3 })}
                       </div>
-                      <div style={{ color: "#666", fontSize: 13 }}>
+                      <div style={{ color: colors.textMuted, fontSize: 13 }}>
                         • 4️⃣ {t("rulesDisplay.positionPoints4", { points: cfg.pointsPosition4 })}
                       </div>
                     </>
                   ) : (
-                    <div style={{ color: "#666", fontSize: 13 }}>
+                    <div style={{ color: colors.textMuted, fontSize: 13 }}>
                       • {t("rulesDisplay.ptsPerExactPosition", { points: cfg.pointsPerExactPosition })}
                     </div>
                   )}
                   {/* Bonus por grupo perfecto - soporta nuevo formato (bonusPerfectGroupEnabled) y legacy */}
                   {(cfg.bonusPerfectGroupEnabled ?? cfg.bonusPerfectGroup) && cfg.bonusPerfectGroup && (
-                    <div style={{ color: "#666", fontSize: 13 }}>
+                    <div style={{ color: colors.textMuted, fontSize: 13 }}>
                       • 🎯 {t("rulesDisplay.bonusPerfectGroupPts", { points: cfg.bonusPerfectGroup })}
                     </div>
                   )}
                   {cfg.includeGlobalQualifiers && (
-                    <div style={{ color: "#666", fontSize: 13 }}>
+                    <div style={{ color: colors.textMuted, fontSize: 13 }}>
                       • {t("rulesDisplay.globalQualifiersAdditional", { points: cfg.globalQualifiersPoints })}
                     </div>
                   )}
@@ -256,10 +256,10 @@ export function PickRulesDisplay({
                   <div style={{ marginBottom: 6 }}>
                     🌍 <strong>{t("rulesDisplay.globalQualifiersTitle")}</strong>
                   </div>
-                  <div style={{ color: "#666", fontSize: 13 }}>
+                  <div style={{ color: colors.textMuted, fontSize: 13 }}>
                     • {t("rulesDisplay.predictTotalQualifiers", { total: cfg.totalQualifiers })}
                   </div>
-                  <div style={{ color: "#666", fontSize: 13 }}>
+                  <div style={{ color: colors.textMuted, fontSize: 13 }}>
                     • {t("rulesDisplay.ptsPerExactPosition", { points: cfg.pointsPerExactPosition })}
                   </div>
                   <div style={{ marginTop: 8, fontSize: 12, color: colors.warningDark }}>
@@ -283,10 +283,10 @@ export function PickRulesDisplay({
                   <div style={{ marginBottom: 6 }}>
                     🎯 <strong>{t("rulesDisplay.knockoutWinnerTitle")}</strong>
                   </div>
-                  <div style={{ color: "#666", fontSize: 13 }}>
+                  <div style={{ color: colors.textMuted, fontSize: 13 }}>
                     • {t("rulesDisplay.knockoutWinnerPoints", { points: (phase.structuralPicks.config as StructuralConfig).pointsPerCorrectAdvance })}
                   </div>
-                  <div style={{ color: "#666", fontSize: 13, marginTop: 4 }}>
+                  <div style={{ color: colors.textMuted, fontSize: 13, marginTop: 4 }}>
                     {t("rulesDisplay.knockoutWinnerNote")}
                   </div>
                 </div>
@@ -301,16 +301,16 @@ export function PickRulesDisplay({
         style={{
           marginTop: 24,
           padding: "1.5rem",
-          background: "#f8f9fa",
+          background: colors.bgLight,
           borderRadius: 12,
           border: "2px solid #dee2e6",
         }}
       >
-        <div style={{ fontSize: 15, color: "#333", lineHeight: 1.8, fontWeight: 500 }}>
+        <div style={{ fontSize: 15, color: colors.textDark, lineHeight: 1.8, fontWeight: 500 }}>
           <div style={{ marginBottom: 12, color: "#1a1a2e" }}>
             💡 <strong>{t("rulesDisplay.importantNotes")}:</strong>
           </div>
-          <ul style={{ margin: 0, paddingLeft: 24, color: "#444" }}>
+          <ul style={{ margin: 0, paddingLeft: 24, color: colors.textDark }}>
             <li>{t("rulesDisplay.notePhaseRules")}</li>
             <li>{t("rulesDisplay.noteReadCarefully")}</li>
             <li>{t("rulesDisplay.notePointsIncrease")}</li>

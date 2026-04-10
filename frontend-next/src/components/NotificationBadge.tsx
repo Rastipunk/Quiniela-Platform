@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 // Componente de badge para notificaciones internas
 // Sprint 3 - Sistema de Notificaciones
 // Estilo: Badge pequeño con azul primary de la app
@@ -27,7 +29,7 @@ export function NotificationBadge({
         position: "absolute",
         top: -6,
         right: -8,
-        background: "#2563eb", // Azul primary de la app
+        background: colors.brand, // Azul primary de la app
         color: "#ffffff",
         borderRadius: 9,
         minWidth: dimensions.minWidth,

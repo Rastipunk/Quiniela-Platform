@@ -35,7 +35,7 @@ export function MemberManagement({
       <h4 style={adminHeadingStyle}>
         👥 {t("admin.members.title")}
       </h4>
-      <div style={{ fontSize: 14, lineHeight: 1.8, color: "#666", marginBottom: 12 }}>
+      <div style={{ fontSize: 14, lineHeight: 1.8, color: colors.textMuted, marginBottom: 12 }}>
         {t("admin.members.description")}
       </div>
 
@@ -50,7 +50,7 @@ export function MemberManagement({
               key={member.userId}
               style={{
                 padding: 12,
-                background: "#fff",
+                background: colors.white,
                 borderRadius: 8,
                 border: "1px solid #dee2e6",
                 display: "flex",
@@ -80,11 +80,11 @@ export function MemberManagement({
                     </span>
                   )}
                   {member.memberStatus === "LEFT" && (
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#ef444420", border: "1px solid #ef4444", color: "#ef4444", fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#ef444420", border: "1px solid #ef4444", color: colors.errorBorderStrong, fontWeight: 600 }}>
                       {t("mobileLeaderboard.retired")}
                     </span>
                   )}
-                  <span style={{ fontSize: 12, color: "#999" }}>
+                  <span style={{ fontSize: 12, color: colors.textLight }}>
                     {member.points} {t("admin.members.pts")}
                   </span>
                 </div>
@@ -113,8 +113,8 @@ export function MemberManagement({
                       }}
                       style={{
                         padding: "6px 12px", borderRadius: 6, border: "1px solid #28a745",
-                        background: busyKey === `promote:${member.userId}` ? "#ccc" : colors.success,
-                        color: "#fff", cursor: busyKey === `promote:${member.userId}` ? "wait" : "pointer",
+                        background: busyKey === `promote:${member.userId}` ? colors.disabled : colors.success,
+                        color: colors.white, cursor: busyKey === `promote:${member.userId}` ? "wait" : "pointer",
                         fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                       }}
                     >
@@ -143,8 +143,8 @@ export function MemberManagement({
                       }}
                       style={{
                         padding: "6px 12px", borderRadius: 6, border: "1px solid #dc3545",
-                        background: busyKey === `demote:${member.userId}` ? "#ccc" : colors.errorAlt,
-                        color: "#fff", cursor: busyKey === `demote:${member.userId}` ? "wait" : "pointer",
+                        background: busyKey === `demote:${member.userId}` ? colors.disabled : colors.errorAlt,
+                        color: colors.white, cursor: busyKey === `demote:${member.userId}` ? "wait" : "pointer",
                         fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                       }}
                     >
@@ -156,7 +156,7 @@ export function MemberManagement({
                     onClick={() => setExpulsionModalData({ memberId: member.memberId, memberName: member.displayName, type: "KICK" })}
                     style={{
                       padding: "6px 12px", borderRadius: 6, border: "1px solid #ffc107",
-                      background: "#fff", color: colors.warning, cursor: "pointer",
+                      background: colors.white, color: colors.warning, cursor: "pointer",
                       fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                     }}
                   >
@@ -167,7 +167,7 @@ export function MemberManagement({
                     onClick={() => setExpulsionModalData({ memberId: member.memberId, memberName: member.displayName, type: "BAN" })}
                     style={{
                       padding: "6px 12px", borderRadius: 6, border: "1px solid #dc3545",
-                      background: "#fff", color: colors.errorAlt, cursor: "pointer",
+                      background: colors.white, color: colors.errorAlt, cursor: "pointer",
                       fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                     }}
                   >

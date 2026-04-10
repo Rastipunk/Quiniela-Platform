@@ -58,7 +58,7 @@ export function MobileLeaderboard({
                   : idx === 1
                   ? "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"
                   : "linear-gradient(135deg, #fff8f0 0%, #ffede0 100%)"
-                : "#fff",
+                : colors.white,
               border: isTopThree
                 ? `2px solid ${idx === 0 ? colors.warning : idx === 1 ? colors.disabled : "#fd7e14"}`
                 : "1px solid #e0e0e0",
@@ -89,7 +89,7 @@ export function MobileLeaderboard({
                   justifyContent: "center",
                   fontWeight: 700,
                   fontSize: medal ? 22 : 16,
-                  color: isTopThree ? "#fff" : "#666",
+                  color: isTopThree ? colors.white : colors.textMuted,
                   flexShrink: 0,
                   boxShadow: isTopThree ? "0 2px 8px rgba(0,0,0,0.15)" : "none",
                 }}
@@ -150,7 +150,7 @@ export function MobileLeaderboard({
                         borderRadius: 4,
                         background: "#ef444420",
                         border: "1px solid #ef4444",
-                        color: "#ef4444",
+                        color: colors.errorBorderStrong,
                         fontWeight: 600,
                       }}
                     >
@@ -172,7 +172,7 @@ export function MobileLeaderboard({
                 >
                   {r.points}
                 </div>
-                <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
                   {idx === 0 ? (
                     <span style={{ color: colors.success, fontWeight: 600 }}>{t("mobileLeaderboard.leader")}</span>
                   ) : (
@@ -216,7 +216,7 @@ export function MobileLeaderboard({
                         flexDirection: "column",
                         alignItems: "center",
                         padding: "8px 12px",
-                        background: hasPoints ? "#f8fbff" : "#f5f5f5",
+                        background: hasPoints ? "#f8fbff" : colors.bgLight,
                         border: hasPoints ? "1px solid #007bff30" : "1px solid #e0e0e0",
                         borderRadius: 8,
                         cursor: hasPoints ? "pointer" : "default",
@@ -229,7 +229,7 @@ export function MobileLeaderboard({
                       <span
                         style={{
                           fontSize: 10,
-                          color: "#666",
+                          color: colors.textMuted,
                           marginBottom: 2,
                           fontWeight: 500,
                         }}
@@ -240,7 +240,7 @@ export function MobileLeaderboard({
                         style={{
                           fontSize: 14,
                           fontWeight: hasPoints ? 700 : 400,
-                          color: hasPoints ? colors.brand : "#ccc",
+                          color: hasPoints ? colors.brand : colors.disabled,
                         }}
                       >
                         {hasPoints ? phasePoints : "-"}
@@ -259,8 +259,8 @@ export function MobileLeaderboard({
           style={{
             padding: 40,
             textAlign: "center",
-            color: "#999",
-            background: "#f9f9f9",
+            color: colors.textLight,
+            background: colors.bgLighter,
             borderRadius: 12,
           }}
         >
@@ -274,7 +274,7 @@ export function MobileLeaderboard({
           style={{
             textAlign: "center",
             fontSize: 12,
-            color: "#999",
+            color: colors.textLight,
             padding: "8px 0",
           }}
         >

@@ -166,14 +166,14 @@ export function PhaseConfigStep({
           <span style={{ fontWeight: "bold", fontSize: isMobile ? "1rem" : "1.125rem" }}>
             {currentPhase.phaseName}
           </span>
-          <span style={{ color: "#666", fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
+          <span style={{ color: colors.textMuted, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
             {currentPhaseIndex + 1}/{phases.length}
           </span>
         </div>
         <div
           style={{
             height: "4px",
-            background: "#eee",
+            background: colors.borderLighter,
             borderRadius: "2px",
             overflow: "hidden",
           }}
@@ -194,7 +194,7 @@ export function PhaseConfigStep({
         <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
           {tp("phaseConfig.fundamentalDecision")}
         </h3>
-        <p style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 0.75rem 0" }}>
+        <p style={{ color: colors.textMuted, fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 0.75rem 0" }}>
           {tp("phaseConfig.predictScores")}
         </p>
 
@@ -263,11 +263,11 @@ export function PhaseConfigStep({
             flex: isMobile ? 1 : "none",
             padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
             fontSize: isMobile ? "0.85rem" : "1rem",
-            background: currentPhaseIndex === 0 ? "#f5f5f5" : "white",
+            background: currentPhaseIndex === 0 ? colors.bgLight : "white",
             border: currentPhaseIndex === 0 ? "1px solid #ddd" : "1px solid #007bff",
             borderRadius: "6px",
             cursor: currentPhaseIndex === 0 ? "not-allowed" : "pointer",
-            color: currentPhaseIndex === 0 ? "#999" : colors.brand,
+            color: currentPhaseIndex === 0 ? colors.textLight : colors.brand,
             fontWeight: currentPhaseIndex === 0 ? "normal" : "500",
             minHeight: isMobile ? "40px" : "auto",
           }}
@@ -329,7 +329,7 @@ function DecisionCard({ title, selected, onClick, children, isMobile = false }: 
       }}
       onMouseLeave={(e) => {
         if (!selected) {
-          e.currentTarget.style.borderColor = "#ddd";
+          e.currentTarget.style.borderColor = colors.border;
         }
       }}
     >
@@ -337,7 +337,7 @@ function DecisionCard({ title, selected, onClick, children, isMobile = false }: 
         margin: isMobile ? "0 0 0.5rem 0" : "0 0 0.75rem 0",
         fontSize: isMobile ? "0.85rem" : "1rem"
       }}>{title}</h4>
-      <div style={{ fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>{children}</div>
+      <div style={{ fontSize: isMobile ? "0.75rem" : "0.875rem", color: colors.textMuted }}>{children}</div>
     </div>
   );
 }
@@ -362,7 +362,7 @@ function MatchPicksConfiguration({
       <h3 style={{ margin: "0 0 0.75rem 0", fontSize: isMobile ? "1rem" : "1.17rem" }}>
         {tp("phaseConfig.pickTypes")}
       </h3>
-      <p style={{ color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 1rem 0" }}>
+      <p style={{ color: colors.textMuted, fontSize: isMobile ? "0.8rem" : "0.875rem", margin: "0 0 1rem 0" }}>
         {isMobile ? tp("phaseConfig.pickTypesDesc") : tp("phaseConfig.pickTypesDescFull")}
       </p>
 
@@ -461,7 +461,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
               <span style={{ fontSize: isMobile ? "1.25rem" : "1.5rem" }}>📊</span>
               <strong style={{ fontSize: isMobile ? "1rem" : "1.125rem" }}>{tp("phaseConfig.orderPositions")}</strong>
             </div>
-            <p style={{ margin: "0 0 1rem 0", color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+            <p style={{ margin: "0 0 1rem 0", color: colors.textMuted, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
               {isMobile
                 ? tp("phaseConfig.orderPositionsDesc")
                 : tp("phaseConfig.orderPositionsDescFull")}
@@ -469,13 +469,13 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
 
             {/* Puntos por posición */}
             <div style={{ marginBottom: "1.25rem" }}>
-              <div style={{ fontSize: "0.85rem", fontWeight: "bold", marginBottom: "0.75rem", color: "#333" }}>
+              <div style={{ fontSize: "0.85rem", fontWeight: "bold", marginBottom: "0.75rem", color: colors.textDark }}>
                 {tp("phaseConfig.pointsPerPosition")}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
                 <div style={positionRowStyle}>
                   <span style={{ fontSize: "1rem" }}>🥇</span>
-                  <span style={{ fontSize: "0.8rem", color: "#666" }}>1°</span>
+                  <span style={{ fontSize: "0.8rem", color: colors.textMuted }}>1°</span>
                   <input
                     type="number"
                     value={pointsPosition1}
@@ -487,7 +487,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                 </div>
                 <div style={positionRowStyle}>
                   <span style={{ fontSize: "1rem" }}>🥈</span>
-                  <span style={{ fontSize: "0.8rem", color: "#666" }}>2°</span>
+                  <span style={{ fontSize: "0.8rem", color: colors.textMuted }}>2°</span>
                   <input
                     type="number"
                     value={pointsPosition2}
@@ -499,7 +499,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                 </div>
                 <div style={positionRowStyle}>
                   <span style={{ fontSize: "1rem" }}>🥉</span>
-                  <span style={{ fontSize: "0.8rem", color: "#666" }}>3°</span>
+                  <span style={{ fontSize: "0.8rem", color: colors.textMuted }}>3°</span>
                   <input
                     type="number"
                     value={pointsPosition3}
@@ -511,7 +511,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                 </div>
                 <div style={positionRowStyle}>
                   <span style={{ fontSize: "1rem" }}>4️⃣</span>
-                  <span style={{ fontSize: "0.8rem", color: "#666" }}>4°</span>
+                  <span style={{ fontSize: "0.8rem", color: colors.textMuted }}>4°</span>
                   <input
                     type="number"
                     value={pointsPosition4}
@@ -529,7 +529,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
               <div
                 style={{
                   ...labelStyle,
-                  background: bonusPerfectGroupEnabled ? "#fff" : "#f5f5f5",
+                  background: bonusPerfectGroupEnabled ? colors.white : colors.bgLight,
                   border: bonusPerfectGroupEnabled ? "1px solid #007bff" : "1px solid #e0e0e0",
                 }}
               >
@@ -541,7 +541,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                     style={{ width: "18px", height: "18px" }}
                   />
                   <span style={{ fontSize: "1.25rem" }}>🎯</span>
-                  <span style={{ fontSize: "0.9rem", color: "#333" }}>
+                  <span style={{ fontSize: "0.9rem", color: colors.textDark }}>
                     {tp("phaseConfig.bonusPerfectGroup")}
                   </span>
                 </label>
@@ -555,14 +555,14 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                       max={100}
                       style={inputStyle}
                     />
-                    <span style={{ fontSize: "0.85rem", color: "#666" }}>{tp("points")}</span>
+                    <span style={{ fontSize: "0.85rem", color: colors.textMuted }}>{tp("points")}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Ejemplo dinámico */}
-            <div style={{ padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: "#555" }}>
+            <div style={{ padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: colors.textMuted }}>
               <strong>{tp("phaseConfig.exampleLabel")}</strong> {tp("phaseConfig.exampleGroup", {
                 p1: pointsPosition1,
                 p2: pointsPosition2,
@@ -585,7 +585,7 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
               <span style={{ fontSize: "1.5rem" }}>🏆</span>
               <strong style={{ fontSize: "1.125rem" }}>{tp("phaseConfig.predictWhoAdvances")}</strong>
             </div>
-            <p style={{ margin: "0 0 1.25rem 0", color: "#666", fontSize: "0.875rem" }}>
+            <p style={{ margin: "0 0 1.25rem 0", color: colors.textMuted, fontSize: "0.875rem" }}>
               {tp("phaseConfig.predictWhoAdvancesDesc")}
             </p>
             <div style={labelStyle}>
@@ -598,11 +598,11 @@ function StructuralPicksConfiguration({ structuralPicks, phaseType, onConfigChan
                 max={100}
                 style={{ ...inputStyle, width: "70px" }}
               />
-              <span style={{ fontSize: "0.9rem", color: "#333" }}>
+              <span style={{ fontSize: "0.9rem", color: colors.textDark }}>
                 <strong>{tp("points")}</strong> {tp("phaseConfig.ptsPerCorrectAdvance")}
               </span>
             </div>
-            <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: "#555" }}>
+            <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#e8f4ff", borderRadius: "6px", fontSize: "0.8rem", color: colors.textMuted }}>
               <strong>{tp("phaseConfig.exampleLabel")}</strong> {tp("phaseConfig.exampleAdvance", { points: (config.pointsPerCorrectAdvance ?? 15) * 10 })}
             </div>
           </>
@@ -656,7 +656,7 @@ function PickTypeCard({
             />
             <div style={{ flex: 1, minWidth: 0 }}>
               <strong style={{ fontSize: "0.9rem", display: "block" }}>{title}</strong>
-              <span style={{ fontSize: "0.75rem", color: "#666" }}>{description}</span>
+              <span style={{ fontSize: "0.75rem", color: colors.textMuted }}>{description}</span>
             </div>
           </label>
           <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexShrink: 0 }}>
@@ -674,10 +674,10 @@ function PickTypeCard({
                 borderRadius: "4px",
                 fontSize: "0.85rem",
                 textAlign: "center",
-                background: type.enabled ? "white" : "#f5f5f5",
+                background: type.enabled ? "white" : colors.bgLight,
               }}
             />
-            <span style={{ fontSize: "0.7rem", color: "#666" }}>{tp("points")}</span>
+            <span style={{ fontSize: "0.7rem", color: colors.textMuted }}>{tp("points")}</span>
           </div>
         </div>
 
@@ -703,12 +703,12 @@ function PickTypeCard({
           <div
             style={{
               marginTop: "0.5rem",
-              background: "#f9f9f9",
+              background: colors.bgLighter,
               border: "1px solid #eee",
               borderRadius: "4px",
               padding: "0.5rem",
               fontSize: "0.7rem",
-              color: "#666",
+              color: colors.textMuted,
             }}
           >
             {example}
@@ -742,18 +742,18 @@ function PickTypeCard({
             </label>
           </div>
 
-          <p style={{ margin: "0 0 0.75rem 0", color: "#666", fontSize: "0.875rem" }}>
+          <p style={{ margin: "0 0 0.75rem 0", color: colors.textMuted, fontSize: "0.875rem" }}>
             💡 {description}
           </p>
 
           <div
             style={{
-              background: "#f9f9f9",
+              background: colors.bgLighter,
               border: "1px solid #eee",
               borderRadius: "4px",
               padding: "0.75rem",
               fontSize: "0.75rem",
-              color: "#666",
+              color: colors.textMuted,
             }}
           >
             <strong>{tp("phaseConfig.exampleLabel")}</strong> {example}
@@ -761,7 +761,7 @@ function PickTypeCard({
         </div>
 
         <div style={{ marginLeft: "1.5rem" }}>
-          <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.75rem", color: "#666" }}>
+          <label style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.75rem", color: colors.textMuted }}>
             {tp("phaseConfig.pointsLabel")}
           </label>
           <input
@@ -778,7 +778,7 @@ function PickTypeCard({
               borderRadius: "4px",
               fontSize: "1rem",
               textAlign: "center",
-              background: type.enabled ? "white" : "#f5f5f5",
+              background: type.enabled ? "white" : colors.bgLight,
             }}
           />
         </div>

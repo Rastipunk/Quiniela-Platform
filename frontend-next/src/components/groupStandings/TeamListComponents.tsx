@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import {
   DndContext,
   closestCenter,
@@ -37,15 +39,15 @@ export function StaticTeamList({ teams, orderedTeamIds, isMobile }: { teams: Tea
             alignItems: "center",
             gap: "0.5rem",
             padding: isMobile ? "0.65rem 0.75rem" : "0.5rem 0.75rem",
-            background: "#fff",
+            background: colors.white,
             border: "1px solid #e5e7eb",
             borderRadius: 6,
             minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
           }}
         >
           <span style={{ fontSize: 16, width: 24 }}>{MEDALS[index]}</span>
-          <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: 20 }}>{index + 1}.</span>
-          <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: "#1f2937" }}>{team.name}</span>
+          <span style={{ fontSize: isMobile ? 13 : 12, color: colors.textLighter, width: 20 }}>{index + 1}.</span>
+          <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: colors.text }}>{team.name}</span>
         </div>
       ))}
     </div>
@@ -118,7 +120,7 @@ function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; 
           alignItems: "center",
           gap: "0.5rem",
           padding: isMobile ? "0.65rem 0.75rem" : "0.5rem 0.75rem",
-          background: "#fff",
+          background: colors.white,
           border: "1px solid #d1d5db",
           borderRadius: 6,
           cursor: disabled ? "not-allowed" : "grab",
@@ -127,9 +129,9 @@ function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; 
         }}
       >
         <span style={{ fontSize: 16, width: 24 }}>{MEDALS[position]}</span>
-        <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: 20 }}>{position + 1}.</span>
-        <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: "#1f2937", flex: 1 }}>{team.name}</span>
-        {!disabled && <span style={{ color: "#9ca3af", fontSize: isMobile ? 18 : 14 }}>⋮⋮</span>}
+        <span style={{ fontSize: isMobile ? 13 : 12, color: colors.textLighter, width: 20 }}>{position + 1}.</span>
+        <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: colors.text, flex: 1 }}>{team.name}</span>
+        {!disabled && <span style={{ color: colors.textLighter, fontSize: isMobile ? 18 : 14 }}>⋮⋮</span>}
       </div>
     </div>
   );

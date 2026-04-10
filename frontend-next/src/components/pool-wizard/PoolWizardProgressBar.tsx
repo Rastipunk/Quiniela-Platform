@@ -71,7 +71,7 @@ export function PoolWizardProgressBar() {
                   : isCompleted
                     ? colors.successAlt
                     : colors.bgLight,
-                color: isCurrent || isCompleted ? "#fff" : colors.textMuted,
+                color: isCurrent || isCompleted ? colors.white : colors.textMuted,
                 border: isCurrent
                   ? `2px solid ${colors.brand}`
                   : isCompleted

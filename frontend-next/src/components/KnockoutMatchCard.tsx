@@ -226,7 +226,7 @@ export function KnockoutMatchCard({
   const winnerTeam = winnerId === homeTeam.id ? homeTeam : winnerId === awayTeam.id ? awayTeam : null;
 
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: "#fff" }}>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: colors.white }}>
       {/* Header */}
       <div style={{
         display: "flex",
@@ -237,22 +237,22 @@ export function KnockoutMatchCard({
         borderBottom: "1px solid #f3f4f6"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#1f2937" }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>
             {homeTeam.name}
           </span>
-          <span style={{ fontSize: 12, color: "#9ca3af" }}>vs</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#1f2937" }}>
+          <span style={{ fontSize: 12, color: colors.textLighter }}>vs</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>
             {awayTeam.name}
           </span>
         </div>
         {resultSaved && winnerTeam && (
           <div style={{
             padding: "0.25rem 0.75rem",
-            background: "#dcfce7",
+            background: colors.successBgLight,
             borderRadius: 20,
             fontSize: 12,
             fontWeight: 600,
-            color: "#16a34a"
+            color: colors.successAlt
           }}>
             {t("knockoutCard.advances", { team: winnerTeam.name })}
           </div>
@@ -263,7 +263,7 @@ export function KnockoutMatchCard({
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "1.5rem" }}>
         {/* LEFT: Player Pick */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: colors.textLighter }}>
             {t("knockoutCard.yourPrediction")} {pickSaved && <span style={{ color: colors.successAlt }}>✓</span>}
           </div>
 
@@ -314,8 +314,8 @@ export function KnockoutMatchCard({
                 padding: isMobile ? "12px 20px" : "0.6rem",
                 fontSize: isMobile ? 15 : 13,
                 fontWeight: 600,
-                background: "#f3f4f6",
-                color: "#374151",
+                background: colors.bgLight,
+                color: colors.textDark,
                 border: "1px solid #d1d5db",
                 borderRadius: 8,
                 cursor: "pointer",
@@ -330,23 +330,23 @@ export function KnockoutMatchCard({
 
         {/* RIGHT: Official Result */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
-            {t("knockoutCard.officialResult")} {resultSaved && <span style={{ color: "#f59e0b" }}>★</span>}
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: colors.textLighter }}>
+            {t("knockoutCard.officialResult")} {resultSaved && <span style={{ color: colors.warning }}>★</span>}
           </div>
 
           {resultSaved && !isHost ? (
             // PLAYER view: show result
             <div style={{
               padding: "1rem",
-              background: "#f9fafb",
+              background: colors.bgLighter,
               borderRadius: 8,
               textAlign: "center"
             }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: colors.text }}>
                 {homeGoals} - {awayGoals}
               </div>
               {needsPenalties() && homePenalties && awayPenalties && (
-                <div style={{ fontSize: 13, color: "#6b7280", marginTop: "0.25rem" }}>
+                <div style={{ fontSize: 13, color: colors.textLighter, marginTop: "0.25rem" }}>
                   ({homePenalties} - {awayPenalties} {t("knockoutCard.pen")})
                 </div>
               )}
@@ -354,11 +354,11 @@ export function KnockoutMatchCard({
                 <div style={{
                   marginTop: "0.75rem",
                   padding: "0.5rem",
-                  background: "#dcfce7",
+                  background: colors.successBgLight,
                   borderRadius: 6,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#16a34a"
+                  color: colors.successAlt
                 }}>
                   🏆 {t("knockoutCard.teamAdvancesResult", { team: winnerTeam.name })}
                 </div>
@@ -374,7 +374,7 @@ export function KnockoutMatchCard({
                 gap: isMobile ? "0.75rem" : "0.5rem",
                 marginBottom: "0.75rem"
               }}>
-                <span style={{ fontSize: isMobile ? 13 : 12, color: "#6b7280", width: isMobile ? 50 : 60, flexShrink: 0 }}>{t("knockoutCard.ninetyMin")}</span>
+                <span style={{ fontSize: isMobile ? 13 : 12, color: colors.textLighter, width: isMobile ? 50 : 60, flexShrink: 0 }}>{t("knockoutCard.ninetyMin")}</span>
                 <input
                   type="number"
                   min="0"
@@ -392,7 +392,7 @@ export function KnockoutMatchCard({
                     minHeight: TOUCH_TARGET.minimum,
                   }}
                 />
-                <span style={{ color: "#9ca3af" }}>-</span>
+                <span style={{ color: colors.textLighter }}>-</span>
                 <input
                   type="number"
                   min="0"
@@ -420,7 +420,7 @@ export function KnockoutMatchCard({
                   gap: isMobile ? "0.75rem" : "0.5rem",
                   marginBottom: "0.75rem",
                   padding: isMobile ? "0.75rem" : "0.5rem",
-                  background: "#fef3c7",
+                  background: colors.warningBgAmber,
                   borderRadius: 6
                 }}>
                   <span style={{ fontSize: isMobile ? 13 : 12, color: colors.warningDarker, width: isMobile ? 50 : 60, flexShrink: 0 }}>{t("knockoutCard.penalties")}</span>
@@ -437,7 +437,7 @@ export function KnockoutMatchCard({
                       textAlign: "center" as const,
                       border: "1px solid #fcd34d",
                       borderRadius: 6,
-                      background: "#fffbeb",
+                      background: colors.warningBgLight,
                       minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
@@ -455,7 +455,7 @@ export function KnockoutMatchCard({
                       textAlign: "center" as const,
                       border: "1px solid #fcd34d",
                       borderRadius: 6,
-                      background: "#fffbeb",
+                      background: colors.warningBgLight,
                       minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
@@ -467,10 +467,10 @@ export function KnockoutMatchCard({
                 <div style={{
                   marginBottom: "0.75rem",
                   padding: "0.5rem",
-                  background: "#dcfce7",
+                  background: colors.successBgLight,
                   borderRadius: 6,
                   fontSize: 12,
-                  color: "#16a34a",
+                  color: colors.successAlt,
                   textAlign: "center"
                 }}>
                   {t("knockoutCard.advancesPreview")} <strong>{winnerTeam?.name}</strong>
@@ -492,7 +492,7 @@ export function KnockoutMatchCard({
                       fontSize: isMobile ? 14 : 12,
                       border: "1px solid #fcd34d",
                       borderRadius: 6,
-                      background: "#fffbeb",
+                      background: colors.warningBgLight,
                       minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
@@ -508,7 +508,7 @@ export function KnockoutMatchCard({
                   padding: isMobile ? "12px 20px" : "0.6rem",
                   fontSize: isMobile ? 15 : 13,
                   fontWeight: 600,
-                  background: savingResult ? "#d1d5db" : resultSaved ? "#f59e0b" : "#3b82f6",
+                  background: savingResult ? colors.borderMedium : resultSaved ? colors.warning : "#3b82f6",
                   color: "white",
                   border: "none",
                   borderRadius: 8,
@@ -525,9 +525,9 @@ export function KnockoutMatchCard({
             <div style={{
               padding: "2rem 1rem",
               textAlign: "center",
-              background: "#f9fafb",
+              background: colors.bgLighter,
               borderRadius: 8,
-              color: "#9ca3af",
+              color: colors.textLighter,
               fontSize: 13
             }}>
               {t("knockoutCard.pendingResult")}
@@ -541,10 +541,10 @@ export function KnockoutMatchCard({
         <div style={{
           marginTop: "1rem",
           padding: "0.6rem",
-          background: "#fef2f2",
+          background: colors.errorBg,
           border: "1px solid #fecaca",
           borderRadius: 6,
-          color: "#dc2626",
+          color: colors.error,
           fontSize: 12
         }}>
           {error}
@@ -554,10 +554,10 @@ export function KnockoutMatchCard({
         <div style={{
           marginTop: "1rem",
           padding: "0.6rem",
-          background: "#f0fdf4",
+          background: colors.successBgAlt,
           border: "1px solid #bbf7d0",
           borderRadius: 6,
-          color: "#16a34a",
+          color: colors.successAlt,
           fontSize: 12
         }}>
           {successMessage}
@@ -589,7 +589,7 @@ function TeamPickButton({
         alignItems: "center",
         gap: "0.5rem",
         padding: "0.75rem",
-        background: isSelected ? "#dcfce7" : "#fff",
+        background: isSelected ? colors.successBgLight : colors.white,
         border: isSelected ? "2px solid #10b981" : "1px solid #e5e7eb",
         borderRadius: 8,
         cursor: disabled ? "not-allowed" : "pointer",
@@ -605,7 +605,7 @@ function TeamPickButton({
       <span style={{
         fontSize: 14,
         fontWeight: isSelected ? 600 : 500,
-        color: isSelected ? "#16a34a" : "#1f2937"
+        color: isSelected ? colors.successAlt : colors.text
       }}>
         {team.name}
       </span>
@@ -614,7 +614,7 @@ function TeamPickButton({
           marginLeft: "auto",
           fontSize: 11,
           color: colors.successAlt,
-          background: "#f0fdf4",
+          background: colors.successBgAlt,
           padding: "0.15rem 0.5rem",
           borderRadius: 10
         }}>

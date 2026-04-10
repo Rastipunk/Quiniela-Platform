@@ -27,7 +27,7 @@ export function ResultSection(props: {
   return (
     <div style={{ border: "1px solid #f2f2f2", borderRadius: 10, padding: "8px 10px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <div style={{ fontWeight: 700, fontSize: 12, color: "#555" }}>{t("result.title")}</div>
+        <div style={{ fontWeight: 700, fontSize: 12, color: colors.textMuted }}>{t("result.title")}</div>
       </div>
 
       {/* No result yet — informative pending state */}
@@ -88,12 +88,12 @@ export function ResultSection(props: {
           {/* Warning banner */}
           <div style={{
             padding: "10px 14px",
-            background: "#fef2f2",
+            background: colors.errorBg,
             border: "1px solid #fecaca",
             borderRadius: 8,
             marginBottom: 12,
             fontSize: 13,
-            color: "#991b1b",
+            color: colors.errorDarker,
             fontWeight: 600,
             lineHeight: 1.5,
           }}>
@@ -141,7 +141,7 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
               style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #b3d9ff", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
-            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", borderRadius: 3, border: "1px solid #b3d9ff" }}>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.white, borderRadius: 3, border: "1px solid #b3d9ff" }}>
               <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
@@ -161,7 +161,7 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
               style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #b3d9ff", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
-            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#fff", borderRadius: 3, border: "1px solid #b3d9ff" }}>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.white, borderRadius: 3, border: "1px solid #b3d9ff" }}>
               <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
@@ -175,11 +175,11 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
             ⚽ {t("result.penalties")}
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: result.homePenalties > (result.awayPenalties || 0) ? colors.success : "#666" }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: result.homePenalties > (result.awayPenalties || 0) ? colors.success : colors.textMuted }}>
               {result.homePenalties}
             </span>
             <span style={{ fontSize: 14, color: colors.warningDark }}>-</span>
-            <span style={{ fontSize: 18, fontWeight: 700, color: (result.awayPenalties || 0) > result.homePenalties ? colors.success : "#666" }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: (result.awayPenalties || 0) > result.homePenalties ? colors.success : colors.textMuted }}>
               {result.awayPenalties || 0}
             </span>
           </div>
@@ -191,7 +191,7 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
         </div>
       )}
 
-      <div style={{ marginTop: 6, fontSize: 10, color: "#999", textAlign: "center" }}>
+      <div style={{ marginTop: 6, fontSize: 10, color: colors.textLight, textAlign: "center" }}>
         {t("result.officialResult")}{result.version > 1 ? ` (v${result.version})` : ""}
       </div>
       {result.reason && (
@@ -255,11 +255,11 @@ function ResultEditor(props: {
           {homeFlag?.flagUrl ? (
             <img src={homeFlag.flagUrl} alt={homeName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
           ) : (
-            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
               <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{homeName}</span>
+          <span style={{ fontSize: 10, color: colors.textMuted, fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{homeName}</span>
         </div>
         {/* Score inputs */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 4 }}>
@@ -267,7 +267,7 @@ function ResultEditor(props: {
             type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} placeholder="0"
             style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
           />
-          <span style={{ fontWeight: 900, fontSize: 18, color: "#666" }}>-</span>
+          <span style={{ fontWeight: 900, fontSize: 18, color: colors.textMuted }}>-</span>
           <input
             type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} placeholder="0"
             style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #ddd", textAlign: "center", fontSize: isMobile ? 16 : 22, fontWeight: 700, minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}
@@ -278,11 +278,11 @@ function ResultEditor(props: {
           {awayFlag?.flagUrl ? (
             <img src={awayFlag.flagUrl} alt={awayName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
           ) : (
-            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 3, border: "1px solid #ddd" }}>
+            <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
               <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 10, color: "#666", fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{awayName}</span>
+          <span style={{ fontSize: 10, color: colors.textMuted, fontWeight: 500, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" } as React.CSSProperties}>{awayName}</span>
         </div>
       </div>
 
@@ -294,7 +294,7 @@ function ResultEditor(props: {
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              <span style={{ fontSize: 10, color: "#666" }}>{t("result.penaltiesLabel", { team: homeName })}</span>
+              <span style={{ fontSize: 10, color: colors.textMuted }}>{t("result.penaltiesLabel", { team: homeName })}</span>
               <input
                 type="number"
                 min={0}
@@ -307,7 +307,7 @@ function ResultEditor(props: {
             </div>
             <span style={{ fontWeight: 900, fontSize: 16, color: colors.warningDark, marginTop: 20 }}>-</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              <span style={{ fontSize: 10, color: "#666" }}>{t("result.penaltiesLabel", { team: awayName })}</span>
+              <span style={{ fontSize: 10, color: colors.textMuted }}>{t("result.penaltiesLabel", { team: awayName })}</span>
               <input
                 type="number"
                 min={0}
@@ -350,8 +350,8 @@ function ResultEditor(props: {
             padding: 10,
             borderRadius: 10,
             border: "1px solid #111",
-            background: needReason ? "#ccc" : "#111",
-            color: "#fff",
+            background: needReason ? colors.disabled : colors.text,
+            color: colors.white,
             cursor: needReason ? "not-allowed" : "pointer",
             fontWeight: 600,
             minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
@@ -367,8 +367,8 @@ function ResultEditor(props: {
               padding: "8px 16px",
               borderRadius: 10,
               border: "1px solid #999",
-              background: "#fff",
-              color: "#666",
+              background: colors.white,
+              color: colors.textMuted,
               cursor: "pointer",
               minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
               ...mobileInteractiveStyles.tapHighlight,

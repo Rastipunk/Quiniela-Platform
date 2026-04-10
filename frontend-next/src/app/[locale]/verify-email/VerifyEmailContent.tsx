@@ -12,7 +12,7 @@ type VerificationStatus = "loading" | "success" | "already_verified" | "error";
 export default function VerifyEmailContent() {
   const t = useTranslations("auth");
   return (
-    <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#6b7280" }}>{t("verifyEmailPage.loadingText")}</div>}>
+    <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: colors.textLighter }}>{t("verifyEmailPage.loadingText")}</div>}>
       <VerifyEmailInner />
     </Suspense>
   );
@@ -81,7 +81,7 @@ function VerifyEmailInner() {
   };
 
   const cardStyle: React.CSSProperties = {
-    background: "#fff",
+    background: colors.white,
     borderRadius: 16,
     padding: 40,
     maxWidth: 440,
@@ -98,21 +98,21 @@ function VerifyEmailInner() {
   const titleStyle: React.CSSProperties = {
     fontSize: 24,
     fontWeight: 700,
-    color: "#1f2937",
+    color: colors.text,
     marginBottom: 12,
   };
 
   const messageStyle: React.CSSProperties = {
     fontSize: 16,
-    color: "#6b7280",
+    color: colors.textLighter,
     lineHeight: 1.6,
     marginBottom: 24,
   };
 
   const buttonStyle: React.CSSProperties = {
     display: "inline-block",
-    background: "#4f46e5",
-    color: "#fff",
+    background: colors.brand,
+    color: colors.white,
     padding: "12px 24px",
     borderRadius: 8,
     fontWeight: 600,
@@ -123,7 +123,7 @@ function VerifyEmailInner() {
 
   const redirectTextStyle: React.CSSProperties = {
     fontSize: 13,
-    color: "#9ca3af",
+    color: colors.textLighter,
     marginTop: 16,
   };
 
@@ -143,12 +143,12 @@ function VerifyEmailInner() {
                 cx="12"
                 cy="12"
                 r="10"
-                stroke="#e5e7eb"
+                stroke={colors.borderLight}
                 strokeWidth="3"
               />
               <path
                 d="M12 2a10 10 0 0 1 10 10"
-                stroke="#4f46e5"
+                stroke={colors.brand}
                 strokeWidth="3"
                 strokeLinecap="round"
               />
@@ -244,7 +244,7 @@ function VerifyEmailInner() {
             style={{
               ...buttonStyle,
               background: "transparent",
-              color: "#4f46e5",
+              color: colors.brand,
               border: "2px solid #4f46e5",
             }}
           >

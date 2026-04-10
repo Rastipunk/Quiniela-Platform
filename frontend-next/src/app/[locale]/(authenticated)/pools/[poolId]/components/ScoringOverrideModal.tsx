@@ -38,7 +38,7 @@ export function ScoringOverrideModal({ data, reason, onReasonChange, onConfirm, 
     >
       <div
         style={{
-          background: "#fff",
+          background: colors.white,
           borderRadius: 16,
           maxWidth: 440,
           width: "100%",
@@ -50,17 +50,17 @@ export function ScoringOverrideModal({ data, reason, onReasonChange, onConfirm, 
         <h3 style={{ margin: "0 0 12px", fontSize: 18 }}>
           {t("scoringToggle")}
         </h3>
-        <p style={{ margin: "0 0 8px", fontSize: 14, color: "#555" }}>
+        <p style={{ margin: "0 0 8px", fontSize: 14, color: colors.textMuted }}>
           <strong>{data.matchTitle}</strong>
         </p>
-        <p style={{ margin: "0 0 16px", fontSize: 14, color: "#666" }}>
+        <p style={{ margin: "0 0 16px", fontSize: 14, color: colors.textMuted }}>
           {data.currentEnabled
             ? t("scoringDisableConfirm")
             : t("scoringEnableConfirm")}
         </p>
         {data.currentEnabled && (
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, color: "#666", display: "block", marginBottom: 4 }}>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 4 }}>
               {t("scoringDisableReason")}
             </label>
             <input
@@ -87,7 +87,7 @@ export function ScoringOverrideModal({ data, reason, onReasonChange, onConfirm, 
               padding: "8px 16px",
               borderRadius: 8,
               border: "1px solid #ddd",
-              background: "#fff",
+              background: colors.white,
               cursor: "pointer",
               fontSize: 14,
             }}
@@ -101,8 +101,8 @@ export function ScoringOverrideModal({ data, reason, onReasonChange, onConfirm, 
               padding: "8px 16px",
               borderRadius: 8,
               border: "none",
-              background: data.currentEnabled ? "#f59e0b" : colors.successAlt,
-              color: "#fff",
+              background: data.currentEnabled ? colors.warning : colors.successAlt,
+              color: colors.white,
               cursor: busy ? "wait" : "pointer",
               fontSize: 14,
               fontWeight: 600,

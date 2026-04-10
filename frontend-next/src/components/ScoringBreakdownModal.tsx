@@ -162,7 +162,7 @@ export function ScoringBreakdownModal({
         {/* Body */}
         <div style={{ padding: "1.5rem", overflowY: "auto", flex: 1 }}>
           {loading && (
-            <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+            <div style={{ textAlign: "center", padding: "2rem", color: colors.textMuted }}>
               {t("scoringBreakdown.loading")}
             </div>
           )}
@@ -230,7 +230,7 @@ function NoPickBreakdownView({ breakdown }: { breakdown: NoPickBreakdown }) {
       <h4 style={{ margin: "0 0 0.5rem 0", color: colors.errorAlt, fontSize: 20 }}>
         {breakdown.reason}
       </h4>
-      <p style={{ margin: 0, color: "#666" }}>
+      <p style={{ margin: 0, color: colors.textMuted }}>
         {t.rich("scoringBreakdown.pointsObtained", { strong: (chunks) => <strong>{chunks}</strong>, max: breakdown.totalPointsMax })}
       </p>
     </div>
@@ -284,13 +284,13 @@ function MatchBreakdownView({
           {/* Pick */}
           <div
             style={{
-              background: "#f8f9fa",
+              background: colors.bgLight,
               padding: "1rem",
               borderRadius: 8,
               border: "2px solid #dee2e6",
             }}
           >
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 4, fontWeight: 600 }}>
+            <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4, fontWeight: 600 }}>
               {t("scoringBreakdown.yourPrediction")}
             </div>
             {breakdown.pick ? (
@@ -305,13 +305,13 @@ function MatchBreakdownView({
           {/* Result */}
           <div
             style={{
-              background: "#f8f9fa",
+              background: colors.bgLight,
               padding: "1rem",
               borderRadius: 8,
               border: "2px solid #dee2e6",
             }}
           >
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 4, fontWeight: 600 }}>
+            <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4, fontWeight: 600 }}>
               {t("scoringBreakdown.officialResult")}
             </div>
             {breakdown.result ? (
@@ -355,7 +355,7 @@ function RuleEvaluationRow({ rule }: { rule: RuleEvaluation }) {
         alignItems: "center",
         gap: 12,
         padding: "0.75rem",
-        background: isMatched ? colors.successBg : isNotApplicable ? "#f8f9fa" : "#fff",
+        background: isMatched ? colors.successBg : isNotApplicable ? colors.bgLight : colors.white,
         borderRadius: 8,
         border: `1px solid ${isMatched ? colors.successBorderAlt : isNotApplicable ? colors.borderDark : colors.borderLighter}`,
       }}
@@ -369,7 +369,7 @@ function RuleEvaluationRow({ rule }: { rule: RuleEvaluation }) {
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 600, fontSize: 14 }}>{rule.ruleName}</div>
         {rule.details && (
-          <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{rule.details}</div>
+          <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{rule.details}</div>
         )}
       </div>
 
@@ -454,7 +454,7 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
       style={{
         marginBottom: "1rem",
         padding: "1rem",
-        background: "#fff",
+        background: colors.white,
         borderRadius: 8,
         border: isPerfect ? "2px solid #28a745" : "1px solid #dee2e6",
       }}
@@ -490,7 +490,7 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
                 alignItems: "center",
                 gap: 8,
                 padding: "4px 8px",
-                background: pos.matched ? colors.successBg : "#fff",
+                background: pos.matched ? colors.successBg : colors.white,
                 borderRadius: 4,
                 fontSize: 13,
               }}
@@ -521,7 +521,7 @@ function GroupEvaluationCard({ group }: { group: GroupEvaluation }) {
           style={{
             marginTop: "0.5rem",
             padding: "4px 8px",
-            background: group.bonusPerfectGroup.achieved ? colors.successBg : "#f8f9fa",
+            background: group.bonusPerfectGroup.achieved ? colors.successBg : colors.bgLight,
             borderRadius: 4,
             fontSize: 12,
             color: group.bonusPerfectGroup.achieved ? colors.successDark : colors.textMuted,
@@ -597,7 +597,7 @@ function KnockoutMatchRow({ match }: { match: KnockoutMatchEvaluation }) {
         alignItems: "center",
         gap: 12,
         padding: "0.75rem",
-        background: match.matched ? colors.successBg : "#fff",
+        background: match.matched ? colors.successBg : colors.white,
         borderRadius: 8,
         border: `1px solid ${match.matched ? colors.successBorderAlt : colors.borderLighter}`,
       }}
@@ -609,11 +609,11 @@ function KnockoutMatchRow({ match }: { match: KnockoutMatchEvaluation }) {
 
       {/* Match Info */}
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, color: "#666", marginBottom: 2 }}>
+        <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 2 }}>
           {t.rich("scoringBreakdown.yourPredictionKnockout", { strong: (chunks) => <strong>{chunks}</strong>, name: match.predictedWinnerName || t("scoringBreakdown.noPredictionKnockout") })}
         </div>
         {match.hasResult && (
-          <div style={{ fontSize: 13, color: "#666" }}>
+          <div style={{ fontSize: 13, color: colors.textMuted }}>
             {t.rich("scoringBreakdown.advanced", { strong: (chunks) => <strong style={{ color: colors.success }}>{chunks}</strong>, name: match.actualWinnerName ?? "" })}
           </div>
         )}

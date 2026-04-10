@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -373,7 +375,7 @@ export function FeedbackModal({ type: initialType = "BUG", onClose }: FeedbackMo
               <div
                 style={{
                   background: "rgba(220, 38, 38, 0.1)",
-                  color: "#dc2626",
+                  color: colors.error,
                   padding: "8px 12px",
                   borderRadius: 8,
                   fontSize: "0.85rem",

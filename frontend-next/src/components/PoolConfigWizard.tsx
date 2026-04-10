@@ -209,7 +209,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           }}
         >
           <div style={{ fontSize: 18, marginBottom: 8 }}>⏳ {t("wizard.loadingConfig")}</div>
-          <div style={{ fontSize: 14, color: "#666" }}>{t("wizard.loadingPhases")}</div>
+          <div style={{ fontSize: 14, color: colors.textMuted }}>{t("wizard.loadingPhases")}</div>
         </div>
       </div>
     );
@@ -242,7 +242,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           }}
         >
           <div style={{ fontSize: 18, marginBottom: 8, color: colors.errorAlt }}>❌ {t("wizard.errorTitle")}</div>
-          <div style={{ fontSize: 14, color: "#666", marginBottom: 16 }}>{error}</div>
+          <div style={{ fontSize: 14, color: colors.textMuted, marginBottom: 16 }}>{error}</div>
           <button
             onClick={onCancel}
             style={{
@@ -299,7 +299,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
           <h2 style={{ margin: 0, fontSize: isMobile ? "1.2rem" : "1.5rem" }}>
             {t("wizard.title")}
           </h2>
-          <p style={{ margin: "0.25rem 0 0 0", color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+          <p style={{ margin: "0.25rem 0 0 0", color: colors.textMuted, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
             {wizardState.currentStep === "PRESET_SELECTION" && t("wizard.step1")}
             {wizardState.currentStep === "PHASE_CONFIG" && t("wizard.step2")}
             {wizardState.currentStep === "SUMMARY" && t("wizard.stepSummary")}
@@ -361,7 +361,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
               border: "1px solid #ccc",
               borderRadius: "6px",
               cursor: "pointer",
-              color: "#333",
+              color: colors.textDark,
               fontSize: isMobile ? "0.85rem" : "1rem",
               minHeight: isMobile ? "40px" : "auto",
             }}
@@ -379,7 +379,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
                 border: "1px solid #ccc",
                 borderRadius: "6px",
                 cursor: "pointer",
-                color: "#333",
+                color: colors.textDark,
                 fontSize: isMobile ? "0.85rem" : "1rem",
                 minHeight: isMobile ? "40px" : "auto",
               }}
@@ -459,7 +459,7 @@ function PresetSelectionStep({ onSelect, isMobile }: PresetSelectionStepProps) {
 
   return (
     <div style={{ display: "grid", gap: isMobile ? "0.75rem" : "1.5rem" }}>
-      <p style={{ fontSize: isMobile ? "0.85rem" : "1rem", color: "#333", margin: 0 }}>
+      <p style={{ fontSize: isMobile ? "0.85rem" : "1rem", color: colors.textDark, margin: 0 }}>
         {isMobile ? t("wizard.presetIntro") : t("wizard.presetIntroFull")}
       </p>
 
@@ -512,7 +512,7 @@ function PresetCard({ title, description, recommended, onSelect, isMobile }: Pre
         e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,123,255,0.15)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = recommended ? colors.brand : "#ddd";
+        e.currentTarget.style.borderColor = recommended ? colors.brand : colors.border;
         e.currentTarget.style.boxShadow = "none";
       }}
     >
@@ -538,14 +538,14 @@ function PresetCard({ title, description, recommended, onSelect, isMobile }: Pre
         <>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: "bold", fontSize: "0.9rem", marginBottom: "0.15rem" }}>{title}</div>
-            <div style={{ color: "#666", fontSize: "0.75rem", lineHeight: "1.3" }}>{description}</div>
+            <div style={{ color: colors.textMuted, fontSize: "0.75rem", lineHeight: "1.3" }}>{description}</div>
           </div>
           <div style={{ color: colors.brand, fontSize: "1.2rem" }}>›</div>
         </>
       ) : (
         <>
           <h3 style={{ margin: "0 0 0.75rem 0", fontSize: "1.25rem" }}>{title}</h3>
-          <p style={{ margin: 0, color: "#666", fontSize: "0.875rem", lineHeight: "1.5" }}>
+          <p style={{ margin: 0, color: colors.textMuted, fontSize: "0.875rem", lineHeight: "1.5" }}>
             {description}
           </p>
         </>
@@ -575,7 +575,7 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
         <h3 style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "1.1rem" : "1.5rem" }}>
           ✅ {t("wizard.summary.title")}
         </h3>
-        <p style={{ margin: 0, color: "#666", fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
+        <p style={{ margin: 0, color: colors.textMuted, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
           {isPreset
             ? t("wizard.summary.presetUsing", { preset: (t as (key: string) => string)(`wizard.presetNames.${wizardState.selectedPreset!}`) })
             : t("wizard.summary.customReview")}
@@ -599,7 +599,7 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
             border: "1px solid #ddd",
             borderRadius: "8px",
             padding: isMobile ? "0.75rem" : "1.5rem",
-            background: "#f9f9f9",
+            background: colors.bgLighter,
           }}
         >
           <RulesPreview
@@ -623,7 +623,7 @@ function SummaryStep({ wizardState, onComplete: _onComplete, getPresetConfig, is
         <p style={{ margin: "0 0 0.25rem 0", fontWeight: "bold", color: "#0066cc", fontSize: isMobile ? "0.85rem" : "1rem" }}>
           ℹ️ {t("wizard.summary.importantTitle")}
         </p>
-        <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#333" }}>
+        <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: colors.textDark }}>
           {t("wizard.summary.importantMessage")}
         </p>
       </div>
@@ -665,7 +665,7 @@ function PresetSummary({ presetKey, isMobile }: PresetSummaryProps) {
           {t("wizard.summary.presetLabel", { key: presetKey })}
         </span>
       </div>
-      <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
+      <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: colors.textMuted }}>
         {(t as (key: string) => string)(`wizard.summary.presetDescriptions.${presetKey}`)}
       </p>
     </div>
@@ -700,14 +700,14 @@ function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryPro
 
           {phase.requiresScore && phase.matchPicks ? (
             <div>
-              <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
+              <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.75rem" : "0.875rem", color: colors.textMuted }}>
                 <strong>{t("wizard.summary.typeWithScores")}</strong> {t("wizard.summary.withScores")}
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "0.25rem 0.5rem" : "0.25rem", fontSize: isMobile ? "0.7rem" : "0.875rem" }}>
                 {phase.matchPicks.types
                   .filter((pt) => pt.enabled)
                   .map((type) => (
-                    <span key={type.key} style={{ color: "#333" }}>
+                    <span key={type.key} style={{ color: colors.textDark }}>
                       {tpDynamic(`pickTypeNames.${type.key}`)}: <strong>{type.points}{tp("points")}</strong>
                       {isMobile ? "" : " \u2022"}
                     </span>
@@ -715,7 +715,7 @@ function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryPro
               </div>
             </div>
           ) : (
-            <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: "#666" }}>
+            <p style={{ margin: 0, fontSize: isMobile ? "0.75rem" : "0.875rem", color: colors.textMuted }}>
               <strong>{t("wizard.summary.typeWithScores")}</strong> {t("wizard.summary.withoutScores")}
             </p>
           )}
@@ -756,7 +756,7 @@ function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
 
           {phase.requiresScore && phase.matchPicks ? (
             <>
-              <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.7rem" : "0.875rem", color: "#666" }}>
+              <p style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.7rem" : "0.875rem", color: colors.textMuted }}>
                 {t("wizard.summary.matchScores")}
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem 0.5rem", fontSize: isMobile ? "0.7rem" : "0.875rem" }}>
@@ -770,7 +770,7 @@ function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
               </div>
             </>
           ) : (
-            <p style={{ margin: 0, fontSize: isMobile ? "0.7rem" : "0.875rem", color: "#666" }}>
+            <p style={{ margin: 0, fontSize: isMobile ? "0.7rem" : "0.875rem", color: colors.textMuted }}>
               {t("wizard.summary.positionsOrAdvances")}
             </p>
           )}

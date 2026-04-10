@@ -59,7 +59,7 @@ export function MatchCard({
         borderRadius: 14,
         padding: 14,
         boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-        background: hasAnyPlaceholder ? "#f8f9fa" : "#fff",
+        background: hasAnyPlaceholder ? colors.bgLight : colors.white,
         opacity: hasAnyPlaceholder ? 0.85 : 1,
       }}
     >
@@ -88,7 +88,7 @@ export function MatchCard({
                       style={{ width: 32, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
                     />
                   ) : (
-                    <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
+                    <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 2, border: "1px solid #ddd" }}>
                       <span style={{ fontSize: 16 }}>⚽</span>
                     </div>
                   );
@@ -99,7 +99,7 @@ export function MatchCard({
               </>
             )}
           </div>
-          <span style={{ fontWeight: 900, fontSize: 18, color: "#666", margin: "0 4px" }}>VS</span>
+          <span style={{ fontWeight: 900, fontSize: 18, color: colors.textMuted, margin: "0 4px" }}>VS</span>
           {/* Away team - flag on right or placeholder */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {awayIsPlaceholder ? (
@@ -125,7 +125,7 @@ export function MatchCard({
                       style={{ width: 32, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
                     />
                   ) : (
-                    <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f5f5", borderRadius: 2, border: "1px solid #ddd" }}>
+                    <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 2, border: "1px solid #ddd" }}>
                       <span style={{ fontSize: 16 }}>⚽</span>
                     </div>
                   );
@@ -146,7 +146,7 @@ export function MatchCard({
             </span>
           )}
           {m.scoringEnabled === false && (
-            <span style={{ padding: "4px 10px", border: "1px solid #fbbf24", borderRadius: 999, background: "#fef3c7", color: colors.warningDarker, fontWeight: 600 }}>
+            <span style={{ padding: "4px 10px", border: "1px solid #fbbf24", borderRadius: 999, background: colors.warningBgAmber, color: colors.warningDarker, fontWeight: 600 }}>
               ⚠️ {t("scoringDisabledBadge")}
             </span>
           )}
@@ -155,8 +155,8 @@ export function MatchCard({
               padding: "4px 10px",
               border: "1px solid #ef4444",
               borderRadius: 999,
-              background: "#fef2f2",
-              color: "#dc2626",
+              background: colors.errorBg,
+              color: colors.error,
               fontWeight: 700,
               animation: "pulse 2s infinite",
               display: "inline-flex",
@@ -175,11 +175,11 @@ export function MatchCard({
       </div>
 
       {/* Match Info: kickoff + deadline */}
-      <div style={{ color: "#666", fontSize: 12, marginBottom: 12, paddingLeft: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ color: colors.textMuted, fontSize: 12, marginBottom: 12, paddingLeft: 4, display: "flex", flexDirection: "column", gap: 2 }}>
         <div>
           {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone)}
         </div>
-        <div style={{ color: m.isLocked ? "#999" : "#c0392b" }}>
+        <div style={{ color: m.isLocked ? colors.textLight : "#c0392b" }}>
           {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone)}
         </div>
       </div>
@@ -188,7 +188,7 @@ export function MatchCard({
       {m.scoringEnabled === false && (
         <div style={{
           padding: "8px 12px",
-          background: "#fef3c7",
+          background: colors.warningBgAmber,
           border: "1px solid #fbbf24",
           borderRadius: 8,
           marginBottom: 10,
@@ -311,9 +311,9 @@ export function MatchCard({
               style={{
                 padding: isMobile ? "10px 16px" : "6px 12px",
                 borderRadius: 6,
-                border: `1px solid ${m.scoringEnabled !== false ? "#fbbf24" : colors.successAlt}`,
-                background: m.scoringEnabled !== false ? "#fef9c3" : "#d1fae5",
-                color: m.scoringEnabled !== false ? colors.warningDarker : "#065f46",
+                border: `1px solid ${m.scoringEnabled !== false ? colors.warningBorder : colors.successAlt}`,
+                background: m.scoringEnabled !== false ? "#fef9c3" : colors.successBgLight,
+                color: m.scoringEnabled !== false ? colors.warningDarker : colors.successDarker,
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: 600,

@@ -177,7 +177,7 @@ export default function ProfilePage() {
         style={{
           marginBottom: "2rem",
           padding: "1rem",
-          background: "#f5f5f5",
+          background: colors.bgLight,
           borderRadius: "8px",
         }}
       >
@@ -186,8 +186,8 @@ export default function ProfilePage() {
           {profile.emailVerified ? (
             <span
               style={{
-                background: "#d1fae5",
-                color: "#065f46",
+                background: colors.successBgLight,
+                color: colors.successDarker,
                 fontSize: 12,
                 padding: "2px 8px",
                 borderRadius: 12,
@@ -212,7 +212,7 @@ export default function ProfilePage() {
           ) : (
             <span
               style={{
-                background: "#fef3c7",
+                background: colors.warningBgAmber,
                 color: colors.warningDarker,
                 fontSize: 12,
                 padding: "2px 8px",
@@ -313,11 +313,11 @@ export default function ProfilePage() {
             }}
           />
           {usernameWarning && (
-            <p style={{ fontSize: "0.875rem", color: "#f59e0b", marginTop: "0.25rem" }}>
+            <p style={{ fontSize: "0.875rem", color: colors.warning, marginTop: "0.25rem" }}>
               {usernameWarning}
             </p>
           )}
-          <p style={{ fontSize: "0.875rem", color: "#666", marginTop: "0.25rem" }}>
+          <p style={{ fontSize: "0.875rem", color: colors.textMuted, marginTop: "0.25rem" }}>
             {t("usernameRules")}
           </p>
         </div>
@@ -412,7 +412,7 @@ export default function ProfilePage() {
                 border: "1px solid #ccc",
               }}
             />
-            <p style={{ fontSize: "0.875rem", color: "#666", marginTop: "0.25rem" }}>
+            <p style={{ fontSize: "0.875rem", color: colors.textMuted, marginTop: "0.25rem" }}>
               {t("ageRequirement")}
             </p>
           </div>
@@ -531,7 +531,7 @@ export default function ProfilePage() {
               <option value="America/Los_Angeles">{t("timezones.losAngeles")}</option>
             </optgroup>
           </select>
-          <p style={{ fontSize: "0.875rem", color: "#666", marginTop: "0.25rem" }}>
+          <p style={{ fontSize: "0.875rem", color: colors.textMuted, marginTop: "0.25rem" }}>
             {t("timezoneHint")}
           </p>
         </div>
@@ -563,7 +563,7 @@ export default function ProfilePage() {
           <p
             style={{
               fontSize: "0.875rem",
-              color: bioCharCount > 200 ? "#c00" : "#666",
+              color: bioCharCount > 200 ? "#c00" : colors.textMuted,
               marginTop: "0.25rem",
               textAlign: "right",
             }}
@@ -584,7 +584,7 @@ export default function ProfilePage() {
               borderRadius: "4px",
               border: "1px solid #ccc",
               background: "white",
-              color: "#333",
+              color: colors.textDark,
               cursor: "pointer",
             }}
           >
@@ -598,7 +598,7 @@ export default function ProfilePage() {
               fontSize: "1rem",
               borderRadius: "4px",
               border: "none",
-              background: saving ? "#ccc" : colors.brand,
+              background: saving ? colors.disabled : colors.brand,
               color: "white",
               cursor: saving ? "not-allowed" : "pointer",
             }}

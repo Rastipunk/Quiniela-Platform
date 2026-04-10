@@ -41,12 +41,12 @@ export default function DashboardPage() {
 
   function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
     const labels: Record<string, { color: string; emoji: string }> = {
-      DRAFT: { color: "#f59e0b", emoji: "\u{1F4DD}" },
+      DRAFT: { color: colors.warning, emoji: "\u{1F4DD}" },
       ACTIVE: { color: colors.successAlt, emoji: "\u26BD" },
       COMPLETED: { color: "#3b82f6", emoji: "\u{1F3C6}" },
-      ARCHIVED: { color: "#6b7280", emoji: "\u{1F4E6}" },
+      ARCHIVED: { color: colors.textLighter, emoji: "\u{1F4E6}" },
     };
-    const info = labels[status] ?? { color: "#9ca3af", emoji: "\u2753" };
+    const info = labels[status] ?? { color: colors.textLighter, emoji: "\u2753" };
     // next-intl doesn't support computed keys at type level
     const tDynamic = t as (key: string) => string;
     const label = tDynamic(`status.${status}`) ?? t("status.UNKNOWN");

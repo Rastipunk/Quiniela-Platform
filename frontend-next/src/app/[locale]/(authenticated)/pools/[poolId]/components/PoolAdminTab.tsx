@@ -37,7 +37,7 @@ export function PoolAdminTab({
   const [expulsionModalData, setExpulsionModalData] = useState<ExpulsionModalData | null>(null);
 
   return (
-    <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+    <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
       <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, marginBottom: 16 }}>⚙️ {t("admin.title")}</h3>
 
       {/* Notification Banner for Admin tab */}
@@ -102,11 +102,11 @@ export function PoolAdminTab({
 
       {/* Pool Capacity Section */}
       {overview.pool.maxParticipants && (
-        <div style={{ marginBottom: 24, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
-          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#4f46e5" }}>
+        <div style={{ marginBottom: 24, padding: 16, background: colors.bgLight, borderRadius: 12, border: "1px solid #e9ecef" }}>
+          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: colors.brand }}>
             {t("admin.capacity.title")}
           </h4>
-          <div style={{ fontSize: 14, color: "#666", marginBottom: 8 }}>
+          <div style={{ fontSize: 14, color: colors.textMuted, marginBottom: 8 }}>
             {t("admin.capacity.current", { current: overview.counts.membersActive, max: overview.pool.maxParticipants })}
           </div>
           <div style={{ height: 8, background: colors.borderLighter, borderRadius: 4, marginBottom: 16 }}>
@@ -156,7 +156,7 @@ export function PoolAdminTab({
             disabled={busyKey === "archive"}
             style={{
               padding: "10px 20px", borderRadius: 8, border: "1px solid #856404",
-              background: busyKey === "archive" ? "#ccc" : colors.warning,
+              background: busyKey === "archive" ? colors.disabled : colors.warning,
               color: colors.warningDark, cursor: busyKey === "archive" ? "wait" : "pointer",
               fontSize: 14, fontWeight: 600,
             }}

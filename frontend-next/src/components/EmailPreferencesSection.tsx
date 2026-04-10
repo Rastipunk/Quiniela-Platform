@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getToken } from "@/lib/auth";
 import {
@@ -147,18 +149,18 @@ export function EmailPreferencesSection() {
   const headingStyle: React.CSSProperties = {
     fontSize: 18,
     fontWeight: 600,
-    color: "#1f2937",
+    color: colors.text,
     marginBottom: 8,
   };
 
   const descStyle: React.CSSProperties = {
     fontSize: 14,
-    color: "#6b7280",
+    color: colors.textLighter,
     marginBottom: 24,
   };
 
   const itemContainerStyle: React.CSSProperties = {
-    background: "#f9fafb",
+    background: colors.bgLighter,
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
@@ -178,13 +180,13 @@ export function EmailPreferencesSection() {
   const itemLabelStyle: React.CSSProperties = {
     fontSize: 14,
     fontWeight: 500,
-    color: "#1f2937",
+    color: colors.text,
     marginBottom: 2,
   };
 
   const itemDescStyle: React.CSSProperties = {
     fontSize: 12,
-    color: "#6b7280",
+    color: colors.textLighter,
   };
 
   const alertStyle = (type: "error" | "success"): React.CSSProperties => ({
@@ -192,15 +194,15 @@ export function EmailPreferencesSection() {
     borderRadius: 6,
     marginBottom: 16,
     fontSize: 13,
-    backgroundColor: type === "error" ? "#fef2f2" : "#ecfdf5",
-    color: type === "error" ? "#dc2626" : "#059669",
+    backgroundColor: type === "error" ? colors.errorBg : "#ecfdf5",
+    color: type === "error" ? colors.error : colors.successAlt,
   });
 
   if (loading) {
     return (
       <div style={sectionStyle}>
         <h2 style={headingStyle}>{t("emailPrefs.title")}</h2>
-        <p style={{ color: "#6b7280", fontSize: 14 }}>{t("emailPrefs.loading")}</p>
+        <p style={{ color: colors.textLighter, fontSize: 14 }}>{t("emailPrefs.loading")}</p>
       </div>
     );
   }
@@ -209,7 +211,7 @@ export function EmailPreferencesSection() {
     return (
       <div style={sectionStyle}>
         <h2 style={headingStyle}>{t("emailPrefs.title")}</h2>
-        <p style={{ color: "#dc2626", fontSize: 14 }}>{t("emailPrefs.loadError")}</p>
+        <p style={{ color: colors.error, fontSize: 14 }}>{t("emailPrefs.loadError")}</p>
       </div>
     );
   }
@@ -275,10 +277,10 @@ export function EmailPreferencesSection() {
           style={{
             marginTop: 16,
             padding: 12,
-            background: "#f3f4f6",
+            background: colors.bgLight,
             borderRadius: 8,
             fontSize: 12,
-            color: "#6b7280",
+            color: colors.textLighter,
             display: "flex",
             alignItems: "center",
             gap: 8,

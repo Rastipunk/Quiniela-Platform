@@ -221,7 +221,7 @@ export default async function ComoHacerQuinielaPage() {
                 <div
                   key={i}
                   style={{
-                    borderLeft: `3px solid ${i === 0 ? colors.brand : i === 1 ? colors.successAlt : i === 2 ? "#f59e0b" : colors.brand}`,
+                    borderLeft: `3px solid ${i === 0 ? colors.brand : i === 1 ? colors.successAlt : i === 2 ? colors.warning : colors.brand}`,
                     paddingLeft: 24,
                     marginBottom: i < 3 ? 36 : 0,
                   }}

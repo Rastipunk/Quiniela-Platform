@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { Suspense, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { resetPassword } from "@/lib/api";
@@ -19,7 +21,7 @@ import { logout as apiLogout } from "@/lib/api";
 export default function ResetPasswordContent() {
   const t = useTranslations("auth");
   return (
-    <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#6b7280" }}>{t("resetPasswordPage.loadingText")}</div>}>
+    <Suspense fallback={<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: colors.textLighter }}>{t("resetPasswordPage.loadingText")}</div>}>
       <ResetPasswordInner />
     </Suspense>
   );

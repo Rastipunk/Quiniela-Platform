@@ -1,6 +1,8 @@
 // TODO: Internacionalizar este componente cuando se agreguen admins multi-idioma
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { getToken } from "@/lib/auth";
@@ -64,7 +66,7 @@ export default function AdminFeedbackContent() {
         <div style={{ fontSize: "3rem", marginBottom: 16 }}>🔒</div>
         <h2 style={{ color: "var(--text)", marginBottom: 8 }}>Acceso Restringido</h2>
         <p style={{ color: "var(--muted)" }}>Solo administradores pueden ver el feedback.</p>
-        <Link href="/" style={{ color: "#4f46e5", textDecoration: "none", fontWeight: 600 }}>
+        <Link href="/" style={{ color: colors.brand, textDecoration: "none", fontWeight: 600 }}>
           ← Volver al Dashboard
         </Link>
       </div>
@@ -155,7 +157,7 @@ export default function AdminFeedbackContent() {
 
       {/* Error */}
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", padding: "12px 16px", borderRadius: 8, marginBottom: 16, fontSize: "0.9rem" }}>
+        <div style={{ background: colors.errorBg, border: "1px solid #fecaca", color: colors.error, padding: "12px 16px", borderRadius: 8, marginBottom: 16, fontSize: "0.9rem" }}>
           {error}
         </div>
       )}
@@ -281,7 +283,7 @@ function FeedbackCard({
         background: "var(--surface)",
         border: "1px solid var(--border)",
         borderRadius: 12,
-        borderLeft: `4px solid ${isBug ? "#dc2626" : "#16a34a"}`,
+        borderLeft: `4px solid ${isBug ? colors.error : colors.successAlt}`,
         overflow: "hidden",
       }}
     >
@@ -301,7 +303,7 @@ function FeedbackCard({
         <span
           style={{
             background: isBug ? "rgba(220,38,38,0.1)" : "rgba(22,163,74,0.1)",
-            color: isBug ? "#dc2626" : "#16a34a",
+            color: isBug ? colors.error : colors.successAlt,
             padding: "3px 10px",
             borderRadius: 20,
             fontSize: "0.75rem",
@@ -426,7 +428,7 @@ function MetaField({ label, value, highlight }: { label: string; value: string; 
       </div>
       <div
         style={{
-          color: highlight ? "#4f46e5" : "var(--text)",
+          color: highlight ? colors.brand : "var(--text)",
           fontWeight: highlight ? 600 : 400,
           wordBreak: "break-all",
         }}

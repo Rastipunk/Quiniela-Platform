@@ -242,7 +242,7 @@ export function StructuralPicksManager({
   if (loading) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
-        <div style={{ fontSize: 18, color: "#666" }}>⏳ {t("structuralManager.loading")}</div>
+        <div style={{ fontSize: 18, color: colors.textMuted }}>⏳ {t("structuralManager.loading")}</div>
       </div>
     );
   }

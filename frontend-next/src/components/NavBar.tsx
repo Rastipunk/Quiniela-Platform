@@ -270,7 +270,7 @@ export function NavBar() {
                       lineHeight: `${TOUCH_TARGET.minimum - 24}px`,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f5f5f5";
+                      e.currentTarget.style.background = colors.bgLight;
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = "white";
@@ -295,7 +295,7 @@ export function NavBar() {
                           lineHeight: `${TOUCH_TARGET.minimum - 24}px`,
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "#f5f5f5";
+                          e.currentTarget.style.background = colors.bgLight;
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = "white";
@@ -316,7 +316,7 @@ export function NavBar() {
                           lineHeight: `${TOUCH_TARGET.minimum - 24}px`,
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "#f5f5f5";
+                          e.currentTarget.style.background = colors.bgLight;
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = "white";
@@ -345,7 +345,7 @@ export function NavBar() {
                       minHeight: TOUCH_TARGET.minimum,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f5f5f5";
+                      e.currentTarget.style.background = colors.bgLight;
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = "white";

@@ -307,7 +307,7 @@ export default function LoginContent() {
     fontWeight: 500,
     minHeight: TOUCH_TARGET.minimum,
     background: isActive ? "var(--primary)" : "var(--surface)",
-    color: isActive ? "#fff" : "var(--text)",
+    color: isActive ? colors.white : "var(--text)",
     border: "1px solid var(--border)",
     borderRadius: 10,
     cursor: "pointer",
@@ -364,10 +364,10 @@ export default function LoginContent() {
         />
         <span>
           {t("acceptTermsText")}{" "}
-          <Link href="/terminos" target="_blank" style={{ color: "#2563eb" }}>
+          <Link href="/terminos" target="_blank" style={{ color: colors.brand }}>
             {t("acceptTermsLink")}
           </Link>{" "}
-          <span style={{ color: "#dc2626" }}>*</span>
+          <span style={{ color: colors.error }}>*</span>
         </span>
       </label>
 
@@ -380,10 +380,10 @@ export default function LoginContent() {
         />
         <span>
           {t("acceptPrivacyText")}{" "}
-          <Link href="/privacidad" target="_blank" style={{ color: "#2563eb" }}>
+          <Link href="/privacidad" target="_blank" style={{ color: colors.brand }}>
             {t("acceptPrivacyLink")}
           </Link>{" "}
-          <span style={{ color: "#dc2626" }}>*</span>
+          <span style={{ color: colors.error }}>*</span>
         </span>
       </label>
 
@@ -396,7 +396,7 @@ export default function LoginContent() {
         />
         <span>
           {t("acceptAgeFull")}{" "}
-          <span style={{ color: "#dc2626" }}>*</span>
+          <span style={{ color: colors.error }}>*</span>
         </span>
       </label>
 
@@ -413,7 +413,7 @@ export default function LoginContent() {
       </label>
 
       <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
-        <span style={{ color: "#dc2626" }}>*</span> {t("requiredFields")}
+        <span style={{ color: colors.error }}>*</span> {t("requiredFields")}
       </div>
     </div>
   );
@@ -605,7 +605,7 @@ export default function LoginContent() {
               style={{
                 marginTop: 12,
                 padding: "10px 14px",
-                background: "#fef3c7",
+                background: colors.warningBgAmber,
                 border: "1px solid #f59e0b",
                 borderRadius: 8,
                 fontSize: 13,
@@ -633,11 +633,11 @@ export default function LoginContent() {
         >
           <p style={{ margin: "0 0 8px 0" }}>
             {t("footerAccept")}{" "}
-            <Link href="/terminos" style={{ color: "#2563eb" }}>
+            <Link href="/terminos" style={{ color: colors.brand }}>
               {t("acceptTermsLink")}
             </Link>{" "}
             {t("footerAnd")}{" "}
-            <Link href="/privacidad" style={{ color: "#2563eb" }}>
+            <Link href="/privacidad" style={{ color: colors.brand }}>
               {t("acceptPrivacyLink")}
             </Link>
             .

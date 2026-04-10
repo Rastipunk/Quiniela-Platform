@@ -166,8 +166,8 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                   padding: "10px 16px",
                   border: "1px solid #ddd",
                   borderRadius: 8,
-                  background: isActive ? colors.brand : status === "PENDING" ? "#f8f9fa" : "#fff",
-                  color: isActive ? "#fff" : status === "PENDING" ? "#999" : "#333",
+                  background: isActive ? colors.brand : status === "PENDING" ? colors.bgLight : colors.white,
+                  color: isActive ? colors.white : status === "PENDING" ? colors.textLight : colors.textDark,
                   fontWeight: isActive ? 700 : 500,
                   fontSize: 13,
                   cursor: "pointer",
@@ -255,7 +255,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
 
       {/* Invite (Host) */}
       {overview.permissions.canInvite && (
-        <div style={{ marginTop: 14, padding: 14, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+        <div style={{ marginTop: 14, padding: 14, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <div style={{ fontWeight: 900 }}>{t("invite.title")}</div>
             <button
@@ -265,8 +265,8 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                 padding: "10px 12px",
                 borderRadius: 12,
                 border: "1px solid #111",
-                background: "#111",
-                color: "#fff",
+                background: colors.text,
+                color: colors.white,
                 cursor: "pointer",
               }}
             >
@@ -276,7 +276,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
 
           {inviteCode && (
             <div style={{ marginTop: 10, fontSize: 13 }}>
-              <div style={{ color: "#666" }}>{t("invite.codeCopied")}</div>
+              <div style={{ color: colors.textMuted }}>{t("invite.codeCopied")}</div>
               <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 1 }}>{inviteCode}</div>
               <div style={{ marginTop: 12 }}>
                 <ShareButtons
@@ -293,7 +293,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
 
       {/* Tab Content: Partidos - UX toolbar */}
       {!requiresStructuralPicks && (
-        <div style={{ marginTop: 14, padding: 12, border: "1px solid #ddd", borderRadius: 14, background: "#fff" }}>
+        <div style={{ marginTop: 14, padding: 12, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <input
               value={search}
@@ -301,21 +301,21 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               placeholder={t("filters.searchPlaceholder")}
               style={{ flex: "1 1 280px", padding: 10, borderRadius: 12, border: "1px solid #ddd" }}
             />
-            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "#444" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
               <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
               {t("filters.onlyOpen")}
             </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "#444" }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
               <input type="checkbox" checked={onlyNoPick} onChange={(e) => setOnlyNoPick(e.target.checked)} />
               {t("filters.noPick")}
             </label>
             {overview?.permissions?.canManageResults && (
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "#444" }}>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: colors.textDark }}>
                 <input type="checkbox" checked={onlyNoResult} onChange={(e) => setOnlyNoResult(e.target.checked)} />
                 {t("filters.noResult")}
               </label>
             )}
-            <div style={{ fontSize: 12, color: "#666" }}>
+            <div style={{ fontSize: 12, color: colors.textMuted }}>
               {t("filters.total")}: <b>{filteredMatches.length}</b> {t("filters.matches")} • {t("filters.suggestedGroup")}: <b>{nextOpenGroup}</b>
             </div>
           </div>
@@ -361,8 +361,8 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               padding: "10px 18px",
               border: "1px solid #ddd",
               borderRadius: 8,
-              background: !selectedGroup ? colors.brand : "#fff",
-              color: !selectedGroup ? "#fff" : "#666",
+              background: !selectedGroup ? colors.brand : colors.white,
+              color: !selectedGroup ? colors.white : colors.textMuted,
               fontWeight: !selectedGroup ? 600 : 500,
               fontSize: 13,
               cursor: "pointer",
@@ -384,8 +384,8 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                   padding: "10px 18px",
                   border: selectedGroup === g ? "1px solid #007bff" : "1px solid #ddd",
                   borderRadius: 8,
-                  background: selectedGroup === g ? colors.brand : "#fff",
-                  color: selectedGroup === g ? "#fff" : "#666",
+                  background: selectedGroup === g ? colors.brand : colors.white,
+                  color: selectedGroup === g ? colors.white : colors.textMuted,
                   fontWeight: selectedGroup === g ? 600 : 500,
                   fontSize: 13,
                   cursor: "pointer",
@@ -435,7 +435,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               <details
                 key={g}
                 open={g === nextOpenGroup}
-                style={{ border: "1px solid #ddd", borderRadius: 14, background: "#fff", padding: 12 }}
+                style={{ border: "1px solid #ddd", borderRadius: 14, background: colors.white, padding: 12 }}
               >
                 <summary style={{ cursor: "pointer", fontWeight: 900 }}>
                   {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })} ({matchesByGroup[g]?.length ?? 0})

@@ -53,9 +53,9 @@ const PRESETS: PresetInfo[] = [
     tagline: "CLASICO",
     description: "Solo ganas puntos si aciertas el marcador exacto",
     example: "2-1 \u2192 2-1 = 20pts  |  2-1 \u2192 3-1 = 0pts",
-    color: "#059669",
+    color: colors.successAlt,
     bgColor: "rgba(5,150,105,0.06)",
-    borderColor: "#059669",
+    borderColor: colors.successAlt,
   },
   {
     key: "SIMPLE",
@@ -75,9 +75,9 @@ const PRESETS: PresetInfo[] = [
     tagline: "AVANZADO",
     description: "Disena tu propio sistema de puntos fase por fase",
     example: "Control total: elige criterios, puntos y reglas por fase",
-    color: "#7c3aed",
+    color: colors.purple,
     bgColor: "rgba(124,58,237,0.06)",
-    borderColor: "#7c3aed",
+    borderColor: colors.purple,
   },
 ];
 

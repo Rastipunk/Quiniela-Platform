@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -237,7 +239,7 @@ export function EnterpriseLandingContent() {
                     minWidth: 44,
                     height: 44,
                     borderRadius: "50%",
-                    background: "#4f46e5",
+                    background: colors.brand,
                     color: "white",
                     display: "flex",
                     alignItems: "center",
@@ -304,7 +306,7 @@ export function EnterpriseLandingContent() {
             style={{
               fontSize: 36,
               fontWeight: 800,
-              color: "#4f46e5",
+              color: colors.brand,
               marginBottom: 4,
             }}
           >
@@ -335,7 +337,7 @@ export function EnterpriseLandingContent() {
                   gap: 10,
                 }}
               >
-                <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 16 }}>
+                <span style={{ color: colors.successAlt, fontWeight: 700, fontSize: 16 }}>
                   {"\u2713"}
                 </span>
                 {t(`pricing.features.${key}`)}

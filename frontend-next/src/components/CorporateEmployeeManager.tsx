@@ -125,10 +125,10 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
   }
 
   const statusColors: Record<string, { bg: string; color: string; border: string }> = {
-    PENDING: { bg: "#fef3c7", color: colors.warningDarker, border: "#fcd34d" },
+    PENDING: { bg: colors.warningBgAmber, color: colors.warningDarker, border: "#fcd34d" },
     SENT: { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
-    ACTIVATED: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
-    FAILED: { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" },
+    ACTIVATED: { bg: colors.successBgLight, color: colors.successDarker, border: "#6ee7b7" },
+    FAILED: { bg: "#fee2e2", color: colors.errorDarker, border: colors.errorBorderLight },
   };
 
   const statusLabels: Record<string, string> = {
@@ -195,7 +195,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
           }}
         />
         {validEmails.length > 0 && (
-          <div style={{ fontSize: 12, color: "#059669", marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: 12, color: colors.successAlt, marginTop: 4, fontWeight: 600 }}>
             {"\u2705"} {validEmails.length} emails
           </div>
         )}
@@ -207,8 +207,8 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
               padding: "8px 16px",
               borderRadius: 8,
               border: "none",
-              background: validEmails.length > 0 ? "#7c3aed" : "#d1d5db",
-              color: validEmails.length > 0 ? "white" : "#9ca3af",
+              background: validEmails.length > 0 ? colors.purple : colors.borderMedium,
+              color: validEmails.length > 0 ? "white" : colors.textLighter,
               fontSize: 13,
               fontWeight: 600,
               cursor: validEmails.length > 0 ? "pointer" : "not-allowed",
@@ -234,7 +234,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
           <a
             href={`data:text/csv;charset=utf-8,${encodeURIComponent("\uFEFFemail,nombre\nempleado1@empresa.com,Juan Perez\nempleado2@empresa.com,Maria Garcia\n")}`}
             download="employees_template.csv"
-            style={{ fontSize: 12, color: "#7c3aed", textDecoration: "none", fontWeight: 500 }}
+            style={{ fontSize: 12, color: colors.purple, textDecoration: "none", fontWeight: 500 }}
           >
             {"\u{1F4E5}"} {t("csvTemplate")}
           </a>
@@ -250,7 +250,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
             borderRadius: 8,
             fontSize: 13,
             marginBottom: 12,
-            color: "#333",
+            color: colors.textDark,
             border: "1px solid #c4b5fd",
           }}
         >
@@ -268,7 +268,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
             padding: 12,
             borderRadius: 8,
             border: "none",
-            background: "#7c3aed",
+            background: colors.purple,
             color: "white",
             fontSize: 14,
             fontWeight: 700,
@@ -318,7 +318,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
                       {inv.email}
                     </div>
                     {inv.name && (
-                      <div style={{ fontSize: 11, color: "#6b7280" }}>{inv.name}</div>
+                      <div style={{ fontSize: 11, color: colors.textLighter }}>{inv.name}</div>
                     )}
                   </div>
                   <span
@@ -343,8 +343,8 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
                         padding: "4px 10px",
                         borderRadius: 6,
                         border: "1px solid #fca5a5",
-                        background: "#fef2f2",
-                        color: "#b91c1c",
+                        background: colors.errorBg,
+                        color: colors.errorDark,
                         fontSize: 11,
                         cursor: "pointer",
                         fontWeight: 600,

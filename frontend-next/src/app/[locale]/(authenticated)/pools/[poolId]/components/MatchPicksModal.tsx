@@ -40,7 +40,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
     >
       <div
         style={{
-          background: "#fff",
+          background: colors.white,
           borderRadius: 16,
           maxWidth: 500,
           width: "100%",
@@ -53,7 +53,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
         <div style={{
           position: "sticky",
           top: 0,
-          background: "#fff",
+          background: colors.white,
           padding: "16px 20px",
           borderBottom: "1px solid #eee",
           display: "flex",
@@ -71,7 +71,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
               border: "none",
               fontSize: 24,
               cursor: "pointer",
-              color: "#666",
+              color: colors.textMuted,
               padding: "4px 8px"
             }}
           >
@@ -80,7 +80,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
         </div>
         <div style={{ padding: 20 }}>
           {data.loading && (
-            <div style={{ textAlign: "center", padding: 20, color: "#666" }}>
+            <div style={{ textAlign: "center", padding: 20, color: colors.textMuted }}>
               {t("matchPicks.loading")}
             </div>
           )}
@@ -105,7 +105,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
                     alignItems: "center",
                     padding: "12px 16px",
                     borderRadius: 8,
-                    background: p.isCurrentUser ? colors.infoBgLight : "#f8f9fa",
+                    background: p.isCurrentUser ? colors.infoBgLight : colors.bgLight,
                     border: p.isCurrentUser ? "2px solid #007bff" : "1px solid #eee"
                   }}
                 >
@@ -119,7 +119,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
                         padding: "2px 6px",
                         borderRadius: 4,
                         background: colors.brand,
-                        color: "#fff"
+                        color: colors.white
                       }}>
                         {t("matchPicks.you")}
                       </span>
@@ -136,7 +136,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
                           {p.pick.outcome === "HOME" ? t("matchPicks.home") : p.pick.outcome === "DRAW" ? t("matchPicks.drawLabel") : t("matchPicks.away")}
                         </span>
                       ) : (
-                        <span style={{ color: "#666" }}>{JSON.stringify(p.pick)}</span>
+                        <span style={{ color: colors.textMuted }}>{JSON.stringify(p.pick)}</span>
                       )
                     ) : (
                       <span style={{ color: colors.errorAlt, fontWeight: 500 }}>{t("matchPicks.noPick")}</span>
@@ -147,7 +147,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
             </div>
           )}
           {data.picks && data.picks.picks.length === 0 && !data.loading && (
-            <div style={{ textAlign: "center", padding: 20, color: "#666" }}>
+            <div style={{ textAlign: "center", padding: 20, color: colors.textMuted }}>
               {t("matchPicks.empty")}
             </div>
           )}

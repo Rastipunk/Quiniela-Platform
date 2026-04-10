@@ -270,23 +270,23 @@ export function GroupStandingsCard({
 
   if (loading) {
     return (
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: "#fff", textAlign: "center" }}>
+      <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: colors.white, textAlign: "center" }}>
         {t("groupStandings.loading")}
       </div>
     );
   }
 
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: "#fff" }}>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: colors.white }}>
       {/* Header */}
-      <h3 style={{ margin: "0 0 1rem 0", fontSize: 16, fontWeight: 700, color: "#1f2937" }}>{groupName}</h3>
+      <h3 style={{ margin: "0 0 1rem 0", fontSize: 16, fontWeight: 700, color: colors.text }}>{groupName}</h3>
 
       {/* Two column layout */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "1.5rem" }}>
 
         {/* LEFT: Player Pick */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: "#6b7280" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: colors.textLighter }}>
             {t("groupStandings.yourPrediction")} {playerPickSaved && !isEditingPick && <span style={{ color: colors.successAlt }}>✓</span>}
           </div>
 
@@ -334,8 +334,8 @@ export function GroupStandingsCard({
                     padding: isMobile ? "12px 20px" : "0.6rem",
                     fontSize: isMobile ? 15 : 13,
                     fontWeight: 600,
-                    background: "#f3f4f6",
-                    color: "#374151",
+                    background: colors.bgLight,
+                    color: colors.textDark,
                     border: "1px solid #d1d5db",
                     borderRadius: 8,
                     cursor: "pointer",
@@ -352,8 +352,8 @@ export function GroupStandingsCard({
 
         {/* RIGHT: Official Result or HOST Match Input */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: "#6b7280" }}>
-            {t("groupStandings.officialResult")} {officialResult && <span style={{ color: "#f59e0b" }}>★</span>}
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: colors.textLighter }}>
+            {t("groupStandings.officialResult")} {officialResult && <span style={{ color: colors.warning }}>★</span>}
           </div>
 
           {officialResult && !isEditingMatches ? (
@@ -368,8 +368,8 @@ export function GroupStandingsCard({
                       flex: 1,
                       padding: isMobile ? "10px 12px" : "0.4rem",
                       fontSize: isMobile ? 13 : 12,
-                      background: "#f3f4f6",
-                      color: "#374151",
+                      background: colors.bgLight,
+                      color: colors.textDark,
                       border: "1px solid #d1d5db",
                       borderRadius: 6,
                       cursor: "pointer",
@@ -385,7 +385,7 @@ export function GroupStandingsCard({
                       flex: 1,
                       padding: isMobile ? "10px 12px" : "0.4rem",
                       fontSize: isMobile ? 13 : 12,
-                      background: "#fef3c7",
+                      background: colors.warningBgAmber,
                       color: colors.warningDarker,
                       border: "1px solid #fcd34d",
                       borderRadius: 6,
@@ -421,7 +421,7 @@ export function GroupStandingsCard({
             />
           ) : (
             // PLAYER: Show pending message
-            <div style={{ padding: "2rem 1rem", textAlign: "center", background: "#f9fafb", borderRadius: 8, color: "#9ca3af", fontSize: 13 }}>
+            <div style={{ padding: "2rem 1rem", textAlign: "center", background: colors.bgLighter, borderRadius: 8, color: colors.textLighter, fontSize: 13 }}>
               {t("groupStandings.pendingPublish")}
             </div>
           )}
@@ -430,8 +430,8 @@ export function GroupStandingsCard({
 
       {/* Show match details for HOST after standings generated */}
       {isHost && showMatchDetails && officialResult && !isEditingMatches && (
-        <div style={{ marginTop: "1rem", padding: "0.75rem", background: "#f9fafb", borderRadius: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
+        <div style={{ marginTop: "1rem", padding: "0.75rem", background: colors.bgLighter, borderRadius: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: "0.75rem", color: colors.textLighter }}>
             {t("groupStandings.matchResultsTitle")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -449,18 +449,18 @@ export function GroupStandingsCard({
                     display: "flex",
                     alignItems: "center",
                     padding: "0.5rem 0.75rem",
-                    background: "#fff",
+                    background: colors.white,
                     border: "1px solid #e5e7eb",
                     borderRadius: 6,
                   }}
                 >
                   {/* Equipo local */}
                   <div style={{ flex: 1, textAlign: "right", paddingRight: "0.75rem" }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
                       {homeTeam?.name || t("groupStandings.unknownTeam")}
                     </span>
                     {homeTeam?.code && (
-                      <span style={{ fontSize: 10, color: "#9ca3af", marginLeft: "0.25rem" }}>
+                      <span style={{ fontSize: 10, color: colors.textLighter, marginLeft: "0.25rem" }}>
                         ({homeTeam.code})
                       </span>
                     )}
@@ -472,23 +472,23 @@ export function GroupStandingsCard({
                     alignItems: "center",
                     gap: "0.5rem",
                     padding: "0.25rem 0.75rem",
-                    background: "#f3f4f6",
+                    background: colors.bgLight,
                     borderRadius: 4,
                     minWidth: 70,
                     justifyContent: "center",
                   }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "#1f2937" }}>{homeGoals}</span>
-                    <span style={{ fontSize: 12, color: "#9ca3af" }}>-</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "#1f2937" }}>{awayGoals}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>{homeGoals}</span>
+                    <span style={{ fontSize: 12, color: colors.textLighter }}>-</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>{awayGoals}</span>
                   </div>
 
                   {/* Equipo visitante */}
                   <div style={{ flex: 1, textAlign: "left", paddingLeft: "0.75rem" }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "#1f2937" }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
                       {awayTeam?.name || t("groupStandings.unknownTeam")}
                     </span>
                     {awayTeam?.code && (
-                      <span style={{ fontSize: 10, color: "#9ca3af", marginLeft: "0.25rem" }}>
+                      <span style={{ fontSize: 10, color: colors.textLighter, marginLeft: "0.25rem" }}>
                         ({awayTeam.code})
                       </span>
                     )}
@@ -527,12 +527,12 @@ export function GroupStandingsCard({
 
       {/* Messages */}
       {error && (
-        <div style={{ marginTop: "1rem", padding: "0.6rem", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, color: "#dc2626", fontSize: 12 }}>
+        <div style={{ marginTop: "1rem", padding: "0.6rem", background: colors.errorBg, border: "1px solid #fecaca", borderRadius: 6, color: colors.error, fontSize: 12 }}>
           {error}
         </div>
       )}
       {successMessage && (
-        <div style={{ marginTop: "1rem", padding: "0.6rem", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, color: "#16a34a", fontSize: 12 }}>
+        <div style={{ marginTop: "1rem", padding: "0.6rem", background: colors.successBgAlt, border: "1px solid #bbf7d0", borderRadius: 6, color: colors.successAlt, fontSize: 12 }}>
           {successMessage}
         </div>
       )}

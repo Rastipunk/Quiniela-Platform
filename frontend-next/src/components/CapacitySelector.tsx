@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -64,7 +66,7 @@ export default function CapacitySelector({
       <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#1a1a2e" }}>
         {t("title")}
       </h4>
-      <p style={{ margin: "0 0 12px", fontSize: 13, color: "#666" }}>
+      <p style={{ margin: "0 0 12px", fontSize: 13, color: colors.textMuted }}>
         {t("description")}
       </p>
 
@@ -108,7 +110,7 @@ export default function CapacitySelector({
             borderRadius: 8,
             background: "rgba(255,255,255,0.7)",
             fontSize: 12,
-            color: "#065f46",
+            color: colors.successDarker,
             lineHeight: 1.5,
           }}>
             <strong>{t("trialModeLabel")}:</strong> {t("trialModeDesc")}
@@ -137,8 +139,8 @@ export default function CapacitySelector({
                 position: "relative",
                 padding: "14px 16px",
                 borderRadius: 12,
-                border: `2px solid ${isSelected ? "#4f46e5" : "#e5e7eb"}`,
-                background: isSelected ? "#eef2ff" : "#fff",
+                border: `2px solid ${isSelected ? colors.brand : colors.borderLight}`,
+                background: isSelected ? "#eef2ff" : colors.white,
                 cursor: isLocked ? "default" : "pointer",
                 overflow: "hidden",
                 transition: "border-color 0.15s, background 0.15s",
@@ -153,8 +155,8 @@ export default function CapacitySelector({
                       width: 18,
                       height: 18,
                       borderRadius: "50%",
-                      border: `2px solid ${isSelected ? "#4f46e5" : "#d1d5db"}`,
-                      background: isSelected ? "#4f46e5" : "transparent",
+                      border: `2px solid ${isSelected ? colors.brand : colors.borderMedium}`,
+                      background: isSelected ? colors.brand : "transparent",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -162,7 +164,7 @@ export default function CapacitySelector({
                     }}
                   >
                     {isSelected && (
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.white }} />
                     )}
                   </div>
                   <div>
@@ -175,8 +177,8 @@ export default function CapacitySelector({
                           marginLeft: 8,
                           fontSize: 11,
                           fontWeight: 700,
-                          color: "#16a34a",
-                          background: "#dcfce7",
+                          color: colors.successAlt,
+                          background: colors.successBgLight,
                           padding: "2px 8px",
                           borderRadius: 999,
                         }}
@@ -193,8 +195,8 @@ export default function CapacitySelector({
                       style={{
                         fontSize: 14,
                         fontWeight: 700,
-                        color: "#16a34a",
-                        background: "#dcfce7",
+                        color: colors.successAlt,
+                        background: colors.successBgLight,
                         padding: "3px 12px",
                         borderRadius: 999,
                       }}
@@ -204,14 +206,14 @@ export default function CapacitySelector({
                   ) : isFreeTier && type === "corporate" ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 13, color: "#9ca3af", textDecoration: "line-through" }}>
+                        <span style={{ fontSize: 13, color: colors.textLighter, textDecoration: "line-through" }}>
                           {formatCOP(tier.totalPrice)}
                         </span>
-                        <span style={{ fontSize: 16, fontWeight: 800, color: "#16a34a" }}>
+                        <span style={{ fontSize: 16, fontWeight: 800, color: colors.successAlt }}>
                           $0
                         </span>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "#16a34a" }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: colors.successAlt }}>
                         {t("corporateFreeTrial")}
                       </span>
                     </div>
@@ -221,7 +223,7 @@ export default function CapacitySelector({
                         {formatCOP(tier.totalPrice)}
                       </span>
                       {tier.pricePerIncrement > 0 && tier.maxParticipants > (type === "personal" ? 50 : CORPORATE_FREE_LIMIT) && (
-                        <div style={{ fontSize: 11, color: "#9ca3af" }}>
+                        <div style={{ fontSize: 11, color: colors.textLighter }}>
                           +{formatCOP(tier.pricePerIncrement)} {t("per50")}
                         </div>
                       )}
@@ -232,7 +234,7 @@ export default function CapacitySelector({
 
               {/* Corporate base note */}
               {type === "corporate" && tier.maxParticipants === CORPORATE_FREE_LIMIT && (
-                <div style={{ fontSize: 11, color: "#7c3aed", marginTop: 4, marginLeft: 28 }}>
+                <div style={{ fontSize: 11, color: colors.purple, marginTop: 4, marginLeft: 28 }}>
                   {t("corporateIncludes", { count: CORPORATE_FREE_LIMIT })}
                 </div>
               )}
@@ -254,10 +256,10 @@ export default function CapacitySelector({
                   }}
                 >
                   <div style={{ fontSize: 18 }}>&#128274;</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#4f46e5" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
                     {t("comingSoon")}
                   </div>
-                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>
+                  <div style={{ fontSize: 11, color: colors.textLighter, marginTop: 1 }}>
                     {t("comingSoonDesc")}
                   </div>
                 </div>
@@ -273,11 +275,11 @@ export default function CapacitySelector({
           marginTop: 16,
           padding: 16,
           borderRadius: 12,
-          background: "#f9fafb",
+          background: colors.bgLighter,
           border: "1px solid #e5e7eb",
         }}
       >
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: colors.textDark, display: "block", marginBottom: 8 }}>
           {t("customTitle")}
         </label>
         <input
@@ -298,13 +300,13 @@ export default function CapacitySelector({
         />
 
         {isValidCustom && customTier === "FREE_COVERS" && (
-          <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#dcfce7", color: "#16a34a", fontSize: 13, fontWeight: 600 }}>
+          <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: colors.successBgLight, color: colors.successAlt, fontSize: 13, fontWeight: 600 }}>
             {t("customFreeCovered", { limit: freeLimit })}
           </div>
         )}
 
         {isValidCustom && customTier === "IN_LIST" && (
-          <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#eef2ff", color: "#4f46e5", fontSize: 13, fontWeight: 600 }}>
+          <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: "#eef2ff", color: colors.brand, fontSize: 13, fontWeight: 600 }}>
             {t("customInList")}
           </div>
         )}
@@ -316,12 +318,12 @@ export default function CapacitySelector({
               marginTop: 10,
               padding: 16,
               borderRadius: 10,
-              background: "#fff",
+              background: colors.white,
               border: "2px solid #e5e7eb",
               overflow: "hidden",
             }}
           >
-            <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: colors.textDark, lineHeight: 1.6 }}>
               {t("customResult", {
                 requested: customCount,
                 offered: (customTier as PricingTier).maxParticipants,
@@ -332,15 +334,15 @@ export default function CapacitySelector({
             </div>
             {customSavings && customSavings.savedAmount > 0 && (
               <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 13, color: "#9ca3af", textDecoration: "line-through" }}>
+                <span style={{ fontSize: 13, color: colors.textLighter, textDecoration: "line-through" }}>
                   {formatCOP(customSavings.fullPrice)}
                 </span>
                 <span
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: "#16a34a",
-                    background: "#dcfce7",
+                    color: colors.successAlt,
+                    background: colors.successBgLight,
                     padding: "2px 8px",
                     borderRadius: 999,
                   }}
@@ -352,7 +354,7 @@ export default function CapacitySelector({
                 </span>
               </div>
             )}
-            <div style={{ marginTop: 6, fontSize: 11, color: "#9ca3af" }}>
+            <div style={{ marginTop: 6, fontSize: 11, color: colors.textLighter }}>
               {t("customReason", {
                 requested: customCount,
                 offered: (customTier as PricingTier).maxParticipants,
@@ -376,10 +378,10 @@ export default function CapacitySelector({
               }}
             >
               <div style={{ fontSize: 18 }}>&#128274;</div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: "#4f46e5" }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
                 {t("comingSoon")}
               </div>
-              <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>
+              <div style={{ fontSize: 11, color: colors.textLighter, marginTop: 1 }}>
                 {t("comingSoonDesc")}
               </div>
             </div>

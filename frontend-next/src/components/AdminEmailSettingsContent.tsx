@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
@@ -194,17 +196,17 @@ export default function AdminEmailSettingsContent() {
   const titleStyle: React.CSSProperties = {
     fontSize: 28,
     fontWeight: 700,
-    color: "#1f2937",
+    color: colors.text,
     marginBottom: 8,
   };
 
   const subtitleStyle: React.CSSProperties = {
     fontSize: 14,
-    color: "#6b7280",
+    color: colors.textLighter,
   };
 
   const cardStyle: React.CSSProperties = {
-    background: "#fff",
+    background: colors.white,
     borderRadius: 12,
     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
     padding: 24,
@@ -227,13 +229,13 @@ export default function AdminEmailSettingsContent() {
   const toggleLabelStyle: React.CSSProperties = {
     fontSize: 16,
     fontWeight: 600,
-    color: "#1f2937",
+    color: colors.text,
     marginBottom: 4,
   };
 
   const toggleDescStyle: React.CSSProperties = {
     fontSize: 14,
-    color: "#6b7280",
+    color: colors.textLighter,
     lineHeight: 1.5,
   };
 
@@ -249,14 +251,14 @@ export default function AdminEmailSettingsContent() {
     borderRadius: 8,
     marginBottom: 16,
     fontSize: 14,
-    backgroundColor: type === "error" ? "#fef2f2" : "#ecfdf5",
-    color: type === "error" ? "#dc2626" : "#059669",
-    border: `1px solid ${type === "error" ? "#fecaca" : "#a7f3d0"}`,
+    backgroundColor: type === "error" ? colors.errorBg : "#ecfdf5",
+    color: type === "error" ? colors.error : colors.successAlt,
+    border: `1px solid ${type === "error" ? colors.errorBorder : "#a7f3d0"}`,
   });
 
   const metadataStyle: React.CSSProperties = {
     fontSize: 12,
-    color: "#9ca3af",
+    color: colors.textLighter,
     marginTop: 16,
     paddingTop: 16,
     borderTop: "1px solid #e5e7eb",
@@ -266,7 +268,7 @@ export default function AdminEmailSettingsContent() {
     display: "inline-flex",
     alignItems: "center",
     gap: 8,
-    color: "#6b7280",
+    color: colors.textLighter,
     fontSize: 14,
     textDecoration: "none",
     marginBottom: 16,
@@ -276,7 +278,7 @@ export default function AdminEmailSettingsContent() {
   if (loading) {
     return (
       <div style={containerStyle}>
-        <div style={{ textAlign: "center", padding: 48, color: "#6b7280" }}>
+        <div style={{ textAlign: "center", padding: 48, color: colors.textLighter }}>
           Cargando configuración...
         </div>
       </div>
@@ -290,23 +292,23 @@ export default function AdminEmailSettingsContent() {
           style={{
             textAlign: "center",
             padding: 48,
-            background: "#fff",
+            background: colors.white,
             borderRadius: 12,
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
           }}
         >
           <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1f2937", marginBottom: 8 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: colors.text, marginBottom: 8 }}>
             Acceso Restringido
           </h1>
-          <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>
+          <p style={{ fontSize: 14, color: colors.textLighter, marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>
             Esta página es exclusiva para administradores de la plataforma.
             Solo el equipo de administración puede gestionar la configuración de emails.
           </p>
           <button
             onClick={() => router.push("/dashboard")}
             style={{
-              background: "#4f46e5",
+              background: colors.brand,
               color: "white",
               border: "none",
               borderRadius: 8,
@@ -343,7 +345,7 @@ export default function AdminEmailSettingsContent() {
 
         {settings && (
           <div style={cardStyle}>
-            <div style={{ marginBottom: 8, fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
+            <div style={{ marginBottom: 8, fontSize: 12, color: colors.textLighter, fontWeight: 500 }}>
               NOTIFICACIONES POR EMAIL
             </div>
 
@@ -381,7 +383,7 @@ export default function AdminEmailSettingsContent() {
                       style={{
                         width: 48,
                         height: 28,
-                        backgroundColor: settings[toggle.key] ? "#4f46e5" : "#d1d5db",
+                        backgroundColor: settings[toggle.key] ? colors.brand : colors.borderMedium,
                         borderRadius: 14,
                         position: "relative",
                         transition: "background-color 0.2s",
@@ -394,7 +396,7 @@ export default function AdminEmailSettingsContent() {
                           left: settings[toggle.key] ? 22 : 2,
                           width: 24,
                           height: 24,
-                          backgroundColor: "#fff",
+                          backgroundColor: colors.white,
                           borderRadius: "50%",
                           boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                           transition: "left 0.2s",
@@ -419,7 +421,7 @@ export default function AdminEmailSettingsContent() {
 
         {/* SCORES SERVICE TOGGLE */}
         <div style={cardStyle}>
-          <div style={{ marginBottom: 8, fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
+          <div style={{ marginBottom: 8, fontSize: 12, color: colors.textLighter, fontWeight: 500 }}>
             SCORES EN TIEMPO REAL
           </div>
           <div style={{
@@ -435,7 +437,7 @@ export default function AdminEmailSettingsContent() {
                     padding: "2px 8px",
                     borderRadius: 999,
                     background: "#ecfdf5",
-                    color: "#059669",
+                    color: colors.successAlt,
                     fontSize: 11,
                     fontWeight: 600,
                   }}>
@@ -467,7 +469,7 @@ export default function AdminEmailSettingsContent() {
                 <div style={{
                   width: 48,
                   height: 28,
-                  backgroundColor: scoresEnabled ? "#059669" : "#d1d5db",
+                  backgroundColor: scoresEnabled ? colors.successAlt : colors.borderMedium,
                   borderRadius: 14,
                   position: "relative",
                   transition: "background-color 0.2s",
@@ -478,7 +480,7 @@ export default function AdminEmailSettingsContent() {
                     left: scoresEnabled ? 22 : 2,
                     width: 24,
                     height: 24,
-                    backgroundColor: "#fff",
+                    backgroundColor: colors.white,
                     borderRadius: "50%",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                     transition: "left 0.2s",
@@ -490,10 +492,10 @@ export default function AdminEmailSettingsContent() {
         </div>
 
         <div style={cardStyle}>
-          <div style={{ marginBottom: 8, fontSize: 12, color: "#9ca3af", fontWeight: 500 }}>
+          <div style={{ marginBottom: 8, fontSize: 12, color: colors.textLighter, fontWeight: 500 }}>
             INFORMACIÓN
           </div>
-          <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
+          <p style={{ fontSize: 14, color: colors.textLighter, lineHeight: 1.6, margin: 0 }}>
             <strong>Password Reset</strong> siempre está activo por seguridad y no se puede desactivar.
             <br /><br />
             Los usuarios pueden desactivar notificaciones individuales desde su perfil,
@@ -504,7 +506,7 @@ export default function AdminEmailSettingsContent() {
               href="https://resend.com/emails"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#4f46e5" }}
+              style={{ color: colors.brand }}
             >
               dashboard de Resend
             </a>.

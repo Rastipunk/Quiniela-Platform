@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -47,7 +49,7 @@ export function WhatsNewModal() {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff",
+          background: colors.white,
           borderRadius: 16,
           width: "100%",
           maxWidth: 440,
@@ -72,7 +74,7 @@ export function WhatsNewModal() {
           <p
             style={{
               fontSize: "0.9rem",
-              color: "#6b7280",
+              color: colors.textLighter,
               marginTop: 4,
             }}
           >
@@ -134,7 +136,7 @@ export function WhatsNewModal() {
               display: "flex",
               gap: 14,
               alignItems: "flex-start",
-              background: "#f0fdf4",
+              background: colors.successBgAlt,
               border: "1px solid #bbf7d0",
               borderRadius: 12,
               padding: 16,
@@ -158,7 +160,7 @@ export function WhatsNewModal() {
           style={{
             width: "100%",
             background: "#111827",
-            color: "#fff",
+            color: colors.white,
             border: "none",
             borderRadius: 10,
             padding: "12px 24px",

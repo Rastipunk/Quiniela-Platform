@@ -60,7 +60,7 @@ export function PoolWizardNavButtons({ onSubmit, submitLabel, submitBusy }: Prop
           style={{
             ...buttonBase,
             background: submitBusy ? colors.disabled : colors.brand,
-            color: "#fff",
+            color: colors.white,
             opacity: submitBusy ? 0.7 : 1,
           }}
         >
@@ -79,7 +79,7 @@ export function PoolWizardNavButtons({ onSubmit, submitLabel, submitBusy }: Prop
           style={{
             ...buttonBase,
             background: canGoNext ? colors.brand : colors.disabled,
-            color: canGoNext ? "#fff" : colors.textLight,
+            color: canGoNext ? colors.white : colors.textLight,
           }}
         >
           {t("nav.next", { defaultMessage: "Siguiente" })} →
