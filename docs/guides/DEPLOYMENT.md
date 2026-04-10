@@ -141,6 +141,23 @@ All rate limit values are configurable via environment variables:
 |----------|-------------|
 | `BRAND_COLORS_JSON` | JSON override for brand colors (e.g., `{"primary":"#ff0000"}`) |
 
+#### Scores Service (picks4all-scores)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SCORES_SERVICE_URL` | Base URL of scraping service | (required for AUTO) |
+| `SCORES_SERVICE_API_KEY` | Bearer token for auth | (required for AUTO) |
+| `SCORES_SERVICE_TIMEOUT_MS` | HTTP request timeout | `10000` |
+| `SCORES_POLL_INTERVAL_MS` | Live scores polling interval | `15000` |
+| `SCORES_MIN_CONFIDENCE` | Minimum confidence to publish | `MEDIUM` |
+| `SCORES_WINDOW_PRE_HOURS` | Hours before kickoff to poll | `0` |
+| `SCORES_WINDOW_PRE_MINUTES` | Minutes buffer for early kickoffs | `5` |
+| `SCORES_WINDOW_POST_HOURS` | Hours after kickoff to keep polling | `3` |
+| `SCORES_TRACK_WINDOW_HOURS` | Hours ahead to register fixtures | `24` |
+| `SCORES_GRACE_PERIOD_MS` | Grace period after FT before finalizing | `300000` |
+| `SCORES_FALLBACK_DELAY_MS` | Delay before API-Football fallback | `1800000` |
+| `FIXTURE_TRACKING_CRON` | Fixture registration cron schedule | `0 * * * *` |
+
 #### Railway-Injected
 
 | Variable | Description |
@@ -165,14 +182,14 @@ All rate limit values are configurable via environment variables:
 | `NEXT_PUBLIC_API_URL` | Backend API URL | `https://api.picks4all.com` |
 | `NEXT_PUBLIC_SITE_URL` | Frontend URL | `https://picks4all.com` |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client ID | `xxx.apps.googleusercontent.com` |
-| `NEXT_PUBLIC_GA_ID` | Google Analytics 4 measurement ID | `G-8JG2YTDLPH` |
+| `NEXT_PUBLIC_GTM_ID` | Google Tag Manager container ID | `GTM-TJ86QBFG` |
+| `NEXT_PUBLIC_LIVE_POLL_INTERVAL_MS` | Frontend auto-refresh for live matches | `15000` |
 | `NEXT_PUBLIC_EMAIL_DOMAIN` | Email domain for display | `picks4all.com` |
 | `NEXT_PUBLIC_DEFAULT_DEADLINE` | Default deadline minutes | `10` |
 | `NEXT_PUBLIC_PERSONAL_FREE_LIMIT` | Free tier participant limit (personal) | `20` |
 | `NEXT_PUBLIC_CORPORATE_FREE_LIMIT` | Free tier participant limit (corporate) | `100` |
-| `NEXT_PUBLIC_BASE_PRICE` | Base price for paid pools | `6.99` |
-| `NEXT_PUBLIC_MIN_PRICE` | Minimum price after discounts | `3.99` |
-| `NEXT_PUBLIC_CORPORATE_BASE_PRICE` | Base price for corporate pools | `49.99` |
+| `NEXT_PUBLIC_BASE_PRICE_COP` | Base price per 50-player block (COP) | `28000` |
+| `NEXT_PUBLIC_CORPORATE_BASE_PRICE_COP` | Base price for corporate pools (COP) | `200000` |
 
 ---
 

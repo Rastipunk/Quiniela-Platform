@@ -69,7 +69,9 @@
 - **CORS** restricted to configured origins via `SITE_DOMAIN` env var.
 
 ### Results System
-- **Results are API-first.** The host CANNOT publish results manually. Results come from the API-Football sync system.
+- **Results are scraper-first.** In AUTO mode, picks4all-scores is the primary source. API-Football is fallback only (activates 30min after estimated FT if scraper hasn't reported).
+- **Source hierarchy:** HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL > HOST_PROVISIONAL > HOST_MANUAL. Higher sources are never overwritten by lower ones.
+- **Grace period:** 5 minutes after FT before finalizing a result (configurable via `SCORES_GRACE_PERIOD_MS`).
 - **Host can override** an existing result only with: mandatory reason, warning shown, and email notification sent to ALL pool members.
 - **Legacy MANUAL mode** instances are exempt (backwards compatibility).
 
@@ -91,6 +93,7 @@ docs/
     ├── DEPLOYMENT.md         # Railway deployment and env vars
     ├── EMAIL_SYSTEM.md       # Email notification system
     ├── TOURNAMENT_SYSTEM.md  # Tournaments, phases, advancement, sync
+    ├── SCORES_INTEGRATION.md # picks4all-scores live scoring system
     ├── PREDICTION_UPDATES.md # AI prediction update and subscriber notification process
     └── GOOGLE_OAUTH.md       # Google OAuth configuration
 CLAUDE.md                     # This file — development standards
@@ -118,7 +121,8 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Database | PostgreSQL (Railway managed) | 16 |
 | Auth | JWT (4h) + Google Sign-In | — |
 | Email | Resend | — |
-| Sports Data | API-Football (api-sports.io) | v3 |
+| Sports Data | picks4all-scores (primary), API-Football (fallback) | — |
+| Analytics | Google Analytics 4 + Google Tag Manager | — |
 | Hosting | Railway (2 services + Postgres) | — |
 | DNS | Cloudflare (+ Email Routing) | — |
 
@@ -137,9 +141,10 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Shared schemas | `lib/schemas.ts` (Zod field schemas for reuse) |
 | Email | `lib/email.ts`, `lib/emailTemplates.ts` |
 | Scoring | `lib/scoringAdvanced.ts`, `lib/pickPresets.ts` |
-| API-Football | `services/apiFootball/client.ts` |
-| Smart Sync | `services/smartSync/service.ts` |
-| Jobs | `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts` |
+| API-Football | `services/apiFootball/client.ts` (fallback only) |
+| picks4all-scores | `services/scoresService/client.ts` (primary live scores) |
+| Smart Sync | `services/smartSync/service.ts` (API-Football fallback) |
+| Jobs | `jobs/liveScoresJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts` |
 
 ### Frontend (`frontend-next/src/`)
 | Category | Files |
@@ -149,8 +154,11 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Branding | `lib/brand.ts` |
 | Validation | `lib/validation.ts` (centralized form constraints) |
 | API client | `lib/api/client.ts` |
+| Analytics | `lib/analytics.ts` (trackEvent via GTM dataLayer) |
 | i18n | `i18n/routing.ts`, `messages/{es,en,pt}/*.json` |
+| Shared UI | `components/ui/ToggleSwitch.tsx`, `components/CookieConsent.tsx` |
 | Pool page | `app/[locale]/(authenticated)/pools/[poolId]/page.tsx` |
+| Pool wizard | `components/pool-wizard/PoolCreationWizard.tsx` (standard + corporate) |
 
 ---
 
@@ -162,7 +170,7 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 4. **Leave pool:** Only PLAYER can leave (not HOST/CORPORATE_HOST). Status → LEFT, points preserved, read-only mode.
 5. **Template immutability:** Published TournamentTemplateVersions are frozen snapshots.
 6. **Pool independence:** Each pool has its own `fixtureSnapshot`. Advancing phases in one pool does not affect others.
-7. **API-first results:** In AUTO mode, results come from API-Football. Host can only override existing results.
+7. **Scraper-first results:** In AUTO mode, picks4all-scores is the primary source (15s polling during matches). API-Football is fallback only (30min after estimated FT). Host can only override existing results.
 
 ---
 
