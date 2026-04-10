@@ -19,7 +19,7 @@ import {
   validateGroupStageComplete,
 } from "./instanceAdvancement";
 import { getResultSyncService } from "./resultSync";
-import { getJobStatus, triggerManualSync } from "../jobs/resultSyncJob";
+import { getJobStatus } from "../jobs/resultSyncJob";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
 

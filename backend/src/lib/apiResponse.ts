@@ -72,14 +72,6 @@ export function sendConflict(res: Response, error: string, extra?: Record<string
   sendError(res, 409, error, extra);
 }
 
-export function sendGone(res: Response, error: string, extra?: Record<string, unknown>): void {
-  sendError(res, 410, error, extra);
-}
-
-export function sendTooMany(res: Response, error: string, extra?: Record<string, unknown>): void {
-  sendError(res, 429, error, extra);
-}
-
 export function sendInternal(res: Response, error = "Internal server error", extra?: Record<string, unknown>): void {
   sendError(res, 500, error, extra);
 }

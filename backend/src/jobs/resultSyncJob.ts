@@ -78,53 +78,9 @@ async function runSyncJob(): Promise<void> {
   }
 }
 
-/**
- * Start the sync job scheduler
- */
-export function startResultSyncJob(): void {
-  if (!SYNC_ENABLED) {
-    console.log("[ResultSyncJob] Sync job is disabled (RESULT_SYNC_ENABLED !== true)");
-    return;
-  }
-
-  if (!isApiFootballEnabled()) {
-    console.log("[ResultSyncJob] API-Football is disabled, not starting sync job");
-    return;
-  }
-
-  // Use the active cron schedule (5 minutes by default)
-  // In a more sophisticated implementation, you could switch between
-  // ACTIVE_SYNC_CRON and IDLE_SYNC_CRON based on whether there are
-  // matches currently being played
-  const cronExpression = ACTIVE_SYNC_CRON;
-
-  console.log(`[ResultSyncJob] Starting with schedule: ${cronExpression}`);
-
-  scheduledTask = cron.schedule(cronExpression, async () => {
-    await runSyncJob();
-  });
-
-  console.log("[ResultSyncJob] Scheduler started successfully");
-}
-
-/**
- * Stop the sync job scheduler
- */
-export function stopResultSyncJob(): void {
-  if (scheduledTask) {
-    scheduledTask.stop();
-    scheduledTask = null;
-    console.log("[ResultSyncJob] Scheduler stopped");
-  }
-}
-
-/**
- * Manually trigger a sync (for admin use)
- */
-export async function triggerManualSync(): Promise<void> {
-  console.log("[ResultSyncJob] Manual sync triggered");
-  await runSyncJob();
-}
+// NOTE: startResultSyncJob/stopResultSyncJob/triggerManualSync were removed
+// as dead code. This job is a legacy fallback — SmartSync + liveScoresJob
+// are the primary sync mechanisms. Only getJobStatus() remains for admin UI.
 
 /**
  * Get job status
