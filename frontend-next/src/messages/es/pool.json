@@ -237,6 +237,7 @@
 
   "invite": {
     "title": "Invitaciones",
+    "inviteMore": "Invita más jugadores",
     "createCode": "Crear código",
     "codeCopied": "Código (copiado si el navegador lo permitió):"
   },
@@ -273,9 +274,9 @@
   },
 
   "pick": {
-    "myPick": "Mi Pick",
-    "noPick": "No hiciste pick (deadline pasado)",
-    "noPickYet": "Sin pick aún",
+    "myPick": "Mi Predicción",
+    "noPick": "No hiciste predicción (deadline pasado)",
+    "noPickYet": "Sin predicción aún",
     "modify": "Modificar",
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -322,15 +323,15 @@
 
   "matchPicks": {
     "title": "Predicciones",
-    "loading": "Cargando picks...",
+    "loading": "Cargando predicciones...",
     "error": "Error",
-    "notUnlocked": "El deadline aún no ha pasado. Solo puedes ver tu propio pick.",
+    "notUnlocked": "El deadline aún no ha pasado. Solo puedes ver tu propia predicción.",
     "you": "Tú",
     "home": "Local",
     "drawLabel": "Empate",
     "away": "Visitante",
-    "noPick": "Sin pick",
-    "empty": "No hay picks para este partido"
+    "noPick": "Sin predicción",
+    "empty": "No hay predicciones para este partido"
   },
 
   "playerSummary": {
@@ -383,7 +384,7 @@
       "title": "Política de Deadline",
       "timeLimit": "Tiempo límite",
       "minutesBefore": "{minutes} minutos antes del kickoff",
-      "description": "Puedes hacer y modificar tus pronósticos hasta {minutes} minutos antes del inicio de cada partido. Una vez que se alcanza el deadline, el partido queda <b>LOCKED</b> y no podrás editar tu pick.",
+      "description": "Puedes hacer y modificar tus predicciones hasta {minutes} minutos antes del inicio de cada partido. Una vez que se alcanza el deadline, el partido queda <b>BLOQUEADO</b> y no podrás editar tu predicción.",
       "important": "<b>Importante:</b> Asegúrate de revisar las fechas y horas de los partidos. Todos los horarios se muestran en la zona horaria: <b>{timezone}</b>"
     },
     "tournament": {
@@ -399,7 +400,7 @@
 
   "notifications": {
     "urgentPicks": "Tienes {count} partido sin predicción que cierra en las próximas horas ({details}).",
-    "urgentPicksPlural": "Tienes {count} partidos sin pick que cierran en las próximas horas ({details}).",
+    "urgentPicksPlural": "Tienes {count} partidos sin predicción que cierran en las próximas horas ({details}).",
     "countInPhase": "{count} en {phase}",
     "pendingResults": "{count} partido jugado sin resultado publicado.",
     "pendingResultsPlural": "{count} partidos jugados sin resultado publicado."
@@ -465,12 +466,12 @@
     "knockoutWinnerPoints": "{points} pts por cada equipo que aciertes que avanza a la siguiente ronda",
     "knockoutWinnerNote": "(No importa el marcador ni cómo avancen, solo quién pasa)",
     "importantNotes": "Notas importantes",
-    "notePhaseRules": "Cada fase del torneo puede tener diferentes tipos de picks y puntuaciones.",
+    "notePhaseRules": "Cada fase del torneo puede tener diferentes tipos de predicciones y puntuaciones.",
     "noteReadCarefully": "Lee atentamente las reglas de CADA FASE antes de hacer tus predicciones.",
     "notePointsIncrease": "Los puntos suelen aumentar en fases más avanzadas del torneo (octavos, cuartos, semifinales, final).",
     "cumulativeSystem": "<strong>Sistema acumulativo:</strong> Los puntos se SUMAN por cada criterio que aciertes. Si aciertas el marcador exacto, ganas la suma de todos los criterios (máx 10 pts en grupos, 20 pts en eliminatorias).",
     "nonCumulativeNote": "Si aciertas el marcador exacto, también aciertas automáticamente otros tipos (pero solo ganas los puntos del exacto).",
-    "deadlineNote": "Los picks se cierran según el deadline configurado para este pool: <strong>{minutes} minutos antes del inicio de cada partido</strong>."
+    "deadlineNote": "Las predicciones se cierran según el deadline configurado para este pool: <strong>{minutes} minutos antes del inicio de cada partido</strong>."
   },
 
   "scoringBreakdown": {
@@ -535,7 +536,7 @@
     "pointsLabel": "Puntos",
     "scored": "Puntuados",
     "effectiveness": "Efectividad",
-    "onlyDeadlinePassed": "Solo se muestran los picks de partidos cuyo deadline ya pasó.",
+    "onlyDeadlinePassed": "Solo se muestran las predicciones de partidos cuyo deadline ya pasó.",
     "phaseBreakdown": "Desglose por fase",
     "noMatchesVisible": "No hay partidos visibles todavía",
     "scoredOfTotal": "{scored} de {total} puntuados",
@@ -546,7 +547,7 @@
     "headerResult": "Res.",
     "headerPts": "Pts",
     "statusScored": "Puntuado",
-    "statusNoPick": "Sin pick",
+    "statusNoPick": "Sin predicción",
     "statusPendingResult": "Esperando resultado",
     "statusLocked": "Bloqueado"
   },
@@ -601,7 +602,7 @@
   "pickTypeExtended": {
     "EXACT_SCORE": {
       "title": "Marcador Exacto",
-      "description": "El jugador debe acertar el marcador completo. Es el pick más difícil y el más valioso. Si aciertas el marcador exacto, también aciertas automáticamente la diferencia de goles, marcador parcial y goles totales (pero solo ganas los puntos del marcador exacto, que es el más alto).",
+      "description": "El jugador debe acertar el marcador completo. Es la predicción más difícil y la más valiosa. Si aciertas el marcador exacto, también aciertas automáticamente la diferencia de goles, marcador parcial y goles totales (pero solo ganas los puntos del marcador exacto, que es el más alto).",
       "shortDesc": "Acertar el marcador completo (ej: 2-1).",
       "example": "Ejemplo con 20 pts: Predices 2-1, sale 2-1 → GANAS 20 PTS | Sale 3-1 → 0 pts | Sale 2-0 → 0 pts"
     },
@@ -627,7 +628,7 @@
       "title": "Resultado 90min",
       "description": "Predice solo el ganador o empate en tiempo reglamentario (Victoria Local, Empate, Victoria Visitante). No disponible cuando se requieren marcadores.",
       "shortDesc": "Predice ganador o empate.",
-      "example": "Solo para picks sin marcador. No combinable con predicciones de goles."
+      "example": "Solo para predicciones sin marcador. No combinable con predicciones de goles."
     },
     "HOME_GOALS": {
       "title": "Goles Local",

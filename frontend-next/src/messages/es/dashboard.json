@@ -111,7 +111,7 @@
       },
       "CUSTOM": {
         "title": "PERSONALIZADO",
-        "description": "Configura cada fase manualmente según tus necesidades específicas. Elige si quieres marcadores o no, qué tipos de picks activar y cuántos puntos asignar a cada uno.",
+        "description": "Configura cada fase manualmente según tus necesidades específicas. Elige si quieres marcadores o no, qué tipos de predicciones activar y cuántos puntos asignar a cada uno.",
         "shortDesc": "Configura todo manualmente"
       }
     },

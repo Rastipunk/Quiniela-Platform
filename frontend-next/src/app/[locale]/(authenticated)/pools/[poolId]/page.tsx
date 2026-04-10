@@ -14,6 +14,7 @@ import { NotificationBadge } from "@/components/NotificationBadge";
 import { ScoringBreakdownModal } from "@/components/ScoringBreakdownModal";
 import { PlayerSummary } from "@/components/PlayerSummary";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
+import { ShareButtons } from "@/components/ShareButtons";
 import { getPendingMembers } from "@/lib/api";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { trackEvent } from "@/lib/analytics";
@@ -610,6 +611,58 @@ export default function PoolPage() {
           <div style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
             {overview.tournamentInstance.name} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
+
+          {/* Invite players — compact bar above tabs */}
+          {overview.permissions.canInvite && (
+            <div style={{
+              marginTop: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: isMobile ? 8 : 12,
+              padding: isMobile ? "8px 12px" : "8px 16px",
+              borderRadius: radii.xl,
+              background: `${colors.brand}08`,
+              border: `1px solid ${colors.brand}20`,
+            }}>
+              <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: fontWeight.semibold, color: colors.brand, flex: 1 }}>
+                {t("invite.inviteMore", { defaultMessage: "Invita más jugadores" })}
+              </span>
+              <button
+                onClick={onCreateInvite}
+                disabled={busyKey === "invite"}
+                style={{
+                  padding: isMobile ? "6px 14px" : "6px 18px",
+                  borderRadius: radii.lg,
+                  border: "none",
+                  background: colors.brand,
+                  color: colors.white,
+                  fontSize: isMobile ? 12 : 13,
+                  fontWeight: fontWeight.semibold,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                {busyKey === "invite" ? "..." : t("invite.createCode")}
+              </button>
+            </div>
+          )}
+
+          {/* Invite code display */}
+          {inviteCode && overview.permissions.canInvite && (
+            <div style={{ marginTop: 6, padding: "8px 12px", borderRadius: radii.lg, background: colors.white, border: `1px solid ${colors.borderLight}` }}>
+              <div style={{ fontSize: 11, color: colors.textMuted }}>{t("invite.codeCopied")}</div>
+              <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: 1, marginTop: 2 }}>{inviteCode}</div>
+              <div style={{ marginTop: 8 }}>
+                <ShareButtons
+                  context="poolInvite"
+                  url={`${typeof window !== "undefined" ? window.location.origin : ""}/invite?code=${inviteCode}`}
+                  data={{ poolName: overview.pool.name, inviteCode }}
+                  size="sm"
+                />
+              </div>
+            </div>
+          )}
 
           {/* LEFT member banner */}
           {overview.myMembership.status === "LEFT" && (
