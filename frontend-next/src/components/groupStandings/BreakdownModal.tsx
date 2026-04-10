@@ -120,7 +120,7 @@ export function BreakdownModal({
               {/* Config info */}
               <div
                 style={{
-                  background: "#e7f3ff",
+                  background: colors.infoBgLight,
                   padding: "0.6rem 0.75rem",
                   borderRadius: 6,
                   marginBottom: "1rem",
@@ -136,7 +136,7 @@ export function BreakdownModal({
 
               {/* No pick message */}
               {!breakdownData.hasPick && (
-                <div style={{ textAlign: "center", padding: "1.5rem", color: "#dc3545" }}>
+                <div style={{ textAlign: "center", padding: "1.5rem", color: colors.errorAlt }}>
                   <div style={{ fontSize: 48, marginBottom: "0.5rem" }}>🚫</div>
                   <div style={{ fontWeight: 600 }}>{t("groupStandings.noPrediction")}</div>
                 </div>
@@ -153,15 +153,15 @@ export function BreakdownModal({
                         alignItems: "center",
                         gap: 8,
                         padding: "0.5rem 0.75rem",
-                        background: pos.matched ? "#d4edda" : "#fff",
+                        background: pos.matched ? colors.successBg : "#fff",
                         borderRadius: 6,
-                        border: `1px solid ${pos.matched ? "#c3e6cb" : "#e5e7eb"}`,
+                        border: `1px solid ${pos.matched ? colors.successBorderAlt : "#e5e7eb"}`,
                       }}
                     >
                       <span style={{ fontWeight: 700, width: 24, fontSize: 14 }}>{pos.position}°</span>
                       <span style={{ flex: 1, fontSize: 13 }}>{pos.teamName || pos.teamId}</span>
                       {pos.predictedPosition !== null && pos.predictedPosition !== pos.position && (
-                        <span style={{ color: "#6c757d", fontSize: 11 }}>
+                        <span style={{ color: colors.textMuted, fontSize: 11 }}>
                           {t("groupStandings.yourPosition", { position: pos.predictedPosition })}
                         </span>
                       )}
@@ -170,7 +170,7 @@ export function BreakdownModal({
                         style={{
                           fontWeight: 700,
                           fontSize: 13,
-                          color: pos.matched ? "#28a745" : "#6c757d",
+                          color: pos.matched ? colors.success : colors.textMuted,
                           minWidth: 35,
                           textAlign: "right",
                         }}
@@ -186,9 +186,9 @@ export function BreakdownModal({
                       style={{
                         marginTop: "0.5rem",
                         padding: "0.5rem 0.75rem",
-                        background: breakdownData.bonusPerfectGroup.achieved ? "#d4edda" : "#f8f9fa",
+                        background: breakdownData.bonusPerfectGroup.achieved ? colors.successBg : "#f8f9fa",
                         borderRadius: 6,
-                        border: `1px solid ${breakdownData.bonusPerfectGroup.achieved ? "#c3e6cb" : "#e5e7eb"}`,
+                        border: `1px solid ${breakdownData.bonusPerfectGroup.achieved ? colors.successBorderAlt : "#e5e7eb"}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
@@ -202,7 +202,7 @@ export function BreakdownModal({
                         style={{
                           fontWeight: 700,
                           fontSize: 13,
-                          color: breakdownData.bonusPerfectGroup.achieved ? "#28a745" : "#6c757d",
+                          color: breakdownData.bonusPerfectGroup.achieved ? colors.success : colors.textMuted,
                         }}
                       >
                         +{breakdownData.bonusPerfectGroup.pointsEarned}

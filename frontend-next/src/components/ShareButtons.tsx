@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 
@@ -264,7 +266,7 @@ export function ShareButtons({
           padding: btnPadding,
           borderRadius,
           border: "1px solid var(--border)",
-          background: copied ? "#10b981" : "var(--surface)",
+          background: copied ? colors.successAlt : "var(--surface)",
           color: copied ? "white" : "var(--text)",
           cursor: "pointer",
           fontSize,

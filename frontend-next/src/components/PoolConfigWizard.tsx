@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 // Wizard para configuración de tipos de picks
 // Sprint 2 - Advanced Pick Types System
 // Sprint 3 - Mobile UX Improvements
@@ -239,13 +241,13 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
             maxWidth: "400px",
           }}
         >
-          <div style={{ fontSize: 18, marginBottom: 8, color: "#dc3545" }}>❌ {t("wizard.errorTitle")}</div>
+          <div style={{ fontSize: 18, marginBottom: 8, color: colors.errorAlt }}>❌ {t("wizard.errorTitle")}</div>
           <div style={{ fontSize: 14, color: "#666", marginBottom: 16 }}>{error}</div>
           <button
             onClick={onCancel}
             style={{
               padding: "0.5rem 1rem",
-              background: "#007bff",
+              background: colors.brand,
               color: "white",
               border: "none",
               borderRadius: 6,
@@ -392,7 +394,7 @@ export function PoolConfigWizard({ instanceId, token, onComplete, onCancel }: Po
               style={{
                 flex: isMobile ? 1.5 : "none",
                 padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
-                background: "#007bff",
+                background: colors.brand,
                 border: "none",
                 borderRadius: "6px",
                 color: "white",
@@ -506,11 +508,11 @@ function PresetCard({ title, description, recommended, onSelect, isMobile }: Pre
       role="button"
       tabIndex={0}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#007bff";
+        e.currentTarget.style.borderColor = colors.brand;
         e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,123,255,0.15)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = recommended ? "#007bff" : "#ddd";
+        e.currentTarget.style.borderColor = recommended ? colors.brand : "#ddd";
         e.currentTarget.style.boxShadow = "none";
       }}
     >
@@ -520,7 +522,7 @@ function PresetCard({ title, description, recommended, onSelect, isMobile }: Pre
             position: "absolute",
             top: isMobile ? "-8px" : "-10px",
             right: isMobile ? "0.5rem" : "1rem",
-            background: "#007bff",
+            background: colors.brand,
             color: "white",
             padding: isMobile ? "0.15rem 0.5rem" : "0.25rem 0.75rem",
             borderRadius: "12px",
@@ -538,7 +540,7 @@ function PresetCard({ title, description, recommended, onSelect, isMobile }: Pre
             <div style={{ fontWeight: "bold", fontSize: "0.9rem", marginBottom: "0.15rem" }}>{title}</div>
             <div style={{ color: "#666", fontSize: "0.75rem", lineHeight: "1.3" }}>{description}</div>
           </div>
-          <div style={{ color: "#007bff", fontSize: "1.2rem" }}>›</div>
+          <div style={{ color: colors.brand, fontSize: "1.2rem" }}>›</div>
         </>
       ) : (
         <>
@@ -652,7 +654,7 @@ function PresetSummary({ presetKey, isMobile }: PresetSummaryProps) {
         <span
           style={{
             display: "inline-block",
-            background: "#007bff",
+            background: colors.brand,
             color: "white",
             padding: isMobile ? "0.15rem 0.5rem" : "0.25rem 0.75rem",
             borderRadius: "12px",

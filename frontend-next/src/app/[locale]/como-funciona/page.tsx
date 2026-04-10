@@ -453,7 +453,7 @@ export default async function ComoFuncionaPage() {
                           textAlign: "center",
                           fontWeight: 700,
                           borderBottom: isLast ? undefined : "1px solid var(--border)",
-                          color: "#10b981",
+                          color: colors.successAlt,
                         }}
                       >
                         {row.points}

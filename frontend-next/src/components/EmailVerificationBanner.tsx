@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { resendVerificationEmail } from "@/lib/api";
@@ -67,7 +69,7 @@ export function EmailVerificationBanner({
   const titleStyle: React.CSSProperties = {
     fontSize: 15,
     fontWeight: 600,
-    color: "#92400e",
+    color: colors.warningDarker,
     marginBottom: 4,
   };
 

@@ -65,17 +65,17 @@ export function MemberManagement({
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {isHost && (
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#007bff20", border: "1px solid #007bff", color: "#007bff", fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#007bff20", border: "1px solid #007bff", color: colors.brand, fontWeight: 600 }}>
                       👑 HOST
                     </span>
                   )}
                   {isCoAdmin && (
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#28a74520", border: "1px solid #28a745", color: "#28a745", fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#28a74520", border: "1px solid #28a745", color: colors.success, fontWeight: 600 }}>
                       ⭐ CO-ADMIN
                     </span>
                   )}
                   {isPlayer && (
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#6c757d20", border: "1px solid #6c757d", color: "#6c757d", fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#6c757d20", border: "1px solid #6c757d", color: colors.textMuted, fontWeight: 600 }}>
                       PLAYER
                     </span>
                   )}
@@ -113,7 +113,7 @@ export function MemberManagement({
                       }}
                       style={{
                         padding: "6px 12px", borderRadius: 6, border: "1px solid #28a745",
-                        background: busyKey === `promote:${member.userId}` ? "#ccc" : "#28a745",
+                        background: busyKey === `promote:${member.userId}` ? "#ccc" : colors.success,
                         color: "#fff", cursor: busyKey === `promote:${member.userId}` ? "wait" : "pointer",
                         fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                       }}
@@ -143,7 +143,7 @@ export function MemberManagement({
                       }}
                       style={{
                         padding: "6px 12px", borderRadius: 6, border: "1px solid #dc3545",
-                        background: busyKey === `demote:${member.userId}` ? "#ccc" : "#dc3545",
+                        background: busyKey === `demote:${member.userId}` ? "#ccc" : colors.errorAlt,
                         color: "#fff", cursor: busyKey === `demote:${member.userId}` ? "wait" : "pointer",
                         fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                       }}
@@ -156,7 +156,7 @@ export function MemberManagement({
                     onClick={() => setExpulsionModalData({ memberId: member.memberId, memberName: member.displayName, type: "KICK" })}
                     style={{
                       padding: "6px 12px", borderRadius: 6, border: "1px solid #ffc107",
-                      background: "#fff", color: "#ffc107", cursor: "pointer",
+                      background: "#fff", color: colors.warning, cursor: "pointer",
                       fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                     }}
                   >
@@ -167,7 +167,7 @@ export function MemberManagement({
                     onClick={() => setExpulsionModalData({ memberId: member.memberId, memberName: member.displayName, type: "BAN" })}
                     style={{
                       padding: "6px 12px", borderRadius: 6, border: "1px solid #dc3545",
-                      background: "#fff", color: "#dc3545", cursor: "pointer",
+                      background: "#fff", color: colors.errorAlt, cursor: "pointer",
                       fontSize: 12, fontWeight: 600, whiteSpace: "nowrap"
                     }}
                   >

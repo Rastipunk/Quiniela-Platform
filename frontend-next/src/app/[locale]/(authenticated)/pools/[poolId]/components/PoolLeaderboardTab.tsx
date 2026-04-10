@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useTranslations } from "next-intl";
 import { MobileLeaderboard } from "@/components/MobileLeaderboard";
 import { PlayerSummary } from "@/components/PlayerSummary";
@@ -62,7 +64,7 @@ export function PoolLeaderboardTab({
                   <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
                     <th style={{ padding: "12px 8px", textAlign: "left", fontWeight: 700, color: "#444" }}>{t("leaderboard.pos")}</th>
                     <th style={{ padding: "12px 8px", textAlign: "left", fontWeight: 700, color: "#444" }}>{t("leaderboard.player")}</th>
-                    <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: "#007bff", background: "#e7f3ff", borderRadius: "8px 8px 0 0" }}>{t("leaderboard.total")}</th>
+                    <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: colors.brand, background: colors.infoBgLight, borderRadius: "8px 8px 0 0" }}>{t("leaderboard.total")}</th>
                     {(overview.leaderboard.phases || []).map((phaseId: string) => (
                       <th
                         key={phaseId}
@@ -103,17 +105,17 @@ export function PoolLeaderboardTab({
                           <div style={{ fontWeight: 600, marginBottom: 4 }}>{r.displayName}</div>
                           <div style={{ display: "flex", gap: 4 }}>
                             {r.role === "HOST" && (
-                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "#007bff20", border: "1px solid #007bff", color: "#007bff", fontWeight: 600 }}>
+                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "#007bff20", border: "1px solid #007bff", color: colors.brand, fontWeight: 600 }}>
                                 👑 HOST
                               </span>
                             )}
                             {r.role === "CO_ADMIN" && (
-                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "#28a74520", border: "1px solid #28a745", color: "#28a745", fontWeight: 600 }}>
+                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "#28a74520", border: "1px solid #28a745", color: colors.success, fontWeight: 600 }}>
                                 ⭐ CO-ADMIN
                               </span>
                             )}
                             {r.role === "PLAYER" && (
-                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "#6c757d20", border: "1px solid #6c757d", color: "#6c757d", fontWeight: 600 }}>
+                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "#6c757d20", border: "1px solid #6c757d", color: colors.textMuted, fontWeight: 600 }}>
                                 PLAYER
                               </span>
                             )}
@@ -124,7 +126,7 @@ export function PoolLeaderboardTab({
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: "14px 8px", textAlign: "center", fontWeight: 900, fontSize: 18, color: "#007bff", background: "#f8fbff" }}>
+                        <td style={{ padding: "14px 8px", textAlign: "center", fontWeight: 900, fontSize: 18, color: colors.brand, background: "#f8fbff" }}>
                           {r.points}
                         </td>
                         {phases.map((phaseId: string) => {
@@ -145,7 +147,7 @@ export function PoolLeaderboardTab({
                                 cursor: hasPoints ? "pointer" : "default",
                                 transition: "background 0.15s ease",
                               }}
-                              onMouseEnter={(e) => { if (hasPoints) e.currentTarget.style.background = "#e7f3ff"; }}
+                              onMouseEnter={(e) => { if (hasPoints) e.currentTarget.style.background = colors.infoBgLight; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                               title={hasPoints ? t("leaderboard.viewPhaseDetail", { phase: formatPhaseFullName(phaseId, t) }) : t("leaderboard.noPointsYet")}
                             >

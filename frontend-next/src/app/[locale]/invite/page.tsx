@@ -126,7 +126,7 @@ function InviteContent() {
           }}>
             <span>👥 {t("inviteLanding.members", { count: preview.memberCount })}</span>
             {preview.valid && (
-              <span style={{ color: "#10b981" }}>✓ {t("inviteLanding.active")}</span>
+              <span style={{ color: colors.successAlt }}>✓ {t("inviteLanding.active")}</span>
             )}
           </div>
         </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useTranslations } from "next-intl";
 
 export interface ScoringOverrideModalData {
@@ -99,7 +101,7 @@ export function ScoringOverrideModal({ data, reason, onReasonChange, onConfirm, 
               padding: "8px 16px",
               borderRadius: 8,
               border: "none",
-              background: data.currentEnabled ? "#f59e0b" : "#10b981",
+              background: data.currentEnabled ? "#f59e0b" : colors.successAlt,
               color: "#fff",
               cursor: busy ? "wait" : "pointer",
               fontSize: 14,

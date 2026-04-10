@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { StructuralPicksManager } from "@/components/StructuralPicksManager";
@@ -164,7 +166,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                   padding: "10px 16px",
                   border: "1px solid #ddd",
                   borderRadius: 8,
-                  background: isActive ? "#007bff" : status === "PENDING" ? "#f8f9fa" : "#fff",
+                  background: isActive ? colors.brand : status === "PENDING" ? "#f8f9fa" : "#fff",
                   color: isActive ? "#fff" : status === "PENDING" ? "#999" : "#333",
                   fontWeight: isActive ? 700 : 500,
                   fontSize: 13,
@@ -232,7 +234,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         <div style={{
           marginTop: 14,
           padding: 16,
-          background: "#fff3cd",
+          background: colors.warningBg,
           border: "1px solid #ffeeba",
           borderRadius: 12,
           display: "flex",
@@ -241,10 +243,10 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         }}>
           <span style={{ fontSize: 24 }}>⏳</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, color: "#856404", marginBottom: 4 }}>
+            <div style={{ fontWeight: 700, color: colors.warningDark, marginBottom: 4 }}>
               {t("pendingPhase.title")}
             </div>
-            <div style={{ fontSize: 13, color: "#856404", lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, color: colors.warningDark, lineHeight: 1.6 }}>
               {t("pendingPhase.description")}
             </div>
           </div>
@@ -359,7 +361,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               padding: "10px 18px",
               border: "1px solid #ddd",
               borderRadius: 8,
-              background: !selectedGroup ? "#007bff" : "#fff",
+              background: !selectedGroup ? colors.brand : "#fff",
               color: !selectedGroup ? "#fff" : "#666",
               fontWeight: !selectedGroup ? 600 : 500,
               fontSize: 13,
@@ -382,7 +384,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                   padding: "10px 18px",
                   border: selectedGroup === g ? "1px solid #007bff" : "1px solid #ddd",
                   borderRadius: 8,
-                  background: selectedGroup === g ? "#007bff" : "#fff",
+                  background: selectedGroup === g ? colors.brand : "#fff",
                   color: selectedGroup === g ? "#fff" : "#666",
                   fontWeight: selectedGroup === g ? 600 : 500,
                   fontSize: 13,

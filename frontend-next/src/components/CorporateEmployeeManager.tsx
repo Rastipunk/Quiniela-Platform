@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
@@ -123,7 +125,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
   }
 
   const statusColors: Record<string, { bg: string; color: string; border: string }> = {
-    PENDING: { bg: "#fef3c7", color: "#92400e", border: "#fcd34d" },
+    PENDING: { bg: "#fef3c7", color: colors.warningDarker, border: "#fcd34d" },
     SENT: { bg: "#dbeafe", color: "#1e40af", border: "#93c5fd" },
     ACTIVATED: { bg: "#d1fae5", color: "#065f46", border: "#6ee7b7" },
     FAILED: { bg: "#fee2e2", color: "#991b1b", border: "#fca5a5" },

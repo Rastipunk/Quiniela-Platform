@@ -85,7 +85,7 @@ export function PredictionSubscribeButton() {
     <div
       style={{
         background: "var(--surface)",
-        border: `2px solid ${isSubscribed ? "#10b981" : BRAND.primary}`,
+        border: `2px solid ${isSubscribed ? colors.successAlt : BRAND.primary}`,
         borderRadius: 16,
         padding: "24px 28px",
         textAlign: "center",
@@ -152,7 +152,7 @@ export function PredictionSubscribeButton() {
       {justSubscribed && (
         <p
           style={{
-            color: "#10b981",
+            color: colors.successAlt,
             fontSize: "0.85rem",
             fontWeight: 600,
             marginTop: 12,

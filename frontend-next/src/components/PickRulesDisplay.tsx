@@ -86,7 +86,7 @@ export function PickRulesDisplay({
           }}>
             <span style={{
               fontSize: 28,
-              background: "#007bff",
+              background: colors.brand,
               color: "white",
               width: 44,
               height: 44,
@@ -98,7 +98,7 @@ export function PickRulesDisplay({
             }}>
               {index + 1}
             </span>
-            <h4 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: "#007bff" }}>
+            <h4 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: colors.brand }}>
               {(phase.phaseName || (() => { const key = `phasesLong.${phase.phaseId}`; try { return tDynamic(key); } catch { return phase.phaseId.replace(/_/g, " "); } })() || `${t("phase")} ${index + 1}`).toUpperCase()}
             </h4>
           </div>
@@ -109,7 +109,7 @@ export function PickRulesDisplay({
                 <span style={{ fontWeight: 600, fontSize: 14 }}>{t("predictionType")}:</span>{" "}
                 <span
                   style={{
-                    background: "#d4edda",
+                    background: colors.successBg,
                     padding: "4px 12px",
                     borderRadius: 6,
                     border: "1px solid #c3e6cb",
@@ -141,7 +141,7 @@ export function PickRulesDisplay({
                         border: "1px solid #dee2e6",
                       }}
                     >
-                      <span style={{ fontSize: 20, fontWeight: 900, color: "#28a745", minWidth: 50, textAlign: "right" }}>
+                      <span style={{ fontSize: 20, fontWeight: 900, color: colors.success, minWidth: 50, textAlign: "right" }}>
                         {type.points}
                       </span>
                       <span style={{ fontSize: 14 }}>
@@ -156,12 +156,12 @@ export function PickRulesDisplay({
                 style={{
                   marginTop: 12,
                   padding: 10,
-                  background: "#fff3cd",
+                  background: colors.warningBg,
                   borderRadius: 8,
                   border: "1px solid #ffeeba",
                 }}
               >
-                <div style={{ fontSize: 13, color: "#856404" }}>
+                <div style={{ fontSize: 13, color: colors.warningDark }}>
                   ⏰ <b>{t("deadlineInfo")}:</b> {t("deadlineMinutes", { minutes: poolDeadlineMinutes })} ({t("timezoneInfo", { timezone: poolTimeZone })})
                 </div>
               </div>
@@ -172,7 +172,7 @@ export function PickRulesDisplay({
                 <span style={{ fontWeight: 600, fontSize: 14 }}>{t("predictionType")}:</span>{" "}
                 <span
                   style={{
-                    background: "#fff3cd",
+                    background: colors.warningBg,
                     padding: "4px 12px",
                     borderRadius: 6,
                     border: "1px solid #ffeeba",
@@ -262,7 +262,7 @@ export function PickRulesDisplay({
                   <div style={{ color: "#666", fontSize: 13 }}>
                     • {t("rulesDisplay.ptsPerExactPosition", { points: cfg.pointsPerExactPosition })}
                   </div>
-                  <div style={{ marginTop: 8, fontSize: 12, color: "#856404" }}>
+                  <div style={{ marginTop: 8, fontSize: 12, color: colors.warningDark }}>
                     ⚠️ {t("rulesDisplay.lockDateWarning", { date: new Date(cfg.lockDateTime!).toLocaleString() })}
                   </div>
                 </div>
@@ -315,7 +315,7 @@ export function PickRulesDisplay({
             <li>{t("rulesDisplay.noteReadCarefully")}</li>
             <li>{t("rulesDisplay.notePointsIncrease")}</li>
             {isCumulativeScoringFromConfig(pickTypesConfig) ? (
-              <li style={{ color: "#155724", background: "#d4edda", padding: "8px 12px", borderRadius: 6, marginTop: 8, marginBottom: 8, listStyle: "none", marginLeft: -24 }}>
+              <li style={{ color: colors.successDark, background: colors.successBg, padding: "8px 12px", borderRadius: 6, marginTop: 8, marginBottom: 8, listStyle: "none", marginLeft: -24 }}>
                 {t.rich("rulesDisplay.cumulativeSystem", { strong: (chunks) => <strong>{chunks}</strong> })}
               </li>
             ) : (

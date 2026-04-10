@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
@@ -107,11 +109,11 @@ export function PoolAdminTab({
           <div style={{ fontSize: 14, color: "#666", marginBottom: 8 }}>
             {t("admin.capacity.current", { current: overview.counts.membersActive, max: overview.pool.maxParticipants })}
           </div>
-          <div style={{ height: 8, background: "#e9ecef", borderRadius: 4, marginBottom: 16 }}>
+          <div style={{ height: 8, background: colors.borderLighter, borderRadius: 4, marginBottom: 16 }}>
             <div style={{
               height: "100%", borderRadius: 4,
               width: `${Math.min(100, (overview.counts.membersActive / overview.pool.maxParticipants) * 100)}%`,
-              background: (overview.counts.membersActive / overview.pool.maxParticipants) > 0.8 ? "#dc3545" : "#28a745",
+              background: (overview.counts.membersActive / overview.pool.maxParticipants) > 0.8 ? colors.errorAlt : colors.success,
               transition: "width 0.3s ease",
             }} />
           </div>
@@ -127,11 +129,11 @@ export function PoolAdminTab({
 
       {/* Archive Pool Section */}
       {overview.pool.status === "COMPLETED" && (
-        <div style={{ marginBottom: 24, padding: 16, background: "#fff3cd", borderRadius: 12, border: "1px solid #ffc107" }}>
-          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#856404" }}>
+        <div style={{ marginBottom: 24, padding: 16, background: colors.warningBg, borderRadius: 12, border: "1px solid #ffc107" }}>
+          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: colors.warningDark }}>
             📦 {t("admin.archive.title")}
           </h4>
-          <div style={{ fontSize: 14, lineHeight: 1.8, color: "#856404", marginBottom: 12 }}>
+          <div style={{ fontSize: 14, lineHeight: 1.8, color: colors.warningDark, marginBottom: 12 }}>
             {t("admin.archive.description")}
           </div>
           <button
@@ -154,8 +156,8 @@ export function PoolAdminTab({
             disabled={busyKey === "archive"}
             style={{
               padding: "10px 20px", borderRadius: 8, border: "1px solid #856404",
-              background: busyKey === "archive" ? "#ccc" : "#ffc107",
-              color: "#856404", cursor: busyKey === "archive" ? "wait" : "pointer",
+              background: busyKey === "archive" ? "#ccc" : colors.warning,
+              color: colors.warningDark, cursor: busyKey === "archive" ? "wait" : "pointer",
               fontSize: 14, fontWeight: 600,
             }}
           >
@@ -165,7 +167,7 @@ export function PoolAdminTab({
       )}
 
       {/* Instructions */}
-      <div style={{ padding: 16, background: "#e7f3ff", border: "1px solid #b3d7ff", borderRadius: 12 }}>
+      <div style={{ padding: 16, background: colors.infoBgLight, border: "1px solid #b3d7ff", borderRadius: 12 }}>
         <div style={{ fontSize: 14, color: "#004085", lineHeight: 1.6 }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>ℹ️ {t("admin.hostInfo.title")}</div>
           <ul style={{ margin: 0, paddingLeft: 20 }}>

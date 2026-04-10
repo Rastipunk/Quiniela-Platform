@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 // Componente de Leaderboard optimizado para móvil
 // Sprint 3 - Mobile UX Improvements
 
@@ -58,7 +60,7 @@ export function MobileLeaderboard({
                   : "linear-gradient(135deg, #fff8f0 0%, #ffede0 100%)"
                 : "#fff",
               border: isTopThree
-                ? `2px solid ${idx === 0 ? "#ffc107" : idx === 1 ? "#adb5bd" : "#fd7e14"}`
+                ? `2px solid ${idx === 0 ? colors.warning : idx === 1 ? colors.disabled : "#fd7e14"}`
                 : "1px solid #e0e0e0",
               borderRadius: 12,
               padding: 16,
@@ -118,7 +120,7 @@ export function MobileLeaderboard({
                         borderRadius: 4,
                         background: "#007bff20",
                         border: "1px solid #007bff",
-                        color: "#007bff",
+                        color: colors.brand,
                         fontWeight: 600,
                       }}
                     >
@@ -133,7 +135,7 @@ export function MobileLeaderboard({
                         borderRadius: 4,
                         background: "#28a74520",
                         border: "1px solid #28a745",
-                        color: "#28a745",
+                        color: colors.success,
                         fontWeight: 600,
                       }}
                     >
@@ -164,7 +166,7 @@ export function MobileLeaderboard({
                   style={{
                     fontWeight: 900,
                     fontSize: 24,
-                    color: "#007bff",
+                    color: colors.brand,
                     lineHeight: 1,
                   }}
                 >
@@ -172,7 +174,7 @@ export function MobileLeaderboard({
                 </div>
                 <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
                   {idx === 0 ? (
-                    <span style={{ color: "#28a745", fontWeight: 600 }}>{t("mobileLeaderboard.leader")}</span>
+                    <span style={{ color: colors.success, fontWeight: 600 }}>{t("mobileLeaderboard.leader")}</span>
                   ) : (
                     <span>-{diff} pts</span>
                   )}
@@ -238,7 +240,7 @@ export function MobileLeaderboard({
                         style={{
                           fontSize: 14,
                           fontWeight: hasPoints ? 700 : 400,
-                          color: hasPoints ? "#007bff" : "#ccc",
+                          color: hasPoints ? colors.brand : "#ccc",
                         }}
                       >
                         {hasPoints ? phasePoints : "-"}

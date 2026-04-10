@@ -42,7 +42,7 @@ export default function DashboardPage() {
   function getPoolStatusBadge(status: string): { label: string; color: string; emoji: string } {
     const labels: Record<string, { color: string; emoji: string }> = {
       DRAFT: { color: "#f59e0b", emoji: "\u{1F4DD}" },
-      ACTIVE: { color: "#10b981", emoji: "\u26BD" },
+      ACTIVE: { color: colors.successAlt, emoji: "\u26BD" },
       COMPLETED: { color: "#3b82f6", emoji: "\u{1F3C6}" },
       ARCHIVED: { color: "#6b7280", emoji: "\u{1F4E6}" },
     };

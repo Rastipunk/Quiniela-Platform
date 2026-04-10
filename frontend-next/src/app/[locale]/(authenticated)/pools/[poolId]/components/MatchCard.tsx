@@ -70,10 +70,10 @@ export function MatchCard({
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {homeIsPlaceholder ? (
               <>
-                <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef", borderRadius: 2, border: "1px solid #ced4da" }}>
+                <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: colors.borderLighter, borderRadius: 2, border: "1px solid #ced4da" }}>
                   <span style={{ fontSize: 14 }}>🔒</span>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 500, color: "#6c757d", fontStyle: "italic" }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: colors.textMuted, fontStyle: "italic" }}>
                   {getPlaceholderName(m.homeTeam.id, t)}
                 </span>
               </>
@@ -104,10 +104,10 @@ export function MatchCard({
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {awayIsPlaceholder ? (
               <>
-                <span style={{ fontSize: 14, fontWeight: 500, color: "#6c757d", fontStyle: "italic" }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: colors.textMuted, fontStyle: "italic" }}>
                   {getPlaceholderName(m.awayTeam.id, t)}
                 </span>
-                <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "#e9ecef", borderRadius: 2, border: "1px solid #ced4da" }}>
+                <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: colors.borderLighter, borderRadius: 2, border: "1px solid #ced4da" }}>
                   <span style={{ fontSize: 14 }}>🔒</span>
                 </div>
               </>
@@ -146,7 +146,7 @@ export function MatchCard({
             </span>
           )}
           {m.scoringEnabled === false && (
-            <span style={{ padding: "4px 10px", border: "1px solid #fbbf24", borderRadius: 999, background: "#fef3c7", color: "#92400e", fontWeight: 600 }}>
+            <span style={{ padding: "4px 10px", border: "1px solid #fbbf24", borderRadius: 999, background: "#fef3c7", color: colors.warningDarker, fontWeight: 600 }}>
               ⚠️ {t("scoringDisabledBadge")}
             </span>
           )}
@@ -193,7 +193,7 @@ export function MatchCard({
           borderRadius: 8,
           marginBottom: 10,
           fontSize: 13,
-          color: "#92400e",
+          color: colors.warningDarker,
         }}>
           ⚠️ {t("scoringDisabledByHost")}
           {m.scoringOverrideReason && (
@@ -206,16 +206,16 @@ export function MatchCard({
       {hasAnyPlaceholder ? (
         <div style={{
           padding: 20,
-          background: "#fff3cd",
+          background: colors.warningBg,
           border: "1px solid #ffeeba",
           borderRadius: 12,
           textAlign: "center"
         }}>
           <div style={{ fontSize: 24, marginBottom: 8 }}>🔒</div>
-          <div style={{ fontWeight: 700, color: "#856404", marginBottom: 4 }}>
+          <div style={{ fontWeight: 700, color: colors.warningDark, marginBottom: 4 }}>
             {t("matchCard.pendingTitle")}
           </div>
-          <div style={{ fontSize: 13, color: "#856404" }}>
+          <div style={{ fontSize: 13, color: colors.warningDark }}>
             {t("matchCard.pendingDesc")}
           </div>
         </div>
@@ -293,7 +293,7 @@ export function MatchCard({
               borderRadius: 6,
               border: "1px solid #17a2b8",
               background: "#e7f6f8",
-              color: "#17a2b8",
+              color: colors.info,
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 600,
@@ -311,9 +311,9 @@ export function MatchCard({
               style={{
                 padding: isMobile ? "10px 16px" : "6px 12px",
                 borderRadius: 6,
-                border: `1px solid ${m.scoringEnabled !== false ? "#fbbf24" : "#10b981"}`,
+                border: `1px solid ${m.scoringEnabled !== false ? "#fbbf24" : colors.successAlt}`,
                 background: m.scoringEnabled !== false ? "#fef9c3" : "#d1fae5",
-                color: m.scoringEnabled !== false ? "#92400e" : "#065f46",
+                color: m.scoringEnabled !== false ? colors.warningDarker : "#065f46",
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: 600,

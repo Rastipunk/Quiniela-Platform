@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useTranslations } from "next-intl";
 import { PickRulesDisplay } from "@/components/PickRulesDisplay";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
@@ -29,7 +31,7 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
 
           {/* Scoring System */}
           <div style={{ marginBottom: 20, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
-            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>
+            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: colors.brand }}>
               📊 {t("rules.scoring.title")}
             </h4>
             <div style={{ fontSize: 14, lineHeight: 1.8 }}>
@@ -44,13 +46,13 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
               </div>
               <div style={{ display: "grid", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 24, fontWeight: 900, color: "#28a745", minWidth: 40 }}>
+                  <span style={{ fontSize: 24, fontWeight: 900, color: colors.success, minWidth: 40 }}>
                     {overview.leaderboard.scoring.exactScoreBonus}
                   </span>
                   <span>{t.rich("rules.scoring.exactScore", { b: (chunks) => <b>{chunks}</b> })}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 24, fontWeight: 900, color: "#ffc107", minWidth: 40 }}>
+                  <span style={{ fontSize: 24, fontWeight: 900, color: colors.warning, minWidth: 40 }}>
                     {overview.leaderboard.scoring.outcomePoints}
                   </span>
                   <span>{t.rich("rules.scoring.outcomeOnly", { b: (chunks) => <b>{chunks}</b> })}</span>
@@ -61,14 +63,14 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
 
           {/* Pick Rules */}
           <div style={{ marginBottom: 20, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
-            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>
+            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: colors.brand }}>
               ⚽ {t("rules.pickTypes.title")}
             </h4>
             <div style={{ fontSize: 14, lineHeight: 1.8 }}>
               <div style={{ marginBottom: 8 }}>
                 <span style={{ fontWeight: 600 }}>{t("rules.pickTypes.method")}:</span>{" "}
                 <span style={{
-                  background: allowScorePick ? "#d4edda" : "#fff3cd",
+                  background: allowScorePick ? colors.successBg : colors.warningBg,
                   padding: "4px 12px", borderRadius: 6,
                   border: allowScorePick ? "1px solid #c3e6cb" : "1px solid #ffeeba",
                   fontWeight: 600
@@ -84,7 +86,7 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
 
           {/* Deadline Policy */}
           <div style={{ marginBottom: 20, padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
-            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>
+            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: colors.brand }}>
               ⏰ {t("rules.deadline.title")}
             </h4>
             <div style={{ fontSize: 14, lineHeight: 1.8 }}>
@@ -97,8 +99,8 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
               <div style={{ color: "#666", fontSize: 13, marginBottom: 8 }}>
                 {t.rich("rules.deadline.description", { minutes: overview.pool.deadlineMinutesBeforeKickoff, b: (chunks) => <b>{chunks}</b> })}
               </div>
-              <div style={{ marginTop: 8, padding: 10, background: "#fff3cd", borderRadius: 8, border: "1px solid #ffeeba" }}>
-                <div style={{ fontSize: 13, color: "#856404" }}>
+              <div style={{ marginTop: 8, padding: 10, background: colors.warningBg, borderRadius: 8, border: "1px solid #ffeeba" }}>
+                <div style={{ fontSize: 13, color: colors.warningDark }}>
                   {t.rich("rules.deadline.important", { b: (chunks) => <b>{chunks}</b>, timezone: overview.pool.timeZone })}
                 </div>
               </div>
@@ -107,7 +109,7 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
 
           {/* Tournament Info */}
           <div style={{ padding: 16, background: "#f8f9fa", borderRadius: 12, border: "1px solid #e9ecef" }}>
-            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: "#007bff" }}>
+            <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 12, color: colors.brand }}>
               🏆 {t("rules.tournament.title")}
             </h4>
             <div style={{ fontSize: 14, lineHeight: 1.8 }}>
@@ -120,7 +122,7 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
               <div style={{ marginBottom: 6 }}>
                 <span style={{ fontWeight: 600 }}>{t("rules.tournament.visibility")}:</span>{" "}
                 <span style={{
-                  background: overview.pool.visibility === "PRIVATE" ? "#fff3cd" : "#d4edda",
+                  background: overview.pool.visibility === "PRIVATE" ? colors.warningBg : colors.successBg,
                   padding: "2px 8px", borderRadius: 4,
                   border: overview.pool.visibility === "PRIVATE" ? "1px solid #ffeeba" : "1px solid #c3e6cb",
                   fontSize: 12, fontWeight: 600

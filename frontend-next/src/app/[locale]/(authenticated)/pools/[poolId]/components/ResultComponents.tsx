@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { getTeamFlag, getCountryName } from "@/data/teamFlags";
@@ -143,14 +145,14 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
               <span style={{ fontSize: 18 }}>⚽</span>
             </div>
           )}
-          <span style={{ fontSize: 36, fontWeight: 900, color: "#007bff" }}>{result.homeGoals}</span>
+          <span style={{ fontSize: 36, fontWeight: 900, color: colors.brand }}>{result.homeGoals}</span>
         </div>
 
         <span style={{ fontSize: 20, fontWeight: 700, color: "#99c2e8", margin: "0 4px" }}>-</span>
 
         {/* Away team score + flag */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 36, fontWeight: 900, color: "#007bff" }}>{result.awayGoals}</span>
+          <span style={{ fontSize: 36, fontWeight: 900, color: colors.brand }}>{result.awayGoals}</span>
           {awayFlag?.flagUrl ? (
             <img
               src={awayFlag.flagUrl}
@@ -169,19 +171,19 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
       {/* Penalties display (if any) */}
       {(result.homePenalties !== null && result.homePenalties !== undefined) && (
         <div style={{ marginTop: 12, padding: 10, background: "#fffbf0", border: "1px solid #ffc107", borderRadius: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#856404", marginBottom: 6, textAlign: "center" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: colors.warningDark, marginBottom: 6, textAlign: "center" }}>
             ⚽ {t("result.penalties")}
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: result.homePenalties > (result.awayPenalties || 0) ? "#28a745" : "#666" }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: result.homePenalties > (result.awayPenalties || 0) ? colors.success : "#666" }}>
               {result.homePenalties}
             </span>
-            <span style={{ fontSize: 14, color: "#856404" }}>-</span>
-            <span style={{ fontSize: 18, fontWeight: 700, color: (result.awayPenalties || 0) > result.homePenalties ? "#28a745" : "#666" }}>
+            <span style={{ fontSize: 14, color: colors.warningDark }}>-</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: (result.awayPenalties || 0) > result.homePenalties ? colors.success : "#666" }}>
               {result.awayPenalties || 0}
             </span>
           </div>
-          <div style={{ fontSize: 10, color: "#856404", textAlign: "center", marginTop: 4 }}>
+          <div style={{ fontSize: 10, color: colors.warningDark, textAlign: "center", marginTop: 4 }}>
             {result.homePenalties > (result.awayPenalties || 0)
               ? `✅ ${t("result.teamWins", { team: homeName })}`
               : `✅ ${t("result.teamWins", { team: awayName })}`}
@@ -197,11 +199,11 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
           style={{
             marginTop: 8,
             padding: 8,
-            background: "#fff3cd",
+            background: colors.warningBg,
             border: "1px solid #ffc107",
             borderRadius: 6,
             fontSize: 12,
-            color: "#856404",
+            color: colors.warningDark,
           }}
         >
           <b>{t("result.correctionLabel")}:</b> {result.reason}
@@ -286,8 +288,8 @@ function ResultEditor(props: {
 
       {/* Penalties Section (solo para fases eliminatorias con empate) */}
       {showPenalties && (
-        <div style={{ marginTop: 12, padding: 12, background: "#fff3cd", border: "1px solid #ffc107", borderRadius: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#856404", marginBottom: 8, textAlign: "center" }}>
+        <div style={{ marginTop: 12, padding: 12, background: colors.warningBg, border: "1px solid #ffc107", borderRadius: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: colors.warningDark, marginBottom: 8, textAlign: "center" }}>
             ⚠️ {t("result.penaltiesRequired")}
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
@@ -303,7 +305,7 @@ function ResultEditor(props: {
                 style={{ width: 60, padding: 8, borderRadius: 8, border: "1px solid #ffc107", textAlign: "center", fontSize: 16, fontWeight: 700, background: "#fffbf0" }}
               />
             </div>
-            <span style={{ fontWeight: 900, fontSize: 16, color: "#856404", marginTop: 20 }}>-</span>
+            <span style={{ fontWeight: 900, fontSize: 16, color: colors.warningDark, marginTop: 20 }}>-</span>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               <span style={{ fontSize: 10, color: "#666" }}>{t("result.penaltiesLabel", { team: awayName })}</span>
               <input

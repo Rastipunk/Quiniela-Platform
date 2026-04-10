@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 // Componente unificado para partidos de eliminacion directa
 // HOST: Publica resultado (goles + penales si aplica)
 // PLAYER: Elige quien avanza
@@ -262,7 +264,7 @@ export function KnockoutMatchCard({
         {/* LEFT: Player Pick */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: "#6b7280" }}>
-            {t("knockoutCard.yourPrediction")} {pickSaved && <span style={{ color: "#10b981" }}>✓</span>}
+            {t("knockoutCard.yourPrediction")} {pickSaved && <span style={{ color: colors.successAlt }}>✓</span>}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -290,7 +292,7 @@ export function KnockoutMatchCard({
                 padding: isMobile ? "12px 20px" : "0.6rem",
                 fontSize: isMobile ? 15 : 13,
                 fontWeight: 600,
-                background: "#10b981",
+                background: colors.successAlt,
                 color: "white",
                 border: "none",
                 borderRadius: 8,
@@ -421,7 +423,7 @@ export function KnockoutMatchCard({
                   background: "#fef3c7",
                   borderRadius: 6
                 }}>
-                  <span style={{ fontSize: isMobile ? 13 : 12, color: "#92400e", width: isMobile ? 50 : 60, flexShrink: 0 }}>{t("knockoutCard.penalties")}</span>
+                  <span style={{ fontSize: isMobile ? 13 : 12, color: colors.warningDarker, width: isMobile ? 50 : 60, flexShrink: 0 }}>{t("knockoutCard.penalties")}</span>
                   <input
                     type="number"
                     min="0"
@@ -439,7 +441,7 @@ export function KnockoutMatchCard({
                       minHeight: TOUCH_TARGET.minimum,
                     }}
                   />
-                  <span style={{ color: "#92400e" }}>-</span>
+                  <span style={{ color: colors.warningDarker }}>-</span>
                   <input
                     type="number"
                     min="0"
@@ -598,7 +600,7 @@ function TeamPickButton({
       }}
     >
       {isSelected && (
-        <span style={{ color: "#10b981", fontSize: 16 }}>✓</span>
+        <span style={{ color: colors.successAlt, fontSize: 16 }}>✓</span>
       )}
       <span style={{
         fontSize: 14,
@@ -611,7 +613,7 @@ function TeamPickButton({
         <span style={{
           marginLeft: "auto",
           fontSize: 11,
-          color: "#10b981",
+          color: colors.successAlt,
           background: "#f0fdf4",
           padding: "0.15rem 0.5rem",
           borderRadius: 10

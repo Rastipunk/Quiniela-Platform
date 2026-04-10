@@ -99,7 +99,7 @@ function JoinPoolInner() {
                 fontSize: "1.3rem",
                 fontWeight: 700,
                 marginBottom: 8,
-                color: "#10b981",
+                color: colors.successAlt,
               }}
             >
               {t("join.success")}

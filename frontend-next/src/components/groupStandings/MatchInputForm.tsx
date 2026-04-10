@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import type { Match, Team } from "./types";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "../../hooks/useIsMobile";
 
@@ -50,7 +52,7 @@ export function MatchInputForm({
           border: "1px solid #fcd34d",
           borderRadius: 6,
           fontSize: 11,
-          color: "#92400e"
+          color: colors.warningDarker
         }}>
           <strong>{t("groupStandings.correctionMode")}</strong> {t("groupStandings.correctionModeDesc")}
         </div>
@@ -116,7 +118,7 @@ export function MatchInputForm({
                   padding: isMobile ? "0.4rem 0.6rem" : "0.15rem 0.3rem",
                   fontSize: isMobile ? 13 : 10,
                   fontWeight: 600,
-                  background: state.saved ? "#10b981" : isSaving ? "#d1d5db" : "#3b82f6",
+                  background: state.saved ? colors.successAlt : isSaving ? "#d1d5db" : "#3b82f6",
                   color: "white",
                   border: "none",
                   borderRadius: 4,

@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 // Paso 2: Configuración por Fase
 // Sprint 2 - Advanced Pick Types System
 
@@ -179,7 +181,7 @@ export function PhaseConfigStep({
           <div
             style={{
               height: "100%",
-              background: "#007bff",
+              background: colors.brand,
               width: `${((currentPhaseIndex + 1) / phases.length) * 100}%`,
               transition: "width 0.3s",
             }}
@@ -265,7 +267,7 @@ export function PhaseConfigStep({
             border: currentPhaseIndex === 0 ? "1px solid #ddd" : "1px solid #007bff",
             borderRadius: "6px",
             cursor: currentPhaseIndex === 0 ? "not-allowed" : "pointer",
-            color: currentPhaseIndex === 0 ? "#999" : "#007bff",
+            color: currentPhaseIndex === 0 ? "#999" : colors.brand,
             fontWeight: currentPhaseIndex === 0 ? "normal" : "500",
             minHeight: isMobile ? "40px" : "auto",
           }}
@@ -279,7 +281,7 @@ export function PhaseConfigStep({
             flex: isMobile ? 1 : "none",
             padding: isMobile ? "0.6rem 0.75rem" : "0.75rem 1.5rem",
             fontSize: isMobile ? "0.85rem" : "1rem",
-            background: "#007bff",
+            background: colors.brand,
             border: "none",
             borderRadius: "6px",
             color: "white",
@@ -322,7 +324,7 @@ function DecisionCard({ title, selected, onClick, children, isMobile = false }: 
       }}
       onMouseEnter={(e) => {
         if (!selected) {
-          e.currentTarget.style.borderColor = "#007bff";
+          e.currentTarget.style.borderColor = colors.brand;
         }
       }}
       onMouseLeave={(e) => {
@@ -688,7 +690,7 @@ function PickTypeCard({
               marginTop: "0.5rem",
               background: "none",
               border: "none",
-              color: "#007bff",
+              color: colors.brand,
               fontSize: "0.7rem",
               cursor: "pointer",
               padding: 0,

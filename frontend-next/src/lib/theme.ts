@@ -85,9 +85,9 @@ export const colors = {
   infoBgLight: "#e7f3ff",
   infoBorder: "#b3d7ff",
 
-  // Blue (action/link)
-  blue: "#007bff",
-  blueBg: "#007bff20",
+  // Blue (action/link) — now aligned with brand
+  blue: BRAND.primary,
+  blueBg: `${BRAND.primary}20`,
 
   // Purple (corporate)
   purple: "#7c3aed",

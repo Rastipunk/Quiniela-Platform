@@ -426,7 +426,7 @@ export default function PoolPage() {
           textAlign: "center",
         }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>&#9203;</div>
-          <h3 style={{ margin: "0 0 8px", fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: "#92400e" }}>
+          <h3 style={{ margin: "0 0 8px", fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.warningDarker }}>
             {t("pendingApproval.title")}
           </h3>
           <p style={{ margin: "0 0 16px", fontSize: fontSize.base, color: "#a16207", lineHeight: 1.5 }}>

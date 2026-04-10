@@ -287,7 +287,7 @@ export function GroupStandingsCard({
         {/* LEFT: Player Pick */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: "#6b7280" }}>
-            {t("groupStandings.yourPrediction")} {playerPickSaved && !isEditingPick && <span style={{ color: "#10b981" }}>✓</span>}
+            {t("groupStandings.yourPrediction")} {playerPickSaved && !isEditingPick && <span style={{ color: colors.successAlt }}>✓</span>}
           </div>
 
           {isEditingPick ? (
@@ -309,7 +309,7 @@ export function GroupStandingsCard({
                     padding: isMobile ? "12px 20px" : "0.6rem",
                     fontSize: isMobile ? 15 : 13,
                     fontWeight: 600,
-                    background: "#10b981",
+                    background: colors.successAlt,
                     color: "white",
                     border: "none",
                     borderRadius: 8,
@@ -386,7 +386,7 @@ export function GroupStandingsCard({
                       padding: isMobile ? "10px 12px" : "0.4rem",
                       fontSize: isMobile ? 13 : 12,
                       background: "#fef3c7",
-                      color: "#92400e",
+                      color: colors.warningDarker,
                       border: "1px solid #fcd34d",
                       borderRadius: 6,
                       cursor: "pointer",

@@ -252,10 +252,10 @@ export function StructuralPicksManager({
       <div
         style={{
           padding: "1.5rem",
-          background: "#f8d7da",
+          background: colors.errorBgAlt,
           border: "1px solid #f5c6cb",
           borderRadius: 8,
-          color: "#721c24",
+          color: colors.errorDarkest,
         }}
       >
         ❌ <strong>{t("structuralManager.error")}:</strong> {error}
@@ -297,10 +297,10 @@ export function StructuralPicksManager({
           style={{
             marginBottom: "1.5rem",
             padding: "1rem",
-            background: "#d4edda",
+            background: colors.successBg,
             border: "1px solid #c3e6cb",
             borderRadius: 8,
-            color: "#155724",
+            color: colors.successDark,
             fontWeight: 600,
           }}
         >
@@ -363,7 +363,7 @@ export function StructuralPicksManager({
           style={{
             marginTop: "2rem",
             padding: "1.5rem",
-            background: "#e7f3ff",
+            background: colors.infoBgLight,
             border: "1px solid #b3d9ff",
             borderRadius: 12,
             textAlign: "center",

@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useEffect, useState, useRef } from "react";
 import { getUserProfile, updateUserProfile, type UserProfile, type UpdateProfileInput } from "@/lib/api";
 import { getToken } from "@/lib/auth";
@@ -211,7 +213,7 @@ export default function ProfilePage() {
             <span
               style={{
                 background: "#fef3c7",
-                color: "#92400e",
+                color: colors.warningDarker,
                 fontSize: 12,
                 padding: "2px 8px",
                 borderRadius: 12,
@@ -596,7 +598,7 @@ export default function ProfilePage() {
               fontSize: "1rem",
               borderRadius: "4px",
               border: "none",
-              background: saving ? "#ccc" : "#007bff",
+              background: saving ? "#ccc" : colors.brand,
               color: "white",
               cursor: saving ? "not-allowed" : "pointer",
             }}

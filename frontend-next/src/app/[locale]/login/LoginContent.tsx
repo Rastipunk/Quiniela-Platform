@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/lib/theme";
+
 import { useEffect, useMemo, useState, useRef } from "react";
 import { login, register, loginWithGoogle, type RegisterConsentOptions } from "@/lib/api";
 import { consumeSessionExpiredFlag, setToken } from "@/lib/auth";
@@ -607,7 +609,7 @@ export default function LoginContent() {
                 border: "1px solid #f59e0b",
                 borderRadius: 8,
                 fontSize: 13,
-                color: "#92400e",
+                color: colors.warningDarker,
                 textAlign: "center",
                 lineHeight: 1.4,
               }}
