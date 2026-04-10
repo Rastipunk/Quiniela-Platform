@@ -235,13 +235,6 @@
     }
   },
 
-  "invite": {
-    "title": "Invitaciones",
-    "inviteMore": "Invita más jugadores",
-    "createCode": "Crear código",
-    "codeCopied": "Código (copiado si el navegador lo permitió):"
-  },
-
   "filters": {
     "title": "Filtros",
     "searchPlaceholder": "Buscar por equipo / grupo...",
@@ -735,6 +728,7 @@
   },
   "invite": {
     "title": "Invitaciones",
+    "inviteMore": "Invita más jugadores",
     "createCode": "Crear código",
     "codeCopied": "Código (copiado si el navegador lo permitió):"
   },

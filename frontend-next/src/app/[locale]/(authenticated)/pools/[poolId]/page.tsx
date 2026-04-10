@@ -409,20 +409,20 @@ export default function PoolPage() {
 
   // ── Render ──
   return (
-    <div style={{ maxWidth: 1180, margin: "18px auto", padding: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <Link
-          href="/dashboard"
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            color: colors.brand, textDecoration: "none", fontWeight: fontWeight.medium, fontSize: fontSize.sm,
-            padding: "4px 8px", borderRadius: radii.md,
-            transition: "background 0.15s ease",
-          }}
-        >
-          {t("backToDashboard")}
-        </Link>
-      </div>
+    <div style={{ maxWidth: 1180, margin: "8px auto", padding: isMobile ? "8px 12px" : "8px 16px" }}>
+      <Link
+        href="/dashboard"
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 4,
+          color: colors.brand, textDecoration: "none", fontWeight: fontWeight.semibold, fontSize: fontSize.sm,
+          padding: "6px 12px", borderRadius: radii.lg,
+          border: `1px solid ${colors.brand}30`,
+          background: `${colors.brand}08`,
+          marginBottom: 8,
+        }}
+      >
+        {t("backToDashboard")}
+      </Link>
 
       {error && error === "PENDING_APPROVAL" ? (
         <div style={{
@@ -593,18 +593,48 @@ export default function PoolPage() {
             </div>
           )}
 
-          {/* Pool header - Standard */}
+          {/* Pool header - Standard (with invite button integrated) */}
           {!overview.pool.organization && (
-            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, marginBottom: 6 }}>
-              <h2 style={{ margin: 0 }}>{overview.pool.name}</h2>
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: isMobile ? 8 : 10,
+              alignItems: "center",
+              marginTop: 8,
+              marginBottom: 4,
+            }}>
+              <h2 style={{ margin: 0, flex: "1 1 auto", minWidth: 0 }}>{overview.pool.name}</h2>
               {overview.pool.status && (() => {
                 const badge = getPoolStatusBadge(overview.pool.status, t);
                 return (
-                  <span style={{ fontSize: fontSize.md, padding: "4px 12px", borderRadius: radii.pill, border: `1px solid ${badge.color}`, background: `${badge.color}20`, color: badge.color, fontWeight: fontWeight.semibold }}>
+                  <span style={{ fontSize: fontSize.md, padding: "4px 12px", borderRadius: radii.pill, border: `1px solid ${badge.color}`, background: `${badge.color}20`, color: badge.color, fontWeight: fontWeight.semibold, flexShrink: 0 }}>
                     {badge.emoji} {badge.label}
                   </span>
                 );
               })()}
+              {overview.permissions.canInvite && (
+                <button
+                  onClick={onCreateInvite}
+                  disabled={busyKey === "invite"}
+                  style={{
+                    padding: isMobile ? "8px 16px" : "8px 20px",
+                    borderRadius: radii.lg,
+                    border: `1px solid ${colors.brand}`,
+                    background: colors.brand,
+                    color: colors.white,
+                    fontSize: isMobile ? 12 : 13,
+                    fontWeight: fontWeight.semibold,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {busyKey === "invite" ? "..." : `+ ${t("invite.inviteMore")}`}
+                </button>
+              )}
             </div>
           )}
 
@@ -612,43 +642,7 @@ export default function PoolPage() {
             {overview.tournamentInstance.name} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
 
-          {/* Invite players — compact bar above tabs */}
-          {overview.permissions.canInvite && (
-            <div style={{
-              marginTop: 8,
-              display: "flex",
-              alignItems: "center",
-              gap: isMobile ? 8 : 12,
-              padding: isMobile ? "8px 12px" : "8px 16px",
-              borderRadius: radii.xl,
-              background: `${colors.brand}08`,
-              border: `1px solid ${colors.brand}20`,
-            }}>
-              <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: fontWeight.semibold, color: colors.brand, flex: 1 }}>
-                {t("invite.inviteMore", { defaultMessage: "Invita más jugadores" })}
-              </span>
-              <button
-                onClick={onCreateInvite}
-                disabled={busyKey === "invite"}
-                style={{
-                  padding: isMobile ? "6px 14px" : "6px 18px",
-                  borderRadius: radii.lg,
-                  border: "none",
-                  background: colors.brand,
-                  color: colors.white,
-                  fontSize: isMobile ? 12 : 13,
-                  fontWeight: fontWeight.semibold,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                }}
-              >
-                {busyKey === "invite" ? "..." : t("invite.createCode")}
-              </button>
-            </div>
-          )}
-
-          {/* Invite code display */}
+          {/* Invite code display (shown after creating code) */}
           {inviteCode && overview.permissions.canInvite && (
             <div style={{ marginTop: 6, padding: "8px 12px", borderRadius: radii.lg, background: colors.white, border: `1px solid ${colors.borderLight}` }}>
               <div style={{ fontSize: 11, color: colors.textMuted }}>{t("invite.codeCopied")}</div>

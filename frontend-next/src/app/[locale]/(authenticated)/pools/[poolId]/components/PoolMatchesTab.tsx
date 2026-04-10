@@ -253,43 +253,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         </div>
       )}
 
-      {/* Invite (Host) */}
-      {overview.permissions.canInvite && (
-        <div style={{ marginTop: 14, padding: 14, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <div style={{ fontWeight: 900 }}>{t("invite.title")}</div>
-            <button
-              onClick={onCreateInvite}
-              disabled={busyKey === "invite"}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 12,
-                border: "1px solid #111",
-                background: colors.text,
-                color: colors.white,
-                cursor: "pointer",
-              }}
-            >
-              {busyKey === "invite" ? "..." : t("invite.createCode")}
-            </button>
-          </div>
-
-          {inviteCode && (
-            <div style={{ marginTop: 10, fontSize: 13 }}>
-              <div style={{ color: colors.textMuted }}>{t("invite.codeCopied")}</div>
-              <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 1 }}>{inviteCode}</div>
-              <div style={{ marginTop: 12 }}>
-                <ShareButtons
-                  context="poolInvite"
-                  url={`${typeof window !== "undefined" ? window.location.origin : ""}/invite?code=${inviteCode}`}
-                  data={{ poolName: overview.pool.name, inviteCode }}
-                  size="sm"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Invite section moved to pool page header */}
 
       {/* Tab Content: Partidos - Collapsible filters */}
       {!requiresStructuralPicks && (
