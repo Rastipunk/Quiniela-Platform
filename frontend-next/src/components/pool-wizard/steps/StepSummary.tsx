@@ -48,7 +48,6 @@ export function StepSummary() {
     label,
     value,
     step,
-    multiline,
   }: {
     label: string;
     value: string | React.ReactNode;
@@ -59,20 +58,21 @@ export function StepSummary() {
       <div
         style={{
           display: "flex",
-          flexDirection: multiline || isMobile ? "column" : "row",
           justifyContent: "space-between",
-          alignItems: multiline || isMobile ? "flex-start" : "center",
-          gap: isMobile ? 4 : 8,
-          padding: `${spacing.md}px 0`,
+          alignItems: "baseline",
+          gap: 8,
+          padding: `${isMobile ? 10 : spacing.md}px 0`,
           borderBottom: `1px solid ${colors.borderLight}`,
         }}
       >
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              fontSize: fontSize.md,
+              fontSize: fontSize.xs,
               fontWeight: fontWeight.semibold,
               color: colors.textMuted,
+              textTransform: "uppercase" as const,
+              letterSpacing: 0.5,
               marginBottom: 2,
             }}
           >
@@ -80,10 +80,10 @@ export function StepSummary() {
           </div>
           <div
             style={{
-              fontSize: fontSize.lg,
+              fontSize: isMobile ? fontSize.base : fontSize.lg,
               fontWeight: fontWeight.medium,
               color: colors.text,
-              lineHeight: 1.4,
+              lineHeight: 1.3,
             }}
           >
             {value}
@@ -96,14 +96,13 @@ export function StepSummary() {
             background: "none",
             border: "none",
             color: colors.brand,
-            fontSize: fontSize.md,
+            fontSize: fontSize.sm,
             fontWeight: fontWeight.semibold,
             cursor: "pointer",
-            padding: `${spacing.xs}px ${spacing.sm}px`,
+            padding: `2px ${spacing.xs}px`,
             borderRadius: radii.md,
             transition: "background 0.15s",
             flexShrink: 0,
-            alignSelf: isMobile ? "flex-end" : "center",
           }}
         >
           {t("summary.edit", { defaultMessage: "Editar" })}
@@ -194,9 +193,9 @@ export function StepSummary() {
                   marginTop: 2,
                 }}
               >
-                {uniqueTypes.length}{" "}
                 {t("summary.pickTypes", {
-                  defaultMessage: "tipos de pick activos",
+                  defaultMessage: "{count} criterios activos",
+                  count: uniqueTypes.length,
                 })}
               </div>
             )}
@@ -300,14 +299,14 @@ export function StepSummary() {
       {/* Info note */}
       <div
         style={{
-          marginTop: spacing.xl,
-          padding: spacing.md,
-          borderRadius: radii["2xl"],
+          marginTop: isMobile ? spacing.md : spacing.xl,
+          padding: isMobile ? spacing.sm : spacing.md,
+          borderRadius: radii.xl,
           background: colors.infoBgLight,
           border: `1px solid ${colors.infoBorder}`,
-          fontSize: fontSize.md,
+          fontSize: fontSize.sm,
           color: colors.infoDarker,
-          lineHeight: 1.5,
+          lineHeight: 1.4,
           textAlign: "center",
         }}
       >
