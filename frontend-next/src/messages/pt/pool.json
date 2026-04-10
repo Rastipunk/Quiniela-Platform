@@ -8,6 +8,7 @@
     "hint": "Se precisar de acesso imediato, entre em contato com quem te convidou."
   },
   "httpErrors": {
+    "POOL_DRAFT": "Este pool ainda está em rascunho. Convide pelo menos um jogador para que possa começar a fazer palpites.",
     "FORBIDDEN": "Você não tem permissão para acessar este conteúdo.",
     "NOT_FOUND": "Este recurso não foi encontrado.",
     "UNAUTHORIZED": "Sua sessão expirou. Faça login novamente.",

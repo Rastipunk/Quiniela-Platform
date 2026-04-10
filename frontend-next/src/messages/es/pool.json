@@ -8,6 +8,7 @@
     "hint": "Si necesitas acceso inmediato, comunícate directamente con quien te invitó."
   },
   "httpErrors": {
+    "POOL_DRAFT": "Este pool aún está en borrador. Invita al menos a un jugador para que se una y puedas empezar a hacer predicciones.",
     "FORBIDDEN": "No tienes permiso para acceder a este contenido.",
     "NOT_FOUND": "Este recurso no fue encontrado.",
     "UNAUTHORIZED": "Tu sesión expiró. Por favor inicia sesión de nuevo.",

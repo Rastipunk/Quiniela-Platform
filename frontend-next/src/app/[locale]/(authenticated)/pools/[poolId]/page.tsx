@@ -79,6 +79,7 @@ export default function PoolPage() {
     const err = e as { message?: string; status?: number };
     const msg = err?.message ?? "";
     if (msg === "PENDING_APPROVAL") return "PENDING_APPROVAL";
+    if (msg === "POOL_DRAFT") return t("httpErrors.POOL_DRAFT");
     if (msg === "FORBIDDEN" || err?.status === 403) return t("httpErrors.FORBIDDEN");
     if (err?.status === 404) return t("httpErrors.NOT_FOUND");
     if (err?.status === 401) return t("httpErrors.UNAUTHORIZED");

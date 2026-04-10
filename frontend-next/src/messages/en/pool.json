@@ -8,6 +8,7 @@
     "hint": "If you need immediate access, contact the person who invited you."
   },
   "httpErrors": {
+    "POOL_DRAFT": "This pool is still a draft. Invite at least one player to join so you can start making predictions.",
     "FORBIDDEN": "You don't have permission to access this content.",
     "NOT_FOUND": "This resource was not found.",
     "UNAUTHORIZED": "Your session expired. Please log in again.",

@@ -173,7 +173,8 @@ export async function upsertPick(
 
   // Validate pool status allows picks
   if (!canMakePicks(pool.status)) {
-    throw new ServiceError("CONFLICT", 409, { message: "Cannot make picks in this pool status" });
+    const code = pool.status === "DRAFT" ? "POOL_DRAFT" : "CONFLICT";
+    throw new ServiceError(code, 409, { message: "Cannot make picks in this pool status", poolStatus: pool.status });
   }
 
   // Do not allow picks on archived instances
