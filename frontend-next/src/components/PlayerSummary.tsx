@@ -157,7 +157,7 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
       <div style={{ ...cell, paddingLeft: isMobile ? 8 : 16, gap: 4, whiteSpace: "nowrap" }}>
         {match.homeTeam ? (
           <TeamFlag
-            teamId={`t_${match.homeTeam.code ?? match.homeTeam.id}`}
+            teamId={match.homeTeam.id}
             tournamentKey={tournamentKey}
             size="sm"
             showName={true}
@@ -176,7 +176,7 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
       <div style={{ ...cell, gap: 4, overflow: "hidden" }}>
         {match.awayTeam ? (
           <TeamFlag
-            teamId={`t_${match.awayTeam.code ?? match.awayTeam.id}`}
+            teamId={match.awayTeam.id}
             tournamentKey={tournamentKey}
             size="sm"
             showName={true}
