@@ -153,14 +153,15 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
 
   return (
     <div style={{ display: "contents" }}>
-      {/* Equipo local */}
-      <div style={{ ...cell, paddingLeft: isMobile ? 8 : 16, gap: 4, whiteSpace: "nowrap" }}>
+      {/* Equipo local — name + flag, right-aligned toward VS */}
+      <div style={{ ...cell, paddingLeft: isMobile ? 8 : 16, gap: 4, whiteSpace: "nowrap", justifyContent: "flex-end" }}>
         {match.homeTeam ? (
           <TeamFlag
             teamId={match.homeTeam.id}
             tournamentKey={tournamentKey}
             size="sm"
             showName={true}
+            reverseOrder={true}
           />
         ) : (
           <span style={{ color: colors.textLight, fontSize: isMobile ? 12 : 13 }}>TBD</span>
@@ -172,8 +173,8 @@ function MatchRow({ match, tournamentKey, isMobile }: { match: PlayerSummaryMatc
         <span style={{ color: "#aaa", fontSize: isMobile ? 10 : 11 }}>vs</span>
       </div>
 
-      {/* Equipo visitante */}
-      <div style={{ ...cell, gap: 4, overflow: "hidden" }}>
+      {/* Equipo visitante — flag + name, left-aligned toward VS */}
+      <div style={{ ...cell, gap: 4, overflow: "hidden", justifyContent: "flex-start" }}>
         {match.awayTeam ? (
           <TeamFlag
             teamId={match.awayTeam.id}

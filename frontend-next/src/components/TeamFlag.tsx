@@ -9,6 +9,8 @@ type TeamFlagProps = {
   size?: "sm" | "md" | "lg";
   showName?: boolean;
   layout?: "horizontal" | "vertical";
+  /** If true, render name first then flag (useful for "home" side facing center) */
+  reverseOrder?: boolean;
 };
 
 const sizeMap = {
@@ -23,6 +25,7 @@ export function TeamFlag({
   size = "md",
   showName = true,
   layout = "horizontal",
+  reverseOrder = false,
 }: TeamFlagProps) {
   // Extraer código: "t_A1" → "A1"
   const teamCode = teamId.replace("t_", "");
@@ -46,6 +49,30 @@ export function TeamFlag({
     );
   }
 
+  const flagImg = (
+    <img
+      src={flag.flagUrl}
+      alt={flag.country}
+      style={{
+        width: sizeMap[size],
+        height: "auto",
+        borderRadius: 2,
+        border: "1px solid #ddd",
+      }}
+    />
+  );
+  const nameSpan = showName && (
+    <span
+      style={{
+        fontSize: size === "sm" ? 12 : size === "md" ? 14 : 16,
+        fontWeight: size === "lg" ? 600 : 500,
+        textAlign: layout === "vertical" ? "center" : "left",
+      }}
+    >
+      {flag.country}
+    </span>
+  );
+
   return (
     <div
       style={{
@@ -55,26 +82,16 @@ export function TeamFlag({
         flexDirection: layout === "vertical" ? "column" : "row",
       }}
     >
-      <img
-        src={flag.flagUrl}
-        alt={flag.country}
-        style={{
-          width: sizeMap[size],
-          height: "auto",
-          borderRadius: 2,
-          border: "1px solid #ddd",
-        }}
-      />
-      {showName && (
-        <span
-          style={{
-            fontSize: size === "sm" ? 12 : size === "md" ? 14 : 16,
-            fontWeight: size === "lg" ? 600 : 500,
-            textAlign: layout === "vertical" ? "center" : "left",
-          }}
-        >
-          {flag.country}
-        </span>
+      {reverseOrder ? (
+        <>
+          {nameSpan}
+          {flagImg}
+        </>
+      ) : (
+        <>
+          {flagImg}
+          {nameSpan}
+        </>
       )}
     </div>
   );
