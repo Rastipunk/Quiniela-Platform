@@ -11,6 +11,10 @@ type TeamFlagProps = {
   layout?: "horizontal" | "vertical";
   /** If true, render name first then flag (useful for "home" side facing center) */
   reverseOrder?: boolean;
+  /** If true, allow the country name to wrap to multiple lines */
+  wrapName?: boolean;
+  /** Text alignment for the name (only relevant when wrapName=true) */
+  nameAlign?: "left" | "right" | "center";
 };
 
 const sizeMap = {
@@ -26,6 +30,8 @@ export function TeamFlag({
   showName = true,
   layout = "horizontal",
   reverseOrder = false,
+  wrapName = false,
+  nameAlign,
 }: TeamFlagProps) {
   // Extraer código: "t_A1" → "A1"
   const teamCode = teamId.replace("t_", "");
@@ -58,6 +64,7 @@ export function TeamFlag({
         height: "auto",
         borderRadius: 2,
         border: "1px solid #ddd",
+        flexShrink: 0,
       }}
     />
   );
@@ -66,7 +73,10 @@ export function TeamFlag({
       style={{
         fontSize: size === "sm" ? 12 : size === "md" ? 14 : 16,
         fontWeight: size === "lg" ? 600 : 500,
-        textAlign: layout === "vertical" ? "center" : "left",
+        textAlign: nameAlign ?? (layout === "vertical" ? "center" : "left"),
+        whiteSpace: wrapName ? "normal" : "nowrap",
+        lineHeight: 1.2,
+        minWidth: 0,
       }}
     >
       {flag.country}
