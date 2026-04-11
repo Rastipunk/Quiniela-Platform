@@ -275,3 +275,11 @@ export function stopFixtureTrackingJob(): void {
     console.log("[FixtureTrackingJob] Job stopped");
   }
 }
+
+/**
+ * Manually trigger a fixture tracking run (for admin panel).
+ * Returns when the run completes (or skips if another run is in progress).
+ */
+export async function triggerFixtureTracking(): Promise<void> {
+  await runFixtureTracking();
+}

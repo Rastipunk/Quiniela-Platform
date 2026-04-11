@@ -68,6 +68,9 @@ export default function AdminEmailSettingsContent() {
   const [scoresLoading, setScoresLoading] = useState(true);
   const [scoresSaving, setScoresSaving] = useState(false);
 
+  // Fixture tracking trigger
+  const [trackingTriggering, setTrackingTriggering] = useState(false);
+
   useEffect(() => () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
   }, []);
@@ -146,6 +149,29 @@ export default function AdminEmailSettingsContent() {
       setError("Error al cambiar configuración de scores");
     } finally {
       setScoresSaving(false);
+    }
+  };
+
+  const handleTriggerTracking = async () => {
+    const token = getToken();
+    if (!token) return;
+    setTrackingTriggering(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/admin/jobs/trigger-fixture-tracking`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: `p4a_token=${token}` },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to trigger fixture tracking");
+      setSuccess("Fixture tracking job disparado. Picks4All está enviando los partidos próximos a Scores.");
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(null), 5000);
+    } catch {
+      setError("Error al disparar el job de fixture tracking");
+    } finally {
+      setTrackingTriggering(false);
     }
   };
 
@@ -488,6 +514,44 @@ export default function AdminEmailSettingsContent() {
                 </div>
               </label>
             </div>
+          </div>
+
+          {/* Manual fixture tracking trigger */}
+          <div style={{
+            marginTop: 16,
+            paddingTop: 16,
+            borderTop: "1px solid #e5e7eb",
+          }}>
+            <div style={{ ...toggleLabelStyle, marginBottom: 6 }}>
+              Disparar Fixture Tracking Manual
+            </div>
+            <div style={{ ...toggleDescStyle, marginBottom: 12 }}>
+              Ejecuta el job que escanea instancias AUTO y envía los próximos partidos a picks4all-scores
+              para que comience a rastrearlos. Útil para pruebas o cuando se acaba de crear una instancia.
+              El cron normal corre cada hora.
+            </div>
+            <button
+              onClick={handleTriggerTracking}
+              disabled={trackingTriggering || !scoresEnabled}
+              style={{
+                background: scoresEnabled ? colors.brand : colors.borderMedium,
+                color: colors.white,
+                border: "none",
+                borderRadius: 8,
+                padding: "10px 20px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: trackingTriggering || !scoresEnabled ? "not-allowed" : "pointer",
+                opacity: trackingTriggering ? 0.6 : 1,
+              }}
+            >
+              {trackingTriggering ? "Disparando..." : "Disparar Tracking Ahora"}
+            </button>
+            {!scoresEnabled && (
+              <div style={{ marginTop: 8, fontSize: 12, color: colors.textLighter }}>
+                Activa primero el servicio de Scores para poder disparar el job.
+              </div>
+            )}
           </div>
         </div>
 

@@ -94,6 +94,25 @@ adminRouter.post("/bootstrap-admin", (_req, res) => {
   sendNotFound(res, "Not found");
 });
 
+// POST /admin/jobs/trigger-fixture-tracking — Manually trigger fixtureTrackingJob
+// Used to test the picks4all-scores integration end-to-end without waiting for the hourly cron.
+adminRouter.post("/jobs/trigger-fixture-tracking", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { triggerFixtureTracking } = await import("../jobs/fixtureTrackingJob");
+    fireAndForget("admin:trigger-fixture-tracking", triggerFixtureTracking());
+    fireAndForget("audit:trigger-fixture-tracking", writeAuditEvent({
+      actorUserId: req.auth!.userId,
+      action: "manual_fixture_tracking_triggered",
+      entityType: "Job",
+      ip: req.ip ?? null,
+      userAgent: req.get("user-agent") ?? null,
+    }));
+    return sendOk(res, { triggered: true, message: "Fixture tracking job triggered in background" });
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
 // Endpoint para seedear WC2026 en producción (solo admin)
 adminRouter.post("/seed-wc2026", requireAuth, requireAdmin, async (_req, res) => {
   try {
