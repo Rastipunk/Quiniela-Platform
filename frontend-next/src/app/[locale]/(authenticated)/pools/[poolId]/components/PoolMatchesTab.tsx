@@ -1,6 +1,6 @@
 "use client";
 
-import { colors } from "@/lib/theme";
+import { colors, radii } from "@/lib/theme";
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
@@ -150,41 +150,51 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
 
   return (
     <>
-      {/* Phase Navigation Sub-tabs */}
+      {/* Phase Navigation — segmented control style (subtle, secondary level) */}
       {phases.length > 0 && (
-        <div style={{ marginTop: 14, display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "thin" }}>
+        <div style={{
+          marginTop: 12,
+          display: "flex",
+          gap: 0,
+          overflowX: "auto",
+          paddingBottom: 4,
+          background: colors.bgLight,
+          borderRadius: radii.lg,
+          padding: 4,
+          border: `1px solid ${colors.borderLight}`,
+        }}>
           {phases.map((phase: any) => {
             const status = getPhaseStatus(phase.id);
             const matchCount = overview.matches.filter((m: any) => m.phaseId === phase.id).length;
             const isActive = activePhase === phase.id;
+            const isLocked = status === "PENDING";
 
             return (
               <button
                 key={phase.id}
                 onClick={() => setActivePhase(phase.id)}
                 style={{
-                  padding: "10px 16px",
-                  border: "1px solid #ddd",
-                  borderRadius: 8,
-                  background: isActive ? colors.brand : status === "PENDING" ? colors.bgLight : colors.white,
-                  color: isActive ? colors.white : status === "PENDING" ? colors.textLight : colors.textDark,
+                  padding: "6px 12px",
+                  border: "none",
+                  borderRadius: radii.md,
+                  background: isActive ? colors.white : "transparent",
+                  color: isActive ? colors.brand : isLocked ? colors.textLight : colors.textMuted,
                   fontWeight: isActive ? 700 : 500,
-                  fontSize: 13,
+                  fontSize: 12,
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
-                  transition: "all 0.2s",
-                  boxShadow: isActive ? "0 2px 4px rgba(0,123,255,0.3)" : "none",
-                  opacity: status === "PENDING" ? 0.8 : 1,
+                  gap: 4,
+                  transition: "all 0.15s",
+                  boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  opacity: isLocked ? 0.6 : 1,
+                  flexShrink: 0,
                 }}
               >
                 <span>{formatPhaseName(phase.id, t)}</span>
-                <span style={{ fontSize: 11, opacity: 0.85 }}>({matchCount})</span>
-                {status === "PENDING" && <span style={{ fontSize: 14 }}>🔒</span>}
-                {status === "COMPLETED" && <span style={{ fontSize: 14 }}>✅</span>}
-                {status === "ACTIVE" && !isActive && <span style={{ fontSize: 14 }}>⚽</span>}
+                <span style={{ fontSize: 10, opacity: 0.7 }}>({matchCount})</span>
+                {isLocked && <span style={{ fontSize: 10 }}>🔒</span>}
               </button>
             );
           })}
@@ -311,66 +321,12 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         </div>
       )}
 
-      {/* Tab Content: Partidos - Group Tabs (hide when only SIN_GRUPO) */}
-      {!requiresStructuralPicks && !(groupOrder.length === 1 && groupOrder[0] === "SIN_GRUPO") && (
-        <div style={{
-          marginTop: 14,
-          display: "flex",
-          gap: 6,
-          overflowX: "auto",
-          paddingBottom: 4,
-          scrollbarWidth: "thin"
-        }}>
-          <button
-            onClick={() => setSelectedGroup(null)}
-            style={{
-              padding: "10px 18px",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              background: !selectedGroup ? colors.brand : colors.white,
-              color: !selectedGroup ? colors.white : colors.textMuted,
-              fontWeight: !selectedGroup ? 600 : 500,
-              fontSize: 13,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "all 0.2s",
-              boxShadow: !selectedGroup ? "0 2px 4px rgba(0,123,255,0.3)" : "none",
-            }}
-          >
-            {t("filters.all")}
-          </button>
-          {groupOrder.map((g) => {
-            const count = matchesByGroup[g]?.length ?? 0;
-            if (count === 0) return null;
-            return (
-              <button
-                key={g}
-                onClick={() => setSelectedGroup(g)}
-                style={{
-                  padding: "10px 18px",
-                  border: selectedGroup === g ? "1px solid #007bff" : "1px solid #ddd",
-                  borderRadius: 8,
-                  background: selectedGroup === g ? colors.brand : colors.white,
-                  color: selectedGroup === g ? colors.white : colors.textMuted,
-                  fontWeight: selectedGroup === g ? 600 : 500,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.2s",
-                  boxShadow: selectedGroup === g ? "0 2px 4px rgba(0,123,255,0.3)" : "none",
-                }}
-              >
-                {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Group selector removed — collapsed group cards below serve as both selector and content */}
 
-      {/* Tab Content: Partidos - Matches by group */}
+      {/* Tab Content: Partidos - Matches by group (each group is a collapsible card) */}
       {!requiresStructuralPicks && (
-        <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-          {groupOrder.filter(g => !selectedGroup || g === selectedGroup).map((g) => {
+        <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
+          {groupOrder.map((g) => {
             const noGroups = groupOrder.length === 1 && groupOrder[0] === "SIN_GRUPO";
             const matchList = (
               <div key={g} style={noGroups ? { display: "grid", gap: 12 } : { marginTop: 12, display: "grid", gap: 12 }}>
@@ -397,25 +353,15 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               </div>
             );
             if (noGroups) return matchList;
-            // When a specific group is selected → show matches directly (no collapse)
-            if (selectedGroup) {
-              return (
-                <div key={g} style={{ border: `1px solid ${colors.borderLight}`, borderRadius: 14, background: colors.white, padding: 12 }}>
-                  <div style={{ fontWeight: 900, marginBottom: 8 }}>
-                    {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })} ({matchesByGroup[g]?.length ?? 0})
-                  </div>
-                  {matchList}
-                </div>
-              );
-            }
-            // "Todos" view → all groups collapsed
+            // Each group as collapsible card (single source of truth for grouping)
             return (
               <details
                 key={g}
-                style={{ border: `1px solid ${colors.borderLight}`, borderRadius: 14, background: colors.white, padding: 12 }}
+                style={{ border: `1px solid ${colors.borderLight}`, borderRadius: 14, background: colors.white, padding: "10px 14px" }}
               >
-                <summary style={{ cursor: "pointer", fontWeight: 900 }}>
-                  {g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })} ({matchesByGroup[g]?.length ?? 0})
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14, color: colors.textDark, listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>{g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })}</span>
+                  <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>{matchesByGroup[g]?.length ?? 0} partidos</span>
                 </summary>
                 {matchList}
               </details>
