@@ -38,13 +38,44 @@ type ThirdPlaceTeam = TeamStanding & {
 };
 
 /**
+ * Compute head-to-head mini-table among a subset of tied teams.
+ * Returns a Map<teamId, { points, goalDifference, goalsFor }> with stats
+ * computed only from matches between the tied teams.
+ */
+function computeHeadToHead(
+  tiedTeamIds: string[],
+  allMatches: GroupResults['matches']
+): Map<string, { points: number; goalDifference: number; goalsFor: number }> {
+  const tiedSet = new Set(tiedTeamIds);
+  const h2h = new Map<string, { points: number; goalDifference: number; goalsFor: number }>();
+  for (const id of tiedTeamIds) h2h.set(id, { points: 0, goalDifference: 0, goalsFor: 0 });
+
+  for (const m of allMatches) {
+    if (!tiedSet.has(m.homeTeamId) || !tiedSet.has(m.awayTeamId)) continue;
+    const home = h2h.get(m.homeTeamId)!;
+    const away = h2h.get(m.awayTeamId)!;
+    home.goalsFor += m.homeGoals;
+    away.goalsFor += m.awayGoals;
+    home.goalDifference += m.homeGoals - m.awayGoals;
+    away.goalDifference += m.awayGoals - m.homeGoals;
+    if (m.homeGoals > m.awayGoals) home.points += 3;
+    else if (m.homeGoals < m.awayGoals) away.points += 3;
+    else { home.points += 1; away.points += 1; }
+  }
+  return h2h;
+}
+
+/**
  * Calcula la tabla de posiciones de un grupo basado en los resultados.
- * Criterios FIFA:
- * 1. Puntos (3 por victoria, 1 por empate, 0 por derrota)
- * 2. Diferencia de goles
- * 3. Goles a favor
- * 4. Fair play points (si disponible)
- * 5. Sorteo (no implementado - requiere intervención manual)
+ * Criterios FIFA WC 2026 (en orden estricto):
+ * 1. Puntos
+ * 2. Diferencia de goles general
+ * 3. Goles a favor general
+ * 4. Puntos en partidos entre los empatados (head-to-head)
+ * 5. Diferencia de goles en partidos entre los empatados
+ * 6. Goles a favor en partidos entre los empatados
+ * 7. Fair play points
+ * 8. Sorteo (manual — devuelve 0)
  */
 export function calculateGroupStandings(
   groupId: string,
@@ -111,27 +142,60 @@ export function calculateGroupStandings(
     away.goalDifference = away.goalsFor - away.goalsAgainst;
   }
 
-  // Convertir a array y ordenar
+  // Convertir a array y ordenar (multi-pass: general criteria → H2H for ties → fair play)
   const standingsArray = Array.from(standings.values());
 
+  // Pass 1: sort by general criteria (points → GD → GF)
   standingsArray.sort((a, b) => {
-    // 1. Puntos (mayor a menor)
     if (b.points !== a.points) return b.points - a.points;
-
-    // 2. Diferencia de goles (mayor a menor)
     if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-
-    // 3. Goles a favor (mayor a menor)
     if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-
-    // 4. Fair play points (si disponible)
-    if (a.fairPlayPoints !== undefined && b.fairPlayPoints !== undefined) {
-      if (b.fairPlayPoints !== a.fairPlayPoints) return b.fairPlayPoints - a.fairPlayPoints;
-    }
-
-    // 5. Sorteo (retornar 0 = no cambiar orden, requiere intervención manual)
     return 0;
   });
+
+  // Pass 2: detect ties and break them with head-to-head + fair play
+  const finalOrder: TeamStanding[] = [];
+  let i = 0;
+  while (i < standingsArray.length) {
+    let j = i + 1;
+    const ref = standingsArray[i]!;
+    while (j < standingsArray.length) {
+      const cmp = standingsArray[j]!;
+      if (
+        cmp.points !== ref.points ||
+        cmp.goalDifference !== ref.goalDifference ||
+        cmp.goalsFor !== ref.goalsFor
+      ) {
+        break;
+      }
+      j++;
+    }
+    const tied = standingsArray.slice(i, j);
+    if (tied.length === 1) {
+      finalOrder.push(tied[0]!);
+    } else {
+      // Apply H2H criteria
+      const h2h = computeHeadToHead(tied.map((t) => t.teamId), results);
+      tied.sort((a, b) => {
+        const ah = h2h.get(a.teamId)!;
+        const bh = h2h.get(b.teamId)!;
+        if (bh.points !== ah.points) return bh.points - ah.points;
+        if (bh.goalDifference !== ah.goalDifference) return bh.goalDifference - ah.goalDifference;
+        if (bh.goalsFor !== ah.goalsFor) return bh.goalsFor - ah.goalsFor;
+        // Fair play
+        if (a.fairPlayPoints !== undefined && b.fairPlayPoints !== undefined) {
+          if (b.fairPlayPoints !== a.fairPlayPoints) return b.fairPlayPoints - a.fairPlayPoints;
+        }
+        // Drawing of lots: returns 0 (manual intervention needed)
+        return 0;
+      });
+      finalOrder.push(...tied);
+    }
+    i = j;
+  }
+  // Replace
+  standingsArray.length = 0;
+  standingsArray.push(...finalOrder);
 
   // Asignar posiciones
   standingsArray.forEach((team, index) => {

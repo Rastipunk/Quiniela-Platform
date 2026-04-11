@@ -182,6 +182,14 @@ export async function publishResult(data: PublishResultInput, ctx: AuditContext)
     userAgent: ctx.userAgent ?? null,
   }));
 
+  // Trigger automatic phase advancement check (delayed)
+  fireAndForget(
+    "advancement-trigger-after-publish",
+    import("./advancementTrigger").then((m) =>
+      m.checkAndTriggerAdvancement(poolId, matchId, userId)
+    )
+  );
+
   return { saved, pool, match, source: resolvedSource };
 }
 

@@ -44,6 +44,9 @@ export interface LiveScore {
   lastUpdated: string;
   homeTeamName: string;
   awayTeamName: string;
+  /** Kickoff observed by sources (median if multiple report it).
+   *  Falls back to registered kickoff if no source reported. */
+  actualKickoffUtc?: string;
 }
 
 export interface LiveScoresResponse {
@@ -60,11 +63,67 @@ export interface TrackFixture {
   homeTeamId: number;
   awayTeamId: number;
   kickoffUtc: string;
+  /** API-Football league ID — required for /fixtures/verify support */
+  leagueId?: number;
+  /** Season year — required for /fixtures/verify support */
+  season?: number;
 }
 
-interface TrackResponse {
+export type TrackFixtureStatus = "TRACKING" | "ALREADY_TRACKING" | "REJECTED";
+
+export interface TrackFixtureDetail {
+  fixtureId: number;
+  status: TrackFixtureStatus;
+  scrapingSources?: string[];
+  expectedFirstScrapeAt?: string;
+  reason?: string;
+}
+
+export interface TrackResponse {
   tracked: number;
+  alreadyTracking: number;
+  rejected: number;
+  total: number;
   message: string;
+  details: TrackFixtureDetail[];
+}
+
+export interface FixturesVerifyFixture {
+  fixtureId: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  homeTeamId: number;
+  awayTeamId: number;
+  /** Observed kickoff (consensus from sources, fallback to registered) */
+  kickoffUtc: string;
+  /** Original kickoff sent in POST /track */
+  registeredKickoffUtc: string;
+  status: string;
+  venue: string | null;
+  round: string | null;
+  sourcesAgreeing: number;
+  sourcesTotal: number;
+}
+
+export interface FixturesVerifyResponse {
+  league: number;
+  season: number;
+  scrapedAt: string;
+  fixtures: FixturesVerifyFixture[];
+}
+
+export interface TrackStatusEntry {
+  fixtureId: number;
+  status: "TRACKING";
+  addedAt: string;
+  lastScrapedAt: string | null;
+  sources: string[];
+  currentMatchStatus: string | null;
+}
+
+export interface TrackStatusResponse {
+  tracked: TrackStatusEntry[];
+  untracked: number[];
 }
 
 interface HealthResponse {
@@ -104,6 +163,45 @@ export class ScoresServiceClient {
       "POST",
       "/api/v1/track",
       { fixtures }
+    );
+    return data;
+  }
+
+  /**
+   * GET /api/v1/fixtures/verify — fetch verified fixtures for a league/season.
+   * Used by the daily verification job to detect kickoff drift.
+   */
+  async getFixturesVerify(params: {
+    league: number;
+    season: number;
+    since?: string;
+    until?: string;
+  }): Promise<FixturesVerifyResponse> {
+    const qs = new URLSearchParams({
+      league: String(params.league),
+      season: String(params.season),
+    });
+    if (params.since) qs.append("since", params.since);
+    if (params.until) qs.append("until", params.until);
+    const data = await this.request<FixturesVerifyResponse>(
+      "GET",
+      `/api/v1/fixtures/verify?${qs.toString()}`
+    );
+    return data;
+  }
+
+  /**
+   * GET /api/v1/track/status — check if specific fixtures are being tracked.
+   * Used for pre-match health checks.
+   */
+  async getTrackStatus(fixtureIds: number[]): Promise<TrackStatusResponse> {
+    if (fixtureIds.length === 0) {
+      return { tracked: [], untracked: [] };
+    }
+    const qs = new URLSearchParams({ fixtureIds: fixtureIds.join(",") });
+    const data = await this.request<TrackStatusResponse>(
+      "GET",
+      `/api/v1/track/status?${qs.toString()}`
     );
     return data;
   }

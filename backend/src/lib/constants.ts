@@ -45,6 +45,14 @@ export const SCORES = {
   FALLBACK_DELAY_MS: envInt("SCORES_FALLBACK_DELAY_MS", 30 * 60_000), // 30 min
 } as const;
 
+// ── Advancement automation ──────────────────────────────────
+export const ADVANCEMENT = {
+  /** Delay after a phase completes before triggering automatic advancement (ms).
+   *  Gives admins/hosts a window to make manual corrections before the bracket
+   *  is filled with the next phase teams. */
+  DELAY_MS: envInt("ADVANCEMENT_DELAY_MS", 10 * 60_000), // 10 min
+} as const;
+
 // ── Locales ──────────────────────────────────────────────────
 export const SUPPORTED_LOCALES = ["es", "en", "pt"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];

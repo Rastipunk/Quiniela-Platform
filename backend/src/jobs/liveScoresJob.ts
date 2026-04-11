@@ -16,6 +16,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { FINISHED_STATUSES } from "../services/apiFootball/types";
 import { SCORES } from "../lib/constants";
+import { checkAndTriggerAdvancement } from "../services/advancementTrigger";
 
 // ============================================================================
 // Configuration
@@ -173,6 +174,20 @@ async function processLiveScore(
       internalMatchId: entry.internalMatchId,
     },
   });
+
+  // Real-time drift detection: compare actualKickoffUtc (from sources) with our registered kickoff
+  if (score.actualKickoffUtc && entry.kickoffUtc) {
+    const ours = new Date(entry.kickoffUtc).getTime();
+    const observed = new Date(score.actualKickoffUtc).getTime();
+    const driftMs = Math.abs(observed - ours);
+    // Alert if drift > 30 minutes — likely a reschedule
+    if (driftMs > 30 * 60_000) {
+      console.warn(
+        `[LiveScoresJob] Kickoff drift detected for ${entry.internalMatchId}: ` +
+          `ours=${entry.kickoffUtc} observed=${score.actualKickoffUtc} diff=${Math.round(driftMs / 60_000)}min`
+      );
+    }
+  }
 
   // Determine new sync status based on grace period logic
   let newSyncStatus: string;
@@ -460,6 +475,12 @@ async function finalizeResult(
     `[LiveScoresJob] Finalized ${entry.internalMatchId} ` +
       `(pool ${poolId}): ${cv.homeGoals}-${cv.awayGoals} → API_CONFIRMED ` +
       `[grace period complete]`
+  );
+
+  // Check if this completes the phase and trigger advancement
+  fireAndForget(
+    "LiveScoresJob:advancement-trigger",
+    checkAndTriggerAdvancement(poolId, entry.internalMatchId, null)
   );
 }
 

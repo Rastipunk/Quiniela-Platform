@@ -75,6 +75,8 @@ async function runFixtureTracking(): Promise<void> {
         id: true,
         name: true,
         dataJson: true,
+        apiFootballLeagueId: true,
+        apiFootballSeasonId: true,
         matchMappings: {
           select: {
             internalMatchId: true,
@@ -143,6 +145,8 @@ async function runFixtureTracking(): Promise<void> {
           homeTeamId,
           awayTeamId,
           kickoffUtc: match.kickoffUtc,
+          ...(inst.apiFootballLeagueId ? { leagueId: inst.apiFootballLeagueId } : {}),
+          ...(inst.apiFootballSeasonId ? { season: inst.apiFootballSeasonId } : {}),
           _internalMatchId: mapping.internalMatchId,
         } as TrackFixture & { _internalMatchId: string });
       }
@@ -174,16 +178,51 @@ async function runFixtureTracking(): Promise<void> {
     // 5. Send to scores service
     const result = await client.trackFixtures(toSend);
     console.log(
-      `[FixtureTrackingJob] Sent ${toSend.length} new fixtures (${trackedSet.size} already tracked): ${result.message}`
+      `[FixtureTrackingJob] Sent ${toSend.length} fixtures: ` +
+        `${result.tracked} new, ${result.alreadyTracking} already tracking, ${result.rejected} rejected`
     );
 
-    // 6. Mark successfully tracked fixtures
-    const trackedIds = newFixtures.map((f) => f._internalMatchId!);
-    if (trackedIds.length > 0) {
+    // 6. Process per-fixture details — only mark fixtures that were actually accepted
+    const fixtureIdToInternalId = new Map(
+      newFixtures.map((f) => [f.fixtureId, f._internalMatchId!])
+    );
+    const acceptedInternalIds: string[] = [];
+    const rejectedDetails: Array<{ fixtureId: number; reason: string; internalId?: string }> = [];
+
+    for (const detail of result.details ?? []) {
+      const internalId = fixtureIdToInternalId.get(detail.fixtureId);
+      if (detail.status === "TRACKING" || detail.status === "ALREADY_TRACKING") {
+        if (internalId) acceptedInternalIds.push(internalId);
+      } else if (detail.status === "REJECTED") {
+        rejectedDetails.push({
+          fixtureId: detail.fixtureId,
+          reason: detail.reason || "Unknown reason",
+          internalId,
+        });
+      }
+    }
+
+    // 7. Mark accepted fixtures as tracked
+    if (acceptedInternalIds.length > 0) {
       await prisma.matchSyncState.updateMany({
-        where: { internalMatchId: { in: trackedIds } },
+        where: { internalMatchId: { in: acceptedInternalIds } },
         data: { trackedAtUtc: new Date() },
       });
+    }
+
+    // 8. Alert admin if any fixtures were rejected
+    if (rejectedDetails.length > 0) {
+      console.error(
+        `[FixtureTrackingJob] ${rejectedDetails.length} fixtures REJECTED by scores service`
+      );
+      const rejectedList = rejectedDetails
+        .map((r) => `<li>Fixture ${r.fixtureId} (${r.internalId || "unknown"}): ${r.reason}</li>`)
+        .join("");
+      sendAdminNotification({
+        subject: `Fixtures rejected by scores service (${rejectedDetails.length})`,
+        body: `<p>The following fixtures were rejected by picks4all-scores and will NOT be tracked:</p><ul>${rejectedList}</ul><p>Investigate why and re-track them manually if needed.</p>`,
+        type: "error",
+      }).catch(() => {});
     }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
