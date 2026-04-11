@@ -322,7 +322,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
             {/* Header row (display:contents so cells participate in the grid) */}
             <div style={{ display: "contents" }}>
               {[
-                { label: t("playerSummaryView.headerHome"), align: "left" as const, pl: isMobile ? 8 : 16 },
+                { label: t("playerSummaryView.headerHome"), align: "right" as const, pl: isMobile ? 8 : 16 },
                 { label: "", align: "center" as const },
                 { label: t("playerSummaryView.headerAway"), align: "left" as const },
                 { label: t("playerSummaryView.headerPick"), align: "center" as const },
