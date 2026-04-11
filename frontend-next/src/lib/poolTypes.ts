@@ -150,6 +150,7 @@ export interface PoolMatchCard {
   scoringOverrideReason: string | null;
   // Live data from picks4all-scores
   elapsed: number | null;
+  extra: number | null;
   matchStatus: string | null;
   isLive: boolean;
 }

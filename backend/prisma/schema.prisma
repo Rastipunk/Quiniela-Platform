@@ -838,6 +838,7 @@ model MatchSyncState {
   trackedAtUtc          DateTime?  // When scraper confirmed tracking
   graceEndUtc           DateTime?  // Grace period expiry after FT detected
   lastElapsed           Int?       // Cached elapsed minute for live display
+  lastExtra             Int?       // Cached added-time minutes (45+X, 90+X) for live display
   lastLiveDataJson      Json?      // Full LiveScore payload for overview API
 
   createdAtUtc          DateTime @default(now())

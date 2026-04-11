@@ -83,7 +83,7 @@ export async function getPoolOverview(
     prisma.poolMatchOverride.findMany({ where: { poolId } }),
     prisma.matchSyncState.findMany({
       where: { tournamentInstanceId: pool.tournamentInstanceId, internalMatchId: { in: matchIds } },
-      select: { internalMatchId: true, syncStatus: true, lastApiStatus: true, lastElapsed: true, lastLiveDataJson: true },
+      select: { internalMatchId: true, syncStatus: true, lastApiStatus: true, lastElapsed: true, lastExtra: true, lastLiveDataJson: true },
     }),
   ]);
   const overrideByMatchId = new Map(matchOverrides.map((o) => [o.matchId, o]));
@@ -147,6 +147,7 @@ export async function getPoolOverview(
       resultSource: result ? (results.find(r => r.matchId === m.id)?.currentVersion?.source ?? null) : null,
       // Live data for real-time display
       elapsed: syncByMatchId.get(m.id)?.lastElapsed ?? null,
+      extra: syncByMatchId.get(m.id)?.lastExtra ?? null,
       matchStatus: syncByMatchId.get(m.id)?.lastApiStatus ?? null,
       isLive: ["IN_PROGRESS", "AWAITING_FINISH"].includes(syncByMatchId.get(m.id)?.syncStatus ?? ""),
     };

@@ -229,6 +229,7 @@ async function processLiveScore(
         lastApiStatus: score.status,
         lastCheckedAtUtc: now,
         lastElapsed: score.elapsed,
+        lastExtra: score.extra,
         lastLiveDataJson: score as unknown as Prisma.InputJsonValue,
         syncStatus: newSyncStatus as any,
         graceEndUtc: newGraceEndUtc,

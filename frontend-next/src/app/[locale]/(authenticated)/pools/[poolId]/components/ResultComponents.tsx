@@ -12,6 +12,10 @@ export function ResultSection(props: {
   result: any;
   resultSource?: string | null;
   isHost: boolean;
+  isLive?: boolean;
+  elapsed?: number | null;
+  extra?: number | null;
+  matchStatus?: string | null;
   onSave: (homeGoals: number, awayGoals: number, reason?: string, homePenalties?: number, awayPenalties?: number) => void;
   disabled: boolean;
   homeTeam: any;
@@ -60,8 +64,13 @@ export function ResultSection(props: {
             homeTeam={props.homeTeam}
             awayTeam={props.awayTeam}
             tournamentKey={props.tournamentKey}
+            isLive={props.isLive ?? false}
+            elapsed={props.elapsed ?? null}
+            extra={props.extra ?? null}
+            matchStatus={props.matchStatus ?? null}
           />
-          {props.isHost && (
+          {/* Modify result button: only when match has finished (not live, not in grace period) */}
+          {props.isHost && !props.isLive && (
             <button
               onClick={() => setEditMode(true)}
               style={{
@@ -119,13 +128,29 @@ export function ResultSection(props: {
   );
 }
 
-function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tournamentKey: string }) {
+function ResultDisplay(props: {
+  result: any;
+  homeTeam: any;
+  awayTeam: any;
+  tournamentKey: string;
+  isLive: boolean;
+  elapsed: number | null;
+  extra: number | null;
+  matchStatus: string | null;
+}) {
   const t = useTranslations("pool");
   const { result } = props;
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
   const homeName = props.homeTeam.name || getCountryName(props.homeTeam.id, props.tournamentKey);
   const awayName = props.awayTeam.name || getCountryName(props.awayTeam.id, props.tournamentKey);
+
+  // Live ticker label: "45+3", "HT", or just elapsed minute
+  const isHalftime = props.matchStatus === "HT";
+  const showLiveTicker = props.isLive && !isHalftime && props.elapsed != null;
+  const elapsedLabel = props.elapsed != null
+    ? (props.extra != null && props.extra > 0 ? `${props.elapsed}+${props.extra}'` : `${props.elapsed}'`)
+    : "";
 
   return (
     <div>
@@ -167,6 +192,53 @@ function ResultDisplay(props: { result: any; homeTeam: any; awayTeam: any; tourn
           )}
         </div>
       </div>
+
+      {/* Live ticker — minute + indeterminate progress bar (only while match is in play) */}
+      {(props.isLive && (showLiveTicker || isHalftime)) && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            fontSize: 12,
+            fontWeight: 700,
+            color: isHalftime ? "#92400e" : "#15803d",
+            letterSpacing: 0.3,
+            marginBottom: 4,
+          }}>
+            <span style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: isHalftime ? "#f59e0b" : "#16a34a",
+              animation: "pulse 1.6s ease-in-out infinite",
+              flexShrink: 0,
+            }} />
+            {isHalftime ? t("result.halftime").toUpperCase() : elapsedLabel}
+          </div>
+          <div
+            role="progressbar"
+            aria-label={t("result.liveTickerLabel")}
+            style={{
+              position: "relative",
+              height: 3,
+              borderRadius: 999,
+              background: isHalftime ? "#fef3c7" : "#dcfce7",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 999,
+              background: `linear-gradient(90deg, transparent 0%, ${isHalftime ? "#f59e0b" : "#16a34a"} 50%, transparent 100%)`,
+              animation: "liveSweep 1.6s ease-in-out infinite",
+              width: "40%",
+            }} />
+          </div>
+        </div>
+      )}
 
       {/* Penalties display (if any) */}
       {(result.homePenalties !== null && result.homePenalties !== undefined) && (

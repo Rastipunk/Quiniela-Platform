@@ -150,27 +150,49 @@ export function MatchCard({
               ⚠️ {t("scoringDisabledBadge")}
             </span>
           )}
-          {(m as any).isLive && (
-            <span style={{
-              padding: "4px 10px",
-              border: "1px solid #ef4444",
-              borderRadius: 999,
-              background: colors.errorBg,
-              color: colors.error,
-              fontWeight: 700,
-              animation: "pulse 2s infinite",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-            }}>
-              {"\uD83D\uDD34"} {t("result.inProgress")}
-              {(m as any).elapsed != null && (
-                <span style={{ fontWeight: 800 }}>
-                  {(m as any).matchStatus === "HT" ? "HT" : `${(m as any).elapsed}'`}
-                </span>
-              )}
-            </span>
-          )}
+          {m.isLive && (() => {
+            // Status palette: live (green), halftime (amber), final/awaiting (slate)
+            const status = m.matchStatus ?? "";
+            const isHalftime = status === "HT";
+            // AWAITING_FINISH (post-FT, in grace period) → "Final"
+            const isAwaitingFinal = m.matchSyncStatus === "AWAITING_FINISH" || ["FT", "AET", "PEN"].includes(status);
+            const palette = isHalftime
+              ? { bg: "#fef3c7", border: "#fbbf24", fg: "#92400e", dot: "#f59e0b" }
+              : isAwaitingFinal
+                ? { bg: "#f1f5f9", border: "#cbd5e1", fg: "#475569", dot: "#64748b" }
+                : { bg: "#dcfce7", border: "#22c55e", fg: "#166534", dot: "#16a34a" };
+            const label = isHalftime
+              ? t("result.halftime")
+              : isAwaitingFinal
+                ? t("result.final")
+                : t("result.live");
+            return (
+              <span style={{
+                padding: "4px 10px",
+                border: `1px solid ${palette.border}`,
+                borderRadius: 999,
+                background: palette.bg,
+                color: palette.fg,
+                fontWeight: 700,
+                fontSize: 11,
+                letterSpacing: 0.4,
+                textTransform: "uppercase",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}>
+                <span style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: palette.dot,
+                  animation: isAwaitingFinal ? "none" : "pulse 1.6s ease-in-out infinite",
+                  flexShrink: 0,
+                }} />
+                {label}
+              </span>
+            );
+          })()}
         </div>
       </div>
 
@@ -238,6 +260,10 @@ export function MatchCard({
             result={m.result}
             resultSource={m.resultSource}
             isHost={isHost}
+            isLive={m.isLive}
+            elapsed={m.elapsed}
+            extra={m.extra}
+            matchStatus={m.matchStatus}
             onSave={(homeGoals, awayGoals, reason, homePenalties, awayPenalties) =>
               saveResult({
                 homeGoals,
@@ -304,7 +330,7 @@ export function MatchCard({
             {t("matchCard.viewOtherPicks")}
           </button>
 
-          {/* Host: Toggle scoring for this match */}
+          {/* Host: Toggle scoring for this match — disabled by product decision (kept commented for future reactivation)
           {isHost && (
             <button
               onClick={() => onToggleScoring(m.id, matchTitle, m.scoringEnabled !== false)}
@@ -324,6 +350,7 @@ export function MatchCard({
               {m.scoringEnabled !== false ? t("scoringDisabled") : t("scoringEnabled")}
             </button>
           )}
+          */}
         </div>
       )}
     </div>

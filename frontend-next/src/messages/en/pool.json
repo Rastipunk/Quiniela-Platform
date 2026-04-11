@@ -304,7 +304,11 @@
     "correctionPlaceholder": "Explain why you are modifying this result (required)",
     "correctionRequired": "You must provide a reason to modify the result",
     "overrideWarning": "All participants will be notified by email about this modification.",
-    "inProgress": "In play"
+    "inProgress": "In play",
+    "live": "Live",
+    "halftime": "Halftime",
+    "final": "Final",
+    "liveTickerLabel": "Updating in real time"
   },
 
   "leaderboard": {

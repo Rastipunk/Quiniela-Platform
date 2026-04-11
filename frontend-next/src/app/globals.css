@@ -325,6 +325,16 @@ button:disabled {
   to { transform: translateX(0); }
 }
 
+/* Live ticker indeterminate progress sweep — used in match result cards while a match is in play */
+@keyframes liveSweep {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
 @media (max-width: 640px) {
   .modal-mobile {
     position: fixed;
