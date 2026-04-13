@@ -102,7 +102,7 @@ export async function downloadEmployeeTemplate(companyName?: string): Promise<vo
   const tipRow = ws.getRow(4);
   ws.mergeCells(4, 1, 4, 2);
   const tipCell = tipRow.getCell(1);
-  tipCell.value = "No modifiques la fila de encabezado (fila 7). Puedes agregar hasta 500 emails.";
+  tipCell.value = "No modifiques la fila de encabezado (fila 7). Agrega un email por fila.";
   tipCell.font = { name: "Calibri", size: 10, color: { argb: COLORS.infoText } };
   tipCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLORS.infoBg } };
   tipCell.alignment = { horizontal: "center", vertical: "middle" };
@@ -234,13 +234,16 @@ export async function parseEmployeeExcel(file: File): Promise<{
     const cellValue = row.getCell(1).text?.trim();
     if (!cellValue) return;
 
+    // Skip cells that are clearly not emails (footer text, merged cells, long strings)
+    if (cellValue.includes(" — ") || cellValue.includes("picks4all") || cellValue.length > 100) return;
+
     const email = cellValue.toLowerCase();
 
-    // Skip example rows
+    // Skip example rows from the template
     if (email.includes("@empresa.com") || email.includes("@company.com")) return;
 
     if (!emailRegex.test(email)) {
-      errors.push(`Row ${rowNum}: "${cellValue}" is not a valid email.`);
+      errors.push(`Fila ${rowNum}: "${cellValue}" no es un email válido.`);
       return;
     }
 
