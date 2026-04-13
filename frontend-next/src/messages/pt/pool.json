@@ -320,7 +320,9 @@
     "leader": "Líder",
     "emptyState": "Ainda não há dados na classificação",
     "noPointsYet": "Sem pontos ainda",
-    "viewPhaseDetail": "Ver detalhes de {phase}"
+    "viewPhaseDetail": "Ver detalhes de {phase}",
+    "exportExcel": "Exportar Excel",
+    "exporting": "Exportando..."
   },
 
   "matchPicks": {

@@ -315,7 +315,9 @@
     "leader": "Líder",
     "emptyState": "Aún no hay datos en el leaderboard",
     "noPointsYet": "Sin puntos aún",
-    "viewPhaseDetail": "Ver detalle de {phase}"
+    "viewPhaseDetail": "Ver detalle de {phase}",
+    "exportExcel": "Exportar Excel",
+    "exporting": "Exportando..."
   },
 
   "matchPicks": {

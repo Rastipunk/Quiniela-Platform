@@ -2,6 +2,7 @@
 
 import { colors } from "@/lib/theme";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { MobileLeaderboard } from "@/components/MobileLeaderboard";
 import { PlayerSummary } from "@/components/PlayerSummary";
@@ -23,27 +24,75 @@ export function PoolLeaderboardTab({
 }: PoolLeaderboardTabProps) {
   const t = useTranslations("pool");
   const verbose = false;
+  const [exporting, setExporting] = useState(false);
 
   const myUserId = overview.myMembership?.userId;
   const myRow = overview.leaderboard.rows.find((r) => r.userId === myUserId);
   const myRank = myRow?.rank;
+
+  const isHostOrAdmin = ["HOST", "CO_ADMIN", "CORPORATE_HOST"].includes(overview.myMembership?.role ?? "");
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { exportLeaderboardExcel } = await import("@/lib/exportLeaderboard");
+      await exportLeaderboardExcel(overview, (phaseId) => formatPhaseFullName(phaseId, t));
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <>
       <div style={{ marginTop: 14, padding: isMobile ? 12 : 20, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
         <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20, fontWeight: 900 }}>{t("leaderboard.title")}</h3>
-          <ShareButtons
-            context="leaderboard"
-            url={typeof window !== "undefined" ? window.location.href : ""}
-            data={{
-              poolName: overview.pool.name,
-              rank: myRank,
-              totalMembers: overview.counts.membersActive,
-            }}
-            size="sm"
-            showLabels={false}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {isHostOrAdmin && (
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                title={t("leaderboard.exportExcel")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: isMobile ? "8px 12px" : "6px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${colors.brand}`,
+                  background: colors.white,
+                  color: colors.brand,
+                  cursor: exporting ? "not-allowed" : "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  opacity: exporting ? 0.6 : 1,
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => { if (!exporting) { e.currentTarget.style.background = "#EEF2FF"; } }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = colors.white; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                {exporting ? t("leaderboard.exporting") : (isMobile ? "Excel" : t("leaderboard.exportExcel"))}
+              </button>
+            )}
+            <ShareButtons
+              context="leaderboard"
+              url={typeof window !== "undefined" ? window.location.href : ""}
+              data={{
+                poolName: overview.pool.name,
+                rank: myRank,
+                totalMembers: overview.counts.membersActive,
+              }}
+              size="sm"
+              showLabels={false}
+            />
+          </div>
         </div>
 
         {isMobile ? (

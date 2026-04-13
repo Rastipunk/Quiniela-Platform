@@ -320,7 +320,9 @@
     "leader": "Leader",
     "emptyState": "No leaderboard data yet",
     "noPointsYet": "No points yet",
-    "viewPhaseDetail": "View {phase} details"
+    "viewPhaseDetail": "View {phase} details",
+    "exportExcel": "Export Excel",
+    "exporting": "Exporting..."
   },
 
   "matchPicks": {
