@@ -2,7 +2,7 @@
 
 import { colors } from "@/lib/theme";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import {
@@ -35,6 +35,9 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
   const [emailsText, setEmailsText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [uploadingExcel, setUploadingExcel] = useState(false);
+  const excelFileRef = useRef<HTMLInputElement>(null);
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -107,21 +110,40 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
     }
   }
 
-  function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleDownloadTemplate() {
+    setDownloadingTemplate(true);
+    try {
+      const { downloadEmployeeTemplate } = await import("@/lib/employeeTemplate");
+      await downloadEmployeeTemplate();
+    } catch (err) {
+      console.error("Template download failed:", err);
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  }
+
+  async function handleExcelUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      const emailRegex = /[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+/g;
-      const found = text.match(emailRegex) || [];
-      const unique = [...new Set(found.map((e) => e.toLowerCase()))];
-      setEmailsText((prev) => {
-        const existing = prev.trim();
-        return existing ? existing + "\n" + unique.join("\n") : unique.join("\n");
-      });
-    };
-    reader.readAsText(file);
+    setUploadingExcel(true);
+    try {
+      const { parseEmployeeExcel } = await import("@/lib/employeeTemplate");
+      const result = await parseEmployeeExcel(file);
+      if (result.emails.length > 0) {
+        setEmailsText((prev) => {
+          const existing = prev.trim();
+          return existing ? existing + "\n" + result.emails.join("\n") : result.emails.join("\n");
+        });
+        setMessage(t("excelUploadSuccess", { count: result.emails.length }));
+      } else {
+        setMessage(t("excelUploadEmpty"));
+      }
+    } catch {
+      setMessage(t("excelUploadError"));
+    } finally {
+      setUploadingExcel(false);
+      if (excelFileRef.current) excelFileRef.current.value = "";
+    }
   }
 
   const statusColors: Record<string, { bg: string; color: string; border: string }> = {
@@ -216,7 +238,9 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
           >
             {busy === "adding" ? t("adding") : t("addButton")}
           </button>
-          <label
+          <button
+            onClick={() => excelFileRef.current?.click()}
+            disabled={uploadingExcel}
             style={{
               padding: "8px 14px",
               borderRadius: 8,
@@ -224,20 +248,37 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
               background: "white",
               fontSize: 13,
               color: "#4c1d95",
-              cursor: "pointer",
+              cursor: uploadingExcel ? "not-allowed" : "pointer",
               fontWeight: 500,
+              opacity: uploadingExcel ? 0.6 : 1,
             }}
           >
-            {"\u{1F4C1}"} {t("csvUpload")}
-            <input type="file" accept=".csv,.txt" onChange={handleCsvUpload} style={{ display: "none" }} />
-          </label>
-          <a
-            href={`data:text/csv;charset=utf-8,${encodeURIComponent("\uFEFFemail,nombre\nempleado1@empresa.com,Juan Perez\nempleado2@empresa.com,Maria Garcia\n")}`}
-            download="employees_template.csv"
-            style={{ fontSize: 12, color: colors.purple, textDecoration: "none", fontWeight: 500 }}
+            {uploadingExcel ? t("uploading") : `\u{1F4C1} ${t("excelUpload")}`}
+          </button>
+          <input
+            ref={excelFileRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleExcelUpload}
+            style={{ display: "none" }}
+          />
+          <button
+            onClick={handleDownloadTemplate}
+            disabled={downloadingTemplate}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              fontSize: 12,
+              color: colors.purple,
+              cursor: downloadingTemplate ? "not-allowed" : "pointer",
+              fontWeight: 500,
+              opacity: downloadingTemplate ? 0.6 : 1,
+            }}
           >
-            {"\u{1F4E5}"} {t("csvTemplate")}
-          </a>
+            {downloadingTemplate ? t("downloading") : `\u{1F4E5} ${t("excelTemplate")}`}
+          </button>
         </div>
       </div>
 
