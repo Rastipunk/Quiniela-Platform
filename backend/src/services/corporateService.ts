@@ -113,7 +113,6 @@ export type SendInvitationsInput = {
 
 export type SendInvitationsResult = {
   sent: number;
-  activated: number;
   failed: number;
 };
 
@@ -420,75 +419,40 @@ export async function sendInvitations(
   });
 
   if (pendingInvites.length === 0) {
-    return { sent: 0, activated: 0, failed: 0 };
+    return { sent: 0, failed: 0 };
   }
 
   let sent = 0;
-  let activated = 0;
   let failed = 0;
 
   for (const invite of pendingInvites) {
     try {
-      // Check if email already has an account
-      const existingUser = await prisma.user.findUnique({
-        where: { email: invite.email },
-        select: { id: true, displayName: true },
+      // Always send the invitation email — even if the user already has an account.
+      // The activation link handles both cases (new account creation or existing user joining).
+      // This ensures every invitee sees the branded welcome experience.
+      const emailResult = await sendCorporateActivationEmail({
+        to: invite.email,
+        employeeName: invite.name || undefined,
+        companyName,
+        poolName: pool.name,
+        activationToken: invite.activationToken,
+        logoBase64: orgLogoBase64,
+        invitationMessage: orgInvitationMessage,
       });
 
-      if (existingUser) {
-        // User already exists — add directly to pool
-        const existingMember = await prisma.poolMember.findUnique({
-          where: { poolId_userId: { poolId, userId: existingUser.id } },
-        });
-
-        if (!existingMember) {
-          await prisma.poolMember.create({
-            data: {
-              poolId,
-              userId: existingUser.id,
-              role: "PLAYER",
-              status: "ACTIVE",
-            },
-          });
-        }
-
+      if (emailResult.success) {
         await prisma.corporateInvite.update({
           where: { id: invite.id },
-          data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
+          data: { status: "SENT" },
         });
-
-        // Transition pool DRAFT -> ACTIVE if first PLAYER
-        await transitionToActive(poolId, existingUser.id).catch((err) =>
-          console.error("[CorporateService] transitionToActive error (send-invitations):", err instanceof Error ? err.message : String(err)),
-        );
-
-        activated++;
+        sent++;
       } else {
-        // User does not exist — send activation email
-        const emailResult = await sendCorporateActivationEmail({
-          to: invite.email,
-          employeeName: invite.name || undefined,
-          companyName,
-          poolName: pool.name,
-          activationToken: invite.activationToken,
-          logoBase64: orgLogoBase64,
-          invitationMessage: orgInvitationMessage,
+        console.error(`[CorporateService] Email failed for ${invite.email}: ${emailResult.error}`);
+        await prisma.corporateInvite.update({
+          where: { id: invite.id },
+          data: { status: "FAILED" },
         });
-
-        if (emailResult.success) {
-          await prisma.corporateInvite.update({
-            where: { id: invite.id },
-            data: { status: "SENT" },
-          });
-          sent++;
-        } else {
-          console.error(`[CorporateService] Email failed for ${invite.email}: ${emailResult.error}`);
-          await prisma.corporateInvite.update({
-            where: { id: invite.id },
-            data: { status: "FAILED" },
-          });
-          failed++;
-        }
+        failed++;
       }
     } catch (err) {
       console.error(`[CorporateService] Error processing invite ${invite.id}:`, err instanceof Error ? err.message : String(err));
@@ -506,12 +470,12 @@ export async function sendInvitations(
     entityType: "Pool",
     entityId: poolId,
     poolId,
-    dataJson: { sent, activated, failed, total: pendingInvites.length },
+    dataJson: { sent, failed, total: pendingInvites.length },
     ip: ctx.ip,
     userAgent: ctx.userAgent,
   }));
 
-  return { sent, activated, failed };
+  return { sent, failed };
 }
 
 // -- Delete Employee --

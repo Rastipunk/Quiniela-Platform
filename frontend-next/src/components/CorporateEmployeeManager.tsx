@@ -88,7 +88,7 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
     setMessage(null);
     try {
       const result = await sendCorporateInvitations(token, poolId);
-      setMessage(t("sendResult", { sent: result.sent, activated: result.activated, failed: result.failed }));
+      setMessage(t("sendResult", { sent: result.sent, failed: result.failed }));
       await loadEmployees();
     } catch (e: any) {
       setMessage(e?.message ?? "Error");

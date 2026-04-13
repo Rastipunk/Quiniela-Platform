@@ -463,7 +463,7 @@ export async function activateCorporateAccount(
   if (existingUser) {
     await prisma.$transaction(async (tx) => {
       const claimed = await tx.corporateInvite.updateMany({
-        where: { id: invite.id, status: "PENDING" },
+        where: { id: invite.id, status: { in: ["PENDING", "SENT"] } },
         data: { status: "ACTIVATED", activatedUserId: existingUser.id, activatedAt: new Date() },
       });
       if (claimed.count === 0) throw new Error("ALREADY_ACTIVATED");
@@ -517,7 +517,7 @@ export async function activateCorporateAccount(
   try {
     newUser = await prisma.$transaction(async (tx) => {
       const claimed = await tx.corporateInvite.updateMany({
-        where: { id: invite.id, status: "PENDING" },
+        where: { id: invite.id, status: { in: ["PENDING", "SENT"] } },
         data: { status: "ACTIVATED", activatedAt: now },
       });
       if (claimed.count === 0) throw new Error("ALREADY_ACTIVATED");

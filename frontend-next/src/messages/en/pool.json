@@ -224,7 +224,7 @@
       "addResult": "{added} added, {skipped} skipped (already exist)",
       "sendInvitations": "Send pending invitations",
       "sending": "Sending...",
-      "sendResult": "{sent} sent, {activated} activated directly, {failed} failed",
+      "sendResult": "{sent} invitations sent, {failed} failed",
       "listTitle": "Employee list",
       "email": "Email",
       "status": "Status",

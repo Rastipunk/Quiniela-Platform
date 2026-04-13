@@ -224,7 +224,7 @@
       "addResult": "{added} agregados, {skipped} omitidos (ya existían)",
       "sendInvitations": "Enviar invitaciones pendientes",
       "sending": "Enviando...",
-      "sendResult": "{sent} enviados, {activated} activados directamente, {failed} fallidos",
+      "sendResult": "{sent} invitaciones enviadas, {failed} fallidas",
       "listTitle": "Lista de empleados",
       "email": "Correo",
       "status": "Estado",
