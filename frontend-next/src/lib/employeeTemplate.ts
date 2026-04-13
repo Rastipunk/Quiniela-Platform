@@ -221,7 +221,19 @@ export async function parseEmployeeExcel(file: File): Promise<{
   ws.eachRow((row, rowNum) => {
     if (rowNum < startRow) return;
 
-    const cellValue = row.getCell(1).text?.trim();
+    // Extract text from cell — handles plain strings, hyperlinks ({text, hyperlink}), and rich text
+    const rawValue = row.getCell(1).value;
+    let cellValue = "";
+    if (typeof rawValue === "string") {
+      cellValue = rawValue.trim();
+    } else if (rawValue && typeof rawValue === "object") {
+      // Hyperlink: {text: "email", hyperlink: "mailto:..."}
+      // RichText: {richText: [{text: "..."}]}
+      const obj = rawValue as unknown as Record<string, unknown>;
+      if (typeof obj.text === "string") cellValue = obj.text.trim();
+      else if (Array.isArray(obj.richText)) cellValue = obj.richText.map((r: any) => r.text || "").join("").trim();
+      else cellValue = row.getCell(1).text?.trim() ?? "";
+    }
     if (!cellValue) return;
 
     // Skip cells that are clearly not emails (footer text, merged cells, long strings)
