@@ -172,6 +172,7 @@ export interface LeaderboardRow {
   userId: string;
   memberId: string;
   displayName: string;
+  email?: string;
   role: string;
   memberStatus: string;
   points: number;

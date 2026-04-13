@@ -43,7 +43,10 @@ export function MemberManagement({
   const filtered = useMemo(() => {
     if (!search.trim()) return allRows;
     const q = search.toLowerCase();
-    return allRows.filter((m: any) => m.displayName?.toLowerCase().includes(q));
+    return allRows.filter((m: any) =>
+      m.displayName?.toLowerCase().includes(q) ||
+      m.email?.toLowerCase().includes(q)
+    );
   }, [allRows, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -114,9 +117,14 @@ export function MemberManagement({
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {member.displayName}
                   </div>
+                  {member.email && (
+                    <div style={{ fontSize: 12, color: colors.textLight, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {member.email}
+                    </div>
+                  )}
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     {isHost && (
                       <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#007bff20", border: "1px solid #007bff", color: colors.brand, fontWeight: 600 }}>

@@ -439,6 +439,7 @@ export async function getPoolOverview(
       userId: m.userId,
       memberId: m.id,
       displayName: m.user.displayName,
+      email: m.user.email,
       role: m.role,
       memberStatus: m.status,
       points: points + structuralPoints,
@@ -459,6 +460,7 @@ export async function getPoolOverview(
   });
 
   // 8) Final response
+  const includeEmails = isPoolAdmin(myMembership.role);
   return {
     nowUtc: now.toISOString(),
     pool: {
@@ -526,6 +528,7 @@ export async function getPoolOverview(
         userId: r.userId,
         memberId: r.memberId,
         displayName: r.displayName,
+        ...(includeEmails ? { email: r.email } : {}),
         role: r.role,
         memberStatus: r.memberStatus,
         points: r.points,
