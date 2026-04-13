@@ -2,17 +2,14 @@
 
 import { colors } from "@/lib/theme";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import CapacitySelector from "@/components/CapacitySelector";
-import type { PoolTabBaseProps, PhaseData, ExpulsionModalData } from "./poolTypes";
+import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
 import { AdminSettingsToggles } from "./admin/AdminSettingsToggles";
 import { PhaseStatusPanel } from "./admin/PhaseStatusPanel";
 import { PendingJoinRequests } from "./admin/PendingJoinRequests";
-import { MemberManagement } from "./admin/MemberManagement";
-import { ExpulsionModal } from "./admin/ExpulsionModal";
 
 interface PoolAdminTabProps extends PoolTabBaseProps {
   phases: PhaseData[];
@@ -33,8 +30,6 @@ export function PoolAdminTab({
 }: PoolAdminTabProps) {
   const t = useTranslations("pool");
   const verbose = false;
-
-  const [expulsionModalData, setExpulsionModalData] = useState<ExpulsionModalData | null>(null);
 
   return (
     <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
@@ -92,13 +87,6 @@ export function PoolAdminTab({
           loadPendingMembers={loadPendingMembers}
         />
       )}
-
-      <MemberManagement
-        poolId={poolId} token={token} overview={overview}
-        busyKey={busyKey} setBusyKey={setBusyKey} setError={setError}
-        friendlyError={friendlyError} reload={reload}
-        setExpulsionModalData={setExpulsionModalData}
-      />
 
       {/* Pool Capacity Section */}
       {overview.pool.maxParticipants && (
@@ -181,20 +169,6 @@ export function PoolAdminTab({
         </div>
       </div>
 
-      {/* Expulsion Modal */}
-      {expulsionModalData && (
-        <ExpulsionModal
-          data={expulsionModalData}
-          onClose={() => setExpulsionModalData(null)}
-          poolId={poolId}
-          token={token}
-          busyKey={busyKey}
-          setBusyKey={setBusyKey}
-          setError={setError}
-          friendlyError={friendlyError}
-          reload={reload}
-        />
-      )}
     </div>
   );
 }

@@ -327,7 +327,22 @@
     "noPointsYet": "Sem pontos ainda",
     "viewPhaseDetail": "Ver detalhes de {phase}",
     "exportExcel": "Exportar Excel",
-    "exporting": "Exportando..."
+    "exporting": "Exportando...",
+    "searchPlaceholder": "Buscar jogador...",
+    "yourPosition": "Sua posição",
+    "noResults": "Nenhum resultado encontrado"
+  },
+
+  "players": {
+    "title": "Gestão de Jogadores",
+    "searchPlaceholder": "Buscar por nome...",
+    "noResults": "Nenhum jogador encontrado"
+  },
+
+  "pagination": {
+    "page": "Página {current} de {total}",
+    "prev": "Anterior",
+    "next": "Próximo"
   },
 
   "matchPicks": {

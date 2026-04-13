@@ -13,7 +13,7 @@ import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/
 import { NotificationBadge } from "@/components/NotificationBadge";
 import { ScoringBreakdownModal } from "@/components/ScoringBreakdownModal";
 import { PlayerSummary } from "@/components/PlayerSummary";
-import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
+import { PoolPlayersTab } from "./components/PoolPlayersTab";
 import { ShareButtons } from "@/components/ShareButtons";
 import { getPendingMembers } from "@/lib/api";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
@@ -672,7 +672,7 @@ export default function PoolPage() {
             WebkitOverflowScrolling: "touch",
             paddingBottom: 4,
           }}>
-            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" ? ["jugadores" as const] : []), ...(overview.permissions.canManageResults ? ["admin" as const] : [])] as const).map((tab) => {
+            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.permissions.canManageResults ? ["jugadores" as const, "admin" as const] : [])] as const).map((tab) => {
               const badgeCount = tabBadges[tab] || 0;
               const isUrgent = tab === "partidos" && hasUrgent;
               const tabLabels: Record<string, string> = {
@@ -715,10 +715,12 @@ export default function PoolPage() {
 
           {/* ── Tab Content ── */}
 
-          {activeTab === "jugadores" && overview.pool.organizationId && overview.myMembership.role === "CORPORATE_HOST" && token && (
-            <div style={{ marginTop: 14, padding: 20, border: `1px solid ${colors.border}`, borderRadius: radii["3xl"], background: colors.white }}>
-              <CorporateEmployeeManager poolId={poolId!} token={token} isMobile={isMobile} />
-            </div>
+          {activeTab === "jugadores" && overview.permissions.canManageResults && token && (
+            <PoolPlayersTab
+              poolId={poolId!} token={token} overview={overview} isMobile={isMobile}
+              busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
+              friendlyError={friendlyError} reload={load}
+            />
           )}
 
           {activeTab === "admin" && overview.permissions.canManageResults && (

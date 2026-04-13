@@ -24,6 +24,9 @@ type MobileLeaderboardProps = {
   onPlayerClick: (userId: string, displayName: string, initialPhase?: string) => void;
   formatPhaseName: (phaseId: string) => string;
   formatPhaseFullName: (phaseId: string) => string;
+  /** Pinned current-user row shown at top when they're not on the current page */
+  pinnedRow?: LeaderboardRow;
+  pinnedLabel?: string;
 };
 
 export function MobileLeaderboard({
@@ -32,12 +35,54 @@ export function MobileLeaderboard({
   onPlayerClick,
   formatPhaseName,
   formatPhaseFullName,
+  pinnedRow,
+  pinnedLabel,
 }: MobileLeaderboardProps) {
   const t = useTranslations("pool");
   const leaderPoints = rows[0]?.points ?? 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Pinned current user row */}
+      {pinnedRow && (
+        <div
+          key={`pinned-${pinnedRow.userId}`}
+          onClick={() => onPlayerClick(pinnedRow.userId, pinnedRow.displayName)}
+          role="button"
+          tabIndex={0}
+          aria-label={`${pinnedRow.displayName} - ${pinnedRow.points} pts`}
+          style={{
+            background: "linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)",
+            border: `2px solid ${colors.brand}`,
+            borderRadius: 12,
+            padding: 16,
+            cursor: "pointer",
+            ...mobileInteractiveStyles.tapHighlight,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                background: colors.brand, color: colors.white, fontWeight: 800, fontSize: 14,
+              }}>
+                {pinnedRow.rank}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: colors.textDark }}>{pinnedRow.displayName}</div>
+                <div style={{ fontSize: 10, color: colors.brand, fontWeight: 600 }}>{pinnedLabel}</div>
+              </div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: colors.brand }}>{pinnedRow.points}</div>
+              <div style={{ fontSize: 11, color: colors.textMuted }}>
+                -{(leaderPoints || pinnedRow.points) - pinnedRow.points} pts
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {rows.map((r, idx) => {
         const diff = leaderPoints - r.points;
         const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
