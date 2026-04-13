@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -15,6 +17,15 @@ export function LandingContent() {
   const isMobile = useIsMobile();
   const { openAuthPanel } = useAuthPanel();
   const { params: poolParams } = usePoolTerm();
+  const searchParams = useSearchParams();
+
+  // Auto-open login panel when arriving from /login redirect (e.g. ?redirect=/dashboard)
+  useEffect(() => {
+    const redirectParam = searchParams.get("redirect");
+    if (redirectParam) {
+      openAuthPanel("login", redirectParam);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const strongTag = (chunks: React.ReactNode) => (
     <strong style={{ color: "var(--text)" }}>{chunks}</strong>
