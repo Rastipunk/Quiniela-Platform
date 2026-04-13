@@ -131,29 +131,6 @@ export async function downloadEmployeeTemplate(companyName?: string): Promise<vo
     };
   });
 
-  // ── 8-10. Example rows (light gray, italic) ─────────────────
-
-  const examples = [
-    ["maria.garcia@empresa.com", "María García"],
-    ["juan.perez@empresa.com", "Juan Pérez"],
-    ["carlos.lopez@empresa.com", ""],
-  ];
-
-  examples.forEach((ex, idx) => {
-    const row = ws.getRow(8 + idx);
-    row.values = ex;
-    row.height = 22;
-    row.eachCell((cell) => {
-      cell.font = { name: "Calibri", size: 11, italic: true, color: { argb: COLORS.exampleText } };
-      cell.border = {
-        bottom: { style: "thin", color: { argb: COLORS.borderLight } },
-      };
-    });
-  });
-
-  // Clear example values (they're just visual guides — user overwrites them)
-  // Actually keep them as real examples so the user understands the format
-
   // ── Column widths ────────────────────────────────────────────
 
   ws.getColumn(1).width = 40; // Email
@@ -162,7 +139,7 @@ export async function downloadEmployeeTemplate(companyName?: string): Promise<vo
   // ── Data validation on email column (rows 8-507) ─────────────
 
   // Add empty rows with light border to guide the user
-  for (let i = 11; i <= 57; i++) {
+  for (let i = 8; i <= 57; i++) {
     const row = ws.getRow(i);
     row.height = 22;
     row.getCell(1).border = {
@@ -240,9 +217,6 @@ export async function parseEmployeeExcel(file: File): Promise<{
     if (cellValue.includes(" — ") || cellValue.includes("picks4all") || cellValue.length > 100) return;
 
     const email = cellValue.toLowerCase();
-
-    // Skip example rows from the template
-    if (email.includes("@empresa.com") || email.includes("@company.com")) return;
 
     if (!emailRegex.test(email)) {
       errors.push(`Fila ${rowNum}: "${cellValue}" no es un email válido.`);
