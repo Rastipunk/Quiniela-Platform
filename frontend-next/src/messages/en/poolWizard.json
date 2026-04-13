@@ -181,6 +181,10 @@
     "phaseScalingDesc": "Points are worth more in advanced tournament phases.",
     "multiplier": "Multiplier",
     "recommended": "Recommended",
+    "offExplanationTitle": "Off (recommended)",
+    "offExplanation": "Only the 90-minute result counts. If you predict 1-1 and the match ends 1-1 (but extra time finishes 2-1), your prediction is correct.",
+    "onExplanationTitle": "On",
+    "onExplanation": "The final result including extra time counts. If you predict 1-1 but the match finishes 2-1 in extra time, your prediction is wrong.",
     "noAdvancedNeeded": "The current configuration does not require advanced settings. You may continue.",
     "note": "These settings are optional. The default values work well for most pools."
   },
@@ -196,10 +200,15 @@
     "subtitle": "Add the email addresses of participants",
     "icon": "📧",
     "emailsLabel": "Email addresses",
-    "emailsPlaceholder": "Enter one email per line or separated by comma",
-    "csvUpload": "Or upload a CSV file",
-    "emailCount": "{count} email(s) entered",
-    "skipNote": "You can skip this step and invite employees later."
+    "optional": "optional",
+    "placeholder": "maria@company.com\njohn@company.com\ncarlos@company.com",
+    "hint": "Separate emails with commas or line breaks.",
+    "uploadCsv": "Import from CSV",
+    "noEmails": "No emails entered",
+    "count": "{count} emails entered",
+    "clearAll": "Clear all",
+    "invalidTitle": "Invalid email format:",
+    "note": "This step is optional. You can add employees from the admin panel after creating the pool."
   },
 
   "companyInfo": {

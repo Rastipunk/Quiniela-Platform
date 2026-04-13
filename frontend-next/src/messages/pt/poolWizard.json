@@ -181,6 +181,10 @@
     "phaseScalingDesc": "Os pontos valem mais nas fases avançadas do torneio.",
     "multiplier": "Multiplicador",
     "recommended": "Recomendado",
+    "offExplanationTitle": "Desativado (recomendado)",
+    "offExplanation": "Apenas o resultado dos 90 minutos conta. Se você prevê 1-1 e o jogo termina 1-1 (mas na prorrogação fica 2-1), sua previsão está correta.",
+    "onExplanationTitle": "Ativado",
+    "onExplanation": "O resultado final incluindo prorrogação conta. Se você prevê 1-1 mas o jogo termina 2-1 na prorrogação, sua previsão falha.",
     "noAdvancedNeeded": "A configuração atual não requer ajustes avançados. Você pode continuar.",
     "note": "Esses ajustes são opcionais. Os valores padrão funcionam bem para a maioria dos bolões."
   },
@@ -196,10 +200,15 @@
     "subtitle": "Adicione os emails das pessoas que participarão",
     "icon": "📧",
     "emailsLabel": "Endereços de email",
-    "emailsPlaceholder": "Digite um email por linha ou separados por vírgula",
-    "csvUpload": "Ou envie um arquivo CSV",
-    "emailCount": "{count} email(s) inseridos",
-    "skipNote": "Você pode pular esta etapa e convidar funcionários depois."
+    "optional": "opcional",
+    "placeholder": "maria@empresa.com\njoao@empresa.com\ncarlos@empresa.com",
+    "hint": "Separe os emails com vírgulas ou quebras de linha.",
+    "uploadCsv": "Importar de CSV",
+    "noEmails": "Nenhum email inserido",
+    "count": "{count} emails inseridos",
+    "clearAll": "Limpar tudo",
+    "invalidTitle": "Emails com formato inválido:",
+    "note": "Esta etapa é opcional. Você pode adicionar funcionários pelo painel de administração após criar o pool."
   },
 
   "companyInfo": {

@@ -74,20 +74,59 @@ export function StepAdvancedRules() {
             marginBottom: spacing.xs,
           }}>
             {t("advancedRules.extraTimeTitle", {
-              defaultMessage: "Tiempo extra en eliminatorias",
+              defaultMessage: "Incluir tiempo extra",
             })}
           </h3>
           <p style={{
-            margin: `0 0 ${spacing.lg}px`,
+            margin: `0 0 ${spacing.sm}px`,
             fontSize: fontSize.md,
             color: colors.textMuted,
             lineHeight: 1.5,
           }}>
             {t("advancedRules.extraTimeDesc", {
               defaultMessage:
-                "Si se activa, los resultados de tiempo extra y penales se consideran para el marcador final en esa fase.",
+                "Contar los goles del tiempo extra en eliminatorias (no incluye penales).",
             })}
           </p>
+
+          {/* Explanation boxes */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+            gap: spacing.sm,
+            marginBottom: spacing.lg,
+          }}>
+            <div style={{
+              padding: `${spacing.sm}px ${spacing.md}px`,
+              borderRadius: radii.lg,
+              background: colors.successBgLight,
+              border: `1px solid ${colors.successBorder}`,
+              fontSize: fontSize.sm,
+              lineHeight: 1.5,
+            }}>
+              <div style={{ fontWeight: fontWeight.bold, color: colors.successDarker, marginBottom: 2 }}>
+                {t("advancedRules.offExplanationTitle", { defaultMessage: "Desactivado (recomendado)" })}
+              </div>
+              <div style={{ color: colors.successDarker }}>
+                {t("advancedRules.offExplanation", { defaultMessage: "Solo cuenta el resultado de los 90 minutos. Si predices 1-1 y el partido termina 1-1 (pero en extra time gana 2-1), tu predicción es correcta." })}
+              </div>
+            </div>
+            <div style={{
+              padding: `${spacing.sm}px ${spacing.md}px`,
+              borderRadius: radii.lg,
+              background: colors.warningBgLight,
+              border: `1px solid ${colors.warningBorderLight}`,
+              fontSize: fontSize.sm,
+              lineHeight: 1.5,
+            }}>
+              <div style={{ fontWeight: fontWeight.bold, color: colors.warningDarker, marginBottom: 2 }}>
+                {t("advancedRules.onExplanationTitle", { defaultMessage: "Activado" })}
+              </div>
+              <div style={{ color: colors.warningDarker }}>
+                {t("advancedRules.onExplanation", { defaultMessage: "Cuenta el resultado final incluyendo tiempo extra. Si predices 1-1 pero el partido termina 2-1 en extra time, tu predicción falla." })}
+              </div>
+            </div>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
             {knockoutPhases.map((phase) => (
