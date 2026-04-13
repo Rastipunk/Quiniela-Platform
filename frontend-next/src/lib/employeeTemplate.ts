@@ -173,16 +173,6 @@ export async function downloadEmployeeTemplate(companyName?: string): Promise<vo
     };
   }
 
-  // ── Footer ───────────────────────────────────────────────────
-
-  const footerRowIdx = 58;
-  const footerRow = ws.getRow(footerRowIdx);
-  ws.mergeCells(footerRowIdx, 1, footerRowIdx, 2);
-  const footerCell = footerRow.getCell(1);
-  footerCell.value = "picks4all.com — Plantilla de invitaciones corporativas";
-  footerCell.font = { name: "Calibri", size: 9, italic: true, color: { argb: COLORS.textMuted } };
-  footerCell.alignment = { horizontal: "center", vertical: "middle" };
-
   // ── Generate and download ────────────────────────────────────
 
   const buffer = await wb.xlsx.writeBuffer();
