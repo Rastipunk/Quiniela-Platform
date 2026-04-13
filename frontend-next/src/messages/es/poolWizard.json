@@ -206,15 +206,19 @@
     "title": "Información de tu empresa",
     "subtitle": "Estos datos aparecerán en el pool corporativo",
     "icon": "🏢",
-    "companyName": "Nombre de la empresa",
-    "companyNamePlaceholder": "Ej: Acme Corp",
-    "logo": "Logo de la empresa (opcional)",
-    "logoUpload": "Subir logo",
-    "logoRequirements": "PNG o JPG, máximo 500KB",
-    "welcomeMessage": "Mensaje de bienvenida (opcional)",
-    "welcomeMessagePlaceholder": "Se mostrará al entrar al pool...",
-    "invitationMessage": "Mensaje de invitación (opcional)",
-    "invitationMessagePlaceholder": "Se incluirá en el email de invitación..."
+    "nameLabel": "Nombre de la empresa",
+    "namePlaceholder": "Ej: Acme Corp",
+    "nameMinLength": "El nombre debe tener al menos 2 caracteres.",
+    "logoLabel": "Logo de la empresa",
+    "optional": "opcional",
+    "uploadLogo": "Subir logo (max 500 KB)",
+    "removeLogo": "Quitar",
+    "logoTooLarge": "El logo no puede exceder 500 KB.",
+    "logoInvalidType": "El archivo debe ser una imagen (PNG, JPG, SVG).",
+    "welcomeLabel": "Mensaje de bienvenida",
+    "welcomePlaceholder": "Ej: Bienvenidos a la quiniela corporativa. ¡Buena suerte!",
+    "invitationLabel": "Mensaje de invitación",
+    "invitationPlaceholder": "Este mensaje se incluirá en el email de invitación a los empleados."
   },
 
   "summary": {
