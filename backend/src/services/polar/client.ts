@@ -72,7 +72,15 @@ export async function createCheckout(params: CreateCheckoutParams): Promise<Chec
 
   const checkout = await client.checkouts.create({
     products: [productId],
-    amount: params.amountCents,
+    prices: {
+      [productId]: [
+        {
+          amountType: "fixed" as const,
+          priceAmount: params.amountCents,
+          priceCurrency: "usd",
+        },
+      ],
+    },
     customerEmail: params.customerEmail,
     successUrl: params.successUrl,
     metadata: params.metadata as unknown as Record<string, string>,
