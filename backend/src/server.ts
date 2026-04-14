@@ -233,9 +233,10 @@ app.use("/legal", legalRouter);
 app.use("/feedback", express.json({ limit: "2mb" }), feedbackRouter);
 app.use("/corporate", corporateRouter);
 
-// Payment routes (checkout + status — webhook mounted separately above express.json)
-import { paymentsRouter } from "./routes/payments";
+// Payment routes (checkout + status — Polar webhook mounted above express.json, Wompi below)
+import { paymentsRouter, createWompiWebhookHandler } from "./routes/payments";
 app.use("/payments", paymentsRouter);
+app.post("/payments/wompi-webhook", createWompiWebhookHandler());
 
 // Global error handler — catches unhandled errors from all routes
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

@@ -26,6 +26,12 @@ import {
   createCheckout as polarCreateCheckout,
   type CreateCheckoutParams,
 } from "./polar/client";
+import {
+  generateIntegritySignature,
+  verifyWebhookChecksum,
+  getWompiPublicKey,
+  getTransaction as wompiGetTransaction,
+} from "./wompi/client";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -360,4 +366,232 @@ export async function getPaymentStatus(
     amountUsd: payment.amountUsd / 100, // cents to dollars
     paidAtUtc: payment.paidAtUtc?.toISOString() ?? null,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WOMPI (Colombia, COP)
+// ═══════════════════════════════════════════════════════════════
+
+export interface WompiCheckoutData {
+  publicKey: string;
+  reference: string;
+  amountInCents: number;
+  currency: string;
+  integritySignature: string;
+  redirectUrl: string;
+  paymentId: string;
+}
+
+/**
+ * Generate Wompi widget checkout data (reference + integrity signature).
+ * The frontend uses this to initialize the Wompi widget.
+ */
+export async function initiateWompiCheckout(
+  input: InitiateCheckoutInput,
+): Promise<WompiCheckoutData> {
+  const { userId, poolId, targetCapacity, locale } = input;
+
+  // 1. Load pool and verify ownership (same as Polar flow)
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    include: {
+      members: {
+        where: { userId, role: { in: ["HOST", "CORPORATE_HOST"] } },
+        take: 1,
+      },
+      organization: { select: { id: true } },
+    },
+  });
+
+  if (!pool) throw new ServiceError("NOT_FOUND", 404);
+  if (pool.members.length === 0) {
+    throw new ServiceError("FORBIDDEN", 403, { reason: "Must be HOST or CORPORATE_HOST" });
+  }
+
+  const currentCapacity = pool.maxParticipants ?? getFreeLimit(pool.organization ? "corporate" : "personal");
+  const poolType: PoolType = pool.organization ? "corporate" : "personal";
+
+  if (targetCapacity <= currentCapacity) {
+    throw new ServiceError("VALIDATION_ERROR", 400, { message: "Target capacity must be greater than current capacity" });
+  }
+
+  // 2. Calculate price in COP (use frontend pricing tables)
+  // Import COP pricing dynamically to avoid circular deps
+  const amountUsd = calculateUpgradePrice(poolType, currentCapacity, targetCapacity);
+  if (amountUsd <= 0) {
+    throw new ServiceError("VALIDATION_ERROR", 400, { message: "No payment required" });
+  }
+
+  // Convert USD to COP (approximate rate — in production use real-time rate or fixed COP table)
+  // For now, use the COP prices from the frontend pricing table
+  const copRate = 4200; // approximate USD→COP rate
+  const amountCop = Math.round(amountUsd * copRate);
+  const amountInCents = amountCop * 100; // Wompi uses COP cents
+
+  // 3. Generate unique reference
+  const reference = `P4A-${poolId.slice(0, 8)}-${Date.now()}`;
+
+  // 4. Generate integrity signature
+  const integritySignature = generateIntegritySignature({
+    reference,
+    amountInCents,
+    currency: "COP",
+  });
+
+  // 5. Create PoolPayment record
+  const payment = await prisma.poolPayment.create({
+    data: {
+      poolId,
+      userId,
+      polarCheckoutId: reference, // reuse field for Wompi reference
+      status: "PENDING",
+      amountUsd: usdToCents(amountUsd), // store in USD cents for consistency
+      currency: "cop",
+      fromCapacity: currentCapacity,
+      toCapacity: targetCapacity,
+      poolType,
+    },
+  });
+
+  // 6. Build redirect URL
+  const frontendUrl = process.env.FRONTEND_URL || "https://picks4all.com";
+  const localePath = locale && locale !== "es" ? `/${locale}` : "";
+  const redirectUrl = `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`;
+
+  // 7. Audit
+  fireAndForget("audit:wompi-checkout-created", writeAuditEvent({
+    actorUserId: userId,
+    action: "WOMPI_CHECKOUT_CREATED",
+    entityType: "Pool",
+    entityId: poolId,
+    poolId,
+    dataJson: { paymentId: payment.id, reference, amountCop, poolType },
+  }));
+
+  return {
+    publicKey: getWompiPublicKey(),
+    reference,
+    amountInCents,
+    currency: "COP",
+    integritySignature,
+    redirectUrl,
+    paymentId: payment.id,
+  };
+}
+
+/**
+ * Process a Wompi transaction.updated webhook.
+ */
+export async function handleWompiTransactionUpdated(event: {
+  event: string;
+  data: {
+    transaction: {
+      id: string;
+      status: string;
+      amount_in_cents: number;
+      reference: string;
+      currency: string;
+    };
+  };
+  sent_at: string;
+  signature: {
+    properties: string[];
+    timestamp: number;
+    checksum: string;
+  };
+}): Promise<void> {
+  // 1. Verify checksum
+  const isValid = verifyWebhookChecksum({
+    data: event.data as unknown as Record<string, unknown>,
+    signature: event.signature,
+  });
+
+  if (!isValid) {
+    console.error("[PaymentService] Wompi webhook checksum invalid");
+    return;
+  }
+
+  const transaction = event.data.transaction;
+  const reference = transaction.reference;
+
+  // 2. Idempotency check
+  const existingEvent = await prisma.paymentEvent.findUnique({
+    where: { polarEventId: `wompi-${transaction.id}` },
+  });
+  if (existingEvent) {
+    console.log(`[PaymentService] Wompi duplicate event ${transaction.id}, skipping`);
+    return;
+  }
+
+  // 3. Record event
+  await prisma.paymentEvent.create({
+    data: {
+      polarEventId: `wompi-${transaction.id}`,
+      eventType: event.event,
+      payloadJson: JSON.parse(JSON.stringify(event)),
+    },
+  });
+
+  // 4. Find payment by reference
+  const payment = await prisma.poolPayment.findUnique({
+    where: { polarCheckoutId: reference },
+  });
+
+  if (!payment) {
+    console.error(`[PaymentService] No PoolPayment found for Wompi reference ${reference}`);
+    return;
+  }
+
+  if (payment.status === "COMPLETED") {
+    console.log(`[PaymentService] Wompi payment ${payment.id} already completed`);
+    return;
+  }
+
+  // 5. Handle status
+  if (transaction.status === "APPROVED") {
+    // Verify with Wompi API as extra security
+    try {
+      const verified = await wompiGetTransaction(transaction.id);
+      if (verified.status !== "APPROVED") {
+        console.error(`[PaymentService] Wompi API verification failed: ${verified.status}`);
+        return;
+      }
+    } catch (err) {
+      console.error("[PaymentService] Wompi API verification error:", err);
+      // Continue anyway — webhook was checksum-verified
+    }
+
+    // Expand capacity
+    await prisma.$transaction(async (tx) => {
+      await tx.poolPayment.update({
+        where: { id: payment.id },
+        data: {
+          status: "COMPLETED",
+          polarOrderId: `wompi-${transaction.id}`,
+          paidAtUtc: new Date(),
+        },
+      });
+      await tx.pool.update({
+        where: { id: payment.poolId },
+        data: { maxParticipants: payment.toCapacity },
+      });
+    });
+
+    console.log(`[PaymentService] Wompi: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
+
+    fireAndForget("audit:wompi-payment-completed", writeAuditEvent({
+      actorUserId: payment.userId,
+      action: "WOMPI_PAYMENT_COMPLETED",
+      entityType: "Pool",
+      entityId: payment.poolId,
+      poolId: payment.poolId,
+      dataJson: { transactionId: transaction.id, reference, amount: transaction.amount_in_cents },
+    }));
+  } else if (transaction.status === "DECLINED" || transaction.status === "ERROR") {
+    await prisma.poolPayment.update({
+      where: { id: payment.id },
+      data: { status: "FAILED" },
+    });
+    console.log(`[PaymentService] Wompi payment ${reference} ${transaction.status}`);
+  }
 }

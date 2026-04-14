@@ -17,10 +17,13 @@ import { ServiceError } from "../services/authService";
 import { isPolarConfigured } from "../services/polar/client";
 import {
   initiateCheckout,
+  initiateWompiCheckout,
   handleOrderPaid,
   handleCheckoutUpdated,
+  handleWompiTransactionUpdated,
   getPaymentStatus,
 } from "../services/paymentService";
+import { isWompiConfigured } from "../services/wompi/client";
 
 // ── JSON routes (require auth) ─────────────────────────────────
 
@@ -60,6 +63,35 @@ paymentsRouter.post("/checkout", requireAuth, async (req: Request, res: Response
   }
 });
 
+// POST /payments/wompi-checkout — Generate Wompi widget checkout data (Colombia/COP)
+paymentsRouter.post("/wompi-checkout", requireAuth, async (req: Request, res: Response) => {
+  if (!isWompiConfigured()) {
+    return sendInternal(res, "WOMPI_NOT_CONFIGURED");
+  }
+
+  const parsed = checkoutSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+
+  try {
+    const result = await initiateWompiCheckout({
+      userId: req.auth!.userId,
+      poolId: parsed.data.poolId,
+      targetCapacity: parsed.data.targetCapacity,
+      locale: String(req.headers["accept-language"] ?? "es").slice(0, 2),
+    });
+    return sendOk(res, result as unknown as Record<string, unknown>);
+  } catch (err) {
+    if (err instanceof ServiceError) {
+      const send = { 400: sendBadRequest, 403: sendForbidden, 404: sendNotFound }[err.statusHint] ?? sendInternal;
+      return send(res, err.code, err.extra);
+    }
+    console.error("[Payments] Wompi checkout error:", err instanceof Error ? err.message : String(err));
+    return sendInternal(res, "WOMPI_CHECKOUT_FAILED");
+  }
+});
+
 // GET /payments/pool/:poolId/status — Get latest payment status for a pool
 paymentsRouter.get("/pool/:poolId/status", requireAuth, async (req: Request, res: Response) => {
   try {
@@ -73,10 +105,34 @@ paymentsRouter.get("/pool/:poolId/status", requireAuth, async (req: Request, res
   }
 });
 
-// ── Webhook route (public, signature verified via standardwebhooks) ──
+// ── Wompi webhook (public, checksum verified in paymentService) ──
 
 /**
- * Create the webhook handler.
+ * Wompi webhook handler.
+ * Uses regular JSON body — checksum is verified from the payload signature object.
+ * Mounted AFTER express.json() — does NOT need raw body.
+ */
+export function createWompiWebhookHandler() {
+  return async (req: Request, res: Response) => {
+    try {
+      const event = req.body;
+      if (event?.event === "transaction.updated") {
+        await handleWompiTransactionUpdated(event);
+      } else {
+        console.log("[Payments] Unhandled Wompi event:", event?.event);
+      }
+      res.status(200).json({ received: true });
+    } catch (err) {
+      console.error("[Payments] Wompi webhook error:", err instanceof Error ? err.message : String(err));
+      res.status(200).json({ received: true });
+    }
+  };
+}
+
+// ── Polar webhook (public, signature verified via standardwebhooks) ──
+
+/**
+ * Polar webhook handler.
  * Must be mounted BEFORE express.json() since it needs the raw body.
  */
 export function createWebhookHandler() {
