@@ -88,18 +88,20 @@ export function createWebhookHandler() {
     };
   }
 
+  // standardwebhooks expects the secret in base64 format
+  const encodedSecret = Buffer.from(webhookSecret).toString("base64");
+  const wh = new Webhook(encodedSecret);
+
   return async (req: Request, res: Response) => {
     try {
-      // Verify signature using standardwebhooks
-      const body = req.body as Buffer;
+      const body = (req.body as Buffer).toString();
       const headers = {
         "webhook-id": req.headers["webhook-id"] as string,
         "webhook-timestamp": req.headers["webhook-timestamp"] as string,
         "webhook-signature": req.headers["webhook-signature"] as string,
       };
 
-      const wh = new Webhook(webhookSecret);
-      const payload = wh.verify(body.toString(), headers) as {
+      const payload = wh.verify(body, headers) as {
         type: string;
         data: Record<string, unknown>;
       };
