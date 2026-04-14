@@ -21,16 +21,27 @@ export interface PaymentStatusResponse {
 }
 
 /**
- * Detect user's country from Cloudflare geolocation.
+ * Detect user's country for gateway routing.
+ * Tries our backend first, falls back to Cloudflare trace.
  * Returns "CO" for Colombia, "US" for US, etc.
  */
 export async function getPaymentCountry(): Promise<string> {
+  // Try our backend (reads CF-IPCountry header)
   try {
     const res = await requestJson<{ country: string }>("/payments/country");
-    return res.country;
-  } catch {
-    return "US"; // fallback to international
-  }
+    if (res.country && res.country !== "US") return res.country;
+  } catch { /* fallback below */ }
+
+  // Fallback: fetch Cloudflare trace directly (works because the browser
+  // makes the request through Cloudflare DNS)
+  try {
+    const res = await fetch("https://cloudflare.com/cdn-cgi/trace");
+    const text = await res.text();
+    const match = text.match(/loc=([A-Z]{2})/);
+    if (match) return match[1];
+  } catch { /* fallback below */ }
+
+  return "US"; // default to international
 }
 
 /**
