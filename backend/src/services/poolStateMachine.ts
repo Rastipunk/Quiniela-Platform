@@ -257,6 +257,7 @@ export async function transitionToArchived(poolId: string, actorUserId: string) 
   // DRAFT pools: delete entirely (no valuable data)
   if (pool.status === "DRAFT") {
     await prisma.$transaction([
+      prisma.poolPayment.deleteMany({ where: { poolId } }),
       prisma.poolInvite.deleteMany({ where: { poolId } }),
       prisma.corporateInvite.deleteMany({ where: { poolId } }),
       prisma.auditEvent.deleteMany({ where: { poolId } }),
