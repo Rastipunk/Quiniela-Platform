@@ -20,28 +20,29 @@ export interface PaymentStatusResponse {
   paidAtUtc?: string | null;
 }
 
+/** Cache the country result so we don't call the API on every checkout */
+let _cachedCountry: string | null = null;
+
 /**
  * Detect user's country for gateway routing.
- * Tries our backend first, falls back to Cloudflare trace.
+ * Uses ipapi.co (free, no API key, CORS-enabled).
  * Returns "CO" for Colombia, "US" for US, etc.
  */
 export async function getPaymentCountry(): Promise<string> {
-  // Try our backend (reads CF-IPCountry header)
+  if (_cachedCountry) return _cachedCountry;
+
   try {
-    const res = await requestJson<{ country: string }>("/payments/country");
-    if (res.country && res.country !== "US") return res.country;
+    const res = await fetch("https://ipapi.co/country_code/", { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const code = (await res.text()).trim();
+      if (/^[A-Z]{2}$/.test(code)) {
+        _cachedCountry = code;
+        return code;
+      }
+    }
   } catch { /* fallback below */ }
 
-  // Fallback: fetch Cloudflare trace directly (works because the browser
-  // makes the request through Cloudflare DNS)
-  try {
-    const res = await fetch("https://cloudflare.com/cdn-cgi/trace");
-    const text = await res.text();
-    const match = text.match(/loc=([A-Z]{2})/);
-    if (match) return match[1];
-  } catch { /* fallback below */ }
-
-  return "US"; // default to international
+  return "US";
 }
 
 /**
