@@ -18,6 +18,7 @@ import { sendAdminNotification } from "../lib/email";
 import { fireAndForget } from "../lib/asyncHelpers";
 import {
   calculateUpgradePrice,
+  calculateUpgradePriceCop,
   usdToCents,
   getFreeLimit,
   type PoolType,
@@ -415,18 +416,15 @@ export async function initiateWompiCheckout(
     throw new ServiceError("VALIDATION_ERROR", 400, { message: "Target capacity must be greater than current capacity" });
   }
 
-  // 2. Calculate price in COP (use frontend pricing tables)
-  // Import COP pricing dynamically to avoid circular deps
-  const amountUsd = calculateUpgradePrice(poolType, currentCapacity, targetCapacity);
-  if (amountUsd <= 0) {
+  // 2. Calculate price in COP from the fixed table (clean rounded numbers)
+  const amountCop = calculateUpgradePriceCop(poolType, currentCapacity, targetCapacity);
+  if (amountCop <= 0) {
     throw new ServiceError("VALIDATION_ERROR", 400, { message: "No payment required" });
   }
-
-  // Convert USD to COP (approximate rate — in production use real-time rate or fixed COP table)
-  // For now, use the COP prices from the frontend pricing table
-  const copRate = 4200; // approximate USD→COP rate
-  const amountCop = Math.round(amountUsd * copRate);
   const amountInCents = amountCop * 100; // Wompi uses COP cents
+
+  // Also calculate USD equivalent for the PoolPayment record
+  const amountUsd = calculateUpgradePrice(poolType, currentCapacity, targetCapacity);
 
   // 3. Generate unique reference
   const reference = `P4A-${poolId.slice(0, 8)}-${Date.now()}`;
