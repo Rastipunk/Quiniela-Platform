@@ -63,10 +63,15 @@ paymentsRouter.post("/checkout", requireAuth, async (req: Request, res: Response
   }
 });
 
-// GET /payments/country — Detect user's country from Cloudflare headers
+// GET /payments/country — Detect user's country from Cloudflare/Railway headers
 paymentsRouter.get("/country", (req: Request, res: Response) => {
-  // CF-IPCountry is set by Cloudflare on every request through their network
-  const country = (req.headers["cf-ipcountry"] as string) || "US";
+  // Try multiple geolocation headers (Cloudflare, Railway, Vercel, etc.)
+  const country =
+    (req.headers["cf-ipcountry"] as string) ||
+    (req.headers["x-vercel-ip-country"] as string) ||
+    (req.headers["x-country"] as string) ||
+    "US"; // fallback to international
+  console.log(`[Payments] Country detection: cf-ipcountry=${req.headers["cf-ipcountry"]}, x-forwarded-for=${req.headers["x-forwarded-for"]}, result=${country}`);
   return sendOk(res, { country } as unknown as Record<string, unknown>);
 });
 
