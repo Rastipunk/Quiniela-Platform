@@ -70,8 +70,16 @@ export async function createCheckout(params: CreateCheckoutParams): Promise<Chec
 
   const checkout = await client.checkouts.create({
     products: [productId],
-    amount: params.amountCents,
-    currency: "usd",
+    // Ad-hoc pricing: override the product's catalog price with the calculated amount
+    prices: {
+      [productId]: [
+        {
+          amountType: "fixed" as const,
+          priceAmount: params.amountCents,
+          priceCurrency: "usd",
+        },
+      ],
+    },
     customerEmail: params.customerEmail,
     successUrl: params.successUrl,
     metadata: params.metadata as unknown as Record<string, string>,
