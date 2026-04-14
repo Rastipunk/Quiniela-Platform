@@ -68,23 +68,18 @@ export async function createCheckout(params: CreateCheckoutParams): Promise<Chec
   const productId = POLAR_PRODUCT_ID();
   if (!productId) throw new Error("POLAR_PRODUCT_ID not configured");
 
+  console.log(`[Polar] Creating checkout: product=${productId}, amount=${params.amountCents} cents, metadata=${JSON.stringify(params.metadata)}`);
+
   const checkout = await client.checkouts.create({
     products: [productId],
-    // Ad-hoc pricing: override the product's catalog price with the calculated amount
-    prices: {
-      [productId]: [
-        {
-          amountType: "fixed" as const,
-          priceAmount: params.amountCents,
-          priceCurrency: "usd",
-        },
-      ],
-    },
+    amount: params.amountCents,
     customerEmail: params.customerEmail,
     successUrl: params.successUrl,
     metadata: params.metadata as unknown as Record<string, string>,
     ...(params.locale ? { locale: params.locale } : {}),
   });
+
+  console.log(`[Polar] Checkout created: id=${checkout.id}, amount=${checkout.amount}, url=${checkout.url?.slice(0, 50)}...`);
 
   if (!checkout.url) {
     throw new Error("Polar checkout created but no URL returned");
