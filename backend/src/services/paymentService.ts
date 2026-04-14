@@ -195,9 +195,9 @@ export async function initiateCheckout(
 export async function handleOrderPaid(payload: {
   data: {
     id: string;
-    checkoutId?: string | null;
+    checkout_id?: string | null;
     metadata?: Record<string, unknown>;
-    totalAmount?: number;
+    total_amount?: number;
   };
   type: string;
 }): Promise<void> {
@@ -236,7 +236,7 @@ export async function handleOrderPaid(payload: {
     return;
   }
 
-  const checkoutId = payload.data.checkoutId;
+  const checkoutId = payload.data.checkout_id;
   if (!checkoutId) {
     console.error("[PaymentService] order.paid missing checkoutId");
     return;
