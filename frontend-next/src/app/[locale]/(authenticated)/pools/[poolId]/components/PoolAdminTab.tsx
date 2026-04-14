@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
 import { createCheckout, createWompiCheckout, getPaymentCountry } from "@/lib/api/payments";
+import { getTierForCustomCount, formatCOP, type PoolType as PricingPoolType } from "@/lib/pricing";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
 import { NotificationBanner } from "@/components/NotificationBanner";
@@ -186,6 +187,7 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
   const [selectedCapacity, setSelectedCapacity] = useState(currentCapacity);
   const [busy, setBusy] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [country, setCountry] = useState("US");
 
   useEffect(() => {
     const token = getToken();
@@ -194,6 +196,7 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
         .then((res) => setIsAdmin(res.user.platformRole === "ADMIN"))
         .catch(() => {});
     }
+    getPaymentCountry().then(setCountry).catch(() => {});
   }, []);
 
   const handleExpand = async () => {
@@ -267,10 +270,17 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
             cursor: busy ? "not-allowed" : "pointer",
           }}
         >
-          {busy ? t("checkout.processing") : t("expand.expandButton", {
-            capacity: selectedCapacity,
-            price: `$${((selectedCapacity - currentCapacity) / 50 * 7.99).toFixed(2)} USD`,
-          })}
+          {busy ? t("checkout.processing") : (() => {
+            const tier = getTierForCustomCount(poolType as PricingPoolType, selectedCapacity);
+            const fromTier = getTierForCustomCount(poolType as PricingPoolType, currentCapacity);
+            const upgradeCop = tier.totalPrice - fromTier.totalPrice;
+            return t("expand.expandButton", {
+              capacity: selectedCapacity,
+              price: country === "CO"
+                ? formatCOP(upgradeCop)
+                : `$${(upgradeCop / 4200).toFixed(2)} USD`,
+            });
+          })()}
         </button>
       )}
     </div>
