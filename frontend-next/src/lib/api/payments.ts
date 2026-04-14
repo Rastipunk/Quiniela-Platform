@@ -21,6 +21,19 @@ export interface PaymentStatusResponse {
 }
 
 /**
+ * Detect user's country from Cloudflare geolocation.
+ * Returns "CO" for Colombia, "US" for US, etc.
+ */
+export async function getPaymentCountry(): Promise<string> {
+  try {
+    const res = await requestJson<{ country: string }>("/payments/country");
+    return res.country;
+  } catch {
+    return "US"; // fallback to international
+  }
+}
+
+/**
  * Create a Polar checkout session for a pool capacity upgrade.
  * Returns the checkout URL to redirect the user to.
  */
@@ -32,6 +45,30 @@ export async function createCheckout(
     method: "POST",
     body: JSON.stringify({ poolId, targetCapacity }),
   });
+}
+
+/**
+ * Create a Wompi checkout session (Colombia/COP).
+ * Returns widget initialization data.
+ */
+export async function createWompiCheckout(
+  poolId: string,
+  targetCapacity: number,
+): Promise<WompiCheckoutResponse> {
+  return requestJson<WompiCheckoutResponse>("/payments/wompi-checkout", {
+    method: "POST",
+    body: JSON.stringify({ poolId, targetCapacity }),
+  });
+}
+
+export interface WompiCheckoutResponse {
+  publicKey: string;
+  reference: string;
+  amountInCents: number;
+  currency: string;
+  integritySignature: string;
+  redirectUrl: string;
+  paymentId: string;
 }
 
 /**

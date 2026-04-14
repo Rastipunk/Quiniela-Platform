@@ -63,6 +63,13 @@ paymentsRouter.post("/checkout", requireAuth, async (req: Request, res: Response
   }
 });
 
+// GET /payments/country — Detect user's country from Cloudflare headers
+paymentsRouter.get("/country", (req: Request, res: Response) => {
+  // CF-IPCountry is set by Cloudflare on every request through their network
+  const country = (req.headers["cf-ipcountry"] as string) || "US";
+  return sendOk(res, { country } as unknown as Record<string, unknown>);
+});
+
 // POST /payments/wompi-checkout — Generate Wompi widget checkout data (Colombia/COP)
 paymentsRouter.post("/wompi-checkout", requireAuth, async (req: Request, res: Response) => {
   if (!isWompiConfigured()) {

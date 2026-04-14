@@ -5,7 +5,7 @@ import { colors } from "@/lib/theme";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
-import { createCheckout } from "@/lib/api/payments";
+import { createCheckout, createWompiCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
 import { NotificationBanner } from "@/components/NotificationBanner";
@@ -200,8 +200,40 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
     if (selectedCapacity <= currentCapacity) return;
     setBusy(true);
     try {
-      const result = await createCheckout(poolId, selectedCapacity);
-      window.location.href = result.checkoutUrl;
+      const country = await getPaymentCountry();
+      if (country === "CO") {
+        // Wompi widget (Colombia)
+        const wompiData = await createWompiCheckout(poolId, selectedCapacity);
+        if (!document.querySelector('script[src*="checkout.wompi.co"]')) {
+          await new Promise<void>((resolve) => {
+            const script = document.createElement("script");
+            script.src = "https://checkout.wompi.co/widget.js";
+            script.onload = () => resolve();
+            document.head.appendChild(script);
+          });
+        }
+        if ((window as any).WidgetCheckout) {
+          const widget = new (window as any).WidgetCheckout({
+            currency: wompiData.currency,
+            amountInCents: wompiData.amountInCents,
+            reference: wompiData.reference,
+            publicKey: wompiData.publicKey,
+            redirectUrl: wompiData.redirectUrl,
+            "signature:integrity": wompiData.integritySignature,
+          });
+          widget.open((result: any) => {
+            if (result.transaction.status === "APPROVED") {
+              window.location.href = wompiData.redirectUrl;
+            } else {
+              setBusy(false);
+            }
+          });
+        }
+      } else {
+        // Polar redirect (International)
+        const result = await createCheckout(poolId, selectedCapacity);
+        window.location.href = result.checkoutUrl;
+      }
     } catch (err) {
       console.error("Expand checkout failed:", err);
       setBusy(false);
