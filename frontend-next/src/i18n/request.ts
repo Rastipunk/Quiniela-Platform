@@ -12,7 +12,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const [
     common, auth, dashboard, profile, pool, legal,
     penca, polla, prode, porra, footballPool, seo, pricing, pricingPage,
-    poolWizard, worldCup, share, cookieConsent,
+    poolWizard, worldCup, share, cookieConsent, payment,
   ] = await Promise.all([
     import(`../messages/${locale}/common.json`).then((m) => m.default).catch(() => ({})),
     import(`../messages/${locale}/auth.json`).then((m) => m.default).catch(() => ({})),
@@ -32,6 +32,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
     import(`../messages/${locale}/worldCup.json`).then((m) => m.default).catch(() => ({})),
     import(`../messages/${locale}/share.json`).then((m) => m.default).catch(() => ({})),
     import(`../messages/${locale}/cookieConsent.json`).then((m) => m.default).catch(() => ({})),
+    import(`../messages/${locale}/payment.json`).then((m) => m.default).catch(() => ({})),
   ]);
 
   return {
@@ -40,7 +41,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
       ...common,
       auth, dashboard, profile, pool, legal,
       penca, polla, prode, porra, footballPool, seo, pricing, pricingPage,
-      poolWizard, worldCup, share, cookieConsent,
+      poolWizard, worldCup, share, cookieConsent, payment,
     },
   };
 });

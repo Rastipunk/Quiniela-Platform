@@ -180,27 +180,7 @@ export function PricingPageContent() {
                 )}
 
                 {/* Coming soon overlay for paid tiers */}
-                {!tier.isFree && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      borderRadius: 10,
-                      background: "rgba(255, 255, 255, 0.82)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      zIndex: 2,
-                      backdropFilter: "blur(1px)",
-                    }}
-                  >
-                    <span style={{ fontSize: 14 }}>&#128274;</span>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
-                      {t("comingSoon")}
-                    </span>
-                  </div>
-                )}
+                {/* Paid tiers are now active — no overlay */}
               </div>
             ))}
           </div>
@@ -316,27 +296,9 @@ export function PricingPageContent() {
                     </div>
                   )}
 
-                  {/* Coming soon overlay for paid tiers (not base) */}
-                  {!isBase && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        borderRadius: 10,
-                        background: "rgba(255, 255, 255, 0.82)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                        zIndex: 2,
-                        backdropFilter: "blur(1px)",
-                      }}
-                    >
-                      <span style={{ fontSize: 14 }}>&#128274;</span>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
-                        {t("comingSoon")}
-                      </span>
-                    </div>
+                  {/* Paid tiers are now active — no overlay */}
+                  {false && (
+                    <div></div>
                   )}
                 </div>
               );
@@ -344,7 +306,7 @@ export function PricingPageContent() {
           </div>
         </section>
 
-        {/* Coming Soon Note + CTA */}
+        {/* CTA */}
         <div
           style={{
             padding: "24px",
@@ -355,9 +317,6 @@ export function PricingPageContent() {
             marginBottom: 32,
           }}
         >
-          <p style={{ fontSize: 14, color: "#3730a3", lineHeight: 1.7, margin: "0 0 20px" }}>
-            {t("comingSoonNote")}
-          </p>
           <Link
             href="/login"
             style={{

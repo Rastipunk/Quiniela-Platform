@@ -1,0 +1,36 @@
+{
+  "success": {
+    "title": "Payment successful",
+    "subtitle": "Your pool has been expanded",
+    "processing": "Processing your payment...",
+    "confirmed": "Your pool capacity has been expanded to {capacity} players.",
+    "goToPool": "Go to my pool",
+    "timeout": "Payment was received but may take a few seconds to process. Check your pool shortly."
+  },
+  "cancel": {
+    "title": "Payment cancelled",
+    "subtitle": "No charges were made",
+    "tryAgain": "Try again",
+    "continueFree": "Continue with free plan",
+    "goToPool": "Go to my pool"
+  },
+  "checkout": {
+    "upgradeTitle": "Expand capacity",
+    "currentCapacity": "Current capacity: {current} players",
+    "newCapacity": "New capacity: {target} players",
+    "price": "Price: {price}",
+    "payNow": "Pay now",
+    "processing": "Processing...",
+    "free": "Free",
+    "perBlock": "per block of 50",
+    "paymentRequired": "Payment required"
+  },
+  "expand": {
+    "title": "Expand capacity",
+    "description": "Need more spots? Expand your pool capacity.",
+    "currentUsage": "{used} of {max} players",
+    "poolFull": "Your pool is full",
+    "selectCapacity": "Select the new capacity",
+    "expandButton": "Expand to {capacity} players — {price}"
+  }
+}

@@ -18,6 +18,8 @@ import { createPool } from "@/lib/api/pools";
 import { createCorporatePool } from "@/lib/api/corporate";
 import type { WizardMode } from "@/types/poolWizard";
 import { trackEvent } from "@/lib/analytics";
+import { createCheckout } from "@/lib/api/payments";
+import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT } from "@/lib/pricing";
 
 // ── Dynamic step imports (code-split each step) ────────────
 const StepCompanyInfo = lazy(
@@ -130,6 +132,20 @@ function WizardInner() {
         capacity: state.maxParticipants,
         scoring_style: state.scoringStyle,
       });
+
+      // Check if payment is needed (user selected capacity above free limit)
+      const freeLimit = state.mode === "corporate" ? CORPORATE_FREE_LIMIT : PERSONAL_FREE_LIMIT;
+      if (state.maxParticipants > freeLimit && token) {
+        try {
+          const checkout = await createCheckout(token, poolId, state.maxParticipants);
+          window.location.href = checkout.checkoutUrl;
+          return; // Don't navigate to pool — redirect to Polar
+        } catch {
+          // If checkout fails, still go to pool (they can expand later)
+          console.error("[Wizard] Checkout creation failed, redirecting to pool");
+        }
+      }
+
       router.push(`/pools/${poolId}`);
     } catch (err) {
       const message =

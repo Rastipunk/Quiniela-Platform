@@ -26,6 +26,7 @@ import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { isValidTimezone } from "../lib/timezone";
 import { ServiceError, type AuditContext } from "./authService";
+import { CORPORATE_FREE_LIMIT } from "../lib/pricing";
 
 /** Verify that the user is a CORPORATE_HOST for the given pool. */
 export async function requireCorporateHost(userId: string, poolId: string): Promise<boolean> {
@@ -249,7 +250,8 @@ export async function createCorporatePool(
         pickTypesConfig: finalPickTypesConfig as Prisma.InputJsonValue,
         fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
         organizationId: org.id,
-        maxParticipants: maxParticipants ?? 100,
+        // Cap at corporate free limit — payment required for larger capacity
+        maxParticipants: Math.min(maxParticipants ?? CORPORATE_FREE_LIMIT, CORPORATE_FREE_LIMIT),
         status: "DRAFT",
       },
     });

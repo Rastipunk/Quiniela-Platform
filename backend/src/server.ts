@@ -59,6 +59,11 @@ app.use(
 
 app.use(helmet());
 app.use(cookieParser());
+
+// Polar webhook — must be BEFORE express.json() to receive raw body for signature verification
+import { createWebhookHandler } from "./routes/payments";
+app.post("/payments/webhook", express.raw({ type: "application/json" }), createWebhookHandler());
+
 app.use(express.json({ limit: "1mb" }));
 
 // Global rate limiting
@@ -227,6 +232,10 @@ app.use("/pick-presets", pickPresetsRouter);
 app.use("/legal", legalRouter);
 app.use("/feedback", express.json({ limit: "2mb" }), feedbackRouter);
 app.use("/corporate", corporateRouter);
+
+// Payment routes (checkout + status — webhook mounted separately above express.json)
+import { paymentsRouter } from "./routes/payments";
+app.use("/payments", paymentsRouter);
 
 // Global error handler — catches unhandled errors from all routes
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

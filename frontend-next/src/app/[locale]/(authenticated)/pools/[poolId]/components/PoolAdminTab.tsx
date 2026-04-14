@@ -2,8 +2,10 @@
 
 import { colors } from "@/lib/theme";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
+import { createCheckout } from "@/lib/api/payments";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
@@ -105,12 +107,11 @@ export function PoolAdminTab({
               transition: "width 0.3s ease",
             }} />
           </div>
-          <CapacitySelector
-            type={overview.pool.organizationId ? "corporate" : "personal"}
+          <ExpandCapacitySection
+            poolId={poolId}
+            token={token}
+            poolType={overview.pool.organizationId ? "corporate" : "personal"}
             currentCapacity={overview.pool.maxParticipants}
-            selectedCapacity={overview.pool.maxParticipants}
-            onSelect={() => {}}
-            mode="expansion"
           />
         </div>
       )}
@@ -169,6 +170,66 @@ export function PoolAdminTab({
         </div>
       </div>
 
+    </div>
+  );
+}
+
+// ── Expand Capacity Section ────────────────────────────────────
+
+function ExpandCapacitySection({ poolId, token, poolType, currentCapacity }: {
+  poolId: string;
+  token: string;
+  poolType: "personal" | "corporate";
+  currentCapacity: number;
+}) {
+  const t = useTranslations("payment");
+  const [selectedCapacity, setSelectedCapacity] = useState(currentCapacity);
+  const [busy, setBusy] = useState(false);
+
+  const handleExpand = async () => {
+    if (selectedCapacity <= currentCapacity || !token) return;
+    setBusy(true);
+    try {
+      const result = await createCheckout(token, poolId, selectedCapacity);
+      window.location.href = result.checkoutUrl;
+    } catch (err) {
+      console.error("Expand checkout failed:", err);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <CapacitySelector
+        type={poolType}
+        currentCapacity={currentCapacity}
+        selectedCapacity={selectedCapacity}
+        onSelect={setSelectedCapacity}
+        mode="expansion"
+      />
+      {selectedCapacity > currentCapacity && (
+        <button
+          onClick={handleExpand}
+          disabled={busy}
+          style={{
+            marginTop: 12,
+            width: "100%",
+            padding: "14px 24px",
+            borderRadius: 10,
+            border: "none",
+            background: busy ? colors.disabled : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: busy ? "not-allowed" : "pointer",
+          }}
+        >
+          {busy ? t("checkout.processing") : t("expand.expandButton", {
+            capacity: selectedCapacity,
+            price: `$${((selectedCapacity - currentCapacity) / 50 * 7.99).toFixed(2)} USD`,
+          })}
+        </button>
+      )}
     </div>
   );
 }

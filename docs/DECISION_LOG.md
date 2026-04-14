@@ -4032,4 +4032,31 @@ The platform is approaching its April 1st launch. Critical security and stabilit
 
 ---
 
+## ADR-044: Polar.sh as Payment Processor (replacing Lemon Squeezy)
+
+**Date:** 2026-04-13 | **Status:** Accepted
+
+**Context:** Lemon Squeezy (ADR-036) rejected our application. We needed an alternative Merchant of Record that supports Colombia-based businesses, handles taxes/compliance, and allows one-time payments in USD.
+
+**Decision:**
+- Use Polar.sh as Merchant of Record for pool capacity upgrades.
+- One-time payments only (not subscriptions). HOST pays to expand pool capacity beyond the free limit.
+- Pricing: $7.99/block of 50 players, declining $0.40 every 2 blocks, minimum $4.99/block. Corporate: $49.99 base for 100 players.
+- Currency: USD only (COP deferred to a future local payment gateway for Colombia).
+- Integration: `@polar-sh/sdk` for checkout creation, `@polar-sh/express` for webhook signature verification.
+- Pool is created at free limit initially. If user selected a paid tier, checkout is initiated post-creation and capacity expands on `order.paid` webhook.
+- Two checkout entry points: (1) pool creation wizard when capacity > free limit, (2) pool admin panel to expand existing pool.
+- Database: `PoolPayment` (checkout tracking) + `PaymentEvent` (immutable webhook audit log).
+- Idempotency: unique constraints on `polarCheckoutId` and `polarEventId`.
+- Price computed server-side only — client sends `targetCapacity`, never the price.
+
+**Consequences:**
+- ✅ Polar approved, no compliance burden (MoR handles taxes)
+- ✅ SDK with Express adapter + built-in webhook verification
+- ✅ Ad-hoc pricing allows dynamic amounts per checkout
+- ⚠️ Hosted checkout (redirect, not inline) — acceptable tradeoff
+- ⚠️ USD only for now — Colombian users pay in USD until local gateway is added
+
+---
+
 **END OF DOCUMENT**

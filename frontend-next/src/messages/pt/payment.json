@@ -1,0 +1,36 @@
+{
+  "success": {
+    "title": "Pagamento bem-sucedido",
+    "subtitle": "Seu pool foi ampliado",
+    "processing": "Processando seu pagamento...",
+    "confirmed": "A capacidade do seu pool foi ampliada para {capacity} jogadores.",
+    "goToPool": "Ir ao meu pool",
+    "timeout": "O pagamento foi recebido mas pode levar alguns segundos para processar. Verifique seu pool em breve."
+  },
+  "cancel": {
+    "title": "Pagamento cancelado",
+    "subtitle": "Nenhuma cobrança foi feita",
+    "tryAgain": "Tentar novamente",
+    "continueFree": "Continuar com plano grátis",
+    "goToPool": "Ir ao meu pool"
+  },
+  "checkout": {
+    "upgradeTitle": "Ampliar capacidade",
+    "currentCapacity": "Capacidade atual: {current} jogadores",
+    "newCapacity": "Nova capacidade: {target} jogadores",
+    "price": "Preço: {price}",
+    "payNow": "Pagar agora",
+    "processing": "Processando...",
+    "free": "Grátis",
+    "perBlock": "por bloco de 50",
+    "paymentRequired": "Pagamento necessário"
+  },
+  "expand": {
+    "title": "Ampliar capacidade",
+    "description": "Precisa de mais vagas? Amplie a capacidade do seu pool.",
+    "currentUsage": "{used} de {max} jogadores",
+    "poolFull": "Seu pool está cheio",
+    "selectCapacity": "Selecione a nova capacidade",
+    "expandButton": "Ampliar para {capacity} jogadores — {price}"
+  }
+}

@@ -12,6 +12,7 @@ import { getPresetByKey, generateDynamicPresetConfig } from "../lib/pickPresets"
 import { extractPhases } from "../lib/fixture";
 import { sendData, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 import { isValidTimezone } from "../lib/timezone";
+import { PERSONAL_FREE_LIMIT, calculateUpgradePrice } from "../lib/pricing";
 
 // Sub-routers — all pool-related routes composed here
 import { poolOverviewRouter } from "./poolOverview";
@@ -157,7 +158,8 @@ poolsRouter.post("/", poolCreationLimiter, async (req, res) => {
         createdByUserId: req.auth!.userId,
         scoringPresetKey: scoringPresetKey ?? "CLASSIC",
         requireApproval: requireApproval ?? false,
-        maxParticipants: maxParticipants ?? 20,
+        // Cap at free limit — payment required for larger capacity
+        maxParticipants: Math.min(maxParticipants ?? PERSONAL_FREE_LIMIT, PERSONAL_FREE_LIMIT),
         pickTypesConfig: finalPickTypesConfig,
         // CRÍTICO: Copiar el fixture del torneo para que cada pool tenga su propia copia
         fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
@@ -176,6 +178,13 @@ poolsRouter.post("/", poolCreationLimiter, async (req, res) => {
     return pool;
   });
 
+  // Check if user requested more capacity than the free limit
+  const requestedCapacity = maxParticipants ?? PERSONAL_FREE_LIMIT;
+  const paymentRequired = requestedCapacity > PERSONAL_FREE_LIMIT;
+  const upgradePrice = paymentRequired
+    ? calculateUpgradePrice("personal", PERSONAL_FREE_LIMIT, requestedCapacity)
+    : 0;
+
   await writeAuditEvent({
     actorUserId: req.auth!.userId,
     action: "POOL_CREATED",
@@ -184,12 +193,17 @@ poolsRouter.post("/", poolCreationLimiter, async (req, res) => {
     dataJson: {
       tournamentInstanceId,
       hasPickTypesConfig: !!finalPickTypesConfig,
+      paymentRequired,
+      requestedCapacity: paymentRequired ? requestedCapacity : undefined,
     },
     ip: req.ip ?? null,
     userAgent: req.get("user-agent") ?? null,
   });
 
-  return sendCreated(res, created as unknown as Record<string, unknown>);
+  return sendCreated(res, {
+    ...(created as unknown as Record<string, unknown>),
+    ...(paymentRequired ? { paymentRequired: true, requestedCapacity, upgradePriceUsd: upgradePrice } : {}),
+  });
 });
 
 

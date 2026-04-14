@@ -123,7 +123,8 @@ export default function CapacitySelector({
         {tiers.map((tier) => {
           const isSelected = selectedCapacity === tier.maxParticipants;
           const isFreeTier = type === "personal" ? tier.isFree : tier.maxParticipants === CORPORATE_FREE_LIMIT;
-          const isLocked = !isFreeTier;
+          const isPaid = !isFreeTier;
+          const isLocked = false; // All tiers are now selectable (payment handled post-creation)
 
           return (
             <div
@@ -239,29 +240,10 @@ export default function CapacitySelector({
                 </div>
               )}
 
-              {/* Locked overlay */}
-              {isLocked && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    borderRadius: 10,
-                    background: "rgba(255, 255, 255, 0.82)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 2,
-                    backdropFilter: "blur(1px)",
-                  }}
-                >
-                  <div style={{ fontSize: 18 }}>&#128274;</div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
-                    {t("comingSoon")}
-                  </div>
-                  <div style={{ fontSize: 11, color: colors.textLighter, marginTop: 1 }}>
-                    {t("comingSoonDesc")}
-                  </div>
+              {/* Paid tier indicator */}
+              {isPaid && !isSelected && (
+                <div style={{ fontSize: 11, color: colors.brand, marginTop: 4, marginLeft: 28, fontWeight: 600 }}>
+                  {t("paidTier")}
                 </div>
               )}
             </div>

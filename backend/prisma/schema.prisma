@@ -116,6 +116,7 @@ model User {
   groupStandingsPredictions GroupStandingsPrediction[]
   groupStandingsResults     GroupStandingsResult[]
   poolMatchOverrides        PoolMatchOverride[]
+  poolPayments              PoolPayment[]
 
   @@index([username])
   @@index([resetToken])
@@ -368,6 +369,7 @@ model Pool {
   groupStandingsPredictions GroupStandingsPrediction[]
   groupStandingsResults     GroupStandingsResult[]
   matchOverrides            PoolMatchOverride[]
+  payments                  PoolPayment[]
 
   @@index([tournamentInstanceId])
   @@index([createdByUserId])
@@ -1020,4 +1022,60 @@ model CorporateInvite {
   @@index([activationToken])
   @@index([poolId])
   @@index([status])
+}
+
+// =========================================================================
+// PAYMENTS — Polar.sh integration for pool capacity upgrades
+// =========================================================================
+
+enum PaymentStatus {
+  PENDING    // Checkout created, awaiting user action on Polar
+  COMPLETED  // Polar webhook confirmed payment (order.paid)
+  FAILED     // Payment failed, expired, or was abandoned
+  REFUNDED   // Refund issued via Polar dashboard
+}
+
+model PoolPayment {
+  id String @id @default(uuid())
+
+  poolId String
+  pool   Pool   @relation(fields: [poolId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Polar identifiers for idempotency and reconciliation
+  polarCheckoutId String  @unique // Checkout session ID from Polar
+  polarOrderId    String? @unique // Order ID set by webhook on confirmation
+
+  status    PaymentStatus @default(PENDING)
+  amountUsd Int           // Amount in USD cents (e.g. 799 = $7.99)
+  currency  String        @default("usd")
+
+  // Capacity change this payment covers
+  fromCapacity Int    // maxParticipants before payment
+  toCapacity   Int    // maxParticipants after payment
+  poolType     String // "personal" | "corporate"
+
+  paidAtUtc    DateTime?
+  createdAtUtc DateTime  @default(now())
+  updatedAtUtc DateTime  @updatedAt
+
+  @@index([poolId])
+  @@index([userId])
+  @@index([status])
+}
+
+// Immutable audit log of every webhook event received from Polar
+model PaymentEvent {
+  id String @id @default(uuid())
+
+  polarEventId String @unique // Polar's event ID for deduplication
+  eventType    String          // e.g. "order.paid", "checkout.updated"
+  payloadJson  Json            // Full webhook payload for debugging/replay
+
+  processedAtUtc DateTime @default(now())
+  createdAtUtc   DateTime @default(now())
+
+  @@index([polarEventId])
 }
