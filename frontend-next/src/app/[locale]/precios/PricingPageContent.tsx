@@ -179,8 +179,13 @@ export function PricingPageContent() {
                   </div>
                 )}
 
-                {/* Coming soon overlay for paid tiers */}
-                {/* Paid tiers are now active — no overlay */}
+                {/* Coming soon overlay for paid tiers (until payments go live) */}
+                {!tier.isFree && (
+                  <div style={{ position: "absolute", inset: 0, borderRadius: 10, background: "rgba(255,255,255,0.82)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, zIndex: 2, backdropFilter: "blur(1px)" }}>
+                    <span style={{ fontSize: 14 }}>&#128274;</span>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>{t("comingSoon")}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -296,9 +301,12 @@ export function PricingPageContent() {
                     </div>
                   )}
 
-                  {/* Paid tiers are now active — no overlay */}
-                  {false && (
-                    <div></div>
+                  {/* Coming soon overlay for corporate paid tiers */}
+                  {!isBase && (
+                    <div style={{ position: "absolute", inset: 0, borderRadius: 10, background: "rgba(255,255,255,0.82)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, zIndex: 2, backdropFilter: "blur(1px)" }}>
+                      <span style={{ fontSize: 14 }}>&#128274;</span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>{t("comingSoon")}</span>
+                    </div>
                   )}
                 </div>
               );

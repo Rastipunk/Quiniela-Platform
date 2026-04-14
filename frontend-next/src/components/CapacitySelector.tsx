@@ -23,6 +23,8 @@ type CapacitySelectorProps = {
   onSelect: (capacity: number) => void;
   currentCapacity?: number; // for admin panel expansion
   mode: "creation" | "expansion";
+  /** If false, paid tiers show "Coming Soon" overlay. Only ADMIN can see/select paid tiers. */
+  allowPaidTiers?: boolean;
 };
 
 export default function CapacitySelector({
@@ -31,6 +33,7 @@ export default function CapacitySelector({
   onSelect,
   currentCapacity,
   mode,
+  allowPaidTiers = false,
 }: CapacitySelectorProps) {
   const t = useTranslations("pricing");
   const [customInput, setCustomInput] = useState("");
@@ -124,7 +127,7 @@ export default function CapacitySelector({
           const isSelected = selectedCapacity === tier.maxParticipants;
           const isFreeTier = type === "personal" ? tier.isFree : tier.maxParticipants === CORPORATE_FREE_LIMIT;
           const isPaid = !isFreeTier;
-          const isLocked = false; // All tiers are now selectable (payment handled post-creation)
+          const isLocked = isPaid && !allowPaidTiers;
 
           return (
             <div
@@ -240,8 +243,30 @@ export default function CapacitySelector({
                 </div>
               )}
 
-              {/* Paid tier indicator */}
-              {isPaid && !isSelected && (
+              {/* Locked overlay for non-admin users */}
+              {isLocked && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: 10,
+                    background: "rgba(255, 255, 255, 0.82)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    zIndex: 2,
+                    backdropFilter: "blur(1px)",
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>&#128274;</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
+                    {t("comingSoon")}
+                  </span>
+                </div>
+              )}
+              {/* Paid tier indicator (when unlocked) */}
+              {isPaid && !isLocked && !isSelected && (
                 <div style={{ fontSize: 11, color: colors.brand, marginTop: 4, marginLeft: 28, fontWeight: 600 }}>
                   {t("paidTier")}
                 </div>

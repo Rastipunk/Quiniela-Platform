@@ -2,10 +2,12 @@
 
 import { colors } from "@/lib/theme";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
 import { createCheckout } from "@/lib/api/payments";
+import { getUserProfile } from "@/lib/api/user";
+import { getToken } from "@/lib/auth";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
@@ -183,6 +185,16 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
   const t = useTranslations("payment");
   const [selectedCapacity, setSelectedCapacity] = useState(currentCapacity);
   const [busy, setBusy] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      getUserProfile(token)
+        .then((res) => setIsAdmin(res.user.platformRole === "ADMIN"))
+        .catch(() => {});
+    }
+  }, []);
 
   const handleExpand = async () => {
     if (selectedCapacity <= currentCapacity) return;
@@ -204,6 +216,7 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
         selectedCapacity={selectedCapacity}
         onSelect={setSelectedCapacity}
         mode="expansion"
+        allowPaidTiers={isAdmin}
       />
       {selectedCapacity > currentCapacity && (
         <button
