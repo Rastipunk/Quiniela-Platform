@@ -33,7 +33,6 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@polar-sh/express": "^0.6.5",
     "@polar-sh/sdk": "^0.47.0",
     "@prisma/client": "^6.19.1",
     "@types/bcrypt": "^6.0.0",
@@ -55,6 +54,7 @@
     "node-cron": "^4.2.1",
     "prisma": "^6.19.1",
     "resend": "^6.6.0",
+    "standardwebhooks": "^1.0.0",
     "typescript": "^5.9.3",
     "zod": "^4.2.1"
   },

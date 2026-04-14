@@ -4,14 +4,13 @@
  * HTTP layer for pool capacity payments via Polar.sh.
  * Routes: checkout creation, webhook handler, payment status.
  *
- * IMPORTANT: The webhook route uses @polar-sh/express which handles
- * signature verification automatically. It must receive the raw body,
- * so it's mounted separately from the JSON-parsed routes.
+ * The webhook uses standardwebhooks for signature verification
+ * (same library Polar uses internally).
  */
 
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { Webhooks } from "@polar-sh/express";
+import { Webhook } from "standardwebhooks";
 import { requireAuth } from "../middleware/requireAuth";
 import { sendOk, sendBadRequest, sendNotFound, sendInternal, sendForbidden } from "../lib/apiResponse";
 import { ServiceError } from "../services/authService";
@@ -48,7 +47,7 @@ paymentsRouter.post("/checkout", requireAuth, async (req: Request, res: Response
       userId: req.auth!.userId,
       poolId: parsed.data.poolId,
       targetCapacity: parsed.data.targetCapacity,
-      locale: (String(req.headers["accept-language"] ?? "es")).slice(0, 2),
+      locale: String(req.headers["accept-language"] ?? "es").slice(0, 2),
     });
     return sendOk(res, result as unknown as Record<string, unknown>);
   } catch (err) {
@@ -74,10 +73,10 @@ paymentsRouter.get("/pool/:poolId/status", requireAuth, async (req: Request, res
   }
 });
 
-// ── Webhook route (public, signature verified by @polar-sh/express) ──
+// ── Webhook route (public, signature verified via standardwebhooks) ──
 
 /**
- * Create the webhook handler middleware.
+ * Create the webhook handler.
  * Must be mounted BEFORE express.json() since it needs the raw body.
  */
 export function createWebhookHandler() {
@@ -89,25 +88,41 @@ export function createWebhookHandler() {
     };
   }
 
-  return Webhooks({
-    webhookSecret,
-    onOrderPaid: async (payload) => {
-      try {
-        await handleOrderPaid(payload as unknown as Parameters<typeof handleOrderPaid>[0]);
-      } catch (err) {
-        console.error("[Payments] Webhook order.paid error:", err instanceof Error ? err.message : String(err));
+  return async (req: Request, res: Response) => {
+    try {
+      // Verify signature using standardwebhooks
+      const body = req.body as Buffer;
+      const headers = {
+        "webhook-id": req.headers["webhook-id"] as string,
+        "webhook-timestamp": req.headers["webhook-timestamp"] as string,
+        "webhook-signature": req.headers["webhook-signature"] as string,
+      };
+
+      const wh = new Webhook(webhookSecret);
+      const payload = wh.verify(body.toString(), headers) as {
+        type: string;
+        data: Record<string, unknown>;
+      };
+
+      // Route to the correct handler based on event type
+      if (payload.type === "order.paid") {
+        await handleOrderPaid(payload as Parameters<typeof handleOrderPaid>[0]);
+      } else if (payload.type === "checkout.updated") {
+        await handleCheckoutUpdated(payload as Parameters<typeof handleCheckoutUpdated>[0]);
+      } else {
+        console.log("[Payments] Unhandled webhook event:", payload.type);
       }
-    },
-    onCheckoutUpdated: async (payload) => {
-      try {
-        await handleCheckoutUpdated(payload as unknown as Parameters<typeof handleCheckoutUpdated>[0]);
-      } catch (err) {
-        console.error("[Payments] Webhook checkout.updated error:", err instanceof Error ? err.message : String(err));
+
+      res.status(200).json({ received: true });
+    } catch (err) {
+      console.error("[Payments] Webhook error:", err instanceof Error ? err.message : String(err));
+      // Return 200 anyway to prevent Polar from retrying on our errors
+      // Only return 401 for signature verification failures
+      if (err instanceof Error && err.message.includes("signature")) {
+        res.status(401).json({ error: "Invalid signature" });
+      } else {
+        res.status(200).json({ received: true, error: "Processing failed" });
       }
-    },
-    onPayload: async (payload) => {
-      // Catch-all for unhandled events — log but don't error
-      console.log("[Payments] Webhook event:", (payload as { type?: string }).type);
-    },
-  });
+    }
+  };
 }
