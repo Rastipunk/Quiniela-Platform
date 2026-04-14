@@ -25,13 +25,11 @@ export interface PaymentStatusResponse {
  * Returns the checkout URL to redirect the user to.
  */
 export async function createCheckout(
-  token: string,
   poolId: string,
   targetCapacity: number,
 ): Promise<CheckoutResponse> {
   return requestJson<CheckoutResponse>("/payments/checkout", {
     method: "POST",
-    headers: { Cookie: `p4a_token=${token}` },
     body: JSON.stringify({ poolId, targetCapacity }),
   });
 }
@@ -41,10 +39,7 @@ export async function createCheckout(
  * Used for polling after checkout redirect.
  */
 export async function getPaymentStatus(
-  token: string,
   poolId: string,
 ): Promise<PaymentStatusResponse> {
-  return requestJson<PaymentStatusResponse>(`/payments/pool/${poolId}/status`, {
-    headers: { Cookie: `p4a_token=${token}` },
-  });
+  return requestJson<PaymentStatusResponse>(`/payments/pool/${poolId}/status`);
 }

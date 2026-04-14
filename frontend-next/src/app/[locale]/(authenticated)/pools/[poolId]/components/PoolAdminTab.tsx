@@ -109,7 +109,6 @@ export function PoolAdminTab({
           </div>
           <ExpandCapacitySection
             poolId={poolId}
-            token={token}
             poolType={overview.pool.organizationId ? "corporate" : "personal"}
             currentCapacity={overview.pool.maxParticipants}
           />
@@ -176,9 +175,8 @@ export function PoolAdminTab({
 
 // ── Expand Capacity Section ────────────────────────────────────
 
-function ExpandCapacitySection({ poolId, token, poolType, currentCapacity }: {
+function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
   poolId: string;
-  token: string;
   poolType: "personal" | "corporate";
   currentCapacity: number;
 }) {
@@ -187,10 +185,10 @@ function ExpandCapacitySection({ poolId, token, poolType, currentCapacity }: {
   const [busy, setBusy] = useState(false);
 
   const handleExpand = async () => {
-    if (selectedCapacity <= currentCapacity || !token) return;
+    if (selectedCapacity <= currentCapacity) return;
     setBusy(true);
     try {
-      const result = await createCheckout(token, poolId, selectedCapacity);
+      const result = await createCheckout(poolId, selectedCapacity);
       window.location.href = result.checkoutUrl;
     } catch (err) {
       console.error("Expand checkout failed:", err);

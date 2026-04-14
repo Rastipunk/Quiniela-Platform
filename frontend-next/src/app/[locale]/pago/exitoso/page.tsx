@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { getToken } from "@/lib/auth";
 import { getPaymentStatus } from "@/lib/api/payments";
 import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
@@ -24,13 +23,11 @@ export default function PaymentSuccessPage() {
 
   useEffect(() => {
     if (!poolId) return;
-    const token = getToken();
-    if (!token) return;
 
     let polls = 0;
     const interval = setInterval(async () => {
       try {
-        const result = await getPaymentStatus(token, poolId);
+        const result = await getPaymentStatus(poolId);
         if (result.status === "COMPLETED") {
           setStatus("confirmed");
           setCapacity(result.toCapacity ?? null);

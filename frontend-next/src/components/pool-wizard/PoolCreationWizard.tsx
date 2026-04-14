@@ -137,12 +137,14 @@ function WizardInner() {
       const freeLimit = state.mode === "corporate" ? CORPORATE_FREE_LIMIT : PERSONAL_FREE_LIMIT;
       if (state.maxParticipants > freeLimit && token) {
         try {
-          const checkout = await createCheckout(token, poolId, state.maxParticipants);
+          console.log("[Wizard] Initiating checkout:", { poolId, targetCapacity: state.maxParticipants });
+          const checkout = await createCheckout(poolId, state.maxParticipants);
+          console.log("[Wizard] Checkout created, redirecting to:", checkout.checkoutUrl);
           window.location.href = checkout.checkoutUrl;
-          return; // Don't navigate to pool — redirect to Polar
-        } catch {
+          return;
+        } catch (checkoutErr) {
+          console.error("[Wizard] Checkout creation failed:", checkoutErr);
           // If checkout fails, still go to pool (they can expand later)
-          console.error("[Wizard] Checkout creation failed, redirecting to pool");
         }
       }
 
