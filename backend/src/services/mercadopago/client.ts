@@ -111,7 +111,7 @@ export interface ProcessPaymentParams {
 }
 
 /**
- * Process a payment from Payment Brick data.
+ * Process a payment from Payment Brick data (legacy camelCase mapping).
  * Called after the Brick collects card/payment info from the user.
  */
 export async function processPayment(params: ProcessPaymentParams) {
@@ -132,6 +132,27 @@ export async function processPayment(params: ProcessPaymentParams) {
       external_reference: params.externalReference,
       description: params.description,
     },
+  });
+
+  return {
+    id: result.id!,
+    status: result.status!,
+    statusDetail: result.status_detail!,
+    externalReference: result.external_reference,
+  };
+}
+
+/**
+ * Process a payment passing the Brick's formData directly.
+ * The Payment Brick sends data in MP's native snake_case format,
+ * which matches the Payment API expected format — no mapping needed.
+ */
+export async function processPaymentDirect(formData: Record<string, unknown>) {
+  const client = getClient();
+  const payment = new Payment(client);
+
+  const result = await payment.create({
+    body: formData as Parameters<Payment["create"]>[0]["body"],
   });
 
   return {

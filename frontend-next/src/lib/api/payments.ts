@@ -78,10 +78,13 @@ export interface MpCheckoutResponse {
   amountCop: number;
   reference: string;
   poolId: string;
+  preferenceId: string;
 }
 
 /**
  * Process payment from Payment Brick data.
+ * Sends the Brick's native formData directly — the backend enriches
+ * it with server-side values and forwards to the MP Payment API.
  */
 export async function processMpPayment(
   paymentId: string,

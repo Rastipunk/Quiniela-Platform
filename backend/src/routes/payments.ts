@@ -106,24 +106,11 @@ paymentsRouter.post("/mp-checkout", requireAuth, async (req: Request, res: Respo
 });
 
 // POST /payments/mp-process — Process payment from Payment Brick
+// The Brick sends formData in MP's native snake_case format.
+// We accept it permissively and validate server-side.
 const mpProcessSchema = z.object({
   paymentId: z.string().uuid(),
-  formData: z.object({
-    token: z.string().optional(),
-    paymentMethodId: z.string(),
-    issuerId: z.string().optional(),
-    transactionAmount: z.number(),
-    installments: z.number(),
-    payer: z.object({
-      email: z.string().email(),
-      identification: z.object({
-        type: z.string(),
-        number: z.string(),
-      }).optional(),
-    }),
-    externalReference: z.string(),
-    description: z.string(),
-  }),
+  formData: z.record(z.unknown()),
 });
 
 paymentsRouter.post("/mp-process", requireAuth, async (req: Request, res: Response) => {

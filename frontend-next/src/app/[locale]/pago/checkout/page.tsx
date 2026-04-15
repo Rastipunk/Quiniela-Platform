@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -13,57 +13,36 @@ import { formatCOP } from "@/lib/pricing";
  * Mercado Pago Payment Brick page.
  *
  * Renders the Payment Brick embedded in the page. The user never leaves.
- * Query params: publicKey, amount, paymentId, reference, poolId
+ * Query params: publicKey, amount, paymentId, reference, preferenceId, poolId
+ *
+ * Integration follows the official MP pattern:
+ * - preferenceId is required for Brick initialization
+ * - onSubmit receives { selectedPaymentMethod, formData }
+ * - formData is passed directly to the backend (MP native format)
  */
 export default function MpCheckoutPage() {
   const t = useTranslations("payment");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const brickContainerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "processing" | "success" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const brickControllerRef = useRef<any>(null);
   const brickInitialized = useRef(false);
 
   const publicKey = searchParams.get("publicKey") || "";
   const amount = Number(searchParams.get("amount") || "0");
   const paymentId = searchParams.get("paymentId") || "";
-  const reference = searchParams.get("reference") || "";
+  const preferenceId = searchParams.get("preferenceId") || "";
   const poolId = searchParams.get("poolId") || "";
-
-  const handleSubmit = useCallback(async (formData: Record<string, unknown>) => {
-    setStatus("processing");
-    try {
-      const result = await processMpPayment(paymentId, {
-        ...formData,
-        transactionAmount: amount,
-        externalReference: reference,
-        description: `Picks4All — Pool capacity upgrade`,
-      });
-
-      if (result.status === "approved") {
-        setStatus("success");
-        setTimeout(() => router.push(`/pools/${poolId}`), 2000);
-      } else if (result.status === "rejected") {
-        setStatus("error");
-        setErrorMsg("El pago fue rechazado. Intenta con otro medio de pago.");
-      } else {
-        // pending / in_process — async payment (PSE, Nequi)
-        setStatus("success");
-        setTimeout(() => router.push(`/pago/exitoso?poolId=${poolId}`), 2000);
-      }
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : "Error procesando el pago");
-    }
-  }, [paymentId, amount, reference, poolId, router]);
 
   useEffect(() => {
     if (brickInitialized.current) return;
 
-    // Validate required params before attempting to load
+    // Validate required params
     if (!publicKey) {
       setStatus("error");
-      setErrorMsg("Configuración de pagos incompleta. Contacta al administrador.");
+      setErrorMsg("Configuración de pagos incompleta (falta publicKey). Contacta al administrador.");
       console.error("[PaymentBrick] Missing publicKey param");
       return;
     }
@@ -72,10 +51,15 @@ export default function MpCheckoutPage() {
       setErrorMsg("Monto inválido.");
       return;
     }
+    if (!preferenceId) {
+      setStatus("error");
+      setErrorMsg("Configuración de pagos incompleta (falta preferenceId). Contacta al administrador.");
+      console.error("[PaymentBrick] Missing preferenceId param");
+      return;
+    }
 
     brickInitialized.current = true;
 
-    // Load MP SDK dynamically
     const loadMpSdk = async () => {
       try {
         const { loadMercadoPago } = await import("@mercadopago/sdk-js");
@@ -83,31 +67,49 @@ export default function MpCheckoutPage() {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mp = new (window as any).MercadoPago(publicKey, { locale: "es-CO" });
-        const bricksBuilder = (mp as any).bricks();
+        const bricksBuilder = mp.bricks();
 
-        await bricksBuilder.create("payment", "mp-brick-container", {
+        brickControllerRef.current = await bricksBuilder.create("payment", "mp-brick-container", {
           initialization: {
             amount,
-          },
-          customization: {
-            paymentMethods: {
-              maxInstallments: 1,
-              minInstallments: 1,
-            },
-            visual: {
-              style: {
-                theme: "default",
-              },
-            },
+            preferenceId,
           },
           callbacks: {
             onReady: () => {
               setStatus("ready");
             },
-            onSubmit: async (cardFormData: Record<string, unknown>) => {
-              await handleSubmit(cardFormData);
+            onSubmit: ({ selectedPaymentMethod, formData }: {
+              selectedPaymentMethod: string;
+              formData: Record<string, unknown>;
+            }) => {
+              // Wallet/credits payments are handled by MP redirect — just resolve
+              if (selectedPaymentMethod === "wallet_purchase" || selectedPaymentMethod === "onboarding_credits") {
+                return Promise.resolve();
+              }
+
+              setStatus("processing");
+
+              return processMpPayment(paymentId, formData)
+                .then((result) => {
+                  if (result.status === "approved") {
+                    setStatus("success");
+                    setTimeout(() => router.push(`/pools/${poolId}`), 2000);
+                  } else if (result.status === "rejected") {
+                    setStatus("error");
+                    setErrorMsg("El pago fue rechazado. Intenta con otro medio de pago.");
+                  } else {
+                    // pending / in_process — async payment (PSE, Nequi)
+                    setStatus("success");
+                    setTimeout(() => router.push(`/pago/exitoso?poolId=${poolId}`), 2000);
+                  }
+                })
+                .catch((err) => {
+                  setStatus("error");
+                  setErrorMsg(err instanceof Error ? err.message : "Error procesando el pago");
+                  throw err; // reject the promise so the Brick shows error state
+                });
             },
-            onError: (error: Error) => {
+            onError: (error: unknown) => {
               console.error("[PaymentBrick] Error:", error);
               setStatus("error");
               setErrorMsg("Error al cargar el formulario de pago");
@@ -122,7 +124,25 @@ export default function MpCheckoutPage() {
     };
 
     loadMpSdk();
-  }, [publicKey, amount, handleSubmit]);
+
+    // Cleanup on unmount
+    return () => {
+      if (brickControllerRef.current?.unmount) {
+        brickControllerRef.current.unmount();
+      }
+    };
+  }, [publicKey, amount, preferenceId, paymentId, poolId, router]);
+
+  const handleRetry = () => {
+    // Unmount existing Brick before re-creating
+    if (brickControllerRef.current?.unmount) {
+      brickControllerRef.current.unmount();
+      brickControllerRef.current = null;
+    }
+    brickInitialized.current = false;
+    setErrorMsg("");
+    setStatus("loading");
+  };
 
   return (
     <div style={{
@@ -170,7 +190,7 @@ export default function MpCheckoutPage() {
           </div>
         )}
 
-        <div id="mp-brick-container" ref={brickContainerRef} />
+        <div id="mp-brick-container" />
 
         {status === "processing" && (
           <div style={{ textAlign: "center", padding: 20 }}>
@@ -189,7 +209,12 @@ export default function MpCheckoutPage() {
 
         {status === "success" && (
           <div style={{ textAlign: "center", padding: 30 }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
             <h2 style={{ fontSize: 20, fontWeight: fontWeight.bold, color: colors.text }}>
               {t("success.title")}
             </h2>
@@ -201,12 +226,11 @@ export default function MpCheckoutPage() {
 
         {status === "error" && (
           <div style={{ textAlign: "center", padding: 20 }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>❌</div>
-            <p style={{ color: colors.error, fontWeight: fontWeight.semibold }}>{errorMsg}</p>
+            <p style={{ color: colors.error, fontWeight: fontWeight.semibold, marginBottom: 16 }}>{errorMsg}</p>
             <button
-              onClick={() => { setStatus("loading"); brickInitialized.current = false; }}
+              onClick={handleRetry}
               style={{
-                marginTop: 16, padding: "12px 24px", borderRadius: radii.lg,
+                padding: "12px 24px", borderRadius: radii.lg,
                 border: `1px solid ${colors.brand}`, background: colors.white,
                 color: colors.brand, fontWeight: fontWeight.semibold, cursor: "pointer",
               }}
@@ -225,7 +249,7 @@ export default function MpCheckoutPage() {
           color: colors.textMuted, cursor: "pointer", fontSize: 14,
         }}
       >
-        ← Volver
+        &#8592; Volver
       </button>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

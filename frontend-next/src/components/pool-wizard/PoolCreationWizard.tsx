@@ -150,6 +150,7 @@ function WizardInner() {
               amount: String(mpData.amountCop),
               paymentId: mpData.paymentId,
               reference: mpData.reference,
+              preferenceId: mpData.preferenceId,
               poolId,
             });
             const localePrefix = locale === "es" ? "" : `/${locale}`;

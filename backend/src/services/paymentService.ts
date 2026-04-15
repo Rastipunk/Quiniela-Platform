@@ -28,10 +28,10 @@ import {
   type CreateCheckoutParams,
 } from "./polar/client";
 import {
-  processPayment as mpProcessPayment,
+  processPaymentDirect as mpProcessPaymentDirect,
   getPayment as mpGetPayment,
   getMpPublicKey,
-  type ProcessPaymentParams,
+  createPreference as mpCreatePreference,
 } from "./mercadopago/client";
 
 // ── Types ──────────────────────────────────────────────────────
@@ -379,6 +379,7 @@ export interface MpCheckoutData {
   amountCop: number;
   reference: string;
   poolId: string;
+  preferenceId: string;
 }
 
 /**
@@ -422,6 +423,25 @@ export async function initiateMpCheckout(
   const amountUsd = calculateUpgradePrice(poolType, currentCapacity, targetCapacity);
   const reference = `P4A-${poolId.slice(0, 8)}-${Date.now()}`;
 
+  // Build URLs for preference
+  const frontendUrl = process.env.FRONTEND_URL || "https://picks4all.com";
+  const backendUrl = process.env.BACKEND_URL || "https://api.picks4all.com";
+  const localePath = input.locale && input.locale !== "es" ? `/${input.locale}` : "";
+
+  // Create MP preference (required for Payment Brick initialization)
+  const preference = await mpCreatePreference({
+    title: `Picks4All — Pool upgrade (${currentCapacity} → ${targetCapacity} players)`,
+    unitPrice: amountCop,
+    quantity: 1,
+    externalReference: reference,
+    notificationUrl: `${backendUrl}/payments/mp-webhook`,
+    backUrls: {
+      success: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
+      failure: `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}`,
+      pending: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
+    },
+  });
+
   const payment = await prisma.poolPayment.create({
     data: {
       poolId,
@@ -442,7 +462,7 @@ export async function initiateMpCheckout(
     entityType: "Pool",
     entityId: poolId,
     poolId,
-    dataJson: { paymentId: payment.id, reference, amountCop, poolType },
+    dataJson: { paymentId: payment.id, reference, amountCop, poolType, preferenceId: preference.preferenceId },
   }));
 
   return {
@@ -451,16 +471,21 @@ export async function initiateMpCheckout(
     amountCop,
     reference,
     poolId,
+    preferenceId: preference.preferenceId,
   };
 }
 
 /**
  * Process a payment from the Payment Brick.
  * Called by POST /payments/mp-process after the Brick collects payment data.
+ *
+ * The Brick sends formData in MP's native format (snake_case).
+ * We enrich it with our reference/description and pass it through
+ * to the MP Payment API — matching the official integration pattern.
  */
 export async function processMpPayment(input: {
   paymentId: string; // our PoolPayment ID
-  formData: ProcessPaymentParams;
+  formData: Record<string, unknown>;
 }): Promise<{ status: string; mpPaymentId: number }> {
   const { paymentId, formData } = input;
 
@@ -469,8 +494,12 @@ export async function processMpPayment(input: {
   if (!payment) throw new ServiceError("NOT_FOUND", 404);
   if (payment.status === "COMPLETED") throw new ServiceError("ALREADY_COMPLETED", 409);
 
-  // Process with Mercado Pago
-  const result = await mpProcessPayment(formData);
+  // Enrich formData with server-side values (prevent client-side tampering)
+  formData.external_reference = payment.polarCheckoutId; // our reference
+  formData.description = `Picks4All — Pool capacity upgrade`;
+
+  // Process with Mercado Pago (pass Brick formData directly)
+  const result = await mpProcessPaymentDirect(formData);
 
   console.log(`[PaymentService] MP payment result: id=${result.id}, status=${result.status}, detail=${result.statusDetail}`);
 
