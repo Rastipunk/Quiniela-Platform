@@ -28,8 +28,8 @@ export const STANDARD_STEPS: WizardStep[] = [
   "NAME_DETAILS",
   "SCORING",
   "ADVANCED_RULES",
-  "CAPACITY",
   "SUMMARY",
+  "CAPACITY",
 ];
 
 export const CORPORATE_STEPS: WizardStep[] = [
@@ -38,9 +38,9 @@ export const CORPORATE_STEPS: WizardStep[] = [
   "NAME_DETAILS",
   "SCORING",
   "ADVANCED_RULES",
-  "CAPACITY",
   "EMPLOYEE_INVITES",
   "SUMMARY",
+  "CAPACITY",
 ];
 
 // ── Scoring style (user-facing names for presets) ────────────

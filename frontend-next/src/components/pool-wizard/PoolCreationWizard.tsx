@@ -193,7 +193,7 @@ function WizardInner() {
       case "ADVANCED_RULES":
         return <StepAdvancedRules />;
       case "CAPACITY":
-        return <StepCapacity />;
+        return <StepCapacity onSubmit={handleSubmit} submitBusy={submitBusy} />;
       case "EMPLOYEE_INVITES":
         return <StepEmployeeInvites />;
       case "SUMMARY":
@@ -244,33 +244,35 @@ function WizardInner() {
         <Suspense fallback={<StepLoader />}>{renderStep()}</Suspense>
       </div>
 
-      {/* Navigation buttons — sticky at bottom so they're always reachable */}
-      <div
-        style={{
-          position: "sticky",
-          bottom: 0,
-          zIndex: 20,
-          background: "var(--bg, #fff)",
-          borderTop: `1px solid ${colors.borderLight}`,
-          padding: isMobile ? "12px 16px" : "16px 24px",
-          maxWidth: 720,
-          margin: "0 auto",
-          width: "100%",
-          boxSizing: "border-box",
-        }}
-      >
-        <PoolWizardNavButtons
-          onSubmit={isLastStep ? handleSubmit : undefined}
-          submitLabel={
-            state.mode === "corporate"
-              ? t("nav.createCorporate", {
-                  defaultMessage: "Crear Pool Corporativo",
-                })
-              : t("nav.create", { defaultMessage: "Crear Pool" })
-          }
-          submitBusy={submitBusy}
-        />
-      </div>
+      {/* Navigation buttons — hidden on CAPACITY step (it renders its own CTA) */}
+      {state.currentStep !== "CAPACITY" && (
+        <div
+          style={{
+            position: "sticky",
+            bottom: 0,
+            zIndex: 20,
+            background: "var(--bg, #fff)",
+            borderTop: `1px solid ${colors.borderLight}`,
+            padding: isMobile ? "12px 16px" : "16px 24px",
+            maxWidth: 720,
+            margin: "0 auto",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          <PoolWizardNavButtons
+            onSubmit={isLastStep ? handleSubmit : undefined}
+            submitLabel={
+              state.mode === "corporate"
+                ? t("nav.createCorporate", {
+                    defaultMessage: "Crear Pool Corporativo",
+                  })
+                : t("nav.create", { defaultMessage: "Crear Pool" })
+            }
+            submitBusy={submitBusy}
+          />
+        </div>
+      )}
     </div>
   );
 }

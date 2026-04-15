@@ -191,8 +191,14 @@
 
   "capacity": {
     "title": "¿Cuántos van a jugar?",
-    "subtitle": "Define el tamaño máximo de tu pool",
-    "icon": "👥"
+    "subtitle": "Elige cuántos participantes puede tener tu pool.",
+    "icon": "👥",
+    "yourPool": "Tu pool: {name}",
+    "proceedToPayment": "Proceder al pago",
+    "createPool": "Crear Pool",
+    "continueFree": "O continúa con {limit} cupos gratis",
+    "continueFreeCorpShort": "O continúa gratis para probar la plataforma",
+    "continueFreeCorpDetail": "(Antes de enviar las invitaciones a tus empleados será necesario hacer el pago por los cupos que necesites)"
   },
 
   "employeeInvites": {

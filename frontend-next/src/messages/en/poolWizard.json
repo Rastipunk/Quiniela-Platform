@@ -191,8 +191,14 @@
 
   "capacity": {
     "title": "How many will play?",
-    "subtitle": "Set the maximum size of your pool",
-    "icon": "👥"
+    "subtitle": "Choose how many participants your pool can have.",
+    "icon": "👥",
+    "yourPool": "Your pool: {name}",
+    "proceedToPayment": "Proceed to payment",
+    "createPool": "Create Pool",
+    "continueFree": "Or continue with {limit} free spots",
+    "continueFreeCorpShort": "Or continue free to test the platform",
+    "continueFreeCorpDetail": "(Before sending invitations to your employees you will need to pay for the spots you need)"
   },
 
   "employeeInvites": {

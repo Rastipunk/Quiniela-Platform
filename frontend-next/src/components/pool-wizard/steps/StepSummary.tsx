@@ -242,16 +242,6 @@ export function StepSummary() {
         step="NAME_DETAILS"
       />
 
-      {/* Capacity */}
-      <SummarySection
-        label={t("summary.capacity", { defaultMessage: "Capacidad" })}
-        value={t("summary.capacityValue", {
-          defaultMessage: "Hasta {max} participantes",
-          max: state.maxParticipants,
-        })}
-        step="CAPACITY"
-      />
-
       {/* Company details — corporate only */}
       {isCorporate && state.welcomeMessage && (
         <SummarySection
