@@ -22,7 +22,7 @@
   "customReason": "Necesitas {requested}, y los planes van en bloques de {increment}. El de {offered} es el más pequeño que cubre tu necesidad.",
   "personalFreeTitle": "Tu pool de 20 jugadores es 100% gratis",
   "personalFreeDesc": "Funciona completamente, sin límites ni restricciones.",
-  "personalExpandNotice": "Te notificaremos por correo cuando esté disponible la opción de ampliar a más jugadores.",
+  "personalExpandNotice": "Amplía tu pool en cualquier momento desde la configuración.",
   "trialTitle": "Prueba la plataforma GRATIS",
   "trialNoCreditCard": "Sin tarjeta de crédito ni pagos.",
   "trialPlayersJoin": "Explora todas las funciones antes de invitar a tu equipo.",

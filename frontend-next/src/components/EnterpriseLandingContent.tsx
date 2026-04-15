@@ -312,9 +312,19 @@ export function EnterpriseLandingContent() {
           >
             {t("pricing.free")}
           </div>
-          <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 24 }}>
-            Beta
-          </p>
+          <div style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            background: "#dcfce7",
+            border: "1px solid #86efac",
+            color: "#166534",
+            fontSize: 13,
+            fontWeight: 600,
+            marginBottom: 24,
+            textAlign: "center",
+          }}>
+            {t("pricing.trialAvailable")}
+          </div>
           <ul
             style={{
               listStyle: "none",

@@ -51,8 +51,8 @@
     "regionLabel": "Região"
   },
   "beta": {
-    "message": "Beta — Seu feedback nos ajuda a melhorar",
-    "messageMobile": "Beta — Seu feedback nos ajuda",
+    "message": "",
+    "messageMobile": "",
     "reportBug": "Reportar Bug",
     "suggestion": "Sugestão"
   },
@@ -310,9 +310,10 @@
       "step3Desc": "Seus funcionários ativam a conta com um clique e começam a fazer previsões no {term} imediatamente."
     },
     "pricing": {
-      "title": "Grátis durante o beta",
-      "subtitle": "Aproveite o acesso completo sem custo enquanto estamos em beta. Sem limite de funcionários.",
+      "title": "Plano de testes disponível",
+      "subtitle": "Teste grátis com 1 convidado. Expanda a capacidade quando estiver pronto.",
       "free": "Grátis",
+      "trialAvailable": "Plano de testes disponível — Teste grátis com 1 convidado",
       "features": {
         "unlimited": "Funcionários ilimitados",
         "logo": "Logo da empresa personalizado",

@@ -51,8 +51,8 @@
     "regionLabel": "Region"
   },
   "beta": {
-    "message": "Beta — Your feedback helps us improve",
-    "messageMobile": "Beta — Your feedback helps",
+    "message": "",
+    "messageMobile": "",
     "reportBug": "Report Bug",
     "suggestion": "Suggestion"
   },
@@ -310,9 +310,10 @@
       "step3Desc": "Your employees activate their account with one click and start making predictions right away."
     },
     "pricing": {
-      "title": "Free during beta",
-      "subtitle": "Enjoy full access at no cost while we're in beta. No employee limit.",
+      "title": "Trial plan available",
+      "subtitle": "Try free with 1 guest. Expand capacity when you're ready.",
       "free": "Free",
+      "trialAvailable": "Trial plan available — Try free with 1 guest",
       "features": {
         "unlimited": "Unlimited employees",
         "logo": "Custom company logo",

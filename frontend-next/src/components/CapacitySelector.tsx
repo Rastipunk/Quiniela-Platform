@@ -38,7 +38,7 @@ export default function CapacitySelector({
   onSelect,
   currentCapacity,
   mode,
-  allowPaidTiers = false,
+  allowPaidTiers = true,
   currency = "COP",
 }: CapacitySelectorProps) {
   const t = useTranslations("pricing");
