@@ -540,7 +540,7 @@ export function LandingContent() {
           </div>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 32 }}>
+        <div style={{ textAlign: "center", marginTop: 32, display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" }}>
           <Link
             href="/precios"
             style={{
@@ -554,6 +554,20 @@ export function LandingContent() {
             }}
           >
             {t("pricing.seeAllPlans")}
+          </Link>
+          <Link
+            href="/como-se-juega"
+            style={{
+              color: colors.brand,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: "1rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            &#9917; {t("pricing.howToPlay")}
           </Link>
         </div>
       </section>
