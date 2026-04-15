@@ -142,9 +142,16 @@ function WizardInner() {
           const isColombia = country === "CO";
 
           if (isColombia) {
-            // Mercado Pago (Colombia/COP) — redirect to MP checkout
+            // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick
             const mpData = await createMpCheckout(poolId, state.maxParticipants);
-            window.location.href = mpData.checkoutUrl;
+            const params = new URLSearchParams({
+              publicKey: mpData.publicKey || process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || "",
+              amount: String(mpData.amountCop),
+              paymentId: mpData.paymentId,
+              reference: mpData.reference,
+              poolId,
+            });
+            window.location.href = `/pago/checkout?${params.toString()}`;
             return;
           } else {
             // Polar redirect (International/USD)

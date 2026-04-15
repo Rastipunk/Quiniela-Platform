@@ -30,7 +30,6 @@ import {
 import {
   processPayment as mpProcessPayment,
   getPayment as mpGetPayment,
-  createPreference as mpCreatePreference,
   getMpPublicKey,
   type ProcessPaymentParams,
 } from "./mercadopago/client";
@@ -375,10 +374,11 @@ export async function getPaymentStatus(
 // ═══════════════════════════════════════════════════════════════
 
 export interface MpCheckoutData {
-  checkoutUrl: string;
+  publicKey: string;
   paymentId: string;
   amountCop: number;
   reference: string;
+  poolId: string;
 }
 
 /**
@@ -436,41 +436,21 @@ export async function initiateMpCheckout(
     },
   });
 
-  // Create Mercado Pago preference (Checkout Pro redirect)
-  const frontendUrl = process.env.FRONTEND_URL || "https://picks4all.com";
-  const backendUrl = process.env.SITE_DOMAIN ? `https://api.${process.env.SITE_DOMAIN}` : "https://api.picks4all.com";
-
-  const pref = await mpCreatePreference({
-    title: `Picks4All — Ampliación a ${targetCapacity} jugadores`,
-    unitPrice: amountCop,
-    quantity: 1,
-    externalReference: reference,
-    notificationUrl: `${backendUrl}/payments/mp-webhook`,
-    backUrls: {
-      success: `${frontendUrl}/pago/exitoso?poolId=${poolId}`,
-      failure: `${frontendUrl}/pago/cancelado?poolId=${poolId}`,
-      pending: `${frontendUrl}/pago/exitoso?poolId=${poolId}`,
-    },
-  });
-
   fireAndForget("audit:mp-checkout-created", writeAuditEvent({
     actorUserId: userId,
     action: "MP_CHECKOUT_CREATED",
     entityType: "Pool",
     entityId: poolId,
     poolId,
-    dataJson: { paymentId: payment.id, reference, amountCop, poolType, preferenceId: pref.preferenceId },
+    dataJson: { paymentId: payment.id, reference, amountCop, poolType },
   }));
 
-  // Use sandbox URL for test keys, production for real keys
-  const isTest = (process.env.MP_ACCESS_TOKEN || "").startsWith("TEST-");
-  const checkoutUrl = isTest ? pref.sandboxInitPoint : pref.initPoint;
-
   return {
-    checkoutUrl,
+    publicKey: getMpPublicKey(),
     paymentId: payment.id,
     amountCop,
     reference,
+    poolId,
   };
 }
 

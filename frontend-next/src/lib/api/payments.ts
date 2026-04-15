@@ -73,10 +73,11 @@ export async function createMpCheckout(
 }
 
 export interface MpCheckoutResponse {
-  checkoutUrl: string;
+  publicKey: string;
   paymentId: string;
   amountCop: number;
   reference: string;
+  poolId: string;
 }
 
 /**

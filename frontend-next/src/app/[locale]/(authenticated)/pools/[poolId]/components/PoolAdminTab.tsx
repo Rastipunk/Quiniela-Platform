@@ -205,9 +205,16 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
     try {
       const country = await getPaymentCountry();
       if (country === "CO") {
-        // Mercado Pago (Colombia/COP) — redirect
+        // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick
         const mpData = await createMpCheckout(poolId, selectedCapacity);
-        window.location.href = mpData.checkoutUrl;
+        const params = new URLSearchParams({
+          publicKey: mpData.publicKey || "",
+          amount: String(mpData.amountCop),
+          paymentId: mpData.paymentId,
+          reference: mpData.reference,
+          poolId,
+        });
+        window.location.href = `/pago/checkout?${params.toString()}`;
       } else {
         // Polar redirect (International)
         const result = await createCheckout(poolId, selectedCapacity);
