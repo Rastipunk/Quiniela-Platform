@@ -94,6 +94,7 @@ export default function MpCheckoutPage() {
             paymentMethods: {
               creditCard: "all",
               debitCard: "all",
+              prepaidCard: "all",
               bankTransfer: "all",
               ticket: "all",
               mercadoPago: "all",
