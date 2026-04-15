@@ -29,7 +29,7 @@
   ],
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@types/node": "^20",
+    "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.0",
