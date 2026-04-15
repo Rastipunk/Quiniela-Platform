@@ -58,7 +58,21 @@ export default function MpCheckoutPage() {
   }, [paymentId, amount, reference, poolId, router]);
 
   useEffect(() => {
-    if (!publicKey || !amount || brickInitialized.current) return;
+    if (brickInitialized.current) return;
+
+    // Validate required params before attempting to load
+    if (!publicKey) {
+      setStatus("error");
+      setErrorMsg("Configuración de pagos incompleta. Contacta al administrador.");
+      console.error("[PaymentBrick] Missing publicKey param");
+      return;
+    }
+    if (!amount) {
+      setStatus("error");
+      setErrorMsg("Monto inválido.");
+      return;
+    }
+
     brickInitialized.current = true;
 
     // Load MP SDK dynamically
@@ -103,7 +117,7 @@ export default function MpCheckoutPage() {
       } catch (err) {
         console.error("[PaymentBrick] Failed to load:", err);
         setStatus("error");
-        setErrorMsg("No se pudo cargar el formulario de pago");
+        setErrorMsg("No se pudo cargar el formulario de pago. Verifica tu conexión e intenta de nuevo.");
       }
     };
 
