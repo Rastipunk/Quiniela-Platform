@@ -403,14 +403,12 @@ export function LandingContent() {
           {/* Personal Pro Card */}
           <div
             style={{
-              position: "relative",
               border: "1px solid var(--border)",
               borderRadius: 16,
               padding: 28,
               background: "var(--surface)",
               display: "flex",
               flexDirection: "column",
-              overflow: "hidden",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
@@ -437,27 +435,6 @@ export function LandingContent() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
               <FeatureCheck label={t("pricing.personalPro.includesBase")} />
               <FeatureCheck label={t("pricing.personalPro.extraPlayers")} highlight />
-            </div>
-
-            {/* Coming Soon Overlay */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                borderRadius: 14,
-                background: "rgba(255, 255, 255, 0.78)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                zIndex: 2,
-                backdropFilter: "blur(1px)",
-              }}
-            >
-              <span style={{ fontSize: 18 }}>&#128274;</span>
-              <span style={{ fontWeight: 700, fontSize: 15, color: colors.brand }}>
-                {t("pricing.comingSoon")}
-              </span>
             </div>
           </div>
 
