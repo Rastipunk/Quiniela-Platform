@@ -75,6 +75,15 @@ export default function MpCheckoutPage() {
             amount,
             preferenceId,
           },
+          customization: {
+            paymentMethods: {
+              creditCard: "all",
+              debitCard: "all",
+              bankTransfer: "all",
+              ticket: "all",
+              mercadoPago: "all",
+            },
+          },
           callbacks: {
             onReady: () => {
               setStatus("ready");
