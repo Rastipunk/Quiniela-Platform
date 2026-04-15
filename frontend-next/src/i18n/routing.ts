@@ -100,6 +100,10 @@ export const routing = defineRouting({
       en: "/world-cup-2026/predictions",
       pt: "/copa-do-mundo-2026/previsoes",
     },
+    // Payment pages
+    "/pago/checkout": "/pago/checkout",
+    "/pago/exitoso": "/pago/exitoso",
+    "/pago/cancelado": "/pago/cancelado",
     // Pool creation wizard
     "/crear-pool": {
       es: "/crear-pool",

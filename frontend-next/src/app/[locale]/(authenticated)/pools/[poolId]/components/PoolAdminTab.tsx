@@ -3,7 +3,7 @@
 import { colors } from "@/lib/theme";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { archivePool } from "@/lib/api";
 import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { getTierForCustomCount, formatCOP, type PoolType as PricingPoolType } from "@/lib/pricing";
@@ -184,6 +184,7 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
   currentCapacity: number;
 }) {
   const t = useTranslations("payment");
+  const locale = useLocale();
   const [selectedCapacity, setSelectedCapacity] = useState(currentCapacity);
   const [busy, setBusy] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -214,7 +215,8 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
           reference: mpData.reference,
           poolId,
         });
-        window.location.href = `/pago/checkout?${params.toString()}`;
+        const localePrefix = locale === "es" ? "" : `/${locale}`;
+        window.location.href = `${localePrefix}/pago/checkout?${params.toString()}`;
       } else {
         // Polar redirect (International)
         const result = await createCheckout(poolId, selectedCapacity);

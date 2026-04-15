@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { colors, radii, spacing, fontSize, fontWeight } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuth } from "@/hooks/useAuth";
@@ -68,6 +68,7 @@ function StepLoader() {
 // ── Inner wizard (needs context) ────────────────────────────
 function WizardInner() {
   const t = useTranslations("poolWizard");
+  const locale = useLocale();
   const isMobile = useIsMobile();
   const router = useRouter();
   const { token } = useAuth();
@@ -151,7 +152,8 @@ function WizardInner() {
               reference: mpData.reference,
               poolId,
             });
-            window.location.href = `/pago/checkout?${params.toString()}`;
+            const localePrefix = locale === "es" ? "" : `/${locale}`;
+            window.location.href = `${localePrefix}/pago/checkout?${params.toString()}`;
             return;
           } else {
             // Polar redirect (International/USD)
