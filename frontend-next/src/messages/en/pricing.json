@@ -17,7 +17,7 @@
   "customFreeCovered": "The free plan already covers up to {limit} players.",
   "customInList": "That number is already covered in the list above.",
   "customResult": "For {requested} players, the smallest plan that covers you is {offered} players.",
-  "customSaving": "Save {percent}% (${amount})",
+  "customSaving": "Save {percent}% ({amount})",
   "customSelect": "Select {count} players",
   "customReason": "You need {requested}, and plans come in blocks of {increment}. The {offered}-player plan is the smallest that covers your need.",
   "personalFreeTitle": "Your 20-player pool is 100% free",
