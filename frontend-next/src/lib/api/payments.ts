@@ -60,27 +60,36 @@ export async function createCheckout(
 }
 
 /**
- * Create a Wompi checkout session (Colombia/COP).
- * Returns widget initialization data.
+ * Prepare Mercado Pago Payment Brick checkout data (Colombia/COP).
  */
-export async function createWompiCheckout(
+export async function createMpCheckout(
   poolId: string,
   targetCapacity: number,
-): Promise<WompiCheckoutResponse> {
-  return requestJson<WompiCheckoutResponse>("/payments/wompi-checkout", {
+): Promise<MpCheckoutResponse> {
+  return requestJson<MpCheckoutResponse>("/payments/mp-checkout", {
     method: "POST",
     body: JSON.stringify({ poolId, targetCapacity }),
   });
 }
 
-export interface WompiCheckoutResponse {
-  publicKey: string;
-  reference: string;
-  amountInCents: number;
-  currency: string;
-  integritySignature: string;
-  redirectUrl: string;
+export interface MpCheckoutResponse {
+  checkoutUrl: string;
   paymentId: string;
+  amountCop: number;
+  reference: string;
+}
+
+/**
+ * Process payment from Payment Brick data.
+ */
+export async function processMpPayment(
+  paymentId: string,
+  formData: Record<string, unknown>,
+): Promise<{ status: string; mpPaymentId: number }> {
+  return requestJson<{ status: string; mpPaymentId: number }>("/payments/mp-process", {
+    method: "POST",
+    body: JSON.stringify({ paymentId, formData }),
+  });
 }
 
 /**

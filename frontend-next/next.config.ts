@@ -6,12 +6,12 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 // Content Security Policy — allow our app + Google services (GA4, GIS)
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.googletagmanager.com https://checkout.wompi.co",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.googletagmanager.com https://sdk.mercadopago.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: blob: https://media.api-sports.io https://flagcdn.com https://www.googletagmanager.com https://*.gstatic.com",
   "font-src 'self' https://fonts.gstatic.com",
-  `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "https://api.picks4all.com"} https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com https://ipapi.co https://checkout.wompi.co https://sandbox.wompi.co`,
-  "frame-src https://accounts.google.com https://apis.google.com https://checkout.wompi.co https://sandbox.wompi.co",
+  `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "https://api.picks4all.com"} https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com https://ipapi.co https://www.mercadopago.com.co https://sdk.mercadopago.com`,
+  "frame-src https://accounts.google.com https://apis.google.com https://www.mercadopago.com.co",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",

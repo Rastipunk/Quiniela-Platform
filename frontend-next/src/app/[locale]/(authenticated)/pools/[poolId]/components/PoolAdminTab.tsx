@@ -5,7 +5,7 @@ import { colors } from "@/lib/theme";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
-import { createCheckout, createWompiCheckout, getPaymentCountry } from "@/lib/api/payments";
+import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { getTierForCustomCount, formatCOP, type PoolType as PricingPoolType } from "@/lib/pricing";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
@@ -205,33 +205,9 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
     try {
       const country = await getPaymentCountry();
       if (country === "CO") {
-        // Wompi widget (Colombia)
-        const wompiData = await createWompiCheckout(poolId, selectedCapacity);
-        if (!document.querySelector('script[src*="checkout.wompi.co"]')) {
-          await new Promise<void>((resolve) => {
-            const script = document.createElement("script");
-            script.src = "https://checkout.wompi.co/widget.js";
-            script.onload = () => resolve();
-            document.head.appendChild(script);
-          });
-        }
-        if ((window as any).WidgetCheckout) {
-          const widget = new (window as any).WidgetCheckout({
-            currency: wompiData.currency,
-            amountInCents: wompiData.amountInCents,
-            reference: wompiData.reference,
-            publicKey: wompiData.publicKey,
-            redirectUrl: wompiData.redirectUrl,
-            "signature:integrity": wompiData.integritySignature,
-          });
-          widget.open((result: any) => {
-            if (result.transaction.status === "APPROVED") {
-              window.location.href = wompiData.redirectUrl;
-            } else {
-              setBusy(false);
-            }
-          });
-        }
+        // Mercado Pago (Colombia/COP) — redirect
+        const mpData = await createMpCheckout(poolId, selectedCapacity);
+        window.location.href = mpData.checkoutUrl;
       } else {
         // Polar redirect (International)
         const result = await createCheckout(poolId, selectedCapacity);

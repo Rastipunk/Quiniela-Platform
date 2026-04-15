@@ -51,6 +51,7 @@
     "google-auth-library": "^10.5.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "mercadopago": "^2.12.0",
     "node-cron": "^4.2.1",
     "prisma": "^6.19.1",
     "resend": "^6.6.0",

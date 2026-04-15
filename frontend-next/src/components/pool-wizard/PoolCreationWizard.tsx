@@ -18,22 +18,8 @@ import { createPool } from "@/lib/api/pools";
 import { createCorporatePool } from "@/lib/api/corporate";
 import type { WizardMode } from "@/types/poolWizard";
 import { trackEvent } from "@/lib/analytics";
-import { createCheckout, createWompiCheckout, getPaymentCountry } from "@/lib/api/payments";
+import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT } from "@/lib/pricing";
-
-// Wompi widget type declaration
-declare global {
-  interface Window {
-    WidgetCheckout?: new (config: {
-      currency: string;
-      amountInCents: number;
-      reference: string;
-      publicKey: string;
-      redirectUrl: string;
-      "signature:integrity": string;
-    }) => { open: (callback: (result: { transaction: { id: string; status: string } }) => void) => void };
-  }
-}
 
 // ── Dynamic step imports (code-split each step) ────────────
 const StepCompanyInfo = lazy(
@@ -156,36 +142,10 @@ function WizardInner() {
           const isColombia = country === "CO";
 
           if (isColombia) {
-            // Wompi widget (Colombia/COP)
-            const wompiData = await createWompiCheckout(poolId, state.maxParticipants);
-
-            // Load Wompi widget script if not already loaded
-            if (!document.querySelector('script[src*="checkout.wompi.co"]')) {
-              await new Promise<void>((resolve) => {
-                const script = document.createElement("script");
-                script.src = "https://checkout.wompi.co/widget.js";
-                script.onload = () => resolve();
-                document.head.appendChild(script);
-              });
-            }
-
-            // Open Wompi widget
-            if (window.WidgetCheckout) {
-              const widget = new window.WidgetCheckout({
-                currency: wompiData.currency,
-                amountInCents: wompiData.amountInCents,
-                reference: wompiData.reference,
-                publicKey: wompiData.publicKey,
-                redirectUrl: wompiData.redirectUrl,
-                "signature:integrity": wompiData.integritySignature,
-              });
-              widget.open((result) => {
-                if (result.transaction.status === "APPROVED") {
-                  window.location.href = `${wompiData.redirectUrl}`;
-                }
-              });
-              return;
-            }
+            // Mercado Pago (Colombia/COP) — redirect to MP checkout
+            const mpData = await createMpCheckout(poolId, state.maxParticipants);
+            window.location.href = mpData.checkoutUrl;
+            return;
           } else {
             // Polar redirect (International/USD)
             const checkout = await createCheckout(poolId, state.maxParticipants);

@@ -28,11 +28,12 @@ import {
   type CreateCheckoutParams,
 } from "./polar/client";
 import {
-  generateIntegritySignature,
-  verifyWebhookChecksum,
-  getWompiPublicKey,
-  getTransaction as wompiGetTransaction,
-} from "./wompi/client";
+  processPayment as mpProcessPayment,
+  getPayment as mpGetPayment,
+  createPreference as mpCreatePreference,
+  getMpPublicKey,
+  type ProcessPaymentParams,
+} from "./mercadopago/client";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -370,29 +371,26 @@ export async function getPaymentStatus(
 }
 
 // ═══════════════════════════════════════════════════════════════
-// WOMPI (Colombia, COP)
+// MERCADO PAGO (Colombia, COP)
 // ═══════════════════════════════════════════════════════════════
 
-export interface WompiCheckoutData {
-  publicKey: string;
-  reference: string;
-  amountInCents: number;
-  currency: string;
-  integritySignature: string;
-  redirectUrl: string;
+export interface MpCheckoutData {
+  checkoutUrl: string;
   paymentId: string;
+  amountCop: number;
+  reference: string;
 }
 
 /**
- * Generate Wompi widget checkout data (reference + integrity signature).
- * The frontend uses this to initialize the Wompi widget.
+ * Prepare Mercado Pago checkout data for the Payment Brick.
+ * The frontend renders the Brick, collects payment info, and sends it
+ * to POST /payments/mp-process which calls processMpPayment().
  */
-export async function initiateWompiCheckout(
+export async function initiateMpCheckout(
   input: InitiateCheckoutInput,
-): Promise<WompiCheckoutData> {
-  const { userId, poolId, targetCapacity, locale } = input;
+): Promise<MpCheckoutData> {
+  const { userId, poolId, targetCapacity } = input;
 
-  // 1. Load pool and verify ownership (same as Polar flow)
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     include: {
@@ -416,34 +414,21 @@ export async function initiateWompiCheckout(
     throw new ServiceError("VALIDATION_ERROR", 400, { message: "Target capacity must be greater than current capacity" });
   }
 
-  // 2. Calculate price in COP from the fixed table (clean rounded numbers)
   const amountCop = calculateUpgradePriceCop(poolType, currentCapacity, targetCapacity);
   if (amountCop <= 0) {
     throw new ServiceError("VALIDATION_ERROR", 400, { message: "No payment required" });
   }
-  const amountInCents = amountCop * 100; // Wompi uses COP cents
 
-  // Also calculate USD equivalent for the PoolPayment record
   const amountUsd = calculateUpgradePrice(poolType, currentCapacity, targetCapacity);
-
-  // 3. Generate unique reference
   const reference = `P4A-${poolId.slice(0, 8)}-${Date.now()}`;
 
-  // 4. Generate integrity signature
-  const integritySignature = generateIntegritySignature({
-    reference,
-    amountInCents,
-    currency: "COP",
-  });
-
-  // 5. Create PoolPayment record
   const payment = await prisma.poolPayment.create({
     data: {
       poolId,
       userId,
-      polarCheckoutId: reference, // reuse field for Wompi reference
+      polarCheckoutId: reference,
       status: "PENDING",
-      amountUsd: usdToCents(amountUsd), // store in USD cents for consistency
+      amountUsd: usdToCents(amountUsd),
       currency: "cop",
       fromCapacity: currentCapacity,
       toCapacity: targetCapacity,
@@ -451,129 +436,72 @@ export async function initiateWompiCheckout(
     },
   });
 
-  // 6. Build redirect URL
+  // Create Mercado Pago preference (Checkout Pro redirect)
   const frontendUrl = process.env.FRONTEND_URL || "https://picks4all.com";
-  const localePath = locale && locale !== "es" ? `/${locale}` : "";
-  const redirectUrl = `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`;
+  const backendUrl = process.env.SITE_DOMAIN ? `https://api.${process.env.SITE_DOMAIN}` : "https://api.picks4all.com";
 
-  // 7. Audit
-  fireAndForget("audit:wompi-checkout-created", writeAuditEvent({
+  const pref = await mpCreatePreference({
+    title: `Picks4All — Ampliación a ${targetCapacity} jugadores`,
+    unitPrice: amountCop,
+    quantity: 1,
+    externalReference: reference,
+    notificationUrl: `${backendUrl}/payments/mp-webhook`,
+    backUrls: {
+      success: `${frontendUrl}/pago/exitoso?poolId=${poolId}`,
+      failure: `${frontendUrl}/pago/cancelado?poolId=${poolId}`,
+      pending: `${frontendUrl}/pago/exitoso?poolId=${poolId}`,
+    },
+  });
+
+  fireAndForget("audit:mp-checkout-created", writeAuditEvent({
     actorUserId: userId,
-    action: "WOMPI_CHECKOUT_CREATED",
+    action: "MP_CHECKOUT_CREATED",
     entityType: "Pool",
     entityId: poolId,
     poolId,
-    dataJson: { paymentId: payment.id, reference, amountCop, poolType },
+    dataJson: { paymentId: payment.id, reference, amountCop, poolType, preferenceId: pref.preferenceId },
   }));
 
+  // Use sandbox URL for test keys, production for real keys
+  const isTest = (process.env.MP_ACCESS_TOKEN || "").startsWith("TEST-");
+  const checkoutUrl = isTest ? pref.sandboxInitPoint : pref.initPoint;
+
   return {
-    publicKey: getWompiPublicKey(),
-    reference,
-    amountInCents,
-    currency: "COP",
-    integritySignature,
-    redirectUrl,
+    checkoutUrl,
     paymentId: payment.id,
+    amountCop,
+    reference,
   };
 }
 
 /**
- * Process a Wompi transaction.updated webhook.
+ * Process a payment from the Payment Brick.
+ * Called by POST /payments/mp-process after the Brick collects payment data.
  */
-export async function handleWompiTransactionUpdated(event: {
-  event: string;
-  data: {
-    transaction: {
-      id: string;
-      status: string;
-      amount_in_cents: number;
-      reference: string;
-      currency: string;
-    };
-  };
-  sent_at: string;
-  signature: {
-    properties: string[];
-    timestamp: number;
-    checksum: string;
-  };
-}): Promise<void> {
-  // 1. Verify checksum
-  console.log("[PaymentService] Wompi webhook received:", JSON.stringify({
-    event: event.event,
-    signature: event.signature,
-    transactionId: event.data?.transaction?.id,
-    status: event.data?.transaction?.status,
-  }));
+export async function processMpPayment(input: {
+  paymentId: string; // our PoolPayment ID
+  formData: ProcessPaymentParams;
+}): Promise<{ status: string; mpPaymentId: number }> {
+  const { paymentId, formData } = input;
 
-  const isValid = verifyWebhookChecksum({
-    data: event.data as unknown as Record<string, unknown>,
-    signature: event.signature,
-  });
+  // Find our payment record
+  const payment = await prisma.poolPayment.findUnique({ where: { id: paymentId } });
+  if (!payment) throw new ServiceError("NOT_FOUND", 404);
+  if (payment.status === "COMPLETED") throw new ServiceError("ALREADY_COMPLETED", 409);
 
-  if (!isValid) {
-    console.error("[PaymentService] Wompi webhook checksum invalid — proceeding anyway for sandbox");
-    // In sandbox mode, skip checksum validation (Wompi sandbox may use different signing)
-    // TODO: enforce checksum in production
-  }
+  // Process with Mercado Pago
+  const result = await mpProcessPayment(formData);
 
-  const transaction = event.data.transaction;
-  const reference = transaction.reference;
+  console.log(`[PaymentService] MP payment result: id=${result.id}, status=${result.status}, detail=${result.statusDetail}`);
 
-  // 2. Idempotency check
-  const existingEvent = await prisma.paymentEvent.findUnique({
-    where: { polarEventId: `wompi-${transaction.id}` },
-  });
-  if (existingEvent) {
-    console.log(`[PaymentService] Wompi duplicate event ${transaction.id}, skipping`);
-    return;
-  }
-
-  // 3. Record event
-  await prisma.paymentEvent.create({
-    data: {
-      polarEventId: `wompi-${transaction.id}`,
-      eventType: event.event,
-      payloadJson: JSON.parse(JSON.stringify(event)),
-    },
-  });
-
-  // 4. Find payment by reference
-  const payment = await prisma.poolPayment.findUnique({
-    where: { polarCheckoutId: reference },
-  });
-
-  if (!payment) {
-    console.error(`[PaymentService] No PoolPayment found for Wompi reference ${reference}`);
-    return;
-  }
-
-  if (payment.status === "COMPLETED") {
-    console.log(`[PaymentService] Wompi payment ${payment.id} already completed`);
-    return;
-  }
-
-  // 5. Handle status
-  if (transaction.status === "APPROVED") {
-    // Verify with Wompi API as extra security
-    try {
-      const verified = await wompiGetTransaction(transaction.id);
-      if (verified.status !== "APPROVED") {
-        console.error(`[PaymentService] Wompi API verification failed: ${verified.status}`);
-        return;
-      }
-    } catch (err) {
-      console.error("[PaymentService] Wompi API verification error:", err);
-      // Continue anyway — webhook was checksum-verified
-    }
-
-    // Expand capacity
+  if (result.status === "approved") {
+    // Expand capacity immediately
     await prisma.$transaction(async (tx) => {
       await tx.poolPayment.update({
         where: { id: payment.id },
         data: {
           status: "COMPLETED",
-          polarOrderId: `wompi-${transaction.id}`,
+          polarOrderId: `mp-${result.id}`,
           paidAtUtc: new Date(),
         },
       });
@@ -583,21 +511,73 @@ export async function handleWompiTransactionUpdated(event: {
       });
     });
 
-    console.log(`[PaymentService] Wompi: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
+    console.log(`[PaymentService] MP: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
 
-    fireAndForget("audit:wompi-payment-completed", writeAuditEvent({
+    fireAndForget("audit:mp-payment-completed", writeAuditEvent({
       actorUserId: payment.userId,
-      action: "WOMPI_PAYMENT_COMPLETED",
+      action: "MP_PAYMENT_COMPLETED",
       entityType: "Pool",
       entityId: payment.poolId,
       poolId: payment.poolId,
-      dataJson: { transactionId: transaction.id, reference, amount: transaction.amount_in_cents },
+      dataJson: { mpPaymentId: result.id, status: result.status },
     }));
-  } else if (transaction.status === "DECLINED" || transaction.status === "ERROR") {
+  } else if (result.status === "rejected") {
     await prisma.poolPayment.update({
       where: { id: payment.id },
       data: { status: "FAILED" },
     });
-    console.log(`[PaymentService] Wompi payment ${reference} ${transaction.status}`);
+  }
+  // "pending" and "in_process" statuses are handled by IPN webhook later
+
+  return { status: result.status, mpPaymentId: result.id };
+}
+
+/**
+ * Handle Mercado Pago IPN webhook notification.
+ * Used for async payment methods (PSE, Nequi) that don't resolve immediately.
+ */
+export async function handleMpWebhook(paymentMpId: string): Promise<void> {
+  // Verify with MP API
+  const mpPayment = await mpGetPayment(paymentMpId);
+  if (!mpPayment || !mpPayment.external_reference) return;
+
+  const reference = mpPayment.external_reference;
+
+  // Idempotency
+  const existing = await prisma.paymentEvent.findUnique({
+    where: { polarEventId: `mp-${paymentMpId}` },
+  });
+  if (existing) return;
+
+  await prisma.paymentEvent.create({
+    data: {
+      polarEventId: `mp-${paymentMpId}`,
+      eventType: "mp.payment.updated",
+      payloadJson: { id: paymentMpId, status: mpPayment.status, reference },
+    },
+  });
+
+  const payment = await prisma.poolPayment.findUnique({
+    where: { polarCheckoutId: reference },
+  });
+  if (!payment || payment.status === "COMPLETED") return;
+
+  if (mpPayment.status === "approved") {
+    await prisma.$transaction(async (tx) => {
+      await tx.poolPayment.update({
+        where: { id: payment.id },
+        data: { status: "COMPLETED", polarOrderId: `mp-${paymentMpId}`, paidAtUtc: new Date() },
+      });
+      await tx.pool.update({
+        where: { id: payment.poolId },
+        data: { maxParticipants: payment.toCapacity },
+      });
+    });
+    console.log(`[PaymentService] MP IPN: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
+  } else if (mpPayment.status === "rejected" || mpPayment.status === "cancelled") {
+    await prisma.poolPayment.update({
+      where: { id: payment.id },
+      data: { status: "FAILED" },
+    });
   }
 }
