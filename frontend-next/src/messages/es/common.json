@@ -184,20 +184,25 @@
       },
       "personalPro": {
         "title": "Personal Pro",
-        "badge": "Desde $6.99",
-        "subtitle": "Hasta 300+ jugadores",
+        "badgeCop": "Desde $28.500",
+        "badgeUsd": "Desde $7.99 USD",
+        "subtitle": "Tú eliges cuántos participantes",
         "includesBase": "Todo lo del plan gratis",
-        "extraPlayers": "Hasta 300+ jugadores"
+        "extraPlayers": "Hasta 10.000+ jugadores",
+        "cta": "Crear pool"
       },
       "corporate": {
         "title": "Corporativo",
-        "badge": "Prueba gratuita",
-        "subtitle": "Hasta 100 jugadores incluidos",
+        "priceCop": "Desde $200.000",
+        "priceUsd": "Desde $49.99 USD",
+        "trialBanner": "Prueba todas las funcionalidades completamente gratis",
+        "subtitle": "Tú eliges cuántos participantes",
         "includesPersonal": "Todo lo de Personal",
         "cta": "Crear pool corporativo"
       },
       "features": {
         "leaderboard": "Leaderboard en tiempo real",
+        "liveResults": "Resultados y leaderboard en tiempo real",
         "scoringModes": "Múltiples modos de puntuación",
         "autoResults": "Actualización automática de resultados",
         "emailNotifications": "Notificaciones por email a jugadores",

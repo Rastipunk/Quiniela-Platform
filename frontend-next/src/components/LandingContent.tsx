@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -8,9 +8,10 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
-import { CORPORATE_BASE_PRICE, formatCOP } from "@/lib/pricing";
 import { colors } from "@/lib/theme";
+import { BRAND } from "@/lib/brand";
 import { trackEvent } from "@/lib/analytics";
+import { getPaymentCountry } from "@/lib/api/payments";
 
 export function LandingContent() {
   const t = useTranslations("landing");
@@ -18,6 +19,12 @@ export function LandingContent() {
   const { openAuthPanel } = useAuthPanel();
   const { params: poolParams } = usePoolTerm();
   const searchParams = useSearchParams();
+  const [isColombia, setIsColombia] = useState(true);
+
+  // Detect country for pricing display
+  useEffect(() => {
+    getPaymentCountry().then((c) => setIsColombia(c === "CO")).catch(() => {});
+  }, []);
 
   // Auto-open login panel when arriving from /login redirect (e.g. ?redirect=/dashboard)
   useEffect(() => {
@@ -372,7 +379,7 @@ export function LandingContent() {
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-              <FeatureCheck label={t("pricing.features.leaderboard")} />
+              <FeatureCheck label={t("pricing.features.liveResults")} />
               <FeatureCheck label={t("pricing.features.scoringModes")} />
               <FeatureCheck label={t("pricing.features.autoResults")} />
               <FeatureCheck label={t("pricing.features.emailNotifications")} />
@@ -425,7 +432,7 @@ export function LandingContent() {
                   borderRadius: 999,
                 }}
               >
-                {t("pricing.personalPro.badge")}
+                {isColombia ? t("pricing.personalPro.badgeCop") : t("pricing.personalPro.badgeUsd")}
               </span>
             </div>
             <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 20px" }}>
@@ -436,41 +443,66 @@ export function LandingContent() {
               <FeatureCheck label={t("pricing.personalPro.includesBase")} />
               <FeatureCheck label={t("pricing.personalPro.extraPlayers")} highlight />
             </div>
+
+            <button
+              onClick={() => { trackEvent("cta_clicked", { cta_text: "personal_pro", page: "landing" }); openAuthPanel("register"); }}
+              style={{
+                marginTop: 24,
+                background: colors.brandGradient,
+                color: "white",
+                border: "none",
+                borderRadius: 10,
+                padding: "14px 24px",
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: "pointer",
+                width: "100%",
+              }}
+            >
+              {t("pricing.personalPro.cta")}
+            </button>
           </div>
 
           {/* Corporate Card */}
           <div
             style={{
+              position: "relative",
               border: "2px solid #818cf8",
               borderRadius: 16,
               padding: 28,
               background: "var(--surface)",
               display: "flex",
               flexDirection: "column",
+              overflow: "hidden",
             }}
           >
+            {/* Diagonal trial banner */}
+            <div style={{
+              position: "absolute",
+              top: 18,
+              right: -35,
+              background: "linear-gradient(135deg, #22c55e, #16a34a)",
+              color: "white",
+              fontSize: 10,
+              fontWeight: 800,
+              padding: "5px 40px",
+              transform: "rotate(35deg)",
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+              zIndex: 2,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+            }}>
+              {t("pricing.corporate.trialBanner")}
+            </div>
+
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
               <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text)", margin: 0 }}>
                 {t("pricing.corporate.title")}
               </h3>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 13, color: "var(--muted)", textDecoration: "line-through" }}>
-                  {formatCOP(CORPORATE_BASE_PRICE)}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: colors.successAlt,
-                    background: colors.successBgLight,
-                    padding: "3px 10px",
-                    borderRadius: 999,
-                  }}
-                >
-                  $0 — {t("pricing.corporate.badge")}
-                </span>
-              </div>
             </div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: BRAND.primary, margin: "4px 0 4px" }}>
+              {isColombia ? t("pricing.corporate.priceCop") : t("pricing.corporate.priceUsd")}
+            </p>
             <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 20px" }}>
               {t("pricing.corporate.subtitle")}
             </p>
