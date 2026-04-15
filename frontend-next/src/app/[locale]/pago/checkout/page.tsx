@@ -62,6 +62,7 @@ export default function MpCheckoutPage() {
 
     const loadMpSdk = async () => {
       try {
+        console.log("[PaymentBrick] Init params:", { publicKey: publicKey ? `${publicKey.slice(0, 12)}...` : "MISSING", amount, preferenceId: preferenceId || "MISSING", paymentId: paymentId || "MISSING" });
         const { loadMercadoPago } = await import("@mercadopago/sdk-js");
         await loadMercadoPago();
 
@@ -112,7 +113,13 @@ export default function MpCheckoutPage() {
             onError: (error: unknown) => {
               console.error("[PaymentBrick] Error:", error);
               setStatus("error");
-              setErrorMsg("Error al cargar el formulario de pago");
+              // Show the actual Brick error for diagnosis
+              const detail = error instanceof Error
+                ? error.message
+                : typeof error === "object" && error !== null
+                  ? JSON.stringify(error)
+                  : String(error);
+              setErrorMsg(`Error al cargar el formulario de pago: ${detail}`);
             },
           },
         });

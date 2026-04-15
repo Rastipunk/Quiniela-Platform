@@ -429,6 +429,7 @@ export async function initiateMpCheckout(
   const localePath = input.locale && input.locale !== "es" ? `/${input.locale}` : "";
 
   // Create MP preference (required for Payment Brick initialization)
+  console.log("[Payments] Creating MP preference:", { reference, amountCop, notificationUrl: `${backendUrl}/payments/mp-webhook` });
   const preference = await mpCreatePreference({
     title: `Picks4All — Pool upgrade (${currentCapacity} → ${targetCapacity} players)`,
     unitPrice: amountCop,
@@ -441,6 +442,7 @@ export async function initiateMpCheckout(
       pending: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
     },
   });
+  console.log("[Payments] MP preference created:", { preferenceId: preference.preferenceId, publicKey: getMpPublicKey() ? "SET" : "MISSING" });
 
   const payment = await prisma.poolPayment.create({
     data: {
