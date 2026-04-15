@@ -499,6 +499,18 @@ export async function processMpPayment(input: {
   // Enrich formData with server-side values (prevent client-side tampering)
   formData.external_reference = payment.polarCheckoutId; // our reference
   formData.description = `Picks4All — Pool capacity upgrade`;
+  formData.additional_info = {
+    items: [
+      {
+        id: "pool-capacity-upgrade",
+        title: `Pool upgrade (${payment.fromCapacity} → ${payment.toCapacity} players)`,
+        description: "Upgrade pool capacity to allow more players",
+        category_id: "services",
+        quantity: 1,
+        unit_price: payment.amountUsd, // stored in cents but MP wants the COP amount from formData
+      },
+    ],
+  };
 
   // Process with Mercado Pago (pass Brick formData directly)
   const result = await mpProcessPaymentDirect(formData);

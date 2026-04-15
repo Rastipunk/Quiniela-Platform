@@ -71,9 +71,11 @@ export async function createPreference(params: CreatePreferenceParams) {
         {
           id: "pool-capacity-upgrade",
           title: params.title,
+          description: "Upgrade pool capacity to allow more players",
           unit_price: params.unitPrice,
           quantity: params.quantity,
           currency_id: "COP",
+          category_id: "services",
         },
       ],
       external_reference: params.externalReference,
