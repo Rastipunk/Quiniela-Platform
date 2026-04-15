@@ -25,6 +25,15 @@
     "perBlock": "por bloco de 50",
     "paymentRequired": "Pagamento necessário"
   },
+  "rejected": {
+    "generic": "O pagamento foi recusado. Tente outro meio de pagamento.",
+    "insufficient_amount": "Saldo insuficiente. Tente outro cartão.",
+    "bad_filled_security_code": "Código de segurança incorreto. Verifique e tente novamente.",
+    "bad_filled_date": "Data de validade incorreta. Verifique e tente novamente.",
+    "bad_filled_other": "Dados do cartão incorretos. Verifique e tente novamente.",
+    "call_for_authorize": "Você precisa autorizar o pagamento com seu banco. Ligue para seu banco e tente novamente.",
+    "other_reason": "O pagamento foi recusado. Tente outro meio de pagamento."
+  },
   "expand": {
     "title": "Ampliar capacidade",
     "description": "Precisa de mais vagas? Amplie a capacidade do seu pool.",

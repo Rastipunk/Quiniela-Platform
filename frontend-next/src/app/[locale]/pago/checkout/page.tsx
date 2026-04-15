@@ -9,6 +9,21 @@ import { BRAND } from "@/lib/brand";
 import { processMpPayment } from "@/lib/api/payments";
 import { formatCOP } from "@/lib/pricing";
 
+// Map MP status_detail to i18n key for rejection messages
+const STATUS_DETAIL_KEY: Record<string, string> = {
+  cc_rejected_insufficient_amount: "insufficient_amount",
+  cc_rejected_bad_filled_security_code: "bad_filled_security_code",
+  cc_rejected_bad_filled_date: "bad_filled_date",
+  cc_rejected_bad_filled_other: "bad_filled_other",
+  cc_rejected_call_for_authorize: "call_for_authorize",
+  cc_rejected_other_reason: "other_reason",
+};
+
+function getRejectionMessage(t: (key: string) => string, statusDetail: string): string {
+  const key = STATUS_DETAIL_KEY[statusDetail];
+  return key ? t(`rejected.${key}`) : t("rejected.generic");
+}
+
 /**
  * Mercado Pago Payment Brick page.
  *
@@ -106,7 +121,7 @@ export default function MpCheckoutPage() {
                     setTimeout(() => router.push(`/pools/${poolId}`), 2000);
                   } else if (result.status === "rejected") {
                     setStatus("error");
-                    setErrorMsg("El pago fue rechazado. Intenta con otro medio de pago.");
+                    setErrorMsg(getRejectionMessage(t, result.statusDetail));
                   } else {
                     // pending / in_process — async payment (PSE, Nequi)
                     setStatus("success");

@@ -25,6 +25,15 @@
     "perBlock": "per block of 50",
     "paymentRequired": "Payment required"
   },
+  "rejected": {
+    "generic": "Payment was declined. Try a different payment method.",
+    "insufficient_amount": "Insufficient funds. Try a different card.",
+    "bad_filled_security_code": "Incorrect security code. Please check and try again.",
+    "bad_filled_date": "Incorrect expiration date. Please check and try again.",
+    "bad_filled_other": "Incorrect card details. Please check and try again.",
+    "call_for_authorize": "You need to authorize this payment with your bank. Call your bank and try again.",
+    "other_reason": "Payment was declined. Try a different payment method."
+  },
   "expand": {
     "title": "Expand capacity",
     "description": "Need more spots? Expand your pool capacity.",

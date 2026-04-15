@@ -488,7 +488,7 @@ export async function initiateMpCheckout(
 export async function processMpPayment(input: {
   paymentId: string; // our PoolPayment ID
   formData: Record<string, unknown>;
-}): Promise<{ status: string; mpPaymentId: number }> {
+}): Promise<{ status: string; statusDetail: string; mpPaymentId: number }> {
   const { paymentId, formData } = input;
 
   // Find our payment record
@@ -540,7 +540,7 @@ export async function processMpPayment(input: {
   }
   // "pending" and "in_process" statuses are handled by IPN webhook later
 
-  return { status: result.status, mpPaymentId: result.id };
+  return { status: result.status, statusDetail: result.statusDetail, mpPaymentId: result.id };
 }
 
 /**

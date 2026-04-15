@@ -25,6 +25,15 @@
     "perBlock": "por bloque de 50",
     "paymentRequired": "Requiere pago"
   },
+  "rejected": {
+    "generic": "El pago fue rechazado. Intenta con otro medio de pago.",
+    "insufficient_amount": "Fondos insuficientes. Intenta con otra tarjeta.",
+    "bad_filled_security_code": "Código de seguridad incorrecto. Revísalo e intenta de nuevo.",
+    "bad_filled_date": "Fecha de vencimiento incorrecta. Revísala e intenta de nuevo.",
+    "bad_filled_other": "Datos de la tarjeta incorrectos. Revísalos e intenta de nuevo.",
+    "call_for_authorize": "Debes autorizar el pago con tu banco. Llama a tu entidad bancaria e intenta de nuevo.",
+    "other_reason": "El pago fue rechazado. Intenta con otro medio de pago."
+  },
   "expand": {
     "title": "Ampliar capacidad",
     "description": "Necesitas más cupos? Amplía la capacidad de tu pool.",
