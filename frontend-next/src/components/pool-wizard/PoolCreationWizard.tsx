@@ -77,8 +77,10 @@ function WizardInner() {
   const [submitBusy, setSubmitBusy] = useState(false);
 
   // ── Build payload & submit ──────────────────────────────
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (capacityOverride?: number) => {
     if (!token) return;
+
+    const effectiveCapacity = capacityOverride ?? state.maxParticipants;
 
     setSubmitBusy(true);
     dispatch({ type: "SET_FIELD", field: "error", value: null });
@@ -106,7 +108,7 @@ function WizardInner() {
           deadlineMinutesBeforeKickoff: state.deadlineMinutesBeforeKickoff,
           requireApproval: state.requireApproval,
           pickTypesConfig: state.scoringConfig,
-          maxParticipants: state.maxParticipants,
+          maxParticipants: effectiveCapacity,
           emails: emails.length > 0 ? emails : undefined,
         });
 
@@ -120,7 +122,7 @@ function WizardInner() {
           deadlineMinutesBeforeKickoff: state.deadlineMinutesBeforeKickoff,
           pickTypesConfig: state.scoringConfig,
           requireApproval: state.requireApproval,
-          maxParticipants: state.maxParticipants,
+          maxParticipants: effectiveCapacity,
         });
 
         poolId = res.id;
@@ -130,13 +132,13 @@ function WizardInner() {
       trackEvent("pool_created", {
         pool_type: state.mode,
         tournament: state.instanceName,
-        capacity: state.maxParticipants,
+        capacity: effectiveCapacity,
         scoring_style: state.scoringStyle,
       });
 
       // Check if payment is needed (user selected capacity above free limit)
       const freeLimit = state.mode === "corporate" ? CORPORATE_FREE_LIMIT : PERSONAL_FREE_LIMIT;
-      if (state.maxParticipants > freeLimit && token) {
+      if (effectiveCapacity > freeLimit && token) {
         try {
           // Detect country to choose gateway
           const country = await getPaymentCountry();
@@ -144,7 +146,7 @@ function WizardInner() {
 
           if (isColombia) {
             // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick
-            const mpData = await createMpCheckout(poolId, state.maxParticipants);
+            const mpData = await createMpCheckout(poolId, effectiveCapacity);
             const params = new URLSearchParams({
               publicKey: mpData.publicKey || process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || "",
               amount: String(mpData.amountCop),
@@ -158,7 +160,7 @@ function WizardInner() {
             return;
           } else {
             // Polar redirect (International/USD)
-            const checkout = await createCheckout(poolId, state.maxParticipants);
+            const checkout = await createCheckout(poolId, effectiveCapacity);
             window.location.href = checkout.checkoutUrl;
             return;
           }

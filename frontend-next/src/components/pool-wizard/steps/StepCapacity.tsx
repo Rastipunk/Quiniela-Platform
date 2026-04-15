@@ -13,7 +13,7 @@ import { colors, radii } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface Props {
-  onSubmit?: () => void;
+  onSubmit?: (capacityOverride?: number) => void;
   submitBusy?: boolean;
 }
 
@@ -42,8 +42,8 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
 
   const handleContinueFree = useCallback(() => {
     dispatch({ type: "SET_FIELD", field: "maxParticipants", value: freeLimit });
-    // Small delay so state updates before submit
-    setTimeout(() => onSubmit?.(), 0);
+    // Pass freeLimit as override since React state won't update before onSubmit reads it
+    onSubmit?.(freeLimit);
   }, [dispatch, freeLimit, onSubmit]);
 
   const buttonBase: React.CSSProperties = {
@@ -122,7 +122,7 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
           </button>
 
           <button
-            onClick={onSubmit}
+            onClick={() => onSubmit?.()}
             disabled={submitBusy || state.maxParticipants < 2}
             style={{
               ...buttonBase,
@@ -146,39 +146,56 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
 
         {/* Secondary: continue free option (only when paid tier is selected) */}
         {isPaidTier && !submitBusy && (
-          <button
-            onClick={handleContinueFree}
-            style={{
-              background: "none",
-              border: "none",
-              color: colors.textMuted,
-              fontSize: 13,
-              cursor: "pointer",
-              textAlign: "center",
-              padding: "8px 16px",
-              maxWidth: 480,
-              lineHeight: 1.4,
-            }}
-          >
-            {state.mode === "corporate" ? (
-              <>
-                {t("capacity.continueFreeCorpShort", {
-                  defaultMessage: "O continúa gratis para probar la plataforma",
+          state.mode === "corporate" ? (
+            <button
+              onClick={handleContinueFree}
+              style={{
+                background: "#f0fdf4",
+                border: `1px solid #86efac`,
+                borderRadius: radii.lg,
+                color: "#166534",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                textAlign: "center",
+                padding: "14px 20px",
+                maxWidth: 480,
+                width: "100%",
+                lineHeight: 1.5,
+              }}
+            >
+              {t("capacity.continueFreeCorpShort", {
+                defaultMessage: "O continúa gratis para probar la plataforma",
+              })}
+              <br />
+              <span style={{ fontSize: 12, fontWeight: 400, color: "#15803d" }}>
+                {t("capacity.continueFreeCorpDetail", {
+                  defaultMessage: "(Antes de enviar las invitaciones a tus empleados será necesario hacer el pago por los cupos que necesites)",
                 })}
-                <br />
-                <span style={{ fontSize: 11, color: colors.textLight }}>
-                  {t("capacity.continueFreeCorpDetail", {
-                    defaultMessage: "(Antes de enviar las invitaciones a tus empleados será necesario hacer el pago por los cupos que necesites)",
-                  })}
-                </span>
-              </>
-            ) : (
-              t("capacity.continueFree", {
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={handleContinueFree}
+              style={{
+                background: "none",
+                border: "none",
+                color: colors.brand,
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: "pointer",
+                textAlign: "center",
+                padding: "8px 16px",
+                textDecoration: "underline",
+                maxWidth: 480,
+              }}
+            >
+              {t("capacity.continueFree", {
                 defaultMessage: "O continúa con {limit} cupos gratis",
                 limit: freeLimit,
-              })
-            )}
-          </button>
+              })}
+            </button>
+          )
         )}
       </div>
     </PoolWizardStepContainer>
