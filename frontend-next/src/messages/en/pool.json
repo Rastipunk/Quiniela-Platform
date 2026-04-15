@@ -755,6 +755,7 @@
     "successDesc": "Redirecting to your new pool...",
     "error": "Could not join",
     "errorDesc": "The invitation code may be invalid or expired.",
+    "poolFull": "This pool is full. Contact the administrator to expand capacity.",
     "backToDashboard": "Go to my pools"
   },
   "invite": {

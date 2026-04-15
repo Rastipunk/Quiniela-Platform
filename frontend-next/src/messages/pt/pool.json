@@ -755,6 +755,7 @@
     "successDesc": "Redirecionando para seu novo bolão...",
     "error": "Não foi possível entrar",
     "errorDesc": "O código de convite pode ser inválido ou ter expirado.",
+    "poolFull": "Este bolão está cheio. Entre em contato com o administrador para expandir a capacidade.",
     "backToDashboard": "Ir para meus bolões"
   },
   "invite": {

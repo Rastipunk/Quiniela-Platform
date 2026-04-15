@@ -750,6 +750,7 @@
     "successDesc": "Redirigiendo a tu nueva pool...",
     "error": "No se pudo unir",
     "errorDesc": "El código de invitación puede ser inválido o haber expirado.",
+    "poolFull": "Esta pool está llena. Comunícate con el administrador para que amplíe la capacidad.",
     "backToDashboard": "Ir a mis pools"
   },
   "invite": {

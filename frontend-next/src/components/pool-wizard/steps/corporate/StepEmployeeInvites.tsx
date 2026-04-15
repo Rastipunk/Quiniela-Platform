@@ -329,6 +329,26 @@ export function StepEmployeeInvites() {
         )}
       </div>
 
+      {/* Capacity warning — emails exceed max participants */}
+      {emailCount > 0 && emailCount > state.maxParticipants && (
+        <div style={{
+          marginTop: spacing.md,
+          padding: spacing.md,
+          borderRadius: radii["2xl"],
+          background: colors.warningBgLight,
+          border: `1px solid ${colors.warningBorderLight}`,
+          fontSize: fontSize.md,
+          color: colors.warningDarker,
+          lineHeight: 1.5,
+        }}>
+          {t("employeeInvites.capacityWarning", {
+            defaultMessage: "Has agregado {count} emails pero tu pool tiene capacidad para {max}. Podrás ampliar la capacidad en el paso final.",
+            count: emailCount,
+            max: state.maxParticipants,
+          })}
+        </div>
+      )}
+
       {/* Invalid emails warning */}
       {invalidEmails.length > 0 && (
         <div style={{

@@ -41,7 +41,13 @@ export function PoolPlayersTab({
     }}>
       {/* Corporate: Excel invite flow */}
       {isCorporate && (
-        <CorporateEmployeeManager poolId={poolId} token={token} isMobile={isMobile} />
+        <CorporateEmployeeManager
+          poolId={poolId}
+          token={token}
+          isMobile={isMobile}
+          maxParticipants={overview.pool.maxParticipants ?? undefined}
+          currentMembers={overview.counts.membersActive}
+        />
       )}
 
       {/* Member management (paginated + search) */}

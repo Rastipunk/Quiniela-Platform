@@ -45,10 +45,16 @@ function JoinPoolInner() {
       })
       .catch((err) => {
         if (cancelled) return;
-        const msg =
-          err instanceof ApiError
+        let msg: string;
+        if (err instanceof ApiError && err.code === "POOL_FULL") {
+          msg = t("join.poolFull", {
+            defaultMessage: "Esta pool está llena. Comunícate con el administrador para que amplíe la capacidad.",
+          });
+        } else {
+          msg = err instanceof ApiError
             ? err.message || t("join.errorDesc")
             : t("join.errorDesc");
+        }
         setError(msg);
         setStatus("error");
       });

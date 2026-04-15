@@ -24,9 +24,11 @@ type Props = {
   poolId: string;
   token: string;
   isMobile: boolean;
+  maxParticipants?: number;
+  currentMembers?: number;
 };
 
-export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
+export function CorporateEmployeeManager({ poolId, token, isMobile, maxParticipants, currentMembers }: Props) {
   const t = useTranslations("pool.admin.employees");
   const { params: poolParams } = usePoolTerm();
 
@@ -298,6 +300,32 @@ export function CorporateEmployeeManager({ poolId, token, isMobile }: Props) {
           {message}
         </div>
       )}
+
+      {/* Capacity warning */}
+      {maxParticipants != null && currentMembers != null && (() => {
+        const remaining = maxParticipants - currentMembers;
+        const totalPending = invites.filter((i) => i.status === "PENDING" || i.status === "SENT").length;
+        if (totalPending > remaining && remaining >= 0) {
+          return (
+            <div style={{
+              padding: 12,
+              borderRadius: 8,
+              background: "#fef3c7",
+              border: "1px solid #fcd34d",
+              marginBottom: 12,
+              fontSize: 13,
+              color: "#92400e",
+              lineHeight: 1.5,
+            }}>
+              {t("capacityWarning", {
+                defaultMessage: "Puedes enviar las invitaciones pero solo los primeros {remaining} podrán unirse. Amplía la capacidad de tu pool para que todos puedan participar.",
+                remaining,
+              })}
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Send invitations button */}
       {pendingCount > 0 && (
