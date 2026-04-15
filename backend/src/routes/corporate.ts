@@ -65,7 +65,7 @@ const inquiryLimiter = rateLimit({
 });
 
 // ─── Corporate pool capacity limits ──────────────────────────
-const CORP_MIN_PARTICIPANTS = envInt("CORPORATE_POOL_MIN_PARTICIPANTS", 100);
+const CORP_MIN_PARTICIPANTS = envInt("CORPORATE_POOL_MIN_PARTICIPANTS", 1);
 const CORP_MAX_PARTICIPANTS = envInt("CORPORATE_POOL_MAX_PARTICIPANTS", 10000);
 
 // ─── Schemas ─────────────────────────────────────────────────

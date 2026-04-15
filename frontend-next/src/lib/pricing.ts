@@ -22,7 +22,7 @@ export type PricingTier = {
 const envInt = (key: string, fallback: number) => parseInt(process.env[key] || String(fallback), 10);
 
 export const PERSONAL_FREE_LIMIT = envInt("NEXT_PUBLIC_PERSONAL_FREE_LIMIT", 20);
-export const CORPORATE_FREE_LIMIT = envInt("NEXT_PUBLIC_CORPORATE_FREE_LIMIT", 100);
+export const CORPORATE_FREE_LIMIT = envInt("NEXT_PUBLIC_CORPORATE_FREE_LIMIT", 1);
 export const INCREMENT = 50;
 
 // Base price per 50-player increment in COP (used as reference for savings %)
@@ -71,7 +71,8 @@ const PERSONAL_TIER_PRICES: Record<number, number> = {
 
 // Corporate tiers: 100 players included in base price, then incremental
 const CORPORATE_TIER_PRICES: Record<number, number> = {
-  100:   200000,   // base
+  1:     0,        // Free trial (host only)
+  100:   200000,   // First paid tier
   150:   226000,
   200:   253000,
   250:   277000,
@@ -163,7 +164,6 @@ export function getPersonalTiers(upTo = 300): PricingTier[] {
 export function getCorporateTiers(upTo = 300): PricingTier[] {
   const tiers: PricingTier[] = [];
   let prevTotal = 0;
-  let isFirst = true;
 
   const sortedKeys = Object.keys(CORPORATE_TIER_PRICES)
     .map(Number)
@@ -172,18 +172,27 @@ export function getCorporateTiers(upTo = 300): PricingTier[] {
   for (const cap of sortedKeys) {
     if (cap > upTo) break;
     const total = CORPORATE_TIER_PRICES[cap]!;
-    if (isFirst) {
-      // The base 100-tier is paid but shown without an "increment"
+    const isFree = cap <= CORPORATE_FREE_LIMIT;
+    if (isFree) {
+      // Free trial tier (host only)
       tiers.push({
         maxParticipants: cap,
-        pricePerIncrement: total,
-        totalPrice: total,
+        pricePerIncrement: 0,
+        totalPrice: 0,
         savingsPercent: 0,
+        isFree: true,
+      });
+    } else {
+      // Paid tiers
+      tiers.push({
+        maxParticipants: cap,
+        pricePerIncrement: prevTotal === 0 ? total : total - prevTotal,
+        totalPrice: total,
+        savingsPercent: prevTotal > 0
+          ? Math.max(0, Math.round(((BASE_PRICE - (total - prevTotal)) / BASE_PRICE) * 100))
+          : 0,
         isFree: false,
       });
-      isFirst = false;
-    } else {
-      tiers.push(buildTier(cap, total, prevTotal, false));
     }
     prevTotal = total;
   }
@@ -322,9 +331,18 @@ export function getPersonalTiersUsd(upTo = 300): PricingTier[] {
 
 export function getCorporateTiersUsd(upTo = 300): PricingTier[] {
   const tiers: PricingTier[] = [];
-  // Base tier: 100 players
+  // Free trial tier (host only)
   tiers.push({
     maxParticipants: CORPORATE_FREE_LIMIT,
+    pricePerIncrement: 0,
+    totalPrice: 0,
+    savingsPercent: 0,
+    isFree: true,
+  });
+
+  // First paid tier: 100 players
+  tiers.push({
+    maxParticipants: 100,
     pricePerIncrement: CORPORATE_BASE_PRICE_USD,
     totalPrice: CORPORATE_BASE_PRICE_USD,
     savingsPercent: 0,
@@ -333,7 +351,7 @@ export function getCorporateTiersUsd(upTo = 300): PricingTier[] {
 
   let total = CORPORATE_BASE_PRICE_USD;
   let step = 0;
-  for (let cap = CORPORATE_FREE_LIMIT + INCREMENT; cap <= upTo; cap += INCREMENT) {
+  for (let cap = 150; cap <= upTo; cap += INCREMENT) {
     const blockPrice = getUsdPriceAtStep(step);
     total = roundUsd(total + blockPrice);
     const savings = Math.round(((BASE_PRICE_USD - blockPrice) / BASE_PRICE_USD) * 100);

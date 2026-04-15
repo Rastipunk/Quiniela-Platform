@@ -185,7 +185,9 @@ export default function CapacitySelector({
                   </div>
                   <div>
                     <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}>
-                      {t("upTo", { count: tier.maxParticipants })}
+                      {isFreeTier && type === "corporate"
+                        ? t("corporateTrialLabel")
+                        : t("upTo", { count: tier.maxParticipants })}
                     </span>
                     {tier.savingsPercent > 0 && (
                       <span
@@ -220,19 +222,18 @@ export default function CapacitySelector({
                       {t("free")}
                     </span>
                   ) : isFreeTier && type === "corporate" ? (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 13, color: colors.textLighter, textDecoration: "line-through" }}>
-                          {formatPrice(tier.totalPrice, currency)}
-                        </span>
-                        <span style={{ fontSize: 16, fontWeight: 800, color: colors.successAlt }}>
-                          $0
-                        </span>
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: colors.successAlt }}>
-                        {t("corporateFreeTrial")}
-                      </span>
-                    </div>
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: colors.successAlt,
+                        background: colors.successBgLight,
+                        padding: "3px 12px",
+                        borderRadius: 999,
+                      }}
+                    >
+                      {t("corporateFreeTrial")}
+                    </span>
                   ) : (
                     <div>
                       <span style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>
@@ -248,10 +249,10 @@ export default function CapacitySelector({
                 </div>
               </div>
 
-              {/* Corporate base note */}
-              {type === "corporate" && tier.maxParticipants === CORPORATE_FREE_LIMIT && (
-                <div style={{ fontSize: 11, color: colors.purple, marginTop: 4, marginLeft: 28 }}>
-                  {t("corporateIncludes", { count: CORPORATE_FREE_LIMIT })}
+              {/* Corporate free trial note */}
+              {type === "corporate" && isFreeTier && (
+                <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 4, marginLeft: 28 }}>
+                  {t("corporateTrialNote")}
                 </div>
               )}
 
