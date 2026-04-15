@@ -1,0 +1,78 @@
+{
+  "title": "Como jogar?",
+  "subtitle": "Assim se vive Picks4All — do palpite ao pódio",
+  "description": "Descubra como a plataforma funciona passo a passo. Desde fazer seu palpite até ver os resultados ao vivo e competir na classificação.",
+
+  "prediction": {
+    "title": "1. Faça seu palpite",
+    "description": "Antes de cada jogo, preveja o placar final. Selecione os gols de cada time e salve seu palpite antes do encerramento.",
+    "note": "O prazo é definido ao criar o bolão (ex: 10 minutos antes do jogo).",
+    "homeLabel": "Casa",
+    "awayLabel": "Visitante",
+    "saveButton": "Salvar palpite",
+    "saved": "Salvo",
+    "deadline": "Encerra em 2h 15m"
+  },
+
+  "liveResults": {
+    "title": "2. Resultados em tempo real",
+    "description": "Durante o jogo, os placares são atualizados automaticamente. Você pode acompanhar o progresso ao vivo diretamente no seu bolão.",
+    "live": "AO VIVO",
+    "minute": "min",
+    "halftime": "Intervalo",
+    "fulltime": "Final"
+  },
+
+  "scoring": {
+    "title": "3. Como seus pontos são calculados",
+    "description": "Após cada jogo, o sistema calcula seus pontos automaticamente comparando seu palpite com o resultado real.",
+    "yourPrediction": "Seu palpite",
+    "actualResult": "Resultado real",
+    "breakdown": "Detalhamento dos pontos",
+    "matchOutcome": "Resultado do jogo (vitória casa)",
+    "homeGoals": "Gols casa corretos",
+    "awayGoals": "Gols visitante corretos",
+    "goalDifference": "Diferença de gols correta",
+    "exactScore": "Placar exato",
+    "total": "Total",
+    "pts": "pts"
+  },
+
+  "leaderboard": {
+    "title": "4. Classificação",
+    "description": "Compita contra todos os jogadores do seu bolão. A classificação é atualizada em tempo real após cada jogo.",
+    "position": "Pos",
+    "player": "Jogador",
+    "points": "Pontos",
+    "played": "Jogados",
+    "exact": "Exatos",
+    "trend": "Tendência",
+    "you": "(Você)"
+  },
+
+  "allMatches": {
+    "title": "5. Jogue em TODOS os jogos",
+    "description": "Não é apenas um jogo — você pode prever todos os jogos do torneio, da fase de grupos até a final.",
+    "groupStage": "Fase de Grupos",
+    "roundOf16": "Oitavas de Final",
+    "quarterFinals": "Quartas de Final",
+    "semiFinals": "Semifinais",
+    "final": "Final",
+    "matchesPerPhase": "jogos",
+    "predictAll": "Preveja em cada fase"
+  },
+
+  "winners": {
+    "title": "6. Os vencedores",
+    "description": "No final do torneio, os jogadores com mais pontos acumulados vencem. Você será o melhor previsor?",
+    "first": "1o lugar",
+    "second": "2o lugar",
+    "third": "3o lugar"
+  },
+
+  "cta": {
+    "title": "Pronto para jogar?",
+    "subtitle": "Crie seu bolão grátis e comece a fazer seus palpites.",
+    "button": "Criar meu bolão grátis"
+  }
+}

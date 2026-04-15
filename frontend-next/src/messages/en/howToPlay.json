@@ -1,0 +1,78 @@
+{
+  "title": "How to Play",
+  "subtitle": "This is how Picks4All works — from prediction to podium",
+  "description": "Discover how the platform works step by step. From making your prediction to watching live results and competing on the leaderboard.",
+
+  "prediction": {
+    "title": "1. Make your prediction",
+    "description": "Before each match, predict the final score. Select goals for each team and save your prediction before the deadline.",
+    "note": "The deadline is set when creating the pool (e.g., 10 minutes before kickoff).",
+    "homeLabel": "Home",
+    "awayLabel": "Away",
+    "saveButton": "Save prediction",
+    "saved": "Saved",
+    "deadline": "Closes in 2h 15m"
+  },
+
+  "liveResults": {
+    "title": "2. Live results",
+    "description": "During the match, scores update automatically. You can watch the progress live directly in your pool.",
+    "live": "LIVE",
+    "minute": "min",
+    "halftime": "Half time",
+    "fulltime": "Full time"
+  },
+
+  "scoring": {
+    "title": "3. How your points are calculated",
+    "description": "After each match, the system automatically calculates your points by comparing your prediction with the actual result.",
+    "yourPrediction": "Your prediction",
+    "actualResult": "Actual result",
+    "breakdown": "Points breakdown",
+    "matchOutcome": "Match outcome (home win)",
+    "homeGoals": "Correct home goals",
+    "awayGoals": "Correct away goals",
+    "goalDifference": "Correct goal difference",
+    "exactScore": "Exact score",
+    "total": "Total",
+    "pts": "pts"
+  },
+
+  "leaderboard": {
+    "title": "4. Leaderboard",
+    "description": "Compete against all players in your pool. The leaderboard updates in real time after every match.",
+    "position": "Pos",
+    "player": "Player",
+    "points": "Points",
+    "played": "Played",
+    "exact": "Exact",
+    "trend": "Trend",
+    "you": "(You)"
+  },
+
+  "allMatches": {
+    "title": "5. Play in ALL matches",
+    "description": "It's not just one match — you can predict in every match of the tournament, from the group stage to the final.",
+    "groupStage": "Group Stage",
+    "roundOf16": "Round of 16",
+    "quarterFinals": "Quarter Finals",
+    "semiFinals": "Semi Finals",
+    "final": "Final",
+    "matchesPerPhase": "matches",
+    "predictAll": "Predict in every phase"
+  },
+
+  "winners": {
+    "title": "6. The winners",
+    "description": "At the end of the tournament, the players with the most accumulated points win. Will you be the best predictor?",
+    "first": "1st place",
+    "second": "2nd place",
+    "third": "3rd place"
+  },
+
+  "cta": {
+    "title": "Ready to play?",
+    "subtitle": "Create your pool for free and start making your predictions.",
+    "button": "Create my free pool"
+  }
+}

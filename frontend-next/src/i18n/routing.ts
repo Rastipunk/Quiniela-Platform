@@ -17,6 +17,11 @@ export const routing = defineRouting({
       en: "/how-it-works",
       pt: "/como-funciona",
     },
+    "/como-se-juega": {
+      es: "/como-se-juega",
+      en: "/how-to-play",
+      pt: "/como-jogar",
+    },
     "/que-es-una-quiniela": {
       es: "/que-es-una-quiniela",
       en: "/what-is-a-pool",
