@@ -3,7 +3,7 @@
   "description": "Choose how many players can join your pool.",
   "upTo": "Up to {count} players",
   "free": "Free",
-  "save": "-{percent}%",
+  "save": "Up to -{percent}%",
   "per50": "per +50 players",
   "comingSoon": "Coming Soon",
   "comingSoonDesc": "Payment methods will be enabled soon.",

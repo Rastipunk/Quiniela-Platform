@@ -3,7 +3,7 @@
   "description": "Escolha quantos jogadores podem entrar no seu bolão.",
   "upTo": "Até {count} jogadores",
   "free": "Grátis",
-  "save": "-{percent}%",
+  "save": "Até -{percent}%",
   "per50": "por +50 jogadores",
   "comingSoon": "Em breve",
   "comingSoonDesc": "Métodos de pagamento serão habilitados em breve.",

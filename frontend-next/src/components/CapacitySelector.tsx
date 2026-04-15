@@ -11,7 +11,6 @@ import {
   getCorporateTiersUsd,
   getTierForCustomCount,
   getTierForCustomCountUsd,
-  getFullPriceSavings,
   formatPrice,
   PERSONAL_FREE_LIMIT,
   CORPORATE_FREE_LIMIT,
@@ -68,11 +67,6 @@ export default function CapacitySelector({
       ? getTierForCustomCountUsd(type, customCount)
       : getTierForCustomCount(type, customCount);
   }, [isValidCustom, customCount, type, currency]);
-
-  const customSavings = useMemo(() => {
-    if (!customTier || customTier === "FREE_COVERS" || customTier === "IN_LIST") return null;
-    return getFullPriceSavings(customTier, type);
-  }, [customTier, type]);
 
   const freeLimit = type === "personal" ? PERSONAL_FREE_LIMIT : CORPORATE_FREE_LIMIT;
 
@@ -350,27 +344,21 @@ export default function CapacitySelector({
             <div style={{ marginTop: 8, fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>
               {formatPrice((customTier as PricingTier).totalPrice, currency)}
             </div>
-            {customSavings && customSavings.savedAmount > 0 && (
-              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 13, color: colors.textLighter, textDecoration: "line-through" }}>
-                  {formatPrice(customSavings.fullPrice, currency)}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: colors.successAlt,
-                    background: colors.successBgLight,
-                    padding: "2px 8px",
-                    borderRadius: 999,
-                  }}
-                >
-                  {t("customSaving", {
-                    percent: customSavings.savedPercent,
-                    amount: formatPrice(customSavings.savedAmount, currency),
-                  })}
-                </span>
-              </div>
+            {(customTier as PricingTier).savingsPercent > 0 && (
+              <span
+                style={{
+                  display: "inline-block",
+                  marginTop: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: colors.successAlt,
+                  background: colors.successBgLight,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                }}
+              >
+                {t("save", { percent: (customTier as PricingTier).savingsPercent })}
+              </span>
             )}
             <div style={{ marginTop: 6, fontSize: 11, color: colors.textLighter }}>
               {t("customReason", {
