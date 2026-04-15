@@ -145,16 +145,66 @@ paymentsRouter.get("/pool/:poolId/status", requireAuth, async (req: Request, res
   }
 });
 
-// ── Mercado Pago IPN webhook (public, verified via MP API) ──
+// ── Mercado Pago webhook (public, signature verified via HMAC-SHA256) ──
 
 /**
- * Mercado Pago IPN notification handler.
+ * Verify the x-signature header from Mercado Pago using HMAC-SHA256.
+ *
+ * MP sends: x-signature: ts=<timestamp>,v1=<hash>
+ * Manifest template: id:<data.id query param>;request-id:<x-request-id>;ts:<ts>;
+ * HMAC is computed with the webhook secret from MP dashboard.
+ *
+ * Returns true if signature is valid or if no secret is configured (dev mode).
+ */
+function verifyMpSignature(req: Request): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) {
+    console.warn("[Payments] MP_WEBHOOK_SECRET not set — skipping signature verification");
+    return true;
+  }
+
+  const xSignature = req.headers["x-signature"] as string | undefined;
+  const xRequestId = req.headers["x-request-id"] as string | undefined;
+  if (!xSignature) return false;
+
+  // Extract ts and v1 from x-signature header
+  let ts: string | undefined;
+  let hash: string | undefined;
+  for (const part of xSignature.split(",")) {
+    const [key, value] = part.split("=", 2);
+    if (key?.trim() === "ts") ts = value?.trim();
+    if (key?.trim() === "v1") hash = value?.trim();
+  }
+  if (!ts || !hash) return false;
+
+  // data.id comes from query params per MP spec
+  const dataId = req.query["data.id"] as string | undefined;
+
+  // Build manifest — omit parts that are missing
+  let manifest = "";
+  if (dataId) manifest += `id:${dataId};`;
+  if (xRequestId) manifest += `request-id:${xRequestId};`;
+  manifest += `ts:${ts};`;
+
+  const crypto = require("crypto") as typeof import("crypto");
+  const computed = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+
+  return computed === hash;
+}
+
+/**
+ * Mercado Pago webhook notification handler.
  * For async payment methods (PSE, Nequi) that don't resolve immediately.
- * Mounted AFTER express.json().
+ * Verifies x-signature HMAC when MP_WEBHOOK_SECRET is configured.
  */
 export function createMpWebhookHandler() {
   return async (req: Request, res: Response) => {
     try {
+      if (!verifyMpSignature(req)) {
+        console.warn("[Payments] MP webhook signature verification failed");
+        return res.status(401).json({ error: "Invalid signature" });
+      }
+
       const { type, data } = req.body;
       if (type === "payment" && data?.id) {
         await handleMpWebhook(String(data.id));
