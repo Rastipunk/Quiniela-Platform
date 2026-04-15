@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@polar-sh/sdk": "^0.47.0",
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "^7.7.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
