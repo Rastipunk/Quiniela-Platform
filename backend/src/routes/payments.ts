@@ -110,7 +110,7 @@ paymentsRouter.post("/mp-checkout", requireAuth, async (req: Request, res: Respo
 // We accept it permissively and validate server-side.
 const mpProcessSchema = z.object({
   paymentId: z.string().uuid(),
-  formData: z.record(z.unknown()),
+  formData: z.record(z.string(), z.unknown()),
 });
 
 paymentsRouter.post("/mp-process", requireAuth, async (req: Request, res: Response) => {
