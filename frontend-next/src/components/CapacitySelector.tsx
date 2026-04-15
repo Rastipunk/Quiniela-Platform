@@ -7,14 +7,18 @@ import { useTranslations } from "next-intl";
 import {
   getPersonalTiers,
   getCorporateTiers,
+  getPersonalTiersUsd,
+  getCorporateTiersUsd,
   getTierForCustomCount,
+  getTierForCustomCountUsd,
   getFullPriceSavings,
-  formatCOP,
+  formatPrice,
   PERSONAL_FREE_LIMIT,
   CORPORATE_FREE_LIMIT,
   INCREMENT,
   type PoolType,
   type PricingTier,
+  type Currency,
 } from "@/lib/pricing";
 
 type CapacitySelectorProps = {
@@ -25,6 +29,8 @@ type CapacitySelectorProps = {
   mode: "creation" | "expansion";
   /** If false, paid tiers show "Coming Soon" overlay. Only ADMIN can see/select paid tiers. */
   allowPaidTiers?: boolean;
+  /** Currency to display prices in. Defaults to COP. */
+  currency?: Currency;
 };
 
 export default function CapacitySelector({
@@ -34,17 +40,21 @@ export default function CapacitySelector({
   currentCapacity,
   mode,
   allowPaidTiers = false,
+  currency = "COP",
 }: CapacitySelectorProps) {
   const t = useTranslations("pricing");
   const [customInput, setCustomInput] = useState("");
 
   const tiers = useMemo(() => {
-    const allTiers = type === "personal" ? getPersonalTiers(300) : getCorporateTiers(300);
+    const getTiers = currency === "USD"
+      ? (type === "personal" ? getPersonalTiersUsd : getCorporateTiersUsd)
+      : (type === "personal" ? getPersonalTiers : getCorporateTiers);
+    const allTiers = getTiers(300);
     if (mode === "expansion" && currentCapacity) {
       return allTiers.filter((tier) => tier.maxParticipants > currentCapacity);
     }
     return allTiers;
-  }, [type, mode, currentCapacity]);
+  }, [type, mode, currentCapacity, currency]);
 
   const customCount = parseInt(customInput, 10);
   const isValidCustom = !isNaN(customCount) && customCount > 0;
@@ -54,8 +64,10 @@ export default function CapacitySelector({
     const freeLimit = type === "personal" ? PERSONAL_FREE_LIMIT : CORPORATE_FREE_LIMIT;
     if (customCount <= freeLimit) return "FREE_COVERS";
     if (customCount <= 300) return "IN_LIST";
-    return getTierForCustomCount(type, customCount);
-  }, [isValidCustom, customCount, type]);
+    return currency === "USD"
+      ? getTierForCustomCountUsd(type, customCount)
+      : getTierForCustomCount(type, customCount);
+  }, [isValidCustom, customCount, type, currency]);
 
   const customSavings = useMemo(() => {
     if (!customTier || customTier === "FREE_COVERS" || customTier === "IN_LIST") return null;
@@ -211,7 +223,7 @@ export default function CapacitySelector({
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 13, color: colors.textLighter, textDecoration: "line-through" }}>
-                          {formatCOP(tier.totalPrice)}
+                          {formatPrice(tier.totalPrice, currency)}
                         </span>
                         <span style={{ fontSize: 16, fontWeight: 800, color: colors.successAlt }}>
                           $0
@@ -224,11 +236,11 @@ export default function CapacitySelector({
                   ) : (
                     <div>
                       <span style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>
-                        {formatCOP(tier.totalPrice)}
+                        {formatPrice(tier.totalPrice, currency)}
                       </span>
                       {tier.pricePerIncrement > 0 && tier.maxParticipants > (type === "personal" ? 50 : CORPORATE_FREE_LIMIT) && (
                         <div style={{ fontSize: 11, color: colors.textLighter }}>
-                          +{formatCOP(tier.pricePerIncrement)} {t("per50")}
+                          +{formatPrice(tier.pricePerIncrement, currency)} {t("per50")}
                         </div>
                       )}
                     </div>
@@ -337,12 +349,12 @@ export default function CapacitySelector({
               })}
             </div>
             <div style={{ marginTop: 8, fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>
-              {formatCOP((customTier as PricingTier).totalPrice)}
+              {formatPrice((customTier as PricingTier).totalPrice, currency)}
             </div>
             {customSavings && customSavings.savedAmount > 0 && (
               <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 13, color: colors.textLighter, textDecoration: "line-through" }}>
-                  {formatCOP(customSavings.fullPrice)}
+                  {formatPrice(customSavings.fullPrice, currency)}
                 </span>
                 <span
                   style={{
@@ -356,7 +368,7 @@ export default function CapacitySelector({
                 >
                   {t("customSaving", {
                     percent: customSavings.savedPercent,
-                    amount: formatCOP(customSavings.savedAmount),
+                    amount: formatPrice(customSavings.savedAmount, currency),
                   })}
                 </span>
               </div>

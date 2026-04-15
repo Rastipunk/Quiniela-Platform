@@ -253,7 +253,7 @@ export function getFullPriceSavings(tier: PricingTier, type: PoolType): {
   };
 }
 
-// Upgrade price from one capacity to another
+// Upgrade price from one capacity to another (COP)
 export function getUpgradePrice(
   type: PoolType,
   fromCapacity: number,
@@ -263,4 +263,109 @@ export function getUpgradePrice(
   const fromTier = getTierForCustomCount(type, fromCapacity);
   const toTier = getTierForCustomCount(type, toCapacity);
   return toTier.totalPrice - fromTier.totalPrice;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// USD PRICING (for International / Polar payments)
+// Computed from base price with volume discounts — mirrors backend logic.
+// ═══════════════════════════════════════════════════════════════
+
+export type Currency = "COP" | "USD";
+
+const BASE_PRICE_USD = 7.99;
+const PAIR_DISCOUNT_USD = 0.40;
+const MIN_PRICE_USD = 4.99;
+const CORPORATE_BASE_PRICE_USD = 49.99;
+
+function roundUsd(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function getUsdPriceAtStep(step: number): number {
+  const pairIndex = Math.floor(step / 2);
+  const price = roundUsd(BASE_PRICE_USD - pairIndex * PAIR_DISCOUNT_USD);
+  return Math.max(price, MIN_PRICE_USD);
+}
+
+/** Format a USD amount. Example: 7.99 → "$7.99 USD" */
+export function formatUSD(amount: number): string {
+  return "$" + roundUsd(amount).toFixed(2) + " USD";
+}
+
+/** Format price in the given currency */
+export function formatPrice(amount: number, currency: Currency): string {
+  return currency === "COP" ? formatCOP(amount) : formatUSD(amount);
+}
+
+export function getPersonalTiersUsd(upTo = 300): PricingTier[] {
+  const tiers: PricingTier[] = [];
+  // Free tier
+  tiers.push({ maxParticipants: PERSONAL_FREE_LIMIT, pricePerIncrement: 0, totalPrice: 0, savingsPercent: 0, isFree: true });
+
+  let total = 0;
+  let step = 0;
+  for (let cap = PERSONAL_FREE_LIMIT + INCREMENT; cap <= upTo; cap += INCREMENT) {
+    const blockPrice = getUsdPriceAtStep(step);
+    total = roundUsd(total + blockPrice);
+    const savings = Math.round(((BASE_PRICE_USD - blockPrice) / BASE_PRICE_USD) * 100);
+    tiers.push({
+      maxParticipants: cap,
+      pricePerIncrement: blockPrice,
+      totalPrice: total,
+      savingsPercent: Math.max(0, savings),
+      isFree: false,
+    });
+    step++;
+  }
+  return tiers;
+}
+
+export function getCorporateTiersUsd(upTo = 300): PricingTier[] {
+  const tiers: PricingTier[] = [];
+  // Base tier: 100 players
+  tiers.push({
+    maxParticipants: CORPORATE_FREE_LIMIT,
+    pricePerIncrement: CORPORATE_BASE_PRICE_USD,
+    totalPrice: CORPORATE_BASE_PRICE_USD,
+    savingsPercent: 0,
+    isFree: false,
+  });
+
+  let total = CORPORATE_BASE_PRICE_USD;
+  let step = 0;
+  for (let cap = CORPORATE_FREE_LIMIT + INCREMENT; cap <= upTo; cap += INCREMENT) {
+    const blockPrice = getUsdPriceAtStep(step);
+    total = roundUsd(total + blockPrice);
+    const savings = Math.round(((BASE_PRICE_USD - blockPrice) / BASE_PRICE_USD) * 100);
+    tiers.push({
+      maxParticipants: cap,
+      pricePerIncrement: blockPrice,
+      totalPrice: total,
+      savingsPercent: Math.max(0, savings),
+      isFree: false,
+    });
+    step++;
+  }
+  return tiers;
+}
+
+/** Get tier for custom count in USD */
+export function getTierForCustomCountUsd(type: PoolType, playerCount: number): PricingTier {
+  const freeLimit = type === "personal" ? PERSONAL_FREE_LIMIT : CORPORATE_FREE_LIMIT;
+  if (playerCount <= freeLimit) {
+    return type === "personal"
+      ? getPersonalTiersUsd(PERSONAL_FREE_LIMIT)[0]!
+      : getCorporateTiersUsd(CORPORATE_FREE_LIMIT)[0]!;
+  }
+  const target = Math.ceil(playerCount / INCREMENT) * INCREMENT;
+  const tiers = type === "personal" ? getPersonalTiersUsd(target) : getCorporateTiersUsd(target);
+  return tiers[tiers.length - 1]!;
+}
+
+/** Upgrade price in USD */
+export function getUpgradePriceUsd(type: PoolType, fromCapacity: number, toCapacity: number): number {
+  if (toCapacity <= fromCapacity) return 0;
+  const fromTier = getTierForCustomCountUsd(type, fromCapacity);
+  const toTier = getTierForCustomCountUsd(type, toCapacity);
+  return roundUsd(toTier.totalPrice - fromTier.totalPrice);
 }

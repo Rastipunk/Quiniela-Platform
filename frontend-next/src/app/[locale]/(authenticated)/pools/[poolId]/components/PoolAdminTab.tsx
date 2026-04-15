@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { archivePool } from "@/lib/api";
 import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
-import { getTierForCustomCount, formatCOP, type PoolType as PricingPoolType } from "@/lib/pricing";
+import { getTierForCustomCount, getTierForCustomCountUsd, formatPrice, type PoolType as PricingPoolType, type Currency } from "@/lib/pricing";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
 import { NotificationBanner } from "@/components/NotificationBanner";
@@ -238,6 +238,7 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
         onSelect={setSelectedCapacity}
         mode="expansion"
         allowPaidTiers={isAdmin}
+        currency={country === "CO" ? "COP" : "USD"}
       />
       {selectedCapacity > currentCapacity && (
         <button
@@ -257,14 +258,14 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
           }}
         >
           {busy ? t("checkout.processing") : (() => {
-            const tier = getTierForCustomCount(poolType as PricingPoolType, selectedCapacity);
-            const fromTier = getTierForCustomCount(poolType as PricingPoolType, currentCapacity);
-            const upgradeCop = tier.totalPrice - fromTier.totalPrice;
+            const cur: Currency = country === "CO" ? "COP" : "USD";
+            const getTier = cur === "USD" ? getTierForCustomCountUsd : getTierForCustomCount;
+            const tier = getTier(poolType as PricingPoolType, selectedCapacity);
+            const fromTier = getTier(poolType as PricingPoolType, currentCapacity);
+            const upgradePrice = tier.totalPrice - fromTier.totalPrice;
             return t("expand.expandButton", {
               capacity: selectedCapacity,
-              price: country === "CO"
-                ? formatCOP(upgradeCop)
-                : `$${(upgradeCop / 4200).toFixed(2)} USD`,
+              price: formatPrice(upgradePrice, cur),
             });
           })()}
         </button>
