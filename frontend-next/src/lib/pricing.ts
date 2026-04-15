@@ -22,7 +22,7 @@ export type PricingTier = {
 const envInt = (key: string, fallback: number) => parseInt(process.env[key] || String(fallback), 10);
 
 export const PERSONAL_FREE_LIMIT = envInt("NEXT_PUBLIC_PERSONAL_FREE_LIMIT", 20);
-export const CORPORATE_FREE_LIMIT = envInt("NEXT_PUBLIC_CORPORATE_FREE_LIMIT", 1);
+export const CORPORATE_FREE_LIMIT = envInt("NEXT_PUBLIC_CORPORATE_FREE_LIMIT", 2);
 export const INCREMENT = 50;
 
 // Base price per 50-player increment in COP (used as reference for savings %)
@@ -71,7 +71,7 @@ const PERSONAL_TIER_PRICES: Record<number, number> = {
 
 // Corporate tiers: 100 players included in base price, then incremental
 const CORPORATE_TIER_PRICES: Record<number, number> = {
-  1:     0,        // Free trial (host only)
+  2:     0,        // Free trial (host + 1 guest)
   100:   200000,   // First paid tier
   150:   226000,
   200:   253000,

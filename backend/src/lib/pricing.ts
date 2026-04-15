@@ -23,7 +23,7 @@ const envFloat = (key: string, fallback: number): number =>
 
 /** Free participant limits */
 export const PERSONAL_FREE_LIMIT = envInt("PERSONAL_FREE_LIMIT", 20);
-export const CORPORATE_FREE_LIMIT = envInt("CORPORATE_FREE_LIMIT", 1);
+export const CORPORATE_FREE_LIMIT = envInt("CORPORATE_FREE_LIMIT", 2);
 
 /** Block size for capacity increments */
 export const INCREMENT = 50;
@@ -171,7 +171,7 @@ const PERSONAL_COP_PRICES: Record<number, number> = {
 };
 
 const CORPORATE_COP_PRICES: Record<number, number> = {
-  1:     0,        // Free trial (host only)
+  2:     0,        // Free trial (host + 1 guest)
   100:   200000,
   150:   226000,
   200:   253000,
