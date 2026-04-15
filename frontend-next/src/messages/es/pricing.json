@@ -18,6 +18,7 @@
   "customInList": "Ese número ya está cubierto en la lista de arriba.",
   "customResult": "Para {requested} jugadores, el plan más pequeño que te cubre es de {offered} jugadores.",
   "customSaving": "Ahorras {percent}% (${amount})",
+  "customSelect": "Seleccionar {count} jugadores",
   "customReason": "Necesitas {requested}, y los planes van en bloques de {increment}. El de {offered} es el más pequeño que cubre tu necesidad.",
   "personalFreeTitle": "Tu pool de 20 jugadores es 100% gratis",
   "personalFreeDesc": "Funciona completamente, sin límites ni restricciones.",

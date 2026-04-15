@@ -334,13 +334,11 @@ export default function CapacitySelector({
         {isValidCustom && customTier && customTier !== "FREE_COVERS" && customTier !== "IN_LIST" && (
           <div
             style={{
-              position: "relative",
               marginTop: 10,
               padding: 16,
               borderRadius: 10,
               background: colors.white,
-              border: "2px solid #e5e7eb",
-              overflow: "hidden",
+              border: `2px solid ${selectedCapacity === (customTier as PricingTier).maxParticipants ? colors.brand : "#e5e7eb"}`,
             }}
           >
             <div style={{ fontSize: 13, color: colors.textDark, lineHeight: 1.6 }}>
@@ -382,29 +380,24 @@ export default function CapacitySelector({
               })}
             </div>
 
-            {/* Locked overlay */}
-            <div
+            {/* Select button */}
+            <button
+              onClick={() => onSelect((customTier as PricingTier).maxParticipants)}
               style={{
-                position: "absolute",
-                inset: 0,
+                marginTop: 12,
+                width: "100%",
+                padding: "10px 16px",
                 borderRadius: 8,
-                background: "rgba(255, 255, 255, 0.82)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 2,
-                backdropFilter: "blur(1px)",
+                border: "none",
+                background: colors.brand,
+                color: colors.white,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
-              <div style={{ fontSize: 18 }}>&#128274;</div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: colors.brand }}>
-                {t("comingSoon")}
-              </div>
-              <div style={{ fontSize: 11, color: colors.textLighter, marginTop: 1 }}>
-                {t("comingSoonDesc")}
-              </div>
-            </div>
+              {t("customSelect", { count: (customTier as PricingTier).maxParticipants })}
+            </button>
           </div>
         )}
       </div>

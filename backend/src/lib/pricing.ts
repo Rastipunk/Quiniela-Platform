@@ -132,92 +132,60 @@ export function usdToCents(usd: number): number {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// COP PRICING (for Wompi / Colombia)
-// Fixed table with clean rounded numbers — NOT converted from USD
+// COP PRICING (for Mercado Pago / Colombia)
+// Dynamic computation with progressive volume discounts.
+// Same structure as USD: base price per block, discount every 2 blocks.
 // ═══════════════════════════════════════════════════════════════
 
-const PERSONAL_COP_PRICES: Record<number, number> = {
-  20:    0,
-  50:    28000,
-  100:   56000,
-  150:   82000,
-  200:   109000,
-  250:   133000,
-  300:   158000,
-  350:   181000,
-  400:   204000,
-  450:   226000,
-  500:   248000,
-  550:   268000,
-  600:   288000,
-  650:   306000,
-  700:   324000,
-  750:   341000,
-  800:   358000,
-  850:   374000,
-  900:   390000,
-  950:   406000,
-  1000:  422000,
-  1050:  438000,
-  1100:  454000,
-  1150:  470000,
-  1200:  486000,
-  1250:  502000,
-  1300:  518000,
-  1350:  534000,
-  1400:  550000,
-  1450:  566000,
-  1500:  582000,
-};
+const BASE_PRICE_COP = envInt("BASE_PRICE_COP", 28500);
+const PAIR_DISCOUNT_COP = 1500;
+const MIN_PRICE_COP = envInt("MIN_PRICE_COP", 18000);
+const CORPORATE_BASE_PRICE_COP = envInt("CORPORATE_BASE_PRICE_COP", 200000);
 
-const CORPORATE_COP_PRICES: Record<number, number> = {
-  2:     0,        // Free trial (host + 1 guest)
-  100:   200000,
-  150:   226000,
-  200:   253000,
-  250:   277000,
-  300:   302000,
-  350:   325000,
-  400:   349000,
-  450:   370000,
-  500:   392000,
-  550:   412000,
-  600:   432000,
-  650:   450000,
-  700:   468000,
-  750:   485000,
-  800:   502000,
-  850:   518000,
-  900:   534000,
-  950:   550000,
-  1000:  566000,
-  1050:  582000,
-  1100:  598000,
-  1150:  614000,
-  1200:  630000,
-  1250:  646000,
-  1300:  662000,
-  1350:  678000,
-  1400:  694000,
-  1450:  710000,
-  1500:  726000,
-};
+/** Get the COP price per 50-player block at a given step (0-indexed) */
+function getCopPriceAtStep(step: number): number {
+  const pairIndex = Math.floor(step / 2);
+  const price = BASE_PRICE_COP - pairIndex * PAIR_DISCOUNT_COP;
+  return Math.max(price, MIN_PRICE_COP);
+}
 
-/** Get COP price from the fixed table. Rounds up to nearest tier. */
-function getCopPrice(type: PoolType, capacity: number): number {
-  const table = type === "personal" ? PERSONAL_COP_PRICES : CORPORATE_COP_PRICES;
+/** Calculate cumulative COP price for a personal pool */
+function personalCumulativePriceCop(capacity: number): number {
+  if (capacity <= PERSONAL_FREE_LIMIT) return 0;
+
+  // Personal tiers: 20→50 (first block), then +50 each
+  // First block covers 20→50 (30 players) at base price
+  const target = Math.max(Math.ceil(capacity / INCREMENT) * INCREMENT, INCREMENT);
+  // Number of blocks: 50 is step 0, 100 is step 1, 150 is step 2, etc.
+  const blocks = target / INCREMENT; // e.g. 50→1, 100→2, 150→3
+
+  let total = 0;
+  for (let step = 0; step < blocks; step++) {
+    total += getCopPriceAtStep(step);
+  }
+  return total;
+}
+
+/** Calculate cumulative COP price for a corporate pool */
+function corporateCumulativePriceCop(capacity: number): number {
+  if (capacity <= CORPORATE_FREE_LIMIT) return 0;
+
+  // Corporate: base price for 100 players, then +50 blocks from 150
+  if (capacity <= 100) return CORPORATE_BASE_PRICE_COP;
+
   const target = Math.ceil(capacity / INCREMENT) * INCREMENT;
-  const freeLimit = type === "personal" ? PERSONAL_FREE_LIMIT : CORPORATE_FREE_LIMIT;
+  const extraBlocks = (target - 100) / INCREMENT; // blocks beyond 100
 
-  // If within free limit
-  if (capacity <= freeLimit) return type === "corporate" ? CORPORATE_COP_PRICES[100]! : 0;
-
-  return table[target] ?? table[Math.max(...Object.keys(table).map(Number).filter(k => k <= target))] ?? 0;
+  let total = CORPORATE_BASE_PRICE_COP;
+  for (let step = 0; step < extraBlocks; step++) {
+    total += getCopPriceAtStep(step);
+  }
+  return total;
 }
 
 /**
  * Calculate the upgrade price in COP from one capacity to another.
- * Uses the fixed COP table — NOT converted from USD.
+ * Uses dynamic computation — works for any capacity.
  */
 export function calculateUpgradePriceCop(
   type: PoolType,
@@ -225,9 +193,8 @@ export function calculateUpgradePriceCop(
   toCapacity: number,
 ): number {
   if (toCapacity <= fromCapacity) return 0;
-  const fromPrice = getCopPrice(type, fromCapacity);
-  const toPrice = getCopPrice(type, toCapacity);
-  return toPrice - fromPrice;
+  const calc = type === "personal" ? personalCumulativePriceCop : corporateCumulativePriceCop;
+  return calc(toCapacity) - calc(fromCapacity);
 }
 
 /**

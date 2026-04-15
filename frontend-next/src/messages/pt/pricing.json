@@ -18,6 +18,7 @@
   "customInList": "Esse número já está coberto na lista acima.",
   "customResult": "Para {requested} jogadores, o menor plano que te cobre é de {offered} jogadores.",
   "customSaving": "Economize {percent}% (${amount})",
+  "customSelect": "Selecionar {count} jogadores",
   "customReason": "Você precisa de {requested}, e os planos vêm em blocos de {increment}. O de {offered} jogadores é o menor que cobre sua necessidade.",
   "personalFreeTitle": "Seu bolão de 20 jogadores é 100% grátis",
   "personalFreeDesc": "Totalmente funcional, sem limites nem restrições.",
