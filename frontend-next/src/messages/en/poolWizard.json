@@ -108,6 +108,13 @@
     "tip": "If this is your first time, we recommend the Predictor style. It is the most fun and balanced.",
     "advancedOptions": "Advanced options",
     "collapse": "Collapse",
+    "activeCriteria": "Scoring criteria",
+    "pts": "pts",
+    "multiplierLabel": "Progressive points",
+    "multiplierOn": "Enabled — points increase in later rounds, giving players who started poorly a chance to climb back.",
+    "multiplierOff": "Disabled — points are the same in all phases.",
+    "extraTimeStatus": "Extra time",
+    "extraTimeDefault": "Only the 90-minute result counts (recommended). You can change this in advanced options.",
 
     "presets": {
       "CUMULATIVE": {

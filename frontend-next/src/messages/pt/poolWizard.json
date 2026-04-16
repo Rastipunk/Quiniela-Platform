@@ -108,6 +108,13 @@
     "tip": "Se é sua primeira vez, recomendamos o estilo Predictor. É o mais divertido e equilibrado.",
     "advancedOptions": "Opções avançadas",
     "collapse": "Fechar",
+    "activeCriteria": "Critérios de pontuação",
+    "pts": "pts",
+    "multiplierLabel": "Pontos progressivos",
+    "multiplierOn": "Ativado — os pontos aumentam em fases avançadas, permitindo que quem começou mal tenha oportunidades de subir.",
+    "multiplierOff": "Desativado — os pontos são iguais em todas as fases.",
+    "extraTimeStatus": "Prorrogação",
+    "extraTimeDefault": "Apenas o resultado dos 90 minutos conta (recomendado). Você pode mudar isso nas opções avançadas.",
 
     "presets": {
       "CUMULATIVE": {

@@ -1100,6 +1100,111 @@ function ScoreInput({
   );
 }
 
+// ── Preset Summary ────────────────────────────────────────────
+function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabled, isMobile }: {
+  scoringConfig: PoolPickTypesConfig;
+  scoringStyle: string | null;
+  isScoreBased: boolean;
+  scalingEnabled: boolean;
+  isMobile: boolean;
+}) {
+  const t = useTranslations("poolWizard");
+  const firstPhase = scoringConfig[0];
+
+  if (!firstPhase) return null;
+
+  return (
+    <div style={{
+      padding: spacing.md,
+      borderRadius: radii.lg,
+      border: `1px solid ${colors.borderLight}`,
+      background: colors.white,
+      display: "flex",
+      flexDirection: "column",
+      gap: spacing.md,
+    }}>
+      {/* Active criteria */}
+      {isScoreBased && firstPhase.matchPicks && (
+        <div>
+          <div style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textDark, marginBottom: 8 }}>
+            {t("scoring.activeCriteria")}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {firstPhase.matchPicks.types.map((type) => (
+              <div key={type.key} style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: fontSize.sm,
+                color: type.enabled ? colors.textDark : colors.textLighter,
+              }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ color: type.enabled ? colors.successAlt : colors.textLighter }}>
+                    {type.enabled ? "✓" : "–"}
+                  </span>
+                  {t(`scoring.criteria.${type.key}`)}
+                </span>
+                {type.enabled && (
+                  <span style={{ fontWeight: fontWeight.bold, color: colors.brand }}>
+                    {type.points} {t("scoring.pts", { defaultMessage: "pts" })}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Structural picks summary for SIMPLE */}
+      {!isScoreBased && firstPhase.structuralPicks && (
+        <div style={{ fontSize: fontSize.sm, color: colors.textDark, lineHeight: 1.5 }}>
+          <span style={{ fontWeight: fontWeight.bold }}>
+            {t("scoring.presets.SIMPLE.tagline")}
+          </span>
+          <br />
+          {t("scoring.presets.SIMPLE.description")}
+        </div>
+      )}
+
+      {/* Multiplier status */}
+      {isScoreBased && scoringConfig.length > 1 && (
+        <div style={{
+          padding: `${spacing.sm}px ${spacing.md}px`,
+          borderRadius: radii.md,
+          background: scalingEnabled ? "#eef2ff" : colors.bgLighter,
+          border: `1px solid ${scalingEnabled ? "#c7d2fe" : colors.borderLight}`,
+          fontSize: fontSize.sm,
+          lineHeight: 1.5,
+        }}>
+          <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
+            📈 {t("scoring.multiplierLabel", { defaultMessage: "Puntos progresivos" })}:
+          </span>{" "}
+          <span style={{ color: colors.textMuted }}>
+            {scalingEnabled
+              ? t("scoring.multiplierOn", { defaultMessage: "Activado — los puntos aumentan en fases avanzadas del torneo, permitiendo que jugadores que empezaron mal sigan teniendo oportunidades." })
+              : t("scoring.multiplierOff", { defaultMessage: "Desactivado — los puntos son iguales en todas las fases." })}
+          </span>
+        </div>
+      )}
+
+      {/* Extra time status */}
+      <div style={{
+        padding: `${spacing.sm}px ${spacing.md}px`,
+        borderRadius: radii.md,
+        background: colors.bgLighter,
+        border: `1px solid ${colors.borderLight}`,
+        fontSize: fontSize.sm,
+        color: colors.textMuted,
+      }}>
+        <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
+          ⏱️ {t("scoring.extraTimeStatus", { defaultMessage: "Tiempo extra" })}:
+        </span>{" "}
+        {t("scoring.extraTimeDefault", { defaultMessage: "Solo se cuenta el resultado al minuto 90 (recomendado). Puedes cambiar esto en opciones avanzadas." })}
+      </div>
+    </div>
+  );
+}
+
 // ── Extra Time Section ────────────────────────────────────────
 function ExtraTimeSection({ knockoutPhases, scoringConfig, dispatch, isCustom, isMobile }: {
   knockoutPhases: PoolPickTypesConfig;
@@ -1244,6 +1349,7 @@ export function StepScoring() {
 
   // Track which phase sections are open
   const [openPhases, setOpenPhases] = useState<Record<number, boolean>>({ 0: true });
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [scalingEnabled, setScalingEnabled] = useState(false);
 
   // Editable multipliers per phase
@@ -1497,8 +1603,44 @@ export function StepScoring() {
           </button>
         </div>
 
-        {/* Scaling toggle */}
-        {isScoreBased && scoringConfig.length > 1 && (
+        {/* Preset summary — only for non-custom presets */}
+        {!isCustom && scoringConfig.length > 0 && (
+          <PresetSummary
+            scoringConfig={scoringConfig}
+            scoringStyle={scoringStyle}
+            isScoreBased={isScoreBased}
+            scalingEnabled={scalingEnabled}
+            isMobile={isMobile}
+          />
+        )}
+
+        {/* Advanced options toggle — only for non-custom presets */}
+        {!isCustom && (
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            style={{
+              width: "100%",
+              padding: `${spacing.md}px`,
+              borderRadius: radii.lg,
+              border: `1px dashed ${colors.borderMedium}`,
+              background: showAdvanced ? colors.bgLighter : "transparent",
+              color: colors.brand,
+              fontSize: fontSize.base,
+              fontWeight: fontWeight.semibold,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              transition: "all 0.15s ease",
+            }}
+          >
+            {showAdvanced ? "▲" : "▼"} {t("scoring.advancedOptions")}
+          </button>
+        )}
+
+        {/* Scaling toggle — always for custom, only when advanced is open for presets */}
+        {(isCustom || showAdvanced) && isScoreBased && scoringConfig.length > 1 && (
           <div style={{
             padding: `${spacing.md}px ${spacing.lg}px`,
             background: scalingEnabled ? `${colors.brand}06` : colors.bgLighter,
@@ -1690,36 +1832,38 @@ export function StepScoring() {
           </div>
         )}
 
-        {/* Phase sections */}
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: spacing.md,
-        }}>
+        {/* Phase sections — always for custom, only when advanced is open for presets */}
+        {(isCustom || showAdvanced) && (
           <div style={{
-            fontSize: fontSize.sm,
-            fontWeight: fontWeight.semibold,
-            color: colors.textMuted,
-            textTransform: "uppercase" as const,
-            letterSpacing: 0.5,
+            display: "flex",
+            flexDirection: "column",
+            gap: spacing.md,
           }}>
-            Configuración por fase ({scoringConfig.length} fases)
-          </div>
+            <div style={{
+              fontSize: fontSize.sm,
+              fontWeight: fontWeight.semibold,
+              color: colors.textMuted,
+              textTransform: "uppercase" as const,
+              letterSpacing: 0.5,
+            }}>
+              Configuración por fase ({scoringConfig.length} fases)
+            </div>
 
-          {scoringConfig.map((phase, i) => (
-            <PhaseSection
-              key={phase.phaseId}
-              phase={phase}
-              phaseIndex={i}
-              isOpen={!!openPhases[i]}
-              onToggle={() => togglePhase(i)}
-              isScoreBased={isScoreBased && phase.requiresScore}
-              isCustom={isCustom}
-              isMobile={isMobile}
-              onUpdatePhase={handleUpdatePhase}
-            />
-          ))}
-        </div>
+            {scoringConfig.map((phase, i) => (
+              <PhaseSection
+                key={phase.phaseId}
+                phase={phase}
+                phaseIndex={i}
+                isOpen={!!openPhases[i]}
+                onToggle={() => togglePhase(i)}
+                isScoreBased={isScoreBased && phase.requiresScore}
+                isCustom={isCustom}
+                isMobile={isMobile}
+                onUpdatePhase={handleUpdatePhase}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Interactive calculator — only for score-based presets */}
         {isScoreBased && (
