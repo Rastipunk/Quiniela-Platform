@@ -48,11 +48,17 @@ export default function CapacitySelector({
     const getTiers = currency === "USD"
       ? (type === "personal" ? getPersonalTiersUsd : getCorporateTiersUsd)
       : (type === "personal" ? getPersonalTiers : getCorporateTiers);
-    // In expansion mode, generate tiers beyond current capacity
     const upTo = mode === "expansion" && currentCapacity ? Math.max(300, currentCapacity + 250) : 300;
     const allTiers = getTiers(upTo);
     if (mode === "expansion" && currentCapacity) {
-      return allTiers.filter((tier) => tier.maxParticipants > currentCapacity);
+      const getTier = currency === "USD" ? getTierForCustomCountUsd : getTierForCustomCount;
+      const currentPrice = getTier(type, currentCapacity).totalPrice;
+      return allTiers
+        .filter((tier) => tier.maxParticipants > currentCapacity)
+        .map((tier) => ({
+          ...tier,
+          totalPrice: tier.totalPrice - currentPrice,
+        }));
     }
     return allTiers;
   }, [type, mode, currentCapacity, currency]);
