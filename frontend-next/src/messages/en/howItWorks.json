@@ -119,5 +119,6 @@
     "title": "Ready to start your {term}?",
     "description": "Create your free account and start competing. Set up your prediction {term} in minutes.",
     "button": "Create free account"
-  }
+  },
+  "howToPlayCta": "How to play?"
 }

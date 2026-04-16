@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -81,6 +82,7 @@ interface HowItWorksMessages {
     note: string;
   };
   cta: { title: string; description: string; button: string };
+  howToPlayCta: string;
 }
 
 function StepItem({
@@ -195,6 +197,7 @@ export default async function ComoFuncionaPage() {
       description: interpolate(rawMsg.cta.description, pp),
       button: rawMsg.cta.button,
     },
+    howToPlayCta: rawMsg.howToPlayCta ?? "¿Cómo se juega?",
   };
 
   const baseUrl = SITE_URL;
@@ -322,36 +325,66 @@ export default async function ComoFuncionaPage() {
           }}
         >
           <div style={{ maxWidth: 900, margin: "0 auto" }}>
-            <h2
-              className="seo-h2"
-              style={{
-                fontSize: "2rem",
-                fontWeight: 700,
-                marginBottom: 32,
-                color: "var(--text)",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <span
-                aria-hidden="true"
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              marginBottom: 32,
+            }}>
+              <h2
+                className="seo-h2"
                 style={{
-                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                  color: "white",
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  display: "inline-flex",
+                  fontSize: "2rem",
+                  fontWeight: 700,
+                  margin: 0,
+                  color: "var(--text)",
+                  display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.25rem",
+                  gap: 12,
                 }}
               >
-                {"\u26BD"}
-              </span>
-              {msg.playerSection.title}
-            </h2>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    color: "white",
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.25rem",
+                  }}
+                >
+                  {"\u26BD"}
+                </span>
+                {msg.playerSection.title}
+              </h2>
+              <Link
+                href="/como-se-juega"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: colors.brandGradient,
+                  color: "white",
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  padding: "10px 18px",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span style={{ fontSize: "1.1em" }}>{"\u26BD"}</span>
+                {msg.howToPlayCta}
+                <span>{"\u2192"}</span>
+              </Link>
+            </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {msg.playerSection.steps.map((step) => (

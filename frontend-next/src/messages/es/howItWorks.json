@@ -50,7 +50,7 @@
     ]
   },
   "playerSection": {
-    "title": "Si quieres unirte a un pool (Jugador)",
+    "title": "Si quieres unirte a una pool (Jugador)",
     "steps": [
       {
         "number": 1,
@@ -60,7 +60,7 @@
       {
         "number": 2,
         "title": "Crea tu cuenta y únete",
-        "description": "Regístrate si aún no tienes cuenta, luego ingresa el código para unirte al pool."
+        "description": "Regístrate si aún no tienes cuenta, luego ingresa el código para unirte a la pool."
       },
       {
         "number": 3,
@@ -119,5 +119,6 @@
     "title": "¿Listo para empezar tu {term}?",
     "description": "Crea tu cuenta gratis y comienza a competir. Arma tu {term} en minutos.",
     "button": "Crear cuenta gratis"
-  }
+  },
+  "howToPlayCta": "¿Cómo se juega?"
 }

@@ -160,6 +160,33 @@ export function LandingContent() {
         >
           {t.rich("whatIs.p2", { strong: strongTag, ...poolParams })}
         </p>
+
+        {/* How to play CTA — prominent */}
+        <div style={{ marginTop: 32, display: "flex", justifyContent: "center" }}>
+          <Link
+            href="/como-se-juega"
+            onClick={() => trackEvent("cta_clicked", { cta_text: "how_to_play", page: "landing" })}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 12,
+              background: colors.brandGradient,
+              color: "white",
+              fontSize: isMobile ? "0.95rem" : "1.05rem",
+              fontWeight: 700,
+              padding: isMobile ? "14px 22px" : "16px 36px",
+              borderRadius: 12,
+              textDecoration: "none",
+              boxShadow: "0 6px 20px rgba(102, 126, 234, 0.35), 0 2px 6px rgba(0,0,0,0.08)",
+              transition: "transform 0.15s ease, box-shadow 0.15s ease",
+              letterSpacing: 0.3,
+            }}
+          >
+            <span style={{ fontSize: "1.3em" }}>&#9917;</span>
+            <span>{t("pricing.howToPlayCta")}</span>
+            <span style={{ fontSize: "1.1em" }}>&#8594;</span>
+          </Link>
+        </div>
       </section>
 
       {/* Features Section */}
@@ -469,30 +496,49 @@ export function LandingContent() {
               position: "relative",
               border: "2px solid #818cf8",
               borderRadius: 16,
-              padding: 28,
+              padding: "36px 28px 28px",
               background: "var(--surface)",
               display: "flex",
               flexDirection: "column",
-              overflow: "hidden",
+              marginTop: 14,
             }}
           >
-            {/* Diagonal trial banner */}
+            {/* Layer 1: Decorative ribbon in corner (background) */}
             <div style={{
               position: "absolute",
-              top: 18,
-              right: -35,
+              top: 14,
+              right: -28,
               background: "linear-gradient(135deg, #22c55e, #16a34a)",
-              color: "white",
-              fontSize: 10,
-              fontWeight: 800,
-              padding: "5px 40px",
+              width: 100,
+              height: 20,
               transform: "rotate(35deg)",
+              zIndex: 1,
+              overflow: "hidden",
+            }} />
+
+            {/* Layer 2: Sticker overlay (on top of ribbon, extends beyond) */}
+            <div style={{
+              position: "absolute",
+              top: -16,
+              left: "50%",
+              transform: "translateX(-50%) rotate(-3deg)",
+              background: "linear-gradient(135deg, #16a34a, #15803d)",
+              color: "white",
+              fontSize: 11,
+              fontWeight: 800,
+              padding: "8px 20px",
+              borderRadius: 10,
               textTransform: "uppercase",
               letterSpacing: 0.5,
-              zIndex: 2,
-              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+              zIndex: 3,
+              boxShadow: "0 4px 14px rgba(22, 163, 74, 0.45), 0 2px 4px rgba(0,0,0,0.12)",
+              border: "2px solid white",
+              width: "calc(100% - 20px)",
+              maxWidth: 340,
+              textAlign: "center",
+              lineHeight: 1.25,
             }}>
-              {t("pricing.corporate.trialBanner")}
+              &#127881; {t("pricing.corporate.trialBanner")}
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
@@ -540,7 +586,7 @@ export function LandingContent() {
           </div>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 32, display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ textAlign: "center", marginTop: 32 }}>
           <Link
             href="/precios"
             style={{
@@ -554,20 +600,6 @@ export function LandingContent() {
             }}
           >
             {t("pricing.seeAllPlans")}
-          </Link>
-          <Link
-            href="/como-se-juega"
-            style={{
-              color: colors.brand,
-              textDecoration: "none",
-              fontWeight: 600,
-              fontSize: "1rem",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            &#9917; {t("pricing.howToPlay")}
           </Link>
         </div>
       </section>

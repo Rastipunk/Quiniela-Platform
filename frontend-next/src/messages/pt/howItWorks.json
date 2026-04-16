@@ -119,5 +119,6 @@
     "title": "Pronto para comecar seu {term}?",
     "description": "Crie sua conta gratis e comece a competir. Monte seu {term} em minutos.",
     "button": "Criar conta gratis"
-  }
+  },
+  "howToPlayCta": "Como jogar?"
 }
