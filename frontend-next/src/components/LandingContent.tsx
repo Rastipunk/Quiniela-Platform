@@ -490,12 +490,25 @@ export function LandingContent() {
             </button>
           </div>
 
-          {/* Corporate Card */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {/* Sticker above card */}
+          {/* Corporate Card — wrapper with sticker floating above */}
+          <div
+            style={{
+              position: "relative",
+              border: "2px solid #818cf8",
+              borderRadius: 16,
+              padding: 28,
+              paddingTop: 32,
+              background: "var(--surface)",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {/* Sticker floating above the card */}
             <div style={{
-              alignSelf: "center",
-              transform: "rotate(-2deg)",
+              position: "absolute",
+              top: -18,
+              left: "50%",
+              transform: "translateX(-50%) rotate(-2deg)",
               background: "linear-gradient(135deg, #16a34a, #15803d)",
               color: "white",
               fontSize: 11,
@@ -508,24 +521,11 @@ export function LandingContent() {
               border: "2px solid white",
               textAlign: "center",
               lineHeight: 1.25,
-              marginBottom: -10,
               zIndex: 3,
-              position: "relative",
+              whiteSpace: "nowrap",
             }}>
               &#127881; {t("pricing.corporate.trialBanner")}
             </div>
-
-            <div
-              style={{
-                border: "2px solid #818cf8",
-                borderRadius: 16,
-                padding: 28,
-                background: "var(--surface)",
-                display: "flex",
-                flexDirection: "column",
-                flex: 1,
-              }}
-            >
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
               <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text)", margin: 0 }}>
                 {t("pricing.corporate.title")}
@@ -568,7 +568,6 @@ export function LandingContent() {
             >
               {t("pricing.corporate.cta")}
             </Link>
-            </div>
           </div>
         </div>
 
