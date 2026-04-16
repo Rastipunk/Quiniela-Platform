@@ -1,6 +1,6 @@
 # CLAUDE.md — Picks4All Development Standards
 
-> **Last updated:** 2026-04-04
+> **Last updated:** 2026-04-16
 >
 > This file defines the mandatory standards, principles, and constraints for ALL work in this repository. Every change — code, documentation, infrastructure — must comply with these rules.
 
@@ -121,6 +121,8 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Database | PostgreSQL (Railway managed) | 16 |
 | Auth | JWT (4h) + Google Sign-In | — |
 | Email | Resend | — |
+| Payments (CO) | Mercado Pago (Payment Brick + webhooks) | SDK 2.12 |
+| Payments (Intl) | Polar.sh | — |
 | Sports Data | picks4all-scores (primary), API-Football (fallback) | — |
 | Analytics | Google Analytics 4 + Google Tag Manager | — |
 | Hosting | Railway (2 services + Postgres) | — |
@@ -144,6 +146,8 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | API-Football | `services/apiFootball/client.ts` (fallback only) |
 | picks4all-scores | `services/scoresService/client.ts` (primary live scores) |
 | Smart Sync | `services/smartSync/service.ts` (API-Football fallback) |
+| Payments | `services/mercadopago/client.ts`, `services/polar/client.ts`, `services/paymentService.ts` |
+| Pricing | `lib/pricing.ts` (USD + COP dynamic pricing with volume discounts) |
 | Jobs | `jobs/liveScoresJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts` |
 
 ### Frontend (`frontend-next/src/`)
@@ -154,6 +158,8 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Branding | `lib/brand.ts` |
 | Validation | `lib/validation.ts` (centralized form constraints) |
 | API client | `lib/api/client.ts` |
+| Payments API | `lib/api/payments.ts` (checkout, MP process, country detection) |
+| Pricing | `lib/pricing.ts` (COP + USD tiers, dynamic computation) |
 | Analytics | `lib/analytics.ts` (trackEvent via GTM dataLayer) |
 | i18n | `i18n/routing.ts`, `messages/{es,en,pt}/*.json` |
 | Shared UI | `components/ui/ToggleSwitch.tsx`, `components/CookieConsent.tsx` |
@@ -201,6 +207,10 @@ All configurable values are documented in `docs/guides/DEPLOYMENT.md`. Key categ
 - **JWT_SECRET** — Auth signing key
 - **RESEND_API_KEY, RESEND_FROM_EMAIL** — Email service
 - **API_FOOTBALL_KEY** — Sports data
+- **MP_ACCESS_TOKEN, MP_PUBLIC_KEY** — Mercado Pago (Colombia/COP payments)
+- **MP_WEBHOOK_SECRET** — Mercado Pago webhook signature verification
+- **POLAR_API_KEY, POLAR_WEBHOOK_SECRET** — Polar.sh (International/USD payments)
+- **SCORES_SERVICE_URL, SCORES_SERVICE_API_KEY** — picks4all-scores live scoring
 - **RATE_LIMIT_*_MAX** — Rate limiting thresholds
 - **MATCH_SYNC_*_MIN** — Match sync timing
 - **NEXT_PUBLIC_*** — Frontend-exposed config (pricing, domain, etc.)

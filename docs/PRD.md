@@ -451,10 +451,24 @@ All templates are locale-aware (ES/EN/PT), mobile-responsive, and use the Picks4
 
 ## 13. Pricing Model
 
-- **Free tier:** Pools up to 20 participants at no cost
-- **Paid tiers:** One-time payment for pools exceeding 20 participants
-- **Payment processor:** Lemon Squeezy (Merchant of Record)
-- **Pricing page:** Available at `/precios`
+### Personal Pools
+- **Free tier:** Up to 20 participants at no cost
+- **Paid tiers:** One-time payment per capacity upgrade (blocks of 50 players)
+- **COP pricing:** $28,500/block base, declining $1,500 every 2 blocks, min $18,000/block
+- **USD pricing:** $7.99/block base, declining $0.40 every 2 blocks, min $4.99/block
+
+### Corporate Pools
+- **Free trial:** 2 participants (host + 1 guest) at no cost
+- **First paid tier:** 100 participants — $200,000 COP / $49.99 USD
+- **Additional blocks:** Same pricing curve as personal (50-player increments)
+
+### Payment Processors
+- **Colombia (COP):** Mercado Pago — Payment Brick embedded checkout + IPN webhooks
+- **International (USD):** Polar.sh — External hosted checkout
+- **Country detection:** ipapi.co (frontend) + Cloudflare headers (backend)
+
+### Pricing Page
+- Available at `/precios` (ES), `/pricing` (EN), `/precos` (PT)
 
 ---
 

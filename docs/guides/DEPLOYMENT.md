@@ -145,6 +145,36 @@ All rate limit values are configurable via environment variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+#### Payments — Mercado Pago (Colombia / COP)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MP_ACCESS_TOKEN` | Mercado Pago access token (production) | (required) |
+| `MP_PUBLIC_KEY` | Mercado Pago public key for Payment Brick | (required) |
+| `MP_WEBHOOK_SECRET` | Secret for HMAC-SHA256 webhook signature verification | (optional, skips verification if unset) |
+
+#### Payments — Polar.sh (International / USD)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `POLAR_API_KEY` | Polar API key for checkout creation | (required) |
+| `POLAR_WEBHOOK_SECRET` | Secret for Polar webhook signature verification | (required) |
+
+#### Pricing
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BASE_PRICE_COP` | COP price per 50-player block | `28500` |
+| `MIN_PRICE_COP` | Minimum COP price per block (volume floor) | `18000` |
+| `BASE_PRICE_USD` | USD price per 50-player block | `7.99` |
+| `MIN_PRICE_USD` | Minimum USD price per block (volume floor) | `4.99` |
+| `CORPORATE_BASE_PRICE_COP` | COP base price for 100 corporate players | `200000` |
+| `CORPORATE_BASE_PRICE_USD` | USD base price for 100 corporate players | `49.99` |
+| `PERSONAL_FREE_LIMIT` | Max free personal pool capacity | `20` |
+| `CORPORATE_FREE_LIMIT` | Max free corporate pool capacity (trial) | `2` |
+
+#### Scores Service
+
 | `SCORES_SERVICE_URL` | Base URL of scraping service | (required for AUTO) |
 | `SCORES_SERVICE_API_KEY` | Bearer token for auth | (required for AUTO) |
 | `SCORES_SERVICE_TIMEOUT_MS` | HTTP request timeout | `10000` |

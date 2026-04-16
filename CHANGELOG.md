@@ -6,6 +6,46 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.9.0] — 2026-04-16
+
+### Mercado Pago Integration, Pricing Overhaul, UX Improvements
+
+#### Added
+- **Mercado Pago Payment Brick** — Embedded checkout for Colombia (COP). Supports credit/debit cards, PSE, Efecty, Nequi, prepaid cards, and Mercado Pago wallet
+- **MP webhook handler** — IPN notifications with HMAC-SHA256 signature verification (`MP_WEBHOOK_SECRET`)
+- **MP preference creation** — Backend creates Mercado Pago preferences for Payment Brick initialization
+- **Dynamic COP pricing** — Replaced hardcoded pricing table with dynamic computation: $28,500/block base, $1,500 discount every 2 blocks, $18,000 minimum
+- **USD pricing in frontend** — Added USD tier tables mirroring backend logic for international users
+- **Currency detection** — Automatic COP/USD display based on user country (ipapi.co + Cloudflare headers)
+- **"How to Play" page** — `/como-se-juega` with visual CSS mocks: prediction card, live match, 3 scoring system tabs (Predictor/Basic/Strategist), leaderboard with phase filters, tournament timeline, winners podium
+- **Pool type selection modal** — Dashboard "Create Pool" now shows Personal vs Corporate selection dialog
+- **Pool full UX** — Specific error messages for users trying to join full pools (join page + corporate activation)
+- **Corporate invite capacity warnings** — Banner in wizard and admin panel when invites exceed remaining capacity
+- **Specific MP rejection messages** — Insufficient funds, bad CVV, expired card, etc. with i18n support (ES/EN/PT)
+- **Custom capacity input** — "Select X players" button replaces "Coming Soon" overlay for custom player counts
+
+#### Changed
+- **Wizard step order** — Summary before Capacity. Capacity is now the last step with cart-style CTA ("Proceder al pago" / "Crear Pool")
+- **Corporate free tier** — Changed from 100 players to 2 (host + 1 guest) for free trial
+- **Corporate pricing card** — Green sticker "Prueba gratis todas las funcionalidades" floating above card
+- **Personal Pro card** — Dynamic pricing badge ($28,500 COP / $7.99 USD based on country), added CTA button
+- **Discount labels** — Changed from exact block discount to "Up to -X%" for transparency
+- **Capacity validation** — Backend accepts min 1 for corporate pools (was min 100)
+
+#### Removed
+- **All "Coming Soon" overlays** — Pricing page and landing page paid tiers are now active
+- **All "Beta" labels** — Header banner, enterprise page, pool messages
+- **Wompi dead code** — Unused payment service client removed
+- **Hardcoded COP pricing tables** — Replaced by dynamic computation
+
+#### Fixed
+- **Zod v4 compatibility** — `z.record()` requires 2 args in Zod v4
+- **Payment Brick initialization** — Added required `customization.paymentMethods` configuration
+- **Free tier redirect bug** — `handleContinueFree` now passes `capacityOverride` parameter to avoid stale React state
+- **"un pool" → "una pool"** — Fixed gender inconsistency in Spanish how-it-works page
+
+---
+
 ## [0.8.0] — 2026-04-10
 
 ### Production Readiness, Analytics, Scores Rework, Code Quality
