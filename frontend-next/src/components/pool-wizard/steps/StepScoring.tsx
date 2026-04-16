@@ -1236,7 +1236,7 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
             <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
               ⏱️ {t("scoring.extraTimeStatus")}:
             </span>{" "}
-            <span style={{ fontWeight: fontWeight.bold, color: etEnabled ? "#f59e0b" : colors.successAlt }}>
+            <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
               {etEnabled ? t("scoring.etEnabledLabel", { defaultMessage: "Activado" }) : t("scoring.etDisabledLabel", { defaultMessage: "Desactivado" })}
             </span>
             {" — "}
@@ -1771,6 +1771,7 @@ export function StepScoring() {
                 <ToggleSwitch
                   checked={scalingEnabled}
                   onChange={handleToggleScaling}
+                  size="small"
                 />
               </div>
             </div>
@@ -1963,18 +1964,21 @@ export function StepScoring() {
         {/* Phase sections */}
         {(
           <div style={{
+            padding: `${spacing.md}px ${spacing.lg}px`,
             display: "flex",
             flexDirection: "column",
             gap: spacing.md,
           }}>
-            <div style={{
-              fontSize: fontSize.sm,
-              fontWeight: fontWeight.semibold,
-              color: colors.textMuted,
-              textTransform: "uppercase" as const,
-              letterSpacing: 0.5,
-            }}>
-              Configuración por fase ({scoringConfig.length} fases)
+            <div style={{ display: "flex", alignItems: "center", gap: spacing.sm }}>
+              <span style={{ fontSize: 18 }}>⚙️</span>
+              <div>
+                <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text }}>
+                  Configuración por fase
+                </div>
+                <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
+                  {scoringConfig.length} fases configuradas
+                </div>
+              </div>
             </div>
 
             {scoringConfig.map((phase, i) => (
