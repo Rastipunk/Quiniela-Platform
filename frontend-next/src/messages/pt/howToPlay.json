@@ -40,8 +40,8 @@
       },
       "strategist": {
         "name": "Estrategista",
-        "tagline": "Preveja avanços e vencedores",
-        "description": "Preveja qual time vence o grupo, quem avança de fase e quem vence o torneio. Sem placares exatos."
+        "tagline": "Preveja classificações e avanços — sem placares",
+        "description": "Na fase de grupos, preveja a ordem de classificação. Nas eliminatórias, escolha quem avança em cada chave. Nunca coloque placares — apenas selecione times."
       }
     },
     "customNote": "Quer algo diferente? O Host pode combinar critérios e personalizar os pontos. Você tem controle total sobre como os palpites são pontuados.",
@@ -57,9 +57,12 @@
     "pts": "pts",
     "zero": "0",
     "basicMissDesc": "Se você tivesse previsto 3-1 e o resultado foi 2-1, ganha 0 pontos porque não acertou o placar exato.",
-    "strategistGroupWinner": "Vencedor do Grupo A: Barcelona",
-    "strategistAdvance": "Barcelona avança às semifinais",
-    "strategistChampion": "Campeão do torneio: Barcelona"
+    "strategistGroup": "Grupo A — Ordem de classificação",
+    "strategistGroupResult": "1. Brasil  2. Alemanha  3. Japão  4. Costa Rica",
+    "strategistR16": "Oitavas — Quem avança?",
+    "strategistR16Result": "Brasil avança",
+    "strategistQF": "Quartas — Quem avança?",
+    "strategistQFResult": "Brasil avança"
   },
 
   "leaderboard": {

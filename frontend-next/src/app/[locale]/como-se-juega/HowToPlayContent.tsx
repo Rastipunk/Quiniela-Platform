@@ -388,12 +388,27 @@ function BasicMock({ t }: { t: (key: string) => string }) {
 }
 
 function StrategistMock({ t }: { t: (key: string) => string }) {
-  const rows = [
-    { label: t("scoring.strategistGroupWinner"), pts: 15, emoji: "&#127942;" },
-    { label: t("scoring.strategistAdvance"), pts: 10, emoji: "&#9917;" },
-    { label: t("scoring.strategistChampion"), pts: 30, emoji: "&#128081;" },
+  const sections = [
+    {
+      title: t("scoring.strategistGroup"),
+      content: t("scoring.strategistGroupResult"),
+      pts: 15,
+      icon: "&#127942;",
+    },
+    {
+      title: t("scoring.strategistR16"),
+      content: t("scoring.strategistR16Result"),
+      pts: 10,
+      icon: "&#9917;",
+    },
+    {
+      title: t("scoring.strategistQF"),
+      content: t("scoring.strategistQFResult"),
+      pts: 10,
+      icon: "&#9917;",
+    },
   ];
-  const total = rows.reduce((s, r) => s + r.pts, 0);
+  const total = sections.reduce((s, r) => s + r.pts, 0);
 
   return (
     <div style={{
@@ -402,17 +417,22 @@ function StrategistMock({ t }: { t: (key: string) => string }) {
       overflow: "hidden",
       background: colors.white,
     }}>
-      {rows.map((row) => (
-        <div key={row.label} style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "12px 14px", borderBottom: `1px solid ${colors.borderLight}`, fontSize: 13,
+      {sections.map((s, i) => (
+        <div key={i} style={{
+          padding: "12px 14px",
+          borderBottom: `1px solid ${colors.borderLight}`,
         }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: colors.textDark }}>
-            <span style={{ fontSize: 18 }} dangerouslySetInnerHTML={{ __html: row.emoji }} />
-            <span>{row.label}</span>
-            <span style={{ color: "#16a34a", fontWeight: 700 }}>&#10003;</span>
-          </span>
-          <span style={{ fontWeight: 700, color: "#16a34a" }}>+{row.pts} {t("scoring.pts")}</span>
+          <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: "uppercase", marginBottom: 6 }}>
+            {s.title}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: colors.textDark }}>
+              <span style={{ fontSize: 16 }} dangerouslySetInnerHTML={{ __html: s.icon }} />
+              <span>{s.content}</span>
+              <span style={{ color: "#16a34a", fontWeight: 700 }}>&#10003;</span>
+            </span>
+            <span style={{ fontWeight: 700, color: "#16a34a", whiteSpace: "nowrap" }}>+{s.pts} {t("scoring.pts")}</span>
+          </div>
         </div>
       ))}
       <div style={{

@@ -40,8 +40,8 @@
       },
       "strategist": {
         "name": "Strategist",
-        "tagline": "Predict advances and winners",
-        "description": "Predict which team wins the group, who advances, and who wins the tournament. No exact scores needed."
+        "tagline": "Predict standings and advances — no scores",
+        "description": "In the group stage, predict the final standings order. In knockouts, pick who advances in each matchup. You never enter scores — just select teams."
       }
     },
     "customNote": "Want something different? The Host can combine criteria and customize the points. You have full control over how predictions are scored.",
@@ -57,9 +57,12 @@
     "pts": "pts",
     "zero": "0",
     "basicMissDesc": "If you had predicted 3-1 and the actual result was 2-1, you get 0 points because you didn't match the exact score.",
-    "strategistGroupWinner": "Group A winner: Barcelona",
-    "strategistAdvance": "Barcelona advances to semifinals",
-    "strategistChampion": "Tournament champion: Barcelona"
+    "strategistGroup": "Group A — Final standings",
+    "strategistGroupResult": "1. Brazil  2. Germany  3. Japan  4. Costa Rica",
+    "strategistR16": "Round of 16 — Who advances?",
+    "strategistR16Result": "Brazil advances",
+    "strategistQF": "Quarter Finals — Who advances?",
+    "strategistQFResult": "Brazil advances"
   },
 
   "leaderboard": {

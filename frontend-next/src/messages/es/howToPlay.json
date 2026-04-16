@@ -40,8 +40,8 @@
       },
       "strategist": {
         "name": "Estratega",
-        "tagline": "Predice avances y ganadores",
-        "description": "Predice qué equipo gana el grupo, quién avanza de fase y quién gana el torneo. Sin marcadores exactos."
+        "tagline": "Predice clasificaciones y avances — sin marcadores",
+        "description": "En fase de grupos, predices el orden de clasificación. En eliminatorias, eliges quién avanza en cada llave. Nunca pones marcadores — solo seleccionas equipos."
       }
     },
     "customNote": "¿Quieres algo diferente? El Host puede combinar criterios y personalizar los puntos. Tienes control total sobre cómo se califican las predicciones.",
@@ -57,9 +57,12 @@
     "pts": "pts",
     "zero": "0",
     "basicMissDesc": "Si hubieras predicho 3-1 y el resultado fue 2-1, ganas 0 puntos porque no acertaste el marcador exacto.",
-    "strategistGroupWinner": "Ganador del Grupo A: Barcelona",
-    "strategistAdvance": "Barcelona avanza a semifinales",
-    "strategistChampion": "Campeón del torneo: Barcelona"
+    "strategistGroup": "Grupo A — Orden de clasificación",
+    "strategistGroupResult": "1. Brasil  2. Alemania  3. Japón  4. Costa Rica",
+    "strategistR16": "Octavos — ¿Quién avanza?",
+    "strategistR16Result": "Brasil avanza",
+    "strategistQF": "Cuartos — ¿Quién avanza?",
+    "strategistQFResult": "Brasil avanza"
   },
 
   "leaderboard": {
