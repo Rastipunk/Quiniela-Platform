@@ -106,6 +106,8 @@
     "configTitle": "Customize your scoring",
     "configSubtitle": "Adjust the values to your liking. You can change the style at any time.",
     "tip": "If this is your first time, we recommend the Predictor style. It is the most fun and balanced.",
+    "advancedOptions": "Advanced options",
+    "collapse": "Collapse",
 
     "presets": {
       "CUMULATIVE": {

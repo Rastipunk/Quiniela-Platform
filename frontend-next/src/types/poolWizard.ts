@@ -27,7 +27,6 @@ export const STANDARD_STEPS: WizardStep[] = [
   "TOURNAMENT",
   "NAME_DETAILS",
   "SCORING",
-  "ADVANCED_RULES",
   "SUMMARY",
   "CAPACITY",
 ];
@@ -37,7 +36,6 @@ export const CORPORATE_STEPS: WizardStep[] = [
   "TOURNAMENT",
   "NAME_DETAILS",
   "SCORING",
-  "ADVANCED_RULES",
   "EMPLOYEE_INVITES",
   "SUMMARY",
   "CAPACITY",

@@ -106,6 +106,8 @@
     "configTitle": "Personaliza tu puntuación",
     "configSubtitle": "Ajusta los valores a tu gusto. Puedes cambiar de estilo cuando quieras.",
     "tip": "Si es tu primera vez, te recomendamos el estilo Predictor. Es el más divertido y equilibrado.",
+    "advancedOptions": "Opciones avanzadas",
+    "collapse": "Cerrar",
 
     "presets": {
       "CUMULATIVE": {

@@ -34,9 +34,6 @@ const StepNameDetails = lazy(
 const StepScoring = lazy(
   () => import("./steps/StepScoring").then((m) => ({ default: m.StepScoring }))
 );
-const StepAdvancedRules = lazy(
-  () => import("./steps/StepAdvancedRules").then((m) => ({ default: m.StepAdvancedRules }))
-);
 const StepCapacity = lazy(
   () => import("./steps/StepCapacity").then((m) => ({ default: m.StepCapacity }))
 );
@@ -192,8 +189,6 @@ function WizardInner() {
         return <StepNameDetails />;
       case "SCORING":
         return <StepScoring />;
-      case "ADVANCED_RULES":
-        return <StepAdvancedRules />;
       case "CAPACITY":
         return <StepCapacity onSubmit={handleSubmit} submitBusy={submitBusy} />;
       case "EMPLOYEE_INVITES":

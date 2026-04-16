@@ -1100,6 +1100,139 @@ function ScoreInput({
   );
 }
 
+// ── Extra Time Section ────────────────────────────────────────
+function ExtraTimeSection({ knockoutPhases, scoringConfig, dispatch, isCustom, isMobile }: {
+  knockoutPhases: PoolPickTypesConfig;
+  scoringConfig: PoolPickTypesConfig;
+  dispatch: (action: { type: "UPDATE_SCORING_CONFIG"; config: PoolPickTypesConfig }) => void;
+  isCustom: boolean;
+  isMobile: boolean;
+}) {
+  const t = useTranslations("poolWizard");
+  const [expanded, setExpanded] = useState(false);
+
+  function toggleExtraTime(phaseId: string) {
+    const updated = scoringConfig.map((p) =>
+      p.phaseId === phaseId
+        ? { ...p, includeExtraTime: !p.includeExtraTime }
+        : p
+    );
+    dispatch({ type: "UPDATE_SCORING_CONFIG", config: updated });
+  }
+
+  const allDisabled = knockoutPhases.every((p) => !p.includeExtraTime);
+
+  // For presets (not custom), show a compact summary that can expand
+  // For custom, always show expanded
+  if (!isCustom && !expanded) {
+    return (
+      <div style={{
+        padding: spacing.md,
+        borderRadius: radii.lg,
+        border: `1px solid ${colors.borderLight}`,
+        background: colors.bgLighter,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        cursor: "pointer",
+      }}
+        onClick={() => setExpanded(true)}
+      >
+        <div>
+          <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.textDark }}>
+            {t("advancedRules.extraTimeTitle")}
+          </div>
+          <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
+            {allDisabled
+              ? t("advancedRules.offExplanationTitle") + " (" + t("advancedRules.recommended") + ")"
+              : t("advancedRules.onExplanationTitle")}
+          </div>
+        </div>
+        <span style={{ fontSize: 12, color: colors.brand, fontWeight: fontWeight.semibold }}>
+          {t("scoring.advancedOptions")} ▼
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      padding: spacing.md,
+      borderRadius: radii.lg,
+      border: `1px solid ${colors.borderLight}`,
+      background: colors.bgLighter,
+    }}>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: spacing.md,
+      }}>
+        <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.textDark }}>
+          {t("advancedRules.extraTimeTitle")}
+        </div>
+        {!isCustom && (
+          <button
+            onClick={() => setExpanded(false)}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 12,
+              color: colors.brand,
+              fontWeight: fontWeight.semibold,
+              cursor: "pointer",
+            }}
+          >
+            ▲ {t("scoring.collapse")}
+          </button>
+        )}
+      </div>
+
+      <div style={{ fontSize: fontSize.sm, color: colors.textMuted, marginBottom: spacing.md, lineHeight: 1.5 }}>
+        {t("advancedRules.extraTimeDesc")}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
+        {knockoutPhases.map((phase) => (
+          <div key={phase.phaseId} style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: `${spacing.sm}px ${spacing.md}px`,
+            borderRadius: radii.lg,
+            background: colors.white,
+            border: `1px solid ${colors.borderLight}`,
+          }}>
+            <div>
+              <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.textDark }}>
+                {phase.phaseName}
+              </span>
+              {!phase.includeExtraTime && (
+                <span style={{
+                  marginLeft: 8,
+                  fontSize: 10,
+                  fontWeight: fontWeight.bold,
+                  color: colors.successAlt,
+                  background: colors.successBgLight,
+                  padding: "2px 6px",
+                  borderRadius: 99,
+                }}>
+                  {t("advancedRules.recommended")}
+                </span>
+              )}
+            </div>
+            <ToggleSwitch
+              checked={!!phase.includeExtraTime}
+              onChange={() => toggleExtraTime(phase.phaseId)}
+              size="small"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────
 
 export function StepScoring() {
@@ -1144,6 +1277,9 @@ export function StepScoring() {
   const isCustom = scoringStyle === "CUSTOM";
   const isScoreBased = scoringStyle === "CUMULATIVE" || scoringStyle === "BASIC" || scoringStyle === "CUSTOM";
   const isSimple = scoringStyle === "SIMPLE";
+  const knockoutPhases = scoringConfig.filter(
+    (p) => p.phaseId !== "group_stage" && !p.phaseId.includes("group")
+  );
 
   const activePreset = PRESETS.find(p => p.key === scoringStyle);
 
@@ -1627,6 +1763,16 @@ export function StepScoring() {
               mantenimiento por parte del administrador.
             </p>
           </div>
+        )}
+        {/* Extra time section — for all presets with knockout phases */}
+        {knockoutPhases.length > 0 && (
+          <ExtraTimeSection
+            knockoutPhases={knockoutPhases}
+            scoringConfig={scoringConfig}
+            dispatch={dispatch}
+            isCustom={scoringStyle === "CUSTOM"}
+            isMobile={isMobile}
+          />
         )}
       </div>
     </PoolWizardStepContainer>

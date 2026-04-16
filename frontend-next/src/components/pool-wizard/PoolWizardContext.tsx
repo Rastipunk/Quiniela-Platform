@@ -83,8 +83,15 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
     case "UPDATE_SCORING_CONFIG":
       return { ...state, scoringConfig: action.config };
 
-    case "RESTORE":
-      return { ...state, ...action.state };
+    case "RESTORE": {
+      const restored = { ...state, ...action.state };
+      // Handle drafts saved with steps that no longer exist (e.g. ADVANCED_RULES)
+      const validSteps = restored.mode === "corporate" ? CORPORATE_STEPS : STANDARD_STEPS;
+      if (!validSteps.includes(restored.currentStep)) {
+        restored.currentStep = "SCORING";
+      }
+      return restored;
+    }
 
     case "RESET":
       return getInitialState(state.mode);
@@ -127,9 +134,6 @@ function validateStep(state: WizardState): boolean {
 
     case "SCORING":
       return state.scoringStyle !== null && state.scoringConfig.length > 0;
-
-    case "ADVANCED_RULES":
-      return true; // Optional step
 
     case "CAPACITY":
       return state.maxParticipants >= 2;
