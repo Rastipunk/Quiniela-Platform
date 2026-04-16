@@ -1219,20 +1219,33 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
         </div>
       )}
 
-      {/* Extra time status */}
-      <div style={{
-        padding: `${spacing.sm}px ${spacing.md}px`,
-        borderRadius: radii.md,
-        background: colors.bgLighter,
-        border: `1px solid ${colors.borderLight}`,
-        fontSize: fontSize.sm,
-        color: colors.textMuted,
-      }}>
-        <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
-          ⏱️ {t("scoring.extraTimeStatus")}:
-        </span>{" "}
-        {t("scoring.extraTimeDefault")}
-      </div>
+      {/* Extra time status — dynamic based on config */}
+      {(() => {
+        const etEnabled = scoringConfig.some(
+          (p) => p.phaseId !== "group_stage" && !p.phaseId.includes("group") && p.includeExtraTime
+        );
+        return (
+          <div style={{
+            padding: `${spacing.sm}px ${spacing.md}px`,
+            borderRadius: radii.md,
+            background: colors.bgLighter,
+            border: `1px solid ${colors.borderLight}`,
+            fontSize: fontSize.sm,
+            color: colors.textMuted,
+          }}>
+            <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
+              ⏱️ {t("scoring.extraTimeStatus")}:
+            </span>{" "}
+            <span style={{ fontWeight: fontWeight.bold, color: etEnabled ? "#f59e0b" : colors.successAlt }}>
+              {etEnabled ? t("scoring.etEnabledLabel", { defaultMessage: "Activado" }) : t("scoring.etDisabledLabel", { defaultMessage: "Desactivado" })}
+            </span>
+            {" — "}
+            {etEnabled
+              ? t("scoring.extraTimeEnabled")
+              : t("scoring.extraTimeDefault")}
+          </div>
+        );
+      })()}
 
       {/* Calculator inline for presets */}
       {isScoreBased && (
@@ -1500,10 +1513,35 @@ export function StepScoring() {
   // Handle preset selection
   const handleSelectPreset = useCallback((key: PickConfigPresetKey) => {
     const config = generatePresetConfig(key, instancePhases);
-    dispatch({ type: "SET_SCORING", style: key, config });
     setOpenPhases({ 0: true });
-    // Scaling on by default for presets (multiplier increases in later rounds)
     setScalingEnabled(true);
+
+    // Capture base points from first phase
+    const bp = config[0]?.matchPicks?.types.map(t => t.points) ?? [];
+    setBasePoints(bp);
+
+    // Initialize multipliers with defaults
+    const mults: Record<string, number> = {};
+    config.forEach(p => { mults[p.phaseId] = getDefaultMultiplier(p.phaseId); });
+    setPhaseMultipliers(mults);
+
+    // Apply scaling to the generated config
+    const scaledConfig = config.map(phase => {
+      if (!phase.matchPicks) return phase;
+      const mult = mults[phase.phaseId] ?? 1;
+      return {
+        ...phase,
+        matchPicks: {
+          ...phase.matchPicks,
+          types: phase.matchPicks.types.map((t, ti) => ({
+            ...t,
+            points: Math.round((bp[ti] ?? t.points) * mult),
+          })),
+        },
+      };
+    });
+
+    dispatch({ type: "SET_SCORING", style: key, config: scaledConfig });
   }, [instancePhases, dispatch]);
 
   // Handle going back to preset selection
@@ -1680,14 +1718,20 @@ export function StepScoring() {
           </button>
         )}
 
-        {/* Scaling toggle — always for custom, only when advanced is open for presets */}
-        {(isCustom || showAdvanced) && isScoreBased && scoringConfig.length > 1 && (
+        {/* Advanced options container — single block wrapping all 3 components */}
+        {(isCustom || showAdvanced) && (
+          <div style={{
+            border: `1px solid ${colors.borderLight}`,
+            borderRadius: radii.xl,
+            background: colors.bgLighter,
+            overflow: "hidden",
+          }}>
+
+        {/* Scaling toggle */}
+        {isScoreBased && scoringConfig.length > 1 && (
           <div style={{
             padding: `${spacing.md}px ${spacing.lg}px`,
-            background: scalingEnabled ? `${colors.brand}06` : colors.bgLighter,
-            border: `1px solid ${scalingEnabled ? `${colors.brand}25` : colors.borderLight}`,
-            borderRadius: radii.xl,
-            transition: "all 0.2s ease",
+            borderBottom: `1px solid ${colors.borderLight}`,
           }}>
             {/* Header row with toggle */}
             <div style={{
@@ -1873,8 +1917,8 @@ export function StepScoring() {
           </div>
         )}
 
-        {/* Extra time toggle — inside advanced for presets, always for custom */}
-        {(isCustom || showAdvanced) && knockoutPhases.length > 0 && (
+        {/* Extra time toggle */}
+        {knockoutPhases.length > 0 && (
           isCustom ? (
             <ExtraTimeSection
               knockoutPhases={knockoutPhases}
@@ -1885,10 +1929,8 @@ export function StepScoring() {
             />
           ) : (
             <div style={{
-              padding: `${spacing.md}px`,
-              borderRadius: radii.lg,
-              border: `1px solid ${colors.borderLight}`,
-              background: colors.bgLighter,
+              padding: `${spacing.md}px ${spacing.lg}px`,
+              borderBottom: `1px solid ${colors.borderLight}`,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -1918,8 +1960,8 @@ export function StepScoring() {
           )
         )}
 
-        {/* Phase sections — always for custom, only when advanced is open for presets */}
-        {(isCustom || showAdvanced) && (
+        {/* Phase sections */}
+        {(
           <div style={{
             display: "flex",
             flexDirection: "column",
@@ -1949,6 +1991,10 @@ export function StepScoring() {
               />
             ))}
           </div>
+        )}
+
+        {/* Close advanced options container */}
+        </div>
         )}
 
         {/* Interactive calculator — only for CUSTOM (presets show it in PresetSummary) */}

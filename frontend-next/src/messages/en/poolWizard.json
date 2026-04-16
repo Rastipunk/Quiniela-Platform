@@ -115,7 +115,10 @@
     "multiplierOff": "Disabled — points are the same in all phases.",
     "criterionHeader": "Criterion",
     "extraTimeStatus": "Extra time",
+    "etEnabledLabel": "Enabled",
+    "etDisabledLabel": "Disabled",
     "extraTimeDefault": "Only the result at the end of the second half counts, no extra time or penalties (recommended). You can change this in advanced options.",
+    "extraTimeEnabled": "The result including extra time counts, no penalties. You can change this in advanced options.",
     "extraTimeGlobalDesc": "Count the result including extra time (no penalties)",
     "scalingSubLabel": "Disable to customize phase by phase",
 

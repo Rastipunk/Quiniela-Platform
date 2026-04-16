@@ -115,7 +115,10 @@
     "multiplierOff": "Desativado — os pontos são iguais em todas as fases.",
     "criterionHeader": "Critério",
     "extraTimeStatus": "Prorrogação",
+    "etEnabledLabel": "Ativado",
+    "etDisabledLabel": "Desativado",
     "extraTimeDefault": "Apenas o resultado ao final do segundo tempo conta, sem prorrogação nem pênaltis (recomendado). Você pode mudar isso nas opções avançadas.",
+    "extraTimeEnabled": "O resultado incluindo prorrogação conta, sem pênaltis. Você pode mudar isso nas opções avançadas.",
     "extraTimeGlobalDesc": "Contar o resultado incluindo prorrogação (sem pênaltis)",
     "scalingSubLabel": "Desative para personalizar fase por fase",
 

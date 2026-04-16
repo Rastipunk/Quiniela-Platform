@@ -115,7 +115,10 @@
     "multiplierOff": "Desactivado — los puntos son iguales en todas las fases.",
     "criterionHeader": "Criterio",
     "extraTimeStatus": "Tiempo extra",
+    "etEnabledLabel": "Activado",
+    "etDisabledLabel": "Desactivado",
     "extraTimeDefault": "Solo se cuenta el resultado al final del segundo tiempo, sin tiempo extra ni penales (recomendado). Puedes cambiar esto en opciones avanzadas.",
+    "extraTimeEnabled": "Se cuenta el resultado incluyendo tiempo extra, sin penales. Puedes cambiar esto en opciones avanzadas.",
     "extraTimeGlobalDesc": "Contar el resultado incluyendo tiempo extra (sin penales)",
     "scalingSubLabel": "Desactívalo para personalizar fase por fase",
 
