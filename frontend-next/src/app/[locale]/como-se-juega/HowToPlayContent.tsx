@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { colors, radii } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
@@ -151,8 +152,103 @@ function MockLiveMatch({ t }: { t: (key: string) => string }) {
   );
 }
 
-// ── Mock: Scoring Breakdown ──────────────────────────────────
-function MockScoringBreakdown({ t }: { t: (key: string) => string }) {
+// ── Mock: Scoring Systems with Tabs ──────────────────────────
+type ScoringSystem = "predictor" | "basic" | "strategist";
+
+function MockScoringSystems({ t }: { t: (key: string) => string }) {
+  const [active, setActive] = useState<ScoringSystem>("predictor");
+
+  const systems: { key: ScoringSystem; name: string; tagline: string; description: string; badge?: string }[] = [
+    { key: "predictor", name: t("scoring.systems.predictor.name"), tagline: t("scoring.systems.predictor.tagline"), description: t("scoring.systems.predictor.description"), badge: t("scoring.systems.predictor.badge") },
+    { key: "basic", name: t("scoring.systems.basic.name"), tagline: t("scoring.systems.basic.tagline"), description: t("scoring.systems.basic.description") },
+    { key: "strategist", name: t("scoring.systems.strategist.name"), tagline: t("scoring.systems.strategist.tagline"), description: t("scoring.systems.strategist.description") },
+  ];
+
+  const activeSystem = systems.find((s) => s.key === active)!;
+
+  return (
+    <div>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {systems.map((s) => {
+          const isActive = s.key === active;
+          return (
+            <button
+              key={s.key}
+              onClick={() => setActive(s.key)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 20,
+                border: isActive ? "none" : `1px solid ${colors.borderMedium}`,
+                background: isActive ? `linear-gradient(135deg, ${BRAND.primary}, #764ba2)` : colors.white,
+                color: isActive ? "white" : colors.textDark,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.15s ease",
+              }}
+            >
+              {s.name}
+              {s.badge && (
+                <span style={{
+                  fontSize: 9,
+                  fontWeight: 800,
+                  background: isActive ? "rgba(255,255,255,0.25)" : colors.successBgLight,
+                  color: isActive ? "white" : colors.successAlt,
+                  padding: "2px 6px",
+                  borderRadius: 99,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
+                }}>{s.badge}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active system description */}
+      <div style={{
+        padding: "14px 16px",
+        borderRadius: 10,
+        background: "#f8fafc",
+        border: `1px solid ${colors.borderLight}`,
+        marginBottom: 12,
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: BRAND.primary, marginBottom: 4 }}>
+          {activeSystem.tagline}
+        </div>
+        <div style={{ fontSize: 13, color: colors.textMuted, lineHeight: 1.5 }}>
+          {activeSystem.description}
+        </div>
+      </div>
+
+      {/* Active system mock */}
+      {active === "predictor" && <PredictorMock t={t} />}
+      {active === "basic" && <BasicMock t={t} />}
+      {active === "strategist" && <StrategistMock t={t} />}
+
+      {/* Custom note */}
+      <div style={{
+        marginTop: 16,
+        padding: "14px 16px",
+        borderRadius: 10,
+        background: "#fef3c7",
+        border: "1px solid #fcd34d",
+        fontSize: 13,
+        color: "#92400e",
+        lineHeight: 1.5,
+      }}>
+        <span style={{ fontWeight: 700 }}>&#128161; </span>
+        {t("scoring.customNote")}
+      </div>
+    </div>
+  );
+}
+
+function PredictorMock({ t }: { t: (key: string) => string }) {
   const rows = [
     { label: t("scoring.matchOutcome"), pts: 10 },
     { label: t("scoring.homeGoals"), pts: 5 },
@@ -165,37 +261,35 @@ function MockScoringBreakdown({ t }: { t: (key: string) => string }) {
   return (
     <div style={{
       border: `1px solid ${colors.borderLight}`,
-      borderRadius: 16,
+      borderRadius: 12,
       overflow: "hidden",
       background: colors.white,
-      boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
     }}>
       <div style={{ display: "flex", gap: 0 }}>
-        <div style={{ flex: 1, padding: 16, textAlign: "center", borderRight: `1px solid ${colors.borderLight}` }}>
-          <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.yourPrediction")}</div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: BRAND.primary }}>2 - 1</div>
+        <div style={{ flex: 1, padding: 14, textAlign: "center", borderRight: `1px solid ${colors.borderLight}` }}>
+          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.yourPrediction")}</div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: BRAND.primary }}>2 - 1</div>
         </div>
-        <div style={{ flex: 1, padding: 16, textAlign: "center" }}>
-          <div style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.actualResult")}</div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: "#16a34a" }}>2 - 1 &#10003;</div>
+        <div style={{ flex: 1, padding: 14, textAlign: "center" }}>
+          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.actualResult")}</div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: "#16a34a" }}>2 - 1 &#10003;</div>
         </div>
       </div>
-
-      <div style={{ padding: "12px 16px", background: colors.bgLighter, fontSize: 13, fontWeight: 700, color: colors.textDark }}>
+      <div style={{ padding: "10px 14px", background: colors.bgLighter, fontSize: 12, fontWeight: 700, color: colors.textDark }}>
         {t("scoring.breakdown")}
       </div>
       {rows.map((row) => (
         <div key={row.label} style={{
-          display: "flex", justifyContent: "space-between", padding: "10px 16px",
-          borderTop: `1px solid ${colors.borderLight}`, fontSize: 14,
+          display: "flex", justifyContent: "space-between", padding: "9px 14px",
+          borderTop: `1px solid ${colors.borderLight}`, fontSize: 13,
         }}>
           <span style={{ color: colors.textDark }}>{row.label}</span>
           <span style={{ fontWeight: 700, color: "#16a34a" }}>+{row.pts} {t("scoring.pts")}</span>
         </div>
       ))}
       <div style={{
-        display: "flex", justifyContent: "space-between", padding: "12px 16px",
-        borderTop: `2px solid ${colors.borderMedium}`, fontSize: 16, fontWeight: 800,
+        display: "flex", justifyContent: "space-between", padding: "11px 14px",
+        borderTop: `2px solid ${colors.borderMedium}`, fontSize: 15, fontWeight: 800,
         background: "#f0fdf4",
       }}>
         <span style={{ color: colors.text }}>{t("scoring.total")}</span>
@@ -205,60 +299,265 @@ function MockScoringBreakdown({ t }: { t: (key: string) => string }) {
   );
 }
 
-// ── Mock: Leaderboard ────────────────────────────────────────
-function MockLeaderboard({ t }: { t: (key: string) => string }) {
-  const players = [
-    { pos: 1, name: "Carlos M.", pts: 143, played: 12, exact: 3, trend: "up", medal: "&#129351;" },
-    { pos: 2, name: "Ana R.", pts: 138, played: 12, exact: 2, trend: "up", medal: "&#129352;" },
-    { pos: 3, name: "Pedro L. " + t("leaderboard.you"), pts: 131, played: 12, exact: 2, trend: "same", medal: "&#129353;", highlight: true },
-    { pos: 4, name: "Laura G.", pts: 125, played: 11, exact: 1, trend: "down", medal: "" },
-    { pos: 5, name: "Miguel F.", pts: 119, played: 12, exact: 1, trend: "down", medal: "" },
-  ];
+function BasicMock({ t }: { t: (key: string) => string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Hit case */}
+      <div style={{
+        border: `1px solid ${colors.borderLight}`,
+        borderRadius: 12,
+        overflow: "hidden",
+        background: colors.white,
+      }}>
+        <div style={{ display: "flex" }}>
+          <div style={{ flex: 1, padding: 14, textAlign: "center", borderRight: `1px solid ${colors.borderLight}` }}>
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.yourPrediction")}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: BRAND.primary }}>2 - 1</div>
+          </div>
+          <div style={{ flex: 1, padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.actualResult")}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: "#16a34a" }}>2 - 1 &#10003;</div>
+          </div>
+        </div>
+        <div style={{
+          display: "flex", justifyContent: "space-between", padding: "11px 14px",
+          borderTop: `2px solid ${colors.borderMedium}`, fontSize: 15, fontWeight: 800,
+          background: "#f0fdf4",
+        }}>
+          <span style={{ color: colors.text }}>{t("scoring.exactScore")}</span>
+          <span style={{ color: "#16a34a" }}>+20 {t("scoring.pts")}</span>
+        </div>
+      </div>
 
-  const trendIcon = (t: string) => t === "up" ? "&#9650;" : t === "down" ? "&#9660;" : "&#9644;";
-  const trendColor = (t: string) => t === "up" ? "#16a34a" : t === "down" ? "#ef4444" : colors.textMuted;
+      {/* Miss case */}
+      <div style={{
+        border: `1px solid ${colors.borderLight}`,
+        borderRadius: 12,
+        overflow: "hidden",
+        background: colors.white,
+        opacity: 0.85,
+      }}>
+        <div style={{ display: "flex" }}>
+          <div style={{ flex: 1, padding: 14, textAlign: "center", borderRight: `1px solid ${colors.borderLight}` }}>
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.yourPrediction")}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: colors.textMuted }}>3 - 1</div>
+          </div>
+          <div style={{ flex: 1, padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.actualResult")}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: "#ef4444" }}>2 - 1 &#10007;</div>
+          </div>
+        </div>
+        <div style={{
+          display: "flex", justifyContent: "space-between", padding: "11px 14px",
+          borderTop: `2px solid ${colors.borderMedium}`, fontSize: 15, fontWeight: 800,
+          background: "#fef2f2",
+        }}>
+          <span style={{ color: colors.text }}>{t("scoring.total")}</span>
+          <span style={{ color: "#ef4444" }}>0 {t("scoring.pts")}</span>
+        </div>
+        <div style={{ padding: "8px 14px", fontSize: 11, color: colors.textMuted, fontStyle: "italic", background: "#fafafa", borderTop: `1px solid ${colors.borderLight}` }}>
+          {t("scoring.basicMissDesc")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StrategistMock({ t }: { t: (key: string) => string }) {
+  const rows = [
+    { label: t("scoring.strategistGroupWinner"), pts: 15, emoji: "&#127942;" },
+    { label: t("scoring.strategistAdvance"), pts: 10, emoji: "&#9917;" },
+    { label: t("scoring.strategistChampion"), pts: 30, emoji: "&#128081;" },
+  ];
+  const total = rows.reduce((s, r) => s + r.pts, 0);
 
   return (
     <div style={{
       border: `1px solid ${colors.borderLight}`,
-      borderRadius: 16,
+      borderRadius: 12,
       overflow: "hidden",
       background: colors.white,
-      boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
     }}>
-      <div style={{
-        display: "grid", gridTemplateColumns: "40px 1fr 60px 50px 50px 30px",
-        padding: "10px 16px", background: colors.bgLighter,
-        fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: "uppercase",
-      }}>
-        <span>{t("leaderboard.position")}</span>
-        <span>{t("leaderboard.player")}</span>
-        <span style={{ textAlign: "right" }}>{t("leaderboard.points")}</span>
-        <span style={{ textAlign: "center" }}>{t("leaderboard.played")}</span>
-        <span style={{ textAlign: "center" }}>{t("leaderboard.exact")}</span>
-        <span></span>
-      </div>
-      {players.map((p) => (
-        <div key={p.pos} style={{
-          display: "grid", gridTemplateColumns: "40px 1fr 60px 50px 50px 30px",
-          padding: "12px 16px", borderTop: `1px solid ${colors.borderLight}`,
-          fontSize: 14, alignItems: "center",
-          background: p.highlight ? "#eef2ff" : "transparent",
+      {rows.map((row) => (
+        <div key={row.label} style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "12px 14px", borderBottom: `1px solid ${colors.borderLight}`, fontSize: 13,
         }}>
-          <span style={{ fontWeight: 800, color: p.pos <= 3 ? BRAND.primary : colors.textMuted }}>
-            <span dangerouslySetInnerHTML={{ __html: p.medal || String(p.pos) }} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: colors.textDark }}>
+            <span style={{ fontSize: 18 }} dangerouslySetInnerHTML={{ __html: row.emoji }} />
+            <span>{row.label}</span>
+            <span style={{ color: "#16a34a", fontWeight: 700 }}>&#10003;</span>
           </span>
-          <span style={{ fontWeight: p.highlight ? 700 : 500, color: colors.text }}>
-            {p.name}
-          </span>
-          <span style={{ textAlign: "right", fontWeight: 800, color: colors.text }}>{p.pts}</span>
-          <span style={{ textAlign: "center", color: colors.textMuted }}>{p.played}</span>
-          <span style={{ textAlign: "center", color: colors.textMuted }}>{p.exact}</span>
-          <span style={{ textAlign: "center", fontSize: 10 }}
-            dangerouslySetInnerHTML={{ __html: trendIcon(p.trend) }}
-          />
+          <span style={{ fontWeight: 700, color: "#16a34a" }}>+{row.pts} {t("scoring.pts")}</span>
         </div>
       ))}
+      <div style={{
+        display: "flex", justifyContent: "space-between", padding: "11px 14px",
+        fontSize: 15, fontWeight: 800, background: "#f0fdf4",
+      }}>
+        <span style={{ color: colors.text }}>{t("scoring.total")}</span>
+        <span style={{ color: "#16a34a" }}>{total} {t("scoring.pts")}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Mock: Leaderboard ────────────────────────────────────────
+type LeaderboardPhase = "all" | "groups" | "r16" | "quarters" | "semis" | "final";
+
+function MockLeaderboard({ t }: { t: (key: string) => string }) {
+  const [phase, setPhase] = useState<LeaderboardPhase>("all");
+
+  const phaseTabs: { key: LeaderboardPhase; label: string }[] = [
+    { key: "all", label: t("leaderboard.phaseAll") },
+    { key: "groups", label: t("leaderboard.phaseGroups") },
+    { key: "r16", label: t("leaderboard.phaseR16") },
+    { key: "quarters", label: t("leaderboard.phaseQuarters") },
+    { key: "semis", label: t("leaderboard.phaseSemis") },
+    { key: "final", label: t("leaderboard.phaseFinal") },
+  ];
+
+  // Different player data per phase to show the feature working
+  const dataByPhase: Record<LeaderboardPhase, { pos: number; name: string; pts: number; played: number; exact: number; trend: "up" | "down" | "same"; medal: string; highlight?: boolean }[]> = {
+    all: [
+      { pos: 1, name: "Carlos M.", pts: 143, played: 12, exact: 3, trend: "up", medal: "&#129351;" },
+      { pos: 2, name: "Ana R.", pts: 138, played: 12, exact: 2, trend: "up", medal: "&#129352;" },
+      { pos: 3, name: "Pedro L. " + t("leaderboard.you"), pts: 131, played: 12, exact: 2, trend: "same", medal: "&#129353;", highlight: true },
+      { pos: 4, name: "Laura G.", pts: 125, played: 11, exact: 1, trend: "down", medal: "" },
+      { pos: 5, name: "Miguel F.", pts: 119, played: 12, exact: 1, trend: "down", medal: "" },
+    ],
+    groups: [
+      { pos: 1, name: "Ana R.", pts: 98, played: 8, exact: 2, trend: "up", medal: "&#129351;" },
+      { pos: 2, name: "Carlos M.", pts: 95, played: 8, exact: 2, trend: "same", medal: "&#129352;" },
+      { pos: 3, name: "Pedro L. " + t("leaderboard.you"), pts: 89, played: 8, exact: 1, trend: "up", medal: "&#129353;", highlight: true },
+      { pos: 4, name: "Miguel F.", pts: 84, played: 8, exact: 1, trend: "down", medal: "" },
+      { pos: 5, name: "Laura G.", pts: 82, played: 7, exact: 0, trend: "down", medal: "" },
+    ],
+    r16: [
+      { pos: 1, name: "Carlos M.", pts: 28, played: 2, exact: 1, trend: "up", medal: "&#129351;" },
+      { pos: 2, name: "Pedro L. " + t("leaderboard.you"), pts: 24, played: 2, exact: 1, trend: "up", medal: "&#129352;", highlight: true },
+      { pos: 3, name: "Ana R.", pts: 22, played: 2, exact: 0, trend: "same", medal: "&#129353;" },
+      { pos: 4, name: "Laura G.", pts: 20, played: 2, exact: 1, trend: "up", medal: "" },
+      { pos: 5, name: "Miguel F.", pts: 18, played: 2, exact: 0, trend: "down", medal: "" },
+    ],
+    quarters: [
+      { pos: 1, name: "Carlos M.", pts: 14, played: 1, exact: 0, trend: "same", medal: "&#129351;" },
+      { pos: 2, name: "Ana R.", pts: 12, played: 1, exact: 0, trend: "up", medal: "&#129352;" },
+      { pos: 3, name: "Pedro L. " + t("leaderboard.you"), pts: 10, played: 1, exact: 0, trend: "same", medal: "&#129353;", highlight: true },
+      { pos: 4, name: "Laura G.", pts: 8, played: 1, exact: 0, trend: "down", medal: "" },
+      { pos: 5, name: "Miguel F.", pts: 7, played: 1, exact: 0, trend: "down", medal: "" },
+    ],
+    semis: [
+      { pos: 1, name: "Carlos M.", pts: 6, played: 0, exact: 0, trend: "same", medal: "&#129351;" },
+      { pos: 2, name: "Ana R.", pts: 4, played: 0, exact: 0, trend: "same", medal: "&#129352;" },
+      { pos: 3, name: "Pedro L. " + t("leaderboard.you"), pts: 4, played: 0, exact: 0, trend: "same", medal: "&#129353;", highlight: true },
+      { pos: 4, name: "Laura G.", pts: 3, played: 0, exact: 0, trend: "same", medal: "" },
+      { pos: 5, name: "Miguel F.", pts: 2, played: 0, exact: 0, trend: "same", medal: "" },
+    ],
+    final: [
+      { pos: 1, name: "Carlos M.", pts: 2, played: 0, exact: 0, trend: "same", medal: "&#129351;" },
+      { pos: 2, name: "Ana R.", pts: 2, played: 0, exact: 0, trend: "same", medal: "&#129352;" },
+      { pos: 3, name: "Pedro L. " + t("leaderboard.you"), pts: 2, played: 0, exact: 0, trend: "same", medal: "&#129353;", highlight: true },
+      { pos: 4, name: "Laura G.", pts: 1, played: 0, exact: 0, trend: "same", medal: "" },
+      { pos: 5, name: "Miguel F.", pts: 1, played: 0, exact: 0, trend: "same", medal: "" },
+    ],
+  };
+
+  const players = dataByPhase[phase];
+  const trendIcon = (t: string) => t === "up" ? "&#9650;" : t === "down" ? "&#9660;" : "&#9644;";
+
+  // Wider columns with explicit gap to prevent headers colliding
+  const gridCols = "40px 1fr 56px 46px 58px 28px";
+  const gridGap = "10px";
+
+  return (
+    <div>
+      {/* Phase tabs */}
+      <div style={{
+        display: "flex",
+        gap: 6,
+        marginBottom: 12,
+        overflowX: "auto",
+        paddingBottom: 4,
+      }}>
+        {phaseTabs.map((p) => {
+          const isActive = p.key === phase;
+          return (
+            <button
+              key={p.key}
+              onClick={() => setPhase(p.key)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 16,
+                border: isActive ? "none" : `1px solid ${colors.borderMedium}`,
+                background: isActive ? BRAND.primary : colors.white,
+                color: isActive ? "white" : colors.textDark,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{
+        border: `1px solid ${colors.borderLight}`,
+        borderRadius: 16,
+        overflow: "hidden",
+        background: colors.white,
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+      }}>
+        <div style={{
+          display: "grid", gridTemplateColumns: gridCols, gap: gridGap,
+          padding: "12px 16px", background: colors.bgLighter,
+          fontSize: 10, fontWeight: 700, color: colors.textMuted, textTransform: "uppercase",
+          letterSpacing: 0.5,
+        }}>
+          <span>{t("leaderboard.position")}</span>
+          <span>{t("leaderboard.player")}</span>
+          <span style={{ textAlign: "right" }}>{t("leaderboard.points")}</span>
+          <span style={{ textAlign: "center" }}>{t("leaderboard.played")}</span>
+          <span style={{ textAlign: "center" }}>{t("leaderboard.exact")}</span>
+          <span></span>
+        </div>
+        {players.map((p) => (
+          <div key={p.pos} style={{
+            display: "grid", gridTemplateColumns: gridCols, gap: gridGap,
+            padding: "12px 16px", borderTop: `1px solid ${colors.borderLight}`,
+            fontSize: 14, alignItems: "center",
+            background: p.highlight ? "#eef2ff" : "transparent",
+          }}>
+            <span style={{ fontWeight: 800, color: p.pos <= 3 ? BRAND.primary : colors.textMuted }}>
+              <span dangerouslySetInnerHTML={{ __html: p.medal || String(p.pos) }} />
+            </span>
+            <span style={{ fontWeight: p.highlight ? 700 : 500, color: colors.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {p.name}
+            </span>
+            <span style={{ textAlign: "right", fontWeight: 800, color: colors.text }}>{p.pts}</span>
+            <span style={{ textAlign: "center", color: colors.textMuted }}>{p.played}</span>
+            <span style={{ textAlign: "center", color: colors.textMuted }}>{p.exact}</span>
+            <span style={{ textAlign: "center", fontSize: 10 }}
+              dangerouslySetInnerHTML={{ __html: trendIcon(p.trend) }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Help text */}
+      <div style={{
+        marginTop: 10,
+        fontSize: 12,
+        color: colors.textMuted,
+        fontStyle: "italic",
+        textAlign: "center",
+      }}>
+        {t("leaderboard.phaseHelp")}
+      </div>
     </div>
   );
 }
@@ -383,7 +682,7 @@ export function HowToPlayContent() {
       <Section>
         <SectionTitle>{t("scoring.title")}</SectionTitle>
         <SectionDesc>{t("scoring.description")}</SectionDesc>
-        <MockScoringBreakdown t={t} />
+        <MockScoringSystems t={t} />
       </Section>
 
       {/* 4. Leaderboard */}

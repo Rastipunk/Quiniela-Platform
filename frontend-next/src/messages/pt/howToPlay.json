@@ -25,7 +25,26 @@
 
   "scoring": {
     "title": "3. Como seus pontos são calculados",
-    "description": "Após cada jogo, o sistema calcula seus pontos automaticamente comparando seu palpite com o resultado real.",
+    "description": "Existem 3 sistemas de pontuação sugeridos. O Host escolhe um ou combina — a pontuação é totalmente personalizável.",
+    "systems": {
+      "predictor": {
+        "name": "Predictor",
+        "badge": "Recomendado",
+        "tagline": "Pontos por cada acerto",
+        "description": "Ganhe pontos por cada critério acertado: resultado, gols casa, gols visitante, diferença e placar exato. Quanto mais preciso, mais pontos."
+      },
+      "basic": {
+        "name": "Tudo ou Nada",
+        "tagline": "Apenas placar exato",
+        "description": "Ganhe 20 pontos se acertar o placar exato. Caso contrário, 0 pontos. Simples e direto."
+      },
+      "strategist": {
+        "name": "Estrategista",
+        "tagline": "Preveja avanços e vencedores",
+        "description": "Preveja qual time vence o grupo, quem avança de fase e quem vence o torneio. Sem placares exatos."
+      }
+    },
+    "customNote": "Quer algo diferente? O Host pode combinar critérios e personalizar os pontos. Você tem controle total sobre como os palpites são pontuados.",
     "yourPrediction": "Seu palpite",
     "actualResult": "Resultado real",
     "breakdown": "Detalhamento dos pontos",
@@ -35,19 +54,31 @@
     "goalDifference": "Diferença de gols correta",
     "exactScore": "Placar exato",
     "total": "Total",
-    "pts": "pts"
+    "pts": "pts",
+    "zero": "0",
+    "basicMissDesc": "Se você tivesse previsto 3-1 e o resultado foi 2-1, ganha 0 pontos porque não acertou o placar exato.",
+    "strategistGroupWinner": "Vencedor do Grupo A: Barcelona",
+    "strategistAdvance": "Barcelona avança às semifinais",
+    "strategistChampion": "Campeão do torneio: Barcelona"
   },
 
   "leaderboard": {
     "title": "4. Classificação",
-    "description": "Compita contra todos os jogadores do seu bolão. A classificação é atualizada em tempo real após cada jogo.",
+    "description": "Compita contra todos os jogadores do seu bolão. A classificação é atualizada em tempo real após cada jogo e pode ser filtrada por fase do torneio.",
     "position": "Pos",
     "player": "Jogador",
-    "points": "Pontos",
-    "played": "Jogados",
+    "points": "Pts",
+    "played": "PJ",
     "exact": "Exatos",
-    "trend": "Tendência",
-    "you": "(Você)"
+    "trend": "Tend.",
+    "you": "(Você)",
+    "phaseAll": "Geral",
+    "phaseGroups": "Grupos",
+    "phaseR16": "Oitavas",
+    "phaseQuarters": "Quartas",
+    "phaseSemis": "Semis",
+    "phaseFinal": "Final",
+    "phaseHelp": "Use as abas para ver o ranking geral ou filtrado por fase do torneio."
   },
 
   "allMatches": {

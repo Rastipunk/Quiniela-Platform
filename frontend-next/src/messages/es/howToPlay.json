@@ -25,7 +25,26 @@
 
   "scoring": {
     "title": "3. Así se calculan tus puntos",
-    "description": "Después de cada partido, el sistema calcula tus puntos automáticamente comparando tu predicción con el resultado real.",
+    "description": "Hay 3 sistemas de puntuación sugeridos. El Host elige uno o los combina como prefiera — la puntuación es completamente personalizable.",
+    "systems": {
+      "predictor": {
+        "name": "Predictor",
+        "badge": "Recomendado",
+        "tagline": "Gana puntos por cada acierto",
+        "description": "Recibes puntos por cada criterio que aciertes: resultado, goles del local, goles del visitante, diferencia y marcador exacto. Entre más preciso, más puntos."
+      },
+      "basic": {
+        "name": "Todo o Nada",
+        "tagline": "Solo marcador exacto",
+        "description": "Si aciertas el marcador exacto ganas 20 puntos. Si no, 0 puntos. Simple y directo."
+      },
+      "strategist": {
+        "name": "Estratega",
+        "tagline": "Predice avances y ganadores",
+        "description": "Predice qué equipo gana el grupo, quién avanza de fase y quién gana el torneo. Sin marcadores exactos."
+      }
+    },
+    "customNote": "¿Quieres algo diferente? El Host puede combinar criterios y personalizar los puntos. Tienes control total sobre cómo se califican las predicciones.",
     "yourPrediction": "Tu predicción",
     "actualResult": "Resultado real",
     "breakdown": "Desglose de puntos",
@@ -35,19 +54,31 @@
     "goalDifference": "Diferencia de goles correcta",
     "exactScore": "Marcador exacto",
     "total": "Total",
-    "pts": "pts"
+    "pts": "pts",
+    "zero": "0",
+    "basicMissDesc": "Si hubieras predicho 3-1 y el resultado fue 2-1, ganas 0 puntos porque no acertaste el marcador exacto.",
+    "strategistGroupWinner": "Ganador del Grupo A: Barcelona",
+    "strategistAdvance": "Barcelona avanza a semifinales",
+    "strategistChampion": "Campeón del torneo: Barcelona"
   },
 
   "leaderboard": {
     "title": "4. Tabla de posiciones",
-    "description": "Compite contra todos los jugadores de tu pool. La tabla se actualiza en tiempo real después de cada partido.",
+    "description": "Compite contra todos los jugadores de tu pool. La tabla se actualiza en tiempo real después de cada partido y puedes filtrarla por fase del torneo.",
     "position": "Pos",
     "player": "Jugador",
-    "points": "Puntos",
-    "played": "Jugados",
-    "exact": "Exactos",
-    "trend": "Tendencia",
-    "you": "(Tú)"
+    "points": "Pts",
+    "played": "PJ",
+    "exact": "Exact.",
+    "trend": "Tend.",
+    "you": "(Tú)",
+    "phaseAll": "General",
+    "phaseGroups": "Grupos",
+    "phaseR16": "Octavos",
+    "phaseQuarters": "Cuartos",
+    "phaseSemis": "Semis",
+    "phaseFinal": "Final",
+    "phaseHelp": "Usa las pestañas para ver el ranking general o filtrado por fase del torneo."
   },
 
   "allMatches": {

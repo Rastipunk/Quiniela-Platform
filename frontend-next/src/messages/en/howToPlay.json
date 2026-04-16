@@ -25,7 +25,26 @@
 
   "scoring": {
     "title": "3. How your points are calculated",
-    "description": "After each match, the system automatically calculates your points by comparing your prediction with the actual result.",
+    "description": "There are 3 suggested scoring systems. The Host picks one or combines them — scoring is fully customizable.",
+    "systems": {
+      "predictor": {
+        "name": "Predictor",
+        "badge": "Recommended",
+        "tagline": "Points for every hit",
+        "description": "Earn points for each criterion you get right: outcome, home goals, away goals, goal difference, and exact score. The more accurate, the more points."
+      },
+      "basic": {
+        "name": "All or Nothing",
+        "tagline": "Exact score only",
+        "description": "Get 20 points if you nail the exact score. Otherwise, 0 points. Simple and direct."
+      },
+      "strategist": {
+        "name": "Strategist",
+        "tagline": "Predict advances and winners",
+        "description": "Predict which team wins the group, who advances, and who wins the tournament. No exact scores needed."
+      }
+    },
+    "customNote": "Want something different? The Host can combine criteria and customize the points. You have full control over how predictions are scored.",
     "yourPrediction": "Your prediction",
     "actualResult": "Actual result",
     "breakdown": "Points breakdown",
@@ -35,19 +54,31 @@
     "goalDifference": "Correct goal difference",
     "exactScore": "Exact score",
     "total": "Total",
-    "pts": "pts"
+    "pts": "pts",
+    "zero": "0",
+    "basicMissDesc": "If you had predicted 3-1 and the actual result was 2-1, you get 0 points because you didn't match the exact score.",
+    "strategistGroupWinner": "Group A winner: Barcelona",
+    "strategistAdvance": "Barcelona advances to semifinals",
+    "strategistChampion": "Tournament champion: Barcelona"
   },
 
   "leaderboard": {
     "title": "4. Leaderboard",
-    "description": "Compete against all players in your pool. The leaderboard updates in real time after every match.",
+    "description": "Compete against all players in your pool. The leaderboard updates in real time after every match and can be filtered by tournament phase.",
     "position": "Pos",
     "player": "Player",
-    "points": "Points",
-    "played": "Played",
+    "points": "Pts",
+    "played": "GP",
     "exact": "Exact",
     "trend": "Trend",
-    "you": "(You)"
+    "you": "(You)",
+    "phaseAll": "Overall",
+    "phaseGroups": "Groups",
+    "phaseR16": "R16",
+    "phaseQuarters": "QF",
+    "phaseSemis": "SF",
+    "phaseFinal": "Final",
+    "phaseHelp": "Use the tabs to view the overall ranking or filter by tournament phase."
   },
 
   "allMatches": {
