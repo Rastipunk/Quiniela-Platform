@@ -5,8 +5,6 @@ import { useTranslations } from "next-intl";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import CapacitySelector from "@/components/CapacitySelector";
-import { getUserProfile } from "@/lib/api/user";
-import { getToken } from "@/lib/auth";
 import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT, type Currency } from "@/lib/pricing";
 import { getPaymentCountry } from "@/lib/api/payments";
 import { colors, radii } from "@/lib/theme";
@@ -20,17 +18,10 @@ interface Props {
 export function StepCapacity({ onSubmit, submitBusy }: Props) {
   const t = useTranslations("poolWizard");
   const { state, dispatch, goBack } = useWizard();
-  const [isAdmin, setIsAdmin] = useState(false);
   const [currency, setCurrency] = useState<Currency>("COP");
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      getUserProfile(token)
-        .then((res) => setIsAdmin(res.user.platformRole === "ADMIN"))
-        .catch(() => {});
-    }
     getPaymentCountry()
       .then((country) => setCurrency(country === "CO" ? "COP" : "USD"))
       .catch(() => {});
@@ -87,7 +78,6 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
           dispatch({ type: "SET_FIELD", field: "maxParticipants", value: capacity })
         }
         mode="creation"
-        allowPaidTiers={isAdmin}
         currency={currency}
       />
 

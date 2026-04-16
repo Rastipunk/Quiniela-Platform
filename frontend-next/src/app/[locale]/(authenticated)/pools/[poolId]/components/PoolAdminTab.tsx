@@ -7,8 +7,6 @@ import { useTranslations, useLocale } from "next-intl";
 import { archivePool } from "@/lib/api";
 import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { getTierForCustomCount, getTierForCustomCountUsd, formatPrice, type PoolType as PricingPoolType, type Currency } from "@/lib/pricing";
-import { getUserProfile } from "@/lib/api/user";
-import { getToken } from "@/lib/auth";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import CapacitySelector from "@/components/CapacitySelector";
 import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
@@ -187,16 +185,9 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
   const locale = useLocale();
   const [selectedCapacity, setSelectedCapacity] = useState(currentCapacity);
   const [busy, setBusy] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [country, setCountry] = useState("US");
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      getUserProfile(token)
-        .then((res) => setIsAdmin(res.user.platformRole === "ADMIN"))
-        .catch(() => {});
-    }
     getPaymentCountry().then(setCountry).catch(() => {});
   }, []);
 
@@ -237,7 +228,6 @@ function ExpandCapacitySection({ poolId, poolType, currentCapacity }: {
         selectedCapacity={selectedCapacity}
         onSelect={setSelectedCapacity}
         mode="expansion"
-        allowPaidTiers={isAdmin}
         currency={country === "CO" ? "COP" : "USD"}
       />
       {selectedCapacity > currentCapacity && (
