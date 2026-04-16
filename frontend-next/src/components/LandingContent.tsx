@@ -522,7 +522,7 @@ export function LandingContent() {
               textAlign: "center",
               lineHeight: 1.3,
               zIndex: 3,
-              maxWidth: 340,
+              maxWidth: 240,
             }}>
               &#127881; {t("pricing.corporate.trialBanner")}
             </div>
