@@ -113,8 +113,11 @@
     "multiplierLabel": "Progressive points",
     "multiplierOn": "Enabled — points increase in later rounds, giving players who started poorly a chance to climb back.",
     "multiplierOff": "Disabled — points are the same in all phases.",
+    "criterionHeader": "Criterion",
     "extraTimeStatus": "Extra time",
-    "extraTimeDefault": "Only the 90-minute result counts (recommended). You can change this in advanced options.",
+    "extraTimeDefault": "Only the result at the end of the second half counts, no extra time or penalties (recommended). You can change this in advanced options.",
+    "extraTimeGlobalDesc": "Count the result including extra time (no penalties)",
+    "scalingSubLabel": "Disable to customize phase by phase",
 
     "presets": {
       "CUMULATIVE": {

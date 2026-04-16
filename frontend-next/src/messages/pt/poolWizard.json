@@ -113,8 +113,11 @@
     "multiplierLabel": "Pontos progressivos",
     "multiplierOn": "Ativado — os pontos aumentam em fases avançadas, permitindo que quem começou mal tenha oportunidades de subir.",
     "multiplierOff": "Desativado — os pontos são iguais em todas as fases.",
+    "criterionHeader": "Critério",
     "extraTimeStatus": "Prorrogação",
-    "extraTimeDefault": "Apenas o resultado dos 90 minutos conta (recomendado). Você pode mudar isso nas opções avançadas.",
+    "extraTimeDefault": "Apenas o resultado ao final do segundo tempo conta, sem prorrogação nem pênaltis (recomendado). Você pode mudar isso nas opções avançadas.",
+    "extraTimeGlobalDesc": "Contar o resultado incluindo prorrogação (sem pênaltis)",
+    "scalingSubLabel": "Desative para personalizar fase por fase",
 
     "presets": {
       "CUMULATIVE": {

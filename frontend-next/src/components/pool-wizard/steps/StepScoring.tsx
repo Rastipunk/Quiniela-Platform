@@ -1106,17 +1106,20 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
   isMobile: boolean;
 }) {
   const t = useTranslations("poolWizard");
-  // Use knockout phase for display points (higher values), fallback to first phase
-  const displayPhase = scoringConfig.find(
-    (p) => p.phaseId !== "group_stage" && !p.phaseId.includes("group")
-  ) ?? scoringConfig[0];
 
-  if (!displayPhase) return null;
-
-  // Only show enabled criteria (exclude EXACT_SCORE and PARTIAL_SCORE entirely)
-  const visibleCriteria = displayPhase.matchPicks?.types.filter(
+  // Get enabled criteria keys from first score-based phase
+  const firstScorePhase = scoringConfig.find((p) => p.matchPicks);
+  const enabledCriteria = firstScorePhase?.matchPicks?.types.filter(
     (type) => type.enabled && type.key !== "EXACT_SCORE" && type.key !== "PARTIAL_SCORE"
   ) ?? [];
+
+  // Abbreviate phase names for table header
+  const phaseLabel = (name: string) => {
+    if (name.length <= 8) return name;
+    const words = name.split(" ");
+    if (words.length >= 2) return words.map(w => w.slice(0, 4)).join(" ");
+    return name.slice(0, 8);
+  };
 
   return (
     <div style={{
@@ -1128,36 +1131,64 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
       flexDirection: "column",
       gap: spacing.md,
     }}>
-      {/* Active criteria — only enabled ones */}
-      {isScoreBased && visibleCriteria.length > 0 && (
+      {/* Score-based: criteria table by phase */}
+      {isScoreBased && enabledCriteria.length > 0 && (
         <div>
-          <div style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textDark, marginBottom: 8 }}>
+          <div style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textDark, marginBottom: 10 }}>
             {t("scoring.activeCriteria")}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {visibleCriteria.map((type) => (
-              <div key={type.key} style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                fontSize: fontSize.sm,
-                color: colors.textDark,
-              }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: colors.successAlt }}>✓</span>
-                  {t(`scoring.criteria.${type.key}`)}
-                </span>
-                <span style={{ fontWeight: fontWeight.bold, color: colors.brand }}>
-                  {type.points} {t("scoring.pts", { defaultMessage: "pts" })}
-                </span>
-              </div>
-            ))}
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: isMobile ? 11 : 13 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: "6px 8px", color: colors.textMuted, fontWeight: 600, borderBottom: `2px solid ${colors.borderLight}` }}>
+                    {t("scoring.criterionHeader", { defaultMessage: "Criterio" })}
+                  </th>
+                  {scoringConfig.filter(p => p.matchPicks).map((phase) => (
+                    <th key={phase.phaseId} style={{
+                      textAlign: "center", padding: "6px 4px",
+                      color: colors.textMuted, fontWeight: 600, fontSize: isMobile ? 10 : 11,
+                      borderBottom: `2px solid ${colors.borderLight}`,
+                      whiteSpace: "nowrap",
+                    }}>
+                      {phaseLabel(phase.phaseName)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {enabledCriteria.map((criterion) => (
+                  <tr key={criterion.key}>
+                    <td style={{
+                      padding: "7px 8px", color: colors.textDark, fontWeight: 500,
+                      borderBottom: `1px solid ${colors.borderLight}`,
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}>
+                      <span style={{ color: colors.successAlt, fontSize: 12 }}>✓</span>
+                      {t(`scoring.criteria.${criterion.key}`)}
+                    </td>
+                    {scoringConfig.filter(p => p.matchPicks).map((phase) => {
+                      const pt = phase.matchPicks?.types.find(t => t.key === criterion.key);
+                      return (
+                        <td key={phase.phaseId} style={{
+                          textAlign: "center", padding: "7px 4px",
+                          fontWeight: 700, color: colors.brand,
+                          borderBottom: `1px solid ${colors.borderLight}`,
+                        }}>
+                          {pt?.points ?? 0}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* Structural picks summary for SIMPLE */}
-      {!isScoreBased && displayPhase.structuralPicks && (
+      {!isScoreBased && (
         <div style={{ fontSize: fontSize.sm, color: colors.textDark, lineHeight: 1.5 }}>
           <span style={{ fontWeight: fontWeight.bold }}>
             {t("scoring.presets.SIMPLE.tagline")}
@@ -1178,12 +1209,12 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
           lineHeight: 1.5,
         }}>
           <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
-            📈 {t("scoring.multiplierLabel", { defaultMessage: "Puntos progresivos" })}:
+            📈 {t("scoring.multiplierLabel")}:
           </span>{" "}
           <span style={{ color: colors.textMuted }}>
             {scalingEnabled
-              ? t("scoring.multiplierOn", { defaultMessage: "Activado — los puntos aumentan en fases avanzadas del torneo, permitiendo que jugadores que empezaron mal sigan teniendo oportunidades." })
-              : t("scoring.multiplierOff", { defaultMessage: "Desactivado — los puntos son iguales en todas las fases." })}
+              ? t("scoring.multiplierOn")
+              : t("scoring.multiplierOff")}
           </span>
         </div>
       )}
@@ -1198,9 +1229,9 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
         color: colors.textMuted,
       }}>
         <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
-          ⏱️ {t("scoring.extraTimeStatus", { defaultMessage: "Tiempo extra" })}:
+          ⏱️ {t("scoring.extraTimeStatus")}:
         </span>{" "}
-        {t("scoring.extraTimeDefault", { defaultMessage: "Solo se cuenta el resultado al minuto 90 (recomendado). Puedes cambiar esto en opciones avanzadas." })}
+        {t("scoring.extraTimeDefault")}
       </div>
 
       {/* Calculator inline for presets */}
@@ -1359,7 +1390,7 @@ export function StepScoring() {
   // Track which phase sections are open
   const [openPhases, setOpenPhases] = useState<Record<number, boolean>>({ 0: true });
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [scalingEnabled, setScalingEnabled] = useState(false);
+  const [scalingEnabled, setScalingEnabled] = useState(true);
 
   // Editable multipliers per phase
   const DEFAULT_MULTIPLIERS: Record<string, number> = {
@@ -1471,7 +1502,8 @@ export function StepScoring() {
     const config = generatePresetConfig(key, instancePhases);
     dispatch({ type: "SET_SCORING", style: key, config });
     setOpenPhases({ 0: true });
-    setScalingEnabled(false);
+    // Scaling on by default for presets (multiplier increases in later rounds)
+    setScalingEnabled(true);
   }, [instancePhases, dispatch]);
 
   // Handle going back to preset selection
@@ -1841,6 +1873,51 @@ export function StepScoring() {
           </div>
         )}
 
+        {/* Extra time toggle — inside advanced for presets, always for custom */}
+        {(isCustom || showAdvanced) && knockoutPhases.length > 0 && (
+          isCustom ? (
+            <ExtraTimeSection
+              knockoutPhases={knockoutPhases}
+              scoringConfig={scoringConfig}
+              dispatch={dispatch}
+              isCustom={true}
+              isMobile={isMobile}
+            />
+          ) : (
+            <div style={{
+              padding: `${spacing.md}px`,
+              borderRadius: radii.lg,
+              border: `1px solid ${colors.borderLight}`,
+              background: colors.bgLighter,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}>
+              <div>
+                <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.textDark }}>
+                  {t("advancedRules.extraTimeTitle")}
+                </div>
+                <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
+                  {t("scoring.extraTimeGlobalDesc")}
+                </div>
+              </div>
+              <ToggleSwitch
+                checked={knockoutPhases.some((p) => p.includeExtraTime)}
+                onChange={() => {
+                  const newValue = !knockoutPhases.some((p) => p.includeExtraTime);
+                  const updated = scoringConfig.map((p) =>
+                    p.phaseId !== "group_stage" && !p.phaseId.includes("group")
+                      ? { ...p, includeExtraTime: newValue }
+                      : p
+                  );
+                  dispatch({ type: "UPDATE_SCORING_CONFIG", config: updated });
+                }}
+                size="small"
+              />
+            </div>
+          )
+        )}
+
         {/* Phase sections — always for custom, only when advanced is open for presets */}
         {(isCustom || showAdvanced) && (
           <div style={{
@@ -1916,16 +1993,6 @@ export function StepScoring() {
               mantenimiento por parte del administrador.
             </p>
           </div>
-        )}
-        {/* Extra time section — for all presets with knockout phases */}
-        {knockoutPhases.length > 0 && (
-          <ExtraTimeSection
-            knockoutPhases={knockoutPhases}
-            scoringConfig={scoringConfig}
-            dispatch={dispatch}
-            isCustom={scoringStyle === "CUSTOM"}
-            isMobile={isMobile}
-          />
         )}
       </div>
     </PoolWizardStepContainer>

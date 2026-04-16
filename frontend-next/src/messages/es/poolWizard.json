@@ -113,8 +113,11 @@
     "multiplierLabel": "Puntos progresivos",
     "multiplierOn": "Activado — los puntos aumentan en fases avanzadas, permitiendo que quienes empezaron mal sigan teniendo oportunidades de escalar posiciones.",
     "multiplierOff": "Desactivado — los puntos son iguales en todas las fases.",
+    "criterionHeader": "Criterio",
     "extraTimeStatus": "Tiempo extra",
-    "extraTimeDefault": "Solo se cuenta el resultado al minuto 90 (recomendado). Puedes cambiar esto en opciones avanzadas.",
+    "extraTimeDefault": "Solo se cuenta el resultado al final del segundo tiempo, sin tiempo extra ni penales (recomendado). Puedes cambiar esto en opciones avanzadas.",
+    "extraTimeGlobalDesc": "Contar el resultado incluyendo tiempo extra (sin penales)",
+    "scalingSubLabel": "Desactívalo para personalizar fase por fase",
 
     "presets": {
       "CUMULATIVE": {
