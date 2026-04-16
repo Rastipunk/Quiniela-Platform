@@ -82,10 +82,10 @@ const PRESETS: PresetInfo[] = [
 ];
 
 const CRITERION_META: Record<MatchPickTypeKey, { label: string; description: string; recGroup: number; recKnockout: number }> = {
-  MATCH_OUTCOME_90MIN: { label: "Resultado", description: "Acertar ganador o empate", recGroup: 5, recKnockout: 10 },
-  HOME_GOALS:          { label: "Goles Local", description: "Acertar goles del equipo local", recGroup: 2, recKnockout: 4 },
-  AWAY_GOALS:          { label: "Goles Visitante", description: "Acertar goles del equipo visitante", recGroup: 2, recKnockout: 4 },
-  GOAL_DIFFERENCE:     { label: "Diferencia de goles", description: "Acertar la diferencia entre ambos", recGroup: 1, recKnockout: 2 },
+  MATCH_OUTCOME_90MIN: { label: "Resultado", description: "Acertar ganador o empate", recGroup: 10, recKnockout: 10 },
+  HOME_GOALS:          { label: "Goles Local", description: "Acertar goles del equipo local", recGroup: 4, recKnockout: 4 },
+  AWAY_GOALS:          { label: "Goles Visitante", description: "Acertar goles del equipo visitante", recGroup: 4, recKnockout: 4 },
+  GOAL_DIFFERENCE:     { label: "Diferencia de goles", description: "Acertar la diferencia entre ambos", recGroup: 2, recKnockout: 2 },
   EXACT_SCORE:         { label: "Marcador Exacto", description: "Bonus por acertar ambos marcadores", recGroup: 0, recKnockout: 0 },
   TOTAL_GOALS:         { label: "Total de Goles", description: "Acertar la suma total de goles", recGroup: 0, recKnockout: 0 },
   PARTIAL_SCORE:       { label: "Marcador Parcial", description: "Acertar uno de los dos marcadores", recGroup: 0, recKnockout: 0 },
@@ -106,13 +106,11 @@ function generatePresetConfig(
         requiresScore: true,
         matchPicks: {
           types: [
-            { key: "MATCH_OUTCOME_90MIN" as const, enabled: true, points: isKnockout ? 10 : 5 },
-            { key: "HOME_GOALS" as const, enabled: true, points: isKnockout ? 4 : 2 },
-            { key: "AWAY_GOALS" as const, enabled: true, points: isKnockout ? 4 : 2 },
-            { key: "GOAL_DIFFERENCE" as const, enabled: true, points: isKnockout ? 2 : 1 },
-            { key: "EXACT_SCORE" as const, enabled: false, points: 0 },
+            { key: "MATCH_OUTCOME_90MIN" as const, enabled: true, points: 10 },
+            { key: "HOME_GOALS" as const, enabled: true, points: 4 },
+            { key: "AWAY_GOALS" as const, enabled: true, points: 4 },
+            { key: "GOAL_DIFFERENCE" as const, enabled: true, points: 2 },
             { key: "TOTAL_GOALS" as const, enabled: false, points: 0 },
-            { key: "PARTIAL_SCORE" as const, enabled: false, points: 0 },
           ],
         },
       };
@@ -132,7 +130,6 @@ function generatePresetConfig(
           { key: "AWAY_GOALS" as const, enabled: false, points: 0 },
           { key: "GOAL_DIFFERENCE" as const, enabled: false, points: 0 },
           { key: "TOTAL_GOALS" as const, enabled: false, points: 0 },
-          { key: "PARTIAL_SCORE" as const, enabled: false, points: 0 },
         ],
       },
     }));
@@ -1109,9 +1106,17 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
   isMobile: boolean;
 }) {
   const t = useTranslations("poolWizard");
-  const firstPhase = scoringConfig[0];
+  // Use knockout phase for display points (higher values), fallback to first phase
+  const displayPhase = scoringConfig.find(
+    (p) => p.phaseId !== "group_stage" && !p.phaseId.includes("group")
+  ) ?? scoringConfig[0];
 
-  if (!firstPhase) return null;
+  if (!displayPhase) return null;
+
+  // Only show enabled criteria (exclude EXACT_SCORE and PARTIAL_SCORE entirely)
+  const visibleCriteria = displayPhase.matchPicks?.types.filter(
+    (type) => type.enabled && type.key !== "EXACT_SCORE" && type.key !== "PARTIAL_SCORE"
+  ) ?? [];
 
   return (
     <div style={{
@@ -1123,32 +1128,28 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
       flexDirection: "column",
       gap: spacing.md,
     }}>
-      {/* Active criteria */}
-      {isScoreBased && firstPhase.matchPicks && (
+      {/* Active criteria — only enabled ones */}
+      {isScoreBased && visibleCriteria.length > 0 && (
         <div>
           <div style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.textDark, marginBottom: 8 }}>
             {t("scoring.activeCriteria")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {firstPhase.matchPicks.types.map((type) => (
+            {visibleCriteria.map((type) => (
               <div key={type.key} style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 fontSize: fontSize.sm,
-                color: type.enabled ? colors.textDark : colors.textLighter,
+                color: colors.textDark,
               }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: type.enabled ? colors.successAlt : colors.textLighter }}>
-                    {type.enabled ? "✓" : "–"}
-                  </span>
+                  <span style={{ color: colors.successAlt }}>✓</span>
                   {t(`scoring.criteria.${type.key}`)}
                 </span>
-                {type.enabled && (
-                  <span style={{ fontWeight: fontWeight.bold, color: colors.brand }}>
-                    {type.points} {t("scoring.pts", { defaultMessage: "pts" })}
-                  </span>
-                )}
+                <span style={{ fontWeight: fontWeight.bold, color: colors.brand }}>
+                  {type.points} {t("scoring.pts", { defaultMessage: "pts" })}
+                </span>
               </div>
             ))}
           </div>
@@ -1156,7 +1157,7 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
       )}
 
       {/* Structural picks summary for SIMPLE */}
-      {!isScoreBased && firstPhase.structuralPicks && (
+      {!isScoreBased && displayPhase.structuralPicks && (
         <div style={{ fontSize: fontSize.sm, color: colors.textDark, lineHeight: 1.5 }}>
           <span style={{ fontWeight: fontWeight.bold }}>
             {t("scoring.presets.SIMPLE.tagline")}
@@ -1201,6 +1202,14 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
         </span>{" "}
         {t("scoring.extraTimeDefault", { defaultMessage: "Solo se cuenta el resultado al minuto 90 (recomendado). Puedes cambiar esto en opciones avanzadas." })}
       </div>
+
+      {/* Calculator inline for presets */}
+      {isScoreBased && (
+        <ExampleCalculator
+          scoringConfig={scoringConfig}
+          isMobile={isMobile}
+        />
+      )}
     </div>
   );
 }
@@ -1865,8 +1874,8 @@ export function StepScoring() {
           </div>
         )}
 
-        {/* Interactive calculator — only for score-based presets */}
-        {isScoreBased && (
+        {/* Interactive calculator — only for CUSTOM (presets show it in PresetSummary) */}
+        {isCustom && isScoreBased && (
           <ExampleCalculator
             scoringConfig={scoringConfig}
             isMobile={isMobile}
