@@ -497,7 +497,7 @@ export function LandingContent() {
               border: "2px solid #818cf8",
               borderRadius: 16,
               padding: 28,
-              paddingTop: 32,
+              paddingTop: 42,
               background: "var(--surface)",
               display: "flex",
               flexDirection: "column",
@@ -506,7 +506,7 @@ export function LandingContent() {
             {/* Sticker floating above the card */}
             <div style={{
               position: "absolute",
-              top: -18,
+              top: -24,
               left: "50%",
               transform: "translateX(-50%) rotate(-2deg)",
               background: "linear-gradient(135deg, #16a34a, #15803d)",
@@ -520,9 +520,9 @@ export function LandingContent() {
               boxShadow: "0 4px 14px rgba(22, 163, 74, 0.45), 0 2px 4px rgba(0,0,0,0.12)",
               border: "2px solid white",
               textAlign: "center",
-              lineHeight: 1.25,
+              lineHeight: 1.3,
               zIndex: 3,
-              whiteSpace: "nowrap",
+              maxWidth: "85%",
             }}>
               &#127881; {t("pricing.corporate.trialBanner")}
             </div>
