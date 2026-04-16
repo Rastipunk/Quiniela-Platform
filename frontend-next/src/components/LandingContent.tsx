@@ -491,37 +491,11 @@ export function LandingContent() {
           </div>
 
           {/* Corporate Card */}
-          <div
-            style={{
-              position: "relative",
-              border: "2px solid #818cf8",
-              borderRadius: 16,
-              padding: "36px 28px 28px",
-              background: "var(--surface)",
-              display: "flex",
-              flexDirection: "column",
-              marginTop: 14,
-            }}
-          >
-            {/* Layer 1: Decorative ribbon in corner (background) */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {/* Sticker above card */}
             <div style={{
-              position: "absolute",
-              top: 14,
-              right: -28,
-              background: "linear-gradient(135deg, #22c55e, #16a34a)",
-              width: 100,
-              height: 20,
-              transform: "rotate(35deg)",
-              zIndex: 1,
-              overflow: "hidden",
-            }} />
-
-            {/* Layer 2: Sticker overlay (on top of ribbon, extends beyond) */}
-            <div style={{
-              position: "absolute",
-              top: -16,
-              left: "50%",
-              transform: "translateX(-50%) rotate(-3deg)",
+              alignSelf: "center",
+              transform: "rotate(-2deg)",
               background: "linear-gradient(135deg, #16a34a, #15803d)",
               color: "white",
               fontSize: 11,
@@ -530,17 +504,28 @@ export function LandingContent() {
               borderRadius: 10,
               textTransform: "uppercase",
               letterSpacing: 0.5,
-              zIndex: 3,
               boxShadow: "0 4px 14px rgba(22, 163, 74, 0.45), 0 2px 4px rgba(0,0,0,0.12)",
               border: "2px solid white",
-              width: "calc(100% - 20px)",
-              maxWidth: 340,
               textAlign: "center",
               lineHeight: 1.25,
+              marginBottom: -10,
+              zIndex: 3,
+              position: "relative",
             }}>
               &#127881; {t("pricing.corporate.trialBanner")}
             </div>
 
+            <div
+              style={{
+                border: "2px solid #818cf8",
+                borderRadius: 16,
+                padding: 28,
+                background: "var(--surface)",
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+              }}
+            >
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
               <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text)", margin: 0 }}>
                 {t("pricing.corporate.title")}
@@ -583,6 +568,7 @@ export function LandingContent() {
             >
               {t("pricing.corporate.cta")}
             </Link>
+            </div>
           </div>
         </div>
 

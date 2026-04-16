@@ -12,7 +12,7 @@ const SECTION_MAX_WIDTH = 720;
 function Section({ children, bg }: { children: React.ReactNode; bg?: string }) {
   return (
     <section style={{
-      padding: "48px 20px",
+      padding: "32px 20px",
       background: bg || "transparent",
     }}>
       <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: "0 auto" }}>
@@ -249,52 +249,76 @@ function MockScoringSystems({ t }: { t: (key: string) => string }) {
 }
 
 function PredictorMock({ t }: { t: (key: string) => string }) {
-  const rows = [
+  type Row = { label: string; pts: number; miss?: boolean };
+
+  const hitRows: Row[] = [
     { label: t("scoring.matchOutcome"), pts: 10 },
     { label: t("scoring.homeGoals"), pts: 5 },
     { label: t("scoring.awayGoals"), pts: 5 },
     { label: t("scoring.goalDifference"), pts: 3 },
     { label: t("scoring.exactScore"), pts: 20 },
   ];
-  const total = rows.reduce((s, r) => s + r.pts, 0);
+  const hitTotal = hitRows.reduce((s, r) => s + r.pts, 0);
+
+  const missRows: Row[] = [
+    { label: t("scoring.matchOutcome"), pts: 10 },
+    { label: t("scoring.homeGoals"), pts: 0, miss: true },
+    { label: t("scoring.awayGoals"), pts: 5 },
+    { label: t("scoring.goalDifference"), pts: 0, miss: true },
+    { label: t("scoring.exactScore"), pts: 0, miss: true },
+  ];
+  const missTotal = missRows.reduce((s, r) => s + r.pts, 0);
+
+  function ScoreCard({ pred, result, rows, total, isHit }: { pred: string; result: string; rows: Row[]; total: number; isHit: boolean }) {
+    return (
+      <div style={{
+        border: `1px solid ${colors.borderLight}`,
+        borderRadius: 12,
+        overflow: "hidden",
+        background: colors.white,
+      }}>
+        <div style={{ display: "flex" }}>
+          <div style={{ flex: 1, padding: 14, textAlign: "center", borderRight: `1px solid ${colors.borderLight}` }}>
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.yourPrediction")}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: BRAND.primary }}>{pred}</div>
+          </div>
+          <div style={{ flex: 1, padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.actualResult")}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: isHit ? "#16a34a" : "#f59e0b" }}>
+              {result} {isHit ? "\u2713" : ""}
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: "10px 14px", background: colors.bgLighter, fontSize: 12, fontWeight: 700, color: colors.textDark }}>
+          {t("scoring.breakdown")}
+        </div>
+        {rows.map((row) => (
+          <div key={row.label + row.pts} style={{
+            display: "flex", justifyContent: "space-between", padding: "9px 14px",
+            borderTop: `1px solid ${colors.borderLight}`, fontSize: 13,
+          }}>
+            <span style={{ color: row.miss ? colors.textLighter : colors.textDark }}>{row.label}</span>
+            <span style={{ fontWeight: 700, color: row.miss ? "#ef4444" : "#16a34a" }}>
+              {row.miss ? `${t("scoring.zero")} ${t("scoring.pts")}` : `+${row.pts} ${t("scoring.pts")}`}
+            </span>
+          </div>
+        ))}
+        <div style={{
+          display: "flex", justifyContent: "space-between", padding: "11px 14px",
+          borderTop: `2px solid ${colors.borderMedium}`, fontSize: 15, fontWeight: 800,
+          background: isHit ? "#f0fdf4" : "#fffbeb",
+        }}>
+          <span style={{ color: colors.text }}>{t("scoring.total")}</span>
+          <span style={{ color: isHit ? "#16a34a" : "#f59e0b" }}>{total} {t("scoring.pts")}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{
-      border: `1px solid ${colors.borderLight}`,
-      borderRadius: 12,
-      overflow: "hidden",
-      background: colors.white,
-    }}>
-      <div style={{ display: "flex", gap: 0 }}>
-        <div style={{ flex: 1, padding: 14, textAlign: "center", borderRight: `1px solid ${colors.borderLight}` }}>
-          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.yourPrediction")}</div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: BRAND.primary }}>2 - 1</div>
-        </div>
-        <div style={{ flex: 1, padding: 14, textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>{t("scoring.actualResult")}</div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: "#16a34a" }}>2 - 1 &#10003;</div>
-        </div>
-      </div>
-      <div style={{ padding: "10px 14px", background: colors.bgLighter, fontSize: 12, fontWeight: 700, color: colors.textDark }}>
-        {t("scoring.breakdown")}
-      </div>
-      {rows.map((row) => (
-        <div key={row.label} style={{
-          display: "flex", justifyContent: "space-between", padding: "9px 14px",
-          borderTop: `1px solid ${colors.borderLight}`, fontSize: 13,
-        }}>
-          <span style={{ color: colors.textDark }}>{row.label}</span>
-          <span style={{ fontWeight: 700, color: "#16a34a" }}>+{row.pts} {t("scoring.pts")}</span>
-        </div>
-      ))}
-      <div style={{
-        display: "flex", justifyContent: "space-between", padding: "11px 14px",
-        borderTop: `2px solid ${colors.borderMedium}`, fontSize: 15, fontWeight: 800,
-        background: "#f0fdf4",
-      }}>
-        <span style={{ color: colors.text }}>{t("scoring.total")}</span>
-        <span style={{ color: "#16a34a" }}>{total} {t("scoring.pts")}</span>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <ScoreCard pred="2 - 1" result="2 - 1" rows={hitRows} total={hitTotal} isHit />
+      <ScoreCard pred="2 - 1" result="3 - 1" rows={missRows} total={missTotal} isHit={false} />
     </div>
   );
 }
