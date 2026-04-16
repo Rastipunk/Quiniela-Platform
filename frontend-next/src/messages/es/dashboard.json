@@ -3,6 +3,20 @@
   "subtitle": "",
   "createPool": "Crear pool",
   "joinWithCode": "Unirme con código",
+  "poolTypeModal": {
+    "title": "¿Qué tipo de pool quieres crear?",
+    "personal": {
+      "title": "Personal",
+      "description": "Juega con amigos, familia o cualquier grupo",
+      "cta": "Crear pool personal"
+    },
+    "corporate": {
+      "title": "Empresarial",
+      "description": "Para tu empresa u organización",
+      "cta": "Crear pool empresarial"
+    },
+    "cancel": "Cancelar"
+  },
   "logout": "Logout",
   "loading": "Cargando...",
   "emptyState": "Aún no estás en ninguna pool. Crea una o únete con un código.",

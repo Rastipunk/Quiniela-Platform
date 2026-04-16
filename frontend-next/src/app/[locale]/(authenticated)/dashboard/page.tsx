@@ -94,6 +94,7 @@ export default function DashboardPage() {
   const [inviteCode, setInviteCode] = useState("");
 
   const [busy, setBusy] = useState(false);
+  const [showPoolTypeModal, setShowPoolTypeModal] = useState(false);
 
   // Filter pools into 3 tabs
   const activePools = useMemo(() => {
@@ -292,7 +293,7 @@ export default function DashboardPage() {
             flexDirection: isMobile ? "column" : "row",
           }}
         >
-          <button onClick={() => router.push("/crear-pool")} style={{
+          <button onClick={() => setShowPoolTypeModal(true)} style={{
             ...buttonStyle,
             background: colors.brand,
             color: colors.white,
@@ -469,6 +470,132 @@ export default function DashboardPage() {
           tc={tc}
           inputStyle={inputStyle}
         />
+      )}
+
+      {/* Pool type selection modal */}
+      {showPoolTypeModal && (
+        <div
+          onClick={() => setShowPoolTypeModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              borderRadius: 20,
+              padding: isMobile ? 24 : 32,
+              maxWidth: 520,
+              width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h2 style={{
+              fontSize: isMobile ? 20 : 22,
+              fontWeight: 700,
+              textAlign: "center",
+              margin: "0 0 24px",
+              color: colors.text,
+            }}>
+              {t("poolTypeModal.title")}
+            </h2>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+              gap: 16,
+            }}>
+              {/* Personal */}
+              <button
+                onClick={() => { setShowPoolTypeModal(false); router.push("/crear-pool"); }}
+                style={{
+                  padding: 24,
+                  borderRadius: 16,
+                  border: `2px solid #86efac`,
+                  background: "white",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 12 }}>&#128101;</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.text, marginBottom: 6 }}>
+                  {t("poolTypeModal.personal.title")}
+                </div>
+                <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 16, lineHeight: 1.4 }}>
+                  {t("poolTypeModal.personal.description")}
+                </div>
+                <div style={{
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 700,
+                }}>
+                  {t("poolTypeModal.personal.cta")}
+                </div>
+              </button>
+
+              {/* Corporate */}
+              <button
+                onClick={() => { setShowPoolTypeModal(false); router.push("/empresas/crear"); }}
+                style={{
+                  padding: 24,
+                  borderRadius: 16,
+                  border: `2px solid #818cf8`,
+                  background: "white",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 12 }}>&#127970;</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.text, marginBottom: 6 }}>
+                  {t("poolTypeModal.corporate.title")}
+                </div>
+                <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 16, lineHeight: 1.4 }}>
+                  {t("poolTypeModal.corporate.description")}
+                </div>
+                <div style={{
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  background: colors.brandGradient,
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 700,
+                }}>
+                  {t("poolTypeModal.corporate.cta")}
+                </div>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowPoolTypeModal(false)}
+              style={{
+                marginTop: 16,
+                width: "100%",
+                padding: "10px",
+                background: "none",
+                border: "none",
+                color: colors.textMuted,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {t("poolTypeModal.cancel")}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
