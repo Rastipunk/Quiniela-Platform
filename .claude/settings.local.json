@@ -119,7 +119,9 @@
       "Bash(railway vars:*)",
       "Bash(railway run:*)",
       "WebFetch(domain:picks4all.com)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)"
     ]
   }
 }
