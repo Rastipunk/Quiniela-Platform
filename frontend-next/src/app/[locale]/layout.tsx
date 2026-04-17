@@ -181,10 +181,10 @@ export default async function LocaleLayout({
             />
           </noscript>
         )}
-        {/* Google Identity Services — lazyOnload: only needed on login page */}
+        {/* Google Identity Services — loads after hydration so button is ready when AuthSlidePanel opens */}
         <Script
           src="https://accounts.google.com/gsi/client"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
       </body>
     </html>

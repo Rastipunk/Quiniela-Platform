@@ -60,6 +60,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoadFailed, setGoogleLoadFailed] = useState(false);
 
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -174,28 +175,46 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
     if (!isOpen) return;
 
     const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
     if (!GOOGLE_CLIENT_ID) return;
-    if (!window.google) return;
 
-    const timer = setTimeout(() => {
-      if (googleButtonRef.current) {
-        window.google!.accounts.id.initialize({
+    setGoogleLoadFailed(false);
+    let isMounted = true;
+
+    const initGoogle = () => {
+      if (!window.google || !googleButtonRef.current) return false;
+      try {
+        window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           callback: handleGoogleCallback,
         });
-
-        window.google!.accounts.id.renderButton(googleButtonRef.current, {
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: "outline",
           size: "large",
           width: googleButtonRef.current.offsetWidth || 280,
           text: mode === "login" ? "signin_with" : "signup_with",
           locale,
         });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    if (initGoogle()) return () => { isMounted = false; };
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      if (!isMounted) { clearInterval(interval); return; }
+      attempts++;
+      if (initGoogle()) {
+        clearInterval(interval);
+      } else if (attempts >= 100) {
+        clearInterval(interval);
+        if (isMounted) setGoogleLoadFailed(true);
       }
     }, 100);
 
-    return () => clearTimeout(timer);
+    return () => { isMounted = false; clearInterval(interval); };
   }, [isOpen, mode]);
 
   useEffect(() => {
@@ -270,7 +289,12 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         onLoggedIn();
       }
     } catch (err: any) {
-      setError(err?.message ?? "Error");
+      const errorCode = err?.payload?.error ?? err?.code;
+      if (errorCode === "GOOGLE_ACCOUNT_NO_PASSWORD") {
+        setError(t("errors.googleAccountUseGoogle"));
+      } else {
+        setError(err?.message ?? "Error");
+      }
     } finally {
       setLoading(false);
     }
@@ -410,6 +434,21 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
 
           {/* Google Sign-In — prominent at top */}
           <div ref={googleButtonRef} style={{ display: "flex", justifyContent: "center", marginBottom: 8 }} />
+          {googleLoadFailed && (
+            <div style={{
+              marginBottom: 8,
+              padding: "10px 14px",
+              background: "#fffbeb",
+              border: "1px solid #f59e0b",
+              borderRadius: radii.lg,
+              fontSize: 13,
+              color: "#92400e",
+              textAlign: "center",
+              lineHeight: 1.4,
+            }}>
+              {t("googleLoadError")}
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, color: "var(--muted)", fontSize: 12 }}>
             <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
             <span>{mode === "login" ? t("orContinueWith") : t("orRegisterWithEmail")}</span>

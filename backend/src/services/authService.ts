@@ -193,6 +193,9 @@ export async function loginUser(email: string, password: string, ctx: AuditConte
 
   if (!user || user.status !== "ACTIVE") throw new ServiceError("UNAUTHENTICATED", 401);
 
+  const isGoogleOnly = !!user.googleId && (!user.passwordHash || user.passwordHash === "");
+  if (isGoogleOnly) throw new ServiceError("GOOGLE_ACCOUNT_NO_PASSWORD", 400);
+
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) throw new ServiceError("UNAUTHENTICATED", 401);
 

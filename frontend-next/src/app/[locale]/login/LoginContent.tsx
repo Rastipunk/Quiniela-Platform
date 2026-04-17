@@ -261,7 +261,12 @@ export default function LoginContent() {
         onLoggedIn();
       }
     } catch (err: any) {
-      setError(err?.message ?? "Error");
+      const errorCode = err?.payload?.error ?? err?.code;
+      if (errorCode === "GOOGLE_ACCOUNT_NO_PASSWORD") {
+        setError(t("errors.googleAccountUseGoogle"));
+      } else {
+        setError(err?.message ?? "Error");
+      }
     } finally {
       setLoading(false);
     }
