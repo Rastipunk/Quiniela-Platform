@@ -97,24 +97,37 @@ function generatePresetConfig(
   presetKey: PickConfigPresetKey,
   phases: InstancePhase[],
 ): PoolPickTypesConfig {
-  if (presetKey === "CUMULATIVE" || presetKey === "CUSTOM") {
-    return phases.map((phase) => {
-      const isKnockout = phase.type !== "GROUP";
-      return {
-        phaseId: phase.id,
-        phaseName: phase.name,
-        requiresScore: true,
-        matchPicks: {
-          types: [
-            { key: "MATCH_OUTCOME_90MIN" as const, enabled: true, points: 10 },
-            { key: "HOME_GOALS" as const, enabled: true, points: 4 },
-            { key: "AWAY_GOALS" as const, enabled: true, points: 4 },
-            { key: "GOAL_DIFFERENCE" as const, enabled: true, points: 2 },
-            { key: "TOTAL_GOALS" as const, enabled: false, points: 0 },
-          ],
-        },
-      };
-    });
+  if (presetKey === "CUMULATIVE") {
+    return phases.map((phase) => ({
+      phaseId: phase.id,
+      phaseName: phase.name,
+      requiresScore: true,
+      matchPicks: {
+        types: [
+          { key: "MATCH_OUTCOME_90MIN" as const, enabled: true, points: 10 },
+          { key: "HOME_GOALS" as const, enabled: true, points: 4 },
+          { key: "AWAY_GOALS" as const, enabled: true, points: 4 },
+          { key: "GOAL_DIFFERENCE" as const, enabled: true, points: 2 },
+        ],
+      },
+    }));
+  }
+
+  if (presetKey === "CUSTOM") {
+    return phases.map((phase) => ({
+      phaseId: phase.id,
+      phaseName: phase.name,
+      requiresScore: true,
+      matchPicks: {
+        types: [
+          { key: "MATCH_OUTCOME_90MIN" as const, enabled: true, points: 10 },
+          { key: "HOME_GOALS" as const, enabled: true, points: 4 },
+          { key: "AWAY_GOALS" as const, enabled: true, points: 4 },
+          { key: "GOAL_DIFFERENCE" as const, enabled: true, points: 2 },
+          { key: "TOTAL_GOALS" as const, enabled: false, points: 0 },
+        ],
+      },
+    }));
   }
 
   if (presetKey === "BASIC") {
@@ -125,11 +138,6 @@ function generatePresetConfig(
       matchPicks: {
         types: [
           { key: "EXACT_SCORE" as const, enabled: true, points: 20 + index * 10 },
-          { key: "MATCH_OUTCOME_90MIN" as const, enabled: false, points: 0 },
-          { key: "HOME_GOALS" as const, enabled: false, points: 0 },
-          { key: "AWAY_GOALS" as const, enabled: false, points: 0 },
-          { key: "GOAL_DIFFERENCE" as const, enabled: false, points: 0 },
-          { key: "TOTAL_GOALS" as const, enabled: false, points: 0 },
         ],
       },
     }));
@@ -1203,23 +1211,24 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
         <div style={{
           padding: `${spacing.sm}px ${spacing.md}px`,
           borderRadius: radii.md,
-          background: scalingEnabled ? "#eef2ff" : colors.bgLighter,
-          border: `1px solid ${scalingEnabled ? "#c7d2fe" : colors.borderLight}`,
+          background: colors.bgLighter,
+          border: `1px solid ${colors.borderLight}`,
           fontSize: fontSize.sm,
           lineHeight: 1.5,
+          color: colors.textMuted,
         }}>
           <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
             📈 {t("scoring.multiplierLabel")}:
           </span>{" "}
-          <span style={{ color: colors.textMuted }}>
-            {scalingEnabled
-              ? t("scoring.multiplierOn")
-              : t("scoring.multiplierOff")}
+          <span style={{ fontWeight: fontWeight.bold, color: scalingEnabled ? colors.successAlt : colors.textDark }}>
+            {scalingEnabled ? t("scoring.etEnabledLabel") : t("scoring.etDisabledLabel")}
           </span>
+          {" — "}
+          {scalingEnabled ? t("scoring.multiplierOn") : t("scoring.multiplierOff")}
         </div>
       )}
 
-      {/* Extra time status — dynamic based on config */}
+      {/* Extra time status */}
       {(() => {
         const etEnabled = scoringConfig.some(
           (p) => p.phaseId !== "group_stage" && !p.phaseId.includes("group") && p.includeExtraTime
@@ -1231,18 +1240,17 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
             background: colors.bgLighter,
             border: `1px solid ${colors.borderLight}`,
             fontSize: fontSize.sm,
+            lineHeight: 1.5,
             color: colors.textMuted,
           }}>
             <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
               ⏱️ {t("scoring.extraTimeStatus")}:
             </span>{" "}
-            <span style={{ fontWeight: fontWeight.bold, color: colors.textDark }}>
-              {etEnabled ? t("scoring.etEnabledLabel", { defaultMessage: "Activado" }) : t("scoring.etDisabledLabel", { defaultMessage: "Desactivado" })}
+            <span style={{ fontWeight: fontWeight.bold, color: etEnabled ? colors.successAlt : colors.textDark }}>
+              {etEnabled ? t("scoring.etEnabledLabel") : t("scoring.etDisabledLabel")}
             </span>
             {" — "}
-            {etEnabled
-              ? t("scoring.extraTimeEnabled")
-              : t("scoring.extraTimeDefault")}
+            {etEnabled ? t("scoring.extraTimeEnabled") : t("scoring.extraTimeDefault")}
           </div>
         );
       })()}
@@ -1693,39 +1701,39 @@ export function StepScoring() {
           />
         )}
 
-        {/* Advanced options toggle — only for non-custom presets */}
-        {!isCustom && (
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            style={{
-              width: "100%",
-              padding: `${spacing.md}px`,
-              borderRadius: radii.lg,
-              border: `1px dashed ${colors.borderMedium}`,
-              background: showAdvanced ? colors.bgLighter : "transparent",
-              color: colors.brand,
-              fontSize: fontSize.base,
-              fontWeight: fontWeight.semibold,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              transition: "all 0.15s ease",
-            }}
-          >
-            {showAdvanced ? "▲" : "▼"} {t("scoring.advancedOptions")}
-          </button>
-        )}
+        {/* Advanced options — unified block */}
+        <div style={{
+          border: `1px solid ${colors.borderLight}`,
+          borderRadius: radii.xl,
+          background: colors.bgLighter,
+          overflow: "hidden",
+          display: isCustom || showAdvanced ? "block" : "block",
+        }}>
+          {/* Toggle header — only for presets */}
+          {!isCustom && (
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              style={{
+                width: "100%",
+                padding: `${spacing.md}px`,
+                background: "transparent",
+                border: "none",
+                borderBottom: showAdvanced ? `1px solid ${colors.borderLight}` : "none",
+                color: colors.brand,
+                fontSize: fontSize.base,
+                fontWeight: fontWeight.semibold,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {showAdvanced ? "▲" : "▼"} {t("scoring.advancedOptions")}
+            </button>
+          )}
 
-        {/* Advanced options container — single block wrapping all 3 components */}
-        {(isCustom || showAdvanced) && (
-          <div style={{
-            border: `1px solid ${colors.borderLight}`,
-            borderRadius: radii.xl,
-            background: colors.bgLighter,
-            overflow: "hidden",
-          }}>
+          {(isCustom || showAdvanced) && (<>
 
         {/* Scaling toggle */}
         {isScoreBased && scoringConfig.length > 1 && (
@@ -1936,12 +1944,15 @@ export function StepScoring() {
               justifyContent: "space-between",
               alignItems: "center",
             }}>
-              <div>
-                <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.semibold, color: colors.textDark }}>
-                  {t("advancedRules.extraTimeTitle")}
-                </div>
-                <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
-                  {t("scoring.extraTimeGlobalDesc")}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: spacing.sm, flex: 1 }}>
+                <span style={{ fontSize: 18 }}>⏱️</span>
+                <div>
+                  <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text }}>
+                    {t("advancedRules.extraTimeTitle")}
+                  </div>
+                  <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
+                    {t("scoring.extraTimeGlobalDesc")}
+                  </div>
                 </div>
               </div>
               <ToggleSwitch
@@ -1976,7 +1987,7 @@ export function StepScoring() {
                   Configuración por fase
                 </div>
                 <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
-                  {scoringConfig.length} fases configuradas
+                  {scoringConfig.length} fases
                 </div>
               </div>
             </div>
@@ -1997,9 +2008,8 @@ export function StepScoring() {
           </div>
         )}
 
-        {/* Close advanced options container */}
+        </>)}
         </div>
-        )}
 
         {/* Interactive calculator — only for CUSTOM (presets show it in PresetSummary) */}
         {isCustom && isScoreBased && (
