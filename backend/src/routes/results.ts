@@ -154,6 +154,7 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
         pool: {
           name: pool.name,
           scoringPresetKey: pool.scoringPresetKey,
+          pickTypesConfig: pool.pickTypesConfig,
           tournamentInstance: { dataJson: pool.tournamentInstance.dataJson },
         },
         match,

@@ -40,7 +40,7 @@ const PRESETS: PresetInfo[] = [
     name: "Predictor",
     tagline: "RECOMENDADO",
     description: "Puntos acumulables por cada criterio que aciertes",
-    example: "Si dices 3-1 y sale 2-1 \u2192 Resultado \u2713 (5pts) + Visitante \u2713 (2pts) = 7pts",
+    example: "Si dices 3-1 y sale 2-1 \u2192 Resultado \u2713 (10pts) + Visitante \u2713 (4pts) = 14pts",
     recommended: true,
     color: colors.brand,
     bgColor: "rgba(79,70,229,0.06)",
@@ -131,19 +131,24 @@ function generatePresetConfig(
   }
 
   if (presetKey === "BASIC") {
-    return phases.map((phase, index) => ({
+    return phases.map((phase) => ({
       phaseId: phase.id,
       phaseName: phase.name,
       requiresScore: true,
       matchPicks: {
         types: [
-          { key: "EXACT_SCORE" as const, enabled: true, points: 20 + index * 10 },
+          { key: "EXACT_SCORE" as const, enabled: true, points: 20 },
         ],
       },
     }));
   }
 
-  // SIMPLE
+  // SIMPLE — progressive knockout points
+  const knockoutPointsMap: Record<string, number> = {
+    round_of_32: 10, round_of_16: 15, quarter_finals: 20,
+    semi_finals: 25, finals: 30,
+  };
+
   return phases.map((phase): PhasePickConfig => ({
     phaseId: phase.id,
     phaseName: phase.name,
@@ -161,7 +166,7 @@ function generatePresetConfig(
       : {
           type: "KNOCKOUT_WINNER" as const,
           config: {
-            pointsPerCorrectAdvance: 15,
+            pointsPerCorrectAdvance: knockoutPointsMap[phase.id] ?? 15,
           },
         },
   }));

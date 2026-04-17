@@ -127,7 +127,7 @@
         "name": "Predictor",
         "tagline": "Stackable points for each criterion",
         "description": "Earn points for getting the result, each team's goals, and the goal difference right. The more you get right, the more you score!",
-        "example": "If you say 3-1 and it's 2-1 → Result ✓ (5pts) + Away goals ✓ (2pts) = 7pts"
+        "example": "If you say 3-1 and it's 2-1 → Result ✓ (10pts) + Away goals ✓ (4pts) = 14pts"
       },
       "BASIC": {
         "name": "All or Nothing",

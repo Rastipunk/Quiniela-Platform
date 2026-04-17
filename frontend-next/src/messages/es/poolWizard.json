@@ -127,7 +127,7 @@
         "name": "Predictor",
         "tagline": "Puntos acumulables por cada criterio",
         "description": "Ganas puntos por acertar el resultado, los goles de cada equipo y la diferencia. ¡Mientras más aciertes, más sumas!",
-        "example": "Si dices 3-1 y sale 2-1 → Resultado ✓ (5pts) + Goles visitante ✓ (2pts) = 7pts"
+        "example": "Si dices 3-1 y sale 2-1 → Resultado ✓ (10pts) + Goles visitante ✓ (4pts) = 14pts"
       },
       "BASIC": {
         "name": "Todo o Nada",

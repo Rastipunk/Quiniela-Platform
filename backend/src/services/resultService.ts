@@ -12,6 +12,8 @@ import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { sendResultPublishedEmail } from "../lib/email";
 import { getScoringPreset } from "../lib/scoringPresets";
+import { scoreMatchPick } from "../lib/scoringAdvanced";
+import type { PhasePickConfig } from "../types/pickConfig";
 import {
   validateCanAutoAdvance,
   advanceToRoundOf32,
@@ -55,6 +57,7 @@ export type SendResultNotificationsInput = {
   pool: {
     name: string;
     scoringPresetKey: string;
+    pickTypesConfig?: unknown;
     tournamentInstance: { dataJson: unknown };
   };
   match: FixtureMatch;
@@ -227,12 +230,17 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
       where: { poolId },
       include: { currentVersion: true },
     });
-    const resultByMatchId = new Map<string, { homeGoals: number; awayGoals: number }>();
+    const resultByMatchId = new Map<string, {
+      homeGoals: number; awayGoals: number;
+      homeGoals90?: number | null; awayGoals90?: number | null;
+    }>();
     for (const r of allResults) {
       if (r.currentVersion) {
         resultByMatchId.set(r.matchId, {
           homeGoals: r.currentVersion.homeGoals,
           awayGoals: r.currentVersion.awayGoals,
+          homeGoals90: r.currentVersion.homeGoals90,
+          awayGoals90: r.currentVersion.awayGoals90,
         });
       }
     }
@@ -242,26 +250,72 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
       where: { poolId, matchId: { in: allMatches.map((m) => m.id) } },
     });
 
-    // Calcular puntos por usuario usando el preset de la pool
+    // Detect advanced scoring mode
+    const pickTypesConfig = Array.isArray(pool.pickTypesConfig)
+      ? (pool.pickTypesConfig as PhasePickConfig[])
+      : null;
+    const matchById = new Map(allMatches.map((m) => [m.id, m]));
+
     const preset = getScoringPreset(pool.scoringPresetKey);
+
+    function scoreLegacy(pick: PickJson | null | undefined, res: { homeGoals: number; awayGoals: number }): number {
+      if (!pick) return 0;
+      const actual = outcomeFromScore(res.homeGoals, res.awayGoals);
+      if (pick.type === "OUTCOME") {
+        return pick.outcome === actual ? preset.outcomePoints : 0;
+      }
+      if (pick.type === "SCORE") {
+        const predicted = outcomeFromScore(pick.homeGoals!, pick.awayGoals!);
+        if (predicted !== actual) return 0;
+        let pts = preset.outcomePoints;
+        if (preset.allowScorePick && pick.homeGoals === res.homeGoals && pick.awayGoals === res.awayGoals) {
+          pts += preset.exactScoreBonus;
+        }
+        return pts;
+      }
+      return 0;
+    }
+
+    function scoreAdvanced(
+      pick: PickJson | null | undefined,
+      res: { homeGoals: number; awayGoals: number; homeGoals90?: number | null; awayGoals90?: number | null },
+      phaseConfig: PhasePickConfig,
+    ): number {
+      if (!pick || pick.type !== "SCORE" || typeof pick.homeGoals !== "number" || typeof pick.awayGoals !== "number") {
+        return scoreLegacy(pick, res);
+      }
+      if (!phaseConfig.requiresScore || !phaseConfig.matchPicks) {
+        return scoreLegacy(pick, res);
+      }
+      try {
+        const resultForScoring = {
+          homeGoals: phaseConfig.includeExtraTime ? res.homeGoals : (res.homeGoals90 ?? res.homeGoals),
+          awayGoals: phaseConfig.includeExtraTime ? res.awayGoals : (res.awayGoals90 ?? res.awayGoals),
+        };
+        return scoreMatchPick(
+          { homeGoals: pick.homeGoals, awayGoals: pick.awayGoals },
+          resultForScoring,
+          phaseConfig,
+        ).totalPoints;
+      } catch {
+        return scoreLegacy(pick, res);
+      }
+    }
+
+    // Calcular puntos por usuario
     const userPoints = new Map<string, number>();
     for (const pred of allPredictions) {
       const result = resultByMatchId.get(pred.matchId);
       if (!result) continue;
       const pick = typed<PickJson>(pred.pickJson);
-      const actualOutcomeForPred = outcomeFromScore(result.homeGoals, result.awayGoals);
-      let pts = 0;
-      if (pick?.type === "OUTCOME") {
-        if (pick.outcome === actualOutcomeForPred) pts = preset.outcomePoints;
-      } else if (pick?.type === "SCORE") {
-        const predicted = outcomeFromScore(pick.homeGoals!, pick.awayGoals!);
-        if (predicted === actualOutcomeForPred) {
-          pts = preset.outcomePoints;
-          if (preset.allowScorePick && pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
-            pts += preset.exactScoreBonus;
-          }
-        }
-      }
+      const predMatch = matchById.get(pred.matchId);
+      const phaseConfig = pickTypesConfig && predMatch
+        ? pickTypesConfig.find((p) => p.phaseId === predMatch.phaseId)
+        : null;
+
+      const pts = phaseConfig
+        ? scoreAdvanced(pick, result, phaseConfig)
+        : scoreLegacy(pick, result);
       userPoints.set(pred.userId, (userPoints.get(pred.userId) ?? 0) + pts);
     }
 
@@ -274,27 +328,18 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
       });
 
     // Calcular puntos ganados en este partido por usuario
-    const actualOutcome = outcomeFromScore(homeGoals, awayGoals);
+    const currentMatchResult = resultByMatchId.get(matchId) ?? { homeGoals, awayGoals };
+    const currentMatchPhaseConfig = pickTypesConfig
+      ? pickTypesConfig.find((p) => p.phaseId === match.phaseId)
+      : null;
 
     // Enviar emails
     const emailPromises = sortedMembers.map((member, idx) => {
       const pick = pickByUserId.get(member.userId);
-      let pointsEarned = 0;
-      if (pick) {
-        const pickJson = typed<PickJson>(pick.pickJson);
-        if (pickJson?.type === "OUTCOME" && pickJson.outcome === actualOutcome) {
-          pointsEarned = preset.outcomePoints;
-        } else if (pickJson?.type === "SCORE") {
-          const predicted = pickJson.homeGoals! > pickJson.awayGoals! ? "HOME" :
-                           pickJson.homeGoals! < pickJson.awayGoals! ? "AWAY" : "DRAW";
-          if (predicted === actualOutcome) {
-            pointsEarned = preset.outcomePoints;
-            if (preset.allowScorePick && pickJson.homeGoals === homeGoals && pickJson.awayGoals === awayGoals) {
-              pointsEarned += preset.exactScoreBonus;
-            }
-          }
-        }
-      }
+      const pickJson = pick ? typed<PickJson>(pick.pickJson) : null;
+      const pointsEarned = currentMatchPhaseConfig
+        ? scoreAdvanced(pickJson, currentMatchResult, currentMatchPhaseConfig)
+        : scoreLegacy(pickJson, currentMatchResult);
 
       return sendResultPublishedEmail({
         to: member.user.email,
