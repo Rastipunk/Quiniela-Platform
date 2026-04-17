@@ -49,46 +49,59 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
   };
 
   return (
-    <PoolWizardStepContainer
-      title={t("capacity.title", { defaultMessage: "Capacidad del pool" })}
-      subtitle={t("capacity.subtitle", {
-        defaultMessage: "Elige cuantos participantes puede tener tu pool.",
-      })}
-      icon="&#x1F465;"
-    >
-      {/* Pool name context */}
-      {state.poolName && (
-        <p style={{
-          textAlign: "center",
-          color: colors.textMuted,
-          fontSize: 14,
-          margin: "0 0 16px",
-        }}>
-          {t("capacity.yourPool", {
-            defaultMessage: "Tu pool: {name}",
-            name: state.poolName,
-          })}
-        </p>
-      )}
+    <>
+      <PoolWizardStepContainer
+        title={t("capacity.title", { defaultMessage: "Capacidad del pool" })}
+        subtitle={t("capacity.subtitle", {
+          defaultMessage: "Elige cuantos participantes puede tener tu pool.",
+        })}
+        icon="&#x1F465;"
+      >
+        {/* Pool name context */}
+        {state.poolName && (
+          <p style={{
+            textAlign: "center",
+            color: colors.textMuted,
+            fontSize: 14,
+            margin: "0 0 16px",
+          }}>
+            {t("capacity.yourPool", {
+              defaultMessage: "Tu pool: {name}",
+              name: state.poolName,
+            })}
+          </p>
+        )}
 
-      <CapacitySelector
-        type={poolType}
-        selectedCapacity={state.maxParticipants}
-        onSelect={(capacity) =>
-          dispatch({ type: "SET_FIELD", field: "maxParticipants", value: capacity })
-        }
-        mode="creation"
-        currency={currency}
-      />
+        <CapacitySelector
+          type={poolType}
+          selectedCapacity={state.maxParticipants}
+          onSelect={(capacity) =>
+            dispatch({ type: "SET_FIELD", field: "maxParticipants", value: capacity })
+          }
+          mode="creation"
+          currency={currency}
+        />
+      </PoolWizardStepContainer>
 
-      {/* CTA Buttons */}
-      <div style={{
-        marginTop: 24,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-      }}>
+      {/* Sticky CTA — stays visible on mobile matching other wizard steps */}
+      <div
+        style={{
+          position: "sticky",
+          bottom: 0,
+          zIndex: 20,
+          background: "var(--bg, #fff)",
+          borderTop: `1px solid ${colors.borderLight}`,
+          padding: isMobile ? "12px 16px" : "16px 24px",
+          maxWidth: 720,
+          margin: "16px auto 0",
+          width: "100%",
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
         {/* Navigation: Back + Primary CTA */}
         <div style={{
           display: "flex",
@@ -188,6 +201,6 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
           )
         )}
       </div>
-    </PoolWizardStepContainer>
+    </>
   );
 }
