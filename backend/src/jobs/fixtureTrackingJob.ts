@@ -29,6 +29,11 @@ const envInt = (key: string, fallback: number): number =>
 /** How many hours ahead to look for upcoming matches */
 const SCORES_TRACK_WINDOW_HOURS = envInt("SCORES_TRACK_WINDOW_HOURS", 24);
 
+/** Unresolved knockout team placeholders (see tournamentAdvancement). */
+function isPlaceholderTeamId(id: string): boolean {
+  return id.startsWith("W_") || id.startsWith("RU_") || id.startsWith("3rd_");
+}
+
 // ============================================================================
 // Job State
 // ============================================================================
@@ -131,6 +136,12 @@ async function runFixtureTracking(): Promise<void> {
 
         const kickoff = new Date(match.kickoffUtc);
         if (kickoff < windowStart || kickoff > windowEnd) continue;
+
+        // Skip knockout matches whose teams haven't been resolved yet by advancement.
+        // Placeholder IDs (W_A, RU_B, 3rd_POOL_*) can't be matched by the scraper.
+        if (isPlaceholderTeamId(match.homeTeamId) || isPlaceholderTeamId(match.awayTeamId)) {
+          continue;
+        }
 
         // Get team IDs: prefer mapping, fallback to dataJson
         const homeTeamId =

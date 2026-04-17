@@ -14,6 +14,7 @@ import { prisma } from "../db";
 import { syncNextPhaseFromApi } from "../services/adminInstanceService";
 import { sendAdminNotification } from "../lib/email";
 import { getSmartSyncService } from "../services/smartSync";
+import { isApiFootballEnabled } from "../services/apiFootball";
 
 // Every 12 hours: at 08:00 and 20:00 UTC (3:00 AM and 3:00 PM Colombia)
 const PHASE_SYNC_CRON = process.env.PHASE_SYNC_CRON || "0 8,20 * * *";
@@ -21,6 +22,14 @@ const PHASE_SYNC_CRON = process.env.PHASE_SYNC_CRON || "0 8,20 * * *";
 let scheduledTask: cron.ScheduledTask | null = null;
 
 async function runPhaseSyncCheck(): Promise<void> {
+  // When API-Football is disabled, knockout fixtures are resolved via
+  // instanceAdvancement (synthetic IDs + MatchExternalMapping). Attempting to
+  // sync from API-Football would just error out, so skip cleanly.
+  if (!isApiFootballEnabled()) {
+    console.log("[PhaseSyncJob] API-Football disabled — skipping phase sync");
+    return;
+  }
+
   try {
     const pending = await prisma.pendingPhaseSync.findMany({
       where: { status: "PENDING" },

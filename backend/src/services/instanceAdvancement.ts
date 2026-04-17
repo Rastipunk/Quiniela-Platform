@@ -6,6 +6,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
+import { generateSyntheticFixtureId } from "../lib/syntheticFixtureId";
 import {
   calculateGroupStandings,
   determineQualifiers,
@@ -25,7 +26,7 @@ type AutoAdvanceValidationResult = {
 
 type TemplateData = {
   meta: any;
-  teams: Array<{ id: string; name: string; code?: string; shortName?: string; groupId?: string }>;
+  teams: Array<{ id: string; name: string; code?: string; shortName?: string; groupId?: string; apiFootballId?: number }>;
   phases: Array<{ id: string; name: string; type: string; order: number; config?: any; twoLegged?: boolean; legNumber?: number }>;
   matches: Array<{
     id: string;
@@ -249,6 +250,58 @@ export async function calculateAllGroupStandings(
 }
 
 /**
+ * After knockout advancement resolves placeholder teams into real ones, this
+ * helper makes the resolution visible to the scores tracking pipeline:
+ *
+ * 1. Upsert a MatchExternalMapping for each resolved match with a synthetic
+ *    fixtureId (range 900000+) and the teams' apiFootballIds when available.
+ *    This is what fixtureTrackingJob needs to find and register matches.
+ * 2. Mirror the resolved matches into instance.dataJson so fixtureTrackingJob
+ *    reads the real team names instead of placeholders (W_A, RU_B, 3rd_POOL_*).
+ *
+ * Both steps are idempotent: the upsert is keyed on (instanceId, internalMatchId)
+ * and the dataJson write is deterministic given the same advancement inputs.
+ */
+async function persistResolvedKnockoutFixtures(
+  instanceId: string,
+  data: TemplateData,
+  updatedMatches: TemplateData["matches"],
+  resolvedMatches: Array<{ matchId: string; homeTeamId: string; awayTeamId: string }>,
+): Promise<void> {
+  for (const rm of resolvedMatches) {
+    const homeTeam = data.teams.find((t) => t.id === rm.homeTeamId);
+    const awayTeam = data.teams.find((t) => t.id === rm.awayTeamId);
+    const syntheticId = generateSyntheticFixtureId(instanceId, rm.matchId);
+
+    await prisma.matchExternalMapping.upsert({
+      where: {
+        tournamentInstanceId_internalMatchId: {
+          tournamentInstanceId: instanceId,
+          internalMatchId: rm.matchId,
+        },
+      },
+      create: {
+        tournamentInstanceId: instanceId,
+        internalMatchId: rm.matchId,
+        apiFootballFixtureId: syntheticId,
+        apiFootballHomeTeamId: homeTeam?.apiFootballId ?? null,
+        apiFootballAwayTeamId: awayTeam?.apiFootballId ?? null,
+      },
+      update: {
+        apiFootballHomeTeamId: homeTeam?.apiFootballId ?? null,
+        apiFootballAwayTeamId: awayTeam?.apiFootballId ?? null,
+      },
+    });
+  }
+
+  const updatedData = { ...data, matches: updatedMatches };
+  await prisma.tournamentInstance.update({
+    where: { id: instanceId },
+    data: { dataJson: updatedData as Prisma.InputJsonValue },
+  });
+}
+
+/**
  * Avanza el torneo de la fase de grupos al Round of 32.
  *
  * Esta función:
@@ -327,6 +380,15 @@ export async function advanceToRoundOf32(instanceId: string, poolId?: string): P
       fixtureSnapshot: updatedData as Prisma.InputJsonValue,
     },
   });
+
+  // 8. Register resolved fixtures with the scraper pipeline (mappings + instance.dataJson).
+  //    Idempotent: safe to run across multiple pools of the same instance.
+  await persistResolvedKnockoutFixtures(
+    pool.tournamentInstanceId,
+    data,
+    updatedMatches,
+    resolvedMatches,
+  );
 
   return {
     standings: allStandings,
@@ -481,6 +543,15 @@ export async function advanceKnockoutPhase(
       fixtureSnapshot: updatedData as Prisma.InputJsonValue,
     },
   });
+
+  // 10. Register resolved fixtures with the scraper pipeline (mappings + instance.dataJson).
+  //     Idempotent: safe to run across multiple pools of the same instance.
+  await persistResolvedKnockoutFixtures(
+    pool.tournamentInstanceId,
+    data,
+    updatedMatches,
+    resolvedMatches,
+  );
 
   return { resolvedMatches };
 }
