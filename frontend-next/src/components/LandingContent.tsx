@@ -37,9 +37,12 @@ export function LandingContent() {
     };
   }, [WORLD_CUP_KICKOFF]);
 
-  const [timeLeft, setTimeLeft] = useState(calcTimeLeft);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [countdownReady, setCountdownReady] = useState(false);
 
   useEffect(() => {
+    setTimeLeft(calcTimeLeft());
+    setCountdownReady(true);
     const timer = setInterval(() => setTimeLeft(calcTimeLeft()), 1000);
     return () => clearInterval(timer);
   }, [calcTimeLeft]);
@@ -284,7 +287,7 @@ export function LandingContent() {
                         color: "white",
                       }}
                     >
-                      {String(timeLeft[unit]).padStart(2, "0")}
+                      {countdownReady ? String(timeLeft[unit]).padStart(2, "0") : "--"}
                     </span>
                   </div>
                   <span

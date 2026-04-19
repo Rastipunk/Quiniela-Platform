@@ -13,11 +13,22 @@ declare global {
 }
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
+const USER_DATA_KEY = "p4a_meta_ud";
 
 let initialized = false;
 
+function getStoredUserData(): Record<string, string> | undefined {
+  try {
+    const raw = localStorage.getItem(USER_DATA_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Inject the Meta Pixel base code and call fbq('init').
+ * Includes stored Advanced Matching data if available.
  * Does NOT fire PageView — call trackMetaEvent('PageView') separately.
  */
 export function initMetaPixel(): void {
@@ -30,7 +41,7 @@ export function initMetaPixel(): void {
     n.callMethod ? n.callMethod(...args) : n.queue.push(args);
   } as unknown as Window["fbq"] & { callMethod?: Function; queue: unknown[][]; loaded: boolean; version: string; push: Function });
   const f = window._fbq;
-  if (f && f !== n) return; // another pixel instance already loaded
+  if (f && f !== n) return;
   (n as any).push = n;
   (n as any).loaded = true;
   (n as any).version = "2.0";
@@ -42,7 +53,12 @@ export function initMetaPixel(): void {
   const first = document.getElementsByTagName("script")[0];
   first?.parentNode?.insertBefore(script, first);
 
-  window.fbq("init", PIXEL_ID);
+  const storedUserData = getStoredUserData();
+  if (storedUserData) {
+    window.fbq("init", PIXEL_ID, storedUserData);
+  } else {
+    window.fbq("init", PIXEL_ID);
+  }
   window.fbq("consent", "grant");
   initialized = true;
 }
@@ -70,8 +86,9 @@ async function sha256(value: string): Promise<string> {
 }
 
 /**
- * Send hashed user data for Advanced Matching.
- * Call after login/register when user data is available.
+ * Hash and store user data for Advanced Matching.
+ * Data is persisted in localStorage and included in the next fbq('init')
+ * call (on page reload), avoiding the duplicate pixel warning.
  */
 export async function setMetaUserData(data: {
   email?: string;
@@ -82,7 +99,7 @@ export async function setMetaUserData(data: {
   dateOfBirth?: string;
   externalId?: string;
 }): Promise<void> {
-  if (typeof window === "undefined" || !window.fbq || !PIXEL_ID) return;
+  if (typeof window === "undefined" || !PIXEL_ID) return;
 
   const userData: Record<string, string> = {};
   if (data.email) userData.em = await sha256(data.email);
@@ -93,7 +110,9 @@ export async function setMetaUserData(data: {
   if (data.dateOfBirth) userData.db = data.dateOfBirth.replace(/-/g, "");
   if (data.externalId) userData.external_id = await sha256(data.externalId);
 
-  window.fbq("init", PIXEL_ID, userData);
+  try {
+    localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+  } catch { /* localStorage full or blocked */ }
 }
 
 /**
