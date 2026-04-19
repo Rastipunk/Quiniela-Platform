@@ -11,7 +11,7 @@ import {
 } from "../services/poolStateMachine";
 import { sendPoolInvitationEmail, sendPoolFullNotificationEmail } from "../lib/email";
 import { ensurePoolCapacity } from "../lib/poolCapacity";
-import { TOKEN_EXPIRY_MS } from "../lib/constants";
+import { TOKEN_EXPIRY_MS, countryToLocale } from "../lib/constants";
 import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
 
 export const poolInvitesRouter = Router();
@@ -109,10 +109,10 @@ poolInvitesRouter.post("/:poolId/send-invite-email", async (req, res) => {
     return sendBadRequest(res, "INVALID_CODE", { message: "Invalid invite code for this pool" });
   }
 
-  // Buscar si el email corresponde a un usuario existente (para respetar preferencias)
+  // Buscar si el email corresponde a un usuario existente (para respetar preferencias + locale)
   const targetUser = await prisma.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: { id: true, country: true },
   });
 
   // Enviar email de invitación
@@ -123,6 +123,7 @@ poolInvitesRouter.post("/:poolId/send-invite-email", async (req, res) => {
     poolName: pool.name,
     inviteCode,
     poolDescription: pool.description ?? undefined,
+    locale: countryToLocale(targetUser?.country),
   });
 
   if (!emailResult.success && !emailResult.skipped) {

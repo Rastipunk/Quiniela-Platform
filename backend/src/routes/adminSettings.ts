@@ -19,6 +19,7 @@ import {
   sendResultPublishedEmail,
   sendPoolCompletedEmail,
 } from "../lib/email";
+import { countryToLocale } from "../lib/constants";
 import {
   processDeadlineReminders,
   getDeadlineReminderStats,
@@ -227,8 +228,11 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
     // Obtener datos del admin para usar como ejemplo
     const adminUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { displayName: true, email: true },
+      select: { displayName: true, email: true, country: true },
     });
+
+    // Allow locale override via query param for testing (e.g. ?locale=en)
+    const locale = (req.query.locale as string) || countryToLocale(adminUser?.country);
 
     let result;
     const testPoolName = "Quiniela Mundial 2026 (PRUEBA)";
@@ -238,8 +242,9 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
       case "welcome":
         result = await sendWelcomeEmail({
           to,
-          userId, // Usa el userId del admin para bypasear checks
+          userId,
           displayName: adminUser?.displayName || "Usuario de Prueba",
+          locale,
         });
         break;
 
@@ -251,6 +256,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
           poolName: testPoolName,
           inviteCode: "TEST123",
           poolDescription: "Esta es una invitación de prueba para verificar el template de email.",
+          locale,
         });
         break;
 
@@ -263,6 +269,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
           matchesCount: 3,
           deadlineTime: "Hoy a las 8:00 PM",
           poolId: testPoolId,
+          locale,
         });
         break;
 
@@ -278,6 +285,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
           currentRank: 3,
           totalParticipants: 15,
           poolId: testPoolId,
+          locale,
         });
         break;
 
@@ -292,6 +300,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
           totalParticipants: 15,
           exactScores: 5,
           poolId: testPoolId,
+          locale,
         });
         break;
 

@@ -24,7 +24,7 @@ import { transitionToActive } from "./poolStateMachine";
 import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "../routes/legal";
 import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
-import { TOKEN_EXPIRY_MS, CRYPTO_BYTES } from "../lib/constants";
+import { TOKEN_EXPIRY_MS, CRYPTO_BYTES, countryToLocale } from "../lib/constants";
 import { serializeUser } from "../lib/serializers";
 import type { SerializedUser } from "../lib/serializers";
 import { fireAndForget } from "../lib/asyncHelpers";
@@ -231,6 +231,7 @@ export async function requestPasswordReset(email: string, ctx: AuditContext): Pr
 
   const emailResult = await sendPasswordResetEmail({
     to: user.email, username: user.username, resetToken,
+    locale: countryToLocale(user.country),
   });
 
   if (!emailResult.success) {
@@ -363,6 +364,7 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
 }
 
 // -- Verify Email --
+
 
 export type VerifyEmailResult = { verified: boolean; alreadyVerified: boolean };
 
@@ -579,7 +581,7 @@ export async function activateCorporateAccount(
 export async function resendVerification(userId: string, ctx: AuditContext): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, displayName: true, emailVerified: true },
+    select: { id: true, email: true, displayName: true, emailVerified: true, country: true },
   });
 
   if (!user) throw new ServiceError("USER_NOT_FOUND", 404);
@@ -595,6 +597,7 @@ export async function resendVerification(userId: string, ctx: AuditContext): Pro
 
   const emailResult = await sendVerificationEmail({
     to: user.email, displayName: user.displayName, verificationToken,
+    locale: countryToLocale(user.country),
   });
 
   if (!emailResult.success) {

@@ -63,7 +63,7 @@ export function getSupportEmail(locale: string = "es"): string {
 // WRAPPER BASE - Envuelve todo el contenido del email
 // =========================================================================
 
-export function getEmailWrapper(content: string, preheader?: string): string {
+export function getEmailWrapper(content: string, preheader?: string, locale: string = "es"): string {
   const preheaderHtml = preheader
     ? `<!--[if !mso]><!-->
     <span style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
@@ -72,9 +72,17 @@ export function getEmailWrapper(content: string, preheader?: string): string {
     <!--<![endif]-->`
     : "";
 
+  const footerI18n: Record<string, { tagline: string; terms: string; privacy: string; prefs: string }> = {
+    es: { tagline: "Tu plataforma de pronósticos deportivos", terms: "Términos", privacy: "Privacidad", prefs: "Preferencias de email" },
+    en: { tagline: "Your sports prediction platform", terms: "Terms", privacy: "Privacy", prefs: "Email preferences" },
+    pt: { tagline: "Sua plataforma de palpites esportivos", terms: "Termos", privacy: "Privacidade", prefs: "Preferências de email" },
+  };
+  const ft = footerI18n[locale] ?? footerI18n.en!;
+  const lp = locale === "es" ? "" : `/${locale}`;
+
   return `
 <!DOCTYPE html>
-<html lang="es">
+<html lang="${locale}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -141,18 +149,18 @@ export function getEmailWrapper(content: string, preheader?: string): string {
                 <tr>
                   <td align="center" style="padding-bottom:16px;">
                     <p style="margin:0;font-size:14px;color:${BRAND.mutedColor};">
-                      ${BRAND.name} - Tu plataforma de quinielas
+                      ${BRAND.name} - ${ft.tagline}
                     </p>
                   </td>
                 </tr>
                 <tr>
                   <td align="center">
                     <p style="margin:0;font-size:12px;color:${BRAND.mutedColor};">
-                      <a href="${BRAND.baseUrl}/terms" style="color:${BRAND.mutedColor};text-decoration:underline;">Términos</a>
+                      <a href="${BRAND.baseUrl}${lp}/terms" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.terms}</a>
                       &nbsp;|&nbsp;
-                      <a href="${BRAND.baseUrl}/privacy" style="color:${BRAND.mutedColor};text-decoration:underline;">Privacidad</a>
+                      <a href="${BRAND.baseUrl}${lp}/privacy" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.privacy}</a>
                       &nbsp;|&nbsp;
-                      <a href="${BRAND.baseUrl}/profile" style="color:${BRAND.mutedColor};text-decoration:underline;">Preferencias de email</a>
+                      <a href="${BRAND.baseUrl}${lp}/profile" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.prefs}</a>
                     </p>
                   </td>
                 </tr>
@@ -223,41 +231,203 @@ function getStatBox(label: string, value: string, emoji?: string): string {
 }
 
 // =========================================================================
+// TEMPLATE: PASSWORD RESET
+// =========================================================================
+
+export interface PasswordResetEmailParams {
+  username: string;
+  resetUrl: string;
+  locale?: string;
+}
+
+export function getPasswordResetTemplate({ username, resetUrl, locale = "es" }: PasswordResetEmailParams): string {
+  const i18n: Record<string, {
+    heading: string; greeting: string; intro: string; cta: string;
+    altLabel: string; expiry: string; ignore: string; preheader: string;
+  }> = {
+    es: {
+      heading: "Recupera tu contraseña",
+      greeting: `Hola, @${username}`,
+      intro: "Recibimos una solicitud para restablecer tu contraseña. Si fuiste tú, haz clic en el botón de abajo para crear una nueva contraseña:",
+      cta: "Restablecer mi contraseña",
+      altLabel: "O copia y pega este enlace en tu navegador:",
+      expiry: "<strong>⏱️ Importante:</strong> Este enlace expira en <strong>1 hora</strong> por razones de seguridad.",
+      ignore: "Si no solicitaste este cambio, puedes ignorar este correo de forma segura. Tu contraseña permanecerá sin cambios.",
+      preheader: "Restablece tu contraseña de forma segura.",
+    },
+    en: {
+      heading: "Reset your password",
+      greeting: `Hi, @${username}`,
+      intro: "We received a request to reset your password. If this was you, click the button below to create a new password:",
+      cta: "Reset my password",
+      altLabel: "Or copy and paste this link in your browser:",
+      expiry: "<strong>⏱️ Important:</strong> This link expires in <strong>1 hour</strong> for security reasons.",
+      ignore: "If you didn't request this change, you can safely ignore this email. Your password will remain unchanged.",
+      preheader: "Reset your password securely.",
+    },
+    pt: {
+      heading: "Recupere sua senha",
+      greeting: `Olá, @${username}`,
+      intro: "Recebemos uma solicitação para redefinir sua senha. Se foi você, clique no botão abaixo para criar uma nova senha:",
+      cta: "Redefinir minha senha",
+      altLabel: "Ou copie e cole este link no seu navegador:",
+      expiry: "<strong>⏱️ Importante:</strong> Este link expira em <strong>1 hora</strong> por razões de segurança.",
+      ignore: "Se você não solicitou essa alteração, pode ignorar este e-mail com segurança. Sua senha permanecerá inalterada.",
+      preheader: "Redefina sua senha com segurança.",
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    <h3 style="margin:0 0 20px;color:#1a1a1a;font-size:20px;font-weight:600;">${t.greeting}</h3>
+    ${getParagraph(t.intro)}
+    ${getButton(t.cta, resetUrl)}
+    <p style="margin:30px 0 10px;color:${BRAND.mutedColor};font-size:14px;">${t.altLabel}</p>
+    <p style="margin:0 0 30px;padding:12px;background-color:#f7fafc;border-radius:6px;word-break:break-all;color:${BRAND.primaryLight};font-size:13px;font-family:monospace;">${resetUrl}</p>
+    ${getHighlightBox(`<p style="margin:0;font-size:14px;line-height:1.5;color:#742a2a;">${t.expiry}</p>`)}
+    <p style="margin:30px 0 0;color:${BRAND.mutedColor};font-size:14px;line-height:1.6;">${t.ignore}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
+// TEMPLATE: EMAIL VERIFICATION
+// =========================================================================
+
+export interface VerificationEmailParams {
+  displayName: string;
+  verificationUrl: string;
+  locale?: string;
+}
+
+export function getVerificationTemplate({ displayName, verificationUrl, locale = "es" }: VerificationEmailParams): string {
+  const i18n: Record<string, {
+    heading: string; greeting: string; intro: string; cta: string;
+    altLabel: string; expiry: string; ignore: string; preheader: string;
+  }> = {
+    es: {
+      heading: "Verifica tu email",
+      greeting: `¡Hola, ${displayName}!`,
+      intro: "Gracias por registrarte. Para completar tu registro y acceder a todas las funciones, necesitamos verificar tu dirección de email.",
+      cta: "✓ Verificar mi email",
+      altLabel: "O copia y pega este enlace en tu navegador:",
+      expiry: "<strong>⏱️ Importante:</strong> Este enlace expira en <strong>24 horas</strong>. Si no verificas tu email, algunas funciones estarán limitadas.",
+      ignore: "Si no creaste esta cuenta, puedes ignorar este correo de forma segura.",
+      preheader: "Verifica tu email para completar tu registro.",
+    },
+    en: {
+      heading: "Verify your email",
+      greeting: `Hi, ${displayName}!`,
+      intro: "Thanks for signing up. To complete your registration and access all features, we need to verify your email address.",
+      cta: "✓ Verify my email",
+      altLabel: "Or copy and paste this link in your browser:",
+      expiry: "<strong>⏱️ Important:</strong> This link expires in <strong>24 hours</strong>. If you don't verify your email, some features will be limited.",
+      ignore: "If you didn't create this account, you can safely ignore this email.",
+      preheader: "Verify your email to complete your registration.",
+    },
+    pt: {
+      heading: "Verifique seu email",
+      greeting: `Olá, ${displayName}!`,
+      intro: "Obrigado por se registrar. Para concluir seu cadastro e acessar todas as funcionalidades, precisamos verificar seu endereço de email.",
+      cta: "✓ Verificar meu email",
+      altLabel: "Ou copie e cole este link no seu navegador:",
+      expiry: "<strong>⏱️ Importante:</strong> Este link expira em <strong>24 horas</strong>. Se você não verificar seu email, algumas funcionalidades estarão limitadas.",
+      ignore: "Se você não criou esta conta, pode ignorar este e-mail com segurança.",
+      preheader: "Verifique seu email para concluir seu cadastro.",
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    <h3 style="margin:0 0 20px;color:#1a1a1a;font-size:20px;font-weight:600;">${t.greeting}</h3>
+    ${getParagraph(t.intro)}
+    ${getButton(t.cta, verificationUrl)}
+    <p style="margin:30px 0 10px;color:${BRAND.mutedColor};font-size:14px;">${t.altLabel}</p>
+    <p style="margin:0 0 30px;padding:12px;background-color:#f7fafc;border-radius:6px;word-break:break-all;color:${BRAND.primaryLight};font-size:13px;font-family:monospace;">${verificationUrl}</p>
+    ${getHighlightBox(`<p style="margin:0;font-size:14px;line-height:1.5;color:#2c5282;">${t.expiry}</p>`)}
+    <p style="margin:30px 0 0;color:${BRAND.mutedColor};font-size:14px;line-height:1.6;">${t.ignore}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
 // TEMPLATE: WELCOME EMAIL
 // =========================================================================
 
 export interface WelcomeEmailParams {
   displayName: string;
+  locale?: string;
 }
 
-export function getWelcomeTemplate({ displayName }: WelcomeEmailParams): string {
+export function getWelcomeTemplate({ displayName, locale = "es" }: WelcomeEmailParams): string {
+  const i18n: Record<string, {
+    heading: string; intro: string; canDo: string;
+    li1: string; li2: string; li3: string; li4: string;
+    cta: string; tip: string; footer: string; preheader: string;
+  }> = {
+    es: {
+      heading: `¡Bienvenido, ${displayName}!`,
+      intro: `Gracias por unirte a ${BRAND.name}. Estamos emocionados de tenerte con nosotros.`,
+      canDo: "Con tu nueva cuenta puedes:",
+      li1: "Crear tus propias quinielas y competir con amigos",
+      li2: "Unirte a quinielas existentes con un código de invitación",
+      li3: "Hacer pronósticos y seguir tu posición en el leaderboard",
+      li4: "Ganar puntos y presumir tu conocimiento deportivo",
+      cta: "Ir a mi Dashboard",
+      tip: "¿Primera vez? Te recomendamos explorar las quinielas públicas o crear tu propia quiniela privada para jugar con amigos.",
+      footer: "Si tienes alguna pregunta, no dudes en contactarnos.",
+      preheader: `¡Bienvenido a ${BRAND.name}! Tu cuenta está lista para hacer pronósticos.`,
+    },
+    en: {
+      heading: `Welcome, ${displayName}!`,
+      intro: `Thanks for joining ${BRAND.name}. We're excited to have you with us.`,
+      canDo: "With your new account you can:",
+      li1: "Create your own pools and compete with friends",
+      li2: "Join existing pools with an invite code",
+      li3: "Make predictions and track your leaderboard position",
+      li4: "Earn points and show off your sports knowledge",
+      cta: "Go to my Dashboard",
+      tip: "First time? We recommend exploring public pools or creating your own private pool to play with friends.",
+      footer: "If you have any questions, feel free to reach out.",
+      preheader: `Welcome to ${BRAND.name}! Your account is ready to make predictions.`,
+    },
+    pt: {
+      heading: `Bem-vindo, ${displayName}!`,
+      intro: `Obrigado por se juntar ao ${BRAND.name}. Estamos felizes em ter você conosco.`,
+      canDo: "Com sua nova conta você pode:",
+      li1: "Criar seus próprios bolões e competir com amigos",
+      li2: "Entrar em bolões existentes com um código de convite",
+      li3: "Fazer palpites e acompanhar sua posição no ranking",
+      li4: "Ganhar pontos e mostrar seu conhecimento esportivo",
+      cta: "Ir ao meu Dashboard",
+      tip: "Primeira vez? Recomendamos explorar os bolões públicos ou criar seu próprio bolão privado para jogar com amigos.",
+      footer: "Se tiver alguma dúvida, não hesite em nos contatar.",
+      preheader: `Bem-vindo ao ${BRAND.name}! Sua conta está pronta para fazer palpites.`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+  const lp = locale === "es" ? "" : `/${locale}`;
+
   const content = `
-    ${getHeading(`¡Bienvenido, ${displayName}!`)}
-
-    ${getParagraph(`Gracias por unirte a ${BRAND.name}. Estamos emocionados de tenerte con nosotros.`)}
-
-    ${getParagraph("Con tu nueva cuenta puedes:")}
-
+    ${getHeading(t.heading)}
+    ${getParagraph(t.intro)}
+    ${getParagraph(t.canDo)}
     <ul style="margin:0 0 24px;padding-left:24px;color:${BRAND.textColor};">
-      <li style="margin-bottom:8px;">Crear tus propias quinielas y competir con amigos</li>
-      <li style="margin-bottom:8px;">Unirte a quinielas existentes con un código de invitación</li>
-      <li style="margin-bottom:8px;">Hacer pronósticos y seguir tu posición en el leaderboard</li>
-      <li style="margin-bottom:8px;">Ganar puntos y presumir tu conocimiento deportivo</li>
+      <li style="margin-bottom:8px;">${t.li1}</li>
+      <li style="margin-bottom:8px;">${t.li2}</li>
+      <li style="margin-bottom:8px;">${t.li3}</li>
+      <li style="margin-bottom:8px;">${t.li4}</li>
     </ul>
-
-    ${getButton("Ir a mi Dashboard", `${BRAND.baseUrl}/dashboard`)}
-
-    ${getParagraph("¿Primera vez? Te recomendamos explorar las quinielas públicas o crear tu propia quiniela privada para jugar con amigos.")}
-
-    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">
-      Si tienes alguna pregunta, no dudes en contactarnos.
-    </p>
+    ${getButton(t.cta, `${BRAND.baseUrl}${lp}/dashboard`)}
+    ${getParagraph(t.tip)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.footer}</p>
   `;
 
-  return getEmailWrapper(
-    content,
-    `¡Bienvenido a ${BRAND.name}! Tu cuenta está lista para hacer pronósticos.`
-  );
+  return getEmailWrapper(content, t.preheader, locale);
 }
 
 // =========================================================================
@@ -269,43 +439,62 @@ export interface PoolInvitationEmailParams {
   poolName: string;
   inviteCode: string;
   poolDescription?: string;
+  locale?: string;
 }
 
 export function getPoolInvitationTemplate({
-  inviterName,
-  poolName,
-  inviteCode,
-  poolDescription,
+  inviterName, poolName, inviteCode, poolDescription, locale = "es",
 }: PoolInvitationEmailParams): string {
   const joinUrl = `${BRAND.baseUrl}/join/${inviteCode}`;
 
+  const i18n: Record<string, {
+    heading: string; intro: string; compete: string; cta: string;
+    codeAlt: string; safety: string; preheader: string;
+  }> = {
+    es: {
+      heading: "¡Te han invitado a una quiniela!",
+      intro: `<strong>${inviterName}</strong> te ha invitado a unirte a la quiniela:`,
+      compete: "Haz tus pronósticos y compite por el primer lugar del leaderboard.",
+      cta: "Unirme a la Quiniela",
+      codeAlt: `O usa este código de invitación: <strong style="color:${BRAND.primaryColor};">${inviteCode}</strong>`,
+      safety: `Si no conoces a ${inviterName} o no esperabas esta invitación, puedes ignorar este email.`,
+      preheader: `${inviterName} te invitó a la quiniela "${poolName}". ¡Únete y compite!`,
+    },
+    en: {
+      heading: "You've been invited to a pool!",
+      intro: `<strong>${inviterName}</strong> has invited you to join the pool:`,
+      compete: "Make your predictions and compete for the top of the leaderboard.",
+      cta: "Join the Pool",
+      codeAlt: `Or use this invite code: <strong style="color:${BRAND.primaryColor};">${inviteCode}</strong>`,
+      safety: `If you don't know ${inviterName} or weren't expecting this invitation, you can ignore this email.`,
+      preheader: `${inviterName} invited you to the pool "${poolName}". Join and compete!`,
+    },
+    pt: {
+      heading: "Você foi convidado para um bolão!",
+      intro: `<strong>${inviterName}</strong> convidou você para participar do bolão:`,
+      compete: "Faça seus palpites e dispute o primeiro lugar no ranking.",
+      cta: "Entrar no Bolão",
+      codeAlt: `Ou use este código de convite: <strong style="color:${BRAND.primaryColor};">${inviteCode}</strong>`,
+      safety: `Se você não conhece ${inviterName} ou não esperava este convite, pode ignorar este email.`,
+      preheader: `${inviterName} convidou você para o bolão "${poolName}". Entre e jogue!`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
   const content = `
-    ${getHeading("¡Te han invitado a una quiniela!")}
-
-    ${getParagraph(`<strong>${inviterName}</strong> te ha invitado a unirte a la quiniela:`)}
-
+    ${getHeading(t.heading)}
+    ${getParagraph(t.intro)}
     ${getHighlightBox(`
       <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:${BRAND.primaryColor};">${poolName}</p>
       ${poolDescription ? `<p style="margin:0;font-size:14px;color:${BRAND.mutedColor};">${poolDescription}</p>` : ""}
     `)}
-
-    ${getParagraph("Haz tus pronósticos y compite por el primer lugar del leaderboard.")}
-
-    ${getButton("Unirme a la Quiniela", joinUrl)}
-
-    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">
-      O usa este código de invitación: <strong style="color:${BRAND.primaryColor};">${inviteCode}</strong>
-    </p>
-
-    <p style="margin:16px 0 0;font-size:12px;color:${BRAND.mutedColor};">
-      Si no conoces a ${inviterName} o no esperabas esta invitación, puedes ignorar este email.
-    </p>
+    ${getParagraph(t.compete)}
+    ${getButton(t.cta, joinUrl)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.codeAlt}</p>
+    <p style="margin:16px 0 0;font-size:12px;color:${BRAND.mutedColor};">${t.safety}</p>
   `;
 
-  return getEmailWrapper(
-    content,
-    `${inviterName} te invitó a la quiniela "${poolName}". ¡Únete y compite!`
-  );
+  return getEmailWrapper(content, t.preheader, locale);
 }
 
 // =========================================================================
@@ -316,45 +505,66 @@ export interface DeadlineReminderEmailParams {
   displayName: string;
   poolName: string;
   matchesCount: number;
-  deadlineTime: string; // Formato legible: "Hoy a las 3:00 PM"
+  deadlineTime: string;
   poolId: string;
+  locale?: string;
 }
 
 export function getDeadlineReminderTemplate({
-  displayName,
-  poolName,
-  matchesCount,
-  deadlineTime,
-  poolId,
+  displayName, poolName, matchesCount, deadlineTime, poolId, locale = "es",
 }: DeadlineReminderEmailParams): string {
   const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const plural = matchesCount > 1;
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; pending: string;
+    warning: string; cta: string; optout: string; preheader: string;
+  }> = {
+    es: {
+      heading: "¡No olvides hacer tus pronósticos!",
+      greeting: `Hola ${displayName},`,
+      pending: `Tienes <strong>${matchesCount} partido${plural ? "s" : ""}</strong> sin pronóstico en la quiniela <strong>${poolName}</strong>.`,
+      warning: "Después del deadline no podrás modificar tus pronósticos para estos partidos.",
+      cta: "Hacer mis Pronósticos",
+      optout: "Puedes desactivar estos recordatorios desde tu perfil en Preferencias de Email.",
+      preheader: `Tienes ${matchesCount} partido${plural ? "s" : ""} pendiente${plural ? "s" : ""} en "${poolName}". Deadline: ${deadlineTime}`,
+    },
+    en: {
+      heading: "Don't forget to make your predictions!",
+      greeting: `Hi ${displayName},`,
+      pending: `You have <strong>${matchesCount} match${plural ? "es" : ""}</strong> without a prediction in the pool <strong>${poolName}</strong>.`,
+      warning: "After the deadline, you won't be able to modify your predictions for these matches.",
+      cta: "Make my Predictions",
+      optout: "You can disable these reminders from your profile in Email Preferences.",
+      preheader: `You have ${matchesCount} pending match${plural ? "es" : ""} in "${poolName}". Deadline: ${deadlineTime}`,
+    },
+    pt: {
+      heading: "Não esqueça de fazer seus palpites!",
+      greeting: `Olá ${displayName},`,
+      pending: `Você tem <strong>${matchesCount} partida${plural ? "s" : ""}</strong> sem palpite no bolão <strong>${poolName}</strong>.`,
+      warning: "Após o prazo, você não poderá modificar seus palpites para essas partidas.",
+      cta: "Fazer meus Palpites",
+      optout: "Você pode desativar esses lembretes no seu perfil em Preferências de Email.",
+      preheader: `Você tem ${matchesCount} partida${plural ? "s" : ""} pendente${plural ? "s" : ""} em "${poolName}". Prazo: ${deadlineTime}`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
 
   const content = `
-    ${getHeading("¡No olvides hacer tus pronósticos!")}
-
-    ${getParagraph(`Hola ${displayName},`)}
-
-    ${getParagraph(`Tienes <strong>${matchesCount} partido${matchesCount > 1 ? "s" : ""}</strong> sin pronóstico en la quiniela <strong>${poolName}</strong>.`)}
-
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.pending)}
     ${getHighlightBox(`
       <p style="margin:0;font-size:16px;color:${BRAND.textColor};">
         <strong>Deadline:</strong> ${deadlineTime}
       </p>
     `)}
-
-    ${getParagraph("Después del deadline no podrás modificar tus pronósticos para estos partidos.")}
-
-    ${getButton("Hacer mis Pronósticos", poolUrl)}
-
-    <p style="margin:24px 0 0;font-size:12px;color:${BRAND.mutedColor};">
-      Puedes desactivar estos recordatorios desde tu perfil en Preferencias de Email.
-    </p>
+    ${getParagraph(t.warning)}
+    ${getButton(t.cta, poolUrl)}
+    <p style="margin:24px 0 0;font-size:12px;color:${BRAND.mutedColor};">${t.optout}</p>
   `;
 
-  return getEmailWrapper(
-    content,
-    `Tienes ${matchesCount} partido${matchesCount > 1 ? "s" : ""} pendiente${matchesCount > 1 ? "s" : ""} en "${poolName}". Deadline: ${deadlineTime}`
-  );
+  return getEmailWrapper(content, t.preheader, locale);
 }
 
 // =========================================================================
@@ -364,60 +574,80 @@ export function getDeadlineReminderTemplate({
 export interface ResultPublishedEmailParams {
   displayName: string;
   poolName: string;
-  matchDescription: string; // "México vs Argentina"
-  result: string; // "2 - 1"
+  matchDescription: string;
+  result: string;
   pointsEarned: number;
   currentRank: number;
   totalParticipants: number;
   poolId: string;
+  locale?: string;
 }
 
 export function getResultPublishedTemplate({
-  displayName,
-  poolName,
-  matchDescription,
-  result,
-  pointsEarned,
-  currentRank,
-  totalParticipants,
-  poolId,
+  displayName, poolName, matchDescription, result,
+  pointsEarned, currentRank, totalParticipants, poolId, locale = "es",
 }: ResultPublishedEmailParams): string {
   const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
-
   const pointsEmoji = pointsEarned > 0 ? "🎉" : "😅";
   const rankEmoji = currentRank <= 3 ? "🏆" : "📊";
 
+  const i18n: Record<string, {
+    heading: string; greeting: string; intro: string;
+    points: string; rank: string; cta: string; optout: string; preheader: string;
+  }> = {
+    es: {
+      heading: "¡Resultado publicado!",
+      greeting: `Hola ${displayName},`,
+      intro: `Se ha publicado el resultado de un partido en <strong>${poolName}</strong>:`,
+      points: "Puntos ganados",
+      rank: "Tu posición",
+      cta: "Ver Leaderboard",
+      optout: "Puedes desactivar estas notificaciones desde tu perfil en Preferencias de Email.",
+      preheader: `${matchDescription}: ${result}. Ganaste ${pointsEarned} puntos. Posición actual: #${currentRank}`,
+    },
+    en: {
+      heading: "Result published!",
+      greeting: `Hi ${displayName},`,
+      intro: `A match result has been published in <strong>${poolName}</strong>:`,
+      points: "Points earned",
+      rank: "Your position",
+      cta: "View Leaderboard",
+      optout: "You can disable these notifications from your profile in Email Preferences.",
+      preheader: `${matchDescription}: ${result}. You earned ${pointsEarned} points. Current position: #${currentRank}`,
+    },
+    pt: {
+      heading: "Resultado publicado!",
+      greeting: `Olá ${displayName},`,
+      intro: `O resultado de uma partida foi publicado em <strong>${poolName}</strong>:`,
+      points: "Pontos ganhos",
+      rank: "Sua posição",
+      cta: "Ver Ranking",
+      optout: "Você pode desativar estas notificações no seu perfil em Preferências de Email.",
+      preheader: `${matchDescription}: ${result}. Você ganhou ${pointsEarned} pontos. Posição atual: #${currentRank}`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
   const content = `
-    ${getHeading("¡Resultado publicado!")}
-
-    ${getParagraph(`Hola ${displayName},`)}
-
-    ${getParagraph(`Se ha publicado el resultado de un partido en <strong>${poolName}</strong>:`)}
-
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.intro)}
     ${getHighlightBox(`
       <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:${BRAND.textColor};">${matchDescription}</p>
       <p style="margin:0;font-size:32px;font-weight:700;color:${BRAND.primaryColor};">${result}</p>
     `)}
-
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
       <tr>
-        ${getStatBox("Puntos ganados", `${pointsEarned}`, pointsEmoji)}
+        ${getStatBox(t.points, `${pointsEarned}`, pointsEmoji)}
         <td width="16"></td>
-        ${getStatBox("Tu posición", `${currentRank}/${totalParticipants}`, rankEmoji)}
+        ${getStatBox(t.rank, `${currentRank}/${totalParticipants}`, rankEmoji)}
       </tr>
     </table>
-
-    ${getButton("Ver Leaderboard", poolUrl)}
-
-    <p style="margin:24px 0 0;font-size:12px;color:${BRAND.mutedColor};">
-      Puedes desactivar estas notificaciones desde tu perfil en Preferencias de Email.
-    </p>
+    ${getButton(t.cta, poolUrl)}
+    <p style="margin:24px 0 0;font-size:12px;color:${BRAND.mutedColor};">${t.optout}</p>
   `;
 
-  return getEmailWrapper(
-    content,
-    `${matchDescription}: ${result}. Ganaste ${pointsEarned} puntos. Posición actual: #${currentRank}`
-  );
+  return getEmailWrapper(content, t.preheader, locale);
 }
 
 // =========================================================================
@@ -432,72 +662,81 @@ export interface PoolCompletedEmailParams {
   totalParticipants: number;
   exactScores: number;
   poolId: string;
+  locale?: string;
 }
 
 export function getPoolCompletedTemplate({
-  displayName,
-  poolName,
-  finalRank,
-  totalPoints,
-  totalParticipants,
-  exactScores,
-  poolId,
+  displayName, poolName, finalRank, totalPoints,
+  totalParticipants, exactScores, poolId, locale = "es",
 }: PoolCompletedEmailParams): string {
   const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const lp = locale === "es" ? "" : `/${locale}`;
 
-  // Mensajes personalizados según posición
-  let congratsMessage: string;
-  let emoji: string;
+  const congrats: Record<string, Record<string, { msg: string; emoji: string }>> = {
+    es: { "1": { msg: "¡Felicidades, campeón! Dominaste esta quiniela de principio a fin.", emoji: "🏆" }, "2": { msg: "¡Increíble segundo lugar! Estuviste muy cerca de la cima.", emoji: "🥈" }, "3": { msg: "¡Excelente tercer lugar! Subiste al podio.", emoji: "🥉" }, top: { msg: "¡Gran desempeño! Terminaste en el top 25%.", emoji: "⭐" }, other: { msg: "¡Gracias por participar! Cada quiniela es una nueva oportunidad.", emoji: "🎮" } },
+    en: { "1": { msg: "Congratulations, champion! You dominated this pool from start to finish.", emoji: "🏆" }, "2": { msg: "Incredible second place! You were so close to the top.", emoji: "🥈" }, "3": { msg: "Excellent third place! You made it to the podium.", emoji: "🥉" }, top: { msg: "Great performance! You finished in the top 25%.", emoji: "⭐" }, other: { msg: "Thanks for playing! Every pool is a new opportunity.", emoji: "🎮" } },
+    pt: { "1": { msg: "Parabéns, campeão! Você dominou este bolão do início ao fim.", emoji: "🏆" }, "2": { msg: "Incrível segundo lugar! Você chegou muito perto do topo.", emoji: "🥈" }, "3": { msg: "Excelente terceiro lugar! Você subiu ao pódio.", emoji: "🥉" }, top: { msg: "Ótimo desempenho! Você terminou no top 25%.", emoji: "⭐" }, other: { msg: "Obrigado por participar! Cada bolão é uma nova oportunidade.", emoji: "🎮" } },
+  };
 
-  if (finalRank === 1) {
-    congratsMessage = "¡Felicidades, campeón! Dominaste esta quiniela de principio a fin.";
-    emoji = "🏆";
-  } else if (finalRank === 2) {
-    congratsMessage = "¡Increíble segundo lugar! Estuviste muy cerca de la cima.";
-    emoji = "🥈";
-  } else if (finalRank === 3) {
-    congratsMessage = "¡Excelente tercer lugar! Subiste al podio.";
-    emoji = "🥉";
-  } else if (finalRank <= Math.ceil(totalParticipants * 0.25)) {
-    congratsMessage = "¡Gran desempeño! Terminaste en el top 25%.";
-    emoji = "⭐";
-  } else {
-    congratsMessage = "¡Gracias por participar! Cada quiniela es una nueva oportunidad.";
-    emoji = "🎮";
-  }
+  const loc = congrats[locale] ?? congrats.en!;
+  const rank = finalRank <= 3 ? String(finalRank) : finalRank <= Math.ceil(totalParticipants * 0.25) ? "top" : "other";
+  const { msg: congratsMessage, emoji } = loc[rank]!;
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; ended: string;
+    rankLabel: string; pointsLabel: string; exactLabel: string;
+    ctaResults: string; rematch: string; ctaExplore: string; preheader: string;
+  }> = {
+    es: {
+      heading: `${emoji} ¡Quiniela finalizada!`, greeting: `Hola ${displayName},`,
+      ended: `La quiniela <strong>${poolName}</strong> ha terminado.`,
+      rankLabel: "Posición final", pointsLabel: "Puntos totales", exactLabel: "Marcadores exactos",
+      ctaResults: "Ver Resultados Finales",
+      rematch: "¿Listo para la revancha? Crea tu propia quiniela o únete a una nueva.",
+      ctaExplore: "Explorar Quinielas",
+      preheader: `"${poolName}" terminó. Posición final: #${finalRank} de ${totalParticipants} con ${totalPoints} puntos.`,
+    },
+    en: {
+      heading: `${emoji} Pool completed!`, greeting: `Hi ${displayName},`,
+      ended: `The pool <strong>${poolName}</strong> has ended.`,
+      rankLabel: "Final position", pointsLabel: "Total points", exactLabel: "Exact scores",
+      ctaResults: "View Final Results",
+      rematch: "Ready for a rematch? Create your own pool or join a new one.",
+      ctaExplore: "Explore Pools",
+      preheader: `"${poolName}" ended. Final position: #${finalRank} of ${totalParticipants} with ${totalPoints} points.`,
+    },
+    pt: {
+      heading: `${emoji} Bolão finalizado!`, greeting: `Olá ${displayName},`,
+      ended: `O bolão <strong>${poolName}</strong> terminou.`,
+      rankLabel: "Posição final", pointsLabel: "Pontos totais", exactLabel: "Placares exatos",
+      ctaResults: "Ver Resultados Finais",
+      rematch: "Pronto para a revanche? Crie seu próprio bolão ou entre em um novo.",
+      ctaExplore: "Explorar Bolões",
+      preheader: `"${poolName}" terminou. Posição final: #${finalRank} de ${totalParticipants} com ${totalPoints} pontos.`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
 
   const content = `
-    ${getHeading(`${emoji} ¡Quiniela finalizada!`)}
-
-    ${getParagraph(`Hola ${displayName},`)}
-
-    ${getParagraph(`La quiniela <strong>${poolName}</strong> ha terminado.`)}
-
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.ended)}
     ${getParagraph(congratsMessage)}
-
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
       <tr>
-        ${getStatBox("Posición final", `#${finalRank}`, finalRank <= 3 ? "🏆" : undefined)}
+        ${getStatBox(t.rankLabel, `#${finalRank}`, finalRank <= 3 ? "🏆" : undefined)}
         <td width="12"></td>
-        ${getStatBox("Puntos totales", `${totalPoints}`, "📊")}
+        ${getStatBox(t.pointsLabel, `${totalPoints}`, "📊")}
         <td width="12"></td>
-        ${getStatBox("Marcadores exactos", `${exactScores}`, "🎯")}
+        ${getStatBox(t.exactLabel, `${exactScores}`, "🎯")}
       </tr>
     </table>
-
-    ${getButton("Ver Resultados Finales", poolUrl)}
-
-    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">
-      ¿Listo para la revancha? Crea tu propia quiniela o únete a una nueva.
-    </p>
-
-    ${getButton("Explorar Quinielas", `${BRAND.baseUrl}/dashboard`, false)}
+    ${getButton(t.ctaResults, poolUrl)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.rematch}</p>
+    ${getButton(t.ctaExplore, `${BRAND.baseUrl}${lp}/dashboard`, false)}
   `;
 
-  return getEmailWrapper(
-    content,
-    `"${poolName}" terminó. Posición final: #${finalRank} de ${totalParticipants} con ${totalPoints} puntos.`
-  );
+  return getEmailWrapper(content, t.preheader, locale);
 }
 
 // =========================================================================

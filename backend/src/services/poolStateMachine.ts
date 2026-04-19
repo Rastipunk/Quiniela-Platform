@@ -9,6 +9,7 @@
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { sendPoolCompletedEmail } from "../lib/email";
+import { countryToLocale } from "../lib/constants";
 import { extractMatches, typed, type PickJson } from "../lib/fixture";
 
 export type PoolStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
@@ -122,7 +123,7 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
       const members = await prisma.poolMember.findMany({
         where: { poolId, status: "ACTIVE" },
         include: {
-          user: { select: { id: true, email: true, displayName: true } }
+          user: { select: { id: true, email: true, displayName: true, country: true } }
         },
         orderBy: { joinedAtUtc: "asc" }
       });
@@ -216,6 +217,7 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
           totalParticipants: sortedMembers.length,
           totalPoints: member.points,
           exactScores: userExactScores.get(member.userId) ?? 0,
+          locale: countryToLocale(member.user.country),
         }).catch((err) => {
           console.error("Error sending pool completed email:", err instanceof Error ? err.message : String(err));
         })

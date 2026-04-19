@@ -14,6 +14,8 @@ import { SUPPORTED_LOCALES, DEFAULT_LOCALE, countryToLocale, type SupportedLocal
 import { BRAND } from "./brand";
 import { generateUnsubscribeToken, buildUnsubscribeUrl } from "./unsubscribe";
 import {
+  getPasswordResetTemplate,
+  getVerificationTemplate,
   getWelcomeTemplate,
   getPoolInvitationTemplate,
   getDeadlineReminderTemplate,
@@ -23,6 +25,8 @@ import {
   getCorporateActivationTemplate,
   getPredictionUpdateTemplate,
   getPaymentReceiptTemplate,
+  PasswordResetEmailParams,
+  VerificationEmailParams,
   WelcomeEmailParams,
   PoolInvitationEmailParams,
   DeadlineReminderEmailParams,
@@ -206,112 +210,32 @@ export async function isEmailEnabled(
 }
 
 /**
- * Envía un email de reset de password
+ * Envía un email de reset de password (transaccional — siempre se envía)
  */
 export async function sendPasswordResetEmail(params: {
   to: string;
   username: string;
   resetToken: string;
+  locale?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
+  const loc = params.locale || "en";
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${params.resetToken}`;
+
+  const subjects: Record<string, string> = {
+    es: `Recupera tu contraseña — ${APP_NAME}`,
+    en: `Reset your password — ${APP_NAME}`,
+    pt: `Recupere sua senha — ${APP_NAME}`,
+  };
 
   try {
     const { data, error } = await ready.client.emails.send({
       from: ready.from,
       to: params.to,
-      subject: "Recupera tu contraseña",
-      html: `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Recupera tu contraseña</title>
-        </head>
-        <body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f4f4; padding: 40px 0;">
-            <tr>
-              <td align="center">
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                  <!-- Header -->
-                  <tr>
-                    <td style="padding: 40px 40px 20px; text-align: center; background: ${BRAND.gradient}; border-radius: 12px 12px 0 0;">
-                      <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
-                        ${APP_NAME}
-                      </h1>
-                    </td>
-                  </tr>
-
-                  <!-- Content -->
-                  <tr>
-                    <td style="padding: 40px;">
-                      <h2 style="margin: 0 0 20px; color: #1a1a1a; font-size: 24px; font-weight: 600;">
-                        Hola, @${params.username}
-                      </h2>
-                      <p style="margin: 0 0 20px; color: #4a5568; font-size: 16px; line-height: 1.6;">
-                        Recibimos una solicitud para restablecer tu contraseña. Si fuiste tú, haz clic en el botón de abajo para crear una nueva contraseña:
-                      </p>
-
-                      <!-- Button -->
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
-                        <tr>
-                          <td align="center">
-                            <a href="${resetUrl}" style="display: inline-block; padding: 16px 40px; background: ${BRAND.gradient}; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px ${BRAND.primaryLight}66; transition: transform 0.2s;">
-                              Restablecer mi contraseña
-                            </a>
-                          </td>
-                        </tr>
-                      </table>
-
-                      <!-- Alternative Link -->
-                      <p style="margin: 30px 0 10px; color: #718096; font-size: 14px;">
-                        O copia y pega este enlace en tu navegador:
-                      </p>
-                      <p style="margin: 0 0 30px; padding: 12px; background-color: #f7fafc; border-radius: 6px; word-break: break-all; color: ${BRAND.primaryLight}; font-size: 13px; font-family: monospace;">
-                        ${resetUrl}
-                      </p>
-
-                      <!-- Warning Box -->
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0; background-color: #fff5f5; border-left: 4px solid #f56565; border-radius: 6px;">
-                        <tr>
-                          <td style="padding: 16px;">
-                            <p style="margin: 0; color: #742a2a; font-size: 14px; line-height: 1.5;">
-                              <strong>⏱️ Importante:</strong> Este enlace expira en <strong>1 hora</strong> por razones de seguridad.
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-
-                      <p style="margin: 30px 0 0; color: #718096; font-size: 14px; line-height: 1.6;">
-                        Si no solicitaste este cambio, puedes ignorar este correo de forma segura. Tu contraseña permanecerá sin cambios.
-                      </p>
-                    </td>
-                  </tr>
-
-                  <!-- Footer -->
-                  <tr>
-                    <td style="padding: 30px 40px; background-color: #f7fafc; border-radius: 0 0 12px 12px; border-top: 1px solid #e2e8f0;">
-                      <p style="margin: 0 0 8px; color: #4a5568; font-size: 14px; font-weight: 600;">
-                        Saludos,
-                      </p>
-                      <p style="margin: 0; color: #718096; font-size: 14px;">
-                        El equipo de ${APP_NAME}
-                      </p>
-                      <p style="margin: 20px 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #a0aec0; font-size: 12px; line-height: 1.5;">
-                        Este es un correo automático, por favor no respondas a este mensaje.
-                      </p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
-      `,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPasswordResetTemplate({ username: params.username, resetUrl, locale: loc }),
     });
 
     if (error) {
@@ -319,7 +243,7 @@ export async function sendPasswordResetEmail(params: {
       return { success: false, error: error.message };
     }
 
-    console.log("✅ Email enviado:", data?.id);
+    console.log("✅ Password reset email enviado:", data?.id);
     return { success: true };
   } catch (err) {
     console.error("❌ Excepción al enviar email:", err);
@@ -332,112 +256,32 @@ export async function sendPasswordResetEmail(params: {
 // =========================================================================
 
 /**
- * Envía un email de verificación de cuenta
- * Este email SIEMPRE se envía (no está sujeto a configuración de plataforma)
+ * Envía un email de verificación de cuenta (transaccional — siempre se envía)
  */
 export async function sendVerificationEmail(params: {
   to: string;
   displayName: string;
   verificationToken: string;
+  locale?: string;
 }): Promise<EmailResult> {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
+  const loc = params.locale || "en";
   const verificationUrl = `${FRONTEND_URL}/verify-email?token=${params.verificationToken}`;
+
+  const subjects: Record<string, string> = {
+    es: `Verifica tu email — ${APP_NAME}`,
+    en: `Verify your email — ${APP_NAME}`,
+    pt: `Verifique seu email — ${APP_NAME}`,
+  };
 
   try {
     const { data, error } = await ready.client.emails.send({
       from: ready.from,
       to: params.to,
-      subject: `Verifica tu email - ${APP_NAME}`,
-      html: `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Verifica tu email</title>
-        </head>
-        <body style="margin: 0; padding: 0; background-color: #f4f4f4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f4f4; padding: 40px 0;">
-            <tr>
-              <td align="center">
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                  <!-- Header -->
-                  <tr>
-                    <td style="padding: 40px 40px 20px; text-align: center; background: ${BRAND.gradient}; border-radius: 12px 12px 0 0;">
-                      <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
-                        ${APP_NAME}
-                      </h1>
-                    </td>
-                  </tr>
-
-                  <!-- Content -->
-                  <tr>
-                    <td style="padding: 40px;">
-                      <h2 style="margin: 0 0 20px; color: #1a1a1a; font-size: 24px; font-weight: 600;">
-                        ¡Hola, ${params.displayName}!
-                      </h2>
-                      <p style="margin: 0 0 20px; color: #4a5568; font-size: 16px; line-height: 1.6;">
-                        Gracias por registrarte. Para completar tu registro y acceder a todas las funciones,
-                        necesitamos verificar tu dirección de email.
-                      </p>
-
-                      <!-- Button -->
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
-                        <tr>
-                          <td align="center">
-                            <a href="${verificationUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);">
-                              ✓ Verificar mi email
-                            </a>
-                          </td>
-                        </tr>
-                      </table>
-
-                      <!-- Alternative Link -->
-                      <p style="margin: 30px 0 10px; color: #718096; font-size: 14px;">
-                        O copia y pega este enlace en tu navegador:
-                      </p>
-                      <p style="margin: 0 0 30px; padding: 12px; background-color: #f7fafc; border-radius: 6px; word-break: break-all; color: ${BRAND.primaryLight}; font-size: 13px; font-family: monospace;">
-                        ${verificationUrl}
-                      </p>
-
-                      <!-- Info Box -->
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0; background-color: #ebf8ff; border-left: 4px solid #3182ce; border-radius: 6px;">
-                        <tr>
-                          <td style="padding: 16px;">
-                            <p style="margin: 0; color: #2c5282; font-size: 14px; line-height: 1.5;">
-                              <strong>⏱️ Importante:</strong> Este enlace expira en <strong>24 horas</strong>.
-                              Si no verificas tu email, algunas funciones estarán limitadas.
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-
-                      <p style="margin: 30px 0 0; color: #718096; font-size: 14px; line-height: 1.6;">
-                        Si no creaste esta cuenta, puedes ignorar este correo de forma segura.
-                      </p>
-                    </td>
-                  </tr>
-
-                  <!-- Footer -->
-                  <tr>
-                    <td style="padding: 30px 40px; background-color: #f7fafc; border-radius: 0 0 12px 12px; border-top: 1px solid #e2e8f0;">
-                      <p style="margin: 0 0 8px; color: #4a5568; font-size: 14px; font-weight: 600;">
-                        Saludos,
-                      </p>
-                      <p style="margin: 0; color: #718096; font-size: 14px;">
-                        El equipo de ${APP_NAME}
-                      </p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
-      `,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getVerificationTemplate({ displayName: params.displayName, verificationUrl, locale: loc }),
     });
 
     if (error) {
@@ -464,6 +308,7 @@ export async function sendWelcomeEmail(params: {
   to: string;
   userId: string;
   displayName: string;
+  locale?: string;
 }): Promise<EmailResult> {
   // Verificar si está habilitado
   const { enabled, reason } = await isEmailEnabled("welcome", params.userId);
@@ -475,16 +320,19 @@ export async function sendWelcomeEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const templateParams: WelcomeEmailParams = {
-    displayName: params.displayName,
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `¡Bienvenido a ${APP_NAME}!`,
+    en: `Welcome to ${APP_NAME}!`,
+    pt: `Bem-vindo ao ${APP_NAME}!`,
   };
 
   try {
     const { data, error } = await ready.client.emails.send({
       from: ready.from,
       to: params.to,
-      subject: `¡Bienvenido a ${APP_NAME}!`,
-      html: getWelcomeTemplate(templateParams),
+      subject: subjects[loc] ?? subjects.en!,
+      html: getWelcomeTemplate({ displayName: params.displayName, locale: loc }),
       headers: getUnsubscribeHeaders(params.userId),
     });
 
@@ -510,11 +358,12 @@ export async function sendWelcomeEmail(params: {
  */
 export async function sendPoolInvitationEmail(params: {
   to: string;
-  userId?: string; // Puede no existir si el usuario no está registrado
+  userId?: string;
   inviterName: string;
   poolName: string;
   inviteCode: string;
   poolDescription?: string;
+  locale?: string;
 }): Promise<EmailResult> {
   // Verificar si está habilitado (a nivel plataforma y usuario si existe)
   const { enabled, reason } = await isEmailEnabled(
@@ -529,19 +378,25 @@ export async function sendPoolInvitationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const templateParams: PoolInvitationEmailParams = {
-    inviterName: params.inviterName,
-    poolName: params.poolName,
-    inviteCode: params.inviteCode,
-    poolDescription: params.poolDescription,
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `${params.inviterName} te invitó a "${params.poolName}"`,
+    en: `${params.inviterName} invited you to "${params.poolName}"`,
+    pt: `${params.inviterName} convidou você para "${params.poolName}"`,
   };
 
   try {
     const { data, error } = await ready.client.emails.send({
       from: ready.from,
       to: params.to,
-      subject: `${params.inviterName} te invitó a "${params.poolName}"`,
-      html: getPoolInvitationTemplate(templateParams),
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPoolInvitationTemplate({
+        inviterName: params.inviterName,
+        poolName: params.poolName,
+        inviteCode: params.inviteCode,
+        poolDescription: params.poolDescription,
+        locale: loc,
+      }),
       ...(params.userId ? { headers: getUnsubscribeHeaders(params.userId) } : {}),
     });
 
@@ -573,6 +428,7 @@ export async function sendDeadlineReminderEmail(params: {
   matchesCount: number;
   deadlineTime: string;
   poolId: string;
+  locale?: string;
 }): Promise<EmailResult> {
   const { enabled, reason } = await isEmailEnabled(
     "deadlineReminder",
@@ -586,20 +442,27 @@ export async function sendDeadlineReminderEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const templateParams: DeadlineReminderEmailParams = {
-    displayName: params.displayName,
-    poolName: params.poolName,
-    matchesCount: params.matchesCount,
-    deadlineTime: params.deadlineTime,
-    poolId: params.poolId,
+  const loc = params.locale || "en";
+  const n = params.matchesCount;
+  const subjects: Record<string, string> = {
+    es: `⏰ ${n} partido${n > 1 ? "s" : ""} sin pronóstico en "${params.poolName}"`,
+    en: `⏰ ${n} match${n > 1 ? "es" : ""} without predictions in "${params.poolName}"`,
+    pt: `⏰ ${n} partida${n > 1 ? "s" : ""} sem palpite em "${params.poolName}"`,
   };
 
   try {
     const { data, error } = await ready.client.emails.send({
       from: ready.from,
       to: params.to,
-      subject: `⏰ ${params.matchesCount} partido${params.matchesCount > 1 ? "s" : ""} sin pronóstico en "${params.poolName}"`,
-      html: getDeadlineReminderTemplate(templateParams),
+      subject: subjects[loc] ?? subjects.en!,
+      html: getDeadlineReminderTemplate({
+        displayName: params.displayName,
+        poolName: params.poolName,
+        matchesCount: params.matchesCount,
+        deadlineTime: params.deadlineTime,
+        poolId: params.poolId,
+        locale: loc,
+      }),
       headers: getUnsubscribeHeaders(params.userId),
     });
 
@@ -634,6 +497,7 @@ export async function sendResultPublishedEmail(params: {
   currentRank: number;
   totalParticipants: number;
   poolId: string;
+  locale?: string;
 }): Promise<EmailResult> {
   const { enabled, reason } = await isEmailEnabled(
     "resultPublished",
@@ -647,23 +511,29 @@ export async function sendResultPublishedEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const templateParams: ResultPublishedEmailParams = {
-    displayName: params.displayName,
-    poolName: params.poolName,
-    matchDescription: params.matchDescription,
-    result: params.result,
-    pointsEarned: params.pointsEarned,
-    currentRank: params.currentRank,
-    totalParticipants: params.totalParticipants,
-    poolId: params.poolId,
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `📊 Resultado: ${params.matchDescription} (${params.result}) — ${params.pointsEarned} pts`,
+    en: `📊 Result: ${params.matchDescription} (${params.result}) — ${params.pointsEarned} pts`,
+    pt: `📊 Resultado: ${params.matchDescription} (${params.result}) — ${params.pointsEarned} pts`,
   };
 
   try {
     const { data, error } = await ready.client.emails.send({
       from: ready.from,
       to: params.to,
-      subject: `📊 Resultado: ${params.matchDescription} (${params.result}) - ${params.pointsEarned} pts`,
-      html: getResultPublishedTemplate(templateParams),
+      subject: subjects[loc] ?? subjects.en!,
+      html: getResultPublishedTemplate({
+        displayName: params.displayName,
+        poolName: params.poolName,
+        matchDescription: params.matchDescription,
+        result: params.result,
+        pointsEarned: params.pointsEarned,
+        currentRank: params.currentRank,
+        totalParticipants: params.totalParticipants,
+        poolId: params.poolId,
+        locale: loc,
+      }),
       headers: getUnsubscribeHeaders(params.userId),
     });
 
@@ -697,6 +567,7 @@ export async function sendPoolCompletedEmail(params: {
   totalParticipants: number;
   exactScores: number;
   poolId: string;
+  locale?: string;
 }): Promise<EmailResult> {
   const { enabled, reason } = await isEmailEnabled(
     "poolCompleted",
@@ -710,28 +581,33 @@ export async function sendPoolCompletedEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const templateParams: PoolCompletedEmailParams = {
-    displayName: params.displayName,
-    poolName: params.poolName,
-    finalRank: params.finalRank,
-    totalPoints: params.totalPoints,
-    totalParticipants: params.totalParticipants,
-    exactScores: params.exactScores,
-    poolId: params.poolId,
-  };
-
-  // Mensaje personalizado según posición
+  const loc = params.locale || "en";
   let subjectEmoji = "🏁";
   if (params.finalRank === 1) subjectEmoji = "🏆";
   else if (params.finalRank === 2) subjectEmoji = "🥈";
   else if (params.finalRank === 3) subjectEmoji = "🥉";
 
+  const subjects: Record<string, string> = {
+    es: `${subjectEmoji} "${params.poolName}" terminó — Posición #${params.finalRank}`,
+    en: `${subjectEmoji} "${params.poolName}" finished — Position #${params.finalRank}`,
+    pt: `${subjectEmoji} "${params.poolName}" terminou — Posição #${params.finalRank}`,
+  };
+
   try {
     const { data, error } = await ready.client.emails.send({
       from: ready.from,
       to: params.to,
-      subject: `${subjectEmoji} "${params.poolName}" terminó - Posición #${params.finalRank}`,
-      html: getPoolCompletedTemplate(templateParams),
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPoolCompletedTemplate({
+        displayName: params.displayName,
+        poolName: params.poolName,
+        finalRank: params.finalRank,
+        totalPoints: params.totalPoints,
+        totalParticipants: params.totalParticipants,
+        exactScores: params.exactScores,
+        poolId: params.poolId,
+        locale: loc,
+      }),
       headers: getUnsubscribeHeaders(params.userId),
     });
 

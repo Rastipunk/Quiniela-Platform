@@ -10,6 +10,7 @@
 
 import { prisma } from "../db";
 import { sendDeadlineReminderEmail, isEmailEnabled } from "../lib/email";
+import { countryToLocale } from "../lib/constants";
 
 // =========================================================================
 // TIPOS
@@ -114,25 +115,15 @@ function getMatchDeadline(
 /**
  * Formatea la hora del deadline para mostrar en el email
  */
-function formatDeadlineTime(deadline: Date, timezone: string): string {
+function formatDeadlineTime(deadline: Date, timezone: string, locale: string = "en"): string {
+  const bcp47 = locale === "pt" ? "pt-BR" : locale === "es" ? "es-MX" : "en-US";
+  const opts: Intl.DateTimeFormatOptions = {
+    weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+  };
   try {
-    return deadline.toLocaleString("es-MX", {
-      timeZone: timezone,
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return deadline.toLocaleString(bcp47, { ...opts, timeZone: timezone });
   } catch {
-    // Fallback si el timezone no es válido
-    return deadline.toLocaleString("es-MX", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return deadline.toLocaleString(bcp47, opts);
   }
 }
 
@@ -192,6 +183,7 @@ export async function processDeadlineReminders(
               id: true,
               email: true,
               displayName: true,
+              country: true,
               emailNotificationsEnabled: true,
               emailDeadlineReminders: true,
             },
@@ -294,7 +286,8 @@ export async function processDeadlineReminders(
         return deadline < nearest ? deadline : nearest;
       }, new Date(getKickoff(firstMatch)!));
 
-      const deadlineFormatted = formatDeadlineTime(nearestDeadline, pool.timeZone);
+      const userLocale = countryToLocale(user.country);
+      const deadlineFormatted = formatDeadlineTime(nearestDeadline, pool.timeZone, userLocale);
 
       // Preparar detalle
       const detail: ReminderDetail = {
@@ -324,6 +317,7 @@ export async function processDeadlineReminders(
           matchesCount: matchesToRemind.length,
           deadlineTime: deadlineFormatted,
           poolId: pool.id,
+          locale: userLocale,
         });
 
         if (emailResult.skipped) {

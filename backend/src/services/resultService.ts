@@ -11,6 +11,7 @@
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { sendResultPublishedEmail } from "../lib/email";
+import { countryToLocale } from "../lib/constants";
 import { getScoringPreset } from "../lib/scoringPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
 import type { PhasePickConfig } from "../types/pickConfig";
@@ -215,7 +216,7 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
     // Obtener miembros activos del pool
     const members = await prisma.poolMember.findMany({
       where: { poolId, status: "ACTIVE" },
-      include: { user: { select: { id: true, email: true, displayName: true } } },
+      include: { user: { select: { id: true, email: true, displayName: true, country: true } } },
       orderBy: { joinedAtUtc: "asc" },
     });
 
@@ -352,6 +353,7 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
         pointsEarned,
         currentRank: idx + 1,
         totalParticipants: sortedMembers.length,
+        locale: countryToLocale(member.user.country),
       }).catch((err) => {
         console.error(`Error sending result email to ${member.user.email}:`, err);
       });
