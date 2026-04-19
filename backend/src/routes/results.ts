@@ -21,6 +21,7 @@ import {
   getLeaderboard,
 } from "../services/resultService";
 import { sendResultOverrideNotification } from "../lib/email";
+import { countryToLocale } from "../lib/constants";
 import { extractTeams } from "../lib/fixture";
 import { ServiceError, type AuditContext } from "../services/authService";
 
@@ -125,15 +126,17 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
       });
       const hostName = host?.displayName || host?.username || "Host";
 
-      // Get ALL active members and send notification
+      // Get ALL active members and send notification (respect master toggle)
       const members = await prisma.poolMember.findMany({
         where: { poolId, status: "ACTIVE" },
-        include: { user: { select: { email: true, displayName: true } } },
+        include: { user: { select: { id: true, email: true, displayName: true, country: true, emailNotificationsEnabled: true } } },
       });
 
       for (const member of members) {
+        if (!member.user.emailNotificationsEnabled) continue;
         fireAndForget("result-override-email", sendResultOverrideNotification({
           to: member.user.email,
+          userId: member.user.id,
           memberName: member.user.displayName || "Jugador",
           poolName: pool.name,
           poolId,
@@ -142,6 +145,7 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
           newResult,
           reason: parsed.data.reason,
           hostName,
+          locale: countryToLocale(member.user.country),
         }));
       }
     } else {

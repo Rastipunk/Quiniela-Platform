@@ -233,6 +233,10 @@ app.use("/legal", legalRouter);
 app.use("/feedback", express.json({ limit: "2mb" }), feedbackRouter);
 app.use("/corporate", corporateRouter);
 
+// Unsubscribe route (public, no auth)
+import { unsubscribeRouter } from "./routes/unsubscribe";
+app.use("/unsubscribe", unsubscribeRouter);
+
 // Payment routes (checkout + status — Polar webhook mounted above express.json, MP below)
 import { paymentsRouter, createMpWebhookHandler } from "./routes/payments";
 app.use("/payments", paymentsRouter);

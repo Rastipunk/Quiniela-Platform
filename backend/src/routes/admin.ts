@@ -26,7 +26,7 @@ import { prisma } from "../db";
 import { sendPredictionUpdateEmail } from "../lib/email";
 import { writeAuditEvent } from "../lib/audit";
 import { fireAndForget } from "../lib/asyncHelpers";
-import { DEFAULT_LOCALE } from "../lib/constants";
+import { countryToLocale } from "../lib/constants";
 
 // Sub-routers — all admin-related routes composed here
 import { adminTemplatesRouter } from "./adminTemplates";
@@ -190,6 +190,7 @@ adminRouter.post("/prediction-update", requireAuth, requireAdmin, async (req, re
       id: true,
       email: true,
       displayName: true,
+      country: true,
     },
   });
 
@@ -221,8 +222,9 @@ adminRouter.post("/prediction-update", requireAuth, requireAdmin, async (req, re
         batch.map((user) =>
           sendPredictionUpdateEmail({
             to: user.email,
+            userId: user.id,
             displayName: user.displayName,
-            locale: DEFAULT_LOCALE,
+            locale: countryToLocale(user.country),
             changes,
           })
         )

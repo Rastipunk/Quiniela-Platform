@@ -907,6 +907,117 @@ export function getPredictionUpdateTemplate(params: PredictionUpdateEmailParams)
 }
 
 // =========================================================================
+// PAYMENT RECEIPT EMAIL
+// =========================================================================
+
+export interface PaymentReceiptEmailParams {
+  displayName: string;
+  poolName: string;
+  poolId: string;
+  transactionId: string;
+  amount: string;
+  currency: string;
+  fromCapacity: number;
+  toCapacity: number;
+  paidAt: string;
+  locale: string;
+}
+
+export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): string {
+  const loc = params.locale || "en";
+
+  const i18n: Record<string, {
+    heading: string; intro: string; details: string; pool: string;
+    transaction: string; amount: string; upgrade: string; date: string;
+    participants: string; cta: string; preheader: string; footer: string;
+  }> = {
+    es: {
+      heading: "Comprobante de pago",
+      intro: `Hola ${params.displayName}, tu pago fue procesado exitosamente.`,
+      details: "Detalles de la transacción",
+      pool: "Pool",
+      transaction: "ID Transacción",
+      amount: "Monto",
+      upgrade: "Ampliación",
+      date: "Fecha",
+      participants: "participantes",
+      cta: "Ir a mi pool",
+      preheader: `Pago confirmado — ${params.poolName}`,
+      footer: "Conserva este correo como comprobante de tu transacción.",
+    },
+    en: {
+      heading: "Payment receipt",
+      intro: `Hi ${params.displayName}, your payment was processed successfully.`,
+      details: "Transaction details",
+      pool: "Pool",
+      transaction: "Transaction ID",
+      amount: "Amount",
+      upgrade: "Upgrade",
+      date: "Date",
+      participants: "participants",
+      cta: "Go to my pool",
+      preheader: `Payment confirmed — ${params.poolName}`,
+      footer: "Keep this email as proof of your transaction.",
+    },
+    pt: {
+      heading: "Comprovante de pagamento",
+      intro: `Olá ${params.displayName}, seu pagamento foi processado com sucesso.`,
+      details: "Detalhes da transação",
+      pool: "Bolão",
+      transaction: "ID Transação",
+      amount: "Valor",
+      upgrade: "Ampliação",
+      date: "Data",
+      participants: "participantes",
+      cta: "Ir ao meu bolão",
+      preheader: `Pagamento confirmado — ${params.poolName}`,
+      footer: "Guarde este e-mail como comprovante da sua transação.",
+    },
+  };
+
+  const t = i18n[loc] ?? i18n.en!;
+  const poolUrl = `${BRAND.baseUrl}/pools/${params.poolId}`;
+
+  const content = `
+    ${getHeading(`✅ ${t.heading}`)}
+    ${getParagraph(t.intro)}
+
+    ${getHighlightBox(`
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+          <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.pool}</td>
+          <td style="padding:8px 0;text-align:right;font-weight:600;color:${BRAND.textColor};font-size:14px;">${params.poolName}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.transaction}</td>
+          <td style="padding:8px 0;text-align:right;font-family:monospace;color:${BRAND.textColor};font-size:13px;">${params.transactionId}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.amount}</td>
+          <td style="padding:8px 0;text-align:right;font-weight:700;color:${BRAND.primaryColor};font-size:16px;">${params.amount} ${params.currency}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.upgrade}</td>
+          <td style="padding:8px 0;text-align:right;font-weight:600;color:${BRAND.textColor};font-size:14px;">${params.fromCapacity} → ${params.toCapacity} ${t.participants}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.date}</td>
+          <td style="padding:8px 0;text-align:right;color:${BRAND.textColor};font-size:14px;">${params.paidAt}</td>
+        </tr>
+      </table>
+    `)}
+
+    ${getButton(t.cta, poolUrl)}
+
+    <p style="margin:24px 0 0;font-size:13px;color:${BRAND.mutedColor};text-align:center;">
+      ${t.footer}
+    </p>
+  `;
+
+  return getEmailWrapper(content, t.preheader);
+}
+
+// =========================================================================
 // EXPORT DE CONSTANTES PARA USO EXTERNO
 // =========================================================================
 

@@ -58,6 +58,22 @@ export const SUPPORTED_LOCALES = ["es", "en", "pt"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: SupportedLocale = "es";
 
+const COUNTRY_TO_LOCALE: Record<string, SupportedLocale> = {
+  // LATAM → Spanish
+  MX: "es", GT: "es", HN: "es", SV: "es", NI: "es", CR: "es", PA: "es",
+  CO: "es", VE: "es", EC: "es", PE: "es", BO: "es", PY: "es", CL: "es",
+  AR: "es", UY: "es", CU: "es", DO: "es", PR: "es",
+  // Spain
+  ES: "es", GQ: "es",
+  // Portuguese-speaking
+  BR: "pt", PT: "pt", AO: "pt", MZ: "pt", CV: "pt",
+};
+
+export function countryToLocale(countryCode?: string | null): SupportedLocale {
+  if (!countryCode) return "en";
+  return COUNTRY_TO_LOCALE[countryCode.toUpperCase()] ?? "en";
+}
+
 // ── User profile rules ───────────────────────────────────────
 export const USER_RULES = {
   USERNAME_CHANGE_COOLDOWN_DAYS: 30,

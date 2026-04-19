@@ -14,7 +14,8 @@
 import { prisma } from "../db";
 import { ServiceError } from "./authService";
 import { writeAuditEvent } from "../lib/audit";
-import { sendAdminNotification } from "../lib/email";
+import { sendAdminNotification, sendPaymentReceiptEmail } from "../lib/email";
+import { countryToLocale } from "../lib/constants";
 import { fireAndForget } from "../lib/asyncHelpers";
 import {
   calculateUpgradePrice,
@@ -308,6 +309,36 @@ export async function handleOrderPaid(payload: {
     body: `<p>Pool <strong>${metadata.poolId}</strong> expanded to ${metadata.toCapacity} participants.</p><p>Type: ${metadata.poolType}</p>`,
     type: "feedback",
   }));
+
+  // 7. Send payment receipt to user
+  if (metadata.userId) {
+    fireAndForget("payment-receipt-email", (async () => {
+      const user = await prisma.user.findUnique({
+        where: { id: metadata.userId! },
+        select: { email: true, displayName: true, country: true },
+      });
+      const pool = await prisma.pool.findUnique({
+        where: { id: metadata.poolId! },
+        select: { name: true },
+      });
+      if (!user || !pool) return;
+      const amountUsd = payment.amountUsd / 100;
+      await sendPaymentReceiptEmail({
+        to: user.email,
+        userId: metadata.userId!,
+        displayName: user.displayName,
+        poolName: pool.name,
+        poolId: metadata.poolId!,
+        transactionId: eventId,
+        amount: amountUsd.toFixed(2),
+        currency: "USD",
+        fromCapacity: metadata.fromCapacity!,
+        toCapacity: metadata.toCapacity!,
+        paidAt: new Date(),
+        locale: countryToLocale(user.country),
+      });
+    })());
+  }
 }
 
 /**
@@ -597,6 +628,34 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       });
     });
     console.log(`[PaymentService] MP IPN: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
+
+    // Send payment receipt to user
+    fireAndForget("mp-payment-receipt-email", (async () => {
+      const user = await prisma.user.findUnique({
+        where: { id: payment.userId },
+        select: { email: true, displayName: true, country: true },
+      });
+      const pool = await prisma.pool.findUnique({
+        where: { id: payment.poolId },
+        select: { name: true },
+      });
+      if (!user || !pool) return;
+      const amountCop = payment.amountUsd;
+      await sendPaymentReceiptEmail({
+        to: user.email,
+        userId: payment.userId,
+        displayName: user.displayName,
+        poolName: pool.name,
+        poolId: payment.poolId,
+        transactionId: `mp-${paymentMpId}`,
+        amount: amountCop.toLocaleString("es-CO"),
+        currency: "COP",
+        fromCapacity: payment.fromCapacity,
+        toCapacity: payment.toCapacity,
+        paidAt: new Date(),
+        locale: countryToLocale(user.country),
+      });
+    })());
   } else if (mpPayment.status === "rejected" || mpPayment.status === "cancelled") {
     await prisma.poolPayment.update({
       where: { id: payment.id },

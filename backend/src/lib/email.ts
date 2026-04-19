@@ -10,8 +10,9 @@ export function escapeHtml(str: string): string {
 
 import { Resend } from "resend";
 import { prisma } from "../db";
-import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "./constants";
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE, countryToLocale, type SupportedLocale } from "./constants";
 import { BRAND } from "./brand";
+import { generateUnsubscribeToken, buildUnsubscribeUrl } from "./unsubscribe";
 import {
   getWelcomeTemplate,
   getPoolInvitationTemplate,
@@ -21,11 +22,13 @@ import {
   getCorporateInquiryConfirmationTemplate,
   getCorporateActivationTemplate,
   getPredictionUpdateTemplate,
+  getPaymentReceiptTemplate,
   WelcomeEmailParams,
   PoolInvitationEmailParams,
   DeadlineReminderEmailParams,
   ResultPublishedEmailParams,
   PoolCompletedEmailParams,
+  PaymentReceiptEmailParams,
 } from "./emailTemplates";
 
 const apiKey = process.env.RESEND_API_KEY;
@@ -50,6 +53,29 @@ function getReadyClient(): { client: Resend; from: string } | null {
   if (!resend) { console.error("❌ RESEND_API_KEY not configured"); return null; }
   if (!FROM_EMAIL) { console.error("❌ RESEND_FROM_EMAIL not configured"); return null; }
   return { client: resend, from: `${APP_NAME} <${FROM_EMAIL}>` };
+}
+
+// =========================================================================
+// HELPERS: Locale + Unsubscribe headers
+// =========================================================================
+
+export async function getUserLocale(userId?: string): Promise<SupportedLocale> {
+  if (!userId) return "en";
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { country: true },
+  });
+  return countryToLocale(user?.country);
+}
+
+function getUnsubscribeHeaders(userId: string): Record<string, string> {
+  const backendUrl = process.env.BACKEND_URL || `https://api.${SITE_DOMAIN}`;
+  const token = generateUnsubscribeToken(userId);
+  const url = `${backendUrl}/unsubscribe?token=${encodeURIComponent(token)}`;
+  return {
+    "List-Unsubscribe": `<${url}>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  };
 }
 
 // =========================================================================
@@ -459,6 +485,7 @@ export async function sendWelcomeEmail(params: {
       to: params.to,
       subject: `¡Bienvenido a ${APP_NAME}!`,
       html: getWelcomeTemplate(templateParams),
+      headers: getUnsubscribeHeaders(params.userId),
     });
 
     if (error) {
@@ -515,6 +542,7 @@ export async function sendPoolInvitationEmail(params: {
       to: params.to,
       subject: `${params.inviterName} te invitó a "${params.poolName}"`,
       html: getPoolInvitationTemplate(templateParams),
+      ...(params.userId ? { headers: getUnsubscribeHeaders(params.userId) } : {}),
     });
 
     if (error) {
@@ -572,6 +600,7 @@ export async function sendDeadlineReminderEmail(params: {
       to: params.to,
       subject: `⏰ ${params.matchesCount} partido${params.matchesCount > 1 ? "s" : ""} sin pronóstico en "${params.poolName}"`,
       html: getDeadlineReminderTemplate(templateParams),
+      headers: getUnsubscribeHeaders(params.userId),
     });
 
     if (error) {
@@ -635,6 +664,7 @@ export async function sendResultPublishedEmail(params: {
       to: params.to,
       subject: `📊 Resultado: ${params.matchDescription} (${params.result}) - ${params.pointsEarned} pts`,
       html: getResultPublishedTemplate(templateParams),
+      headers: getUnsubscribeHeaders(params.userId),
     });
 
     if (error) {
@@ -702,6 +732,7 @@ export async function sendPoolCompletedEmail(params: {
       to: params.to,
       subject: `${subjectEmoji} "${params.poolName}" terminó - Posición #${params.finalRank}`,
       html: getPoolCompletedTemplate(templateParams),
+      headers: getUnsubscribeHeaders(params.userId),
     });
 
     if (error) {
@@ -1025,6 +1056,7 @@ export async function sendPoolFullNotificationEmail(params: {
  */
 export async function sendResultOverrideNotification(params: {
   to: string;
+  userId: string;
   memberName: string;
   poolName: string;
   poolId: string;
@@ -1077,6 +1109,7 @@ export async function sendResultOverrideNotification(params: {
       from: ready.from,
       to: params.to,
       subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
           <div style="padding:20px;background:${BRAND.gradient};border-radius:12px 12px 0 0;text-align:center;">
@@ -1135,6 +1168,7 @@ export async function sendResultOverrideNotification(params: {
  */
 export async function sendPredictionUpdateEmail(params: {
   to: string;
+  userId: string;
   displayName: string;
   locale: string;
   changes: Array<{ type: string; description: string }>;
@@ -1160,6 +1194,7 @@ export async function sendPredictionUpdateEmail(params: {
       to: params.to,
       subject: `🔮 ${subject} — ${APP_NAME}`,
       html,
+      headers: getUnsubscribeHeaders(params.userId),
     });
 
     if (error) {
@@ -1171,6 +1206,70 @@ export async function sendPredictionUpdateEmail(params: {
     return { success: true };
   } catch (err) {
     console.error("❌ Excepción al enviar prediction update email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// PAYMENT RECEIPT EMAIL
+// =========================================================================
+
+export async function sendPaymentReceiptEmail(params: {
+  to: string;
+  userId: string;
+  displayName: string;
+  poolName: string;
+  poolId: string;
+  transactionId: string;
+  amount: string;
+  currency: string;
+  fromCapacity: number;
+  toCapacity: number;
+  paidAt: Date;
+  locale: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `Comprobante de pago — ${APP_NAME}`,
+    en: `Payment receipt — ${APP_NAME}`,
+    pt: `Comprovante de pagamento — ${APP_NAME}`,
+  };
+
+  const templateParams: PaymentReceiptEmailParams = {
+    displayName: params.displayName,
+    poolName: params.poolName,
+    poolId: params.poolId,
+    transactionId: params.transactionId,
+    amount: params.amount,
+    currency: params.currency,
+    fromCapacity: params.fromCapacity,
+    toCapacity: params.toCapacity,
+    paidAt: params.paidAt.toLocaleDateString(loc === "pt" ? "pt-BR" : loc === "es" ? "es-CO" : "en-US", {
+      year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
+    }),
+    locale: loc,
+  };
+
+  try {
+    const { data, error } = await ready.client.emails.send({
+      from: ready.from,
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPaymentReceiptTemplate(templateParams),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar payment receipt email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Payment receipt email enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar payment receipt email:", err);
     return { success: false, error: String(err) };
   }
 }
