@@ -35,17 +35,17 @@ export function initMetaPixel(): void {
   if (!PIXEL_ID || initialized) return;
   if (typeof window === "undefined") return;
 
-  // Meta Pixel base code (minified version from Meta docs)
-  const n = (window.fbq = function (...args: unknown[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    n.callMethod ? n.callMethod(...args) : n.queue.push(args);
-  } as unknown as Window["fbq"] & { callMethod?: Function; queue: unknown[][]; loaded: boolean; version: string; push: Function });
-  const f = window._fbq;
-  if (f && f !== n) return;
-  (n as any).push = n;
-  (n as any).loaded = true;
-  (n as any).version = "2.0";
-  (n as any).queue = (n as any).queue || [];
+  // Official Meta Pixel base code — must match exactly to avoid
+  // "conflicting versions" warning from fbevents.js
+  if (typeof window.fbq === "function") return;
+  const n: any = (window.fbq = function (...args: unknown[]) {
+    n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
+  });
+  if (!window._fbq) window._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = "2.0";
+  n.queue = [];
 
   const script = document.createElement("script");
   script.async = true;
