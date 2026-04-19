@@ -67,7 +67,12 @@
       "title": "Compita com seus amigos prevendo jogos de futebol",
       "subtitle": "Crie seu {term} grátis e divirta-se prevendo resultados de futebol com seus amigos.",
       "cta": "Criar conta grátis",
-      "secondaryCta": "Veja como funciona"
+      "secondaryCta": "Veja como funciona",
+      "countdownTitle": "A Copa do Mundo começa em",
+      "days": "Dias",
+      "hours": "Horas",
+      "minutes": "Minutos",
+      "seconds": "Segundos"
     },
     "whatIs": {
       "title": "O que é o Picks4All?",

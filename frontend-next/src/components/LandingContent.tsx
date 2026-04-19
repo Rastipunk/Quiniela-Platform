@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
@@ -20,6 +21,27 @@ export function LandingContent() {
   const { params: poolParams } = usePoolTerm();
   const searchParams = useSearchParams();
   const [isColombia, setIsColombia] = useState(true);
+
+  // World Cup 2026 kickoff: June 11, 2026, 18:00 UTC
+  const WORLD_CUP_KICKOFF = new Date("2026-06-11T18:00:00Z").getTime();
+
+  const calcTimeLeft = useCallback(() => {
+    const diff = WORLD_CUP_KICKOFF - Date.now();
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / (1000 * 60)) % 60),
+      seconds: Math.floor((diff / 1000) % 60),
+    };
+  }, [WORLD_CUP_KICKOFF]);
+
+  const [timeLeft, setTimeLeft] = useState(calcTimeLeft);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTimeLeft(calcTimeLeft()), 1000);
+    return () => clearInterval(timer);
+  }, [calcTimeLeft]);
 
   // Detect country for pricing display
   useEffect(() => {
@@ -45,76 +67,237 @@ export function LandingContent() {
         style={{
           background: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)",
           color: "white",
-          padding: isMobile ? "60px 20px" : "100px 40px",
-          textAlign: "center",
+          padding: isMobile ? "48px 20px" : "80px 40px",
         }}
       >
-        <div style={{ maxWidth: 800, margin: "0 auto" }}>
-          <h1
-            style={{
-              fontSize: isMobile ? "2rem" : "3rem",
-              fontWeight: 800,
-              marginBottom: 16,
-              lineHeight: 1.2,
-            }}
-          >
-            {t("hero.title")}
-          </h1>
-          <p
-            style={{
-              fontSize: isMobile ? "1rem" : "1.15rem",
-              color: "rgba(255,255,255,0.75)",
-              marginBottom: 12,
-              lineHeight: 1.6,
-              maxWidth: 650,
-              marginLeft: "auto",
-              marginRight: "auto",
-            }}
-          >
-            {t("hero.subtitle", poolParams)}
-          </p>
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            alignItems: "center",
+            gap: isMobile ? 40 : 48,
+          }}
+        >
+          {/* Left column: text + CTAs */}
+          <div style={{ flex: 1, textAlign: isMobile ? "center" : "left" }}>
+            <h1
+              style={{
+                fontSize: isMobile ? "2rem" : "3rem",
+                fontWeight: 800,
+                marginBottom: 16,
+                lineHeight: 1.2,
+              }}
+            >
+              {t("hero.title")}
+            </h1>
+            <p
+              style={{
+                fontSize: isMobile ? "1rem" : "1.15rem",
+                color: "rgba(255,255,255,0.75)",
+                marginBottom: 12,
+                lineHeight: 1.6,
+                maxWidth: 550,
+                marginLeft: isMobile ? "auto" : undefined,
+                marginRight: isMobile ? "auto" : undefined,
+              }}
+            >
+              {t("hero.subtitle", poolParams)}
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: 16,
+                justifyContent: isMobile ? "center" : "flex-start",
+                flexWrap: "wrap",
+                marginTop: 32,
+              }}
+            >
+              <button
+                onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
+                style={{
+                  background: "white",
+                  color: "#1a1a1a",
+                  padding: isMobile ? "14px 28px" : "16px 32px",
+                  borderRadius: 8,
+                  fontSize: isMobile ? "1rem" : "1.1rem",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                  display: "inline-block",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                {t("hero.cta")}
+              </button>
+              <Link
+                href="/como-funciona"
+                style={{
+                  background: "transparent",
+                  color: "white",
+                  border: "2px solid rgba(255,255,255,0.5)",
+                  padding: isMobile ? "12px 26px" : "14px 30px",
+                  borderRadius: 8,
+                  fontSize: isMobile ? "1rem" : "1.1rem",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  display: "inline-block",
+                }}
+              >
+                {t("hero.secondaryCta")}
+              </Link>
+            </div>
+          </div>
+
+          {/* Right column: World Cup image + countdown */}
           <div
             style={{
+              flex: isMobile ? undefined : "0 0 auto",
               display: "flex",
-              gap: 16,
-              justifyContent: "center",
-              flexWrap: "wrap",
-              marginTop: 32,
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 24,
             }}
           >
-            <button
-              onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
+            <div
               style={{
-                background: "white",
-                color: "#1a1a1a",
-                padding: isMobile ? "14px 28px" : "16px 32px",
-                borderRadius: 8,
-                fontSize: isMobile ? "1rem" : "1.1rem",
-                fontWeight: 700,
-                textDecoration: "none",
-                display: "inline-block",
-                border: "none",
-                cursor: "pointer",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
               }}
             >
-              {t("hero.cta")}
-            </button>
-            <Link
-              href="/como-funciona"
+              <div
+                style={{
+                  position: "absolute",
+                  width: isMobile ? 350 : 460,
+                  height: isMobile ? 350 : 460,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 40%, rgba(255,255,255,0) 70%)",
+                  filter: "blur(16px)",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+              />
+              <Image
+                src="/world-cup-2026-trophy.webp"
+                alt="FIFA World Cup 2026"
+                width={200}
+                height={147}
+                style={{
+                  position: "relative",
+                  width: isMobile ? 210 : 285,
+                  height: "auto",
+                  filter: "drop-shadow(0 4px 20px rgba(255,255,255,0.2))",
+                }}
+                priority
+              />
+              {/* Custom text with gold gradient */}
+              <div
+                style={{
+                  position: "relative",
+                  textAlign: "center",
+                  marginTop: 6,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    fontSize: isMobile ? "0.95rem" : "1.1rem",
+                    fontWeight: 800,
+                    letterSpacing: 4,
+                    textTransform: "uppercase",
+                    background: "linear-gradient(180deg, #E8C95A 0%, #D4A84B 35%, #B8912E 65%, #96751A 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    display: "block",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  FIFA World Cup
+                </span>
+                <span
+                  style={{
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    fontSize: isMobile ? "1.9rem" : "2.3rem",
+                    fontWeight: 900,
+                    letterSpacing: 6,
+                    background: "linear-gradient(180deg, #E8C95A 0%, #D4A84B 35%, #B8912E 65%, #96751A 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    display: "block",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  2026
+                </span>
+              </div>
+            </div>
+            <p
               style={{
-                background: "transparent",
-                color: "white",
-                border: "2px solid rgba(255,255,255,0.5)",
-                padding: isMobile ? "12px 26px" : "14px 30px",
-                borderRadius: 8,
-                fontSize: isMobile ? "1rem" : "1.1rem",
+                fontSize: isMobile ? "0.85rem" : "0.95rem",
                 fontWeight: 600,
-                textDecoration: "none",
-                display: "inline-block",
+                color: "rgba(255,255,255,0.7)",
+                textTransform: "uppercase",
+                letterSpacing: 1.5,
+                margin: 0,
               }}
             >
-              {t("hero.secondaryCta")}
-            </Link>
+              {t("hero.countdownTitle")}
+            </p>
+            <div style={{ display: "flex", gap: isMobile ? 10 : 14 }}>
+              {(["days", "hours", "minutes", "seconds"] as const).map((unit) => (
+                <div
+                  key={unit}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "rgba(255,255,255,0.1)",
+                      backdropFilter: "blur(8px)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 10,
+                      width: isMobile ? 56 : 68,
+                      height: isMobile ? 56 : 68,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: isMobile ? "1.5rem" : "1.9rem",
+                        fontWeight: 800,
+                        fontVariantNumeric: "tabular-nums",
+                        color: "white",
+                      }}
+                    >
+                      {String(timeLeft[unit]).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      color: "rgba(255,255,255,0.5)",
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {t(`hero.${unit}`)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

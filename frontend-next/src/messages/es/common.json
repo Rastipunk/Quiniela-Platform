@@ -67,7 +67,12 @@
       "title": "Compite con tus amigos prediciendo partidos de fútbol",
       "subtitle": "Crea tu {term} gratis y diviértete prediciendo resultados de fútbol con tus amigos.",
       "cta": "Crear cuenta gratis",
-      "secondaryCta": "Ver cómo funciona"
+      "secondaryCta": "Ver cómo funciona",
+      "countdownTitle": "El Mundial comienza en",
+      "days": "Días",
+      "hours": "Horas",
+      "minutes": "Minutos",
+      "seconds": "Segundos"
     },
     "whatIs": {
       "title": "¿Qué es Picks4All?",
