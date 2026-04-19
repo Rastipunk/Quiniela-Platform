@@ -1519,6 +1519,180 @@ export function getMemberRemovedTemplate({ displayName, poolName, reason, type, 
 }
 
 // =========================================================================
+// TEMPLATE: NEW MEMBER DIGEST (daily summary for hosts)
+// =========================================================================
+
+export interface NewMemberDigestEmailParams {
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  newMembers: { name: string }[];
+  currentTotal: number;
+  locale?: string;
+}
+
+export function getNewMemberDigestTemplate({
+  hostName, poolName, poolId, newMembers, currentTotal, locale = "es",
+}: NewMemberDigestEmailParams): string {
+  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const count = newMembers.length;
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    membersLabel: string; newLabel: string; cta: string; preheader: string;
+  }> = {
+    es: {
+      heading: `👥 ${count} ${count === 1 ? "nuevo miembro" : "nuevos miembros"} en tu pool`,
+      greeting: `Hola ${hostName},`,
+      body: `${count === 1 ? "Una persona se unió" : `${count} personas se unieron`} a tu pool <strong>${poolName}</strong> en las últimas 24 horas.`,
+      membersLabel: "Total participantes",
+      newLabel: count === 1 ? "Nuevo miembro" : "Nuevos miembros",
+      cta: "Ver Pool",
+      preheader: `${count} ${count === 1 ? "nuevo miembro" : "nuevos miembros"} en "${poolName}".`,
+    },
+    en: {
+      heading: `👥 ${count} new ${count === 1 ? "member" : "members"} in your pool`,
+      greeting: `Hi ${hostName},`,
+      body: `${count} ${count === 1 ? "person" : "people"} joined your pool <strong>${poolName}</strong> in the last 24 hours.`,
+      membersLabel: "Total participants",
+      newLabel: `New ${count === 1 ? "member" : "members"}`,
+      cta: "View Pool",
+      preheader: `${count} new ${count === 1 ? "member" : "members"} in "${poolName}".`,
+    },
+    pt: {
+      heading: `👥 ${count} ${count === 1 ? "novo membro" : "novos membros"} no seu bolão`,
+      greeting: `Olá ${hostName},`,
+      body: `${count} ${count === 1 ? "pessoa entrou" : "pessoas entraram"} no seu bolão <strong>${poolName}</strong> nas últimas 24 horas.`,
+      membersLabel: "Total participantes",
+      newLabel: count === 1 ? "Novo membro" : "Novos membros",
+      cta: "Ver Bolão",
+      preheader: `${count} ${count === 1 ? "novo membro" : "novos membros"} em "${poolName}".`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const memberListHtml = newMembers.map((m) =>
+    `<tr><td style="padding:8px 12px;border-bottom:1px solid #F3F4F6;font-size:15px;color:${BRAND.textColor};">👤 ${m.name}</td></tr>`
+  ).join("");
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+      <tr><td style="padding:10px 12px;background-color:#F9FAFB;font-size:13px;font-weight:600;color:${BRAND.mutedColor};text-transform:uppercase;letter-spacing:0.05em;">${t.newLabel}</td></tr>
+      ${memberListHtml}
+    </table>
+    ${getHighlightBox(`
+      <p style="margin:0;font-size:14px;color:${BRAND.mutedColor};">${t.membersLabel}</p>
+      <p style="margin:4px 0 0;font-size:24px;font-weight:700;color:${BRAND.primaryColor};">${currentTotal}</p>
+    `)}
+    ${getButton(t.cta, poolUrl)}
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
+// TEMPLATE: PHASE COMPLETION SUMMARY
+// =========================================================================
+
+export interface PhaseCompletionSummaryEmailParams {
+  displayName: string;
+  poolName: string;
+  poolId: string;
+  phaseName: string;
+  userRank: number;
+  userPoints: number;
+  totalParticipants: number;
+  top10: { rank: number; name: string; points: number }[];
+  locale?: string;
+}
+
+export function getPhaseCompletionSummaryTemplate({
+  displayName, poolName, poolId, phaseName, userRank, userPoints,
+  totalParticipants, top10, locale = "es",
+}: PhaseCompletionSummaryEmailParams): string {
+  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    rankLabel: string; pointsLabel: string; ofLabel: string;
+    leaderboardTitle: string; rankCol: string; playerCol: string; ptsCol: string;
+    cta: string; preheader: string;
+  }> = {
+    es: {
+      heading: `📊 Fase completada: ${phaseName}`,
+      greeting: `Hola ${displayName},`,
+      body: `La fase <strong>${phaseName}</strong> de la pool <strong>${poolName}</strong> ha terminado.`,
+      rankLabel: "Tu posición", pointsLabel: "Tus puntos", ofLabel: `de ${totalParticipants}`,
+      leaderboardTitle: "Top 10",
+      rankCol: "#", playerCol: "Jugador", ptsCol: "Pts",
+      cta: "Ver Leaderboard Completo",
+      preheader: `${phaseName} completada en "${poolName}". Tu posición: #${userRank} con ${userPoints} pts.`,
+    },
+    en: {
+      heading: `📊 Phase completed: ${phaseName}`,
+      greeting: `Hi ${displayName},`,
+      body: `The <strong>${phaseName}</strong> phase of pool <strong>${poolName}</strong> has ended.`,
+      rankLabel: "Your position", pointsLabel: "Your points", ofLabel: `of ${totalParticipants}`,
+      leaderboardTitle: "Top 10",
+      rankCol: "#", playerCol: "Player", ptsCol: "Pts",
+      cta: "View Full Leaderboard",
+      preheader: `${phaseName} completed in "${poolName}". Your position: #${userRank} with ${userPoints} pts.`,
+    },
+    pt: {
+      heading: `📊 Fase concluída: ${phaseName}`,
+      greeting: `Olá ${displayName},`,
+      body: `A fase <strong>${phaseName}</strong> do bolão <strong>${poolName}</strong> terminou.`,
+      rankLabel: "Sua posição", pointsLabel: "Seus pontos", ofLabel: `de ${totalParticipants}`,
+      leaderboardTitle: "Top 10",
+      rankCol: "#", playerCol: "Jogador", ptsCol: "Pts",
+      cta: "Ver Leaderboard Completo",
+      preheader: `${phaseName} concluída em "${poolName}". Sua posição: #${userRank} com ${userPoints} pts.`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const top10Rows = top10.map((entry) => {
+    const isUser = entry.name === displayName;
+    const bgColor = isUser ? "#EEF2FF" : "transparent";
+    const fontWeight = isUser ? "700" : "400";
+    const medal = entry.rank === 1 ? "🥇 " : entry.rank === 2 ? "🥈 " : entry.rank === 3 ? "🥉 " : "";
+    return `<tr style="background-color:${bgColor};">
+      <td style="padding:8px 12px;border-bottom:1px solid #F3F4F6;font-size:14px;font-weight:${fontWeight};color:${BRAND.textColor};">${medal}${entry.rank}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #F3F4F6;font-size:14px;font-weight:${fontWeight};color:${BRAND.textColor};">${entry.name}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #F3F4F6;font-size:14px;font-weight:${fontWeight};color:${BRAND.primaryColor};text-align:right;">${entry.points}</td>
+    </tr>`;
+  }).join("");
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
+      <tr>
+        ${getStatBox(t.rankLabel, `#${userRank}`, userRank <= 3 ? "🏆" : undefined)}
+        <td width="12"></td>
+        ${getStatBox(t.pointsLabel, `${userPoints}`, "📊")}
+      </tr>
+    </table>
+    <p style="margin:0 0 4px;font-size:11px;text-align:center;color:${BRAND.mutedColor};">${t.ofLabel}</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#F9FAFB;">
+        <td style="padding:10px 12px;font-size:12px;font-weight:600;color:${BRAND.mutedColor};text-transform:uppercase;letter-spacing:0.05em;">${t.rankCol}</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:600;color:${BRAND.mutedColor};text-transform:uppercase;letter-spacing:0.05em;">${t.playerCol}</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:600;color:${BRAND.mutedColor};text-transform:uppercase;letter-spacing:0.05em;text-align:right;">${t.ptsCol}</td>
+      </tr>
+      ${top10Rows}
+    </table>
+    ${getButton(t.cta, poolUrl)}
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
 // EXPORT DE CONSTANTES PARA USO EXTERNO
 // =========================================================================
 

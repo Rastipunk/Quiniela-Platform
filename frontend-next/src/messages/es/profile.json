@@ -85,6 +85,8 @@
     "resultsLabel": "Resultados publicados",
     "resultsDesc": "Recibe notificaciones cuando se publican resultados de partidos",
     "completionsLabel": "{pluralUpper} completadas",
-    "completionsDesc": "Recibe notificaciones cuando termina {indefinite} {term}"
+    "completionsDesc": "Recibe notificaciones cuando termina {indefinite} {term}",
+    "newMemberDigestLabel": "Resumen diario de nuevos miembros",
+    "newMemberDigestDesc": "Recibe un resumen diario con los nuevos miembros que se unieron a tus pools (para hosts)"
   }
 }

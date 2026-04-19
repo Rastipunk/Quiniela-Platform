@@ -92,6 +92,16 @@ export const RESERVED_USERNAMES = [
   "admin", "root", "system", "quiniela", "api", "www",
 ] as const;
 
+// ── Phase display names (for email notifications) ───────────
+export const PHASE_DISPLAY_NAMES: Record<string, Record<string, string>> = {
+  group_stage: { es: "Fase de Grupos", en: "Group Stage", pt: "Fase de Grupos" },
+  round_of_32: { es: "Dieciseisavos de Final", en: "Round of 32", pt: "Oitavas de Final" },
+  round_of_16: { es: "Octavos de Final", en: "Round of 16", pt: "Oitavas de Final" },
+  quarter_finals: { es: "Cuartos de Final", en: "Quarter Finals", pt: "Quartas de Final" },
+  semi_finals: { es: "Semifinales", en: "Semi Finals", pt: "Semifinais" },
+  final: { es: "Final", en: "Final", pt: "Final" },
+};
+
 // ── Placeholder team prefixes (block picks) ─────────────────
 export const PLACEHOLDER_TEAM_PREFIXES = [
   "t_TBD",

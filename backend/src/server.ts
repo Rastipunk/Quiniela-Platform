@@ -22,6 +22,7 @@ import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
+import { startNewMemberDigestJob, stopNewMemberDigestJob } from "./jobs/newMemberDigestJob";
 import { startPhaseSyncJob, stopPhaseSyncJob } from "./jobs/phaseSyncJob";
 import { startLiveScoresJob, stopLiveScoresJob } from "./jobs/liveScoresJob";
 import { startFixtureTrackingJob, stopFixtureTrackingJob } from "./jobs/fixtureTrackingJob";
@@ -278,6 +279,7 @@ const server = app.listen(PORT, () => {
   logger.info("API started", { port: PORT, version: BUILD_VERSION, commit: COMMIT_SHA });
   startSmartSyncJob();
   startDeadlineReminderJob();
+  startNewMemberDigestJob();
   startPhaseSyncJob();
   startFixtureTrackingJob();
   startLiveScoresJob();
@@ -299,6 +301,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   // 2. Stop cron jobs so no new DB work starts
   stopSmartSyncJob();
   stopDeadlineReminderJob();
+  stopNewMemberDigestJob();
   stopPhaseSyncJob();
   stopLiveScoresJob();
   stopFixtureTrackingJob();

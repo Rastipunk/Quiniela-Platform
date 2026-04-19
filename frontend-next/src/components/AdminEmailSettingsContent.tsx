@@ -13,7 +13,6 @@ import {
 // Tipo definido localmente para evitar bug de Vite con type exports
 type PlatformEmailSettings = {
   emailWelcomeEnabled: boolean;
-  emailPoolInvitationEnabled: boolean;
   emailDeadlineReminderEnabled: boolean;
   emailResultPublishedEnabled: boolean;
   emailPoolCompletedEnabled: boolean;
@@ -31,11 +30,6 @@ const EMAIL_TOGGLES: EmailToggle[] = [
     key: "emailWelcomeEnabled",
     label: "Email de Bienvenida",
     description: "Se envía a nuevos usuarios al registrarse. Incluye información de inicio rápido.",
-  },
-  {
-    key: "emailPoolInvitationEnabled",
-    label: "Invitación a Quiniela",
-    description: "Notifica a usuarios cuando son invitados a una quiniela.",
   },
   {
     key: "emailDeadlineReminderEnabled",

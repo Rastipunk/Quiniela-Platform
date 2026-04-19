@@ -54,10 +54,10 @@ export type UserEmailPreferences = {
   emailDeadlineReminders: boolean;
   emailResultNotifications: boolean;
   emailPoolCompletions: boolean;
+  emailNewMemberDigest: boolean;
 };
 
 export type PlatformEmailEnabled = {
-  emailPoolInvitations: boolean;
   emailDeadlineReminders: boolean;
   emailResultNotifications: boolean;
   emailPoolCompletions: boolean;

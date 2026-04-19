@@ -19,10 +19,10 @@ type UserEmailPreferences = {
   emailDeadlineReminders: boolean;
   emailResultNotifications: boolean;
   emailPoolCompletions: boolean;
+  emailNewMemberDigest: boolean;
 };
 
 type PlatformEnabled = {
-  emailPoolInvitations: boolean;
   emailDeadlineReminders: boolean;
   emailResultNotifications: boolean;
   emailPoolCompletions: boolean;
@@ -49,7 +49,6 @@ export function EmailPreferencesSection() {
     },
     {
       key: "emailPoolInvitations",
-      platformKey: "emailPoolInvitations",
       label: t("emailPrefs.invitationsLabel", poolParams),
       description: t("emailPrefs.invitationsDesc", poolParams),
     },
@@ -70,6 +69,11 @@ export function EmailPreferencesSection() {
       platformKey: "emailPoolCompletions",
       label: t("emailPrefs.completionsLabel", poolParams),
       description: t("emailPrefs.completionsDesc", poolParams),
+    },
+    {
+      key: "emailNewMemberDigest",
+      label: t("emailPrefs.newMemberDigestLabel"),
+      description: t("emailPrefs.newMemberDigestDesc"),
     },
   ];
 

@@ -77,6 +77,7 @@ const updateEmailPreferencesSchema = z.object({
   emailDeadlineReminders: z.boolean().optional(),
   emailResultNotifications: z.boolean().optional(),
   emailPoolCompletions: z.boolean().optional(),
+  emailNewMemberDigest: z.boolean().optional(),
 });
 
 // GET /me/email-preferences
@@ -95,6 +96,7 @@ meRouter.get("/email-preferences", async (req, res) => {
         emailDeadlineReminders: true,
         emailResultNotifications: true,
         emailPoolCompletions: true,
+        emailNewMemberDigest: true,
         predictionUpdates: true,
       },
     }),
@@ -102,7 +104,6 @@ meRouter.get("/email-preferences", async (req, res) => {
       where: { id: "singleton" },
       select: {
         emailWelcomeEnabled: true,
-        emailPoolInvitationEnabled: true,
         emailDeadlineReminderEnabled: true,
         emailResultPublishedEnabled: true,
         emailPoolCompletedEnabled: true,
@@ -116,7 +117,6 @@ meRouter.get("/email-preferences", async (req, res) => {
 
   // Mapeo de preferencias de usuario a configuración de plataforma
   const platformEnabled = {
-    emailPoolInvitations: platformSettings?.emailPoolInvitationEnabled ?? true,
     emailDeadlineReminders: platformSettings?.emailDeadlineReminderEnabled ?? true,
     emailResultNotifications: platformSettings?.emailResultPublishedEnabled ?? true,
     emailPoolCompletions: platformSettings?.emailPoolCompletedEnabled ?? true,
@@ -129,6 +129,7 @@ meRouter.get("/email-preferences", async (req, res) => {
       emailDeadlineReminders: user.emailDeadlineReminders,
       emailResultNotifications: user.emailResultNotifications,
       emailPoolCompletions: user.emailPoolCompletions,
+      emailNewMemberDigest: user.emailNewMemberDigest,
       predictionUpdates: user.predictionUpdates,
     },
     // Indica qué tipos de email están habilitados a nivel de plataforma
@@ -141,6 +142,7 @@ meRouter.get("/email-preferences", async (req, res) => {
       emailDeadlineReminders: "Recordatorios de deadline para hacer pronósticos",
       emailResultNotifications: "Notificaciones de resultados publicados",
       emailPoolCompletions: "Notificaciones de quinielas finalizadas",
+      emailNewMemberDigest: "Resumen diario de nuevos miembros en tus pools (para hosts)",
       predictionUpdates: "Actualizaciones de predicciones AI del Mundial 2026",
     },
   });
@@ -174,6 +176,7 @@ meRouter.put("/email-preferences", async (req, res) => {
         emailDeadlineReminders: true,
         emailResultNotifications: true,
         emailPoolCompletions: true,
+        emailNewMemberDigest: true,
       },
     });
 
@@ -185,6 +188,7 @@ meRouter.put("/email-preferences", async (req, res) => {
         emailDeadlineReminders: updatedUser.emailDeadlineReminders,
         emailResultNotifications: updatedUser.emailResultNotifications,
         emailPoolCompletions: updatedUser.emailPoolCompletions,
+        emailNewMemberDigest: updatedUser.emailNewMemberDigest,
       },
     });
   } catch (error) {

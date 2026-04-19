@@ -43,7 +43,6 @@ router.use(requireAuth, requireAdmin);
 
 const updateEmailSettingsSchema = z.object({
   emailWelcomeEnabled: z.boolean().optional(),
-  emailPoolInvitationEnabled: z.boolean().optional(),
   emailDeadlineReminderEnabled: z.boolean().optional(),
   emailResultPublishedEnabled: z.boolean().optional(),
   emailPoolCompletedEnabled: z.boolean().optional(),
@@ -79,7 +78,6 @@ router.get("/email", async (req: AuthenticatedRequest, res: Response) => {
     return sendData(res, {
       settings: {
         emailWelcomeEnabled: settings.emailWelcomeEnabled,
-        emailPoolInvitationEnabled: settings.emailPoolInvitationEnabled,
         emailDeadlineReminderEnabled: settings.emailDeadlineReminderEnabled,
         emailResultPublishedEnabled: settings.emailResultPublishedEnabled,
         emailPoolCompletedEnabled: settings.emailPoolCompletedEnabled,
@@ -168,7 +166,6 @@ router.put("/email", async (req: AuthenticatedRequest, res: Response) => {
         changes,
         newSettings: {
           emailWelcomeEnabled: updatedSettings.emailWelcomeEnabled,
-          emailPoolInvitationEnabled: updatedSettings.emailPoolInvitationEnabled,
           emailDeadlineReminderEnabled:
             updatedSettings.emailDeadlineReminderEnabled,
           emailResultPublishedEnabled:
@@ -182,7 +179,6 @@ router.put("/email", async (req: AuthenticatedRequest, res: Response) => {
       message: "Configuración de emails actualizada exitosamente.",
       settings: {
         emailWelcomeEnabled: updatedSettings.emailWelcomeEnabled,
-        emailPoolInvitationEnabled: updatedSettings.emailPoolInvitationEnabled,
         emailDeadlineReminderEnabled:
           updatedSettings.emailDeadlineReminderEnabled,
         emailResultPublishedEnabled: updatedSettings.emailResultPublishedEnabled,

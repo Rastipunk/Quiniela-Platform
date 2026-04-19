@@ -85,6 +85,8 @@
     "resultsLabel": "Resultados publicados",
     "resultsDesc": "Receba notificações quando resultados de jogos forem publicados",
     "completionsLabel": "{pluralUpper} finalizados",
-    "completionsDesc": "Receba notificações quando um {term} terminar"
+    "completionsDesc": "Receba notificações quando um {term} terminar",
+    "newMemberDigestLabel": "Resumo diário de novos membros",
+    "newMemberDigestDesc": "Receba um resumo diário dos novos membros que entraram nos seus bolões (para hosts)"
   }
 }

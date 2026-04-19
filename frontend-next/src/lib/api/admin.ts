@@ -5,7 +5,6 @@ import { getToken } from "../auth";
 // Admin email settings
 export type PlatformEmailSettings = {
   emailWelcomeEnabled: boolean;
-  emailPoolInvitationEnabled: boolean;
   emailDeadlineReminderEnabled: boolean;
   emailResultPublishedEnabled: boolean;
   emailPoolCompletedEnabled: boolean;

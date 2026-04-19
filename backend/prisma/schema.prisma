@@ -95,6 +95,7 @@ model User {
   emailDeadlineReminders   Boolean @default(true) // Recordatorios de deadline
   emailResultNotifications Boolean @default(true) // Resultados publicados
   emailPoolCompletions     Boolean @default(true) // Pool completado
+  emailNewMemberDigest     Boolean @default(true) // Digest diario de nuevos miembros (para hosts)
 
   // =========================================================================
   // PREDICTION SUBSCRIPTION

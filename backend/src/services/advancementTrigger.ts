@@ -15,10 +15,11 @@
  */
 
 import { prisma } from "../db";
-import { ADVANCEMENT } from "../lib/constants";
+import { ADVANCEMENT, PHASE_DISPLAY_NAMES, countryToLocale } from "../lib/constants";
 import { advanceToRoundOf32, advanceKnockoutPhase } from "./instanceAdvancement";
 import { writeAuditEvent } from "../lib/audit";
-import { sendAdminNotification } from "../lib/email";
+import { sendAdminNotification, sendPhaseCompletionSummaryEmail, batchSendEmails } from "../lib/email";
+import { typed, type PickJson } from "../lib/fixture";
 
 // In-memory map of pending advancement timers (per pool+phase).
 // Key: `${poolId}:${phaseId}`
@@ -193,6 +194,10 @@ async function executeAdvancement(
       type: "feedback",
     }).catch(() => {});
 
+    // Send phase completion summary emails to all members (fire-and-forget)
+    sendPhaseCompletionNotifications(poolId, completedPhaseId, pool.name)
+      .catch(() => {});
+
     // Cascade: check if the next phase is also already complete (rare but possible)
     // Pick any match from next phase to re-trigger
     const newSnapshot = (await prisma.pool.findUnique({
@@ -230,6 +235,113 @@ export function cancelPendingAdvancement(poolId: string, phaseId: string): boole
     return true;
   }
   return false;
+}
+
+async function sendPhaseCompletionNotifications(
+  poolId: string,
+  completedPhaseId: string,
+  poolName: string,
+): Promise<void> {
+  try {
+    const members = await prisma.poolMember.findMany({
+      where: { poolId, status: "ACTIVE" },
+      include: {
+        user: { select: { id: true, email: true, displayName: true, country: true } },
+      },
+      orderBy: { joinedAtUtc: "asc" },
+    });
+
+    const predictions = await prisma.prediction.findMany({
+      where: { poolId },
+    });
+
+    const poolResults = await prisma.poolMatchResult.findMany({
+      where: { poolId },
+      include: { currentVersion: true },
+    });
+
+    const resultByMatchId = new Map<string, { homeGoals: number; awayGoals: number }>();
+    for (const r of poolResults) {
+      if (r.currentVersion) {
+        resultByMatchId.set(r.matchId, {
+          homeGoals: r.currentVersion.homeGoals,
+          awayGoals: r.currentVersion.awayGoals,
+        });
+      }
+    }
+
+    // Calculate points per user (same logic as poolStateMachine)
+    const userPoints = new Map<string, number>();
+    for (const member of members) {
+      userPoints.set(member.userId, 0);
+    }
+
+    for (const pred of predictions) {
+      const result = resultByMatchId.get(pred.matchId);
+      if (!result) continue;
+
+      const pick = typed<PickJson>(pred.pickJson);
+      let points = 0;
+
+      if (pick?.type === "OUTCOME") {
+        const actualOutcome = result.homeGoals > result.awayGoals ? "HOME" :
+                              result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
+        if (pick.outcome === actualOutcome) points = 3;
+      } else if (pick?.type === "SCORE") {
+        const actualOutcome = result.homeGoals > result.awayGoals ? "HOME" :
+                              result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
+        const predOutcome = pick.homeGoals! > pick.awayGoals! ? "HOME" :
+                            pick.homeGoals! < pick.awayGoals! ? "AWAY" : "DRAW";
+        if (predOutcome === actualOutcome) {
+          points = 3;
+          if (pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
+            points = 5;
+          }
+        }
+      }
+
+      const current = userPoints.get(pred.userId) ?? 0;
+      userPoints.set(pred.userId, current + points);
+    }
+
+    const sortedMembers = members
+      .map((m) => ({ ...m, points: userPoints.get(m.userId) ?? 0 }))
+      .sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return new Date(a.joinedAtUtc).getTime() - new Date(b.joinedAtUtc).getTime();
+      });
+
+    const top10 = sortedMembers.slice(0, 10).map((m, idx) => ({
+      rank: idx + 1,
+      name: m.user.displayName,
+      points: m.points,
+    }));
+
+    const phaseNames = PHASE_DISPLAY_NAMES[completedPhaseId];
+
+    const emailItems = sortedMembers.map((member, idx) => ({ member, rank: idx + 1 }));
+    const { sent, failed } = await batchSendEmails(emailItems, (item) => {
+      const locale = countryToLocale(item.member.user.country);
+      const phaseName = phaseNames?.[locale] ?? phaseNames?.en ?? completedPhaseId;
+      return sendPhaseCompletionSummaryEmail({
+        to: item.member.user.email,
+        userId: item.member.user.id,
+        displayName: item.member.user.displayName,
+        poolName,
+        poolId,
+        phaseName,
+        userRank: item.rank,
+        userPoints: item.member.points,
+        totalParticipants: sortedMembers.length,
+        top10,
+        locale,
+      });
+    });
+
+    console.log(`📧 Phase completion emails for ${poolId} (${completedPhaseId}): ${sent} sent, ${failed} failed`);
+  } catch (err) {
+    console.error("[AdvancementTrigger] Error sending phase completion emails:", err);
+  }
 }
 
 const PLACEHOLDER_PREFIXES = ["t_TBD", "W_", "L_", "RU_", "3rd_POOL_"];

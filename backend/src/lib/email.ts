@@ -29,6 +29,8 @@ import {
   getCorporateActivationTemplate,
   getPredictionUpdateTemplate,
   getPaymentReceiptTemplate,
+  getNewMemberDigestTemplate,
+  getPhaseCompletionSummaryTemplate,
   PasswordResetEmailParams,
   VerificationEmailParams,
   WelcomeEmailParams,
@@ -185,7 +187,6 @@ export async function batchSendEmails<T>(
 
 export type EmailType =
   | "welcome"
-  | "poolInvitation"
   | "deadlineReminder"
   | "resultPublished"
   | "poolCompleted";
@@ -205,10 +206,6 @@ const EMAIL_CONFIG_MAP: Record<
   welcome: {
     platformField: "emailWelcomeEnabled",
     userField: "emailNotificationsEnabled", // Solo master toggle para welcome
-  },
-  poolInvitation: {
-    platformField: "emailPoolInvitationEnabled",
-    userField: "emailPoolInvitations",
   },
   deadlineReminder: {
     platformField: "emailDeadlineReminderEnabled",
@@ -459,14 +456,19 @@ export async function sendPoolInvitationEmail(params: {
   poolDescription?: string;
   locale?: string;
 }): Promise<EmailResult> {
-  // Verificar si está habilitado (a nivel plataforma y usuario si existe)
-  const { enabled, reason } = await isEmailEnabled(
-    "poolInvitation",
-    params.userId
-  );
-  if (!enabled) {
-    console.log(`⏭️ Pool invitation email skipped: ${reason}`);
-    return { success: true, skipped: true, reason };
+  // Check user preference only (always active at platform level)
+  if (params.userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: params.userId },
+      select: { emailNotificationsEnabled: true, emailPoolInvitations: true },
+    });
+    if (user && (!user.emailNotificationsEnabled || !user.emailPoolInvitations)) {
+      const reason = !user.emailNotificationsEnabled
+        ? "User has disabled all email notifications"
+        : "User has disabled pool invitation notifications";
+      console.log(`⏭️ Pool invitation email skipped: ${reason}`);
+      return { success: true, skipped: true, reason };
+    }
   }
 
   const ready = getReadyClient();
@@ -735,7 +737,6 @@ export async function getPlatformEmailSettings() {
 
   return {
     welcomeEnabled: settings.emailWelcomeEnabled,
-    poolInvitationEnabled: settings.emailPoolInvitationEnabled,
     deadlineReminderEnabled: settings.emailDeadlineReminderEnabled,
     resultPublishedEnabled: settings.emailResultPublishedEnabled,
     poolCompletedEnabled: settings.emailPoolCompletedEnabled,
@@ -1341,6 +1342,124 @@ export async function sendMemberRemovedEmail(params: {
     return { success: true };
   } catch (err) {
     console.error(`❌ Excepción al enviar member ${params.type} email:`, err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// NEW MEMBER DIGEST (daily summary for hosts)
+// =========================================================================
+
+export async function sendNewMemberDigestEmail(params: {
+  to: string;
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  newMembers: { name: string }[];
+  currentTotal: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const count = params.newMembers.length;
+  const subjects: Record<string, string> = {
+    es: `👥 ${count} ${count === 1 ? "nuevo miembro" : "nuevos miembros"} en "${params.poolName}"`,
+    en: `👥 ${count} new ${count === 1 ? "member" : "members"} in "${params.poolName}"`,
+    pt: `👥 ${count} ${count === 1 ? "novo membro" : "novos membros"} em "${params.poolName}"`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getNewMemberDigestTemplate({
+        hostName: params.hostName,
+        poolName: params.poolName,
+        poolId: params.poolId,
+        newMembers: params.newMembers,
+        currentTotal: params.currentTotal,
+        locale: loc,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar new member digest:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ New member digest enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar new member digest:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// PHASE COMPLETION SUMMARY
+// =========================================================================
+
+export async function sendPhaseCompletionSummaryEmail(params: {
+  to: string;
+  userId: string;
+  displayName: string;
+  poolName: string;
+  poolId: string;
+  phaseName: string;
+  userRank: number;
+  userPoints: number;
+  totalParticipants: number;
+  top10: { rank: number; name: string; points: number }[];
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  // Only check master toggle — phase summary is always active at platform level
+  const user = await prisma.user.findUnique({
+    where: { id: params.userId },
+    select: { emailNotificationsEnabled: true },
+  });
+  if (user && !user.emailNotificationsEnabled) {
+    return { success: true };
+  }
+
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `📊 Fase completada: ${params.phaseName} — Tu posición: #${params.userRank}`,
+    en: `📊 Phase completed: ${params.phaseName} — Your position: #${params.userRank}`,
+    pt: `📊 Fase concluída: ${params.phaseName} — Sua posição: #${params.userRank}`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPhaseCompletionSummaryTemplate({
+        displayName: params.displayName,
+        poolName: params.poolName,
+        poolId: params.poolId,
+        phaseName: params.phaseName,
+        userRank: params.userRank,
+        userPoints: params.userPoints,
+        totalParticipants: params.totalParticipants,
+        top10: params.top10,
+        locale: loc,
+      }),
+      headers: getUnsubscribeHeaders(params.userId),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar phase completion summary:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Phase completion summary enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar phase completion summary:", err);
     return { success: false, error: String(err) };
   }
 }
