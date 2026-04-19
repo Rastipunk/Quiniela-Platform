@@ -1,8 +1,17 @@
 /**
  * Meta Pixel — consent-gated Facebook/Instagram tracking.
  *
- * All functions are no-ops if NEXT_PUBLIC_META_PIXEL_ID is not set
- * or if the pixel script has not been loaded (consent denied).
+ * Architecture:
+ *   1. initMetaPixel() injects the fbevents.js script from Meta's CDN
+ *   2. fbevents.js creates the real window.fbq when it loads
+ *   3. Events fired before the script loads are queued internally
+ *   4. On script load: init pixel, grant consent, flush queue
+ *
+ * This avoids creating a manual fbq stub, which prevents conflicts
+ * with browser extensions (e.g. Meta Pixel Helper) that inject their
+ * own window.fbq before our code runs.
+ *
+ * All functions are no-ops if NEXT_PUBLIC_META_PIXEL_ID is not set.
  */
 
 declare global {
@@ -16,6 +25,8 @@ const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
 const USER_DATA_KEY = "p4a_meta_ud";
 
 let initialized = false;
+let scriptReady = false;
+const eventQueue: unknown[][] = [];
 
 function getStoredUserData(): Record<string, string> | undefined {
   try {
@@ -26,58 +37,75 @@ function getStoredUserData(): Record<string, string> | undefined {
   }
 }
 
+function enqueueFbq(...args: unknown[]): void {
+  if (scriptReady && typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq(...args);
+  } else {
+    eventQueue.push(args);
+  }
+}
+
+function flushEventQueue(): void {
+  scriptReady = true;
+  while (eventQueue.length > 0) {
+    const args = eventQueue.shift()!;
+    if (typeof window.fbq === "function") {
+      window.fbq(...args);
+    }
+  }
+}
+
 /**
- * Inject the Meta Pixel base code and call fbq('init').
+ * Load fbevents.js from Meta's CDN and initialize the pixel.
  * Includes stored Advanced Matching data if available.
  * Does NOT fire PageView — call trackMetaEvent('PageView') separately.
  */
 export function initMetaPixel(): void {
   if (!PIXEL_ID || initialized) return;
   if (typeof window === "undefined") return;
-
-  // Meta Pixel base code — overwrites any extension-injected fbq stub.
-  // We rely on `initialized` flag (not window.fbq existence) to prevent
-  // double init, because extensions like Meta Pixel Helper inject their
-  // own fbq function before our code runs.
-  const n: any = (window.fbq = function (...args: unknown[]) {
-    n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
-  });
-  window._fbq = n;
-  n.push = n;
-  n.loaded = true;
-  n.version = "2.0";
-  n.queue = [];
+  initialized = true;
 
   const script = document.createElement("script");
   script.async = true;
   script.src = "https://connect.facebook.net/en_US/fbevents.js";
-  const first = document.getElementsByTagName("script")[0];
-  first?.parentNode?.insertBefore(script, first);
-
-  const storedUserData = getStoredUserData();
-  if (storedUserData) {
-    window.fbq("init", PIXEL_ID, storedUserData);
-  } else {
-    window.fbq("init", PIXEL_ID);
-  }
-  window.fbq("consent", "grant");
-  initialized = true;
+  script.onload = () => {
+    const storedUserData = getStoredUserData();
+    if (storedUserData) {
+      window.fbq("init", PIXEL_ID, storedUserData);
+    } else {
+      window.fbq("init", PIXEL_ID);
+    }
+    window.fbq("consent", "grant");
+    flushEventQueue();
+  };
+  script.onerror = () => {
+    initialized = false;
+  };
+  document.head.appendChild(script);
 }
 
 /**
  * Fire a Meta standard event (e.g. 'PageView', 'Lead', 'Purchase').
  */
 export function trackMetaEvent(event: string, params?: Record<string, unknown>): void {
-  if (typeof window === "undefined" || !window.fbq || !PIXEL_ID) return;
-  window.fbq("track", event, params);
+  if (!PIXEL_ID) return;
+  if (params) {
+    enqueueFbq("track", event, params);
+  } else {
+    enqueueFbq("track", event);
+  }
 }
 
 /**
  * Fire a Meta custom event (e.g. 'PoolCreated', 'PoolJoined').
  */
 export function trackMetaCustomEvent(event: string, params?: Record<string, unknown>): void {
-  if (typeof window === "undefined" || !window.fbq || !PIXEL_ID) return;
-  window.fbq("trackCustom", event, params);
+  if (!PIXEL_ID) return;
+  if (params) {
+    enqueueFbq("trackCustom", event, params);
+  } else {
+    enqueueFbq("trackCustom", event);
+  }
 }
 
 async function sha256(value: string): Promise<string> {
