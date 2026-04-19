@@ -89,8 +89,8 @@ export interface MpCheckoutResponse {
 export async function processMpPayment(
   paymentId: string,
   formData: Record<string, unknown>,
-): Promise<{ status: string; statusDetail: string; mpPaymentId: number }> {
-  return requestJson<{ status: string; statusDetail: string; mpPaymentId: number }>("/payments/mp-process", {
+): Promise<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }> {
+  return requestJson<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }>("/payments/mp-process", {
     method: "POST",
     body: JSON.stringify({ paymentId, formData }),
   });

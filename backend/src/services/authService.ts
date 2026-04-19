@@ -131,6 +131,7 @@ export type RegisterInput = {
 export type RegisterResult = {
   user: SerializedUser & { timezone: string | null; createdAtUtc: Date };
   emailVerificationSent: boolean;
+  metaEventId?: string;
 };
 
 export async function registerUser(data: RegisterInput, ctx: AuditContext): Promise<RegisterResult> {
@@ -192,8 +193,10 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
     to: user.email, displayName: user.displayName, verificationToken: emailVerificationToken,
   }));
 
+  const metaEventId = crypto.randomUUID();
   fireAndForget("capi:register", sendCapiEvent({
     eventName: "CompleteRegistration",
+    eventId: metaEventId,
     userData: {
       email: user.email,
       firstName: user.displayName,
@@ -205,7 +208,7 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
     },
   }));
 
-  return { user, emailVerificationSent: true };
+  return { user, emailVerificationSent: true, metaEventId };
 }
 
 // -- Login --
@@ -313,7 +316,7 @@ export type GoogleAuthInput = {
   fbBrowserId?: string;
 };
 
-export type GoogleAuthResult = { user: SerializedUser; isNewUser: boolean };
+export type GoogleAuthResult = { user: SerializedUser; isNewUser: boolean; metaEventId?: string };
 
 export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditContext): Promise<GoogleAuthResult> {
   const googleUser = await verifyGoogleToken(data.idToken);
@@ -393,8 +396,10 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
     to: newUser.email, userId: newUser.id, displayName: newUser.displayName,
   }));
 
+  const metaEventId = crypto.randomUUID();
   fireAndForget("capi:google-register", sendCapiEvent({
     eventName: "CompleteRegistration",
+    eventId: metaEventId,
     userData: {
       email: newUser.email,
       firstName: newUser.displayName,
@@ -406,7 +411,7 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
     },
   }));
 
-  return { user: serializeUser(newUser), isNewUser: true };
+  return { user: serializeUser(newUser), isNewUser: true, metaEventId };
 }
 
 // -- Verify Email --

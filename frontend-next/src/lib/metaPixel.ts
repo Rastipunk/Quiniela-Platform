@@ -85,12 +85,28 @@ export function initMetaPixel(): void {
 }
 
 /**
- * Fire a Meta standard event (e.g. 'PageView', 'Lead', 'Purchase').
+ * Generate a unique event ID for browser/CAPI deduplication.
  */
-export function trackMetaEvent(event: string, params?: Record<string, unknown>): void {
+export function generateEventId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/**
+ * Fire a Meta standard event (e.g. 'PageView', 'Lead', 'Purchase').
+ * Pass eventId for browser/CAPI deduplication on events also sent server-side.
+ */
+export function trackMetaEvent(event: string, params?: Record<string, unknown>, eventId?: string): void {
   if (!PIXEL_ID) return;
-  if (params) {
+  const options = eventId ? { eventID: eventId } : undefined;
+  if (params && options) {
+    enqueueFbq("track", event, params, options);
+  } else if (params) {
     enqueueFbq("track", event, params);
+  } else if (options) {
+    enqueueFbq("track", event, {}, options);
   } else {
     enqueueFbq("track", event);
   }
@@ -116,8 +132,8 @@ async function sha256(value: string): Promise<string> {
 
 /**
  * Hash and store user data for Advanced Matching.
- * Data is persisted in localStorage and included in the next fbq('init')
- * call (on page reload), avoiding the duplicate pixel warning.
+ * Data is persisted in localStorage (for next page load init) AND
+ * applied immediately via fbq('init') if the script is already loaded.
  */
 export async function setMetaUserData(data: {
   email?: string;
@@ -142,6 +158,10 @@ export async function setMetaUserData(data: {
   try {
     localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
   } catch { /* localStorage full or blocked */ }
+
+  if (scriptReady && typeof window.fbq === "function") {
+    window.fbq("init", PIXEL_ID, userData);
+  }
 }
 
 /**

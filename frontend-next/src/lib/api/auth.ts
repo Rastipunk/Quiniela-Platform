@@ -5,6 +5,7 @@ import { getMetaCookies } from "@/lib/metaPixel";
 export type LoginResponse = {
   token?: string;
   user?: { id: string; email: string; username: string; displayName: string; role: string };
+  metaEventId?: string;
 };
 
 export type RegisterConsentOptions = {

@@ -11,6 +11,7 @@
  * - Checkouts are idempotent (reuse existing PENDING checkout for same pool)
  */
 
+import crypto from "crypto";
 import { prisma } from "../db";
 import { ServiceError } from "./authService";
 import { writeAuditEvent } from "../lib/audit";
@@ -538,7 +539,7 @@ export async function initiateMpCheckout(
 export async function processMpPayment(input: {
   paymentId: string; // our PoolPayment ID
   formData: Record<string, unknown>;
-}): Promise<{ status: string; statusDetail: string; mpPaymentId: number }> {
+}): Promise<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }> {
   const { paymentId, formData } = input;
 
   // Find our payment record
@@ -595,11 +596,15 @@ export async function processMpPayment(input: {
       dataJson: { mpPaymentId: result.id, status: result.status },
     }));
 
+    const metaEventId = crypto.randomUUID();
     fireAndForget("capi:purchase-mp", sendCapiEvent({
       eventName: "Purchase",
+      eventId: metaEventId,
       userData: { externalId: payment.userId },
       customData: { value: payment.amountUsd, currency: "COP" },
     }));
+
+    return { status: result.status, statusDetail: result.statusDetail, mpPaymentId: result.id, metaEventId };
   } else if (result.status === "rejected") {
     await prisma.poolPayment.update({
       where: { id: payment.id },

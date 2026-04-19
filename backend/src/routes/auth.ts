@@ -178,7 +178,7 @@ authRouter.post("/google", async (req, res) => {
     const result = await authenticateWithGoogle(parsed.data, auditCtx(req));
     const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
     setAuthCookies(res, token);
-    return sendData(res, { user: result.user });
+    return sendData(res, { user: result.user, metaEventId: result.metaEventId });
   } catch (err) {
     return handleServiceError(res, err);
   }

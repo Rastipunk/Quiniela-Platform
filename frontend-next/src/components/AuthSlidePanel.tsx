@@ -170,7 +170,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         setMetaUserData({ externalId: result.user.id, email: result.user.email });
       }
       trackEvent("sign_up", { method: "google" });
-      trackMetaEvent("CompleteRegistration", { content_name: "google", status: true });
+      trackMetaEvent("CompleteRegistration", { content_name: "google", status: true }, result.metaEventId);
       onLoggedIn();
     } catch (err: any) {
       setError(err?.message ?? t("googleRegisterError"));
@@ -290,7 +290,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
           setMetaUserData({ externalId: res.user.id, email: em, firstName: displayName.trim() });
         }
         trackEvent("sign_up", { method: "email" });
-        trackMetaEvent("CompleteRegistration", { content_name: "email", status: true });
+        trackMetaEvent("CompleteRegistration", { content_name: "email", status: true }, res.metaEventId);
         onLoggedIn();
       } else {
         const res = await login(em, password);

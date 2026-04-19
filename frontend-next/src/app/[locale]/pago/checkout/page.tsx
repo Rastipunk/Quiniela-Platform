@@ -118,7 +118,7 @@ export default function MpCheckoutPage() {
               return processMpPayment(paymentId, formData)
                 .then((result) => {
                   if (result.status === "approved") {
-                    trackMetaEvent("Purchase", { value: amount, currency: "COP" });
+                    trackMetaEvent("Purchase", { value: amount, currency: "COP" }, result.metaEventId);
                     setStatus("success");
                     setTimeout(() => router.push(`/pools/${poolId}`), 2000);
                   } else if (result.status === "rejected") {
