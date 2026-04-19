@@ -21,6 +21,10 @@ import {
   getDeadlineReminderTemplate,
   getResultPublishedTemplate,
   getPoolCompletedTemplate,
+  getPoolFullTemplate,
+  getNewMemberTemplate,
+  getPasswordChangedTemplate,
+  getMemberRemovedTemplate,
   getCorporateInquiryConfirmationTemplate,
   getCorporateActivationTemplate,
   getPredictionUpdateTemplate,
@@ -943,55 +947,24 @@ export async function sendPoolFullNotificationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  type Locale = "es" | "en" | "pt";
-  type Loc = typeof SUPPORTED_LOCALES[number];
-  const loc: Loc = (SUPPORTED_LOCALES as readonly string[]).includes(params.locale || "") ? params.locale as Loc : DEFAULT_LOCALE;
-  const subjects: Record<Locale, string> = {
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
     es: `Tu pool "${params.poolName}" está lleno`,
     en: `Your pool "${params.poolName}" is full`,
     pt: `Seu bolão "${params.poolName}" está lotado`,
   };
-  const headings: Record<Locale, string> = {
-    es: "Tu pool alcanzó su capacidad máxima",
-    en: "Your pool has reached maximum capacity",
-    pt: "Seu bolão atingiu a capacidade máxima",
-  };
-  const messages: Record<Locale, string> = {
-    es: `Tu pool <strong>"${params.poolName}"</strong> ha alcanzado su capacidad máxima de <strong>${params.maxParticipants} jugadores</strong>. Para recibir más participantes, necesitas ampliar la capacidad de tu pool.`,
-    en: `Your pool <strong>"${params.poolName}"</strong> has reached its maximum capacity of <strong>${params.maxParticipants} players</strong>. To accept more participants, you need to expand your pool's capacity.`,
-    pt: `Seu bolão <strong>"${params.poolName}"</strong> atingiu a capacidade máxima de <strong>${params.maxParticipants} jogadores</strong>. Para receber mais participantes, você precisa ampliar a capacidade do seu bolão.`,
-  };
-  const ctas: Record<Locale, string> = {
-    es: "Ir a mi pool",
-    en: "Go to my pool",
-    pt: "Ir ao meu bolão",
-  };
-
-  const poolUrl = `${FRONTEND_URL}/pools/${params.poolId}`;
 
   try {
     const { data, error } = await resilientSend(ready, {
       to: params.to,
-      subject: subjects[loc],
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-          <h2 style="color:#DC2626;margin-bottom:16px;">
-            &#128680; ${headings[loc]}
-          </h2>
-          <p style="color:#374151;font-size:15px;line-height:1.6;">
-            ${messages[loc]}
-          </p>
-          <div style="text-align:center;margin:24px 0;">
-            <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:${BRAND.primary};color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
-              ${ctas[loc]}
-            </a>
-          </div>
-          <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
-          <p style="color:#9CA3AF;font-size:12px;text-align:center;">
-            ${APP_NAME} &middot; ${SITE_DOMAIN}
-          </p>
-        </div>
-      `,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPoolFullTemplate({
+        hostName: params.hostName,
+        poolName: params.poolName,
+        poolId: params.poolId,
+        maxParticipants: params.maxParticipants,
+        locale: loc,
+      }),
     });
 
     if (error) {
@@ -1228,6 +1201,146 @@ export async function sendPaymentReceiptEmail(params: {
     return { success: true };
   } catch (err) {
     console.error("❌ Excepción al enviar payment receipt email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// NEW MEMBER NOTIFICATION (to host)
+// =========================================================================
+
+export async function sendNewMemberNotificationEmail(params: {
+  to: string;
+  hostName: string;
+  memberName: string;
+  poolName: string;
+  poolId: string;
+  currentCount: number;
+  maxParticipants?: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `👋 ${params.memberName} se unió a "${params.poolName}"`,
+    en: `👋 ${params.memberName} joined "${params.poolName}"`,
+    pt: `👋 ${params.memberName} entrou em "${params.poolName}"`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getNewMemberTemplate({
+        hostName: params.hostName,
+        memberName: params.memberName,
+        poolName: params.poolName,
+        poolId: params.poolId,
+        currentCount: params.currentCount,
+        maxParticipants: params.maxParticipants,
+        locale: loc,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar new member notification:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ New member notification enviada:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar new member notification:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// PASSWORD CHANGED NOTIFICATION
+// =========================================================================
+
+export async function sendPasswordChangedEmail(params: {
+  to: string;
+  displayName: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `🔒 Contraseña cambiada — ${APP_NAME}`,
+    en: `🔒 Password changed — ${APP_NAME}`,
+    pt: `🔒 Senha alterada — ${APP_NAME}`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPasswordChangedTemplate({ displayName: params.displayName, locale: loc }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar password changed email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Password changed email enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar password changed email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// MEMBER REMOVED NOTIFICATION (kicked/banned)
+// =========================================================================
+
+export async function sendMemberRemovedEmail(params: {
+  to: string;
+  displayName: string;
+  poolName: string;
+  reason?: string;
+  type: "kicked" | "banned";
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const isBan = params.type === "banned";
+  const subjects: Record<string, string> = {
+    es: isBan ? `⛔ Expulsado de "${params.poolName}"` : `Removido de "${params.poolName}"`,
+    en: isBan ? `⛔ Banned from "${params.poolName}"` : `Removed from "${params.poolName}"`,
+    pt: isBan ? `⛔ Banido de "${params.poolName}"` : `Removido de "${params.poolName}"`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getMemberRemovedTemplate({
+        displayName: params.displayName,
+        poolName: params.poolName,
+        reason: params.reason,
+        type: params.type,
+        locale: loc,
+      }),
+    });
+
+    if (error) {
+      console.error(`❌ Error al enviar member ${params.type} email:`, error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Member ${params.type} email enviado:`, data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error(`❌ Excepción al enviar member ${params.type} email:`, err);
     return { success: false, error: String(err) };
   }
 }

@@ -9,7 +9,7 @@ import {
   canJoinPool,
   canCreateInvites,
 } from "../services/poolStateMachine";
-import { sendPoolInvitationEmail, sendPoolFullNotificationEmail } from "../lib/email";
+import { sendPoolInvitationEmail, sendPoolFullNotificationEmail, sendNewMemberNotificationEmail } from "../lib/email";
 import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { TOKEN_EXPIRY_MS, countryToLocale } from "../lib/constants";
 import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
@@ -269,6 +269,29 @@ poolInvitesRouter.post("/join", async (req, res) => {
 
     // Trigger transición DRAFT → ACTIVE solo si el join fue directo
     await transitionToActive(joined.poolId, req.auth!.userId);
+
+    // Notify host that a new member joined
+    (async () => {
+      const [joiner, host, currentCount] = await Promise.all([
+        prisma.user.findUnique({ where: { id: req.auth!.userId }, select: { displayName: true } }),
+        prisma.poolMember.findFirst({
+          where: { poolId: joined.poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
+          include: { user: { select: { email: true, displayName: true, country: true } } },
+        }),
+        prisma.poolMember.count({ where: { poolId: joined.poolId, status: "ACTIVE" } }),
+      ]);
+      if (!host?.user?.email || host.userId === req.auth!.userId) return;
+      await sendNewMemberNotificationEmail({
+        to: host.user.email,
+        hostName: host.user.displayName || "Host",
+        memberName: joiner?.displayName || "Someone",
+        poolName: invite.pool.name,
+        poolId: joined.poolId,
+        currentCount,
+        maxParticipants: invite.pool.maxParticipants ?? undefined,
+        locale: countryToLocale(host.user.country),
+      });
+    })().catch(() => {});
   }
 
   // Notificar al host si el pool acaba de llenarse (atomic dedup via poolFullNotifiedAt)

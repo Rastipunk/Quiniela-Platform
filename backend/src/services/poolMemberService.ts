@@ -13,6 +13,8 @@ import { writeAuditEvent } from "../lib/audit";
 import { requirePoolAdmin, isPoolOwner, NON_LEAVABLE_ROLES } from "../lib/roles";
 import { transitionToActive } from "./poolStateMachine";
 import { fireAndForget } from "../lib/asyncHelpers";
+import { sendMemberRemovedEmail } from "../lib/email";
+import { countryToLocale } from "../lib/constants";
 import { ServiceError, type AuditContext } from "./authService";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -284,7 +286,7 @@ export async function kickMember(
 
   const member = await prisma.poolMember.findUnique({
     where: { id: memberId },
-    include: { user: { select: { username: true } } },
+    include: { user: { select: { username: true, email: true, displayName: true, country: true } } },
   });
 
   if (!member || member.poolId !== poolId) {
@@ -303,7 +305,7 @@ export async function kickMember(
   // Cannot kick pool creator
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    select: { createdByUserId: true },
+    select: { createdByUserId: true, name: true },
   });
 
   if (member.userId === pool?.createdByUserId) {
@@ -333,6 +335,17 @@ export async function kickMember(
     ip: ctx.ip,
     userAgent: ctx.userAgent,
   }));
+
+  if (member.user.email && pool?.name) {
+    fireAndForget("kicked-email", sendMemberRemovedEmail({
+      to: member.user.email,
+      displayName: member.user.displayName || member.user.username,
+      poolName: pool.name,
+      reason: reason || undefined,
+      type: "kicked",
+      locale: countryToLocale(member.user.country),
+    }));
+  }
 
   return { message: "Member kicked successfully" };
 }
@@ -391,7 +404,7 @@ export async function banMember(
 
   const member = await prisma.poolMember.findUnique({
     where: { id: memberId },
-    include: { user: { select: { username: true } } },
+    include: { user: { select: { username: true, email: true, displayName: true, country: true } } },
   });
 
   if (!member || member.poolId !== poolId) {
@@ -410,7 +423,7 @@ export async function banMember(
   // Cannot ban pool creator
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    select: { createdByUserId: true },
+    select: { createdByUserId: true, name: true },
   });
 
   if (member.userId === pool?.createdByUserId) {
@@ -455,6 +468,17 @@ export async function banMember(
     ip: ctx.ip,
     userAgent: ctx.userAgent,
   }));
+
+  if (member.user.email && pool?.name) {
+    fireAndForget("banned-email", sendMemberRemovedEmail({
+      to: member.user.email,
+      displayName: member.user.displayName || member.user.username,
+      poolName: pool.name,
+      reason,
+      type: "banned",
+      locale: countryToLocale(member.user.country),
+    }));
+  }
 
   return {
     message: deletePicks

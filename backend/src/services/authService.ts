@@ -18,6 +18,8 @@ import {
   sendWelcomeEmail,
   sendVerificationEmail,
   sendPoolFullNotificationEmail,
+  sendPasswordChangedEmail,
+  sendNewMemberNotificationEmail,
 } from "../lib/email";
 import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "./poolStateMachine";
@@ -274,6 +276,12 @@ export async function resetPassword(token: string, newPassword: string, ctx: Aud
     actorUserId: user.id, action: "PASSWORD_RESET_COMPLETED",
     entityType: "User", entityId: user.id,
     ip: ctx.ip, userAgent: ctx.userAgent,
+  }));
+
+  fireAndForget("password-changed-email", sendPasswordChangedEmail({
+    to: user.email,
+    displayName: user.displayName,
+    locale: countryToLocale(user.country),
   }));
 }
 
@@ -574,6 +582,28 @@ export async function activateCorporateAccount(
   );
 
   await notifyIfPoolFull(poolId, poolName, invite.pool.maxParticipants);
+
+  // Notify host about the new member
+  fireAndForget("new-member-notification", (async () => {
+    const [host, currentCount] = await Promise.all([
+      prisma.poolMember.findFirst({
+        where: { poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
+        include: { user: { select: { email: true, displayName: true, country: true } } },
+      }),
+      prisma.poolMember.count({ where: { poolId, status: "ACTIVE" } }),
+    ]);
+    if (!host?.user?.email || host.userId === newUser.id) return;
+    await sendNewMemberNotificationEmail({
+      to: host.user.email,
+      hostName: host.user.displayName || "Host",
+      memberName: newUser.displayName,
+      poolName,
+      poolId,
+      currentCount,
+      maxParticipants: invite.pool.maxParticipants ?? undefined,
+      locale: countryToLocale(host.user.country),
+    });
+  })());
 
   fireAndForget("audit:corporate-activation", writeAuditEvent({
     actorUserId: newUser.id, action: "CORPORATE_ACCOUNT_ACTIVATED",

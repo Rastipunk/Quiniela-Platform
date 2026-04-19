@@ -1257,6 +1257,268 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
 }
 
 // =========================================================================
+// TEMPLATE: POOL FULL NOTIFICATION
+// =========================================================================
+
+export interface PoolFullEmailParams {
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  maxParticipants: number;
+  locale?: string;
+}
+
+export function getPoolFullTemplate({ hostName, poolName, poolId, maxParticipants, locale = "es" }: PoolFullEmailParams): string {
+  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    capacity: string; cta: string; tip: string; preheader: string;
+  }> = {
+    es: {
+      heading: "🎉 ¡Tu pool está lleno!",
+      greeting: `Hola ${hostName},`,
+      body: `Tu pool <strong>${poolName}</strong> ha alcanzado la capacidad máxima de <strong>${maxParticipants} participantes</strong>.`,
+      capacity: `${maxParticipants}/${maxParticipants}`,
+      cta: "Administrar Pool",
+      tip: "Si necesitas más espacio, puedes ampliar la capacidad desde la configuración del pool.",
+      preheader: `"${poolName}" alcanzó ${maxParticipants} participantes. ¡Pool completo!`,
+    },
+    en: {
+      heading: "🎉 Your pool is full!",
+      greeting: `Hi ${hostName},`,
+      body: `Your pool <strong>${poolName}</strong> has reached the maximum capacity of <strong>${maxParticipants} participants</strong>.`,
+      capacity: `${maxParticipants}/${maxParticipants}`,
+      cta: "Manage Pool",
+      tip: "If you need more room, you can upgrade the pool capacity from the pool settings.",
+      preheader: `"${poolName}" reached ${maxParticipants} participants. Pool full!`,
+    },
+    pt: {
+      heading: "🎉 Seu bolão está lotado!",
+      greeting: `Olá ${hostName},`,
+      body: `Seu bolão <strong>${poolName}</strong> atingiu a capacidade máxima de <strong>${maxParticipants} participantes</strong>.`,
+      capacity: `${maxParticipants}/${maxParticipants}`,
+      cta: "Gerenciar Bolão",
+      tip: "Se precisar de mais espaço, você pode ampliar a capacidade nas configurações do bolão.",
+      preheader: `"${poolName}" atingiu ${maxParticipants} participantes. Bolão completo!`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getHighlightBox(`
+      <p style="margin:0;font-size:32px;font-weight:700;color:${BRAND.primaryColor};text-align:center;">
+        ${t.capacity}
+      </p>
+    `)}
+    ${getButton(t.cta, poolUrl)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.tip}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
+// TEMPLATE: NEW MEMBER JOINED NOTIFICATION
+// =========================================================================
+
+export interface NewMemberEmailParams {
+  hostName: string;
+  memberName: string;
+  poolName: string;
+  poolId: string;
+  currentCount: number;
+  maxParticipants?: number;
+  locale?: string;
+}
+
+export function getNewMemberTemplate({
+  hostName, memberName, poolName, poolId, currentCount, maxParticipants, locale = "es",
+}: NewMemberEmailParams): string {
+  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const capacityStr = maxParticipants ? `${currentCount}/${maxParticipants}` : `${currentCount}`;
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    membersLabel: string; cta: string; preheader: string;
+  }> = {
+    es: {
+      heading: "👋 Nuevo miembro en tu pool",
+      greeting: `Hola ${hostName},`,
+      body: `<strong>${memberName}</strong> se ha unido a tu pool <strong>${poolName}</strong>.`,
+      membersLabel: "Participantes",
+      cta: "Ver Pool",
+      preheader: `${memberName} se unió a "${poolName}".`,
+    },
+    en: {
+      heading: "👋 New member in your pool",
+      greeting: `Hi ${hostName},`,
+      body: `<strong>${memberName}</strong> has joined your pool <strong>${poolName}</strong>.`,
+      membersLabel: "Participants",
+      cta: "View Pool",
+      preheader: `${memberName} joined "${poolName}".`,
+    },
+    pt: {
+      heading: "👋 Novo membro no seu bolão",
+      greeting: `Olá ${hostName},`,
+      body: `<strong>${memberName}</strong> entrou no seu bolão <strong>${poolName}</strong>.`,
+      membersLabel: "Participantes",
+      cta: "Ver Bolão",
+      preheader: `${memberName} entrou em "${poolName}".`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getHighlightBox(`
+      <p style="margin:0;font-size:14px;color:${BRAND.mutedColor};">${t.membersLabel}</p>
+      <p style="margin:4px 0 0;font-size:24px;font-weight:700;color:${BRAND.primaryColor};">${capacityStr}</p>
+    `)}
+    ${getButton(t.cta, poolUrl)}
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
+// TEMPLATE: PASSWORD CHANGED NOTIFICATION
+// =========================================================================
+
+export interface PasswordChangedEmailParams {
+  displayName: string;
+  locale?: string;
+}
+
+export function getPasswordChangedTemplate({ displayName, locale = "es" }: PasswordChangedEmailParams): string {
+  const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    warning: string; preheader: string;
+  }> = {
+    es: {
+      heading: "🔒 Tu contraseña fue cambiada",
+      greeting: `Hola ${displayName},`,
+      body: "Tu contraseña ha sido restablecida exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.",
+      warning: "Si no realizaste este cambio, contacta a nuestro equipo de soporte inmediatamente.",
+      preheader: "Tu contraseña ha sido restablecida exitosamente.",
+    },
+    en: {
+      heading: "🔒 Your password was changed",
+      greeting: `Hi ${displayName},`,
+      body: "Your password has been reset successfully. You can now log in with your new password.",
+      warning: "If you didn't make this change, contact our support team immediately.",
+      preheader: "Your password has been reset successfully.",
+    },
+    pt: {
+      heading: "🔒 Sua senha foi alterada",
+      greeting: `Olá ${displayName},`,
+      body: "Sua senha foi redefinida com sucesso. Agora você pode fazer login com sua nova senha.",
+      warning: "Se você não fez essa alteração, entre em contato com nossa equipe de suporte imediatamente.",
+      preheader: "Sua senha foi redefinida com sucesso.",
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getHighlightBox(`<p style="margin:0;font-size:14px;line-height:1.5;color:#991b1b;"><strong>⚠️</strong> ${t.warning} <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a></p>`)}
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
+// TEMPLATE: MEMBER REMOVED NOTIFICATION
+// =========================================================================
+
+export interface MemberRemovedEmailParams {
+  displayName: string;
+  poolName: string;
+  reason?: string;
+  type: "kicked" | "banned";
+  locale?: string;
+}
+
+export function getMemberRemovedTemplate({ displayName, poolName, reason, type, locale = "es" }: MemberRemovedEmailParams): string {
+  const isBan = type === "banned";
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    reasonLabel: string; note: string; preheader: string;
+  }> = {
+    es: {
+      heading: isBan ? "⛔ Has sido expulsado de un pool" : "Has sido removido de un pool",
+      greeting: `Hola ${displayName},`,
+      body: isBan
+        ? `Has sido permanentemente expulsado del pool <strong>${poolName}</strong> por el organizador.`
+        : `Has sido removido del pool <strong>${poolName}</strong> por el organizador.`,
+      reasonLabel: "Motivo",
+      note: isBan
+        ? "Esta acción es permanente y no podrás volver a unirte a este pool."
+        : "Puedes volver a unirte si recibes una nueva invitación.",
+      preheader: isBan
+        ? `Has sido expulsado del pool "${poolName}".`
+        : `Has sido removido del pool "${poolName}".`,
+    },
+    en: {
+      heading: isBan ? "⛔ You've been banned from a pool" : "You've been removed from a pool",
+      greeting: `Hi ${displayName},`,
+      body: isBan
+        ? `You have been permanently banned from the pool <strong>${poolName}</strong> by the organizer.`
+        : `You have been removed from the pool <strong>${poolName}</strong> by the organizer.`,
+      reasonLabel: "Reason",
+      note: isBan
+        ? "This action is permanent and you won't be able to rejoin this pool."
+        : "You can rejoin if you receive a new invitation.",
+      preheader: isBan
+        ? `You've been banned from the pool "${poolName}".`
+        : `You've been removed from the pool "${poolName}".`,
+    },
+    pt: {
+      heading: isBan ? "⛔ Você foi banido de um bolão" : "Você foi removido de um bolão",
+      greeting: `Olá ${displayName},`,
+      body: isBan
+        ? `Você foi permanentemente banido do bolão <strong>${poolName}</strong> pelo organizador.`
+        : `Você foi removido do bolão <strong>${poolName}</strong> pelo organizador.`,
+      reasonLabel: "Motivo",
+      note: isBan
+        ? "Esta ação é permanente e você não poderá voltar a este bolão."
+        : "Você pode voltar se receber um novo convite.",
+      preheader: isBan
+        ? `Você foi banido do bolão "${poolName}".`
+        : `Você foi removido do bolão "${poolName}".`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const reasonHtml = reason
+    ? getHighlightBox(`
+        <p style="margin:0 0 4px;font-size:13px;color:${BRAND.mutedColor};">${t.reasonLabel}:</p>
+        <p style="margin:0;font-size:15px;color:${BRAND.textColor};font-style:italic;">"${reason}"</p>
+      `)
+    : "";
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${reasonHtml}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.note}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
 // EXPORT DE CONSTANTES PARA USO EXTERNO
 // =========================================================================
 
