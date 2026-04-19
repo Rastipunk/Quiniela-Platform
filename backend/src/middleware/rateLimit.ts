@@ -47,6 +47,15 @@ export const verificationResendLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Pool join — default 10 attempts / 15 min per IP
+export const poolJoinLimiter = rateLimit({
+  windowMs: envInt("RATE_LIMIT_POOL_JOIN_WINDOW_MS", 15 * MINUTE),
+  max: envInt("RATE_LIMIT_POOL_JOIN_MAX", 10),
+  message: { error: "TOO_MANY_JOIN_ATTEMPTS" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Corporate invitations — default 5 req/hour per IP
 export const corporateInviteLimiter = rateLimit({
   windowMs: envInt("RATE_LIMIT_CORP_INVITE_WINDOW_MS", HOUR),

@@ -229,7 +229,7 @@ export async function requestPasswordReset(email: string, ctx: AuditContext): Pr
   if (!user || user.status !== "ACTIVE") return { sent: false };
 
   const isGoogleOnly = !!user.googleId && (!user.passwordHash || user.passwordHash === "");
-  if (isGoogleOnly) throw new ServiceError("GOOGLE_ACCOUNT", 400);
+  if (isGoogleOnly) return { sent: false, isGoogleOnly: true };
 
   const resetToken = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
   const resetTokenExpiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS.PASSWORD_RESET);

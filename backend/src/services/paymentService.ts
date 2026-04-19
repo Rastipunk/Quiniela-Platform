@@ -222,13 +222,23 @@ export async function handleOrderPaid(payload: {
   }
 
   // 2. Record the raw event (immutable audit log)
-  await prisma.paymentEvent.create({
-    data: {
-      polarEventId: eventId,
-      eventType,
-      payloadJson: JSON.parse(JSON.stringify(payload)),
-    },
-  });
+  // Wrapped in try/catch to handle race condition: two concurrent webhooks
+  // may both pass the findUnique check above and attempt to create.
+  try {
+    await prisma.paymentEvent.create({
+      data: {
+        polarEventId: eventId,
+        eventType,
+        payloadJson: JSON.parse(JSON.stringify(payload)),
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      console.log(`[PaymentService] Race-condition duplicate event ${eventId}, skipping`);
+      return;
+    }
+    throw err;
+  }
 
   // 3. Extract metadata
   const metadata = payload.data.metadata as {
@@ -603,13 +613,21 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   });
   if (existing) return;
 
-  await prisma.paymentEvent.create({
-    data: {
-      polarEventId: `mp-${paymentMpId}`,
-      eventType: "mp.payment.updated",
-      payloadJson: { id: paymentMpId, status: mpPayment.status, reference },
-    },
-  });
+  try {
+    await prisma.paymentEvent.create({
+      data: {
+        polarEventId: `mp-${paymentMpId}`,
+        eventType: "mp.payment.updated",
+        payloadJson: { id: paymentMpId, status: mpPayment.status, reference },
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      console.log(`[PaymentService] Race-condition duplicate MP event ${paymentMpId}, skipping`);
+      return;
+    }
+    throw err;
+  }
 
   const payment = await prisma.poolPayment.findUnique({
     where: { polarCheckoutId: reference },

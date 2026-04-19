@@ -154,13 +154,13 @@ paymentsRouter.get("/pool/:poolId/status", requireAuth, async (req: Request, res
  * Manifest template: id:<data.id query param>;request-id:<x-request-id>;ts:<ts>;
  * HMAC is computed with the webhook secret from MP dashboard.
  *
- * Returns true if signature is valid or if no secret is configured (dev mode).
+ * Returns true if signature is valid. Rejects all requests if no secret is configured.
  */
 function verifyMpSignature(req: Request): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET;
   if (!secret) {
-    console.warn("[Payments] MP_WEBHOOK_SECRET not set — skipping signature verification");
-    return true;
+    console.warn("[Payments] MP_WEBHOOK_SECRET not set — rejecting webhook");
+    return false;
   }
 
   const xSignature = req.headers["x-signature"] as string | undefined;

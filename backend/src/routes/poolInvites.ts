@@ -12,6 +12,7 @@ import {
 import { sendPoolInvitationEmail, sendPoolFullNotificationEmail, sendNewMemberNotificationEmail } from "../lib/email";
 import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { TOKEN_EXPIRY_MS, countryToLocale } from "../lib/constants";
+import { poolJoinLimiter } from "../middleware/rateLimit";
 import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
 
 export const poolInvitesRouter = Router();
@@ -154,7 +155,7 @@ const joinSchema = z.object({
 });
 
 // POST /pools/join  (por invite code)
-poolInvitesRouter.post("/join", async (req, res) => {
+poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
   const parsed = joinSchema.safeParse(req.body);
   if (!parsed.success) {
     return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
