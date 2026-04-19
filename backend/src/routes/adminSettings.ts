@@ -18,6 +18,8 @@ import {
   sendDeadlineReminderEmail,
   sendResultPublishedEmail,
   sendPoolCompletedEmail,
+  sendNewMemberDigestEmail,
+  sendPhaseCompletionSummaryEmail,
 } from "../lib/email";
 import { countryToLocale } from "../lib/constants";
 import {
@@ -205,6 +207,8 @@ const testEmailSchema = z.object({
     "deadlineReminder",
     "resultPublished",
     "poolCompleted",
+    "newMemberDigest",
+    "phaseCompletionSummary",
   ]),
   to: z.string().email(),
 });
@@ -300,6 +304,49 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
         });
         break;
 
+      case "newMemberDigest":
+        result = await sendNewMemberDigestEmail({
+          to,
+          hostName: adminUser?.displayName || "Host",
+          poolName: testPoolName,
+          poolId: testPoolId,
+          newMembers: [
+            { name: "María García" },
+            { name: "Carlos López" },
+            { name: "Ana Martínez" },
+          ],
+          currentTotal: 12,
+          locale,
+        });
+        break;
+
+      case "phaseCompletionSummary":
+        result = await sendPhaseCompletionSummaryEmail({
+          to,
+          userId,
+          displayName: adminUser?.displayName || "Usuario",
+          poolName: testPoolName,
+          poolId: testPoolId,
+          phaseName: locale === "en" ? "Group Stage" : locale === "pt" ? "Fase de Grupos" : "Fase de Grupos",
+          userRank: 3,
+          userPoints: 42,
+          totalParticipants: 15,
+          top10: [
+            { rank: 1, name: "Pedro Ramírez", points: 51 },
+            { rank: 2, name: "Laura Sánchez", points: 48 },
+            { rank: 3, name: adminUser?.displayName || "Tú", points: 42 },
+            { rank: 4, name: "Diego Torres", points: 39 },
+            { rank: 5, name: "Valentina Cruz", points: 36 },
+            { rank: 6, name: "Andrés Moreno", points: 33 },
+            { rank: 7, name: "Camila Rojas", points: 30 },
+            { rank: 8, name: "Santiago Rivera", points: 27 },
+            { rank: 9, name: "Daniela Herrera", points: 24 },
+            { rank: 10, name: "Mateo Vargas", points: 21 },
+          ],
+          locale,
+        });
+        break;
+
       default:
         return sendBadRequest(res, `Tipo de email no válido: ${type}`);
     }
@@ -318,8 +365,8 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
         message: `Email de prueba "${type}" enviado exitosamente a ${to}`,
         type,
         to,
-        skipped: result.skipped,
-        skipReason: result.reason,
+        skipped: "skipped" in result ? result.skipped : undefined,
+        skipReason: "reason" in result ? result.reason : undefined,
       });
     } else {
       return sendInternal(res, "EMAIL_SEND_FAILED", {
