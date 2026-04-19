@@ -1,0 +1,130 @@
+{
+  "breadcrumbs": {
+    "home": "Início",
+    "title": "O que é uma Penca?"
+  },
+  "hero": {
+    "badge": "Cultura Esportiva",
+    "title": "O que é uma Penca Esportiva?",
+    "subtitle": "Quiniela, polla, prode, penca, porra — a tradição que une milhões de torcedores de futebol em todo o mundo hispânico e lusófono. Esta é a sua história."
+  },
+  "intro": {
+    "paragraphs": [
+      "A cada quatro anos, quando chega a Copa do Mundo, acontece um fenômeno que se repete em escritórios, grupos de WhatsApp e encontros familiares em toda a América Latina e Espanha: alguém propõe <strong>montar o bolão</strong>. Dependendo do país onde você estiver, podem chamar de <strong>polla</strong>, <strong>prode</strong>, <strong>penca</strong> ou <strong>porra</strong>. O nome muda, mas a essência é a mesma: prever resultados de futebol e competir entre amigos pela honra de ser quem mais entende do assunto.",
+      "É uma das tradições sociais mais enraizadas no mundo do futebol. Não é preciso ter conhecimento tático profundo nem entender formações — basta ter coragem de dizer \"2 a 1\" e esperar os 90 minutos. É puro entretenimento, e durante décadas foi jogado em papel, quadros de escritório e planilhas intermináveis."
+    ],
+    "pullQuote": "\"O bolão é aquele raro espaço onde o torcedor casual e o analista tático competem em igualdade de condições. Todo mundo tem uma opinião sobre o próximo jogo, e é isso que o torna especial.\""
+  },
+  "origins": {
+    "title": "As origens: das apostas coletivas ao jogo entre amigos",
+    "paragraphs": [
+      "A história das previsões esportivas organizadas remonta ao século XIX na Europa. Na <strong>Espanha</strong>, as <strong>porras</strong> — vaquinhas informais onde cada participante contribuía com um valor simbólico e apostava em um resultado — já eram tradição em bares e clubes de torcedores antes mesmo do futebol se profissionalizar. A palavra \"porra\" vem justamente desse costume de \"jogar no pote\" e dividir entre os acertadores.",
+      "O termo <strong>quiniela</strong> tem raízes no latim <em>quinella</em> (uma combinação de cinco elementos) e se popularizou primeiro no contexto da loteria. Em 1946, a Espanha lançou oficialmente <strong>La Quiniela</strong>, um jogo estatal onde os participantes previam os resultados de 15 jogos de futebol marcando 1 (casa), X (empate) ou 2 (visitante). Foi um sucesso imediato e se tornou ritual de cada fim de semana para milhões de espanhóis.",
+      "Esse modelo cruzou o Atlântico e se adaptou de formas muito diversas em cada país latino-americano, adquirindo nomes próprios e nuances culturais únicas."
+    ]
+  },
+  "regionalMap": {
+    "title": "Um jogo, muitos nomes: o mapa das pencas na América Latina",
+    "intro": "O fascinante desta tradição é como cada país a tornou sua. Não mudaram apenas o nome — em muitos casos criaram instituições oficiais em torno do conceito."
+  },
+  "regionalSections": [
+    {
+      "emoji": "\uD83C\uDDE6\uD83C\uDDF7",
+      "title": "O Prode argentino: quando o governo oficializou o jogo",
+      "paragraphs": [
+        "Em 1972, o governo argentino criou o <strong>PRODE (Pronósticos Deportivos — Prognósticos Esportivos)</strong>, um sistema oficial onde os cidadãos compravam cartelas e previam resultados da liga local. Foi um fenômeno social massivo: nas segundas-feiras, a conversa em qualquer escritório de Buenos Aires começava com \"como foi no prode?\". Embora o PRODE oficial tenha sido descontinuado, a palavra ficou gravada no vocabulário argentino. Hoje, quando um grupo de amigos na Argentina organiza previsões para a Copa do Mundo, continuam chamando de <strong>prode</strong>."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDE8\uD83C\uDDF4\uD83C\uDDE8\uD83C\uDDF1",
+      "title": "A polla: da beneficência à febre da Copa",
+      "paragraphs": [
+        "Na <strong>Colômbia</strong>, <strong>Chile</strong> e <strong>Venezuela</strong>, o termo dominante é <strong>polla</strong>. Sua origem está na <em>Polla Chilena de Beneficencia</em>, criada em 1934 como um sistema de apostas coletivas cujos lucros eram destinados a causas sociais. A palavra se exportou para toda a região e hoje é sinônimo de bolão esportivo. Na Colômbia, a expressão <strong>\"polla mundialista\"</strong> se ativa a cada quatro anos como um relógio: da maior empresa ao grupo de amigos do bairro, todo mundo monta sua polla."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDFA\uD83C\uDDFE",
+      "title": "A penca uruguaia: tradição rio-platense",
+      "paragraphs": [
+        "No <strong>Uruguai</strong>, ninguém diz quiniela nem polla — se diz <strong>penca</strong>. A tradição das pencas está profundamente ligada à cultura futebolística do país que sediou a primeira Copa do Mundo em 1930. Os uruguaios montam pencas para tudo: o Campeonato Uruguaio, a Copa América, a Copa do Mundo e até as Eliminatórias. É um ritual social que transcende gerações."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDEA\uD83C\uDDF8",
+      "title": "A porra espanhola: do bar ao escritório",
+      "paragraphs": [
+        "Enquanto na Espanha <strong>La Quiniela</strong> é o jogo oficial do estado, entre amigos se usa mais a palavra <strong>porra</strong>. \"Echar una porra\" (montar uma porra) significa organizar previsões informais, geralmente no trabalho ou no bar da torcida. Durante La Liga, a Champions League e cada Copa do Mundo, as porras se multiplicam. É uma tradição tão antiga quanto o próprio futebol espanhol."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDE7\uD83C\uDDF4\uD83C\uDDF5\uD83C\uDDEA",
+      "title": "Vaquita e chancha: os nomes mais criativos",
+      "paragraphs": [
+        "Na <strong>Bolívia</strong> é conhecida como <strong>vaquita</strong> — \"poner la vaquita\" (colocar a vaquinha) significa contribuir para o pote comum, uma expressão que nasce das vaquinhas informais. No <strong>Peru</strong>, além de \"polla\", se usa <strong>chancha</strong>, que também se refere a juntar dinheiro entre um grupo. E no <strong>México</strong> e <strong>Equador</strong>, o termo <strong>quiniela</strong> reina absoluto, com uma cultura especialmente forte durante as Copas do Mundo e a Liga MX."
+      ]
+    }
+  ],
+  "countryTable": {
+    "title": "Guia rápido: como chamam no seu país?",
+    "subtitle": "Dez países, dez maneiras de chamar o mesmo jogo.",
+    "columns": {
+      "country": "País",
+      "term": "Nome",
+      "origin": "Origem"
+    },
+    "rows": [
+      { "country": "México", "flag": "\uD83C\uDDF2\uD83C\uDDFD", "term": "Quiniela", "origin": "Do latim quinella (combinação de cinco)" },
+      { "country": "Colômbia", "flag": "\uD83C\uDDE8\uD83C\uDDF4", "term": "Polla", "origin": "De 'polla de beneficencia' (bolão de caridade)" },
+      { "country": "Argentina", "flag": "\uD83C\uDDE6\uD83C\uDDF7", "term": "Prode", "origin": "Acrônimo de PROnósticos DEportivos" },
+      { "country": "Uruguai", "flag": "\uD83C\uDDFA\uD83C\uDDFE", "term": "Penca", "origin": "Do guarani, tradição rio-platense" },
+      { "country": "Chile", "flag": "\uD83C\uDDE8\uD83C\uDDF1", "term": "Polla", "origin": "Da Polla Chilena de Beneficencia" },
+      { "country": "Venezuela", "flag": "\uD83C\uDDFB\uD83C\uDDEA", "term": "Polla", "origin": "Influência colombiana e caribenha" },
+      { "country": "Espanha", "flag": "\uD83C\uDDEA\uD83C\uDDF8", "term": "Porra / Quiniela", "origin": "Tradição de apostas coletivas" },
+      { "country": "Peru", "flag": "\uD83C\uDDF5\uD83C\uDDEA", "term": "Polla / Chancha", "origin": "'Chancha' = vaquinha entre amigos" },
+      { "country": "Equador", "flag": "\uD83C\uDDEA\uD83C\uDDE8", "term": "Quiniela", "origin": "Influência mexicana" },
+      { "country": "Bolívia", "flag": "\uD83C\uDDE7\uD83C\uDDF4", "term": "Vaquita", "origin": "'Poner la vaquita' = contribuir para o pote" }
+    ]
+  },
+  "digitalEvolution": {
+    "title": "Do papel à tela: a evolução digital",
+    "paragraphs": [
+      "Durante décadas, organizar um bolão significava a mesma coisa em todos os países: alguém imprimia uma tabela com os jogos, passava pelo escritório, e cada pessoa anotava seus palpites à mão. Depois vinha a parte difícil — calcular os pontos. Sempre havia alguém com uma planilha heroica tentando manter o ranking atualizado, e sempre havia discussões sobre se um ponto foi somado corretamente.",
+      "Hoje, plataformas como <strong>Picks4All</strong> digitalizam toda essa experiência: criar seu bolão (quiniela, polla, prode, penca — chame como quiser), convidar amigos com um código, fazer palpites pelo celular e ter o ranking atualizado automaticamente após cada jogo. A essência do jogo continua exatamente a mesma de 50 anos atrás. Só que agora é mais fácil, mais rápido e sem erros de cálculo."
+    ],
+    "pullQuote": "\"O que antes precisava de uma planilha e um voluntário muito paciente, hoje se resolve em 2 minutos pelo celular.\""
+  },
+  "whyPopular": {
+    "title": "Por que o bolão continua tão popular?",
+    "paragraphs": [
+      "Em um mundo com apps de apostas, fantasy sports e estatísticas avançadas, o bolão entre amigos continua imbatível por uma razão simples: <strong>é pessoal</strong>. Você não compete contra desconhecidos nem contra algoritmos — compete contra seu cunhado que diz entender mais de futebol, contra sua colega de trabalho que sempre acerta os empates, contra seu melhor amigo que vem ganhando há três Copas seguidas.",
+      "Isso é algo que nenhuma casa de apostas consegue replicar: a rivalidade saudável, as zoeiras quando você erra, o grupo de WhatsApp que explode depois de um resultado inesperado. O bolão transforma cada jogo em algo pessoal, e é isso que o mantém vivo geração após geração."
+    ]
+  },
+  "relatedLinks": {
+    "title": "Explore por região",
+    "links": [
+      { "href": "/polla-futbolera", "flag": "\uD83C\uDDE8\uD83C\uDDF4", "label": "Polla Futbolera", "region": "Colômbia, Chile, Venezuela" },
+      { "href": "/prode-deportivo", "flag": "\uD83C\uDDE6\uD83C\uDDF7", "label": "Prode Deportivo", "region": "Argentina" },
+      { "href": "/penca-futbol", "flag": "\uD83C\uDDFA\uD83C\uDDFE", "label": "Penca de Fútbol", "region": "Uruguai" },
+      { "href": "/porra-deportiva", "flag": "\uD83C\uDDEA\uD83C\uDDF8", "label": "Porra Deportiva", "region": "Espanha" }
+    ]
+  },
+  "cta": {
+    "title": "Crie seu bolão grátis",
+    "description": "Não importa se você chama de quiniela, polla, prode, penca ou porra. Com o Picks4All você pode criar em minutos e competir com seus amigos.",
+    "subdescription": "100% grátis. Pura diversão entre amigos.",
+    "button": "Criar conta grátis"
+  },
+  "jsonLd": {
+    "definedTermSet": {
+      "name": "Nomes regionais para bolões esportivos",
+      "description": "Glossário dos diferentes nomes que os bolões esportivos recebem nos países de língua espanhola",
+      "termDescriptionTemplate": "Nome para bolão esportivo em {country}"
+    },
+    "article": {
+      "headline": "O que é uma Penca? História, Origens e Nomes por País",
+      "description": "A história dos bolões esportivos no mundo hispânico",
+      "inLanguage": "pt"
+    }
+  }
+}

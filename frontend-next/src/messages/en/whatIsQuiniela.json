@@ -1,0 +1,130 @@
+{
+  "breadcrumbs": {
+    "home": "Home",
+    "title": "What Is a Football Pool?"
+  },
+  "hero": {
+    "badge": "Sports Culture",
+    "title": "What Is a Football Pool?",
+    "subtitle": "Quiniela, polla, prode, penca, porra — the tradition that unites millions of football fans across the Spanish-speaking world. This is its story."
+  },
+  "intro": {
+    "paragraphs": [
+      "Every four years, when the World Cup arrives, something magical happens in offices, WhatsApp groups, and family gatherings across Latin America and Spain: someone suggests <strong>starting a pool</strong>. Depending on which country you're in, they might call it a <strong>polla</strong>, <strong>prode</strong>, <strong>penca</strong>, or <strong>porra</strong>. The name changes, but the essence stays the same: predict football match results and compete against friends for bragging rights.",
+      "It's one of the most deeply rooted social traditions in the world of football. You don't need deep tactical knowledge or an understanding of formations — you just need the courage to say \"2-1\" and wait for 90 minutes. It's pure entertainment, and for decades it was played on paper, office whiteboards, and endless spreadsheets."
+    ],
+    "pullQuote": "\"A football pool is that rare space where the casual fan and the tactical analyst compete on equal ground. Everyone has an opinion about the next match, and that's what makes it special.\""
+  },
+  "origins": {
+    "title": "The origins: from collective betting to friendly competition",
+    "paragraphs": [
+      "The history of organized sports predictions dates back to the 19th century in Europe. In <strong>Spain</strong>, <strong>porras</strong> — informal pools where each participant contributed a small amount and bet on a result — were already a tradition in taverns and supporters' clubs before football was even professionalized. The word \"porra\" comes precisely from the custom of \"throwing into the pot\" and splitting the winnings among those who guessed correctly.",
+      "The term <strong>quiniela</strong> has its roots in the Latin <em>quinella</em> (a combination of five elements) and first became popular in the context of lotteries. In 1946, Spain officially launched <strong>La Quiniela</strong>, a state-run game where participants predicted the outcomes of 15 football matches by marking 1 (home win), X (draw), or 2 (away win). It was an immediate success and became a weekly ritual for millions of Spaniards.",
+      "That model crossed the Atlantic and adapted in remarkably diverse ways in each Latin American country, acquiring unique names and cultural nuances."
+    ]
+  },
+  "regionalMap": {
+    "title": "One game, many names: the map of football pools in Latin America",
+    "intro": "What's fascinating about this tradition is how each country made it their own. They didn't just change the name — in many cases they created official institutions around the concept."
+  },
+  "regionalSections": [
+    {
+      "emoji": "\uD83C\uDDE6\uD83C\uDDF7",
+      "title": "Argentina's Prode: when the government made it official",
+      "paragraphs": [
+        "In 1972, the Argentine government created <strong>PRODE (Pronósticos Deportivos — Sports Predictions)</strong>, an official system where citizens bought cards and predicted results from the local league. It became a massive social phenomenon: on Mondays, the conversation in any Buenos Aires office started with \"how did you do in the prode?\" Although the official PRODE was eventually discontinued, the word became permanently etched in the Argentine vocabulary. Today, when a group of friends in Argentina organizes predictions for the World Cup, they still call it <strong>prode</strong>."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDE8\uD83C\uDDF4\uD83C\uDDE8\uD83C\uDDF1",
+      "title": "The polla: from charity to World Cup fever",
+      "paragraphs": [
+        "In <strong>Colombia</strong>, <strong>Chile</strong>, and <strong>Venezuela</strong>, the dominant term is <strong>polla</strong>. Its origin lies in the <em>Polla Chilena de Beneficencia</em> (Chilean Charity Pool), created in 1934 as a collective betting system whose profits went to social causes. The word was exported throughout the region and today is synonymous with sports pool. In Colombia, the expression <strong>\"polla mundialista\"</strong> (World Cup pool) activates every four years like clockwork: from the largest corporation to the neighborhood friend group, everyone sets up their polla."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDFA\uD83C\uDDFE",
+      "title": "Uruguay's penca: Río de la Plata tradition",
+      "paragraphs": [
+        "In <strong>Uruguay</strong>, nobody says quiniela or polla — they say <strong>penca</strong>. The tradition of pencas is deeply tied to the football culture of the country that hosted the first World Cup in 1930. Uruguayans set up pencas for everything: the Uruguayan Championship, Copa América, the World Cup, and even the World Cup Qualifiers. It's a social ritual that transcends generations."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDEA\uD83C\uDDF8",
+      "title": "Spain's porra: from the bar to the office",
+      "paragraphs": [
+        "While in Spain <strong>La Quiniela</strong> is the official state-run game, among friends the word <strong>porra</strong> is more common. \"Echar una porra\" (setting up a porra) means organizing informal predictions, usually at work or at the local bar's supporters' club. During La Liga, the Champions League, and every World Cup, porras multiply everywhere. It's a tradition as old as Spanish football itself."
+      ]
+    },
+    {
+      "emoji": "\uD83C\uDDE7\uD83C\uDDF4\uD83C\uDDF5\uD83C\uDDEA",
+      "title": "Vaquita and chancha: the most creative names",
+      "paragraphs": [
+        "In <strong>Bolivia</strong>, it's known as <strong>vaquita</strong> — \"poner la vaquita\" (put in the little cow) means contributing to the common pot, an expression born from informal collections. In <strong>Peru</strong>, besides \"polla,\" they use <strong>chancha</strong>, which also refers to pooling money among a group. And in <strong>Mexico</strong> and <strong>Ecuador</strong>, the term <strong>quiniela</strong> reigns supreme, with an especially strong culture during World Cups and the Liga MX season."
+      ]
+    }
+  ],
+  "countryTable": {
+    "title": "Quick guide: what do they call it in your country?",
+    "subtitle": "Ten countries, ten ways to name the same game.",
+    "columns": {
+      "country": "Country",
+      "term": "Name",
+      "origin": "Origin"
+    },
+    "rows": [
+      { "country": "Mexico", "flag": "\uD83C\uDDF2\uD83C\uDDFD", "term": "Quiniela", "origin": "From Latin quinella (combination of five)" },
+      { "country": "Colombia", "flag": "\uD83C\uDDE8\uD83C\uDDF4", "term": "Polla", "origin": "From 'polla de beneficencia' (charity pool)" },
+      { "country": "Argentina", "flag": "\uD83C\uDDE6\uD83C\uDDF7", "term": "Prode", "origin": "Acronym for PROnósticos DEportivos (Sports Predictions)" },
+      { "country": "Uruguay", "flag": "\uD83C\uDDFA\uD83C\uDDFE", "term": "Penca", "origin": "From Guaraní, Río de la Plata tradition" },
+      { "country": "Chile", "flag": "\uD83C\uDDE8\uD83C\uDDF1", "term": "Polla", "origin": "From the Polla Chilena de Beneficencia" },
+      { "country": "Venezuela", "flag": "\uD83C\uDDFB\uD83C\uDDEA", "term": "Polla", "origin": "Colombian and Caribbean influence" },
+      { "country": "Spain", "flag": "\uD83C\uDDEA\uD83C\uDDF8", "term": "Porra / Quiniela", "origin": "Collective betting tradition" },
+      { "country": "Peru", "flag": "\uD83C\uDDF5\uD83C\uDDEA", "term": "Polla / Chancha", "origin": "'Chancha' = pooling money among friends" },
+      { "country": "Ecuador", "flag": "\uD83C\uDDEA\uD83C\uDDE8", "term": "Quiniela", "origin": "Mexican influence" },
+      { "country": "Bolivia", "flag": "\uD83C\uDDE7\uD83C\uDDF4", "term": "Vaquita", "origin": "'Poner la vaquita' = contributing to the pot" }
+    ]
+  },
+  "digitalEvolution": {
+    "title": "From paper to screen: the digital evolution",
+    "paragraphs": [
+      "For decades, organizing a football pool meant the same thing in every country: someone would print a table with the matches, pass it around the office, and each person would write down their predictions by hand. Then came the hard part — calculating the points. There was always someone with a heroic Excel spreadsheet trying to keep the leaderboard updated, and there were always arguments about whether a point was tallied correctly.",
+      "Today, platforms like <strong>Picks4All</strong> digitize the entire experience: create your pool (quiniela, polla, prode, penca — call it what you want), invite friends with a code, make predictions from your phone, and have the rankings automatically updated after every match. The essence of the game remains exactly the same as it was 50 years ago. It's just easier, faster, and without calculation errors."
+    ],
+    "pullQuote": "\"What used to require a spreadsheet and a very patient volunteer can now be done in 2 minutes from your phone.\""
+  },
+  "whyPopular": {
+    "title": "Why are football pools still so popular?",
+    "paragraphs": [
+      "In a world of betting apps, fantasy sports, and advanced statistics, the friendly football pool remains unbeatable for one simple reason: <strong>it's personal</strong>. You're not competing against strangers or algorithms — you're competing against your brother-in-law who claims to know more about football, against your coworker who always nails the draws, against your best friend who's been winning for three World Cups straight.",
+      "That's something no betting house can replicate: the friendly rivalry, the teasing when you fail, the WhatsApp group that explodes after an unexpected result. A football pool turns every match into something personal, and that's what keeps it alive generation after generation."
+    ]
+  },
+  "relatedLinks": {
+    "title": "Explore by region",
+    "links": [
+      { "href": "/polla-futbolera", "flag": "\uD83C\uDDE8\uD83C\uDDF4", "label": "Polla Futbolera", "region": "Colombia, Chile, Venezuela" },
+      { "href": "/prode-deportivo", "flag": "\uD83C\uDDE6\uD83C\uDDF7", "label": "Prode Deportivo", "region": "Argentina" },
+      { "href": "/penca-futbol", "flag": "\uD83C\uDDFA\uD83C\uDDFE", "label": "Penca de Fútbol", "region": "Uruguay" },
+      { "href": "/porra-deportiva", "flag": "\uD83C\uDDEA\uD83C\uDDF8", "label": "Porra Deportiva", "region": "Spain" }
+    ]
+  },
+  "cta": {
+    "title": "Create your pool for free",
+    "description": "Whether you call it a quiniela, polla, prode, penca, or porra — with Picks4All you can create one in minutes and compete with your friends.",
+    "subdescription": "100% free. Pure entertainment among friends.",
+    "button": "Create free account"
+  },
+  "jsonLd": {
+    "definedTermSet": {
+      "name": "Regional names for sports football pools",
+      "description": "Glossary of the different names that sports football pools receive in Spanish-speaking countries",
+      "termDescriptionTemplate": "Name for sports football pool in {country}"
+    },
+    "article": {
+      "headline": "What Is a Football Pool? History, Origins, and Names by Country",
+      "description": "The history of sports football pools in the Spanish-speaking world",
+      "inLanguage": "en"
+    }
+  }
+}
