@@ -18,6 +18,7 @@ import { createPool } from "@/lib/api/pools";
 import { createCorporatePool } from "@/lib/api/corporate";
 import type { WizardMode } from "@/types/poolWizard";
 import { trackEvent } from "@/lib/analytics";
+import { trackMetaCustomEvent } from "@/lib/metaPixel";
 import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT } from "@/lib/pricing";
 
@@ -131,6 +132,10 @@ function WizardInner() {
         tournament: state.instanceName,
         capacity: effectiveCapacity,
         scoring_style: state.scoringStyle,
+      });
+      trackMetaCustomEvent("PoolCreated", {
+        content_name: state.mode,
+        content_category: state.instanceName,
       });
 
       // Check if payment is needed (user selected capacity above free limit)

@@ -8,6 +8,7 @@ import { joinPool } from "@/lib/api/pools";
 import { ApiError } from "@/lib/apiError";
 import { colors } from "@/lib/theme";
 import { trackEvent } from "@/lib/analytics";
+import { trackMetaCustomEvent } from "@/lib/metaPixel";
 
 function JoinPoolInner() {
   const searchParams = useSearchParams();
@@ -39,6 +40,7 @@ function JoinPoolInner() {
         setPoolId(res.poolId);
         setStatus("success");
         trackEvent("pool_joined", { method: "invite_code" });
+        trackMetaCustomEvent("PoolJoined", { content_name: "invite_code" });
         setTimeout(() => {
           router.replace(`/pools/${res.poolId}`);
         }, 1500);

@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { getToken } from "@/lib/auth";
+import { initMetaPixel, trackMetaEvent } from "@/lib/metaPixel";
 
 const CONSENT_KEY = "p4a_cookie_consent";
 type ConsentState = "granted" | "denied" | null;
@@ -33,6 +34,11 @@ function updateGtmConsent(consent: "granted" | "denied") {
     ad_user_data: consent,
     ad_personalization: consent,
   });
+
+  if (consent === "granted") {
+    initMetaPixel();
+    trackMetaEvent("PageView");
+  }
 }
 
 /**

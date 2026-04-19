@@ -8,6 +8,7 @@ import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
 import { processMpPayment } from "@/lib/api/payments";
 import { formatCOP } from "@/lib/pricing";
+import { trackMetaEvent } from "@/lib/metaPixel";
 
 // Map MP status_detail to i18n key for rejection messages
 const STATUS_DETAIL_KEY: Record<string, string> = {
@@ -117,6 +118,7 @@ export default function MpCheckoutPage() {
               return processMpPayment(paymentId, formData)
                 .then((result) => {
                   if (result.status === "approved") {
+                    trackMetaEvent("Purchase", { value: amount, currency: "COP" });
                     setStatus("success");
                     setTimeout(() => router.push(`/pools/${poolId}`), 2000);
                   } else if (result.status === "rejected") {

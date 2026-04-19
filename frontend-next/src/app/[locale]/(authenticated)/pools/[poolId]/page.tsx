@@ -18,6 +18,7 @@ import { ShareButtons } from "@/components/ShareButtons";
 import { getPendingMembers } from "@/lib/api";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { trackEvent } from "@/lib/analytics";
+import { trackMetaEvent, trackMetaCustomEvent } from "@/lib/metaPixel";
 
 // Dynamic imports for heavy tab components (HI-06)
 const PoolAdminTab = dynamic(() => import("./components/PoolAdminTab").then(m => ({ default: m.PoolAdminTab })), {
@@ -140,6 +141,7 @@ export default function PoolPage() {
       const data = await getPoolOverview(token, poolId);
       setOverview(data);
       trackEvent("pool_viewed", { pool_name: data.pool.name, tournament: data.tournamentInstance.name, role: data.myMembership.role });
+      trackMetaEvent("ViewContent", { content_type: "pool", content_name: data.pool.name });
 
       if (data.pool.organization && typeof sessionStorage !== "undefined") {
         const key = `corporate-splash-${poolId}`;
@@ -372,6 +374,7 @@ export default function PoolPage() {
       }
       await upsertPick(token, poolId, matchId, { pick: normalizedPick });
       trackEvent("pick_saved", { match_id: matchId, pick_type: normalizedPick.type });
+      trackMetaCustomEvent("PickSaved", { content_name: matchId });
       await load();
       refetchNotifications();
     } catch (e) {

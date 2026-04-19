@@ -68,6 +68,8 @@ const registerSchema = z.object({
   acceptPrivacy: z.boolean(),
   acceptAge: z.boolean(),
   acceptMarketing: z.boolean().optional().default(false),
+  fbClickId: z.string().optional(),
+  fbBrowserId: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -91,6 +93,8 @@ const googleAuthSchema = z.object({
   acceptPrivacy: z.boolean().optional(),
   acceptAge: z.boolean().optional(),
   acceptMarketing: z.boolean().optional().default(false),
+  fbClickId: z.string().optional(),
+  fbBrowserId: z.string().optional(),
 });
 
 const verifyEmailSchema = z.object({

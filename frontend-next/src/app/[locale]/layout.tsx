@@ -7,6 +7,7 @@ import Script from "next/script";
 import { routing } from "@/i18n/routing";
 import { JsonLd } from "@/components/JsonLd";
 import { CookieConsent } from "@/components/CookieConsent";
+import { MetaPixelPageView } from "@/components/MetaPixelPageView";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
@@ -122,6 +123,7 @@ export default async function LocaleLayout({
         <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://media.api-sports.io" />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
+        <link rel="dns-prefetch" href="https://connect.facebook.net" />
       </head>
       <body style={{ backgroundColor: "#f4f5f7", color: "#111827" }}>
         <a href="#main-content" className="skip-to-content">Skip to content</a>
@@ -140,6 +142,7 @@ export default async function LocaleLayout({
             />
             {children}
             <CookieConsent />
+            <MetaPixelPageView />
           </PoolTermProvider>
         </NextIntlClientProvider>
         {/* Google Consent Mode v2 defaults — MUST come before GTM loads */}

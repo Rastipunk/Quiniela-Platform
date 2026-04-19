@@ -12,6 +12,7 @@ import { TOURNAMENT_CATALOG } from "@/lib/tournamentCatalog";
 import { colors } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
 import { trackEvent } from "@/lib/analytics";
+import { trackMetaEvent } from "@/lib/metaPixel";
 import { getPaymentCountry } from "@/lib/api/payments";
 
 export function LandingContent() {
@@ -76,12 +77,13 @@ export function LandingContent() {
             margin: "0 auto",
             display: "flex",
             flexDirection: isMobile ? "column" : "row",
+            flexWrap: "wrap",
             alignItems: "center",
             gap: isMobile ? 40 : 48,
           }}
         >
           {/* Left column: text + CTAs */}
-          <div style={{ flex: 1, textAlign: isMobile ? "center" : "left" }}>
+          <div style={{ flex: isMobile ? 1 : "1 0 320px", textAlign: isMobile ? "center" : "left" }}>
             <h1
               style={{
                 fontSize: isMobile ? "2rem" : "3rem",
@@ -115,7 +117,7 @@ export function LandingContent() {
               }}
             >
               <button
-                onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
+                onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); trackMetaEvent("Lead", { content_name: "register_cta" }); openAuthPanel("register"); }}
                 style={{
                   background: "white",
                   color: "#1a1a1a",
@@ -158,6 +160,7 @@ export function LandingContent() {
               flexDirection: "column",
               alignItems: "center",
               gap: 24,
+              margin: "0 auto",
             }}
           >
             <div
@@ -599,7 +602,7 @@ export function LandingContent() {
             </div>
 
             <button
-              onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
+              onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); trackMetaEvent("Lead", { content_name: "register_cta" }); openAuthPanel("register"); }}
               style={{
                 marginTop: 24,
                 background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
@@ -655,7 +658,7 @@ export function LandingContent() {
             </div>
 
             <button
-              onClick={() => { trackEvent("cta_clicked", { cta_text: "personal_pro", page: "landing" }); openAuthPanel("register"); }}
+              onClick={() => { trackEvent("cta_clicked", { cta_text: "personal_pro", page: "landing" }); trackMetaEvent("Lead", { content_name: "personal_pro_cta" }); openAuthPanel("register"); }}
               style={{
                 marginTop: 24,
                 background: colors.brandGradient,
@@ -864,7 +867,7 @@ export function LandingContent() {
           {t("final.hint", poolParams)}
         </p>
         <button
-          onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); openAuthPanel("register"); }}
+          onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); trackMetaEvent("Lead", { content_name: "register_cta" }); openAuthPanel("register"); }}
           style={{
             background: "white",
             color: "#764ba2",

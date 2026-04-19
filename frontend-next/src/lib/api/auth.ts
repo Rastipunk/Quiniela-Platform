@@ -1,5 +1,6 @@
 // Auth API — login, register, Google OAuth, password recovery, email verification
 import { requestJson } from "./client";
+import { getMetaCookies } from "@/lib/metaPixel";
 
 export type LoginResponse = {
   token?: string;
@@ -28,6 +29,7 @@ export async function register(
   timezone?: string,
   consent?: RegisterConsentOptions
 ): Promise<LoginResponse> {
+  const { fbc, fbp } = getMetaCookies();
   return requestJson<LoginResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify({
@@ -40,6 +42,8 @@ export async function register(
       acceptPrivacy: consent?.acceptPrivacy ?? false,
       acceptAge: consent?.acceptAge ?? false,
       acceptMarketing: consent?.acceptMarketing ?? false,
+      fbClickId: fbc,
+      fbBrowserId: fbp,
     }),
   });
 }
@@ -63,6 +67,7 @@ export async function loginWithGoogle(
   timezone?: string,
   consent?: RegisterConsentOptions
 ): Promise<LoginResponse> {
+  const { fbc, fbp } = getMetaCookies();
   return requestJson<LoginResponse>("/auth/google", {
     method: "POST",
     body: JSON.stringify({
@@ -72,6 +77,8 @@ export async function loginWithGoogle(
       acceptPrivacy: consent?.acceptPrivacy,
       acceptAge: consent?.acceptAge,
       acceptMarketing: consent?.acceptMarketing,
+      fbClickId: fbc,
+      fbBrowserId: fbp,
     }),
   });
 }

@@ -6,12 +6,12 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 // Content Security Policy — allow our app + Google services (GA4, GIS) + Mercado Pago Bricks
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.googletagmanager.com https://*.mercadopago.com https://*.mlstatic.com",
+  "script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://www.googletagmanager.com https://connect.facebook.net https://*.mercadopago.com https://*.mlstatic.com",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.mlstatic.com",
-  "img-src 'self' data: blob: https://media.api-sports.io https://flagcdn.com https://www.googletagmanager.com https://*.gstatic.com https://*.mlstatic.com https://*.mercadopago.com https://*.mercadolibre.com",
+  "img-src 'self' data: blob: https://media.api-sports.io https://flagcdn.com https://www.googletagmanager.com https://www.facebook.com https://*.gstatic.com https://*.mlstatic.com https://*.mercadopago.com https://*.mercadolibre.com",
   "font-src 'self' https://fonts.gstatic.com https://*.mlstatic.com",
-  `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "https://api.picks4all.com"} https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com https://ipapi.co https://*.mercadopago.com https://*.mercadopago.com.co https://*.mercadolibre.com https://*.mlstatic.com`,
-  "frame-src https://accounts.google.com https://apis.google.com https://*.mercadopago.com https://*.mercadopago.com.co https://*.mercadolibre.com",
+  `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL || "https://api.picks4all.com"} https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://www.googletagmanager.com https://region1.google-analytics.com https://analytics.google.com https://ipapi.co https://www.facebook.com https://connect.facebook.net https://*.mercadopago.com https://*.mercadopago.com.co https://*.mercadolibre.com https://*.mlstatic.com`,
+  "frame-src https://accounts.google.com https://apis.google.com https://www.facebook.com https://*.mercadopago.com https://*.mercadopago.com.co https://*.mercadolibre.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",

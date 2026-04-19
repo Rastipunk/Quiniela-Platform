@@ -29,6 +29,7 @@ import { TOKEN_EXPIRY_MS, CRYPTO_BYTES, countryToLocale } from "../lib/constants
 import { serializeUser } from "../lib/serializers";
 import type { SerializedUser } from "../lib/serializers";
 import { fireAndForget } from "../lib/asyncHelpers";
+import { sendCapiEvent } from "../lib/metaCapi";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -123,6 +124,8 @@ export type RegisterInput = {
   acceptPrivacy: boolean;
   acceptAge: boolean;
   acceptMarketing?: boolean;
+  fbClickId?: string;
+  fbBrowserId?: string;
 };
 
 export type RegisterResult = {
@@ -187,6 +190,19 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
 
   fireAndForget("verification email", sendVerificationEmail({
     to: user.email, displayName: user.displayName, verificationToken: emailVerificationToken,
+  }));
+
+  fireAndForget("capi:register", sendCapiEvent({
+    eventName: "CompleteRegistration",
+    userData: {
+      email: user.email,
+      firstName: user.displayName,
+      externalId: user.id,
+      clientIpAddress: ctx.ip || undefined,
+      clientUserAgent: ctx.userAgent || undefined,
+      fbc: data.fbClickId,
+      fbp: data.fbBrowserId,
+    },
   }));
 
   return { user, emailVerificationSent: true };
@@ -293,6 +309,8 @@ export type GoogleAuthInput = {
   acceptPrivacy?: boolean;
   acceptAge?: boolean;
   acceptMarketing?: boolean;
+  fbClickId?: string;
+  fbBrowserId?: string;
 };
 
 export type GoogleAuthResult = { user: SerializedUser; isNewUser: boolean };
@@ -373,6 +391,19 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
 
   fireAndForget("welcome email", sendWelcomeEmail({
     to: newUser.email, userId: newUser.id, displayName: newUser.displayName,
+  }));
+
+  fireAndForget("capi:google-register", sendCapiEvent({
+    eventName: "CompleteRegistration",
+    userData: {
+      email: newUser.email,
+      firstName: newUser.displayName,
+      externalId: newUser.id,
+      clientIpAddress: ctx.ip || undefined,
+      clientUserAgent: ctx.userAgent || undefined,
+      fbc: data.fbClickId,
+      fbp: data.fbBrowserId,
+    },
   }));
 
   return { user: serializeUser(newUser), isNewUser: true };

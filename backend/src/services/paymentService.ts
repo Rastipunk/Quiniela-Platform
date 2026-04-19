@@ -17,6 +17,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification, sendPaymentReceiptEmail } from "../lib/email";
 import { countryToLocale } from "../lib/constants";
 import { fireAndForget } from "../lib/asyncHelpers";
+import { sendCapiEvent } from "../lib/metaCapi";
 import {
   calculateUpgradePrice,
   calculateUpgradePriceCop,
@@ -320,6 +321,14 @@ export async function handleOrderPaid(payload: {
     type: "feedback",
   }));
 
+  if (metadata.userId) {
+    fireAndForget("capi:purchase-polar", sendCapiEvent({
+      eventName: "Purchase",
+      userData: { externalId: metadata.userId },
+      customData: { value: payment.amountUsd / 100, currency: "USD" },
+    }));
+  }
+
   // 7. Send payment receipt to user
   if (metadata.userId) {
     fireAndForget("payment-receipt-email", (async () => {
@@ -585,6 +594,12 @@ export async function processMpPayment(input: {
       poolId: payment.poolId,
       dataJson: { mpPaymentId: result.id, status: result.status },
     }));
+
+    fireAndForget("capi:purchase-mp", sendCapiEvent({
+      eventName: "Purchase",
+      userData: { externalId: payment.userId },
+      customData: { value: payment.amountUsd, currency: "COP" },
+    }));
   } else if (result.status === "rejected") {
     await prisma.poolPayment.update({
       where: { id: payment.id },
@@ -646,6 +661,12 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       });
     });
     console.log(`[PaymentService] MP IPN: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
+
+    fireAndForget("capi:purchase-mp-ipn", sendCapiEvent({
+      eventName: "Purchase",
+      userData: { externalId: payment.userId },
+      customData: { value: payment.amountUsd, currency: "COP" },
+    }));
 
     // Send payment receipt to user
     fireAndForget("mp-payment-receipt-email", (async () => {

@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { submitFeedback } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
+import { trackMetaCustomEvent } from "@/lib/metaPixel";
 
 interface FeedbackModalProps {
   type?: "BUG" | "SUGGESTION";
@@ -85,6 +86,7 @@ export function FeedbackModal({ type: initialType = "BUG", onClose }: FeedbackMo
       );
       setStatus("success");
       trackEvent("feedback_submitted", { type });
+      trackMetaCustomEvent("FeedbackSubmitted", { content_name: type });
     } catch (err: any) {
       setStatus("error");
       setErrorMsg(err.message || t("submitError"));

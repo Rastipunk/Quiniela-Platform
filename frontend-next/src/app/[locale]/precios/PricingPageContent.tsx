@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { trackEvent } from "@/lib/analytics";
+import { trackMetaEvent } from "@/lib/metaPixel";
 import {
   getPersonalTiers,
   getCorporateTiers,
@@ -36,7 +37,7 @@ function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean
 export function PricingPageContent() {
   const t = useTranslations("pricingPage");
   const f = useTranslations("landing");
-  useEffect(() => { trackEvent("pricing_page_viewed"); }, []);
+  useEffect(() => { trackEvent("pricing_page_viewed"); trackMetaEvent("ViewContent", { content_type: "pricing", content_name: "pricing_page" }); }, []);
   const personalTiers = getPersonalTiers(300);
   const corporateTiers = getCorporateTiers(300);
 

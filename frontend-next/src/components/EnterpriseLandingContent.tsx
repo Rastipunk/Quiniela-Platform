@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAuthPanel } from "@/contexts/AuthPanelContext";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { trackEvent } from "@/lib/analytics";
+import { trackMetaEvent } from "@/lib/metaPixel";
 
 export function EnterpriseLandingContent() {
   const t = useTranslations("enterprise");
@@ -20,6 +21,7 @@ export function EnterpriseLandingContent() {
 
   const handleCta = () => {
     trackEvent("corporate_inquiry", { authenticated: isAuthenticated });
+    trackMetaEvent("SubmitApplication", { content_name: "corporate" });
     if (isAuthenticated) {
       router.push("/empresas/crear");
     } else {
