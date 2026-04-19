@@ -35,13 +35,14 @@ export function initMetaPixel(): void {
   if (!PIXEL_ID || initialized) return;
   if (typeof window === "undefined") return;
 
-  // Official Meta Pixel base code — must match exactly to avoid
-  // "conflicting versions" warning from fbevents.js
-  if (typeof window.fbq === "function") return;
+  // Meta Pixel base code — overwrites any extension-injected fbq stub.
+  // We rely on `initialized` flag (not window.fbq existence) to prevent
+  // double init, because extensions like Meta Pixel Helper inject their
+  // own fbq function before our code runs.
   const n: any = (window.fbq = function (...args: unknown[]) {
     n.callMethod ? n.callMethod.apply(n, args) : n.queue.push(args);
   });
-  if (!window._fbq) window._fbq = n;
+  window._fbq = n;
   n.push = n;
   n.loaded = true;
   n.version = "2.0";
