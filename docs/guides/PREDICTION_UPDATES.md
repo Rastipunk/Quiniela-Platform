@@ -153,9 +153,9 @@ curl -X POST https://api.picks4all.com/admin/prediction-update \
 
 When calling the admin endpoint, provide descriptions in all three locales. The system sends the email in the user's preferred locale.
 
-**Important:** The `description` field in the changes array should be in the DEFAULT locale (Spanish). The email template handles the translation based on the `type` field badge. However, the description text itself is sent as-is. For multi-locale descriptions, update the email template to accept per-locale descriptions in a future iteration.
+**Important:** The `description` field in the changes array should be in the DEFAULT locale (Spanish). The email template handles the translation based on the `type` field badge. However, the description text itself is sent as-is.
 
-**Current workaround:** Send the description in Spanish — the majority of users are Spanish-speaking (71% Colombia). For EN/PT users, the type badge (CHAMPION, ELIMINATED, etc.) provides context even if the description is in Spanish.
+The description is sent in Spanish — the majority of users are Spanish-speaking (71% Colombia). For EN/PT users, the type badge (CHAMPION, ELIMINATED, etc.) provides context even if the description is in Spanish.
 
 ---
 

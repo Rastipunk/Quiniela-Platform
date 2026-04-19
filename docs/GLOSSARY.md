@@ -5,7 +5,7 @@
 >
 > **Audience:** Developers, product managers, stakeholders, and new team members.
 >
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-04-19
 
 ---
 
@@ -60,7 +60,7 @@
 
 **Technical:** Stored in `Prediction` table with flexible `pickJson` field.
 
-**Types (v0.2-beta):**
+**Types:**
 - **EXACT_SCORE:** Predict exact final score (e.g., 2-1)
 - **GOAL_DIFFERENCE:** Predict goal difference (e.g., +1, -2, 0)
 - **MATCH_OUTCOME:** Predict winner/draw (HOME/DRAW/AWAY)
@@ -118,7 +118,7 @@
 
 **Definition:** Role assigned to a user within a specific pool.
 
-**Values (v0.2-beta):**
+**Values:**
 - **HOST:** Pool creator/owner (full control)
 - **CO_ADMIN:** Delegated manager (most permissions, can't delete pool)
 - **PLAYER:** Regular participant (can only make picks)
@@ -129,7 +129,7 @@
 
 ---
 
-### Co-Admin (v0.2-beta)
+### Co-Admin
 
 **Definition:** Trusted user nominated by HOST to help manage the pool.
 
@@ -203,7 +203,7 @@
 - Status (DRAFT, PUBLISHED, DEPRECATED)
 - Versions (1:N relationship)
 
-**Example:** "The 'World Cup Format' template has 2 versions: v1.0 (32 teams) and v2.0 (48 teams)."
+**Example:** "The 'World Cup Format' template defines 48 teams in 12 groups."
 
 ---
 
@@ -277,9 +277,7 @@
 - **GROUP:** Round-robin groups (e.g., World Cup groups A-L)
 - **KNOCKOUT:** Single-elimination (e.g., Round of 16, Quarterfinals)
 
-**Future:** Support custom phase types, rules per phase.
-
-**Example:** "World Cup has 1 phase in v0.1: Group Stage (12 groups, 72 matches)."
+**Example:** "World Cup 2026 has a Group Stage (12 groups, 72 matches) and a Knockout Stage."
 
 ---
 
@@ -373,7 +371,7 @@ deadlineUtc = match.kickoffUtc - pool.deadlineMinutesBeforeKickoff
 
 ---
 
-### Pool State (v0.2-beta)
+### Pool State
 
 **Definition:** Lifecycle stage of a pool.
 
@@ -392,7 +390,7 @@ deadlineUtc = match.kickoffUtc - pool.deadlineMinutesBeforeKickoff
 
 ---
 
-### Join Approval (v0.2-beta)
+### Join Approval
 
 **Definition:** Optional workflow requiring host approval before users can join pool.
 
@@ -447,18 +445,14 @@ deadlineUtc = match.kickoffUtc - pool.deadlineMinutesBeforeKickoff
 
 **Definition:** Category of prediction (e.g., exact score, outcome, goal difference).
 
-**v0.1-alpha Types:**
-1. **SCORE:** Predict exact score (homeGoals, awayGoals)
-2. **OUTCOME:** Predict winner/draw (HOME/DRAW/AWAY)
-
-**v0.2-beta Types (4 total):**
-3. **GOAL_DIFFERENCE:** Predict goal difference (+1, -2, 0)
-4. **PARTIAL_SCORE:** Predict goals for one team
-
-**v1.0 Types (7 total):**
-5. **BOTH_TEAMS_SCORE:** Both teams will score (yes/no)
-6. **TOTAL_GOALS:** Over/under total goals (e.g., over 2.5)
-7. **WINNING_MARGIN:** Margin of victory (+1, +2, +3+)
+**Types:**
+- **EXACT_SCORE:** Predict exact final score (e.g., 2-1)
+- **GOAL_DIFFERENCE:** Predict goal difference (e.g., +1, -2, 0)
+- **MATCH_OUTCOME:** Predict winner/draw (HOME/DRAW/AWAY)
+- **PARTIAL_SCORE:** Predict goals for one team
+- **BOTH_TEAMS_SCORE:** Both teams will score (yes/no)
+- **TOTAL_GOALS:** Over/under total goals (e.g., over 2.5)
+- **WINNING_MARGIN:** Margin of victory (+1, +2, +3+)
 
 **Example:** "My pick type is EXACT_SCORE (2-1). My friend uses OUTCOME (HOME)."
 
@@ -501,7 +495,7 @@ return "DRAW";
 
 ---
 
-### Pick Rules (v0.2-beta)
+### Pick Rules
 
 **Definition:** Host-configured rules defining which pick types are active and points per type.
 
@@ -773,7 +767,6 @@ await prisma.prediction.upsert({
 
 **Use Cases:**
 - `TournamentInstance.dataJson` (frozen copy of template version)
-- Future: Leaderboard snapshots (before errata)
 
 **Purpose:** Immutability, preventing cascading changes.
 
@@ -813,7 +806,7 @@ await prisma.prediction.upsert({
 
 **Definition:** Four basic operations for persistent storage.
 
-**Example:** "Pools endpoint supports CRUD operations (except Delete in v0.1)."
+**Example:** "Pools endpoint supports CRUD operations."
 
 ---
 
@@ -863,9 +856,7 @@ await prisma.prediction.upsert({
 
 **Definition:** Simplest version of product with core features to validate market demand.
 
-**Context:** v0.1-alpha is internal MVP, v1.0 is public MVP.
-
-**Example:** "MVP includes pools, picks, results, leaderboard. Dark mode is post-MVP."
+**Example:** "MVP includes pools, picks, results, and leaderboard."
 
 ---
 
@@ -1011,9 +1002,7 @@ await prisma.prediction.upsert({
 
 **Definition:** Unexpected result where underdog wins or heavily favored team loses.
 
-**Future:** Upset predictions may earn bonus points (difficulty weighting).
-
-**Example:** "Predicting underdog win in upset match could earn 2x points (future feature)."
+**Example:** "Saudi Arabia beating Argentina 2-1 in World Cup 2022 was a major upset."
 
 ---
 

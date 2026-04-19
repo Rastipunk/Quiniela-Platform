@@ -3,8 +3,8 @@ import { SITE_URL } from "@/lib/siteConfig";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = SITE_URL;
-  const recentlyUpdated = new Date("2026-04-04");
-  const stable = new Date("2026-03-01");
+  const recentlyUpdated = new Date("2026-04-16");
+  const stable = new Date("2026-04-04");
   const legal = new Date("2026-02-22");
 
   // Helper: create alternates for all 3 locales
@@ -96,6 +96,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
       alternates: allLocales("/reembolsos", "/refunds", "/reembolsos"),
+    },
+
+    // How to Play
+    {
+      url: `${baseUrl}/como-se-juega`,
+      lastModified: recentlyUpdated,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      alternates: allLocales("/como-se-juega", "/how-to-play", "/como-jogar"),
     },
 
     // Enterprise / Corporate

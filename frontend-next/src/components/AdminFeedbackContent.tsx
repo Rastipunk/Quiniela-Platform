@@ -1,4 +1,3 @@
-// TODO: Internacionalizar este componente cuando se agreguen admins multi-idioma
 "use client";
 
 import { colors } from "@/lib/theme";

@@ -95,7 +95,6 @@ export default function PoolPage() {
   // ── Core state ──
   const [overview, setOverview] = useState<PoolOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const verbose = false;
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [userTimezone, setUserTimezone] = useState<string | null>(null);
 
@@ -138,7 +137,7 @@ export default function PoolPage() {
     if (!token || !poolId) return;
     setError(null);
     try {
-      const data = await getPoolOverview(token, poolId, verbose);
+      const data = await getPoolOverview(token, poolId);
       setOverview(data);
       trackEvent("pool_viewed", { pool_name: data.pool.name, tournament: data.tournamentInstance.name, role: data.myMembership.role });
 
@@ -185,16 +184,16 @@ export default function PoolPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [poolId, verbose]);
+  }, [poolId]);
 
   // Auto-refresh when any match is live (polls every 15s)
   const liveRefetch = useCallback(async () => {
     if (!token || !poolId) return;
     try {
-      const data = await getPoolOverview(token, poolId, verbose);
+      const data = await getPoolOverview(token, poolId);
       setOverview(data);
     } catch { /* silent — don't overwrite existing data on refresh failure */ }
-  }, [token, poolId, verbose]);
+  }, [token, poolId]);
   useLiveRefresh(overview?.matches ?? [], liveRefetch);
 
   // ── Computed values ──

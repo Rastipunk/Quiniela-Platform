@@ -923,9 +923,6 @@ export async function validateCanAutoAdvance(
     };
   }
 
-  // TODO: 5. Verificar empates complejos (implementar cuando tengamos H2H)
-  // Por ahora, asumimos que los criterios FIFA estándar son suficientes
-
   return {
     canAdvance: true,
   };

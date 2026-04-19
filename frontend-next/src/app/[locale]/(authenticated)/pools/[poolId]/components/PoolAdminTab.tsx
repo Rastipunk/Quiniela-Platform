@@ -32,7 +32,6 @@ export function PoolAdminTab({
   notifications, tabBadges, pendingMembers, loadPendingMembers,
 }: PoolAdminTabProps) {
   const t = useTranslations("pool");
-  const verbose = false;
 
   return (
     <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>

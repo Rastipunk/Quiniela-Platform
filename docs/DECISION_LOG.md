@@ -351,11 +351,6 @@ const token = jwt.sign({ userId, platformRole }, JWT_SECRET, { expiresIn: '4h' }
 const payload = jwt.verify(token, JWT_SECRET);
 ```
 
-**Future (v1.1):**
-- Add refresh tokens (long-lived, can be revoked)
-- Store refresh tokens in database
-- Rotate access tokens every 15 minutes
-
 ---
 
 ## ADR-005: Zod for Validation
@@ -688,10 +683,6 @@ Fetching these separately = 5+ API calls = slow UX + loading spinners.
 }
 ```
 
-**Future optimization (v1.0):**
-- Add pagination for matches
-- Cache response in Redis (invalidate on updates)
-
 ---
 
 ## ADR-010: No Pool Deletion (Only Archival)
@@ -751,11 +742,6 @@ ACTIVE (2+ members) ──→ Cannot be deleted, only ARCHIVED
 - Allow deletion only if `status = DRAFT` AND `memberCount < 2`
 - Hosts can manually archive (hides from UI)
 - Auto-archive after 90 days of COMPLETED status
-
-**Future (v1.1 - GDPR):**
-- Anonymization: Replace user email/name with `[DELETED USER]`
-- Retain userId FK for data integrity
-- Predictions attributed to anonymized user
 
 ---
 
@@ -908,9 +894,6 @@ Hosts need help managing pools (publish results, approve members, etc.). Options
 - HOST removes CO_ADMIN → Downgrades to PLAYER (doesn't kick)
 - Creates audit event
 
-**Future (v1.1):**
-- Custom permission sets (e.g., "can publish results" but not "can ban players")
-
 ---
 
 ## ADR-013: Leaderboard Tiebreaker Rules
@@ -968,10 +951,6 @@ Multiple players can have same total points. Need tiebreaker rules that are:
 ```sql
 ORDER BY totalPoints DESC, exactScoreCount DESC, joinedAtUtc ASC
 ```
-
-**Future (v1.1 discussion):**
-- Add "total correct outcomes" as tiebreaker #2 (before joined date)
-- Add "difficulty weighting" (upset predictions worth more)
 
 ---
 
@@ -1130,11 +1109,6 @@ await resend.emails.send({
 });
 ```
 
-**Future (v1.1):**
-- Use React Email for templates
-- Email verification on registration
-- Weekly digest emails
-
 ---
 
 ## ADR-016: React Without State Management Library
@@ -1214,10 +1188,6 @@ useEffect(() => {
 }, []);
 ```
 
-**Future (v1.0):**
-- Add React Query for server state caching
-- Add Zustand if global state needs grow
-
 ---
 
 ## ADR-017: Light Theme Only for MVP
@@ -1273,11 +1243,6 @@ Should we support dark mode in MVP? Considerations:
   --text: #111827;
 }
 ```
-
-**Future (v1.1):**
-- Add theme toggle (localStorage persistence)
-- Duplicate CSS variables for dark theme
-- Respect `prefers-color-scheme` as default
 
 ---
 
@@ -2106,7 +2071,6 @@ model User {
 
 4. **Mutable Usernames:**
    - ❌ Rejected: Breaks references, confusing for other users
-   - ⏳ May revisit with alias system in v2.0
 
 ### Implementation
 
@@ -2271,8 +2235,6 @@ Implement a **token-based password reset flow** with email delivery via **Resend
 - Industry best practice (GitHub, Google, etc.)
 
 **Why Not Email Confirmation on Registration?**
-- ⏳ Deferred to v0.2-beta
-- MVP focuses on core quiniela functionality
 - Users can still reset password if they typo email
 - Email confirmation field in registration form reduces typos
 
@@ -2295,8 +2257,7 @@ Implement a **token-based password reset flow** with email delivery via **Resend
 **Risks:**
 - ⚠️ Email deliverability issues (spam filters)
 - ⚠️ Token brute-force (mitigated by 1-hour expiration + 32-byte randomness)
-- ⚠️ Denial of service (spam reset requests to victim email)
-  - ⏳ Mitigated in v1.0 with rate limiting
+- ⚠️ Denial of service (spam reset requests to victim email) — mitigated with rate limiting
 
 ### Alternatives Considered
 
@@ -3672,7 +3633,6 @@ Implement a **self-service MVP** with full end-to-end flow:
 **Negative:**
 - ⚠️ Logo as base64 increases DB size (mitigated by client-side compression)
 - ⚠️ No company admin dashboard yet (CORPORATE_HOST manages via pool page)
-- ⚠️ Pool stays DRAFT until transitionToActive fix (known bug, planned)
 
 ### Implementation (Completed)
 

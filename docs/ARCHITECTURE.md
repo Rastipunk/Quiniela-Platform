@@ -237,7 +237,7 @@ backend/src/
 │   ├── catalog.ts                     # /catalog/instances (public tournament catalog)
 │   ├── pickPresets.ts                 # /pick-presets (available configs)
 │   ├── userProfile.ts                # /users/me/profile (CRUD)
-│   ├── feedback.ts                    # /feedback (beta bug reports)
+│   ├── feedback.ts                    # /feedback (user bug reports)
 │   ├── legal.ts                       # /legal (terms, privacy documents)
 │   ├── corporate.ts                   # Corporate pool endpoints (inquiry, create, employees)
 │   ├── admin.ts                       # /admin/ping
@@ -774,7 +774,7 @@ ADMIN
   GET/PUT /admin/settings/email      Platform email toggles
 
 OTHER
-  POST   /feedback                   Submit beta feedback
+  POST   /feedback                   Submit user feedback
   GET    /legal/:type                Legal documents
 ```
 

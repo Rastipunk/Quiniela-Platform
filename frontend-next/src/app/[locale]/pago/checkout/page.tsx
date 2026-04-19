@@ -77,7 +77,6 @@ export default function MpCheckoutPage() {
 
     const loadMpSdk = async () => {
       try {
-        console.log("[PaymentBrick] Init params:", { publicKey: publicKey ? `${publicKey.slice(0, 12)}...` : "MISSING", amount, preferenceId: preferenceId || "MISSING", paymentId: paymentId || "MISSING" });
         const { loadMercadoPago } = await import("@mercadopago/sdk-js");
         await loadMercadoPago();
 

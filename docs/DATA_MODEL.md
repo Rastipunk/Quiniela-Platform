@@ -158,7 +158,7 @@ PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
 | Value | Description |
 |-------|-------------|
 | `PRIVATE` | Invite-only |
-| `PUBLIC` | Discoverable (reserved for future) |
+| `PUBLIC` | Discoverable (not currently used) |
 
 ### PoolStatus
 

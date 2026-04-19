@@ -383,9 +383,6 @@ export function calculateMaxPointsForPhase(
   phaseId?: string
 ): number {
   if (!config.requiresScore || !config.matchPicks) {
-    // Para structural picks, se calcula de forma diferente
-    // (depende del número de grupos, equipos, etc.)
-    // TODO: implementar cuando se agreguen structural picks al scoring
     return 0;
   }
 

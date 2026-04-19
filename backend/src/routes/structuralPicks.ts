@@ -90,9 +90,6 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
     return sendNotFound(res, "NOT_FOUND", { message: "Phase not found in tournament instance" });
   }
 
-  // TODO: Validar deadline de la fase (si aplica)
-  // Por ahora permitimos editar hasta que el host publique resultados
-
   // Obtener pick existente para hacer merge si es knockout
   const existingPick = await prisma.structuralPrediction.findUnique({
     where: {
