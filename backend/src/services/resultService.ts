@@ -10,7 +10,7 @@
 
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
-import { sendResultPublishedEmail } from "../lib/email";
+import { sendResultPublishedEmail, batchSendEmails } from "../lib/email";
 import { countryToLocale } from "../lib/constants";
 import { getScoringPreset } from "../lib/scoringPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
@@ -334,32 +334,31 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
       ? pickTypesConfig.find((p) => p.phaseId === match.phaseId)
       : null;
 
-    // Enviar emails
-    const emailPromises = sortedMembers.map((member, idx) => {
+    // Enviar emails (batched to avoid hitting Resend rate limits)
+    const emailItems = sortedMembers.map((member, idx) => {
       const pick = pickByUserId.get(member.userId);
       const pickJson = pick ? typed<PickJson>(pick.pickJson) : null;
       const pointsEarned = currentMatchPhaseConfig
         ? scoreAdvanced(pickJson, currentMatchResult, currentMatchPhaseConfig)
         : scoreLegacy(pickJson, currentMatchResult);
-
-      return sendResultPublishedEmail({
-        to: member.user.email,
-        userId: member.user.id,
-        displayName: member.user.displayName,
-        poolName: pool.name,
-        poolId: poolId,
-        matchDescription,
-        result: resultText,
-        pointsEarned,
-        currentRank: idx + 1,
-        totalParticipants: sortedMembers.length,
-        locale: countryToLocale(member.user.country),
-      }).catch((err) => {
-        console.error(`Error sending result email to ${member.user.email}:`, err);
-      });
+      return { member, pointsEarned, rank: idx + 1 };
     });
 
-    await Promise.allSettled(emailPromises);
+    await batchSendEmails(emailItems, (item) =>
+      sendResultPublishedEmail({
+        to: item.member.user.email,
+        userId: item.member.user.id,
+        displayName: item.member.user.displayName,
+        poolName: pool.name,
+        poolId,
+        matchDescription,
+        result: resultText,
+        pointsEarned: item.pointsEarned,
+        currentRank: item.rank,
+        totalParticipants: sortedMembers.length,
+        locale: countryToLocale(item.member.user.country),
+      }),
+    );
   } catch (emailError) {
     console.error("Error sending result notification emails:", emailError);
   }

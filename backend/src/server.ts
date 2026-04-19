@@ -237,6 +237,10 @@ app.use("/corporate", corporateRouter);
 import { unsubscribeRouter } from "./routes/unsubscribe";
 app.use("/unsubscribe", unsubscribeRouter);
 
+// Resend webhook (email bounces/complaints)
+import { resendWebhookRouter } from "./routes/resendWebhook";
+app.use("/webhooks/resend", resendWebhookRouter);
+
 // Payment routes (checkout + status — Polar webhook mounted above express.json, MP below)
 import { paymentsRouter, createMpWebhookHandler } from "./routes/payments";
 app.use("/payments", paymentsRouter);

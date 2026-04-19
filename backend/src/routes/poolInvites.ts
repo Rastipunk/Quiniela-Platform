@@ -271,24 +271,31 @@ poolInvitesRouter.post("/join", async (req, res) => {
     await transitionToActive(joined.poolId, req.auth!.userId);
   }
 
-  // Notificar al host si el pool acaba de llenarse
+  // Notificar al host si el pool acaba de llenarse (atomic dedup via poolFullNotifiedAt)
   if (joined.status === "ACTIVE" && invite.pool.maxParticipants) {
     const currentCount = await prisma.poolMember.count({
       where: { poolId: invite.poolId, status: "ACTIVE" },
     });
     if (currentCount >= invite.pool.maxParticipants) {
-      const host = await prisma.poolMember.findFirst({
-        where: { poolId: invite.poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
-        include: { user: { select: { email: true, displayName: true } } },
+      const { count } = await prisma.pool.updateMany({
+        where: { id: invite.poolId, poolFullNotifiedAt: null },
+        data: { poolFullNotifiedAt: new Date() },
       });
-      if (host?.user?.email) {
-        sendPoolFullNotificationEmail({
-          to: host.user.email,
-          hostName: host.user.displayName || "Host",
-          poolName: invite.pool.name,
-          poolId: invite.poolId,
-          maxParticipants: invite.pool.maxParticipants,
-        }).catch(() => {}); // fire and forget
+      if (count > 0) {
+        const host = await prisma.poolMember.findFirst({
+          where: { poolId: invite.poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
+          include: { user: { select: { email: true, displayName: true, country: true } } },
+        });
+        if (host?.user?.email) {
+          sendPoolFullNotificationEmail({
+            to: host.user.email,
+            hostName: host.user.displayName || "Host",
+            poolName: invite.pool.name,
+            poolId: invite.poolId,
+            maxParticipants: invite.pool.maxParticipants,
+            locale: countryToLocale(host.user.country),
+          }).catch(() => {});
+        }
       }
     }
   }

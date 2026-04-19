@@ -356,6 +356,8 @@ model Pool {
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
+  poolFullNotifiedAt DateTime?
+
   members PoolMember[]
   invites PoolInvite[]
   corporateInvites CorporateInvite[]
@@ -375,6 +377,18 @@ model Pool {
   @@index([createdByUserId])
   @@index([organizationId])
   @@index([status])
+}
+
+model EmailSuppression {
+  id        String   @id @default(uuid())
+  email     String
+  reason    String   // "bounced" | "complained"
+  resendId  String?  // Resend email ID that triggered the event
+  eventData Json?    // Raw webhook payload for debugging
+  createdAt DateTime @default(now())
+
+  @@unique([email])
+  @@index([email])
 }
 
 model PoolMember {

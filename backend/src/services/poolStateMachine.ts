@@ -8,7 +8,7 @@
 
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
-import { sendPoolCompletedEmail } from "../lib/email";
+import { sendPoolCompletedEmail, batchSendEmails } from "../lib/email";
 import { countryToLocale } from "../lib/constants";
 import { extractMatches, typed, type PickJson } from "../lib/fixture";
 
@@ -205,26 +205,23 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
         }
       }
 
-      // Enviar emails con ranking
-      const emailPromises = sortedMembers.map((member, idx) =>
+      // Enviar emails con ranking (batched to avoid hitting Resend rate limits)
+      const emailItems = sortedMembers.map((member, idx) => ({ member, rank: idx + 1 }));
+      const { sent, failed } = await batchSendEmails(emailItems, (item) =>
         sendPoolCompletedEmail({
-          to: member.user.email,
-          userId: member.user.id,
-          displayName: member.user.displayName,
+          to: item.member.user.email,
+          userId: item.member.user.id,
+          displayName: item.member.user.displayName,
           poolName: pool.name,
-          poolId: poolId,
-          finalRank: idx + 1,
+          poolId,
+          finalRank: item.rank,
           totalParticipants: sortedMembers.length,
-          totalPoints: member.points,
-          exactScores: userExactScores.get(member.userId) ?? 0,
-          locale: countryToLocale(member.user.country),
-        }).catch((err) => {
-          console.error("Error sending pool completed email:", err instanceof Error ? err.message : String(err));
-        })
+          totalPoints: item.member.points,
+          exactScores: userExactScores.get(item.member.userId) ?? 0,
+          locale: countryToLocale(item.member.user.country),
+        }),
       );
-
-      await Promise.allSettled(emailPromises);
-      console.log(`📧 Pool completed emails sent for pool ${poolId}`);
+      console.log(`📧 Pool completed emails for ${poolId}: ${sent} sent, ${failed} failed`);
     } catch (emailError) {
       console.error("Error sending pool completed emails:", emailError instanceof Error ? emailError.message : String(emailError));
     }

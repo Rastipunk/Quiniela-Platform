@@ -61,9 +61,16 @@ async function notifyIfPoolFull(poolId: string, poolName: string, maxParticipant
   const curCount = await prisma.poolMember.count({ where: { poolId, status: "ACTIVE" } });
   if (curCount < maxParticipants) return;
 
+  // Atomic dedup: only set poolFullNotifiedAt if it hasn't been set yet
+  const { count } = await prisma.pool.updateMany({
+    where: { id: poolId, poolFullNotifiedAt: null },
+    data: { poolFullNotifiedAt: new Date() },
+  });
+  if (count === 0) return; // already notified
+
   const host = await prisma.poolMember.findFirst({
     where: { poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
-    include: { user: { select: { email: true, displayName: true } } },
+    include: { user: { select: { email: true, displayName: true, country: true } } },
   });
   if (!host?.user?.email) return;
 
@@ -73,6 +80,7 @@ async function notifyIfPoolFull(poolId: string, poolName: string, maxParticipant
     poolName,
     poolId,
     maxParticipants,
+    locale: countryToLocale(host.user.country),
   }));
 }
 
@@ -385,6 +393,11 @@ export async function verifyEmail(token: string, ctx: AuditContext): Promise<Ver
     actorUserId: user.id, action: "EMAIL_VERIFIED",
     entityType: "User", entityId: user.id,
     ip: ctx.ip, userAgent: ctx.userAgent,
+  }));
+
+  fireAndForget("welcome email", sendWelcomeEmail({
+    to: user.email, userId: user.id, displayName: user.displayName,
+    locale: countryToLocale(user.country),
   }));
 
   return { verified: true, alreadyVerified: false };

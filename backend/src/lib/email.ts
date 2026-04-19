@@ -59,6 +59,39 @@ function getReadyClient(): { client: Resend; from: string } | null {
   return { client: resend, from: `${APP_NAME} <${FROM_EMAIL}>` };
 }
 
+/**
+ * Send an email via Resend with automatic retry on transient failures.
+ * Checks the suppression list before sending.
+ * Returns the same shape as Resend's send() for drop-in compatibility.
+ */
+async function resilientSend(
+  ready: { client: Resend; from: string },
+  payload: Omit<Parameters<Resend["emails"]["send"]>[0], "from"> & { skipSuppressionCheck?: boolean },
+): Promise<{ data: { id: string } | null; error: { message: string } | null }> {
+  // Check suppression list (bounced/complained addresses)
+  if (!payload.skipSuppressionCheck) {
+    const recipients = Array.isArray(payload.to) ? payload.to : payload.to ? [payload.to] : [];
+    for (const addr of recipients) {
+      if (typeof addr === "string" && await isSuppressed(addr)) {
+        console.log(`⏭️ Email to ${addr} skipped: address is on suppression list`);
+        return { data: null, error: { message: `Address ${addr} is suppressed (bounced/complained)` } };
+      }
+    }
+  }
+  const { skipSuppressionCheck: _, ...sendPayload } = payload;
+
+  try {
+    const result = await withRetry("email-send", async () => {
+      const { data, error } = await ready.client.emails.send({ from: ready.from, ...sendPayload } as Parameters<Resend["emails"]["send"]>[0]);
+      if (error) throw new Error(error.message);
+      return data;
+    });
+    return { data: result as { id: string } | null, error: null };
+  } catch (err) {
+    return { data: null, error: { message: err instanceof Error ? err.message : String(err) } };
+  }
+}
+
 // =========================================================================
 // HELPERS: Locale + Unsubscribe headers
 // =========================================================================
@@ -72,6 +105,14 @@ export async function getUserLocale(userId?: string): Promise<SupportedLocale> {
   return countryToLocale(user?.country);
 }
 
+async function isSuppressed(email: string): Promise<boolean> {
+  const entry = await prisma.emailSuppression.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true },
+  });
+  return !!entry;
+}
+
 function getUnsubscribeHeaders(userId: string): Record<string, string> {
   const backendUrl = process.env.BACKEND_URL || `https://api.${SITE_DOMAIN}`;
   const token = generateUnsubscribeToken(userId);
@@ -80,6 +121,58 @@ function getUnsubscribeHeaders(userId: string): Record<string, string> {
     "List-Unsubscribe": `<${url}>`,
     "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
   };
+}
+
+// =========================================================================
+// HELPERS: Retry + Batch
+// =========================================================================
+
+const RETRY_MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 500;
+
+async function withRetry<T>(
+  label: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= RETRY_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < RETRY_MAX_ATTEMPTS) {
+        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.warn(`⚠️ [${label}] attempt ${attempt} failed, retrying in ${delay}ms...`);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
+const BATCH_SIZE = 10;
+const BATCH_DELAY_MS = 1_000;
+
+export async function batchSendEmails<T>(
+  items: T[],
+  sendFn: (item: T) => Promise<unknown>,
+): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(batch.map(sendFn));
+    for (const r of results) {
+      if (r.status === "fulfilled") sent++;
+      else failed++;
+    }
+    if (i + BATCH_SIZE < items.length) {
+      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+    }
+  }
+
+  return { sent, failed };
 }
 
 // =========================================================================
@@ -196,7 +289,7 @@ export async function isEmailEnabled(
     // Toggle específico (excepto welcome que solo usa master)
     if (type !== "welcome") {
       const userEnabled =
-        user[config.userField as keyof typeof user] ?? true;
+        user[config.userField as keyof typeof user] ?? false;
       if (!userEnabled) {
         return {
           enabled: false,
@@ -231,8 +324,7 @@ export async function sendPasswordResetEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getPasswordResetTemplate({ username: params.username, resetUrl, locale: loc }),
@@ -277,8 +369,7 @@ export async function sendVerificationEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getVerificationTemplate({ displayName: params.displayName, verificationUrl, locale: loc }),
@@ -328,8 +419,7 @@ export async function sendWelcomeEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getWelcomeTemplate({ displayName: params.displayName, locale: loc }),
@@ -386,8 +476,7 @@ export async function sendPoolInvitationEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getPoolInvitationTemplate({
@@ -451,8 +540,7 @@ export async function sendDeadlineReminderEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getDeadlineReminderTemplate({
@@ -519,8 +607,7 @@ export async function sendResultPublishedEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getResultPublishedTemplate({
@@ -594,8 +681,7 @@ export async function sendPoolCompletedEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getPoolCompletedTemplate({
@@ -679,8 +765,7 @@ export async function sendCorporateInquiryConfirmationEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[locale] ?? subjects.es!,
       html: getCorporateInquiryConfirmationTemplate({
@@ -754,8 +839,7 @@ export async function sendCorporateActivationEmail(params: {
   }
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[locale] ?? subjects.es!,
       html: getCorporateActivationTemplate({
@@ -812,23 +896,25 @@ export async function sendAdminNotification(params: {
   const label = typeLabels[params.type] || params.type;
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from.replace(APP_NAME, `${APP_NAME} Admin`),
-      to: ADMIN_EMAIL!,
-      subject: `[${label}] ${params.subject}`,
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-          <h2 style="color:#1F2937;border-bottom:2px solid ${BRAND.primary};padding-bottom:8px;">${label}</h2>
-          <div style="color:#374151;font-size:15px;line-height:1.6;">
-            ${params.body}
+    const { data, error } = await resilientSend(
+      { ...ready, from: ready.from.replace(APP_NAME, `${APP_NAME} Admin`) },
+      {
+        to: ADMIN_EMAIL!,
+        subject: `[${label}] ${params.subject}`,
+        html: `
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+            <h2 style="color:#1F2937;border-bottom:2px solid ${BRAND.primary};padding-bottom:8px;">${label}</h2>
+            <div style="color:#374151;font-size:15px;line-height:1.6;">
+              ${params.body}
+            </div>
+            <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+            <p style="color:#9CA3AF;font-size:12px;">
+              ${APP_NAME} Admin Notification &middot; ${new Date().toISOString()}
+            </p>
           </div>
-          <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
-          <p style="color:#9CA3AF;font-size:12px;">
-            ${APP_NAME} Admin Notification &middot; ${new Date().toISOString()}
-          </p>
-        </div>
-      `,
-    });
+        `,
+      },
+    );
 
     if (error) {
       console.error("❌ Error al enviar notificación admin:", error);
@@ -884,8 +970,7 @@ export async function sendPoolFullNotificationEmail(params: {
   const poolUrl = `${FRONTEND_URL}/pools/${params.poolId}`;
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc],
       html: `
@@ -981,8 +1066,7 @@ export async function sendResultOverrideNotification(params: {
   const poolUrl = `${FRONTEND_URL}/pools/${params.poolId}`;
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.es!,
       headers: getUnsubscribeHeaders(params.userId),
@@ -1065,8 +1149,7 @@ export async function sendPredictionUpdateEmail(params: {
   });
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: `🔮 ${subject} — ${APP_NAME}`,
       html,
@@ -1130,8 +1213,7 @@ export async function sendPaymentReceiptEmail(params: {
   };
 
   try {
-    const { data, error } = await ready.client.emails.send({
-      from: ready.from,
+    const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
       html: getPaymentReceiptTemplate(templateParams),
