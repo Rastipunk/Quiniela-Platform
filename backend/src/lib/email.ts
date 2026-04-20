@@ -317,7 +317,7 @@ export async function sendPasswordResetEmail(params: {
   if (!ready) return { success: false, error: "Email service not configured" };
 
   const loc = params.locale || "en";
-  const resetUrl = `${FRONTEND_URL}/reset-password?token=${params.resetToken}`;
+  const resetUrl = appendUtm(`${FRONTEND_URL}/reset-password?token=${params.resetToken}`, emailUtm("password_reset"));
 
   const subjects: Record<string, string> = {
     es: `Recupera tu contraseña — ${APP_NAME}`,
@@ -362,7 +362,7 @@ export async function sendVerificationEmail(params: {
   if (!ready) return { success: false, error: "Email service not configured" };
 
   const loc = params.locale || "en";
-  const verificationUrl = `${FRONTEND_URL}/verify-email?token=${params.verificationToken}`;
+  const verificationUrl = appendUtm(`${FRONTEND_URL}/verify-email?token=${params.verificationToken}`, emailUtm("email_verification"));
 
   const subjects: Record<string, string> = {
     es: `Verifica tu email — ${APP_NAME}`,
@@ -816,7 +816,7 @@ export async function sendCorporateActivationEmail(params: {
   if (!ready) return { success: false, error: "Email service not configured" };
 
   const locale = params.locale || DEFAULT_LOCALE;
-  const activationUrl = `${FRONTEND_URL}/activar-cuenta?token=${params.activationToken}`;
+  const activationUrl = appendUtm(`${FRONTEND_URL}/activar-cuenta?token=${params.activationToken}`, emailUtm("corporate_activation"));
 
   const subjects: Record<string, string> = {
     es: `${params.companyName} te invitó a jugar — ${APP_NAME}`,
@@ -1113,7 +1113,7 @@ export async function sendPredictionUpdateEmail(params: {
 
   const loc = params.locale || DEFAULT_LOCALE;
   const predictionUrl = appendUtm(`${FRONTEND_URL}/predicciones`, emailUtm("prediction_update"));
-  const unsubscribeUrl = `${FRONTEND_URL}/profile`;
+  const unsubscribeUrl = appendUtm(`${FRONTEND_URL}/profile`, emailUtm("prediction_update", "unsubscribe"));
 
   const { subject, html } = getPredictionUpdateTemplate({
     displayName: params.displayName,

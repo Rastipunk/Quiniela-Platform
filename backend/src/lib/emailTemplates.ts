@@ -157,11 +157,11 @@ export function getEmailWrapper(content: string, preheader?: string, locale: str
                 <tr>
                   <td align="center">
                     <p style="margin:0;font-size:12px;color:${BRAND.mutedColor};">
-                      <a href="${BRAND.baseUrl}${lp}/terms" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.terms}</a>
+                      <a href="${appendUtm(`${BRAND.baseUrl}${lp}/terms`, emailUtm("email_footer", "terms"))}" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.terms}</a>
                       &nbsp;|&nbsp;
-                      <a href="${BRAND.baseUrl}${lp}/privacy" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.privacy}</a>
+                      <a href="${appendUtm(`${BRAND.baseUrl}${lp}/privacy`, emailUtm("email_footer", "privacy"))}" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.privacy}</a>
                       &nbsp;|&nbsp;
-                      <a href="${BRAND.baseUrl}${lp}/profile" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.prefs}</a>
+                      <a href="${appendUtm(`${BRAND.baseUrl}${lp}/profile`, emailUtm("email_footer", "preferences"))}" style="color:${BRAND.mutedColor};text-decoration:underline;">${ft.prefs}</a>
                     </p>
                   </td>
                 </tr>
@@ -1014,9 +1014,9 @@ export function getCorporateActivationTemplate({
                 ${t.footer}
               </p>
               <p style="margin:0;font-size:12px;color:#9CA3AF;text-align:center;">
-                <a href="${BRAND.baseUrl}/terms" style="color:#9CA3AF;text-decoration:underline;">Términos</a>
+                <a href="${appendUtm(`${BRAND.baseUrl}/terms`, emailUtm("email_footer", "terms"))}" style="color:#9CA3AF;text-decoration:underline;">Términos</a>
                 &nbsp;·&nbsp;
-                <a href="${BRAND.baseUrl}/privacy" style="color:#9CA3AF;text-decoration:underline;">Privacidad</a>
+                <a href="${appendUtm(`${BRAND.baseUrl}/privacy`, emailUtm("email_footer", "privacy"))}" style="color:#9CA3AF;text-decoration:underline;">Privacidad</a>
               </p>
               <p style="margin:12px 0 0;font-size:11px;color:#c4b5fd;text-align:center;font-weight:500;">
                 ${BRAND.name}
