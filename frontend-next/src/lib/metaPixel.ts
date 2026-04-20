@@ -150,8 +150,13 @@ export async function setMetaUserData(data: {
     localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
   } catch { /* localStorage full or blocked */ }
 
-  if (typeof window.fbq === "function") {
-    window.fbq("init", PIXEL_ID, userData);
+  // Update internal pixel userData directly to avoid "Duplicate Pixel ID" warning.
+  // Calling fbq("init") again would trigger the warning from fbevents.js.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const instance = (window.fbq as any)?.instance;
+  const pixel = instance?.pixelsByID?.[PIXEL_ID];
+  if (pixel) {
+    Object.assign(pixel.userData, userData);
   }
 }
 
