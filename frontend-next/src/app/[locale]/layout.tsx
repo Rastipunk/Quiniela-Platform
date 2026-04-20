@@ -87,6 +87,7 @@ export async function generateMetadata({
       google: "mLDBKCz1jxTO32YsN9ovBRguWz9Ikmc7RWZoq21O3mY",
     },
     other: {
+      "facebook-domain-verification": "wp2mljgv4bqt6wl8mwngdzre7sumje",
       "color-scheme": "light only",
       "supported-color-schemes": "light only",
       "apple-mobile-web-app-status-bar-style": "default",
