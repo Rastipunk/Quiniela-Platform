@@ -1,15 +1,10 @@
 /**
  * Meta Pixel — consent-gated Facebook/Instagram tracking.
  *
- * Architecture:
- *   1. initMetaPixel() injects the fbevents.js script from Meta's CDN
- *   2. fbevents.js creates the real window.fbq when it loads
- *   3. Events fired before the script loads are queued internally
- *   4. On script load: init pixel, grant consent, flush queue
- *
- * This avoids creating a manual fbq stub, which prevents conflicts
- * with browser extensions (e.g. Meta Pixel Helper) that inject their
- * own window.fbq before our code runs.
+ * Uses the official Meta Pixel stub pattern: a lightweight queue function
+ * is created as window.fbq BEFORE fbevents.js loads. The stub queues all
+ * fbq() calls. When fbevents.js executes, it processes the queue and
+ * replaces the stub with the real implementation.
  *
  * All functions are no-ops if NEXT_PUBLIC_META_PIXEL_ID is not set.
  */
@@ -25,8 +20,6 @@ const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
 const USER_DATA_KEY = "p4a_meta_ud";
 
 let initialized = false;
-let scriptReady = false;
-const eventQueue: unknown[][] = [];
 
 function getStoredUserData(): Record<string, string> | undefined {
   try {
@@ -37,27 +30,9 @@ function getStoredUserData(): Record<string, string> | undefined {
   }
 }
 
-function enqueueFbq(...args: unknown[]): void {
-  if (scriptReady && typeof window !== "undefined" && typeof window.fbq === "function") {
-    window.fbq(...args);
-  } else {
-    eventQueue.push(args);
-  }
-}
-
-function flushEventQueue(): void {
-  scriptReady = true;
-  while (eventQueue.length > 0) {
-    const args = eventQueue.shift()!;
-    if (typeof window.fbq === "function") {
-      window.fbq(...args);
-    }
-  }
-}
-
 /**
  * Load fbevents.js from Meta's CDN and initialize the pixel.
- * Includes stored Advanced Matching data if available.
+ * Creates the official fbq stub first, then loads the script.
  * Does NOT fire PageView — call trackMetaEvent('PageView') separately.
  */
 export function initMetaPixel(): void {
@@ -65,19 +40,34 @@ export function initMetaPixel(): void {
   if (typeof window === "undefined") return;
   initialized = true;
 
+  // Official Meta Pixel stub — queues calls until fbevents.js loads
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const n: any = (window.fbq = function (...args: unknown[]) {
+    if (n.callMethod) {
+      n.callMethod(...args);
+    } else {
+      n.queue.push(args);
+    }
+  });
+  window._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = "2.0";
+  n.queue = [] as unknown[][];
+
+  // Init pixel through the stub (queued, processed when script loads)
+  const storedUserData = getStoredUserData();
+  if (storedUserData) {
+    window.fbq("init", PIXEL_ID, storedUserData);
+  } else {
+    window.fbq("init", PIXEL_ID);
+  }
+  window.fbq("consent", "grant");
+
+  // Load fbevents.js
   const script = document.createElement("script");
   script.async = true;
   script.src = "https://connect.facebook.net/en_US/fbevents.js";
-  script.onload = () => {
-    const storedUserData = getStoredUserData();
-    if (storedUserData) {
-      window.fbq("init", PIXEL_ID, storedUserData);
-    } else {
-      window.fbq("init", PIXEL_ID);
-    }
-    window.fbq("consent", "grant");
-    flushEventQueue();
-  };
   script.onerror = () => {
     initialized = false;
   };
@@ -97,18 +87,19 @@ export function generateEventId(): string {
 /**
  * Fire a Meta standard event (e.g. 'PageView', 'Lead', 'Purchase').
  * Pass eventId for browser/CAPI deduplication on events also sent server-side.
+ * Safe to call before fbevents.js loads — the stub queues the call.
  */
 export function trackMetaEvent(event: string, params?: Record<string, unknown>, eventId?: string): void {
-  if (!PIXEL_ID) return;
+  if (!PIXEL_ID || typeof window === "undefined" || typeof window.fbq !== "function") return;
   const options = eventId ? { eventID: eventId } : undefined;
   if (params && options) {
-    enqueueFbq("track", event, params, options);
+    window.fbq("track", event, params, options);
   } else if (params) {
-    enqueueFbq("track", event, params);
+    window.fbq("track", event, params);
   } else if (options) {
-    enqueueFbq("track", event, {}, options);
+    window.fbq("track", event, {}, options);
   } else {
-    enqueueFbq("track", event);
+    window.fbq("track", event);
   }
 }
 
@@ -116,11 +107,11 @@ export function trackMetaEvent(event: string, params?: Record<string, unknown>, 
  * Fire a Meta custom event (e.g. 'PoolCreated', 'PoolJoined').
  */
 export function trackMetaCustomEvent(event: string, params?: Record<string, unknown>): void {
-  if (!PIXEL_ID) return;
+  if (!PIXEL_ID || typeof window === "undefined" || typeof window.fbq !== "function") return;
   if (params) {
-    enqueueFbq("trackCustom", event, params);
+    window.fbq("trackCustom", event, params);
   } else {
-    enqueueFbq("trackCustom", event);
+    window.fbq("trackCustom", event);
   }
 }
 
@@ -159,7 +150,7 @@ export async function setMetaUserData(data: {
     localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
   } catch { /* localStorage full or blocked */ }
 
-  if (scriptReady && typeof window.fbq === "function") {
+  if (typeof window.fbq === "function") {
     window.fbq("init", PIXEL_ID, userData);
   }
 }
