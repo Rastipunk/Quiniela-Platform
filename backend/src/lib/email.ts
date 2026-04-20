@@ -13,6 +13,7 @@ import { prisma } from "../db";
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE, countryToLocale, type SupportedLocale } from "./constants";
 import { BRAND } from "./brand";
 import { generateUnsubscribeToken, buildUnsubscribeUrl } from "./unsubscribe";
+import { appendUtm, emailUtm } from "./utm";
 import {
   getPasswordResetTemplate,
   getVerificationTemplate,
@@ -1037,7 +1038,7 @@ export async function sendResultOverrideNotification(params: {
     pt: "Ver bolão",
   };
 
-  const poolUrl = `${FRONTEND_URL}/pools/${params.poolId}`;
+  const poolUrl = appendUtm(`${FRONTEND_URL}/pools/${params.poolId}`, emailUtm("result_override"));
 
   try {
     const { data, error } = await resilientSend(ready, {
@@ -1111,7 +1112,7 @@ export async function sendPredictionUpdateEmail(params: {
   if (!ready) return { success: false, error: "Email service not configured" };
 
   const loc = params.locale || DEFAULT_LOCALE;
-  const predictionUrl = `${FRONTEND_URL}/predicciones`;
+  const predictionUrl = appendUtm(`${FRONTEND_URL}/predicciones`, emailUtm("prediction_update"));
   const unsubscribeUrl = `${FRONTEND_URL}/profile`;
 
   const { subject, html } = getPredictionUpdateTemplate({

@@ -13,6 +13,7 @@
 // =========================================================================
 
 import { BRAND as B } from "./brand";
+import { appendUtm, emailUtm } from "./utm";
 
 const BRAND = {
   name: B.name,
@@ -422,7 +423,7 @@ export function getWelcomeTemplate({ displayName, locale = "es" }: WelcomeEmailP
       <li style="margin-bottom:8px;">${t.li3}</li>
       <li style="margin-bottom:8px;">${t.li4}</li>
     </ul>
-    ${getButton(t.cta, `${BRAND.baseUrl}${lp}/dashboard`)}
+    ${getButton(t.cta, appendUtm(`${BRAND.baseUrl}${lp}/dashboard`, emailUtm("welcome")))}
     ${getParagraph(t.tip)}
     <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.footer}</p>
   `;
@@ -445,7 +446,7 @@ export interface PoolInvitationEmailParams {
 export function getPoolInvitationTemplate({
   inviterName, poolName, inviteCode, poolDescription, locale = "es",
 }: PoolInvitationEmailParams): string {
-  const joinUrl = `${BRAND.baseUrl}/join/${inviteCode}`;
+  const joinUrl = appendUtm(`${BRAND.baseUrl}/join/${inviteCode}`, emailUtm("pool_invite"));
 
   const i18n: Record<string, {
     heading: string; intro: string; compete: string; cta: string;
@@ -513,7 +514,7 @@ export interface DeadlineReminderEmailParams {
 export function getDeadlineReminderTemplate({
   displayName, poolName, matchesCount, deadlineTime, poolId, locale = "es",
 }: DeadlineReminderEmailParams): string {
-  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("deadline_reminder"));
   const plural = matchesCount > 1;
 
   const i18n: Record<string, {
@@ -587,7 +588,7 @@ export function getResultPublishedTemplate({
   displayName, poolName, matchDescription, result,
   pointsEarned, currentRank, totalParticipants, poolId, locale = "es",
 }: ResultPublishedEmailParams): string {
-  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("result_published"));
   const pointsEmoji = pointsEarned > 0 ? "🎉" : "😅";
   const rankEmoji = currentRank <= 3 ? "🏆" : "📊";
 
@@ -669,7 +670,7 @@ export function getPoolCompletedTemplate({
   displayName, poolName, finalRank, totalPoints,
   totalParticipants, exactScores, poolId, locale = "es",
 }: PoolCompletedEmailParams): string {
-  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("pool_completed"));
   const lp = locale === "es" ? "" : `/${locale}`;
 
   const congrats: Record<string, Record<string, { msg: string; emoji: string }>> = {
@@ -733,7 +734,7 @@ export function getPoolCompletedTemplate({
     </table>
     ${getButton(t.ctaResults, poolUrl)}
     <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.rematch}</p>
-    ${getButton(t.ctaExplore, `${BRAND.baseUrl}${lp}/dashboard`, false)}
+    ${getButton(t.ctaExplore, appendUtm(`${BRAND.baseUrl}${lp}/dashboard`, emailUtm("pool_completed", "secondary_cta")), false)}
   `;
 
   return getEmailWrapper(content, t.preheader, locale);
@@ -755,7 +756,7 @@ export function getCorporateInquiryConfirmationTemplate({
   locale = "es",
 }: CorporateInquiryConfirmationParams): string {
   const enterpriseEmail = ENTERPRISE_EMAILS[locale] ?? ENTERPRISE_EMAILS.es!;
-  const enterpriseUrl = `${BRAND.baseUrl}/${locale === "en" ? "en/enterprise" : locale === "pt" ? "pt/empresas" : "empresas"}`;
+  const enterpriseUrl = appendUtm(`${BRAND.baseUrl}/${locale === "en" ? "en/enterprise" : locale === "pt" ? "pt/empresas" : "empresas"}`, emailUtm("corporate_inquiry"));
 
   const i18n: Record<string, { heading: string; greeting: string; body: string; summary: string; cta: string; ctaLabel: string; footer: string; preheader: string }> = {
     es: {
@@ -1215,7 +1216,7 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
   };
 
   const t = i18n[loc] ?? i18n.en!;
-  const poolUrl = `${BRAND.baseUrl}/pools/${params.poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${params.poolId}`, emailUtm("payment_receipt"));
 
   const content = `
     ${getHeading(`✅ ${t.heading}`)}
@@ -1269,7 +1270,7 @@ export interface PoolFullEmailParams {
 }
 
 export function getPoolFullTemplate({ hostName, poolName, poolId, maxParticipants, locale = "es" }: PoolFullEmailParams): string {
-  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("pool_full"));
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;
@@ -1338,7 +1339,7 @@ export interface NewMemberEmailParams {
 export function getNewMemberTemplate({
   hostName, memberName, poolName, poolId, currentCount, maxParticipants, locale = "es",
 }: NewMemberEmailParams): string {
-  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("new_member"));
   const capacityStr = maxParticipants ? `${currentCount}/${maxParticipants}` : `${currentCount}`;
 
   const i18n: Record<string, {
@@ -1534,7 +1535,7 @@ export interface NewMemberDigestEmailParams {
 export function getNewMemberDigestTemplate({
   hostName, poolName, poolId, newMembers, currentTotal, locale = "es",
 }: NewMemberDigestEmailParams): string {
-  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("new_member_digest"));
   const count = newMembers.length;
 
   const i18n: Record<string, {
@@ -1613,7 +1614,7 @@ export function getPhaseCompletionSummaryTemplate({
   displayName, poolName, poolId, phaseName, userRank, userPoints,
   totalParticipants, top10, locale = "es",
 }: PhaseCompletionSummaryEmailParams): string {
-  const poolUrl = `${BRAND.baseUrl}/pools/${poolId}`;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("phase_completed"));
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;

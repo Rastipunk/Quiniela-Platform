@@ -3,6 +3,7 @@
 import { colors } from "@/lib/theme";
 import { trackEvent } from "@/lib/analytics";
 import { trackMetaCustomEvent } from "@/lib/metaPixel";
+import { appendUtm } from "@/lib/utm";
 
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
@@ -125,6 +126,14 @@ export function ShareButtons({
   const t = useTranslations("share");
   const [copied, setCopied] = useState(false);
 
+  const campaign = context === "poolInvite" ? "pool_invite" : "pool_share";
+  const tagUrl = useCallback((source: string) => appendUtm(url, {
+    source,
+    medium: "social",
+    campaign,
+    content: context,
+  }), [url, campaign, context]);
+
   // Build share text based on context
   const shareText = useCallback(() => {
     switch (context) {
@@ -151,18 +160,19 @@ export function ShareButtons({
   const handleNativeShare = useCallback(async () => {
     const text = shareText();
     try {
-      await navigator.share({ title: text, url });
+      await navigator.share({ title: text, url: tagUrl("native_share") });
       trackEvent("share_pool", { platform: "native_share", context });
       trackMetaCustomEvent("SharePool", { content_name: "native_share" });
     } catch {
       // User cancelled or not supported — fall through to buttons
     }
-  }, [shareText, url]);
+  }, [shareText, tagUrl]);
 
   const handleCopy = useCallback(async () => {
     const text = shareText();
+    const tagged = tagUrl("clipboard");
     try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
+      await navigator.clipboard.writeText(`${text}\n${tagged}`);
       trackEvent("share_pool", { platform: "copy_link", context });
       trackMetaCustomEvent("SharePool", { content_name: "copy_link" });
       setCopied(true);
@@ -170,7 +180,7 @@ export function ShareButtons({
     } catch {
       // Fallback for older browsers
       const textarea = document.createElement("textarea");
-      textarea.value = `${text}\n${url}`;
+      textarea.value = `${text}\n${tagged}`;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand("copy");
@@ -178,7 +188,7 @@ export function ShareButtons({
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
-  }, [shareText, url]);
+  }, [shareText, tagUrl]);
 
   const channels = getChannels(t);
   const isSmall = size === "sm";
@@ -237,7 +247,7 @@ export function ShareButtons({
       {channels.map((ch) => (
         <a
           key={ch.key}
-          href={ch.buildUrl(shareText(), url)}
+          href={ch.buildUrl(shareText(), tagUrl(ch.key))}
           target="_blank"
           rel="noopener noreferrer"
           style={{
