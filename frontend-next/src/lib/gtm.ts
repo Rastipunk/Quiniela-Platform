@@ -36,22 +36,57 @@ export const isGtmEnabled = (): boolean => GTM_ID.length > 0;
  * `ads_data_redaction` strips PII from ad pings when denied.
  */
 const CONSENT_DEFAULT_WAIT_MS = 500;
+const CONSENT_STORAGE_KEY = "p4a_cookie_consent";
+const LOGGED_IN_COOKIE = "p4a_logged_in";
 
+/**
+ * Inline `<head>` script that sets Consent Mode v2 defaults.
+ *
+ * CRITICAL: runs BEFORE gtm.js loads so GTM picks up the right consent state
+ * on the very first tag evaluation. If we default everyone to `denied` and
+ * then update to `granted` from React post-hydration, the `Initialization`
+ * trigger fires cookieless FIRST and the hit never appears in GA4 Realtime
+ * or DebugView (cookieless pings only surface in aggregate reports 24-48h
+ * later). To avoid that, we hydrate the default from the returning-user
+ * signals available at document parse time:
+ *
+ *   1. `localStorage.p4a_cookie_consent` — explicit prior choice ("granted" /
+ *      "denied"). Same key used by the CookieConsent component.
+ *   2. `p4a_logged_in` cookie — non-httpOnly UI hint set server-side on
+ *      login. Authenticated users accepted analytics in the ToS at signup
+ *      (matches `acceptAnalyticsConsent()` in CookieConsent.tsx).
+ *
+ * First-time anonymous visitors still start at `denied` and the banner
+ * flips them via `consent update` on click. `ads_data_redaction` is only
+ * kept TRUE when the effective state is denied; redacting a granted user's
+ * ad data would cripple campaign attribution.
+ */
 function buildConsentDefaults(): string {
-  const defaults = CONSENT_SIGNALS.reduce<Record<string, string>>((acc, key) => {
-    acc[key] = "denied";
-    return acc;
-  }, {});
-  const payload = {
-    ...defaults,
-    wait_for_update: CONSENT_DEFAULT_WAIT_MS,
-  };
+  const signalsJson = JSON.stringify(CONSENT_SIGNALS);
+  const initialScript = `
+var __p4aSignals = ${signalsJson};
+var __p4aConsent = "denied";
+try {
+  var __stored = window.localStorage && window.localStorage.getItem(${JSON.stringify(CONSENT_STORAGE_KEY)});
+  if (__stored === "granted") __p4aConsent = "granted";
+  else if (__stored !== "denied") {
+    // No explicit choice: authenticated users (indicated by the
+    // non-httpOnly ${LOGGED_IN_COOKIE} cookie) are implicitly granted.
+    var __cookies = document.cookie || "";
+    if (__cookies.indexOf(${JSON.stringify(LOGGED_IN_COOKIE + "=")}) !== -1) __p4aConsent = "granted";
+  }
+} catch (__e) { /* private-mode localStorage throws — fall through with denied */ }
+var __p4aDefaults = { wait_for_update: ${CONSENT_DEFAULT_WAIT_MS} };
+for (var __i = 0; __i < __p4aSignals.length; __i++) __p4aDefaults[__p4aSignals[__i]] = __p4aConsent;
+gtag("consent","default", __p4aDefaults);
+gtag("set","url_passthrough", true);
+gtag("set","ads_data_redaction", __p4aConsent === "denied");
+`.trim();
+
   return [
     "window.dataLayer = window.dataLayer || [];",
     "function gtag(){dataLayer.push(arguments);}",
-    `gtag('consent','default',${JSON.stringify(payload)});`,
-    "gtag('set','url_passthrough',true);",
-    "gtag('set','ads_data_redaction',true);",
+    initialScript,
   ].join("");
 }
 
