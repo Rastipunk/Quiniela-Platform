@@ -185,6 +185,14 @@ export function setUserProperties(props: AnalyticsUserProperties): void {
  * This is what actually unlocks GA4 cookies and ad tags after the user
  * accepts the banner. Must be called via the `gtag` command form so GTM
  * treats it as a consent directive.
+ *
+ * In addition to the signal flags we also mirror `ads_data_redaction`
+ * and `url_passthrough` to the effective state:
+ *   - `ads_data_redaction` MUST flip to `false` on granted. If left at
+ *     the default `true`, GA4 keeps redacting gclid/user-agent for ad
+ *     pings and Google Ads attribution silently breaks.
+ *   - `url_passthrough` we always keep `true` — preserves click IDs
+ *     across navigation regardless of consent state.
  */
 export function updateConsent(consent: ConsentValue): void {
   const payload = CONSENT_SIGNALS.reduce<Record<ConsentSignal, ConsentValue>>(
@@ -195,6 +203,8 @@ export function updateConsent(consent: ConsentValue): void {
     {} as Record<ConsentSignal, ConsentValue>,
   );
   gtag("consent", "update", payload);
+  gtag("set", "ads_data_redaction", consent === "denied");
+  gtag("set", "url_passthrough", true);
   // Emit a regular event too so GTM triggers keyed on "consent_update" still fire.
   trackEvent("consent_update", { consent_state: consent });
 }

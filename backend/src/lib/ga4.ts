@@ -74,14 +74,34 @@ function buildClientId(userId?: string, explicit?: string): string {
   return crypto.randomUUID();
 }
 
+// Same rationale as CAPI: bound request lifetime so a slow Google
+// response can't hold a request handler hostage. Google usually responds
+// in <500ms; 8s is generous headroom.
+const HTTP_TIMEOUT_MS = 8_000;
+
+/** Mirror of the CAPI helper — rotate-proof treatment of 401/403 so
+ * queued events aren't dropped during an API_SECRET rotation. */
+function isPermanentFailure(status: number): boolean {
+  if (status < 400 || status >= 500) return false;
+  if (status === 401 || status === 403 || status === 408 || status === 429) return false;
+  return true;
+}
+
 async function postToGa4(body: Record<string, unknown>): Promise<Response> {
   const path = DEBUG_ENDPOINT ? "debug/mp/collect" : "mp/collect";
   const url = `https://www.google-analytics.com/${path}?measurement_id=${MEASUREMENT_ID}&api_secret=${API_SECRET}`;
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -146,10 +166,12 @@ export async function sendGa4Event(params: Ga4SendParams): Promise<void> {
       if (res.ok) return;
       const text = await res.text();
       lastError = new Error(`GA4 MP ${res.status}: ${text}`);
-      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-        console.error(`[GA4MP] ${params.events[0]?.name} rejected:`, text);
+      if (isPermanentFailure(res.status)) {
+        console.error(`[GA4MP] ${params.events[0]?.name} rejected (permanent):`, text);
         return;
       }
+      // 401 / 403 / 408 / 429 fall through to in-process retry and,
+      // eventually, to the DLQ for the worker to drain later.
     } catch (err) {
       lastError = err;
     }
@@ -219,7 +241,7 @@ export async function retryFailedGa4EventsBatch(batchSize = 20): Promise<{
         continue;
       }
       const text = await res.text();
-      const permanentError = res.status >= 400 && res.status < 500 && res.status !== 429;
+      const permanentError = isPermanentFailure(res.status);
       await prisma.failedAnalyticsEvent.update({
         where: { id: row.id },
         data: {

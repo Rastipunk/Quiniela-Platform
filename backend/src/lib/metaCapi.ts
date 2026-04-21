@@ -134,18 +134,53 @@ function buildEventBody(params: CapiEventParams): Record<string, unknown> {
   return { data: [eventData] };
 }
 
+// Hard timeout for outbound Graph API calls. Meta occasionally times out
+// closer to 25s; a payment request handler waiting that long would burn a
+// connection and cascade into thread starvation under spike. 8s is enough
+// for the p99 successful call, and failures flow straight into the DLQ
+// where the worker retries without blocking anyone.
+const HTTP_TIMEOUT_MS = 8_000;
+
+/**
+ * An HTTP failure is "permanent" when retrying cannot possibly succeed
+ * with the same payload — malformed JSON, wrong pixel id, deleted event
+ * definition, etc. Anything that can heal on its own (rate limit,
+ * temporary token invalidation during rotation, server-side transient)
+ * is NOT permanent and stays in the DLQ for a later retry.
+ *
+ *   401 / 403 → transient. Rotating META_CAPI_ACCESS_TOKEN momentarily
+ *               returns 401 for in-flight requests; we must not discard
+ *               queued events during a deploy or key rotation.
+ *   408       → transient (request timeout).
+ *   429       → transient (rate limit).
+ *   other 4xx → permanent (payload is wrong; retries waste quota).
+ *   5xx / network → NOT a 4xx, handled by the generic retry path.
+ */
+function isPermanentFailure(status: number): boolean {
+  if (status < 400 || status >= 500) return false;
+  if (status === 401 || status === 403 || status === 408 || status === 429) return false;
+  return true;
+}
+
 async function postToMeta(body: Record<string, unknown>): Promise<Response> {
   const payload: Record<string, unknown> = { ...body, access_token: ACCESS_TOKEN };
   if (TEST_EVENT_CODE) payload.test_event_code = TEST_EVENT_CODE;
 
-  return fetch(
-    `https://graph.facebook.com/${API_VERSION}/${PIXEL_ID}/events`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    },
-  );
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
+  try {
+    return await fetch(
+      `https://graph.facebook.com/${API_VERSION}/${PIXEL_ID}/events`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      },
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -176,11 +211,14 @@ export async function sendCapiEvent(params: CapiEventParams): Promise<void> {
       if (res.ok) return;
       const text = await res.text();
       lastError = new Error(`Meta CAPI ${res.status}: ${text}`);
-      // 4xx (except 429) means our payload is wrong — retrying won't help.
-      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-        console.error(`[CAPI] ${params.eventName} rejected:`, text);
+      // Permanent failures are recorded and dropped — retrying with the
+      // same payload won't change Meta's answer.
+      if (isPermanentFailure(res.status)) {
+        console.error(`[CAPI] ${params.eventName} rejected (permanent):`, text);
         return;
       }
+      // 401 / 403 / 408 / 429 fall through to the retry loop and, if
+      // still failing, to the DLQ for the worker to drain later.
     } catch (err) {
       lastError = err;
     }
@@ -257,7 +295,7 @@ export async function retryFailedCapiEventsBatch(batchSize = 20): Promise<{
         continue;
       }
       const text = await res.text();
-      const permanentError = res.status >= 400 && res.status < 500 && res.status !== 429;
+      const permanentError = isPermanentFailure(res.status);
       await prisma.failedAnalyticsEvent.update({
         where: { id: row.id },
         data: {
