@@ -5,6 +5,12 @@
 const LOGGED_IN_COOKIE = "p4a_logged_in";
 const SESSION_EXPIRED_KEY = "quiniela.sessionExpired";
 const AUTH_EVENT = "quiniela:auth";
+// Cross-tab logout signalling. Cookies do NOT emit the `storage` event,
+// so other open tabs cannot react to an httpOnly-cookie clear. We piggy-
+// back a monotonic timestamp on localStorage to broadcast the change —
+// tabs subscribe via `storage` events on this key and flush analytics
+// identity + Meta Pixel consent accordingly.
+export const AUTH_LOGOUT_BROADCAST_KEY = "p4a_auth_logout_tick";
 
 // Legacy localStorage keys — cleared on first load to complete migration
 const LEGACY_TOKEN_KEY = "quiniela.token";
@@ -51,6 +57,14 @@ export function clearToken() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(LEGACY_TOKEN_KEY);
   localStorage.removeItem(LEGACY_TOKEN_KEY_2);
+  // Broadcast to sibling tabs. A timestamp value guarantees every call
+  // produces a distinct `storage` event — `setItem` to the same value
+  // is a no-op and wouldn't fire.
+  try {
+    localStorage.setItem(AUTH_LOGOUT_BROADCAST_KEY, String(Date.now()));
+  } catch {
+    // localStorage may throw in private mode / quota — best-effort.
+  }
   notifyAuthChanged();
 }
 

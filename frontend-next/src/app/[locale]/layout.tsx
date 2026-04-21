@@ -7,6 +7,7 @@ import Script from "next/script";
 import { routing } from "@/i18n/routing";
 import { JsonLd } from "@/components/JsonLd";
 import { CookieConsent } from "@/components/CookieConsent";
+import { AuthAnalyticsSync } from "@/components/AuthAnalyticsSync";
 import { MetaPixelPageView } from "@/components/MetaPixelPageView";
 import { AttributionCapture } from "@/components/AttributionCapture";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
@@ -183,6 +184,7 @@ export default async function LocaleLayout({
             <CookieConsent />
             <MetaPixelPageView />
             <AttributionCapture />
+            <AuthAnalyticsSync />
           </PoolTermProvider>
         </NextIntlClientProvider>
         {/* Google Identity Services — loads after hydration so button is ready when AuthSlidePanel opens */}

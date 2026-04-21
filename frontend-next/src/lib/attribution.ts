@@ -118,8 +118,12 @@ export function captureAttribution(): AttributionData | null {
 
   if (!hasAny) return stored;
 
-  // First-touch: if we already have source/medium/campaign stored, keep them.
-  if (stored && (stored.source || stored.campaign || stored.gclid || stored.fbclid)) {
+  // First-touch: if we already have any meaningful channel signal
+  // stored, keep it. `medium` counts because an organic visit with
+  // `utm_medium=email` but no `utm_source` is still a real first touch
+  // — otherwise a later CPC visit would overwrite it and skew the
+  // acquisition cohort.
+  if (stored && (stored.source || stored.medium || stored.campaign || stored.gclid || stored.fbclid)) {
     return stored;
   }
 
