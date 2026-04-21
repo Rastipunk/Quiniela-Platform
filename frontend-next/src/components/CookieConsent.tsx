@@ -139,26 +139,54 @@ export function CookieConsent() {
 
   if (!visible) return null;
 
+  // Design choices that drive consent rate without crossing into
+  // dark-pattern territory:
+  //   - Card-style popover anchored bottom-left (feels like a helpful
+  //     notice rather than a wall blocking the page).
+  //   - Short, benefit-oriented headline ("Mejora tu experiencia")
+  //     above the legal message so the user understands WHY before
+  //     they read the boilerplate.
+  //   - Accept CTA uses brand gradient + shadow — primary visual weight.
+  //     Reject is a text-only link in muted grey — present, legible, one
+  //     click away, but not the eye-catcher. GDPR requires both options
+  //     to be equally easy to action; it does NOT require them to have
+  //     equal visual weight.
+  //   - No emoji, no manipulative copy. Privacy link is prominent.
   return (
     <div
+      role="dialog"
+      aria-live="polite"
+      aria-label={t("headline")}
       style={{
         position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: isMobile ? 0 : spacing.lg,
+        left: isMobile ? 0 : spacing.lg,
+        right: isMobile ? 0 : "auto",
+        maxWidth: isMobile ? "100%" : 420,
         zIndex: zIndex.toast,
-        padding: isMobile ? `${spacing.md}px ${spacing.lg}px` : `${spacing.lg}px ${spacing["3xl"]}px`,
+        padding: isMobile ? `${spacing.lg}px ${spacing.lg}px ${spacing.lg}px` : `${spacing.lg}px`,
         background: colors.white,
-        borderTop: `1px solid ${colors.borderLight}`,
-        boxShadow: "0 -4px 20px rgba(0,0,0,0.08)",
-        display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        alignItems: isMobile ? "stretch" : "center",
-        gap: isMobile ? spacing.md : spacing.xl,
+        border: `1px solid ${colors.borderLight}`,
+        borderTop: isMobile ? `1px solid ${colors.borderLight}` : `1px solid ${colors.borderLight}`,
+        borderRadius: isMobile ? `${radii.lg}px ${radii.lg}px 0 0` : radii.lg,
+        boxShadow: "0 12px 32px rgba(17, 24, 39, 0.12), 0 4px 12px rgba(17, 24, 39, 0.06)",
       }}
     >
-      {/* Text */}
-      <div style={{ flex: 1, fontSize: isMobile ? fontSize.sm : fontSize.base, color: colors.textMuted, lineHeight: 1.5 }}>
+      <div style={{
+        fontSize: fontSize.base,
+        fontWeight: fontWeight.bold,
+        color: colors.text,
+        marginBottom: spacing.xs,
+        lineHeight: 1.3,
+      }}>
+        {t("headline")}
+      </div>
+      <div style={{
+        fontSize: fontSize.sm,
+        color: colors.textMuted,
+        lineHeight: 1.5,
+        marginBottom: spacing.md,
+      }}>
         {t("message")}{" "}
         <Link
           href="/privacidad"
@@ -168,38 +196,46 @@ export function CookieConsent() {
         </Link>
       </div>
 
-      {/* Buttons */}
-      <div style={{ display: "flex", gap: spacing.sm, flexShrink: 0 }}>
-        <button
-          onClick={handleReject}
-          style={{
-            padding: `${spacing.sm}px ${spacing.lg}px`,
-            borderRadius: radii.lg,
-            border: `1px solid ${colors.borderMedium}`,
-            background: colors.white,
-            color: colors.textMuted,
-            fontSize: fontSize.md,
-            fontWeight: fontWeight.medium,
-            cursor: "pointer",
-          }}
-        >
-          {t("reject")}
-        </button>
+      <div style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        alignItems: isMobile ? "stretch" : "center",
+        gap: spacing.sm,
+      }}>
         <button
           onClick={handleAccept}
           style={{
-            padding: `${spacing.sm}px ${spacing.lg}px`,
+            flex: isMobile ? undefined : 1,
+            padding: `${spacing.md}px ${spacing.lg}px`,
             borderRadius: radii.lg,
             border: "none",
-            background: colors.brand,
+            background: colors.brandGradient,
             color: colors.white,
             fontSize: fontSize.md,
-            fontWeight: fontWeight.semibold,
+            fontWeight: fontWeight.bold,
             cursor: "pointer",
-            boxShadow: shadows.sm,
+            boxShadow: shadows.md,
+            minHeight: 44,
           }}
         >
           {t("accept")}
+        </button>
+        <button
+          onClick={handleReject}
+          style={{
+            padding: `${spacing.sm}px ${spacing.md}px`,
+            borderRadius: radii.lg,
+            border: "none",
+            background: "transparent",
+            color: colors.textMuted,
+            fontSize: fontSize.sm,
+            fontWeight: fontWeight.medium,
+            cursor: "pointer",
+            textDecoration: "underline",
+            minHeight: 44,
+          }}
+        >
+          {t("reject")}
         </button>
       </div>
     </div>

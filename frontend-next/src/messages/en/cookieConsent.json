@@ -1,6 +1,7 @@
 {
-  "message": "We use cookies and similar technologies to improve your experience, analyze traffic, and personalize content.",
-  "learnMore": "Privacy Policy",
-  "accept": "Accept",
-  "reject": "Reject"
+  "headline": "Help us improve your experience",
+  "message": "We use cookies to remember your preferences, understand how people use the platform, and fix what doesn't work. No gambling, no real money, no data selling.",
+  "learnMore": "See Privacy Policy",
+  "accept": "Accept and continue",
+  "reject": "Essentials only"
 }
