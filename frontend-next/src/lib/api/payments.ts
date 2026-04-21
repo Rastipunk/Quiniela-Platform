@@ -22,6 +22,8 @@ export interface PaymentStatusResponse {
   poolType?: "personal" | "corporate";
   /** Gateway transaction ID — stable across polls for GA4 dedup. */
   transactionId?: string | null;
+  /** Meta event_id — used to dedupe Pixel emissions against CAPI. */
+  metaEventId?: string | null;
   paidAtUtc?: string | null;
 }
 

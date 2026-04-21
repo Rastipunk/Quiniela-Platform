@@ -140,7 +140,25 @@ export default function PoolPage() {
     try {
       const data = await getPoolOverview(token, poolId);
       setOverview(data);
-      trackEvent("pool_viewed", { pool_name: data.pool.name, tournament: data.tournamentInstance.name, role: data.myMembership.role });
+      // First-time visit detection: a localStorage flag per (user, pool).
+      // Cohort reports use `first_time:true` pool_viewed events as
+      // "activation" vs subsequent visits as "engagement".
+      let firstTime = false;
+      if (typeof localStorage !== "undefined") {
+        const key = `p4a_viewed_pool_${poolId}`;
+        if (!localStorage.getItem(key)) {
+          firstTime = true;
+          try {
+            localStorage.setItem(key, String(Date.now()));
+          } catch { /* storage full — still fire with first_time=true */ }
+        }
+      }
+      trackEvent("pool_viewed", {
+        pool_name: data.pool.name,
+        tournament: data.tournamentInstance.name,
+        role: data.myMembership.role,
+        first_time: firstTime,
+      });
       trackMetaEvent("ViewContent", { content_type: "pool", content_name: data.pool.name });
 
       if (data.pool.organization && typeof sessionStorage !== "undefined") {

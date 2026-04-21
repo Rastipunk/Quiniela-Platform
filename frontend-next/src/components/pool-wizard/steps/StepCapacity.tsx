@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import CapacitySelector from "@/components/CapacitySelector";
-import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT, type Currency } from "@/lib/pricing";
+import {
+  PERSONAL_FREE_LIMIT,
+  CORPORATE_FREE_LIMIT,
+  getUpgradePrice,
+  getUpgradePriceUsd,
+  type Currency,
+} from "@/lib/pricing";
 import { getPaymentCountry } from "@/lib/api/payments";
+import { trackViewItem } from "@/lib/ecommerce";
 import { colors, radii } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
@@ -30,6 +37,30 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
   const poolType = state.mode === "corporate" ? "corporate" : "personal";
   const freeLimit = state.mode === "corporate" ? CORPORATE_FREE_LIMIT : PERSONAL_FREE_LIMIT;
   const isPaidTier = state.maxParticipants > freeLimit;
+
+  // GA4 `view_item`: emit whenever the user selects a paid-tier capacity.
+  // Guard against duplicate pushes for the same (capacity, currency) tuple
+  // so that repeated renders or mouse hover do not spam dataLayer.
+  const lastViewItemKey = useRef<string>("");
+  useEffect(() => {
+    if (!isPaidTier) return;
+    const key = `${poolType}:${state.maxParticipants}:${currency}`;
+    if (lastViewItemKey.current === key) return;
+    lastViewItemKey.current = key;
+
+    const price =
+      currency === "USD"
+        ? getUpgradePriceUsd(poolType, freeLimit, state.maxParticipants)
+        : getUpgradePrice(poolType, freeLimit, state.maxParticipants);
+    if (price <= 0) return;
+    trackViewItem({
+      fromCapacity: freeLimit,
+      toCapacity: state.maxParticipants,
+      poolType,
+      price,
+      currency,
+    });
+  }, [isPaidTier, state.maxParticipants, currency, poolType, freeLimit]);
 
   const handleContinueFree = useCallback(() => {
     dispatch({ type: "SET_FIELD", field: "maxParticipants", value: freeLimit });

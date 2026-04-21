@@ -8,6 +8,8 @@ import { getPaymentStatus } from "@/lib/api/payments";
 import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
 import { trackPurchase } from "@/lib/ecommerce";
+import { trackMetaEvent } from "@/lib/metaPixel";
+import { refreshUserProperties } from "@/lib/authAnalytics";
 
 /** Maximum polling attempts (2s interval × 15 = 30s) */
 const MAX_POLLS = 15;
@@ -64,6 +66,22 @@ export default function PaymentSuccessPage() {
                 currency: result.currency,
               },
             });
+            // Meta Pixel Purchase — keyed on metaEventId so CAPI-sent and
+            // pixel-sent emissions collapse to one conversion in Meta.
+            trackMetaEvent(
+              "Purchase",
+              {
+                content_type: "product",
+                content_ids: [`pool_upgrade_${result.poolType}_${result.toCapacity}`],
+                num_items: 1,
+                value: result.amountUsd,
+                currency: result.currency,
+              },
+              result.metaEventId ?? undefined,
+            );
+            // paid_pool_count bumped → refresh user_properties so subsequent
+            // events see the upgraded tier.
+            void refreshUserProperties();
           }
           clearInterval(interval);
         }

@@ -38,6 +38,28 @@ export async function getUserProfile(token: string): Promise<{ user: UserProfile
   return requestJson<{ user: UserProfile }>("/users/me/profile", { method: "GET" });
 }
 
+/**
+ * Aggregated snapshot used to populate GA4 user_properties. Returns
+ * derived values the client cannot compute cheaply (pool count, tier).
+ * Shape mirrors what GA4 accepts directly — keep names stable, they end
+ * up as custom dimensions in reports.
+ */
+export interface UserAggregatedSnapshot {
+  pool_count: number;
+  paid_pool_count: number;
+  tier: "free" | "paid";
+  is_corporate: boolean;
+  country: string | null;
+  platform_role: string;
+  account_age_days: number;
+  acquisition_source: string | null;
+  acquisition_campaign: string | null;
+}
+
+export async function getUserAggregated(): Promise<UserAggregatedSnapshot> {
+  return requestJson<UserAggregatedSnapshot>("/me/aggregated", { method: "GET" });
+}
+
 export async function updateUserProfile(
   token: string,
   input: UpdateProfileInput

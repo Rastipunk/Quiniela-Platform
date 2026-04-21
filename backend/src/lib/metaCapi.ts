@@ -42,6 +42,12 @@ export interface CapiUserData {
   email?: string;
   firstName?: string;
   lastName?: string;
+  /** Date of birth in ISO format (YYYY-MM-DD). Normalised to YYYYMMDD before hashing. */
+  dateOfBirth?: string;
+  /** "MALE" | "FEMALE" — reduced to "m" / "f" before hashing. */
+  gender?: string;
+  /** Phone with or without leading +. Digits only before hashing. */
+  phone?: string;
   clientIpAddress?: string;
   clientUserAgent?: string;
   fbc?: string;
@@ -60,11 +66,35 @@ export interface CapiEventParams {
   customData?: Record<string, unknown>;
 }
 
+function normaliseGender(value: string): string | undefined {
+  const lowered = value.trim().toLowerCase();
+  if (lowered === "male" || lowered === "m") return "m";
+  if (lowered === "female" || lowered === "f") return "f";
+  return undefined;
+}
+
+function normaliseDob(iso: string): string | undefined {
+  // Meta expects YYYYMMDD; drop separators and validate length.
+  const compact = iso.replace(/-/g, "");
+  return /^\d{8}$/.test(compact) ? compact : undefined;
+}
+
+function normalisePhone(value: string): string | undefined {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 7 ? digits : undefined;
+}
+
 function buildUserData(data: CapiUserData): Record<string, string | undefined> {
+  const gender = data.gender ? normaliseGender(data.gender) : undefined;
+  const dob = data.dateOfBirth ? normaliseDob(data.dateOfBirth) : undefined;
+  const phone = data.phone ? normalisePhone(data.phone) : undefined;
   return {
     em: data.email ? sha256(data.email) : undefined,
     fn: data.firstName ? sha256(data.firstName) : undefined,
     ln: data.lastName ? sha256(data.lastName) : undefined,
+    db: dob ? sha256(dob) : undefined,
+    ge: gender ? sha256(gender) : undefined,
+    ph: phone ? sha256(phone) : undefined,
     client_ip_address: data.clientIpAddress,
     client_user_agent: data.clientUserAgent,
     fbc: data.fbc,

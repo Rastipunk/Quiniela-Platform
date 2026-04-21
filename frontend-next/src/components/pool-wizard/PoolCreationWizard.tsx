@@ -18,7 +18,8 @@ import { createPool } from "@/lib/api/pools";
 import { createCorporatePool } from "@/lib/api/corporate";
 import type { WizardMode } from "@/types/poolWizard";
 import { trackEvent } from "@/lib/analytics";
-import { trackMetaCustomEvent } from "@/lib/metaPixel";
+import { refreshUserProperties } from "@/lib/authAnalytics";
+import { trackMetaCustomEvent, trackMetaEvent } from "@/lib/metaPixel";
 import { trackBeginCheckout } from "@/lib/ecommerce";
 import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT } from "@/lib/pricing";
@@ -138,6 +139,10 @@ function WizardInner() {
         content_name: state.mode,
         content_category: state.instanceName,
       });
+      // pool_count just incremented — re-fetch aggregated snapshot so the
+      // next GA4 event carries the updated tier / pool_count. Fire-and-forget
+      // so wizard navigation is not blocked on analytics I/O.
+      void refreshUserProperties();
 
       // Check if payment is needed (user selected capacity above free limit)
       const freeLimit = state.mode === "corporate" ? CORPORATE_FREE_LIMIT : PERSONAL_FREE_LIMIT;
@@ -157,6 +162,15 @@ function WizardInner() {
               poolType,
               price: mpData.amountCop,
               currency: "COP",
+            });
+            // Meta funnel parity with GA4: `InitiateCheckout` fires here so
+            // Meta Ads Manager sees the same step the GA4 funnel reports.
+            trackMetaEvent("InitiateCheckout", {
+              content_type: "product",
+              content_ids: [`pool_upgrade_${poolType}_${effectiveCapacity}`],
+              num_items: 1,
+              currency: "COP",
+              value: mpData.amountCop,
             });
             const params = new URLSearchParams({
               publicKey: mpData.publicKey || process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || "",
@@ -184,6 +198,13 @@ function WizardInner() {
               poolType,
               price: checkout.amountUsd,
               currency: "USD",
+            });
+            trackMetaEvent("InitiateCheckout", {
+              content_type: "product",
+              content_ids: [`pool_upgrade_${poolType}_${effectiveCapacity}`],
+              num_items: 1,
+              currency: "USD",
+              value: checkout.amountUsd,
             });
             window.location.href = checkout.checkoutUrl;
             return;

@@ -71,6 +71,12 @@ export interface PaymentStatusResult {
    * exitoso page polling, so GA4 deduplicates them cleanly.
    */
   transactionId: string | null;
+  /**
+   * Meta event_id persisted on the payment row. Returned so the exitoso
+   * page can emit the Meta Pixel Purchase with the same ID that CAPI
+   * used, guaranteeing deduplication in Meta Events Manager.
+   */
+  metaEventId: string | null;
   paidAtUtc: string | null;
 }
 
@@ -345,11 +351,39 @@ export async function handleOrderPaid(payload: {
       where: { id: payment.id },
       data: { metaEventId },
     });
+    // Enriched Advanced Matching: everything we know about the user that
+    // Meta accepts (email, name, DOB, gender, country) improves EMQ score
+    // and match quality in Events Manager.
+    const userForCapi = await prisma.user.findUnique({
+      where: { id: metadata.userId },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        gender: true,
+        country: true,
+      },
+    });
     fireAndForget("capi:purchase-polar", sendCapiEvent({
       eventName: "Purchase",
       eventId: metaEventId,
-      userData: { externalId: metadata.userId },
-      customData: { value: payment.amountUsd / 100, currency: "USD" },
+      userData: {
+        externalId: metadata.userId,
+        email: userForCapi?.email,
+        firstName: userForCapi?.firstName ?? undefined,
+        lastName: userForCapi?.lastName ?? undefined,
+        dateOfBirth: userForCapi?.dateOfBirth?.toISOString().slice(0, 10),
+        gender: userForCapi?.gender ?? undefined,
+        country: userForCapi?.country ?? undefined,
+      },
+      customData: {
+        value: payment.amountUsd / 100,
+        currency: "USD",
+        content_type: "product",
+        content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
+        num_items: 1,
+      },
     }));
   }
 
@@ -447,6 +481,7 @@ export async function getPaymentStatus(
     currency,
     poolType: (payment.poolType as "personal" | "corporate") ?? "personal",
     transactionId: payment.polarOrderId ?? null,
+    metaEventId: payment.metaEventId ?? null,
     paidAtUtc: payment.paidAtUtc?.toISOString() ?? null,
   };
 }
@@ -649,18 +684,40 @@ export async function processMpPayment(
       where: { id: payment.id },
       data: { metaEventId },
     });
+    const userForCapi = await prisma.user.findUnique({
+      where: { id: payment.userId },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        gender: true,
+        country: true,
+      },
+    });
     fireAndForget("capi:purchase-mp", sendCapiEvent({
       eventName: "Purchase",
       eventId: metaEventId,
       userData: {
         externalId: payment.userId,
+        email: userForCapi?.email,
+        firstName: userForCapi?.firstName ?? undefined,
+        lastName: userForCapi?.lastName ?? undefined,
+        dateOfBirth: userForCapi?.dateOfBirth?.toISOString().slice(0, 10),
+        gender: userForCapi?.gender ?? undefined,
+        country: userForCapi?.country ?? country,
         fbp: metaCookies?.fbp,
         fbc: metaCookies?.fbc,
         clientIpAddress,
         clientUserAgent,
-        country,
       },
-      customData: { value: payment.amountUsd, currency: "COP" },
+      customData: {
+        value: payment.amountUsd,
+        currency: "COP",
+        content_type: "product",
+        content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
+        num_items: 1,
+      },
     }));
 
     return { status: result.status, statusDetail: result.statusDetail, mpPaymentId: result.id, metaEventId };
@@ -736,11 +793,36 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
     });
     console.log(`[PaymentService] MP IPN: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
 
+    const userForIpnCapi = await prisma.user.findUnique({
+      where: { id: payment.userId },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        dateOfBirth: true,
+        gender: true,
+        country: true,
+      },
+    });
     fireAndForget("capi:purchase-mp-ipn", sendCapiEvent({
       eventName: "Purchase",
       eventId: metaEventId,
-      userData: { externalId: payment.userId },
-      customData: { value: payment.amountUsd, currency: "COP" },
+      userData: {
+        externalId: payment.userId,
+        email: userForIpnCapi?.email,
+        firstName: userForIpnCapi?.firstName ?? undefined,
+        lastName: userForIpnCapi?.lastName ?? undefined,
+        dateOfBirth: userForIpnCapi?.dateOfBirth?.toISOString().slice(0, 10),
+        gender: userForIpnCapi?.gender ?? undefined,
+        country: userForIpnCapi?.country ?? undefined,
+      },
+      customData: {
+        value: payment.amountUsd,
+        currency: "COP",
+        content_type: "product",
+        content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
+        num_items: 1,
+      },
     }));
 
     // Send payment receipt to user

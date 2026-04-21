@@ -67,6 +67,61 @@ meRouter.get("/pools", async (req, res) => {
   return sendData(res, { pools });
 });
 
+// GET /me/aggregated
+// Analytics-oriented snapshot of the current user, used to populate GA4
+// `user_properties` and CAPI user-level dimensions. Returns derived values
+// the client cannot compute cheaply (pool count, paid/free tier status,
+// corporate membership). Cached headers intentionally omitted — this is
+// read-once per session login.
+meRouter.get("/aggregated", async (req, res) => {
+  const userId = req.auth!.userId;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      country: true,
+      platformRole: true,
+      createdAtUtc: true,
+      acquisitionSource: true,
+      acquisitionCampaign: true,
+    },
+  });
+  if (!user) return sendNotFound(res, "USER_NOT_FOUND");
+
+  // Active memberships — these are what GA4 call "pool count". PENDING
+  // approvals and LEFT memberships are not counted so the number matches
+  // what the user sees on their dashboard.
+  const [activePoolCount, hasCorporateMembership, paidPoolCount] = await Promise.all([
+    prisma.poolMember.count({
+      where: { userId, status: "ACTIVE" },
+    }),
+    prisma.poolMember.count({
+      where: { userId, status: "ACTIVE", role: { in: ["CORPORATE_HOST"] } },
+    }),
+    prisma.poolPayment.count({
+      where: { userId, status: "COMPLETED" },
+    }),
+  ]);
+
+  const tier: "free" | "paid" = paidPoolCount > 0 ? "paid" : "free";
+  const isCorporate = hasCorporateMembership > 0;
+
+  return sendData(res, {
+    pool_count: activePoolCount,
+    paid_pool_count: paidPoolCount,
+    tier,
+    is_corporate: isCorporate,
+    country: user.country ?? null,
+    platform_role: user.platformRole,
+    // Account age in days for cohort analysis.
+    account_age_days: Math.floor(
+      (Date.now() - user.createdAtUtc.getTime()) / (1000 * 60 * 60 * 24),
+    ),
+    acquisition_source: user.acquisitionSource ?? null,
+    acquisition_campaign: user.acquisitionCampaign ?? null,
+  });
+});
+
 // =========================================================================
 // EMAIL PREFERENCES
 // =========================================================================

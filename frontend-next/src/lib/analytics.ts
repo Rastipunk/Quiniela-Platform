@@ -95,6 +95,47 @@ export function setAnalyticsUserId(userId: string | null): void {
 }
 
 /**
+ * GA4 user properties — segment users by attributes that persist across
+ * sessions (tier, country, cohort). Applied via `gtag('set','user_properties',…)`
+ * so every subsequent event inherits them. Call after login (with the
+ * aggregated snapshot from /me/aggregated) and after any event that
+ * materially changes the user's state (pool_created, purchase success).
+ *
+ * GA4 enforces a 25-property cap per user and a 36-char value limit; this
+ * helper truncates defensively.
+ */
+export type AnalyticsUserProperties = {
+  tier?: "free" | "paid";
+  is_corporate?: boolean;
+  country?: string | null;
+  pool_count?: number;
+  paid_pool_count?: number;
+  account_age_days?: number;
+  platform_role?: string;
+  acquisition_source?: string | null;
+  acquisition_campaign?: string | null;
+};
+
+export function setUserProperties(props: AnalyticsUserProperties): void {
+  if (typeof window === "undefined") return;
+  const sanitized: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === "string") {
+      sanitized[key] = value.slice(0, 36);
+    } else {
+      sanitized[key] = value as number | boolean;
+    }
+  }
+  if (Object.keys(sanitized).length === 0) return;
+  // Both forms: dataLayer push so GTM variables can read the object, and
+  // gtag('set','user_properties') so any GA4 config tag picks them up.
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ user_properties: sanitized });
+  gtag("set", "user_properties", sanitized);
+}
+
+/**
  * Emit a Consent Mode v2 update for all analytics/ads signals.
  * This is what actually unlocks GA4 cookies and ad tags after the user
  * accepts the banner. Must be called via the `gtag` command form so GTM

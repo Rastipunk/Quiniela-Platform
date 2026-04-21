@@ -141,6 +141,15 @@ export default function MpCheckoutPage() {
               // GA4 `add_payment_info`: user has committed a payment method
               // and is about to submit. Fires once per submit attempt.
               trackAddPaymentInfo({ upgrade, paymentType: selectedPaymentMethod });
+              // Meta funnel parity — same event shape Meta documents for
+              // `AddPaymentInfo` so Ads Manager funnel reports match GA4.
+              trackMetaEvent("AddPaymentInfo", {
+                content_type: "product",
+                content_ids: [`pool_upgrade_${upgrade.poolType}_${upgrade.toCapacity}`],
+                num_items: 1,
+                currency: "COP",
+                value: amount,
+              });
 
               setStatus("processing");
 
@@ -159,7 +168,21 @@ export default function MpCheckoutPage() {
                       affiliation: "Mercado Pago Colombia",
                       upgrade,
                     });
-                    trackMetaEvent("Purchase", { value: amount, currency: "COP" }, result.metaEventId);
+                    // Enriched Meta Purchase — content_ids + content_type +
+                    // num_items let Meta catalog-match against product feeds
+                    // and feed Advantage+ campaigns. eventID dedupes against
+                    // server-side CAPI using the same metaEventId.
+                    trackMetaEvent(
+                      "Purchase",
+                      {
+                        content_type: "product",
+                        content_ids: [`pool_upgrade_${upgrade.poolType}_${upgrade.toCapacity}`],
+                        num_items: 1,
+                        value: amount,
+                        currency: "COP",
+                      },
+                      result.metaEventId,
+                    );
                     setStatus("success");
                     setTimeout(() => router.push(`/pools/${poolId}`), 2000);
                   } else if (result.status === "rejected") {
