@@ -381,6 +381,13 @@ analyticsHealthRouter.post(
     }
 
     const txn = parsed.data.transactionId ?? `probe_${Date.now()}`;
+
+    // `sendGa4Event` and `sendCapiEvent` silently no-op when env vars are
+    // missing. Surface that to the operator here so the UI doesn't lie
+    // about "sent" when nothing actually left the server.
+    const ga4Skipped = !GA4_MEASUREMENT_ID || !GA4_API_SECRET;
+    const capiSkipped = !META_PIXEL_ID || !META_CAPI_ACCESS_TOKEN;
+
     const [ga4Mod, capiMod] = await Promise.all([
       import("../lib/ga4"),
       import("../lib/metaCapi"),
@@ -414,11 +421,21 @@ analyticsHealthRouter.post(
     ]);
 
     return sendOk(res, {
-      sent: true,
       transactionId: txn,
+      ga4: ga4Skipped
+        ? { sent: false, reason: "GA4_MEASUREMENT_ID or GA4_API_SECRET missing — sendGa4Event silently returned." }
+        : { sent: true, note: "Event attempted. Any retry failures land in FailedAnalyticsEvent DLQ." },
+      metaCapi: capiSkipped
+        ? { sent: false, reason: "META_PIXEL_ID or META_CAPI_ACCESS_TOKEN missing — sendCapiEvent silently returned." }
+        : {
+            sent: true,
+            note: META_TEST_EVENT_CODE
+              ? "Event attempted. Verify in Meta Events Manager > Test Events."
+              : "Event attempted but META_TEST_EVENT_CODE is not set — cannot verify in Test Events tab.",
+          },
       instructions: [
-        "GA4 > Reports > Realtime: event should appear within 10-30 seconds.",
-        "Meta Events Manager > Test Events tab: event should appear within 10-30 seconds (requires META_TEST_EVENT_CODE).",
+        "GA4 > Reports > Realtime: purchase should appear within 10-30 seconds (only if GA4 sent=true).",
+        "Meta Events Manager > Test Events tab: event should appear within 10-30 seconds (only if test_event_code is configured).",
       ],
     });
   },

@@ -39,35 +39,74 @@ interface ProbeResponse {
 // GTM loader executed AFTER page hydration. This catches the case where
 // the HTML has the script but a CSP / network block prevents gtm.js from
 // actually loading in the current browser.
-function useClientGtmStatus(): {
+interface ClientGtmStatus {
   scriptTagPresent: boolean;
   dataLayerExists: boolean;
   dataLayerLength: number;
   gtmLoaded: boolean;
   gtmId: string | null;
-} {
-  const [state, setState] = useState({
+  /** Last `consent` command observed on dataLayer — "granted" / "denied" / unknown. */
+  analyticsStorage: string;
+  adStorage: string;
+  /** Count of gtag("event"/ "config") push observed. */
+  eventPushes: number;
+}
+
+function useClientGtmStatus(): ClientGtmStatus {
+  const [state, setState] = useState<ClientGtmStatus>({
     scriptTagPresent: false,
     dataLayerExists: false,
     dataLayerLength: 0,
     gtmLoaded: false,
-    gtmId: null as string | null,
+    gtmId: null,
+    analyticsStorage: "unknown",
+    adStorage: "unknown",
+    eventPushes: 0,
   });
 
   useEffect(() => {
-    // Re-read on a short interval to catch late-loading scripts.
     const tick = () => {
       const tag = document.getElementById("gtm-loader") as HTMLScriptElement | null;
       const idMatch = tag?.innerHTML.match(/GTM-[A-Z0-9]+/);
       const dl = (window as unknown as { dataLayer?: unknown[] }).dataLayer;
       const gtmObj = (window as unknown as { google_tag_manager?: Record<string, unknown> })
         .google_tag_manager;
+
+      // Walk the dataLayer looking for the LATEST `consent` command. GTM
+      // pushes both arrays (via gtag()) and plain objects (via trackEvent)
+      // onto the same queue, so we inspect both shapes.
+      let analyticsStorage = "unknown";
+      let adStorage = "unknown";
+      let eventPushes = 0;
+      if (Array.isArray(dl)) {
+        for (const entry of dl) {
+          if (Array.isArray(entry)) {
+            // Shape: ["consent", "default" | "update", { analytics_storage, ... }]
+            if (entry[0] === "consent" && typeof entry[2] === "object" && entry[2] !== null) {
+              const payload = entry[2] as Record<string, unknown>;
+              if (typeof payload.analytics_storage === "string") {
+                analyticsStorage = payload.analytics_storage;
+              }
+              if (typeof payload.ad_storage === "string") {
+                adStorage = payload.ad_storage;
+              }
+            }
+            if (entry[0] === "event" || entry[0] === "config") eventPushes++;
+          } else if (typeof entry === "object" && entry !== null && "event" in entry) {
+            eventPushes++;
+          }
+        }
+      }
+
       setState({
         scriptTagPresent: Boolean(tag),
         dataLayerExists: Array.isArray(dl),
         dataLayerLength: Array.isArray(dl) ? dl.length : 0,
         gtmLoaded: Boolean(gtmObj && Object.keys(gtmObj).length > 0),
         gtmId: idMatch?.[0] ?? null,
+        analyticsStorage,
+        adStorage,
+        eventPushes,
       });
     };
     tick();
@@ -172,7 +211,9 @@ export default function AnalyticsHealthContent() {
         setError(json?.error?.message || `HTTP ${res.status}`);
         return;
       }
-      setReport(json.data);
+      // `sendOk` returns `{ ok: true, ...payload }` — payload is flattened
+      // at the top level, there is no `data` envelope.
+      setReport(json as ProbeResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -308,6 +349,17 @@ export default function AnalyticsHealthContent() {
           </strong>
           <span>GTM ID detectado</span>
           <strong>{clientGtm.gtmId ?? "—"}</strong>
+          <span>analytics_storage (Consent Mode)</span>
+          <strong style={{ color: clientGtm.analyticsStorage === "granted" ? "#16a34a" : "#dc2626" }}>
+            {clientGtm.analyticsStorage}
+            {clientGtm.analyticsStorage === "denied" && " — GA4 NO recibe hits hasta que aceptes cookies"}
+          </strong>
+          <span>ad_storage (Consent Mode)</span>
+          <strong style={{ color: clientGtm.adStorage === "granted" ? "#16a34a" : "#d97706" }}>
+            {clientGtm.adStorage}
+          </strong>
+          <span>Pushes de evento observados en dataLayer</span>
+          <strong>{clientGtm.eventPushes}</strong>
         </div>
       </section>
 
