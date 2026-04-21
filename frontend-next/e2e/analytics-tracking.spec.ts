@@ -132,3 +132,119 @@ test.describe("Attribution capture", () => {
     expect(stored?.medium).toBe("email");
   });
 });
+
+test.describe("Identity + user_properties binding", () => {
+  test("logout clears user_id on dataLayer so the next user is not confused", async ({ page }) => {
+    await stubAnalyticsNetwork(page);
+    await page.goto("/");
+    await page.evaluate(() => {
+      const w = window as unknown as { dataLayer?: unknown[] };
+      w.dataLayer = w.dataLayer || [];
+      w.dataLayer.push({ user_id: "user-a" });
+    });
+
+    // Simulate the logout helper directly — the NavBar button requires
+    // an authenticated session the E2E environment may not have.
+    await page.evaluate(async () => {
+      const mod = await import("@/lib/analytics");
+      mod.setAnalyticsUserId(null);
+    });
+
+    const lastUserIdPush = await page.evaluate(() => {
+      const dl = (window as unknown as { dataLayer?: unknown[] }).dataLayer ?? [];
+      const userIdEntries = dl.filter(
+        (entry): entry is { user_id: unknown } =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "user_id" in (entry as Record<string, unknown>),
+      );
+      return userIdEntries[userIdEntries.length - 1]?.user_id;
+    });
+    expect(lastUserIdPush).toBeNull();
+  });
+});
+
+test.describe("Debug mode", () => {
+  test("?gtm_debug=1 enables console logging and persists to localStorage", async ({ page }) => {
+    await stubAnalyticsNetwork(page);
+    const logs: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.text().includes("[analytics]")) logs.push(msg.text());
+    });
+
+    await page.goto("/?gtm_debug=1");
+    // Emit one event to exercise the debug path.
+    await page.evaluate(async () => {
+      const mod = await import("@/lib/analytics");
+      mod.trackEvent("debug_test_event", { foo: "bar" });
+    });
+
+    expect(logs.some((l) => l.includes("debug_test_event"))).toBe(true);
+    const persisted = await page.evaluate(() => localStorage.getItem("p4a_analytics_debug"));
+    expect(persisted).toBe("1");
+  });
+});
+
+test.describe("Purchase event shape and dedup", () => {
+  test("trackPurchase produces a GA4 ecommerce shape with stable transaction_id", async ({ page }) => {
+    await stubAnalyticsNetwork(page);
+    await page.goto("/");
+    // Fire the same purchase twice with the SAME transaction_id — GA4
+    // collapses these in reports. We just assert both pushes land on
+    // dataLayer with identical transaction_id so dedup is even possible.
+    await page.evaluate(async () => {
+      const mod = await import("@/lib/ecommerce");
+      const params = {
+        transactionId: "txn_stable_123",
+        affiliation: "Mercado Pago Colombia" as const,
+        upgrade: {
+          fromCapacity: 20,
+          toCapacity: 50,
+          poolType: "personal" as const,
+          price: 28500,
+          currency: "COP" as const,
+        },
+      };
+      mod.trackPurchase(params);
+      mod.trackPurchase(params);
+    });
+
+    const dataLayer = await getDataLayer(page);
+    const purchases = dataLayer.filter(
+      (entry): entry is Record<string, unknown> =>
+        typeof entry === "object" &&
+        entry !== null &&
+        (entry as { event?: string }).event === "purchase",
+    );
+    expect(purchases.length).toBe(2);
+    expect(purchases[0]?.transaction_id).toBe("txn_stable_123");
+    expect(purchases[1]?.transaction_id).toBe("txn_stable_123");
+    const items = purchases[0]?.items as Array<Record<string, unknown>>;
+    expect(items[0]?.item_id).toBe("pool_upgrade_personal_50");
+    expect(items[0]?.item_variant).toBe("personal");
+    expect(purchases[0]?.value).toBe(28500);
+    expect(purchases[0]?.currency).toBe("COP");
+  });
+});
+
+test.describe("Notification subscription events", () => {
+  test("notification_subscription_toggled pushes a single unified event", async ({ page }) => {
+    await stubAnalyticsNetwork(page);
+    await page.goto("/");
+    await page.evaluate(async () => {
+      const mod = await import("@/lib/analytics");
+      mod.trackEvent("notification_subscription_toggled", {
+        type: "prediction_updates",
+        enabled: true,
+      });
+    });
+    const dataLayer = await getDataLayer(page);
+    const toggled = dataLayer.find(
+      (e): e is Record<string, unknown> =>
+        typeof e === "object" && e !== null &&
+        (e as { event?: string }).event === "notification_subscription_toggled",
+    );
+    expect(toggled?.type).toBe("prediction_updates");
+    expect(toggled?.enabled).toBe(true);
+  });
+});

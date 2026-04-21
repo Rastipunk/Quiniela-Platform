@@ -19,6 +19,49 @@ declare global {
   }
 }
 
+const DEBUG_STORAGE_KEY = "p4a_analytics_debug";
+const DEBUG_QUERY_PARAM = "gtm_debug";
+
+/**
+ * Whether analytics debug mode is active in this tab. Enabled by either:
+ *  - `?gtm_debug=1` in the URL (matches Google's own convention), OR
+ *  - `localStorage.p4a_analytics_debug = "1"` (persists between navs).
+ *
+ * In debug mode every dataLayer push is mirrored to `console.groupCollapsed`
+ * so engineers can diagnose tagging issues without GTM Preview or Meta
+ * Events Manager. Zero-cost when disabled — the check is a single
+ * localStorage lookup behind a lazy singleton.
+ */
+let _debugCache: boolean | null = null;
+function isDebugEnabled(): boolean {
+  if (_debugCache !== null) return _debugCache;
+  if (typeof window === "undefined") {
+    _debugCache = false;
+    return false;
+  }
+  try {
+    if (new URL(window.location.href).searchParams.get(DEBUG_QUERY_PARAM) === "1") {
+      localStorage.setItem(DEBUG_STORAGE_KEY, "1");
+      _debugCache = true;
+      return true;
+    }
+    _debugCache = localStorage.getItem(DEBUG_STORAGE_KEY) === "1";
+  } catch {
+    _debugCache = false;
+  }
+  return _debugCache;
+}
+
+function debugLog(label: string, payload: unknown): void {
+  if (!isDebugEnabled()) return;
+  // eslint-disable-next-line no-console
+  console.groupCollapsed(`[analytics] ${label}`);
+  // eslint-disable-next-line no-console
+  console.log(payload);
+  // eslint-disable-next-line no-console
+  console.groupEnd();
+}
+
 /** Supported Consent Mode v2 signal values. */
 export type ConsentValue = "granted" | "denied";
 
@@ -49,6 +92,7 @@ export function gtag(...args: unknown[]): void {
   if (typeof window === "undefined") return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(args);
+  debugLog(`gtag ${String(args[0])} ${String(args[1] ?? "")}`.trim(), args);
 }
 
 /**
@@ -61,6 +105,7 @@ export function trackEvent(event: string, params?: Record<string, unknown>): voi
   if (typeof window === "undefined") return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ event, ...params });
+  debugLog(`event ${event}`, { event, ...params });
 }
 
 /**
