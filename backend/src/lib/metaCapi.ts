@@ -195,8 +195,9 @@ export async function sendCapiEvent(params: CapiEventParams): Promise<void> {
   console.error(`[CAPI] ${params.eventName} queued for retry after ${MAX_IN_PROCESS_RETRIES + 1} failed attempts:`, errorMessage);
 
   try {
-    await prisma.failedCapiEvent.create({
+    await prisma.failedAnalyticsEvent.create({
       data: {
+        provider: "META_CAPI",
         eventName: params.eventName,
         eventId,
         payloadJson: body as object,
@@ -229,8 +230,9 @@ export async function retryFailedCapiEventsBatch(batchSize = 20): Promise<{
 }> {
   if (!PIXEL_ID || !ACCESS_TOKEN) return { processed: 0, resolved: 0 };
 
-  const due = await prisma.failedCapiEvent.findMany({
+  const due = await prisma.failedAnalyticsEvent.findMany({
     where: {
+      provider: "META_CAPI",
       resolvedAt: null,
       nextRetryAt: { lte: new Date() },
       attemptCount: { lt: MAX_DLQ_ATTEMPTS },
@@ -245,7 +247,7 @@ export async function retryFailedCapiEventsBatch(batchSize = 20): Promise<{
     try {
       const res = await postToMeta(row.payloadJson as Record<string, unknown>);
       if (res.ok) {
-        await prisma.failedCapiEvent.update({
+        await prisma.failedAnalyticsEvent.update({
           where: { id: row.id },
           data: { resolvedAt: new Date(), nextRetryAt: null, lastError: "" },
         });
@@ -254,7 +256,7 @@ export async function retryFailedCapiEventsBatch(batchSize = 20): Promise<{
       }
       const text = await res.text();
       const permanentError = res.status >= 400 && res.status < 500 && res.status !== 429;
-      await prisma.failedCapiEvent.update({
+      await prisma.failedAnalyticsEvent.update({
         where: { id: row.id },
         data: {
           attemptCount: { increment: 1 },
@@ -268,7 +270,7 @@ export async function retryFailedCapiEventsBatch(batchSize = 20): Promise<{
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      await prisma.failedCapiEvent.update({
+      await prisma.failedAnalyticsEvent.update({
         where: { id: row.id },
         data: {
           attemptCount: { increment: 1 },

@@ -30,6 +30,7 @@ import { serializeUser } from "../lib/serializers";
 import type { SerializedUser } from "../lib/serializers";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendCapiEvent } from "../lib/metaCapi";
+import { sendGa4Event } from "../lib/ga4";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -239,6 +240,24 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
       fbp: data.fbBrowserId,
     },
     customData: buildAttributionCustomData(data.attribution),
+  }));
+
+  // Server-side GA4 `sign_up`. Browsers sometimes miss this event when the
+  // post-signup redirect occurs before hydration. The failsafe makes sure
+  // conversions always reach GA4 regardless of client state.
+  fireAndForget("ga4mp:sign_up", sendGa4Event({
+    userId: user.id,
+    ipOverride: ctx.ip || undefined,
+    userAgent: ctx.userAgent || undefined,
+    events: [{
+      name: "sign_up",
+      params: {
+        method: "email",
+        ...(data.attribution?.source ? { utm_source: data.attribution.source } : {}),
+        ...(data.attribution?.campaign ? { utm_campaign: data.attribution.campaign } : {}),
+        ...(data.attribution?.medium ? { utm_medium: data.attribution.medium } : {}),
+      },
+    }],
   }));
 
   return { user, emailVerificationSent: true, metaEventId };
@@ -477,6 +496,21 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
       fbp: data.fbBrowserId,
     },
     customData: buildAttributionCustomData(data.attribution),
+  }));
+
+  fireAndForget("ga4mp:sign_up-google", sendGa4Event({
+    userId: newUser.id,
+    ipOverride: ctx.ip || undefined,
+    userAgent: ctx.userAgent || undefined,
+    events: [{
+      name: "sign_up",
+      params: {
+        method: "google",
+        ...(data.attribution?.source ? { utm_source: data.attribution.source } : {}),
+        ...(data.attribution?.campaign ? { utm_campaign: data.attribution.campaign } : {}),
+        ...(data.attribution?.medium ? { utm_medium: data.attribution.medium } : {}),
+      },
+    }],
   }));
 
   return { user: serializeUser(newUser), isNewUser: true, metaEventId };

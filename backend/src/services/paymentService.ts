@@ -19,6 +19,7 @@ import { sendAdminNotification, sendPaymentReceiptEmail } from "../lib/email";
 import { countryToLocale } from "../lib/constants";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendCapiEvent } from "../lib/metaCapi";
+import { sendGa4Event } from "../lib/ga4";
 import {
   calculateUpgradePrice,
   calculateUpgradePriceCop,
@@ -385,6 +386,32 @@ export async function handleOrderPaid(payload: {
         num_items: 1,
       },
     }));
+
+    // Server-side GA4 failsafe. GA4 deduplicates by `transaction_id`, so
+    // if the browser already fired `purchase` this call is a no-op in
+    // reports but guarantees revenue is captured when the browser event
+    // was blocked (ad-blocker, tab closed on redirect, Polar bounce).
+    fireAndForget("ga4mp:purchase-polar", sendGa4Event({
+      userId: metadata.userId,
+      events: [{
+        name: "purchase",
+        params: {
+          transaction_id: eventId,
+          affiliation: "Polar International",
+          currency: "USD",
+          value: payment.amountUsd / 100,
+          items: [{
+            item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
+            item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
+            item_category: "pool_capacity",
+            item_variant: payment.poolType,
+            price: payment.amountUsd / 100,
+            quantity: 1,
+            currency: "USD",
+          }],
+        },
+      }],
+    }));
   }
 
   // 7. Send payment receipt to user
@@ -416,6 +443,122 @@ export async function handleOrderPaid(payload: {
       });
     })());
   }
+}
+
+/**
+ * Process an `order.refunded` (or equivalent cancellation) webhook from
+ * Polar. Marks the PoolPayment as REFUNDED, emits a GA4 `refund` event
+ * with the same transaction_id as the original purchase, and sends a
+ * compensating Meta CAPI event. Idempotent via `PaymentEvent.polarEventId`.
+ *
+ * NOTE: refunds DO NOT shrink `Pool.maxParticipants`. Reducing capacity
+ * could evict members who have already joined; a manual host flow would
+ * be required for that. We only reverse the revenue accounting.
+ */
+export async function handleOrderRefunded(payload: {
+  data: {
+    id: string;
+    checkout_id?: string | null;
+    metadata?: Record<string, unknown>;
+    total_amount?: number;
+  };
+  type: string;
+}): Promise<void> {
+  const eventId = payload.data.id;
+  const eventType = payload.type || "order.refunded";
+
+  // Idempotency — refund webhooks can be replayed by Polar.
+  const existing = await prisma.paymentEvent.findUnique({
+    where: { polarEventId: eventId },
+  });
+  if (existing) return;
+
+  try {
+    await prisma.paymentEvent.create({
+      data: {
+        polarEventId: eventId,
+        eventType,
+        payloadJson: JSON.parse(JSON.stringify(payload)),
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") return;
+    throw err;
+  }
+
+  const checkoutId = payload.data.checkout_id;
+  const payment = checkoutId
+    ? await prisma.poolPayment.findUnique({ where: { polarCheckoutId: checkoutId } })
+    : null;
+
+  if (!payment) {
+    console.error(`[PaymentService] order.refunded: no PoolPayment for checkout ${checkoutId}`);
+    return;
+  }
+
+  if (payment.status === "REFUNDED") {
+    console.log(`[PaymentService] Payment ${payment.id} already REFUNDED`);
+    return;
+  }
+
+  await prisma.poolPayment.update({
+    where: { id: payment.id },
+    data: { status: "REFUNDED" },
+  });
+
+  fireAndForget("audit:payment-refunded", writeAuditEvent({
+    actorUserId: payment.userId,
+    action: "PAYMENT_REFUNDED",
+    entityType: "Pool",
+    entityId: payment.poolId,
+    poolId: payment.poolId,
+    dataJson: { paymentId: payment.id, polarEventId: eventId, amountCents: payment.amountUsd },
+  }));
+
+  // Analytics: GA4 `refund` deduplicates against the original purchase
+  // by transaction_id. We use the ORIGINAL transactionId (polarOrderId)
+  // so the refund collapses onto the same GA4 transaction row.
+  const transactionId = payment.polarOrderId ?? eventId;
+  const amountMajor = payment.amountUsd / 100;
+
+  fireAndForget("ga4mp:refund-polar", sendGa4Event({
+    userId: payment.userId,
+    events: [{
+      name: "refund",
+      params: {
+        transaction_id: transactionId,
+        currency: "USD",
+        value: amountMajor,
+        items: [{
+          item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
+          item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
+          item_category: "pool_capacity",
+          item_variant: payment.poolType,
+          price: amountMajor,
+          quantity: 1,
+          currency: "USD",
+        }],
+      },
+    }],
+  }));
+
+  // Meta CAPI: there is no "refund" standard event. Google's convention
+  // is to send a compensating custom event that downstream BI can reconcile.
+  // Re-use the same event_id prefix so it stays grouped with the purchase
+  // in Events Manager's deduplication view.
+  fireAndForget("capi:refund-polar", sendCapiEvent({
+    eventName: "Refund",
+    eventId: `${payment.metaEventId ?? transactionId}-refund`,
+    userData: { externalId: payment.userId },
+    customData: {
+      value: amountMajor,
+      currency: "USD",
+      content_type: "product",
+      content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
+      num_items: 1,
+      original_transaction_id: transactionId,
+    },
+  }));
 }
 
 /**
@@ -720,6 +863,30 @@ export async function processMpPayment(
       },
     }));
 
+    fireAndForget("ga4mp:purchase-mp", sendGa4Event({
+      userId: payment.userId,
+      ipOverride: clientIpAddress,
+      userAgent: clientUserAgent,
+      events: [{
+        name: "purchase",
+        params: {
+          transaction_id: String(result.id),
+          affiliation: "Mercado Pago Colombia",
+          currency: "COP",
+          value: payment.amountUsd,
+          items: [{
+            item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
+            item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
+            item_category: "pool_capacity",
+            item_variant: payment.poolType,
+            price: payment.amountUsd,
+            quantity: 1,
+            currency: "COP",
+          }],
+        },
+      }],
+    }));
+
     return { status: result.status, statusDetail: result.statusDetail, mpPaymentId: result.id, metaEventId };
   } else if (result.status === "rejected") {
     await prisma.poolPayment.update({
@@ -768,7 +935,14 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   const payment = await prisma.poolPayment.findUnique({
     where: { polarCheckoutId: reference },
   });
-  if (!payment || payment.status === "COMPLETED") return;
+  if (!payment) return;
+
+  const isRefundSignal =
+    mpPayment.status === "refunded" || mpPayment.status === "charged_back";
+  // Approved events are idempotent: if our payment is already COMPLETED,
+  // we've already processed the approval. Refund signals are handled below
+  // even when the local payment is COMPLETED — that IS the precondition.
+  if (!isRefundSignal && payment.status === "COMPLETED") return;
 
   if (mpPayment.status === "approved") {
     // Re-use the event_id from the sync flow if the browser already fired
@@ -825,6 +999,28 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       },
     }));
 
+    fireAndForget("ga4mp:purchase-mp-ipn", sendGa4Event({
+      userId: payment.userId,
+      events: [{
+        name: "purchase",
+        params: {
+          transaction_id: `mp-${paymentMpId}`,
+          affiliation: "Mercado Pago Colombia",
+          currency: "COP",
+          value: payment.amountUsd,
+          items: [{
+            item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
+            item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
+            item_category: "pool_capacity",
+            item_variant: payment.poolType,
+            price: payment.amountUsd,
+            quantity: 1,
+            currency: "COP",
+          }],
+        },
+      }],
+    }));
+
     // Send payment receipt to user
     fireAndForget("mp-payment-receipt-email", (async () => {
       const user = await prisma.user.findUnique({
@@ -857,5 +1053,59 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       where: { id: payment.id },
       data: { status: "FAILED" },
     });
+  } else if (mpPayment.status === "refunded" || mpPayment.status === "charged_back") {
+    // Only meaningful if the payment was previously COMPLETED; otherwise
+    // there is no revenue to reverse.
+    if (payment.status !== "COMPLETED") return;
+    await prisma.poolPayment.update({
+      where: { id: payment.id },
+      data: { status: "REFUNDED" },
+    });
+
+    const originalTransactionId = payment.polarOrderId ?? `mp-${paymentMpId}`;
+
+    fireAndForget("audit:mp-payment-refunded", writeAuditEvent({
+      actorUserId: payment.userId,
+      action: "PAYMENT_REFUNDED",
+      entityType: "Pool",
+      entityId: payment.poolId,
+      poolId: payment.poolId,
+      dataJson: { mpPaymentId: paymentMpId, mpStatus: mpPayment.status },
+    }));
+
+    fireAndForget("ga4mp:refund-mp", sendGa4Event({
+      userId: payment.userId,
+      events: [{
+        name: "refund",
+        params: {
+          transaction_id: originalTransactionId,
+          currency: "COP",
+          value: payment.amountUsd,
+          items: [{
+            item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
+            item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
+            item_category: "pool_capacity",
+            item_variant: payment.poolType,
+            price: payment.amountUsd,
+            quantity: 1,
+            currency: "COP",
+          }],
+        },
+      }],
+    }));
+
+    fireAndForget("capi:refund-mp", sendCapiEvent({
+      eventName: "Refund",
+      eventId: `${payment.metaEventId ?? originalTransactionId}-refund`,
+      userData: { externalId: payment.userId },
+      customData: {
+        value: payment.amountUsd,
+        currency: "COP",
+        content_type: "product",
+        content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
+        num_items: 1,
+        original_transaction_id: originalTransactionId,
+      },
+    }));
   }
 }

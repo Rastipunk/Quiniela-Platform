@@ -20,6 +20,7 @@ import {
   initiateMpCheckout,
   processMpPayment,
   handleOrderPaid,
+  handleOrderRefunded,
   handleCheckoutUpdated,
   handleMpWebhook,
   getPaymentStatus,
@@ -275,6 +276,8 @@ export function createWebhookHandler() {
       // Route to the correct handler based on event type
       if (payload.type === "order.paid") {
         await handleOrderPaid(payload as Parameters<typeof handleOrderPaid>[0]);
+      } else if (payload.type === "order.refunded" || payload.type === "order.canceled") {
+        await handleOrderRefunded(payload as Parameters<typeof handleOrderRefunded>[0]);
       } else if (payload.type === "checkout.updated") {
         await handleCheckoutUpdated(payload as Parameters<typeof handleCheckoutUpdated>[0]);
       } else {

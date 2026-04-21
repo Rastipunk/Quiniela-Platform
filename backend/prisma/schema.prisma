@@ -1122,18 +1122,23 @@ model PaymentEvent {
 }
 
 /// Dead-letter queue for Meta Conversion API events that fail after all
-/// in-process retries. A background job re-attempts delivery with the same
-/// `eventId`, so re-sends never produce duplicates in Meta Ads Manager.
-model FailedCapiEvent {
+/// in-process retries. A background worker re-attempts delivery with
+/// the SAME event_id so re-sends never produce duplicates downstream.
+/// Provider column discriminates the target sink (Meta CAPI, GA4 MP…).
+model FailedAnalyticsEvent {
   id String @id @default(uuid())
 
-  eventName   String // e.g. "Purchase", "CompleteRegistration"
-  eventId     String // Meta event_id (same value used in the original attempt)
-  payloadJson Json // Full CAPI body we tried to POST (minus access_token)
+  /// Target sink: "META_CAPI" | "GA4_MP". Kept as String so adding a new
+  /// provider is an additive change rather than an enum migration.
+  provider String @default("META_CAPI")
 
-  attemptCount  Int       @default(1)
-  lastError     String    @db.Text
-  lastAttemptAt DateTime  @default(now())
+  eventName   String // e.g. "Purchase", "CompleteRegistration", "refund"
+  eventId     String // stable id used to dedupe at the sink
+  payloadJson Json // full POST body we tried to send (no secrets)
+
+  attemptCount  Int      @default(1)
+  lastError     String   @db.Text
+  lastAttemptAt DateTime @default(now())
   // When a worker should next retry. Null while being processed.
   nextRetryAt   DateTime?
 
@@ -1142,6 +1147,6 @@ model FailedCapiEvent {
   createdAtUtc DateTime  @default(now())
   updatedAtUtc DateTime  @updatedAt
 
-  @@index([nextRetryAt, resolvedAt])
+  @@index([provider, nextRetryAt, resolvedAt])
   @@index([eventId])
 }

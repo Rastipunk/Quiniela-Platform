@@ -74,6 +74,24 @@ export function CookieConsent() {
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
 
+  // Cross-tab sync: when another tab updates the consent preference, mirror
+  // it in this tab so both GA4 and Meta see a consistent state. We only
+  // apply changes we did not originate — `localStorage` does not fire
+  // `storage` events in the tab that made the change.
+  useEffect(() => {
+    function onStorage(event: StorageEvent): void {
+      if (event.key !== CONSENT_KEY) return;
+      const next = event.newValue;
+      if (next === "granted" || next === "denied") {
+        applyConsent(next);
+        // Hide the banner in this tab if it was showing.
+        setVisible(false);
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   useEffect(() => {
     const stored = getStoredConsent();
 

@@ -1,25 +1,25 @@
 /**
- * Meta CAPI retry job.
+ * Analytics DLQ drain job.
  *
- * Drains the `FailedCapiEvent` dead-letter queue. Events that exhausted
- * their in-process retries inside `sendCapiEvent()` land in this table;
- * this job wakes up periodically, picks the ones whose `nextRetryAt` has
- * passed, and re-attempts delivery with the SAME `event_id` so Meta
- * deduplicates against the original browser pixel emission.
+ * Processes failed deliveries queued in `FailedAnalyticsEvent` for every
+ * configured sink (Meta CAPI, GA4 Measurement Protocol). Each sink
+ * exposes its own retry function that filters the queue by `provider`
+ * and updates rows idempotently.
  *
- * Idempotent with respect to the queue: a job instance processes at most
- * one batch at a time, and a single row can be updated by only one job
- * instance because updates go through the unique `id` key.
+ * Runs a single batch per tick for each sink. If both sinks are configured
+ * (typical in production) the worker fans out but serialises per-sink so
+ * a slow Meta endpoint can't stall GA4 retries, and vice versa.
  */
 
 import * as cron from "node-cron";
 import { retryFailedCapiEventsBatch } from "../lib/metaCapi";
+import { retryFailedGa4EventsBatch } from "../lib/ga4";
 
 // Every 5 minutes by default. Frequent enough that transient failures
 // recover quickly; sparse enough that a DLQ full of permanent 4xx doesn't
-// hammer the Graph API.
-const CAPI_RETRY_CRON = process.env.CAPI_RETRY_CRON || "*/5 * * * *";
-const BATCH_SIZE = Number(process.env.CAPI_RETRY_BATCH_SIZE || 20);
+// hammer the downstream APIs.
+const RETRY_CRON = process.env.ANALYTICS_RETRY_CRON || process.env.CAPI_RETRY_CRON || "*/5 * * * *";
+const BATCH_SIZE = Number(process.env.ANALYTICS_RETRY_BATCH_SIZE || process.env.CAPI_RETRY_BATCH_SIZE || 20);
 
 let scheduledTask: cron.ScheduledTask | null = null;
 let isRunning = false;
@@ -32,14 +32,27 @@ async function runOnce(): Promise<void> {
   }
   isRunning = true;
   try {
-    const { processed, resolved } = await retryFailedCapiEventsBatch(BATCH_SIZE);
-    if (processed > 0) {
+    // Run sinks in parallel; each has its own provider filter so there is
+    // no contention on the same rows.
+    const [capi, ga4] = await Promise.allSettled([
+      retryFailedCapiEventsBatch(BATCH_SIZE),
+      retryFailedGa4EventsBatch(BATCH_SIZE),
+    ]);
+    const capiResult = capi.status === "fulfilled" ? capi.value : { processed: 0, resolved: 0 };
+    const ga4Result = ga4.status === "fulfilled" ? ga4.value : { processed: 0, resolved: 0 };
+    const total = capiResult.processed + ga4Result.processed;
+    if (total > 0) {
       console.log(
-        `[CapiRetryJob] processed=${processed} resolved=${resolved} pending=${processed - resolved}`,
+        `[AnalyticsRetryJob] capi(processed=${capiResult.processed} resolved=${capiResult.resolved}) ` +
+          `ga4(processed=${ga4Result.processed} resolved=${ga4Result.resolved})`,
       );
     }
-  } catch (err) {
-    console.error("[CapiRetryJob] error:", err instanceof Error ? err.message : String(err));
+    if (capi.status === "rejected") {
+      console.error("[AnalyticsRetryJob] capi error:", capi.reason);
+    }
+    if (ga4.status === "rejected") {
+      console.error("[AnalyticsRetryJob] ga4 error:", ga4.reason);
+    }
   } finally {
     isRunning = false;
   }
@@ -47,8 +60,8 @@ async function runOnce(): Promise<void> {
 
 export function startCapiRetryJob(): void {
   if (scheduledTask) return;
-  console.log(`[CapiRetryJob] Starting with cron: ${CAPI_RETRY_CRON}`);
-  scheduledTask = cron.schedule(CAPI_RETRY_CRON, runOnce);
+  console.log(`[AnalyticsRetryJob] Starting with cron: ${RETRY_CRON}`);
+  scheduledTask = cron.schedule(RETRY_CRON, runOnce);
 }
 
 export function stopCapiRetryJob(): void {
