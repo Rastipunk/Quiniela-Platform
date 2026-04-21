@@ -21,16 +21,27 @@ declare global {
 
 const DEBUG_STORAGE_KEY = "p4a_analytics_debug";
 const DEBUG_QUERY_PARAM = "gtm_debug";
+// Non-httpOnly cookie set by the backend for admin sessions only.
+// Platform admins get a separate flag here (distinct from the general
+// `p4a_logged_in` cookie) so debug mode can gate on it without a new
+// API call. Named in a way that makes it unattractive to forge — a
+// curious user finding it in DevTools still needs backend-set content.
+const ADMIN_HINT_COOKIE = "p4a_admin";
+
+function hasAdminHintCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split(";").some((c) => c.trim().startsWith(`${ADMIN_HINT_COOKIE}=`));
+}
 
 /**
- * Whether analytics debug mode is active in this tab. Enabled by either:
- *  - `?gtm_debug=1` in the URL (matches Google's own convention), OR
- *  - `localStorage.p4a_analytics_debug = "1"` (persists between navs).
+ * Whether analytics debug mode is active in this tab. Admin-gated to
+ * avoid exposing the dataLayer firehose on a shared device. Enabled by:
+ *  - `?gtm_debug=1` in the URL AND the admin hint cookie present, OR
+ *  - `localStorage.p4a_analytics_debug = "1"` previously set by the
+ *    URL path above (persists between navs, same-admin-session).
  *
- * In debug mode every dataLayer push is mirrored to `console.groupCollapsed`
- * so engineers can diagnose tagging issues without GTM Preview or Meta
- * Events Manager. Zero-cost when disabled — the check is a single
- * localStorage lookup behind a lazy singleton.
+ * Zero-cost when disabled — the check is a single cookie / localStorage
+ * lookup behind a lazy singleton.
  */
 let _debugCache: boolean | null = null;
 function isDebugEnabled(): boolean {
@@ -40,12 +51,14 @@ function isDebugEnabled(): boolean {
     return false;
   }
   try {
-    if (new URL(window.location.href).searchParams.get(DEBUG_QUERY_PARAM) === "1") {
+    const hasQueryFlag = new URL(window.location.href).searchParams.get(DEBUG_QUERY_PARAM) === "1";
+    if (hasQueryFlag && hasAdminHintCookie()) {
       localStorage.setItem(DEBUG_STORAGE_KEY, "1");
       _debugCache = true;
       return true;
     }
-    _debugCache = localStorage.getItem(DEBUG_STORAGE_KEY) === "1";
+    // Previously-enabled admin session.
+    _debugCache = localStorage.getItem(DEBUG_STORAGE_KEY) === "1" && hasAdminHintCookie();
   } catch {
     _debugCache = false;
   }

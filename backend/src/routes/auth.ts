@@ -146,7 +146,7 @@ authRouter.post("/register", async (req, res) => {
   try {
     const result = await registerUser(parsed.data, auditCtx(req));
     const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token);
+    setAuthCookies(res, token, { isAdmin: result.user.platformRole === "ADMIN" });
     return sendCreated(res, result);
   } catch (err) {
     return handleServiceError(res, err);
@@ -160,7 +160,7 @@ authRouter.post("/login", async (req, res) => {
   try {
     const result = await loginUser(parsed.data.email, parsed.data.password, auditCtx(req));
     const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token);
+    setAuthCookies(res, token, { isAdmin: result.user.platformRole === "ADMIN" });
     return sendData(res, result);
   } catch (err) {
     return handleServiceError(res, err);
@@ -200,7 +200,7 @@ authRouter.post("/google", async (req, res) => {
   try {
     const result = await authenticateWithGoogle(parsed.data, auditCtx(req));
     const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token);
+    setAuthCookies(res, token, { isAdmin: result.user.platformRole === "ADMIN" });
     return sendData(res, { user: result.user, metaEventId: result.metaEventId });
   } catch (err) {
     return handleServiceError(res, err);
@@ -254,7 +254,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
   try {
     const result = await activateCorporateAccount(parsed.data, auditCtx(req));
     const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token);
+    setAuthCookies(res, token, { isAdmin: result.user.platformRole === "ADMIN" });
     const status = result.alreadyExisted ? sendData : sendCreated;
     return status(res, result);
   } catch (err) {

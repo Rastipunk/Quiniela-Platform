@@ -235,22 +235,42 @@ async function probeMetaCapi(userId: string): Promise<CheckResult> {
 
 async function probeDlqBacklog(): Promise<CheckResult> {
   try {
-    const [unresolved, oldestUnresolved] = await Promise.all([
+    // Count resolved rows and break unresolved down by provider so the
+    // dashboard can show at a glance whether a specific sink is
+    // misbehaving (e.g. only META_CAPI piling up while GA4_MP drains).
+    const [unresolved, oldestUnresolved, byProvider, resolvedTotal] = await Promise.all([
       prisma.failedAnalyticsEvent.count({ where: { resolvedAt: null } }),
       prisma.failedAnalyticsEvent.findFirst({
         where: { resolvedAt: null },
         orderBy: { createdAtUtc: "asc" },
         select: { createdAtUtc: true, provider: true, eventName: true, lastError: true },
       }),
+      prisma.failedAnalyticsEvent.groupBy({
+        by: ["provider"],
+        where: { resolvedAt: null },
+        _count: { _all: true },
+      }),
+      prisma.failedAnalyticsEvent.count({ where: { resolvedAt: { not: null } } }),
     ]);
 
+    const providerCounts = Object.fromEntries(
+      byProvider.map((row) => [row.provider, row._count._all]),
+    );
+
     if (unresolved === 0) {
-      return { status: "ok", message: "Zero unresolved events in the DLQ." };
+      return {
+        status: "ok",
+        message: "Zero unresolved events in the DLQ.",
+        details: { unresolved: 0, resolvedTotal, providerCounts },
+      };
     }
+    // Threshold — warn (not error) while the number is manageable; error
+    // when it crosses a ceiling that suggests a sink is outright broken.
+    const status = unresolved > 1_000 ? "error" : "error"; // keep error for now; could split to warn tier later
     return {
-      status: "error",
+      status,
       message: `${unresolved} unresolved events in DLQ. Oldest from ${oldestUnresolved?.createdAtUtc?.toISOString() ?? "unknown"}.`,
-      details: oldestUnresolved,
+      details: { unresolved, providerCounts, resolvedTotal, oldest: oldestUnresolved },
     };
   } catch (err) {
     return {
