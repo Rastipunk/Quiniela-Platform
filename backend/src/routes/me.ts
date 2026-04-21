@@ -84,6 +84,9 @@ meRouter.get("/aggregated", async (req, res) => {
       createdAtUtc: true,
       acquisitionSource: true,
       acquisitionCampaign: true,
+      emailVerified: true,
+      googleId: true,
+      passwordHash: true,
     },
   });
   if (!user) return sendNotFound(res, "USER_NOT_FOUND");
@@ -91,7 +94,9 @@ meRouter.get("/aggregated", async (req, res) => {
   // Active memberships — these are what GA4 call "pool count". PENDING
   // approvals and LEFT memberships are not counted so the number matches
   // what the user sees on their dashboard.
-  const [activePoolCount, hasCorporateMembership, paidPoolCount] = await Promise.all([
+  // All behavioural counters are computed in one parallel batch so the
+  // endpoint stays cheap even when GA4 re-fetches it on every nav.
+  const [activePoolCount, hasCorporateMembership, paidPoolCount, predictionsCount, hostPoolCount, lastPick] = await Promise.all([
     prisma.poolMember.count({
       where: { userId, status: "ACTIVE" },
     }),
@@ -101,10 +106,26 @@ meRouter.get("/aggregated", async (req, res) => {
     prisma.poolPayment.count({
       where: { userId, status: "COMPLETED" },
     }),
+    prisma.prediction.count({ where: { userId } }),
+    prisma.poolMember.count({
+      where: {
+        userId,
+        status: "ACTIVE",
+        role: { in: ["HOST", "CO_ADMIN", "CORPORATE_HOST"] },
+      },
+    }),
+    prisma.prediction.findFirst({
+      where: { userId },
+      orderBy: { updatedAtUtc: "desc" },
+      select: { updatedAtUtc: true },
+    }),
   ]);
 
   const tier: "free" | "paid" = paidPoolCount > 0 ? "paid" : "free";
   const isCorporate = hasCorporateMembership > 0;
+  // `signup_method` is derived: a Google-linked account that has no
+  // password hash is pure Google OAuth; anything else started via email.
+  const signupMethod: "email" | "google" = user.googleId && !user.passwordHash ? "google" : "email";
 
   return sendData(res, {
     pool_count: activePoolCount,
@@ -119,6 +140,11 @@ meRouter.get("/aggregated", async (req, res) => {
     ),
     acquisition_source: user.acquisitionSource ?? null,
     acquisition_campaign: user.acquisitionCampaign ?? null,
+    is_verified_email: user.emailVerified,
+    signup_method: signupMethod,
+    predictions_count: predictionsCount,
+    last_active_at: lastPick?.updatedAtUtc?.toISOString() ?? null,
+    pool_host_count: hostPoolCount,
   });
 });
 

@@ -1124,6 +1124,16 @@ model PoolPayment {
   // page can re-emit the pixel event with the same ID without duplicating.
   metaEventId String?
 
+  // Meta Advanced Matching signals captured at checkout creation so the
+  // ASYNCHRONOUS webhook path (Polar, MP IPN) can still emit CAPI events
+  // with a high EMQ score. Browser-side Purchase already has these on
+  // the Pixel side; without persisting them here the server-side failsafe
+  // would match with only email/name and lose ~2-3 EMQ points.
+  metaFbp         String? // `_fbp` cookie captured at checkout init
+  metaFbc         String? // `_fbc` cookie captured at checkout init
+  clientIpAddress String? // Remote IP at checkout init (for GEO + EMQ)
+  clientUserAgent String? // UA at checkout init (for EMQ)
+
   paidAtUtc    DateTime?
   createdAtUtc DateTime  @default(now())
   updatedAtUtc DateTime  @updatedAt

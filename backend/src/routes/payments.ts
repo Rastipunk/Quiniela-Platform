@@ -15,6 +15,34 @@ import { requireAuth } from "../middleware/requireAuth";
 import { sendOk, sendBadRequest, sendNotFound, sendInternal, sendForbidden } from "../lib/apiResponse";
 import { ServiceError } from "../services/authService";
 import { isPolarConfigured } from "../services/polar/client";
+
+/**
+ * Extract Meta Advanced Matching signals from the browser request so
+ * async webhook emissions (Polar order.paid, MP IPN) can attach them
+ * to the CAPI Purchase event. Cookies set by the Meta Pixel stub:
+ *   _fbp — always on once the pixel loads
+ *   _fbc — only when the user arrived via an fbclid URL
+ * IP and UA are used for server-side match as well.
+ */
+function extractMetaSignals(req: Request): {
+  metaFbp?: string;
+  metaFbc?: string;
+  clientIpAddress?: string;
+  clientUserAgent?: string;
+} {
+  const fbp = req.cookies?._fbp as string | undefined;
+  const fbc = req.cookies?._fbc as string | undefined;
+  const ua = req.get("user-agent") ?? undefined;
+  // `req.ip` honours `trust proxy` (set in server.ts), so behind
+  // Railway's reverse proxy this yields the real client address.
+  return {
+    metaFbp: typeof fbp === "string" && fbp.length > 0 ? fbp : undefined,
+    metaFbc: typeof fbc === "string" && fbc.length > 0 ? fbc : undefined,
+    clientIpAddress: req.ip ?? undefined,
+    clientUserAgent: ua,
+  };
+}
+
 import {
   initiateCheckout,
   initiateMpCheckout,
@@ -53,6 +81,7 @@ paymentsRouter.post("/checkout", requireAuth, async (req: Request, res: Response
       poolId: parsed.data.poolId,
       targetCapacity: parsed.data.targetCapacity,
       locale: String(req.headers["accept-language"] ?? "es").slice(0, 2),
+      ...extractMetaSignals(req),
     });
     return sendOk(res, result as unknown as Record<string, unknown>);
   } catch (err) {
@@ -94,6 +123,7 @@ paymentsRouter.post("/mp-checkout", requireAuth, async (req: Request, res: Respo
       poolId: parsed.data.poolId,
       targetCapacity: parsed.data.targetCapacity,
       locale: String(req.headers["accept-language"] ?? "es").slice(0, 2),
+      ...extractMetaSignals(req),
     });
     return sendOk(res, result as unknown as Record<string, unknown>);
   } catch (err) {

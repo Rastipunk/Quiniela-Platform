@@ -54,6 +54,14 @@ export interface UserAggregatedSnapshot {
   account_age_days: number;
   acquisition_source: string | null;
   acquisition_campaign: string | null;
+  // Behavioural segmentation — added so GA4 cohorts can separate
+  // verified-active users from "zombie" signups and score engagement.
+  is_verified_email: boolean;
+  signup_method: "email" | "google";
+  predictions_count: number;
+  /** ISO 8601 UTC of the most recent user action (login, pick, pool view). */
+  last_active_at: string | null;
+  pool_host_count: number;
 }
 
 export async function getUserAggregated(): Promise<UserAggregatedSnapshot> {

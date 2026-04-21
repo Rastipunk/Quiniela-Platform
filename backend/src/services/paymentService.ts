@@ -69,6 +69,15 @@ export interface InitiateCheckoutInput {
   poolId: string;
   targetCapacity: number;
   locale?: string;
+  /** Optional Meta Advanced Matching signals, passed from the browser
+   *  request that initiated the checkout so async webhook emissions
+   *  (Polar `order.paid`, MP IPN) can attach them to the CAPI Purchase
+   *  event. All fields may be undefined; missing values just reduce
+   *  EMQ score without breaking dedup. */
+  metaFbp?: string;
+  metaFbc?: string;
+  clientIpAddress?: string;
+  clientUserAgent?: string;
 }
 
 export interface InitiateCheckoutResult {
@@ -218,6 +227,12 @@ export async function initiateCheckout(
       fromCapacity: currentCapacity,
       toCapacity: targetCapacity,
       poolType,
+      // Persist Meta Advanced Matching signals so the async order.paid
+      // webhook can emit a CAPI Purchase with full EMQ quality.
+      metaFbp: input.metaFbp,
+      metaFbc: input.metaFbc,
+      clientIpAddress: input.clientIpAddress,
+      clientUserAgent: input.clientUserAgent,
     },
   });
 
@@ -401,6 +416,13 @@ export async function handleOrderPaid(payload: {
         dateOfBirth: userForCapi?.dateOfBirth?.toISOString().slice(0, 10),
         gender: userForCapi?.gender ?? undefined,
         country: userForCapi?.country ?? undefined,
+        // Advanced Matching signals captured when the checkout was
+        // initiated from the browser. Without these the EMQ score
+        // drops 2-3 points and Meta's audience optimisation degrades.
+        fbp: payment.metaFbp ?? undefined,
+        fbc: payment.metaFbc ?? undefined,
+        clientIpAddress: payment.clientIpAddress ?? undefined,
+        clientUserAgent: payment.clientUserAgent ?? undefined,
       },
       customData: {
         value: payment.amountUsd / 100,
@@ -758,6 +780,12 @@ export async function initiateMpCheckout(
       fromCapacity: currentCapacity,
       toCapacity: targetCapacity,
       poolType,
+      // Meta Advanced Matching for the IPN webhook path (see Polar init
+      // note above — same rationale).
+      metaFbp: input.metaFbp,
+      metaFbc: input.metaFbc,
+      clientIpAddress: input.clientIpAddress,
+      clientUserAgent: input.clientUserAgent,
     },
   });
 
@@ -1054,6 +1082,11 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
         dateOfBirth: userForIpnCapi?.dateOfBirth?.toISOString().slice(0, 10),
         gender: userForIpnCapi?.gender ?? undefined,
         country: userForIpnCapi?.country ?? undefined,
+        // Advanced Matching from checkout-time cookies (see schema note).
+        fbp: payment.metaFbp ?? undefined,
+        fbc: payment.metaFbc ?? undefined,
+        clientIpAddress: payment.clientIpAddress ?? undefined,
+        clientUserAgent: payment.clientUserAgent ?? undefined,
       },
       customData: {
         value: mpPurchaseValue(payment),

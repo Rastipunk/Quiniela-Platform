@@ -55,6 +55,11 @@ export async function bindAuthenticatedUserForAnalytics(user: AuthUser): Promise
       platform_role: snapshot.platform_role,
       acquisition_source: snapshot.acquisition_source,
       acquisition_campaign: snapshot.acquisition_campaign,
+      is_verified_email: snapshot.is_verified_email,
+      signup_method: snapshot.signup_method,
+      predictions_count: snapshot.predictions_count,
+      last_active_at: snapshot.last_active_at,
+      pool_host_count: snapshot.pool_host_count,
     });
   } catch {
     // swallow — user_id is already bound, properties can refresh later
@@ -79,6 +84,11 @@ export async function refreshUserProperties(): Promise<void> {
       platform_role: snapshot.platform_role,
       acquisition_source: snapshot.acquisition_source,
       acquisition_campaign: snapshot.acquisition_campaign,
+      is_verified_email: snapshot.is_verified_email,
+      signup_method: snapshot.signup_method,
+      predictions_count: snapshot.predictions_count,
+      last_active_at: snapshot.last_active_at,
+      pool_host_count: snapshot.pool_host_count,
     });
   } catch {
     // ignore — best effort

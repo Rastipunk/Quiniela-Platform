@@ -159,6 +159,14 @@ export type AnalyticsUserProperties = {
   platform_role?: string;
   acquisition_source?: string | null;
   acquisition_campaign?: string | null;
+  // Behavioural / engagement dimensions — lets GA4 audiences split
+  // "engaged" from "zombie" signups without needing BigQuery.
+  is_verified_email?: boolean;
+  signup_method?: "email" | "google";
+  predictions_count?: number;
+  /** ISO 8601 UTC timestamp of the most recent pick / session. */
+  last_active_at?: string | null;
+  pool_host_count?: number;
 };
 
 export function setUserProperties(props: AnalyticsUserProperties): void {
