@@ -111,6 +111,15 @@ paymentsRouter.post("/mp-checkout", requireAuth, async (req: Request, res: Respo
 const mpProcessSchema = z.object({
   paymentId: z.string().uuid(),
   formData: z.record(z.string(), z.unknown()),
+  // Meta cookies forwarded from the browser for CAPI attribution. Both
+  // optional — we work fine without them, but having them improves match
+  // quality significantly in Meta Events Manager.
+  metaCookies: z
+    .object({
+      fbc: z.string().max(200).optional(),
+      fbp: z.string().max(200).optional(),
+    })
+    .optional(),
 });
 
 paymentsRouter.post("/mp-process", requireAuth, async (req: Request, res: Response) => {
@@ -120,7 +129,20 @@ paymentsRouter.post("/mp-process", requireAuth, async (req: Request, res: Respon
   }
 
   try {
-    const result = await processMpPayment(parsed.data);
+    const clientIpAddress =
+      (req.headers["cf-connecting-ip"] as string) ||
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+      req.socket.remoteAddress ||
+      undefined;
+    const clientUserAgent = (req.headers["user-agent"] as string) || undefined;
+    const country = ((req.headers["cf-ipcountry"] as string) || "").toUpperCase() || undefined;
+
+    const result = await processMpPayment({
+      ...parsed.data,
+      clientIpAddress,
+      clientUserAgent,
+      country,
+    });
     return sendOk(res, result as unknown as Record<string, unknown>);
   } catch (err) {
     if (err instanceof ServiceError) {

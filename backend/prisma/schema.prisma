@@ -69,11 +69,11 @@ model User {
 
   // Términos de Servicio
   acceptedTermsAt      DateTime? // Cuándo aceptó TOS
-  acceptedTermsVersion String?   // Versión del TOS aceptado (ej: "2026-01-25")
+  acceptedTermsVersion String? // Versión del TOS aceptado (ej: "2026-01-25")
 
   // Política de Privacidad
   acceptedPrivacyAt      DateTime? // Cuándo aceptó Privacy Policy
-  acceptedPrivacyVersion String?   // Versión de Privacy Policy aceptada
+  acceptedPrivacyVersion String? // Versión de Privacy Policy aceptada
 
   // Consentimiento de marketing (emails promocionales) - OPCIONAL
   marketingConsent   Boolean   @default(false)
@@ -103,6 +103,26 @@ model User {
   // =========================================================================
 
   predictionUpdates Boolean @default(false) // Subscribed to AI prediction update emails
+
+  // =========================================================================
+  // MARKETING ATTRIBUTION (first-touch)
+  // Comentario en español: atribución del canal que trajo al usuario.
+  // Se escribe UNA sola vez en el signup (first-touch). No se sobrescribe
+  // con visitas posteriores, de forma que el cohort analysis refleje el
+  // origen real del usuario, no su última sesión.
+  // =========================================================================
+
+  acquisitionSource   String? // utm_source  (ej: "google", "whatsapp", "newsletter")
+  acquisitionMedium   String? // utm_medium  (ej: "cpc", "email", "social")
+  acquisitionCampaign String? // utm_campaign (ej: "mundial_2026", "pool_invite")
+  acquisitionContent  String? // utm_content
+  acquisitionTerm     String? // utm_term
+  landingPath         String? // pathname donde aterrizó (sin host)
+  referrerUrl         String? // document.referrer al primer touch
+  gclid               String? // Google Ads click id
+  gbraid              String? // Google Ads app campaigns
+  wbraid              String? // Google Ads app campaigns
+  fbclid              String? // Meta Ads click id
 
   createdAtUtc DateTime     @default(now())
   updatedAtUtc DateTime     @updatedAt
@@ -212,14 +232,14 @@ enum TournamentInstanceStatus {
 
 enum ResultSourceMode {
   MANUAL // Host ingresa resultados manualmente (comportamiento existente)
-  AUTO   // Resultados se obtienen automáticamente de API externa (API-Football)
+  AUTO // Resultados se obtienen automáticamente de API externa (API-Football)
 }
 
 enum ResultSource {
-  HOST_MANUAL         // Host ingresó en instancia MANUAL (comportamiento existente)
-  HOST_PROVISIONAL    // Host ingresó en instancia AUTO mientras espera resultado de API
-  API_CONFIRMED       // Resultado confirmado de API-Football (autoritativo)
-  HOST_OVERRIDE       // Host corrigió un resultado de API (errata con reason obligatorio)
+  HOST_MANUAL // Host ingresó en instancia MANUAL (comportamiento existente)
+  HOST_PROVISIONAL // Host ingresó en instancia AUTO mientras espera resultado de API
+  API_CONFIRMED // Resultado confirmado de API-Football (autoritativo)
+  HOST_OVERRIDE // Host corrigió un resultado de API (errata con reason obligatorio)
   SCRAPER_PROVISIONAL // Score en vivo desde servicio de scraping (picks4all-scores)
 }
 
@@ -352,15 +372,15 @@ model Pool {
   // Comentario en español: campos para pools corporativas (opcionales)
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
-  logoUrl        String?       // URL del logo para mostrar en header del pool
+  logoUrl        String? // URL del logo para mostrar en header del pool
 
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
   poolFullNotifiedAt DateTime?
 
-  members PoolMember[]
-  invites PoolInvite[]
+  members          PoolMember[]
+  invites          PoolInvite[]
   corporateInvites CorporateInvite[]
 
   createdAtUtc              DateTime                   @default(now())
@@ -383,9 +403,9 @@ model Pool {
 model EmailSuppression {
   id        String   @id @default(uuid())
   email     String
-  reason    String   // "bounced" | "complained"
-  resendId  String?  // Resend email ID that triggered the event
-  eventData Json?    // Raw webhook payload for debugging
+  reason    String // "bounced" | "complained"
+  resendId  String? // Resend email ID that triggered the event
+  eventData Json? // Raw webhook payload for debugging
   createdAt DateTime @default(now())
 
   @@unique([email])
@@ -555,7 +575,7 @@ model PoolMatchResultVersion {
   source ResultSource @default(HOST_MANUAL)
 
   // Datos de API-Football (solo si source = API_CONFIRMED)
-  externalFixtureId Int?  // ID del fixture en API-Football
+  externalFixtureId Int? // ID del fixture en API-Football
   externalDataJson  Json? // Snapshot de la respuesta de API-Football (para auditoría)
 
   createdByUserId String?
@@ -698,10 +718,10 @@ model LegalDocument {
   changeSummary String? @db.Text
 
   // Metadata
-  locale       String  @default("es") // ISO 639-1 (es, en, pt)
-  isActive     Boolean @default(false) // Solo un documento activo por tipo+locale
-  publishedAt  DateTime?
-  effectiveAt  DateTime? // Cuándo entra en vigor (puede ser futuro)
+  locale      String    @default("es") // ISO 639-1 (es, en, pt)
+  isActive    Boolean   @default(false) // Solo un documento activo por tipo+locale
+  publishedAt DateTime?
+  effectiveAt DateTime? // Cuándo entra en vigor (puede ser futuro)
 
   createdAtUtc DateTime @default(now())
   updatedAtUtc DateTime @updatedAt
@@ -754,7 +774,7 @@ model DeadlineReminderLog {
   matchId String // Partido específico para el cual se envió el recordatorio
 
   // Información del email
-  sentAt    DateTime @default(now())
+  sentAt      DateTime @default(now())
   sentToEmail String
 
   // Resultado del envío
@@ -832,35 +852,35 @@ model ResultSyncLog {
 
 // Match Sync State - Tracks individual match sync status for smart polling
 model MatchSyncState {
-  id                    String   @id @default(uuid())
-  tournamentInstanceId  String
-  tournamentInstance    TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Restrict)
-  
-  internalMatchId       String   // Match ID from dataJson
-  
+  id                   String             @id @default(uuid())
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Restrict)
+
+  internalMatchId String // Match ID from dataJson
+
   // State machine: PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
-  syncStatus            MatchSyncStatus @default(PENDING)
-  
+  syncStatus MatchSyncStatus @default(PENDING)
+
   // Timing
-  kickoffUtc            DateTime
-  firstCheckAtUtc       DateTime?  // kickoff + 5min
-  finishCheckAtUtc      DateTime?  // kickoff + 110min
-  lastCheckedAtUtc      DateTime?
-  completedAtUtc        DateTime?
-  
+  kickoffUtc       DateTime
+  firstCheckAtUtc  DateTime? // kickoff + 5min
+  finishCheckAtUtc DateTime? // kickoff + 110min
+  lastCheckedAtUtc DateTime?
+  completedAtUtc   DateTime?
+
   // API response cache
-  lastApiStatus         String?    // e.g., "1H", "HT", "2H", "FT"
+  lastApiStatus String? // e.g., "1H", "HT", "2H", "FT"
 
   // Live tracking fields (picks4all-scores integration)
-  trackedAtUtc          DateTime?  // When scraper confirmed tracking
-  graceEndUtc           DateTime?  // Grace period expiry after FT detected
-  lastElapsed           Int?       // Cached elapsed minute for live display
-  lastExtra             Int?       // Cached added-time minutes (45+X, 90+X) for live display
-  lastLiveDataJson      Json?      // Full LiveScore payload for overview API
+  trackedAtUtc     DateTime? // When scraper confirmed tracking
+  graceEndUtc      DateTime? // Grace period expiry after FT detected
+  lastElapsed      Int? // Cached elapsed minute for live display
+  lastExtra        Int? // Cached added-time minutes (45+X, 90+X) for live display
+  lastLiveDataJson Json? // Full LiveScore payload for overview API
 
-  createdAtUtc          DateTime @default(now())
-  updatedAtUtc          DateTime @updatedAt
-  
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
   @@unique([tournamentInstanceId, internalMatchId])
   @@index([syncStatus])
   @@index([firstCheckAtUtc])
@@ -868,11 +888,11 @@ model MatchSyncState {
 }
 
 enum MatchSyncStatus {
-  PENDING           // Waiting for kickoff + 5min
-  IN_PROGRESS       // Match started, waiting for finishCheckAtUtc
-  AWAITING_FINISH   // Past estimated end, polling every 5min
-  COMPLETED         // Match finished, never check again
-  SKIPPED           // No API mapping or manual mode
+  PENDING // Waiting for kickoff + 5min
+  IN_PROGRESS // Match started, waiting for finishCheckAtUtc
+  AWAITING_FINISH // Past estimated end, polling every 5min
+  COMPLETED // Match finished, never check again
+  SKIPPED // No API mapping or manual mode
 }
 
 // ==========================================
@@ -883,31 +903,31 @@ enum MatchSyncStatus {
 // a pending record is created. A job checks every 12h until resolved.
 
 model PendingPhaseSync {
-  id                    String   @id @default(uuid())
-  tournamentInstanceId  String
-  tournamentInstance    TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Restrict)
+  id                   String             @id @default(uuid())
+  tournamentInstanceId String
+  tournamentInstance   TournamentInstance @relation(fields: [tournamentInstanceId], references: [id], onDelete: Restrict)
 
-  completedPhase        String   // Phase prefix that just completed (e.g., "r16", "qf")
-  nextPhase             String   // Phase prefix to configure (e.g., "qf", "sf", "final")
-  apiRoundName          String   // API-Football round name (e.g., "Quarter-finals")
+  completedPhase String // Phase prefix that just completed (e.g., "r16", "qf")
+  nextPhase      String // Phase prefix to configure (e.g., "qf", "sf", "final")
+  apiRoundName   String // API-Football round name (e.g., "Quarter-finals")
 
-  status                PhaseSyncStatus @default(PENDING)
-  attempts              Int      @default(0)
-  lastAttemptAtUtc      DateTime?
-  resolvedAtUtc         DateTime?
-  errorMessage          String?
+  status           PhaseSyncStatus @default(PENDING)
+  attempts         Int             @default(0)
+  lastAttemptAtUtc DateTime?
+  resolvedAtUtc    DateTime?
+  errorMessage     String?
 
-  createdAtUtc          DateTime @default(now())
-  updatedAtUtc          DateTime @updatedAt
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
 
   @@unique([tournamentInstanceId, nextPhase])
   @@index([status])
 }
 
 enum PhaseSyncStatus {
-  PENDING    // Waiting for API to have fixtures
-  RESOLVED   // Successfully synced from API
-  FAILED     // Gave up after too many attempts (manual intervention needed)
+  PENDING // Waiting for API to have fixtures
+  RESOLVED // Successfully synced from API
+  FAILED // Gave up after too many attempts (manual intervention needed)
 }
 
 // ==========================================
@@ -920,23 +940,23 @@ enum BetaFeedbackType {
 }
 
 model BetaFeedback {
-  id             String           @id @default(uuid())
-  type           BetaFeedbackType
-  message        String
-  imageBase64    String?          // Screenshot as base64 string
-  wantsContact   Boolean          @default(false)
-  contactName    String?
-  phoneNumber    String?
+  id           String           @id @default(uuid())
+  type         BetaFeedbackType
+  message      String
+  imageBase64  String? // Screenshot as base64 string
+  wantsContact Boolean          @default(false)
+  contactName  String?
+  phoneNumber  String?
 
   // User info (optional - may be anonymous)
-  userId         String?
-  userEmail      String?
+  userId    String?
+  userEmail String?
 
   // Context
-  currentUrl     String?
-  userAgent      String?
+  currentUrl String?
+  userAgent  String?
 
-  createdAtUtc   DateTime         @default(now())
+  createdAtUtc DateTime @default(now())
 
   @@index([type])
   @@index([createdAtUtc])
@@ -947,27 +967,27 @@ model BetaFeedback {
 // =========================================================================
 
 enum OrganizationStatus {
-  INQUIRY     // Empresa contactó vía formulario
-  ONBOARDING  // Admin está configurando
-  ACTIVE      // Operacional
-  SUSPENDED   // Suspendida temporalmente
+  INQUIRY // Empresa contactó vía formulario
+  ONBOARDING // Admin está configurando
+  ACTIVE // Operacional
+  SUSPENDED // Suspendida temporalmente
 }
 
 model Organization {
-  id            String             @id @default(uuid())
+  id                String             @id @default(uuid())
   // Nota: name no es único — diferentes empresas pueden compartir nombre
-  name          String
-  contactEmail  String
-  contactName   String
-  contactPhone  String?
-  logoUrl       String?            // URL externa al logo (admin la pone manualmente)
-  logoBase64    String?            // Logo en base64 (como BetaFeedback.imageBase64)
-  website       String?
-  employeeCount String?            // Rango: "1-50", "51-200", "201-500", "500+"
-  welcomeMessage    String?           @db.Text  // Se muestra en el splash del pool
-  invitationMessage String?           @db.Text  // Se incluye en el email de invitación
-  notes             String?           @db.Text
-  status        OrganizationStatus @default(INQUIRY)
+  name              String
+  contactEmail      String
+  contactName       String
+  contactPhone      String?
+  logoUrl           String? // URL externa al logo (admin la pone manualmente)
+  logoBase64        String? // Logo en base64 (como BetaFeedback.imageBase64)
+  website           String?
+  employeeCount     String? // Rango: "1-50", "51-200", "201-500", "500+"
+  welcomeMessage    String?            @db.Text // Se muestra en el splash del pool
+  invitationMessage String?            @db.Text // Se incluye en el email de invitación
+  notes             String?            @db.Text
+  status            OrganizationStatus @default(INQUIRY)
 
   inquiries OrganizationInquiry[]
   pools     Pool[]
@@ -989,8 +1009,8 @@ model OrganizationInquiry {
   contactEmail  String
   contactPhone  String?
   employeeCount String?
-  message       String?  @db.Text
-  locale        String   @default("es")
+  message       String? @db.Text
+  locale        String  @default("es")
 
   responded   Boolean   @default(false)
   respondedAt DateTime?
@@ -1006,10 +1026,10 @@ model OrganizationInquiry {
 // =========================================================================
 
 enum CorporateInviteStatus {
-  PENDING     // Email validado, esperando envío
-  SENT        // Invitation email enviado
-  ACTIVATED   // Usuario creó cuenta y entró al pool
-  FAILED      // Error al enviar email
+  PENDING // Email validado, esperando envío
+  SENT // Invitation email enviado
+  ACTIVATED // Usuario creó cuenta y entró al pool
+  FAILED // Error al enviar email
 }
 
 model CorporateInvite {
@@ -1044,10 +1064,10 @@ model CorporateInvite {
 // =========================================================================
 
 enum PaymentStatus {
-  PENDING    // Checkout created, awaiting user action on Polar
-  COMPLETED  // Polar webhook confirmed payment (order.paid)
-  FAILED     // Payment failed, expired, or was abandoned
-  REFUNDED   // Refund issued via Polar dashboard
+  PENDING // Checkout created, awaiting user action on Polar
+  COMPLETED // Polar webhook confirmed payment (order.paid)
+  FAILED // Payment failed, expired, or was abandoned
+  REFUNDED // Refund issued via Polar dashboard
 }
 
 model PoolPayment {
@@ -1064,13 +1084,19 @@ model PoolPayment {
   polarOrderId    String? @unique // Order ID set by webhook on confirmation
 
   status    PaymentStatus @default(PENDING)
-  amountUsd Int           // Amount in USD cents (e.g. 799 = $7.99)
+  amountUsd Int // Amount in USD cents (e.g. 799 = $7.99)
   currency  String        @default("usd")
 
   // Capacity change this payment covers
-  fromCapacity Int    // maxParticipants before payment
-  toCapacity   Int    // maxParticipants after payment
+  fromCapacity Int // maxParticipants before payment
+  toCapacity   Int // maxParticipants after payment
   poolType     String // "personal" | "corporate"
+
+  // Unique event ID used to deduplicate Meta Pixel (browser) against Meta
+  // CAPI (server). Generated once when the payment is approved and used
+  // for BOTH emissions. Also reported back to the client so the exitoso
+  // page can re-emit the pixel event with the same ID without duplicating.
+  metaEventId String?
 
   paidAtUtc    DateTime?
   createdAtUtc DateTime  @default(now())
@@ -1086,11 +1112,36 @@ model PaymentEvent {
   id String @id @default(uuid())
 
   polarEventId String @unique // Polar's event ID for deduplication
-  eventType    String          // e.g. "order.paid", "checkout.updated"
-  payloadJson  Json            // Full webhook payload for debugging/replay
+  eventType    String // e.g. "order.paid", "checkout.updated"
+  payloadJson  Json // Full webhook payload for debugging/replay
 
   processedAtUtc DateTime @default(now())
   createdAtUtc   DateTime @default(now())
 
   @@index([polarEventId])
+}
+
+/// Dead-letter queue for Meta Conversion API events that fail after all
+/// in-process retries. A background job re-attempts delivery with the same
+/// `eventId`, so re-sends never produce duplicates in Meta Ads Manager.
+model FailedCapiEvent {
+  id String @id @default(uuid())
+
+  eventName   String // e.g. "Purchase", "CompleteRegistration"
+  eventId     String // Meta event_id (same value used in the original attempt)
+  payloadJson Json // Full CAPI body we tried to POST (minus access_token)
+
+  attemptCount  Int       @default(1)
+  lastError     String    @db.Text
+  lastAttemptAt DateTime  @default(now())
+  // When a worker should next retry. Null while being processed.
+  nextRetryAt   DateTime?
+
+  // Resolved / expired rows are kept briefly for forensics then purged.
+  resolvedAt   DateTime?
+  createdAtUtc DateTime  @default(now())
+  updatedAtUtc DateTime  @updatedAt
+
+  @@index([nextRetryAt, resolvedAt])
+  @@index([eventId])
 }

@@ -28,6 +28,7 @@ import { startLiveScoresJob, stopLiveScoresJob } from "./jobs/liveScoresJob";
 import { startFixtureTrackingJob, stopFixtureTrackingJob } from "./jobs/fixtureTrackingJob";
 import { startFixtureVerificationJob, stopFixtureVerificationJob } from "./jobs/fixtureVerificationJob";
 import { startTrackStatusCheckerJob, stopTrackStatusCheckerJob } from "./jobs/trackStatusCheckerJob";
+import { startCapiRetryJob, stopCapiRetryJob } from "./jobs/capiRetryJob";
 import { prisma } from "./db";
 
 const app = express();
@@ -285,6 +286,7 @@ const server = app.listen(PORT, () => {
   startLiveScoresJob();
   startFixtureVerificationJob();
   startTrackStatusCheckerJob();
+  startCapiRetryJob();
 });
 
 // Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)
@@ -307,6 +309,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopFixtureTrackingJob();
   stopFixtureVerificationJob();
   stopTrackStatusCheckerJob();
+  stopCapiRetryJob();
 
   // 3. Disconnect Prisma (closes DB connection pool)
   try {
