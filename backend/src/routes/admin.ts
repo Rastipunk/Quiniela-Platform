@@ -33,6 +33,7 @@ import { adminTemplatesRouter } from "./adminTemplates";
 import { adminInstancesRouter } from "./adminInstances";
 import { adminSettingsRouter } from "./adminSettings";
 import { adminCorporateRouter } from "./adminCorporate";
+import { analyticsHealthRouter } from "./analyticsHealth";
 
 export const adminRouter = Router();
 
@@ -41,6 +42,7 @@ adminRouter.use("/", adminTemplatesRouter);
 adminRouter.use("/", adminInstancesRouter);
 adminRouter.use("/settings", adminSettingsRouter);
 adminRouter.use("/corporate", adminCorporateRouter);
+adminRouter.use("/analytics", analyticsHealthRouter);
 
 // ─── Helpers ─────────────────────────────────────────────────
 
