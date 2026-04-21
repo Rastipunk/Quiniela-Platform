@@ -12,6 +12,12 @@ import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
 import { SITE_URL } from "@/lib/siteConfig";
+import {
+  getConsentDefaultsScript,
+  getGtmLoaderScript,
+  getGtmNoScriptSrc,
+  isGtmEnabled,
+} from "@/lib/gtm";
 import "../globals.css";
 
 export const viewport: Viewport = {
@@ -117,6 +123,8 @@ export default async function LocaleLayout({
   const region: PoolRegion =
     regionCookie && isValidRegion(regionCookie) ? regionCookie : DEFAULT_REGION;
 
+  const gtmEnabled = isGtmEnabled();
+
   return (
     <html lang={locale} style={{ colorScheme: "light only" } as React.CSSProperties}>
       <head>
@@ -125,8 +133,37 @@ export default async function LocaleLayout({
         <link rel="dns-prefetch" href="https://media.api-sports.io" />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
         <link rel="dns-prefetch" href="https://connect.facebook.net" />
+        {/*
+          Google Tag Manager — inlined in <head> so browser executes in
+          document order: Consent Mode v2 defaults populate dataLayer first,
+          then gtm.js is fetched and evaluates with those defaults already
+          present. Using `next/script` here is unreliable because
+          `beforeInteractive` only works in the literal root layout.
+        */}
+        {gtmEnabled && (
+          <>
+            <script
+              id="gtm-consent-defaults"
+              dangerouslySetInnerHTML={{ __html: getConsentDefaultsScript() }}
+            />
+            <script id="gtm-loader" dangerouslySetInnerHTML={{ __html: getGtmLoaderScript() }} />
+          </>
+        )}
       </head>
       <body style={{ backgroundColor: "#f4f5f7", color: "#111827" }}>
+        {/* GTM <noscript> fallback — per Google's install docs, placed
+            immediately after <body> opens so it is discoverable without JS. */}
+        {gtmEnabled && (
+          <noscript>
+            <iframe
+              src={getGtmNoScriptSrc()}
+              title="Google Tag Manager"
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
         <a href="#main-content" className="skip-to-content">Skip to content</a>
         <NextIntlClientProvider messages={messages}>
           <PoolTermProvider region={region} locale={locale}>
@@ -146,45 +183,6 @@ export default async function LocaleLayout({
             <MetaPixelPageView />
           </PoolTermProvider>
         </NextIntlClientProvider>
-        {/* Google Consent Mode v2 defaults — MUST come before GTM loads */}
-        {process.env.NEXT_PUBLIC_GTM_ID && (
-          <Script id="gtm-consent-defaults" strategy="beforeInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('consent', 'default', {
-                'analytics_storage': 'denied',
-                'ad_storage': 'denied',
-                'ad_user_data': 'denied',
-                'ad_personalization': 'denied',
-                'wait_for_update': 500
-              });
-            `}
-          </Script>
-        )}
-        {/* Google Tag Manager — manages GA4 + all other tags from GTM console */}
-        {process.env.NEXT_PUBLIC_GTM_ID && (
-          <Script id="gtm" strategy="afterInteractive">
-            {`
-              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_ID}');
-            `}
-          </Script>
-        )}
-        {/* GTM noscript fallback */}
-        {process.env.NEXT_PUBLIC_GTM_ID && (
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${process.env.NEXT_PUBLIC_GTM_ID}`}
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-            />
-          </noscript>
-        )}
         {/* Google Identity Services — loads after hydration so button is ready when AuthSlidePanel opens */}
         <Script
           src="https://accounts.google.com/gsi/client"

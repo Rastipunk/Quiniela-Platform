@@ -7,34 +7,37 @@ import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { getToken } from "@/lib/auth";
 import { initMetaPixel, trackMetaEvent } from "@/lib/metaPixel";
+import { updateConsent, type ConsentValue } from "@/lib/analytics";
 
 const CONSENT_KEY = "p4a_cookie_consent";
-type ConsentState = "granted" | "denied" | null;
+type ConsentState = ConsentValue | null;
 
 function getStoredConsent(): ConsentState {
   if (typeof window === "undefined") return null;
-  const v = localStorage.getItem(CONSENT_KEY);
-  if (v === "granted" || v === "denied") return v;
+  try {
+    const v = localStorage.getItem(CONSENT_KEY);
+    if (v === "granted" || v === "denied") return v;
+  } catch {
+    // localStorage may throw in private mode / with storage disabled.
+  }
   return null;
 }
 
-/**
- * Push Google Consent Mode v2 defaults and updates to dataLayer.
- * GTM reads these to control which tags fire.
- *
- * @see https://developers.google.com/tag-platform/security/guides/consent
- */
-function updateGtmConsent(consent: "granted" | "denied") {
-  if (typeof window === "undefined") return;
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({
-    event: "consent_update",
-    analytics_storage: consent,
-    ad_storage: consent,
-    ad_user_data: consent,
-    ad_personalization: consent,
-  });
+function persistConsent(value: ConsentValue): void {
+  try {
+    localStorage.setItem(CONSENT_KEY, value);
+  } catch {
+    // Best-effort: analytics still work in-session even without persistence.
+  }
+}
 
+/**
+ * Apply a consent decision end-to-end: update Google Consent Mode v2 so
+ * GA4/GTM tags unlock, and kick off the Meta Pixel (which only loads after
+ * consent to keep us compliant).
+ */
+function applyConsent(consent: ConsentValue): void {
+  updateConsent(consent);
   if (consent === "granted") {
     initMetaPixel();
     trackMetaEvent("PageView");
@@ -42,13 +45,14 @@ function updateGtmConsent(consent: "granted" | "denied") {
 }
 
 /**
- * Auto-accept analytics consent for authenticated users.
- * Call this after successful login or registration.
+ * Auto-accept analytics consent for authenticated users. The ToS they agreed
+ * to at registration discloses analytics usage (Privacy Policy §11), so an
+ * authenticated session is an implicit grant on any device they sign into.
  */
 export function acceptAnalyticsConsent(): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CONSENT_KEY, "granted");
-  updateGtmConsent("granted");
+  persistConsent("granted");
+  applyConsent("granted");
 }
 
 /**
@@ -69,43 +73,44 @@ export function CookieConsent() {
     const stored = getStoredConsent();
 
     if (stored) {
-      // Already made a choice — apply it silently
-      updateGtmConsent(stored);
+      // Already made a choice — re-apply it so Consent Mode transitions from
+      // the default 'denied' state without waiting for user action.
+      applyConsent(stored);
       return;
     }
 
-    // Authenticated users auto-accept analytics.
-    // By registering/logging in they accepted the ToS which discloses
-    // analytics usage (Privacy Policy §11). This also covers new devices.
+    // Authenticated users auto-accept analytics (see acceptAnalyticsConsent).
     const token = getToken();
     if (token) {
-      localStorage.setItem(CONSENT_KEY, "granted");
-      updateGtmConsent("granted");
+      persistConsent("granted");
+      applyConsent("granted");
       return;
     }
 
-    // Respect Do Not Track for anonymous visitors
+    // Respect Do Not Track for anonymous visitors.
     const dnt = navigator.doNotTrack === "1";
     if (dnt) {
-      localStorage.setItem(CONSENT_KEY, "denied");
-      updateGtmConsent("denied");
+      persistConsent("denied");
+      // Default is already denied; no need to re-push, but do it for clarity
+      // (it is a no-op on GTM's side when the value matches the current one).
+      applyConsent("denied");
       return;
     }
 
-    // Anonymous visitor, no stored preference, no DNT → show banner
-    updateGtmConsent("denied");
+    // Anonymous visitor, no stored preference, no DNT → show banner.
+    // Default remains 'denied' from the inline script in <head>.
     setVisible(true);
   }, []);
 
   function handleAccept() {
-    localStorage.setItem(CONSENT_KEY, "granted");
-    updateGtmConsent("granted");
+    persistConsent("granted");
+    applyConsent("granted");
     setVisible(false);
   }
 
   function handleReject() {
-    localStorage.setItem(CONSENT_KEY, "denied");
-    updateGtmConsent("denied");
+    persistConsent("denied");
+    applyConsent("denied");
     setVisible(false);
   }
 
