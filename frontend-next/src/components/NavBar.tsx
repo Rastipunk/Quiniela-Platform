@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { clearToken, getToken } from "@/lib/auth";
 import { getUserProfile, logout as apiLogout, type UserProfile } from "@/lib/api";
+import { setAnalyticsUserId } from "@/lib/analytics";
+import { revokeMetaPixelConsent } from "@/lib/metaPixel";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { BrandIsotipo, BrandLogotipo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
@@ -77,6 +79,11 @@ export function NavBar() {
   }
 
   function handleLogout() {
+    // Clear analytics identity BEFORE redirect so no event is attributed to
+    // the previous user once the next page renders. Meta Pixel consent is
+    // revoked as well to prevent cross-user tracking on shared devices.
+    setAnalyticsUserId(null);
+    revokeMetaPixelConsent();
     apiLogout().catch(() => {}); // Clear server-side cookie
     clearToken();
     sessionStorage.removeItem("p4a_profile_cache");

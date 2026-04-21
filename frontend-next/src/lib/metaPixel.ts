@@ -75,6 +75,29 @@ export function initMetaPixel(): void {
 }
 
 /**
+ * Revoke Meta Pixel consent. Stops all further data collection from the
+ * pixel until `initMetaPixel()` runs again with granted consent.
+ *
+ * Meta does NOT honour Google Consent Mode v2 signals — it requires this
+ * explicit `fbq('consent', 'revoke')` command. Also clears stored user
+ * data so logout/reject on a shared device does not leak PII to the next
+ * session.
+ *
+ * @see https://developers.facebook.com/docs/meta-pixel/implementation/gdpr
+ */
+export function revokeMetaPixelConsent(): void {
+  if (typeof window === "undefined") return;
+  if (typeof window.fbq === "function") {
+    window.fbq("consent", "revoke");
+  }
+  try {
+    localStorage.removeItem(USER_DATA_KEY);
+  } catch {
+    // localStorage may be disabled — nothing to clear.
+  }
+}
+
+/**
  * Generate a unique event ID for browser/CAPI deduplication.
  */
 export function generateEventId(): string {

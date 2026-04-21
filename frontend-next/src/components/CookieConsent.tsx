@@ -6,7 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { getToken } from "@/lib/auth";
-import { initMetaPixel, trackMetaEvent } from "@/lib/metaPixel";
+import { initMetaPixel, trackMetaEvent, revokeMetaPixelConsent } from "@/lib/metaPixel";
 import { updateConsent, type ConsentValue } from "@/lib/analytics";
 
 const CONSENT_KEY = "p4a_cookie_consent";
@@ -41,6 +41,11 @@ function applyConsent(consent: ConsentValue): void {
   if (consent === "granted") {
     initMetaPixel();
     trackMetaEvent("PageView");
+  } else {
+    // Explicit revoke: Meta Pixel does not honour Google Consent Mode v2,
+    // so a generic analytics-denied update is not enough — we must tell fbq
+    // directly to stop collecting.
+    revokeMetaPixelConsent();
   }
 }
 
