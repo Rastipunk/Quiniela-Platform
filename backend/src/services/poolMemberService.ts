@@ -15,6 +15,7 @@ import { transitionToActive } from "./poolStateMachine";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendMemberRemovedEmail } from "../lib/email";
 import { countryToLocale } from "../lib/constants";
+import { sendGa4Event } from "../lib/ga4";
 import { ServiceError, type AuditContext } from "./authService";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -386,6 +387,21 @@ export async function leaveMember(
     dataJson: { reason: "Voluntary leave" },
     ip: ctx.ip,
     userAgent: ctx.userAgent,
+  }));
+
+  // Churn-analysis telemetry. Pairing `pool_joined` with `pool_left`
+  // lets GA4 cohorts surface retention curves without needing BigQuery.
+  fireAndForget("ga4mp:pool_left", sendGa4Event({
+    userId,
+    ipOverride: ctx.ip ?? undefined,
+    userAgent: ctx.userAgent ?? undefined,
+    events: [{
+      name: "pool_left",
+      params: {
+        pool_id: poolId,
+        role: member.role,
+      },
+    }],
   }));
 
   return { message: "Left pool successfully" };

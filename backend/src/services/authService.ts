@@ -225,6 +225,13 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
   fireAndForget("verification email", sendVerificationEmail({
     to: user.email, displayName: user.displayName, verificationToken: emailVerificationToken,
   }));
+  // Activation-funnel telemetry. Without this step, every signup looks
+  // identical in analytics — we can't distinguish users who got a
+  // deliverable email from those who bounced (bad address, spam filter).
+  fireAndForget("ga4mp:email_verification_sent", sendGa4Event({
+    userId: user.id,
+    events: [{ name: "email_verification_sent", params: { method: "email" } }],
+  }));
 
   const metaEventId = crypto.randomUUID();
   fireAndForget("capi:register", sendCapiEvent({
@@ -565,6 +572,16 @@ export async function verifyEmail(token: string, ctx: AuditContext): Promise<Ver
   fireAndForget("welcome email", sendWelcomeEmail({
     to: user.email, userId: user.id, displayName: user.displayName,
     locale: countryToLocale(user.country),
+  }));
+
+  // Activation-funnel telemetry. Pairing `email_verification_sent` with
+  // this completes the ratio GA4 reports use to spot deliverability /
+  // token-link breakage (time-to-verify + verification rate).
+  fireAndForget("ga4mp:email_verification_completed", sendGa4Event({
+    userId: user.id,
+    ipOverride: ctx.ip ?? undefined,
+    userAgent: ctx.userAgent ?? undefined,
+    events: [{ name: "email_verification_completed", params: { method: "email" } }],
   }));
 
   return { verified: true, alreadyVerified: false };

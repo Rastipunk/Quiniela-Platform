@@ -609,6 +609,20 @@ export async function handleCheckoutUpdated(payload: {
         data: { status: "FAILED" },
       });
       console.log(`[PaymentService] Checkout ${checkoutId} ${checkoutStatus}, payment marked FAILED`);
+      fireAndForget("ga4mp:payment_failed-polar", sendGa4Event({
+        userId: payment.userId,
+        events: [{
+          name: "payment_failed",
+          params: {
+            transaction_id: payment.polarCheckoutId,
+            affiliation: "Polar",
+            currency: "USD",
+            value: payment.amountUsd / 100,
+            reason: checkoutStatus,
+            payment_method: "polar",
+          },
+        }],
+      }));
     }
   }
 }
@@ -926,6 +940,24 @@ export async function processMpPayment(
       where: { id: payment.id },
       data: { status: "FAILED" },
     });
+    // Monetisation-funnel telemetry. Without this event the funnel
+    // drops off at `begin_checkout → add_payment_info` with no
+    // signal of *why* — rejected cards / wrong CVV / bank decline
+    // are indistinguishable from ragequit cancellations.
+    fireAndForget("ga4mp:payment_failed-mp", sendGa4Event({
+      userId: payment.userId,
+      events: [{
+        name: "payment_failed",
+        params: {
+          transaction_id: String(result.id),
+          affiliation: "Mercado Pago Colombia",
+          currency: "COP",
+          value: mpPurchaseValue(payment),
+          reason: result.statusDetail ?? "rejected",
+          payment_method: "mercadopago",
+        },
+      }],
+    }));
   }
   // "pending" and "in_process" statuses are handled by IPN webhook later
 
@@ -1086,6 +1118,20 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       where: { id: payment.id },
       data: { status: "FAILED" },
     });
+    fireAndForget("ga4mp:payment_failed-mp-ipn", sendGa4Event({
+      userId: payment.userId,
+      events: [{
+        name: "payment_failed",
+        params: {
+          transaction_id: `mp-${paymentMpId}`,
+          affiliation: "Mercado Pago Colombia",
+          currency: "COP",
+          value: mpPurchaseValue(payment),
+          reason: mpPayment.status_detail ?? mpPayment.status ?? "unknown",
+          payment_method: "mercadopago",
+        },
+      }],
+    }));
   } else if (mpPayment.status === "refunded" || mpPayment.status === "charged_back") {
     // Only meaningful if the payment was previously COMPLETED; otherwise
     // there is no revenue to reverse.

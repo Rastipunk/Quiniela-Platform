@@ -39,12 +39,30 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
   const isMobile = useIsMobile();
 
   const [mode, setMode] = useState<"login" | "register">("login");
+  // One-shot flag: we only want to report `begin_registration` the
+  // first time the register form becomes visible per panel opening. A
+  // user toggling between Login ↔ Register tabs should NOT fire it
+  // repeatedly, and closing/reopening the panel resets it naturally.
+  const beginRegistrationFiredRef = useRef(false);
 
   useEffect(() => {
     if (isOpen && initialMode) {
       setMode(initialMode);
     }
+    if (!isOpen) {
+      beginRegistrationFiredRef.current = false;
+    }
   }, [isOpen, initialMode]);
+
+  useEffect(() => {
+    if (!isOpen || mode !== "register" || beginRegistrationFiredRef.current) return;
+    beginRegistrationFiredRef.current = true;
+    // Top-of-funnel signal. Without this, the funnel jumps from
+    // "signup button clicked" (a CTA event) straight to `sign_up` on
+    // successful submit, masking any drop-off that happens while the
+    // user is staring at the form.
+    trackEvent("begin_registration", { method: "email" });
+  }, [isOpen, mode]);
 
   const [email, setEmail] = useState("");
   const [emailConfirm, setEmailConfirm] = useState("");
