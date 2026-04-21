@@ -10,6 +10,21 @@ import { initMetaPixel, trackMetaEvent, revokeMetaPixelConsent } from "@/lib/met
 import { updateConsent, type ConsentValue } from "@/lib/analytics";
 
 const CONSENT_KEY = "p4a_cookie_consent";
+/**
+ * Custom DOM event that the Footer (and any other surface) can dispatch
+ * to re-open the consent banner after the user has already made a
+ * choice. GDPR requires the preference to be revocable with the same
+ * ease it was granted; exposing a hidden `localStorage` edit is not
+ * sufficient. Listening inside `CookieConsent` keeps the side-effect
+ * contained — no prop drilling, no context.
+ */
+const CONSENT_REOPEN_EVENT = "p4a:consent:reopen";
+
+export function openCookieConsent(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(CONSENT_REOPEN_EVENT));
+}
+
 type ConsentState = ConsentValue | null;
 
 function getStoredConsent(): ConsentState {
@@ -88,8 +103,23 @@ export function CookieConsent() {
         setVisible(false);
       }
     }
+    function onReopen(): void {
+      // Imperative reopen from the Footer. Clear the persisted choice so
+      // the next applyConsent() call represents a fresh decision, and
+      // show the banner regardless of previous state or DNT.
+      try {
+        localStorage.removeItem(CONSENT_KEY);
+      } catch {
+        // best-effort
+      }
+      setVisible(true);
+    }
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(CONSENT_REOPEN_EVENT, onReopen);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(CONSENT_REOPEN_EVENT, onReopen);
+    };
   }, []);
 
   useEffect(() => {

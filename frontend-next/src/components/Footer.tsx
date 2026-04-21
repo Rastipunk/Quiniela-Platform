@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BrandIsotipo } from "./BrandLogo";
+import { openCookieConsent } from "./CookieConsent";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import type { PoolRegion } from "@/lib/poolTerms";
 
@@ -129,6 +130,27 @@ export function Footer() {
           >
             {t("refundPolicy")}
           </Link>
+          {/* GDPR / CCPA require the consent decision to be as easy to
+              revoke as it was to grant. The button reopens the same
+              banner users saw on first visit — tracked nowhere else. */}
+          <button
+            type="button"
+            onClick={openCookieConsent}
+            style={{
+              fontSize: 13,
+              color: "var(--muted)",
+              textDecoration: "none",
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              margin: 0,
+              cursor: "pointer",
+              textAlign: "left",
+              font: "inherit",
+            }}
+          >
+            {t("manageCookies")}
+          </button>
         </div>
 
         {/* Explore (Resources + Regional merged) */}
