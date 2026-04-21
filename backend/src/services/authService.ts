@@ -114,6 +114,25 @@ async function generateUniqueUsername(email: string): Promise<string> {
 
 // -- Register --
 
+/**
+ * First-touch marketing attribution forwarded by the frontend. Every
+ * field is optional; an organic cold-start user won't supply any. Stored
+ * verbatim on the User row at creation and NEVER overwritten later.
+ */
+export interface AttributionInput {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  content?: string;
+  term?: string;
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
+  fbclid?: string;
+  landingPath?: string;
+  referrerUrl?: string;
+}
+
 export type RegisterInput = {
   email: string;
   username: string;
@@ -126,6 +145,7 @@ export type RegisterInput = {
   acceptMarketing?: boolean;
   fbClickId?: string;
   fbBrowserId?: string;
+  attribution?: AttributionInput;
 };
 
 export type RegisterResult = {
@@ -176,6 +196,18 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
       ageVerifiedAt: now,
       marketingConsent: data.acceptMarketing || false,
       marketingConsentAt: data.acceptMarketing ? now : null,
+      // First-touch attribution: only written at creation, never updated.
+      acquisitionSource: data.attribution?.source,
+      acquisitionMedium: data.attribution?.medium,
+      acquisitionCampaign: data.attribution?.campaign,
+      acquisitionContent: data.attribution?.content,
+      acquisitionTerm: data.attribution?.term,
+      landingPath: data.attribution?.landingPath,
+      referrerUrl: data.attribution?.referrerUrl,
+      gclid: data.attribution?.gclid,
+      gbraid: data.attribution?.gbraid,
+      wbraid: data.attribution?.wbraid,
+      fbclid: data.attribution?.fbclid,
     },
     select: {
       id: true, email: true, username: true, displayName: true,
@@ -206,9 +238,30 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
       fbc: data.fbClickId,
       fbp: data.fbBrowserId,
     },
+    customData: buildAttributionCustomData(data.attribution),
   }));
 
   return { user, emailVerificationSent: true, metaEventId };
+}
+
+/**
+ * Project the frontend attribution payload into the shape Meta expects
+ * as `custom_data`. Returns `undefined` when there is nothing to send,
+ * keeping the CAPI payload compact.
+ */
+function buildAttributionCustomData(
+  attribution?: AttributionInput,
+): Record<string, string> | undefined {
+  if (!attribution) return undefined;
+  const out: Record<string, string> = {};
+  if (attribution.source) out.utm_source = attribution.source;
+  if (attribution.medium) out.utm_medium = attribution.medium;
+  if (attribution.campaign) out.utm_campaign = attribution.campaign;
+  if (attribution.content) out.utm_content = attribution.content;
+  if (attribution.term) out.utm_term = attribution.term;
+  if (attribution.gclid) out.gclid = attribution.gclid;
+  if (attribution.fbclid) out.fbclid = attribution.fbclid;
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 // -- Login --
@@ -314,6 +367,7 @@ export type GoogleAuthInput = {
   acceptMarketing?: boolean;
   fbClickId?: string;
   fbBrowserId?: string;
+  attribution?: AttributionInput;
 };
 
 export type GoogleAuthResult = { user: SerializedUser; isNewUser: boolean; metaEventId?: string };
@@ -382,6 +436,19 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
       ageVerifiedAt: now,
       marketingConsent: data.acceptMarketing || false,
       marketingConsentAt: data.acceptMarketing ? now : null,
+      // First-touch attribution — write-once, same rules as the
+      // email/password path above.
+      acquisitionSource: data.attribution?.source,
+      acquisitionMedium: data.attribution?.medium,
+      acquisitionCampaign: data.attribution?.campaign,
+      acquisitionContent: data.attribution?.content,
+      acquisitionTerm: data.attribution?.term,
+      landingPath: data.attribution?.landingPath,
+      referrerUrl: data.attribution?.referrerUrl,
+      gclid: data.attribution?.gclid,
+      gbraid: data.attribution?.gbraid,
+      wbraid: data.attribution?.wbraid,
+      fbclid: data.attribution?.fbclid,
     },
     select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, googleId: true },
   });
@@ -409,6 +476,7 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
       fbc: data.fbClickId,
       fbp: data.fbBrowserId,
     },
+    customData: buildAttributionCustomData(data.attribution),
   }));
 
   return { user: serializeUser(newUser), isNewUser: true, metaEventId };

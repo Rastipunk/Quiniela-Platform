@@ -1,6 +1,7 @@
 // Auth API — login, register, Google OAuth, password recovery, email verification
 import { requestJson } from "./client";
 import { getMetaCookies } from "@/lib/metaPixel";
+import { getAttributionPayload, clearAttribution } from "@/lib/attribution";
 
 export type LoginResponse = {
   token?: string;
@@ -31,7 +32,8 @@ export async function register(
   consent?: RegisterConsentOptions
 ): Promise<LoginResponse> {
   const { fbc, fbp } = getMetaCookies();
-  return requestJson<LoginResponse>("/auth/register", {
+  const attribution = getAttributionPayload();
+  const result = await requestJson<LoginResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify({
       email,
@@ -45,8 +47,13 @@ export async function register(
       acceptMarketing: consent?.acceptMarketing ?? false,
       fbClickId: fbc,
       fbBrowserId: fbp,
+      attribution,
     }),
   });
+  // Clear session attribution after successful signup so subsequent
+  // re-logins from the same browser don't re-send it.
+  if (result.token) clearAttribution();
+  return result;
 }
 
 export async function forgotPassword(email: string): Promise<{ message: string }> {
@@ -69,7 +76,8 @@ export async function loginWithGoogle(
   consent?: RegisterConsentOptions
 ): Promise<LoginResponse> {
   const { fbc, fbp } = getMetaCookies();
-  return requestJson<LoginResponse>("/auth/google", {
+  const attribution = getAttributionPayload();
+  const result = await requestJson<LoginResponse>("/auth/google", {
     method: "POST",
     body: JSON.stringify({
       idToken,
@@ -80,8 +88,11 @@ export async function loginWithGoogle(
       acceptMarketing: consent?.acceptMarketing,
       fbClickId: fbc,
       fbBrowserId: fbp,
+      attribution,
     }),
   });
+  if (result.token) clearAttribution();
+  return result;
 }
 
 export type VerifyEmailResponse = {

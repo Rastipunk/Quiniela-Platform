@@ -8,6 +8,7 @@ import { routing } from "@/i18n/routing";
 import { JsonLd } from "@/components/JsonLd";
 import { CookieConsent } from "@/components/CookieConsent";
 import { MetaPixelPageView } from "@/components/MetaPixelPageView";
+import { AttributionCapture } from "@/components/AttributionCapture";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
@@ -181,6 +182,7 @@ export default async function LocaleLayout({
             {children}
             <CookieConsent />
             <MetaPixelPageView />
+            <AttributionCapture />
           </PoolTermProvider>
         </NextIntlClientProvider>
         {/* Google Identity Services — loads after hydration so button is ready when AuthSlidePanel opens */}

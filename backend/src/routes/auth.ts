@@ -58,6 +58,27 @@ function handleServiceError(res: any, err: unknown): void {
 
 // ─── Schemas ─────────────────────────────────────────────────
 
+// Attribution payload forwarded by the frontend's captureAttribution().
+// Every field is optional — a cold-organic user won't have any of these.
+// Capped at 200 chars each to absorb nothing malicious in case the URL
+// was crafted; we don't trust the client even though the data is cosmetic.
+const attributionSchema = z
+  .object({
+    source: z.string().max(200).optional(),
+    medium: z.string().max(200).optional(),
+    campaign: z.string().max(200).optional(),
+    content: z.string().max(200).optional(),
+    term: z.string().max(200).optional(),
+    gclid: z.string().max(200).optional(),
+    gbraid: z.string().max(200).optional(),
+    wbraid: z.string().max(200).optional(),
+    fbclid: z.string().max(200).optional(),
+    landingPath: z.string().max(500).optional(),
+    referrerUrl: z.string().max(500).optional(),
+  })
+  .strict()
+  .optional();
+
 const registerSchema = z.object({
   email: z.string().email(),
   username: z.string().min(3).max(20),
@@ -70,6 +91,7 @@ const registerSchema = z.object({
   acceptMarketing: z.boolean().optional().default(false),
   fbClickId: z.string().optional(),
   fbBrowserId: z.string().optional(),
+  attribution: attributionSchema,
 });
 
 const loginSchema = z.object({
@@ -95,6 +117,7 @@ const googleAuthSchema = z.object({
   acceptMarketing: z.boolean().optional().default(false),
   fbClickId: z.string().optional(),
   fbBrowserId: z.string().optional(),
+  attribution: attributionSchema,
 });
 
 const verifyEmailSchema = z.object({
