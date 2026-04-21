@@ -15,15 +15,17 @@ const ACCESS_TOKEN = process.env.META_CAPI_ACCESS_TOKEN || "";
 const TEST_EVENT_CODE = process.env.META_TEST_EVENT_CODE || "";
 const API_VERSION = "v21.0";
 
-// EEA + UK country codes (ISO 3166-1 alpha-2). When a request comes from
-// one of these, we apply Meta's Limited Data Use flag so the event is
-// processed under GDPR constraints (no custom audience building, no
-// optimisation using this data).
+// EEA + UK + Switzerland country codes (ISO 3166-1 alpha-2). When a
+// request comes from one of these, we apply Meta's Limited Data Use flag
+// so the event is processed under GDPR constraints (no custom audience
+// building, no optimisation using this data). Switzerland (CH) is not
+// formally in the EEA but has aligned its data-protection law (revFADP)
+// with GDPR, so we treat it the same for compliance.
 const EEA_COUNTRY_CODES = new Set([
-  "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI",
-  "FR", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU",
-  "LV", "MT", "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK",
-  "UK", "GB",
+  "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES",
+  "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI",
+  "LT", "LU", "LV", "MT", "NL", "NO", "PL", "PT", "RO", "SE",
+  "SI", "SK",
 ]);
 
 // Retry config. Exponential backoff with jitter inside the in-process

@@ -1102,7 +1102,15 @@ model PoolPayment {
   polarOrderId    String? @unique // Order ID set by webhook on confirmation
 
   status    PaymentStatus @default(PENDING)
-  amountUsd Int // Amount in USD cents (e.g. 799 = $7.99)
+  amountUsd Int // Amount in USD cents (e.g. 799 = $7.99). Stored for ALL
+  // gateways so the platform has a unified USD figure. For COP payments
+  // this is the USD equivalent at checkout time; the real pesos paid live
+  // in `amountCop`.
+  /// Actual COP amount paid, in whole pesos (Mercado Pago has no sub-unit).
+  /// Null for non-MP payments. Use this when reporting Purchase `value` to
+  /// GA4/Meta so revenue dashboards reflect what the customer really paid,
+  /// not the USD cents equivalent.
+  amountCop Int?
   currency  String        @default("usd")
 
   // Capacity change this payment covers

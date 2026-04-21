@@ -426,6 +426,28 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
       ip: ctx.ip, userAgent: ctx.userAgent,
     }));
 
+    // Server-side Login event fan-out. New users emit `sign_up` further
+    // down; returning users get a `login` signal so GA4 can distinguish
+    // acquisition from re-engagement, and Meta CAPI receives a canonical
+    // Login event to feed back into audience building.
+    fireAndForget("capi:google-login", sendCapiEvent({
+      eventName: "Login",
+      eventId: `login_google_${user.id}_${Date.now()}`,
+      userData: {
+        externalId: user.id,
+        email: user.email,
+        clientIpAddress: ctx.ip ?? undefined,
+        clientUserAgent: ctx.userAgent ?? undefined,
+      },
+      customData: { method: "google" },
+    }));
+    fireAndForget("ga4mp:login-google", sendGa4Event({
+      userId: user.id,
+      ipOverride: ctx.ip ?? undefined,
+      userAgent: ctx.userAgent ?? undefined,
+      events: [{ name: "login", params: { method: "google" } }],
+    }));
+
     return { user: serializeUser(user), isNewUser: false };
   }
 

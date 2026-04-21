@@ -38,6 +38,30 @@ import {
   createPreference as mpCreatePreference,
 } from "./mercadopago/client";
 
+// ── Helpers ────────────────────────────────────────────────────
+
+/**
+ * Resolves the COP value to report on a Purchase event for a Mercado Pago
+ * payment. Prefers the persisted `amountCop` column (authoritative since
+ * the 20260421 migration); falls back to recomputing from the pricing
+ * library for pre-migration rows that still have NULL. We never use
+ * `amountUsd` here — it's USD cents, mislabelled as COP pesos would
+ * under-report revenue by ~40x.
+ */
+function mpPurchaseValue(payment: {
+  amountCop: number | null;
+  poolType: string;
+  fromCapacity: number;
+  toCapacity: number;
+}): number {
+  if (payment.amountCop != null) return payment.amountCop;
+  return calculateUpgradePriceCop(
+    payment.poolType as PoolType,
+    payment.fromCapacity,
+    payment.toCapacity,
+  );
+}
+
 // ── Types ──────────────────────────────────────────────────────
 
 export interface InitiateCheckoutInput {
@@ -711,6 +735,11 @@ export async function initiateMpCheckout(
       polarCheckoutId: reference,
       status: "PENDING",
       amountUsd: usdToCents(amountUsd),
+      // Real pesos paid — used later for accurate Purchase event value.
+      // Storing it explicitly avoids reconstructing it from `amountUsd`
+      // (which is a lossy USD-cents approximation that would report
+      // ~40x less revenue than the customer actually paid).
+      amountCop,
       currency: "cop",
       fromCapacity: currentCapacity,
       toCapacity: targetCapacity,
@@ -855,7 +884,11 @@ export async function processMpPayment(
         clientUserAgent,
       },
       customData: {
-        value: payment.amountUsd,
+        // COP Purchase: value must be the REAL pesos paid, not the USD cents
+        // equivalent. `amountCop` is written at checkout creation; fallback
+        // to recomputing from the pricing library handles pre-migration
+        // rows that still have NULL amountCop.
+        value: mpPurchaseValue(payment),
         currency: "COP",
         content_type: "product",
         content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
@@ -873,13 +906,13 @@ export async function processMpPayment(
           transaction_id: String(result.id),
           affiliation: "Mercado Pago Colombia",
           currency: "COP",
-          value: payment.amountUsd,
+          value: mpPurchaseValue(payment),
           items: [{
             item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
             item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
             item_category: "pool_capacity",
             item_variant: payment.poolType,
-            price: payment.amountUsd,
+            price: mpPurchaseValue(payment),
             quantity: 1,
             currency: "COP",
           }],
@@ -991,7 +1024,7 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
         country: userForIpnCapi?.country ?? undefined,
       },
       customData: {
-        value: payment.amountUsd,
+        value: mpPurchaseValue(payment),
         currency: "COP",
         content_type: "product",
         content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
@@ -1007,13 +1040,13 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
           transaction_id: `mp-${paymentMpId}`,
           affiliation: "Mercado Pago Colombia",
           currency: "COP",
-          value: payment.amountUsd,
+          value: mpPurchaseValue(payment),
           items: [{
             item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
             item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
             item_category: "pool_capacity",
             item_variant: payment.poolType,
-            price: payment.amountUsd,
+            price: mpPurchaseValue(payment),
             quantity: 1,
             currency: "COP",
           }],
