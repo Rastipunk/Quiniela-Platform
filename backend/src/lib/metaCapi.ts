@@ -99,11 +99,25 @@ function buildUserData(data: CapiUserData): Record<string, string | undefined> {
     ph: phone ? sha256(phone) : undefined,
     client_ip_address: data.clientIpAddress,
     client_user_agent: data.clientUserAgent,
-    fbc: data.fbc,
-    fbp: data.fbp,
+    // fbp / fbc have a defined shape (see
+    // https://developers.facebook.com/docs/meta-pixel/advanced/cookies).
+    // A malformed value doesn't just get ignored by Meta — it breaks
+    // browser↔server deduplication, inflating the Events Manager count
+    // and silently poisoning the EMQ score. Drop anything unparseable.
+    fbc: isValidFbc(data.fbc) ? data.fbc : undefined,
+    fbp: isValidFbp(data.fbp) ? data.fbp : undefined,
     external_id: data.externalId ? sha256(data.externalId) : undefined,
     country: data.country ? sha256(data.country) : undefined,
   };
+}
+
+const FBP_RE = /^fb\.\d\.\d+\.\d+$/; // "fb.<subdomainIndex>.<creationTime>.<random>"
+const FBC_RE = /^fb\.\d\.\d+\.[A-Za-z0-9_-]+$/; // "fb.<subdomainIndex>.<creationTime>.<fbclid>"
+function isValidFbp(value: string | undefined): value is string {
+  return typeof value === "string" && FBP_RE.test(value);
+}
+function isValidFbc(value: string | undefined): value is string {
+  return typeof value === "string" && FBC_RE.test(value);
 }
 
 function buildEventBody(params: CapiEventParams): Record<string, unknown> {
@@ -224,7 +238,9 @@ export async function sendCapiEvent(params: CapiEventParams): Promise<void> {
     }
 
     if (attempt < MAX_IN_PROCESS_RETRIES) {
-      await sleep(IN_PROCESS_BACKOFF_MS[attempt] ?? 4_000);
+      const base = IN_PROCESS_BACKOFF_MS[attempt] ?? 4_000;
+      // ±25% jitter — same rationale as the DLQ path, at a smaller scale.
+      await sleep(base + (Math.random() * 0.5 - 0.25) * base);
     }
   }
 
@@ -256,7 +272,12 @@ export async function sendCapiEvent(params: CapiEventParams): Promise<void> {
 function nextRetryAt(attempts: number): Date {
   const idx = Math.min(attempts - 1, DLQ_BACKOFF_MINUTES.length - 1);
   const minutes = DLQ_BACKOFF_MINUTES[idx] ?? 1_440;
-  return new Date(Date.now() + minutes * 60_000);
+  // ±20% jitter. When 100 events fail simultaneously (e.g. a brief
+  // Meta outage), identical backoffs would schedule them all for the
+  // same retry tick and recreate the thundering herd against Meta.
+  // Uniformly spreading the reschedule stops that.
+  const jitter = (Math.random() * 0.4 - 0.2) * minutes * 60_000;
+  return new Date(Date.now() + minutes * 60_000 + jitter);
 }
 
 /**

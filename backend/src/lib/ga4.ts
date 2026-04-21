@@ -147,7 +147,10 @@ function sanitizeParams(input: Record<string, unknown>): Record<string, unknown>
 function nextRetryAt(attempts: number): Date {
   const idx = Math.min(attempts - 1, DLQ_BACKOFF_MINUTES.length - 1);
   const minutes = DLQ_BACKOFF_MINUTES[idx] ?? 1_440;
-  return new Date(Date.now() + minutes * 60_000);
+  // ±20% jitter to break up thundering-herd retries when many events
+  // fail in the same outage window.
+  const jitter = (Math.random() * 0.4 - 0.2) * minutes * 60_000;
+  return new Date(Date.now() + minutes * 60_000 + jitter);
 }
 
 /**
@@ -176,7 +179,10 @@ export async function sendGa4Event(params: Ga4SendParams): Promise<void> {
       lastError = err;
     }
     if (attempt < MAX_IN_PROCESS_RETRIES) {
-      await sleep(IN_PROCESS_BACKOFF_MS[attempt] ?? 4_000);
+      const base = IN_PROCESS_BACKOFF_MS[attempt] ?? 4_000;
+      // ±25% jitter — breaks up retry storms when multiple workers
+      // share the same transient failure window.
+      await sleep(base + (Math.random() * 0.5 - 0.25) * base);
     }
   }
 

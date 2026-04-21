@@ -81,6 +81,23 @@ export const CONSENT_SIGNALS = [
 type ConsentSignal = (typeof CONSENT_SIGNALS)[number];
 
 /**
+ * Soft cap on how many entries we keep on `window.dataLayer`. GTM only
+ * needs the most recent events to match triggers — older entries are
+ * just memory overhead. A SPA session that lives for hours and fires
+ * `pool_viewed` / `pick_saved` hundreds of times would otherwise grow
+ * unbounded. When we cross the cap we drop the OLDEST entries, keeping
+ * the freshest `DATALAYER_MAX` around.
+ */
+const DATALAYER_MAX = 500;
+function trimDataLayer(): void {
+  if (typeof window === "undefined") return;
+  const dl = window.dataLayer;
+  if (!Array.isArray(dl)) return;
+  if (dl.length <= DATALAYER_MAX) return;
+  dl.splice(0, dl.length - DATALAYER_MAX);
+}
+
+/**
  * Mirror of Google's `gtag()` helper. Pushes a command tuple to dataLayer so
  * GTM recognises it as a directive (consent, config, set, ...) instead of a
  * custom event. Using `dataLayer.push({ event: "...", ... })` for consent
@@ -92,6 +109,7 @@ export function gtag(...args: unknown[]): void {
   if (typeof window === "undefined") return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push(args);
+  trimDataLayer();
   debugLog(`gtag ${String(args[0])} ${String(args[1] ?? "")}`.trim(), args);
 }
 
@@ -105,6 +123,7 @@ export function trackEvent(event: string, params?: Record<string, unknown>): voi
   if (typeof window === "undefined") return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ event, ...params });
+  trimDataLayer();
   debugLog(`event ${event}`, { event, ...params });
 }
 
