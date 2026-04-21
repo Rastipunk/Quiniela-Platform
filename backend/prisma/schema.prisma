@@ -124,6 +124,16 @@ model User {
   wbraid              String? // Google Ads app campaigns
   fbclid              String? // Meta Ads click id
 
+  // =========================================================================
+  // REFERRAL GRAPH
+  // User-to-user attribution: who invited whom. Set once when a user joins
+  // their first pool via an invite code; null for organic signups. Enables
+  // cohort LTV analysis (referred users vs self-serve).
+  // =========================================================================
+  referredByUserId String?
+  referredByUser   User?   @relation("Referrals", fields: [referredByUserId], references: [id])
+  referrals        User[]  @relation("Referrals")
+
   createdAtUtc DateTime     @default(now())
   updatedAtUtc DateTime     @updatedAt
   predictions  Prediction[]
@@ -459,11 +469,19 @@ model PoolInvite {
   maxUses Int?
   uses    Int  @default(0)
 
+  /// Denormalised record of the FIRST user who redeemed this invite. Set
+  /// atomically inside the join transaction. Multi-use invites keep this
+  /// as the very first redeemer; downstream analytics can still walk the
+  /// audit log to enumerate every joiner if needed.
+  acceptedByUserId String?
+  acceptedAtUtc    DateTime?
+
   expiresAtUtc DateTime?
 
   createdAtUtc DateTime @default(now())
 
   @@index([poolId])
+  @@index([acceptedByUserId])
 }
 
 model Prediction {
@@ -1136,9 +1154,9 @@ model FailedAnalyticsEvent {
   eventId     String // stable id used to dedupe at the sink
   payloadJson Json // full POST body we tried to send (no secrets)
 
-  attemptCount  Int      @default(1)
-  lastError     String   @db.Text
-  lastAttemptAt DateTime @default(now())
+  attemptCount  Int       @default(1)
+  lastError     String    @db.Text
+  lastAttemptAt DateTime  @default(now())
   // When a worker should next retry. Null while being processed.
   nextRetryAt   DateTime?
 

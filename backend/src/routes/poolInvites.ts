@@ -14,6 +14,9 @@ import { ensurePoolCapacity } from "../lib/poolCapacity";
 import { TOKEN_EXPIRY_MS, countryToLocale } from "../lib/constants";
 import { poolJoinLimiter } from "../middleware/rateLimit";
 import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
+import { fireAndForget } from "../lib/asyncHelpers";
+import { sendGa4Event } from "../lib/ga4";
+import { sendCapiEvent } from "../lib/metaCapi";
 
 export const poolInvitesRouter = Router();
 
@@ -197,6 +200,11 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
         throw new Error("BANNED_FROM_POOL");
       }
 
+    // Referral graph capture: fire only for first-time members. LEFT
+    // re-joins re-use the existing membership and MUST NOT overwrite the
+    // user's original referrer — a returning user is not a new referral.
+    let isFirstTimeReferral = false;
+
     if (!existing) {
       // Lock Pool row + verify capacity (prevents race condition)
       await ensurePoolCapacity(tx, invite.poolId, invite.pool.maxParticipants);
@@ -208,6 +216,7 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
           status: initialStatus,
         },
       });
+      isFirstTimeReferral = true;
     } else if (existing.status === "LEFT") {
       // Verify capacity before reactivating (LEFT user doesn't count toward capacity)
       await ensurePoolCapacity(tx, invite.poolId, invite.pool.maxParticipants);
@@ -234,7 +243,30 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
       data: { uses: { increment: 1 } },
     });
 
-    return { poolId: invite.poolId, status: initialStatus };
+    let referrerUserId: string | null = null;
+    if (isFirstTimeReferral) {
+      // Record the FIRST redeemer on the invite (multi-use invites keep
+      // the headline referrer, later joiners are still enumerable from
+      // the audit log). updateMany with `acceptedByUserId: null` makes
+      // the write atomic against concurrent redeemers.
+      await tx.poolInvite.updateMany({
+        where: { id: invite.id, acceptedByUserId: null },
+        data: { acceptedByUserId: req.auth!.userId, acceptedAtUtc: new Date() },
+      });
+
+      // Populate User.referredByUserId only if still null AND the
+      // inviter is not the joiner themselves (self-invites should not
+      // count as referrals for cohort analysis).
+      if (invite.createdByUserId !== req.auth!.userId) {
+        const updated = await tx.user.updateMany({
+          where: { id: req.auth!.userId, referredByUserId: null },
+          data: { referredByUserId: invite.createdByUserId },
+        });
+        if (updated.count > 0) referrerUserId = invite.createdByUserId;
+      }
+    }
+
+    return { poolId: invite.poolId, status: initialStatus, referrerUserId };
   });
   } catch (err: any) {
     if (err.message === "BANNED_FROM_POOL") {
@@ -263,10 +295,41 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
       action: "POOL_JOINED",
       entityType: "Pool",
       entityId: joined.poolId,
-      dataJson: { code: parsed.data.code },
+      dataJson: {
+        code: parsed.data.code,
+        referrerUserId: joined.referrerUserId,
+      },
       ip: req.ip,
       userAgent: req.get("user-agent") ?? null,
     });
+
+    // Referral attribution fan-out: server-side analytics emission for
+    // any ACTIVE join that came from someone else's invite. Custom event
+    // on both GA4 and Meta CAPI; it's a signal, not a standard purchase.
+    if (joined.referrerUserId) {
+      fireAndForget("ga4mp:referral_conversion", sendGa4Event({
+        userId: req.auth!.userId,
+        ipOverride: req.ip,
+        userAgent: req.get("user-agent") ?? undefined,
+        events: [{
+          name: "referral_conversion",
+          params: {
+            referrer_user_id: joined.referrerUserId,
+            pool_id: joined.poolId,
+            invite_code: parsed.data.code,
+          },
+        }],
+      }));
+      fireAndForget("capi:referral_conversion", sendCapiEvent({
+        eventName: "Lead",
+        userData: { externalId: req.auth!.userId },
+        customData: {
+          content_name: "referral_conversion",
+          referrer_user_id: joined.referrerUserId,
+          invite_code: parsed.data.code,
+        },
+      }));
+    }
 
     // Trigger transición DRAFT → ACTIVE solo si el join fue directo
     await transitionToActive(joined.poolId, req.auth!.userId);

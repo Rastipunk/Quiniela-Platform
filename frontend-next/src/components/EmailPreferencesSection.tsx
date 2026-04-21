@@ -4,6 +4,7 @@ import { colors } from "@/lib/theme";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getToken } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
 import {
   getUserEmailPreferences,
   updateUserEmailPreferences,
@@ -131,6 +132,13 @@ export function EmailPreferencesSection() {
     try {
       const result = await updateUserEmailPreferences(token, { [key]: newValue });
       setPreferences(result.preferences);
+      // Single event name `notification_subscription_toggled` regardless of
+      // channel so the GA4 funnel for notification-engagement stays unified.
+      // `type` discriminates the specific preference; `enabled` is the new state.
+      trackEvent("notification_subscription_toggled", {
+        type: key,
+        enabled: newValue,
+      });
       setSuccess(t("emailPrefs.saved"));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(null), 2000);

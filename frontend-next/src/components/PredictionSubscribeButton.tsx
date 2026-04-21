@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { getToken } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
+import { trackMetaCustomEvent } from "@/lib/metaPixel";
 import { colors } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
 
@@ -67,7 +69,16 @@ export function PredictionSubscribeButton() {
       if (res.ok) {
         const data = await res.json();
         setIsSubscribed(data.enabled);
+        trackEvent("notification_subscription_toggled", {
+          type: "prediction_updates",
+          enabled: data.enabled,
+        });
+        // Only fire Lead on opt-IN (not on unsubscribe) so Meta Ads optimiser
+        // treats this as a positive signal.
         if (data.enabled) {
+          trackMetaCustomEvent("PredictionSubscribed", {
+            content_name: "prediction_updates",
+          });
           setJustSubscribed(true);
           setTimeout(() => setJustSubscribed(false), 4000);
         }
