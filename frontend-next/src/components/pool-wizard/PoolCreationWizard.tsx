@@ -19,6 +19,7 @@ import { createCorporatePool } from "@/lib/api/corporate";
 import type { WizardMode } from "@/types/poolWizard";
 import { trackEvent } from "@/lib/analytics";
 import { trackMetaCustomEvent } from "@/lib/metaPixel";
+import { trackBeginCheckout } from "@/lib/ecommerce";
 import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
 import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT } from "@/lib/pricing";
 
@@ -140,6 +141,7 @@ function WizardInner() {
 
       // Check if payment is needed (user selected capacity above free limit)
       const freeLimit = state.mode === "corporate" ? CORPORATE_FREE_LIMIT : PERSONAL_FREE_LIMIT;
+      const poolType = state.mode === "corporate" ? "corporate" : "personal";
       if (effectiveCapacity > freeLimit && token) {
         try {
           // Detect country to choose gateway
@@ -149,6 +151,13 @@ function WizardInner() {
           if (isColombia) {
             // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick
             const mpData = await createMpCheckout(poolId, effectiveCapacity);
+            trackBeginCheckout({
+              fromCapacity: freeLimit,
+              toCapacity: effectiveCapacity,
+              poolType,
+              price: mpData.amountCop,
+              currency: "COP",
+            });
             const params = new URLSearchParams({
               publicKey: mpData.publicKey || process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || "",
               amount: String(mpData.amountCop),
@@ -156,6 +165,12 @@ function WizardInner() {
               reference: mpData.reference,
               preferenceId: mpData.preferenceId,
               poolId,
+              // Passed through so the Brick page can emit add_payment_info /
+              // purchase with the same canonical shape (no price recomputation
+              // client-side means GA4 value stays consistent across events).
+              fromCapacity: String(freeLimit),
+              toCapacity: String(effectiveCapacity),
+              poolType,
             });
             const localePrefix = locale === "es" ? "" : `/${locale}`;
             window.location.href = `${localePrefix}/pago/checkout?${params.toString()}`;
@@ -163,6 +178,13 @@ function WizardInner() {
           } else {
             // Polar redirect (International/USD)
             const checkout = await createCheckout(poolId, effectiveCapacity);
+            trackBeginCheckout({
+              fromCapacity: freeLimit,
+              toCapacity: effectiveCapacity,
+              poolType,
+              price: checkout.amountUsd,
+              currency: "USD",
+            });
             window.location.href = checkout.checkoutUrl;
             return;
           }

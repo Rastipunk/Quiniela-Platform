@@ -56,7 +56,21 @@ export interface PaymentStatusResult {
   status: string;
   fromCapacity: number;
   toCapacity: number;
+  /**
+   * Amount paid, always in MAJOR units (dollars for USD, pesos for COP).
+   * Kept named `amountUsd` for backward compatibility with existing
+   * frontend code, but `currency` tells you what unit this is in.
+   */
   amountUsd: number;
+  currency: "USD" | "COP";
+  poolType: "personal" | "corporate";
+  /**
+   * Gateway-level unique transaction identifier. Present only when
+   * `status === "COMPLETED"`. Used as GA4 `transaction_id` for purchase
+   * events — same value from both the client-side approval event and the
+   * exitoso page polling, so GA4 deduplicates them cleanly.
+   */
+  transactionId: string | null;
   paidAtUtc: string | null;
 }
 
@@ -323,8 +337,17 @@ export async function handleOrderPaid(payload: {
   }));
 
   if (metadata.userId) {
+    // Stable event_id shared by CAPI and (eventually) the browser Pixel.
+    // Persist on the payment row so the success-page pixel emission uses
+    // the same ID and Meta deduplicates automatically.
+    const metaEventId = crypto.randomUUID();
+    await prisma.poolPayment.update({
+      where: { id: payment.id },
+      data: { metaEventId },
+    });
     fireAndForget("capi:purchase-polar", sendCapiEvent({
       eventName: "Purchase",
+      eventId: metaEventId,
       userData: { externalId: metadata.userId },
       customData: { value: payment.amountUsd / 100, currency: "USD" },
     }));
@@ -411,11 +434,19 @@ export async function getPaymentStatus(
 
   if (!payment) return null;
 
+  const currency = payment.currency.toUpperCase() as "USD" | "COP";
+  // USD payments are stored in cents (Polar standard). COP payments are
+  // stored as whole pesos (no cents in COP). Convert only for USD.
+  const amountMajor = currency === "USD" ? payment.amountUsd / 100 : payment.amountUsd;
+
   return {
     status: payment.status,
     fromCapacity: payment.fromCapacity,
     toCapacity: payment.toCapacity,
-    amountUsd: payment.amountUsd / 100, // cents to dollars
+    amountUsd: amountMajor,
+    currency,
+    poolType: (payment.poolType as "personal" | "corporate") ?? "personal",
+    transactionId: payment.polarOrderId ?? null,
     paidAtUtc: payment.paidAtUtc?.toISOString() ?? null,
   };
 }
@@ -536,11 +567,26 @@ export async function initiateMpCheckout(
  * We enrich it with our reference/description and pass it through
  * to the MP Payment API — matching the official integration pattern.
  */
-export async function processMpPayment(input: {
+export interface MpProcessInput {
   paymentId: string; // our PoolPayment ID
   formData: Record<string, unknown>;
-}): Promise<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }> {
-  const { paymentId, formData } = input;
+  /**
+   * Optional Meta cookies forwarded from the browser (`_fbc`, `_fbp`). When
+   * present the CAPI event includes them so Meta can stitch server-side
+   * conversions back to the original browsing session — critical for
+   * attribution on iOS / ITP-restricted browsers.
+   */
+  metaCookies?: { fbc?: string; fbp?: string };
+  /** Request metadata for CAPI user_data enrichment. */
+  clientIpAddress?: string;
+  clientUserAgent?: string;
+  country?: string;
+}
+
+export async function processMpPayment(
+  input: MpProcessInput,
+): Promise<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }> {
+  const { paymentId, formData, metaCookies, clientIpAddress, clientUserAgent, country } = input;
 
   // Find our payment record
   const payment = await prisma.poolPayment.findUnique({ where: { id: paymentId } });
@@ -597,10 +643,23 @@ export async function processMpPayment(input: {
     }));
 
     const metaEventId = crypto.randomUUID();
+    // Persist so the exitoso page (and any IPN re-entry) re-uses the same
+    // event_id and Meta deduplicates across emission channels.
+    await prisma.poolPayment.update({
+      where: { id: payment.id },
+      data: { metaEventId },
+    });
     fireAndForget("capi:purchase-mp", sendCapiEvent({
       eventName: "Purchase",
       eventId: metaEventId,
-      userData: { externalId: payment.userId },
+      userData: {
+        externalId: payment.userId,
+        fbp: metaCookies?.fbp,
+        fbc: metaCookies?.fbc,
+        clientIpAddress,
+        clientUserAgent,
+        country,
+      },
       customData: { value: payment.amountUsd, currency: "COP" },
     }));
 
@@ -655,10 +714,20 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   if (!payment || payment.status === "COMPLETED") return;
 
   if (mpPayment.status === "approved") {
+    // Re-use the event_id from the sync flow if the browser already fired
+    // a Pixel event (dedupe). Otherwise mint a new one and persist it for
+    // any future re-entry (rare but possible with MP retries).
+    const metaEventId = payment.metaEventId ?? crypto.randomUUID();
+
     await prisma.$transaction(async (tx) => {
       await tx.poolPayment.update({
         where: { id: payment.id },
-        data: { status: "COMPLETED", polarOrderId: `mp-${paymentMpId}`, paidAtUtc: new Date() },
+        data: {
+          status: "COMPLETED",
+          polarOrderId: `mp-${paymentMpId}`,
+          paidAtUtc: new Date(),
+          metaEventId,
+        },
       });
       await tx.pool.update({
         where: { id: payment.poolId },
@@ -669,6 +738,7 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
 
     fireAndForget("capi:purchase-mp-ipn", sendCapiEvent({
       eventName: "Purchase",
+      eventId: metaEventId,
       userData: { externalId: payment.userId },
       customData: { value: payment.amountUsd, currency: "COP" },
     }));

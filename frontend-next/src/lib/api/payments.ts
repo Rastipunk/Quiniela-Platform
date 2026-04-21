@@ -16,7 +16,12 @@ export interface PaymentStatusResponse {
   status: "NONE" | "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
   fromCapacity?: number;
   toCapacity?: number;
+  /** Amount in MAJOR units (dollars for USD, pesos for COP). See currency. */
   amountUsd?: number;
+  currency?: "USD" | "COP";
+  poolType?: "personal" | "corporate";
+  /** Gateway transaction ID — stable across polls for GA4 dedup. */
+  transactionId?: string | null;
   paidAtUtc?: string | null;
 }
 
@@ -81,18 +86,30 @@ export interface MpCheckoutResponse {
   preferenceId: string;
 }
 
+export interface MpProcessMetaCookies {
+  /** Meta click ID cookie `_fbc`. Passed through to CAPI so browser+server
+   *  events deduplicate against the same user/device fingerprint. */
+  fbc?: string;
+  /** Meta browser ID cookie `_fbp`. See above. */
+  fbp?: string;
+}
+
 /**
  * Process payment from Payment Brick data.
  * Sends the Brick's native formData directly — the backend enriches
  * it with server-side values and forwards to the MP Payment API.
+ *
+ * `metaCookies` is optional but recommended: without it, Meta CAPI on the
+ * server cannot tie the conversion back to the browsing session.
  */
 export async function processMpPayment(
   paymentId: string,
   formData: Record<string, unknown>,
+  metaCookies?: MpProcessMetaCookies,
 ): Promise<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }> {
   return requestJson<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }>("/payments/mp-process", {
     method: "POST",
-    body: JSON.stringify({ paymentId, formData }),
+    body: JSON.stringify({ paymentId, formData, metaCookies }),
   });
 }
 

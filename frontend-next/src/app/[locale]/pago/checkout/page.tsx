@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -8,7 +8,13 @@ import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
 import { processMpPayment } from "@/lib/api/payments";
 import { formatCOP } from "@/lib/pricing";
-import { trackMetaEvent } from "@/lib/metaPixel";
+import { trackMetaEvent, getMetaCookies } from "@/lib/metaPixel";
+import {
+  trackAddPaymentInfo,
+  trackPurchase,
+  type PoolUpgradeItem,
+  type PoolType,
+} from "@/lib/ecommerce";
 
 // Map MP status_detail to i18n key for rejection messages
 const STATUS_DETAIL_KEY: Record<string, string> = {
@@ -51,6 +57,25 @@ export default function MpCheckoutPage() {
   const paymentId = searchParams.get("paymentId") || "";
   const preferenceId = searchParams.get("preferenceId") || "";
   const poolId = searchParams.get("poolId") || "";
+  const fromCapacity = Number(searchParams.get("fromCapacity") || "0");
+  const toCapacity = Number(searchParams.get("toCapacity") || "0");
+  const poolType: PoolType =
+    (searchParams.get("poolType") as PoolType) === "corporate" ? "corporate" : "personal";
+
+  // The upgrade the user is paying for. Memoised so every GA4 ecommerce
+  // event fired from this page shares the exact same `items[]` and `value`
+  // — what deduplicates cleanly in reports — and the effect deps stay
+  // stable across renders.
+  const upgrade: PoolUpgradeItem = useMemo(
+    () => ({
+      fromCapacity,
+      toCapacity,
+      poolType,
+      price: amount,
+      currency: "COP",
+    }),
+    [fromCapacity, toCapacity, poolType, amount],
+  );
 
   useEffect(() => {
     if (brickInitialized.current) return;
@@ -113,11 +138,27 @@ export default function MpCheckoutPage() {
                 return Promise.resolve();
               }
 
+              // GA4 `add_payment_info`: user has committed a payment method
+              // and is about to submit. Fires once per submit attempt.
+              trackAddPaymentInfo({ upgrade, paymentType: selectedPaymentMethod });
+
               setStatus("processing");
 
-              return processMpPayment(paymentId, formData)
+              // Forward Meta cookies to CAPI so browser + server events
+              // deduplicate against the same user/device fingerprint.
+              const metaCookies = getMetaCookies();
+
+              return processMpPayment(paymentId, formData, metaCookies)
                 .then((result) => {
                   if (result.status === "approved") {
+                    // GA4 `purchase`: `transaction_id` is the gateway's
+                    // payment ID so re-firing from the polling success page
+                    // is a no-op (GA4 deduplicates by transaction_id).
+                    trackPurchase({
+                      transactionId: String(result.mpPaymentId),
+                      affiliation: "Mercado Pago Colombia",
+                      upgrade,
+                    });
                     trackMetaEvent("Purchase", { value: amount, currency: "COP" }, result.metaEventId);
                     setStatus("success");
                     setTimeout(() => router.push(`/pools/${poolId}`), 2000);
@@ -125,7 +166,9 @@ export default function MpCheckoutPage() {
                     setStatus("error");
                     setErrorMsg(getRejectionMessage(t, result.statusDetail));
                   } else {
-                    // pending / in_process — async payment (PSE, Nequi)
+                    // pending / in_process — async payment (PSE, Nequi).
+                    // The exitoso page polls getPaymentStatus() and fires
+                    // `purchase` once the IPN webhook confirms approval.
                     setStatus("success");
                     setTimeout(() => router.push(`/pago/exitoso?poolId=${poolId}`), 2000);
                   }
@@ -164,7 +207,7 @@ export default function MpCheckoutPage() {
         brickControllerRef.current.unmount();
       }
     };
-  }, [publicKey, amount, preferenceId, paymentId, poolId, router]);
+  }, [publicKey, amount, preferenceId, paymentId, poolId, router, upgrade, t]);
 
   const handleRetry = () => {
     // Unmount existing Brick before re-creating

@@ -6,14 +6,15 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
-import { trackEvent } from "@/lib/analytics";
 import { trackMetaEvent } from "@/lib/metaPixel";
+import { trackViewItemList, buildUpgradeItem } from "@/lib/ecommerce";
 import {
   getPersonalTiers,
   getCorporateTiers,
   formatCOP,
   CORPORATE_FREE_LIMIT,
   CORPORATE_BASE_PRICE,
+  PERSONAL_FREE_LIMIT,
 } from "@/lib/pricing";
 
 function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean }) {
@@ -37,9 +38,44 @@ function FeatureCheck({ label, highlight }: { label: string; highlight?: boolean
 export function PricingPageContent() {
   const t = useTranslations("pricingPage");
   const f = useTranslations("landing");
-  useEffect(() => { trackEvent("pricing_page_viewed"); trackMetaEvent("ViewContent", { content_type: "pricing", content_name: "pricing_page" }); }, []);
   const personalTiers = getPersonalTiers(300);
   const corporateTiers = getCorporateTiers(300);
+
+  useEffect(() => {
+    // GA4 Enhanced Ecommerce `view_item_list`: the unified pricing catalog
+    // for both personal and corporate pool upgrades. Tier prices already
+    // come in COP from getPersonalTiers/getCorporateTiers.
+    const items = [
+      ...personalTiers
+        .filter((tier) => !tier.isFree)
+        .map((tier) =>
+          buildUpgradeItem({
+            fromCapacity: PERSONAL_FREE_LIMIT,
+            toCapacity: tier.maxParticipants,
+            poolType: "personal",
+            price: tier.totalPrice,
+            currency: "COP",
+          }),
+        ),
+      ...corporateTiers
+        .filter((tier) => tier.maxParticipants !== CORPORATE_FREE_LIMIT)
+        .map((tier) =>
+          buildUpgradeItem({
+            fromCapacity: CORPORATE_FREE_LIMIT,
+            toCapacity: tier.maxParticipants,
+            poolType: "corporate",
+            price: tier.totalPrice,
+            currency: "COP",
+          }),
+        ),
+    ];
+    trackViewItemList({
+      listId: "pricing_page",
+      listName: "Pool capacity upgrades",
+      items,
+    });
+    trackMetaEvent("ViewContent", { content_type: "pricing", content_name: "pricing_page" });
+  }, [personalTiers, corporateTiers]);
 
   const baseFeatures = [
     f("pricing.features.leaderboard"),

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { getPaymentStatus } from "@/lib/api/payments";
 import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
+import { trackPurchase } from "@/lib/ecommerce";
 
 /** Maximum polling attempts (2s interval × 15 = 30s) */
 const MAX_POLLS = 15;
@@ -21,6 +22,14 @@ export default function PaymentSuccessPage() {
   const [status, setStatus] = useState<"polling" | "confirmed" | "timeout">("polling");
   const [capacity, setCapacity] = useState<number | null>(null);
 
+  // Tracks whether we have already fired `purchase` for this page instance.
+  // The Payment Brick flow (MP sync approval) fires `purchase` on the
+  // checkout page itself; this page re-fires only when the user landed
+  // here via an async gateway (Polar, PSE, Nequi) and the polling detects
+  // COMPLETED. GA4 ultimately dedupes by transaction_id, but this guard
+  // prevents even sending the duplicate push to dataLayer.
+  const purchaseReported = useRef(false);
+
   useEffect(() => {
     if (!poolId) return;
 
@@ -31,6 +40,31 @@ export default function PaymentSuccessPage() {
         if (result.status === "COMPLETED") {
           setStatus("confirmed");
           setCapacity(result.toCapacity ?? null);
+          if (
+            !purchaseReported.current &&
+            result.transactionId &&
+            result.fromCapacity != null &&
+            result.toCapacity != null &&
+            result.amountUsd != null &&
+            result.currency &&
+            result.poolType
+          ) {
+            purchaseReported.current = true;
+            trackPurchase({
+              transactionId: result.transactionId,
+              affiliation:
+                result.currency === "USD"
+                  ? "Polar International"
+                  : "Mercado Pago Colombia",
+              upgrade: {
+                fromCapacity: result.fromCapacity,
+                toCapacity: result.toCapacity,
+                poolType: result.poolType,
+                price: result.amountUsd,
+                currency: result.currency,
+              },
+            });
+          }
           clearInterval(interval);
         }
       } catch { /* ignore polling errors */ }
