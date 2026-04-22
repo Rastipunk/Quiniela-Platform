@@ -944,7 +944,16 @@ export async function getPlayerSummary(
             phaseConfig,
           );
           totalPoints += scoring.totalPoints;
-        } catch {}
+        } catch (err) {
+          // Do NOT re-throw: we want the loop to keep scoring the rest
+          // of this member's picks even if one throws (malformed pick,
+          // bad phaseConfig). But DO log with enough context to debug
+          // — the previous silent catch hid real scoring bugs.
+          console.error(
+            `[poolAdminService] scoreMatchPick failed pool=${poolId} user=${member.userId} match=${match.id}:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
       } else {
         const preset = getScoringPreset(pool.scoringPresetKey ?? "CLASSIC");
         const scoringResult = {

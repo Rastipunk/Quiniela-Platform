@@ -447,13 +447,22 @@ router.post(
 // Obtiene estadísticas de recordatorios enviados
 // =========================================================================
 
+// Bounded `days`: prevents accidental queries over years of history.
+// 7 keeps the legacy default; 365 ceiling caps the worst case.
+const reminderStatsQuerySchema = z.object({
+  poolId: z.string().uuid().optional(),
+  days: z.coerce.number().int().min(1).max(365).optional().default(7),
+});
+
 router.get(
   "/email/reminders/stats",
   async (req: AuthenticatedRequest, res: Response) => {
+    const parsed = reminderStatsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+    }
+    const { poolId, days } = parsed.data;
     try {
-      const poolId = req.query.poolId as string | undefined;
-      const days = parseInt(req.query.days as string) || 7;
-
       const stats = await getDeadlineReminderStats(poolId, days);
 
       return sendData(res, {

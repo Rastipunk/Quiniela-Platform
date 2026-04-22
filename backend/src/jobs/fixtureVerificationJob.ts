@@ -166,7 +166,9 @@ async function runFixtureVerification(): Promise<void> {
 </table>
 <p>Threshold: ${DRIFT_THRESHOLD_MS / 60_000} minutes</p>`,
       type: "error",
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error("[FixtureVerificationJob] sendAdminNotification failed:", err instanceof Error ? err.message : String(err));
+    });
   } catch (err) {
     console.error(
       "[FixtureVerifyJob] Error:",

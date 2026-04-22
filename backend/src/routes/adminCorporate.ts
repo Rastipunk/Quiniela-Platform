@@ -22,22 +22,26 @@ adminCorporateRouter.use(requireAuth, requireAdmin);
 // =========================================================================
 
 // GET /admin/corporate/inquiries — Listar inquiries
+// `z.coerce.number` coerces + validates in one step so we never reach
+// a downstream `parseInt || default` silent-failure pattern. Clamp to
+// PAGINATION.MAX_LIMIT at the schema level, not after the fact.
 const inquiryQuerySchema = z.object({
   responded: z.enum(["true", "false"]).optional(),
-  page: z.string().default("1"),
-  limit: z.string().default("50"),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).optional().default(PAGINATION.DEFAULT_LIMIT),
 });
 
 adminCorporateRouter.get("/inquiries", async (req, res) => {
   const parsed = inquiryQuerySchema.safeParse(req.query);
-  const { responded, page, limit } = parsed.success ? parsed.data : { responded: undefined, page: "1", limit: "50" };
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+  const { responded, page: pageNum, limit: limitNum } = parsed.data;
 
   const where: Prisma.OrganizationInquiryWhereInput = {};
   if (responded === "true") where.responded = true;
   if (responded === "false") where.responded = false;
 
-  const pageNum = Math.max(1, parseInt(page) || 1);
-  const limitNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(limit) || PAGINATION.DEFAULT_LIMIT));
   const skip = (pageNum - 1) * limitNum;
 
   const [inquiries, total] = await Promise.all([

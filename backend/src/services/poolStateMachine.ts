@@ -83,16 +83,23 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
   // Verificar que todos los partidos tengan resultado
   const allMatches = extractMatches(pool.tournamentInstance.dataJson);
 
-  // Contar resultados publicados
+  // Only count results that actually have a PUBLISHED version. A
+  // PoolMatchResult header row can legitimately exist with
+  // `currentVersionId = null` (e.g. erratum that reverted every
+  // version), and if we count it as "done" the pool transitions to
+  // COMPLETED while the scoring loop below silently ignores the match
+  // (`if (r.currentVersion)` guard) — producing a completed pool with
+  // wrong leaderboard.
   const results = await prisma.poolMatchResult.findMany({
     where: {
       poolId,
-      matchId: { in: allMatches.map((m) => m.id) }
+      matchId: { in: allMatches.map((m) => m.id) },
+      currentVersionId: { not: null },
     }
   });
 
   if (results.length !== allMatches.length) {
-    // No todos los partidos tienen resultado
+    // Some matches don't have a published result yet — remain ACTIVE.
     return;
   }
 

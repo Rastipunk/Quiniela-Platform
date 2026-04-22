@@ -83,20 +83,31 @@ feedbackRouter.post("/", feedbackLimiter, optionalAuth, async (req, res) => {
   });
 });
 
+// Query schema used for both admin list endpoints. Zod coerces string
+// numbers and clamps ranges so callers can't send `limit=99999` or
+// negative pages. `z.coerce.number` converts "1" → 1 implicitly.
+const adminListQuerySchema = z.object({
+  type: z.enum(["BUG", "SUGGESTION"]).optional(),
+  wantsContact: z.enum(["true", "false"]).optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(PAGINATION.MAX_LIMIT).optional().default(PAGINATION.DEFAULT_LIMIT),
+});
+
 // GET /feedback/admin — list all feedback (admin only)
 feedbackRouter.get("/admin", requireAuth, requireAdmin, async (req, res) => {
-  const { type, wantsContact, page = "1", limit = "50" } = req.query;
+  const parsed = adminListQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+  const { type, wantsContact, page: pageNum, limit: limitNum } = parsed.data;
 
   const where: any = {};
-  if (type === "BUG" || type === "SUGGESTION") {
+  if (type) {
     where.type = type;
   }
   if (wantsContact === "true") {
     where.wantsContact = true;
   }
-
-  const pageNum = Math.max(1, parseInt(page as string) || 1);
-  const limitNum = Math.min(PAGINATION.MAX_LIMIT, Math.max(1, parseInt(limit as string) || PAGINATION.DEFAULT_LIMIT));
   const skip = (pageNum - 1) * limitNum;
 
   const [feedbacks, total] = await Promise.all([

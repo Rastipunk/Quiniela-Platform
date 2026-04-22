@@ -132,7 +132,7 @@ export async function getPoolMatches(data: GetPoolMatchesInput): Promise<GetPool
 
   const enriched = matches.map((m) => {
     const deadlineUtc = computeDeadlineUtc(m.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
-    const isLocked = deadlineUtc ? now.getTime() > deadlineUtc.getTime() : false;
+    const isLocked = deadlineUtc ? now.getTime() >= deadlineUtc.getTime() : false;
 
     return {
       ...m,
@@ -199,7 +199,11 @@ export async function upsertPick(
   }
 
   const now = new Date();
-  if (now.getTime() > deadlineUtc.getTime()) {
+  // Strict `>=` so a pick arriving at exactly the deadline millisecond is
+  // rejected. The display-side `isLocked` flag below uses the same
+  // operator, keeping UI and server agreement: once the deadline hits,
+  // the form locks AND the save endpoint refuses.
+  if (now.getTime() >= deadlineUtc.getTime()) {
     throw new ServiceError("DEADLINE_PASSED", 409, {
       deadlineUtc: deadlineUtc.toISOString(),
       nowUtc: now.toISOString(),
