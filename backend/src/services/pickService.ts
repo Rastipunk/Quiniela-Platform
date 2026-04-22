@@ -25,10 +25,22 @@ export function computeDeadlineUtc(kickoffUtcIso: string, minutesBefore: number)
   return new Date(kickoff.getTime() - minutesBefore * 60_000);
 }
 
-/** Check if a user is an active member of the pool. */
+/** Check if a user is an ACTIVE member of the pool — required for writes
+ *  (creating / editing picks). LEFT members must NOT pass this check. */
 export async function requireActivePoolMember(userId: string, poolId: string): Promise<boolean> {
   const member = await prisma.poolMember.findFirst({
     where: { poolId, userId, status: "ACTIVE" },
+  });
+  return member != null;
+}
+
+/** Check if a user can READ pool / match / pick data — looser than
+ *  `requireActivePoolMember` because LEFT members retain read-only access
+ *  to preserve their points and history (see CLAUDE.md §6 invariant 4).
+ *  Use this for any endpoint that returns data, not mutates it. */
+export async function requirePoolMemberReadAccess(userId: string, poolId: string): Promise<boolean> {
+  const member = await prisma.poolMember.findFirst({
+    where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
   });
   return member != null;
 }
@@ -118,7 +130,9 @@ export type GetMyPicksResult = {
 export async function getPoolMatches(data: GetPoolMatchesInput): Promise<GetPoolMatchesResult> {
   const { userId, poolId } = data;
 
-  const isMember = await requireActivePoolMember(userId, poolId);
+  // READ access: LEFT members can still list matches (their picks stay
+  // visible in read-only mode — see CLAUDE.md §6 invariant 4).
+  const isMember = await requirePoolMemberReadAccess(userId, poolId);
   if (!isMember) throw new ServiceError("FORBIDDEN", 403);
 
   const pool = await prisma.pool.findUnique({
@@ -247,7 +261,8 @@ export async function upsertPick(
 export async function getMatchPicks(data: GetMatchPicksInput): Promise<GetMatchPicksResult> {
   const { userId, poolId, matchId } = data;
 
-  const isMember = await requireActivePoolMember(userId, poolId);
+  // READ access — allow LEFT members (see `requirePoolMemberReadAccess`).
+  const isMember = await requirePoolMemberReadAccess(userId, poolId);
   if (!isMember) throw new ServiceError("FORBIDDEN", 403);
 
   const pool = await prisma.pool.findUnique({
@@ -337,7 +352,8 @@ export async function getMatchPicks(data: GetMatchPicksInput): Promise<GetMatchP
 export async function getMyPicks(data: GetMyPicksInput): Promise<GetMyPicksResult> {
   const { userId, poolId } = data;
 
-  const isMember = await requireActivePoolMember(userId, poolId);
+  // READ access — allow LEFT members to see their preserved picks.
+  const isMember = await requirePoolMemberReadAccess(userId, poolId);
   if (!isMember) throw new ServiceError("FORBIDDEN", 403);
 
   const list = await prisma.prediction.findMany({

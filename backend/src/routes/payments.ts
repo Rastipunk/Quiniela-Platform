@@ -242,7 +242,15 @@ function verifyMpSignature(req: Request): boolean {
   const crypto = require("crypto") as typeof import("crypto");
   const computed = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
 
-  return computed === hash;
+  // Timing-safe comparison. A plain `===` leaks information through
+  // early-exit: an attacker who can observe response times byte-by-byte
+  // can reconstruct the valid HMAC. The practical risk against MP's
+  // webhook endpoint is low (network jitter dominates), but the fix is
+  // one line and removes the class of bug entirely.
+  const computedBuf = Buffer.from(computed, "hex");
+  const hashBuf = Buffer.from(hash, "hex");
+  if (computedBuf.length !== hashBuf.length) return false;
+  return crypto.timingSafeEqual(computedBuf, hashBuf);
 }
 
 /**

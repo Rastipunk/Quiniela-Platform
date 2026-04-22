@@ -214,7 +214,7 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
 
       // Enviar emails con ranking (batched to avoid hitting Resend rate limits)
       const emailItems = sortedMembers.map((member, idx) => ({ member, rank: idx + 1 }));
-      const { sent, failed } = await batchSendEmails(emailItems, (item) =>
+      const { sent, failed, failures } = await batchSendEmails(emailItems, (item) =>
         sendPoolCompletedEmail({
           to: item.member.user.email,
           userId: item.member.user.id,
@@ -229,6 +229,18 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
         }),
       );
       console.log(`📧 Pool completed emails for ${poolId}: ${sent} sent, ${failed} failed`);
+      // Per-failure logging. Without this, a silent 30% failure rate
+      // (e.g. all @yahoo.com bouncing after a DKIM rotation) looks
+      // identical to a healthy run. Automated retry lives in the
+      // post-mundial TECH_DEBT backlog.
+      if (failures.length > 0) {
+        for (const { item, error } of failures) {
+          const msg = error instanceof Error ? error.message : String(error);
+          console.error(
+            `[PoolCompleted] email failed pool=${poolId} userId=${item.member.userId} email=${item.member.user.email}: ${msg}`,
+          );
+        }
+      }
     } catch (emailError) {
       console.error("Error sending pool completed emails:", emailError instanceof Error ? emailError.message : String(emailError));
     }

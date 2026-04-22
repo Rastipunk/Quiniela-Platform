@@ -163,23 +163,37 @@ const BATCH_DELAY_MS = 1_000;
 export async function batchSendEmails<T>(
   items: T[],
   sendFn: (item: T) => Promise<unknown>,
-): Promise<{ sent: number; failed: number }> {
+): Promise<{
+  sent: number;
+  failed: number;
+  /** The items whose send threw — paired with the rejection reason so
+   *  the caller can log per-item context (userId, email, poolId, etc.)
+   *  or enqueue them for retry. Previously callers only knew the failure
+   *  count, hiding systemic issues like a bouncing domain or a transient
+   *  Resend outage that affected a specific cohort. */
+  failures: Array<{ item: T; error: unknown }>;
+}> {
   let sent = 0;
   let failed = 0;
+  const failures: Array<{ item: T; error: unknown }> = [];
 
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const batch = items.slice(i, i + BATCH_SIZE);
     const results = await Promise.allSettled(batch.map(sendFn));
-    for (const r of results) {
-      if (r.status === "fulfilled") sent++;
-      else failed++;
-    }
+    results.forEach((r, idx) => {
+      if (r.status === "fulfilled") {
+        sent++;
+      } else {
+        failed++;
+        failures.push({ item: batch[idx]!, error: r.reason });
+      }
+    });
     if (i + BATCH_SIZE < items.length) {
       await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
     }
   }
 
-  return { sent, failed };
+  return { sent, failed, failures };
 }
 
 // =========================================================================
