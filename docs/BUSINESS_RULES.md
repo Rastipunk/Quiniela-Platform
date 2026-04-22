@@ -19,6 +19,8 @@
 9. [Tournament Rules](#9-tournament-rules)
 10. [SmartSync Rules](#10-smartsync-rules)
 11. [Data Integrity Invariants](#11-data-integrity-invariants)
+12. [Referral Graph](#12-referral-graph)
+13. [Consent Mode v2 & Privacy](#13-consent-mode-v2--privacy)
 
 ---
 
@@ -823,3 +825,83 @@ When a knockout phase completes but the next phase's fixtures are not yet availa
 - Pool scoring rules not editable after creation.
 - Template key immutable after creation.
 - Instance status transitions are forward-only.
+
+---
+
+## 12. Referral Graph
+
+User-to-user attribution model. Enables cohort LTV analysis (referred vs
+self-serve) without relying on UTM-only attribution which loses cross-device
+and word-of-mouth paths.
+
+### 12.1 Capture semantics
+
+- `User.referredByUserId` is a **write-once first-touch** self-FK.
+- Populated automatically when the user's very first pool membership is
+  created via `/pools/join` with an invite code.
+- Subsequent joins NEVER overwrite the value — the first referrer wins.
+- `LEFT → ACTIVE` re-joins are NOT re-captured. A returning user is not
+  a new referral.
+- **Self-invites do not count** — if the inviter joins their own pool,
+  the code skips the write so cohort LTV isn't inflated by host-self-use.
+
+### 12.2 Invite-level tracking
+
+- `PoolInvite.acceptedByUserId` + `acceptedAtUtc` record the FIRST
+  redeemer of a code (multi-use invites keep the headline; later joiners
+  are enumerable via the audit log).
+- Both columns are written atomically inside the join transaction with
+  a `WHERE acceptedByUserId IS NULL` guard so concurrent redemptions
+  cannot race on the headline.
+
+### 12.3 Analytics fan-out
+
+When a first-time referral completes (ACTIVE join, non-self):
+
+- GA4: `referral_conversion` event with `referrer_user_id`, `pool_id`,
+  `invite_code`.
+- Meta CAPI: `Lead` event with `content_name=referral_conversion`.
+- Audit log: `POOL_JOINED` action dataJson carries `referrerUserId`.
+
+See [`guides/ATTRIBUTION_TAXONOMY.md`](guides/ATTRIBUTION_TAXONOMY.md)
+for the full event taxonomy.
+
+---
+
+## 13. Consent Mode v2 & Privacy
+
+Google Consent Mode v2 governs what GA4 / GTM tags are allowed to do
+before the user interacts with the banner. Meta Pixel respects a parallel
+mechanism via `fbq("consent", "revoke")`.
+
+### 13.1 Default state
+
+The head-inline script in `frontend-next/src/lib/gtm.ts` sets defaults
+BEFORE `gtm.js` loads, using returning-user signals available at document
+parse time:
+
+1. `localStorage.p4a_cookie_consent === "granted"` → all signals `granted`.
+2. Authenticated user (`p4a_logged_in` cookie present) AND no explicit
+   stored rejection → all signals `granted` (ToS at signup discloses
+   analytics usage — Privacy Policy §11).
+3. Otherwise → all signals `denied`.
+
+`ads_data_redaction` tracks the effective state (true when denied) and
+`url_passthrough` is always `true` so click IDs survive navigation.
+
+### 13.2 LDU (Limited Data Use) for EEA / UK / CH
+
+`backend/src/lib/metaCapi.ts` attaches `data_processing_options: ["LDU"]`
+to every CAPI event whose user `country` is in the EEA + UK + Switzerland
+set. Switzerland is included because its revFADP (2023) is aligned with
+GDPR. Missing `country` defaults to no LDU — we do not fingerprint IP
+for this decision.
+
+### 13.3 Revocation
+
+GDPR Art. 7(3) and CCPA both require consent to be as easy to withdraw
+as to grant. The footer link **"Gestionar cookies"** dispatches the
+`p4a:consent:reopen` custom event, which clears `p4a_cookie_consent`
+from localStorage and re-opens the banner. Nothing else pivots — the
+next banner interaction writes the new preference as if it were the
+first choice.

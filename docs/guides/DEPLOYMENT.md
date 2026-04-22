@@ -213,7 +213,7 @@ no-ops.
 
 `capiRetryJob` drains failed server-side events across every provider
 via a Postgres advisory lock (multi-instance safe). See
-`backend/src/lib/ANALYTICS_PIPELINE.md` for the full retry ladder.
+`docs/guides/ANALYTICS_PIPELINE.md` for the full retry ladder.
 
 | Variable | Description | Default |
 |----------|-------------|---------|

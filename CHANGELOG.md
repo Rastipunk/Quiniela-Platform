@@ -6,6 +6,88 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.10.0] — 2026-04-22
+
+### Analytics stack restored + deep-audit hardening
+
+Two weeks of work to first restore GA4 measurement (silent outage since
+2026-04-10 caused by a misconfigured GTM consent check) and then
+harden the rest of the stack against future regressions.
+
+#### Added — Analytics observability
+- **`GET /admin/analytics/probe`** + **`POST /admin/analytics/probe/send-real-purchase`** — admin-only diagnostic endpoints that hit GA4 `/debug/mp/collect` and Meta Graph `/events` directly and report structured results. Dashboard at `/admin/analytics-health`.
+- **Startup warnings** for every missing analytics env var so Railway logs make gaps obvious.
+- **Admin-gated debug mode** — `?gtm_debug=1` now requires the `p4a_admin` non-httpOnly cookie set by `setAuthCookies({ isAdmin: true })`.
+- **Client-side Consent Mode panel** in the health dashboard — reads `window.dataLayer` live so operators see `analytics_storage` / `ad_storage` state and dataLayer event counts without GTM Preview.
+- **Referral graph** — `User.referredByUserId` self-FK + `PoolInvite.acceptedByUserId`. Fires GA4 `referral_conversion` + Meta `Lead` with `referrer_user_id` when a user joins via another user's invite.
+
+#### Added — Server-side sinks
+- **GA4 Measurement Protocol client** (`backend/src/lib/ga4.ts`) with retry + DLQ mirroring the Meta CAPI client.
+- **Unified DLQ** — `FailedAnalyticsEvent` table with `provider` discriminator replaces the old CAPI-only queue.
+- **Postgres advisory lock on the drainer** — `pg_try_advisory_xact_lock(82636502)` so multi-replica Railway deploys never double-send.
+- **8s timeout + AbortController** on every fetch to Graph API / google-analytics.com.
+- **±25% / ±20% jitter** on all retry backoffs to break up thundering-herd retries after an outage window.
+- **Per-failure logging** in `batchSendEmails` (new `failures` array in the return shape) so bad-DKIM cohorts don't hide behind a success count.
+
+#### Added — Event coverage
+- `email_verification_sent` + `email_verification_completed` (activation funnel).
+- `payment_failed` on all three failure surfaces (Polar webhook `expired`/`failed`, MP sync `rejected`, MP IPN `rejected`/`cancelled`) with `reason` / `payment_method` / `affiliation`.
+- `begin_registration` on the AuthSlidePanel register tab.
+- `pool_left` in `poolMemberService.voluntaryLeavePool`.
+- `login` (GA4) + `Login` (Meta CAPI) for Google OAuth returning-user branch — new-user branch already emitted `sign_up` / `CompleteRegistration`.
+- **Five new GA4 user_properties** on `/me/aggregated`: `is_verified_email`, `signup_method`, `predictions_count`, `last_active_at`, `pool_host_count`.
+
+#### Added — Meta Advanced Matching
+- `PoolPayment.metaFbp` / `metaFbc` / `clientIpAddress` / `clientUserAgent` captured at checkout creation so async webhook flows (Polar `order.paid`, MP IPN) can enrich the CAPI Purchase with the same signals the synchronous flow already had. Expected EMQ score lift: +2-3 points.
+- Switzerland (`CH`) added to `EEA_COUNTRY_CODES` — revFADP aligns with GDPR.
+
+#### Added — Cookie UX
+- Redesigned consent banner — card popover bottom-left (bottom-sheet mobile), benefit-led headline, brand-gradient primary CTA, muted text-link secondary. GDPR-compliant (both options 44px tap target) without symmetric visual weight.
+- **"Gestionar cookies"** footer link (ES/EN/PT) re-opens the banner via a new `p4a:consent:reopen` custom event. Satisfies GDPR Art. 7(3) / CCPA easy-revocation requirement.
+- Consent defaults hydrated from localStorage + `p4a_logged_in` cookie at document parse time so returning-granted users skip the denied → cookieless ping window on first load.
+- Cross-tab logout flush via `p4a_auth_logout_tick` localStorage broadcast + new `AuthAnalyticsSync` component — sibling tabs revoke Meta Pixel and clear GA4 user_id automatically.
+
+#### Added — Schema
+- `PoolPayment.amountCop` — real COP pesos paid (MP) stored explicitly. Used by `mpPurchaseValue()` for GA4/Meta `value` so Colombian revenue stops being under-reported ~40× (the old path used USD cents mis-labelled as pesos).
+- `FailedAnalyticsEvent` table — see §3.30 of `docs/DATA_MODEL.md`.
+
+#### Added — Docs
+- [`docs/guides/ANALYTICS_PIPELINE.md`](docs/guides/ANALYTICS_PIPELINE.md) — end-to-end diagram of the retry ladder, advisory lock, env vars.
+- [`docs/guides/ATTRIBUTION_TAXONOMY.md`](docs/guides/ATTRIBUTION_TAXONOMY.md) — canonical UTM values, event catalogue, user_properties table, reserved param names.
+- `backend/src/routes/analyticsHealth.ts` + `frontend-next/src/components/AnalyticsHealthContent.tsx`.
+- `TECH_DEBT.md` — refactor items deferred to post-mundial.
+
+#### Fixed — Consent Mode v2
+- `updateConsent("granted")` now also emits `gtag("set", "ads_data_redaction", false)`. Without this, GA4 kept redacting `gclid` / user-agent on ad pings forever after accept, silently breaking Google Ads attribution.
+- GTM container V4 — removed the "Comprobaciones de consentimiento adicionales: analytics_storage" hard-block on both tags that was discarding every cookieless ping since 2026-04-10. Consent-Mode-v2 integrated signals continue to gate correctly.
+
+#### Fixed — Business logic
+- **Pick deadline comparison is `>=`** in both server-side reject (`upsertPick`) and display-side `isLocked`. Kept in sync so the UI locking and the save endpoint agree at the edge millisecond.
+- **Pool completion** now filters `currentVersionId: { not: null }` — a result row with no published version no longer flips the pool to COMPLETED with a half-scored leaderboard.
+- **LEFT members regain read-only access** — `requirePoolMemberReadAccess` added, used by `getPoolMatches` / `getMatchPicks` / `getMyPicks`. Writes still gate on ACTIVE via `requireActivePoolMember`.
+- **MP webhook HMAC** compared with `crypto.timingSafeEqual` instead of `===`.
+
+#### Fixed — Error handling
+- `poolAdminService` scoring loop no longer swallows `scoreMatchPick` errors silently — logs `poolId` / `userId` / `matchId` and keeps looping.
+- Three `.catch(() => {})` in `fixtureTrackingJob` / `fixtureVerificationJob` notification paths now log the error instead of dropping it.
+- `401`/`403`/`408`/`429` on CAPI + GA4 reclassified as transient. Rotating `META_CAPI_ACCESS_TOKEN` or `GA4_API_SECRET` no longer drops queued DLQ events during the rotation window.
+
+#### Fixed — Validation
+- Three admin list routes (`feedback`, `adminCorporate`, `adminSettings` reminder stats) migrated from `parseInt || default` to `z.coerce.number().int().min().max()` so invalid inputs return 400 instead of silently clamping.
+
+#### Changed — Data model
+- `User` gains first-touch attribution fields + referral FK (see `docs/DATA_MODEL.md` §3.1).
+- `PoolInvite` gains `acceptedByUserId` / `acceptedAtUtc` (first-redeemer headline).
+- `PoolPayment` gains `amountCop`, `metaFbp`, `metaFbc`, `clientIpAddress`, `clientUserAgent`.
+
+#### Migrations applied
+- `20260421_add_referral_graph`
+- `20260421_refactor_dlq_and_ga4_mp`
+- `20260421_add_pool_payment_amount_cop`
+- `20260421_add_payment_meta_cookies`
+
+---
+
 ## [0.9.0] — 2026-04-16
 
 ### Mercado Pago Integration, Pricing Overhaul, UX Improvements

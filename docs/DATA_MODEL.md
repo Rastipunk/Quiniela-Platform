@@ -1055,7 +1055,7 @@ and double refunds.
 Dead-letter queue for server-side analytics sinks. When a `sendGa4Event`
 or `sendCapiEvent` call exhausts its in-process retry budget, the full
 payload is persisted here and the `capiRetryJob` cron drains it on the
-exponential ladder defined in `backend/src/lib/ANALYTICS_PIPELINE.md`.
+exponential ladder defined in `docs/guides/ANALYTICS_PIPELINE.md`.
 The drainer uses a Postgres advisory lock so multi-replica Railway
 deploys never double-send.
 

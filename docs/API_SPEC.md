@@ -37,6 +37,7 @@
    - [Admin — Instances](#522-admin--instances)
    - [Admin — Settings](#523-admin--settings)
    - [Admin — Corporate](#524-admin--corporate)
+   - [Admin — Analytics Health](#525-admin--analytics-health)
 
 ---
 
@@ -1217,5 +1218,73 @@ Creates users with auto-generated usernames and passwords. If `poolId` is provid
   "existing": [{ "id", "email" }],
   "addedToPool": 5,
   "summary": { "totalEmails", "newUsers", "existingUsers", "addedToPool" }
+}
+```
+
+---
+
+### 5.25 Admin — Analytics Health
+
+Diagnostic endpoints under `/admin/analytics`. All require Admin. Used
+by the `/admin/analytics-health` dashboard and by an ops human debugging
+a tracking pipeline outage. See
+[`docs/guides/ANALYTICS_PIPELINE.md`](guides/ANALYTICS_PIPELINE.md) for
+the underlying flow.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET  | `/admin/analytics/probe`                      | Admin | Run all health checks in parallel (GA4, Meta CAPI, DLQ, frontend HTML, env vars) |
+| POST | `/admin/analytics/probe/send-real-purchase`   | Admin | Emit a real $0.01 Purchase to GA4 + Meta using the admin's own userId, for end-to-end validation |
+
+#### GET /admin/analytics/probe
+
+Fires one call per sink and returns structured results. Defensive — no
+check throws; failures surface in the `status`/`details` of each block.
+
+**Response (200):**
+```json
+{
+  "ok": true,
+  "overall": "ok | degraded | error",
+  "timestamp": "2026-04-22T20:30:00.000Z",
+  "checks": {
+    "ga4":           { "status": "ok|error|not_configured", "message": "...", "details": { "validationMessages": [], "clientId": "...", "measurementId": "G-..." } },
+    "metaCapi":      { "status": "ok|error|not_configured", "message": "...", "details": { "events_received": 1, "fbtrace_id": "...", "messages": [], "eventId": "...", "test_event_code_used": true } },
+    "dlqBacklog":    { "status": "ok|error",                "message": "...", "details": { "unresolved": 0, "resolvedTotal": 0, "providerCounts": { "META_CAPI": 0, "GA4_MP": 0 }, "oldest": null } },
+    "frontendHtml":  { "status": "ok|error|not_configured", "message": "...", "details": { "gtmId": "GTM-...", "ga4Id": "G-...", "pixelPresent": true, "missing": [], "frontendUrl": "..." } }
+  },
+  "envVars": {
+    "backend":  { "GA4_MEASUREMENT_ID": true, "GA4_API_SECRET": true, "META_PIXEL_ID": true, "META_CAPI_ACCESS_TOKEN": true, "META_TEST_EVENT_CODE": true, "FRONTEND_URL": true },
+    "frontend_note": "NEXT_PUBLIC_* vars are inlined at build time..."
+  }
+}
+```
+
+The probe itself NEVER sends to GA4's production endpoint — it uses
+`https://www.google-analytics.com/debug/mp/collect` so events do not
+pollute reports. Meta CAPI uses the configured `META_TEST_EVENT_CODE`
+when set so events surface in the Events Manager Test Events tab only.
+
+#### POST /admin/analytics/probe/send-real-purchase
+
+Body is strictly `{ "allowReal": true, "transactionId"?: string }`. The
+`allowReal` flag is a guardrail against accidental pollution. Emits a
+$0.01 `purchase` event to both GA4 MP (production `/mp/collect`) and
+Meta CAPI with the same `transaction_id` so they dedupe as one
+conversion. Response reports per-sink outcome — if a sink was skipped
+because its env vars are missing, `sent: false` and `reason` carry the
+detail instead of lying about delivery.
+
+**Response (200):**
+```json
+{
+  "ok": true,
+  "transactionId": "probe_1776800084507",
+  "ga4":     { "sent": true, "note": "Event attempted. ..." },
+  "metaCapi":{ "sent": true, "note": "Event attempted. ..." },
+  "instructions": [
+    "GA4 > Reports > Realtime: purchase should appear within 10-30 seconds.",
+    "Meta Events Manager > Test Events tab: event should appear within 10-30 seconds."
+  ]
 }
 ```

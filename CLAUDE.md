@@ -89,14 +89,17 @@ docs/
 ├── GLOSSARY.md               # Domain terminology
 ├── DECISION_LOG.md           # Architectural Decision Records
 └── guides/
-    ├── SETUP.md              # Local development setup
-    ├── DEPLOYMENT.md         # Railway deployment and env vars
-    ├── EMAIL_SYSTEM.md       # Email notification system
-    ├── TOURNAMENT_SYSTEM.md  # Tournaments, phases, advancement, sync
-    ├── SCORES_INTEGRATION.md # picks4all-scores live scoring system
-    ├── PREDICTION_UPDATES.md # AI prediction update and subscriber notification process
-    └── GOOGLE_OAUTH.md       # Google OAuth configuration
+    ├── SETUP.md                # Local development setup
+    ├── DEPLOYMENT.md           # Railway deployment and env vars
+    ├── EMAIL_SYSTEM.md         # Email notification system
+    ├── TOURNAMENT_SYSTEM.md    # Tournaments, phases, advancement, sync
+    ├── SCORES_INTEGRATION.md   # picks4all-scores live scoring system
+    ├── PREDICTION_UPDATES.md   # AI prediction update and subscriber notification process
+    ├── GOOGLE_OAUTH.md         # Google OAuth configuration
+    ├── ATTRIBUTION_TAXONOMY.md # UTM / event / user-property canonical taxonomy
+    └── ANALYTICS_PIPELINE.md   # GA4 MP + Meta CAPI server-side pipeline (retry, DLQ, advisory lock)
 CLAUDE.md                     # This file — development standards
+TECH_DEBT.md                  # Known tech-debt items deferred to post-mundial
 README.md                     # Repository entry point
 CHANGELOG.md                  # Version history (Keep a Changelog format)
 ```
