@@ -1,6 +1,6 @@
 # CLAUDE.md — Picks4All Development Standards
 
-> **Last updated:** 2026-04-16
+> **Last updated:** 2026-04-22
 >
 > This file defines the mandatory standards, principles, and constraints for ALL work in this repository. Every change — code, documentation, infrastructure — must comply with these rules.
 

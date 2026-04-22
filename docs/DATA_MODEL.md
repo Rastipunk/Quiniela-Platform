@@ -38,6 +38,9 @@
    - [Organization](#325-organization)
    - [OrganizationInquiry](#326-organizationinquiry)
    - [CorporateInvite](#327-corporateinvite)
+   - [PoolPayment](#328-poolpayment)
+   - [PaymentEvent](#329-paymentevent)
+   - [FailedAnalyticsEvent](#330-failedanalyticsevent)
 4. [Relationship Diagram](#4-relationship-diagram)
 
 ---
@@ -311,10 +314,24 @@ Core user account. Supports email/password and Google OAuth registration.
 | `emailDeadlineReminders` | Boolean | Default: true | Deadline reminder emails |
 | `emailResultNotifications` | Boolean | Default: true | Result published emails |
 | `emailPoolCompletions` | Boolean | Default: true | Pool completed emails |
+| `emailNewMemberDigest` | Boolean | Default: true | Host-side daily digest of new members |
+| `predictionUpdates` | Boolean | Default: false | Opt-in to AI prediction update emails |
+| `acquisitionSource` | String? | | First-touch `utm_source` (write-once) |
+| `acquisitionMedium` | String? | | First-touch `utm_medium` |
+| `acquisitionCampaign` | String? | | First-touch `utm_campaign` |
+| `acquisitionContent` | String? | | First-touch `utm_content` |
+| `acquisitionTerm` | String? | | First-touch `utm_term` |
+| `landingPath` | String? | | Landing pathname at first touch |
+| `referrerUrl` | String? | | `document.referrer` at first touch |
+| `gclid` | String? | | Google Ads click id |
+| `gbraid` | String? | | Google Ads app campaigns |
+| `wbraid` | String? | | Google Ads app campaigns |
+| `fbclid` | String? | | Meta Ads click id |
+| `referredByUserId` | String? | FK → User | User-to-user attribution. Set once when joining the first pool via an invite; null for organic signups. Enables referred-cohort LTV analysis. |
 | `createdAtUtc` | DateTime | Default: now() | |
 | `updatedAtUtc` | DateTime | @updatedAt | |
 
-**Indexes:** `username`, `resetToken`, `googleId`, `emailVerificationToken`
+**Indexes:** `username`, `resetToken`, `googleId`, `emailVerificationToken`, `referredByUserId`
 
 **Relations:**
 - `predictions` -> Prediction[] (1:N)
@@ -327,6 +344,9 @@ Core user account. Supports email/password and Google OAuth registration.
 - `groupStandingsPredictions` -> GroupStandingsPrediction[] (1:N)
 - `groupStandingsResults` -> GroupStandingsResult[] (1:N)
 - `poolMatchOverrides` -> PoolMatchOverride[] (1:N)
+- `poolPayments` -> PoolPayment[] (1:N)
+- `referredByUser` -> User? (self-FK, many referrals → one referrer)
+- `referrals` -> User[] (inverse of `referredByUser`)
 
 ---
 
@@ -516,10 +536,12 @@ Shareable invite code for joining a pool.
 | `createdByUserId` | String | FK -> User | |
 | `maxUses` | Int? | | null = unlimited |
 | `uses` | Int | Default: 0 | Current use count |
+| `acceptedByUserId` | String? | | Denormalised headline "first redeemer" of the code. Multi-use invites only store the first joiner here — later joiners are still enumerable from the audit log. Set atomically inside the join transaction with a `WHERE acceptedByUserId IS NULL` guard so concurrent redemptions cannot race. |
+| `acceptedAtUtc` | DateTime? | | Timestamp of the first redemption (mirrors `acceptedByUserId`) |
 | `expiresAtUtc` | DateTime? | | Expiry date (default: 30 days) |
 | `createdAtUtc` | DateTime | Default: now() | |
 
-**Indexes:** `poolId`
+**Indexes:** `poolId`, `acceptedByUserId`
 
 ---
 
@@ -969,6 +991,89 @@ Employee invitation to a corporate pool. Token-based activation with 30-day expi
 **Unique:** `[poolId, email]`
 
 **Indexes:** `activationToken`, `poolId`, `status`
+
+---
+
+### 3.28 PoolPayment
+
+Single source of truth for a Pool capacity-upgrade purchase. One row per
+checkout attempt across both gateways (Polar USD / Mercado Pago COP).
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | String | PK, UUID | |
+| `poolId` | String | FK → Pool | Target pool being upgraded |
+| `userId` | String | FK → User | Who paid |
+| `polarCheckoutId` | String | Unique | Checkout session ID from Polar. Also used as the reference for MP checkouts so one column covers both gateways. |
+| `polarOrderId` | String? | Unique | Order ID set by the Polar webhook on confirmation. Null for MP payments and for Polar payments still pending. |
+| `status` | PaymentStatus | Default: PENDING | Payment lifecycle state (PENDING / COMPLETED / FAILED / REFUNDED). |
+| `amountUsd` | Int | | Amount in USD cents. Stored for EVERY gateway so the platform has a unified figure. For COP payments this is the USD equivalent at checkout time; the real pesos paid live in `amountCop`. |
+| `amountCop` | Int? | | Actual COP amount paid (whole pesos — MP has no sub-unit). Null for non-MP payments. Used by the Purchase event `value` reported to GA4 and Meta so revenue reflects what the customer really paid (avoids the 40× under-report when the USD-cents value is mis-labelled as pesos). |
+| `currency` | String | Default: "usd" | ISO 4217. `"usd"` for Polar, `"cop"` for MP. |
+| `fromCapacity` | Int | | Pool `maxParticipants` before this payment |
+| `toCapacity` | Int | | Pool `maxParticipants` after this payment |
+| `poolType` | String | | `"personal"` or `"corporate"` |
+| `metaEventId` | String? | | Unique event id shared across the browser Pixel and server CAPI Purchase so Meta deduplicates one conversion. Generated once at approval, reused by any IPN/webhook re-entry. |
+| `metaFbp` | String? | | `_fbp` cookie captured from the browser at checkout init. Forwarded to CAPI in async webhook flows (Polar / MP IPN) for Advanced Matching. |
+| `metaFbc` | String? | | `_fbc` cookie captured at checkout init. Only present when the user arrived via an `fbclid` URL. |
+| `clientIpAddress` | String? | | Remote IP at checkout init. Used for GEO enrichment and Meta EMQ score. |
+| `clientUserAgent` | String? | | User-Agent at checkout init. Same purpose as `clientIpAddress`. |
+| `paidAtUtc` | DateTime? | | When the gateway confirmed the charge |
+| `createdAtUtc` | DateTime | Default: now() | Checkout initiation |
+| `updatedAtUtc` | DateTime | @updatedAt | |
+
+**Relations:**
+- `pool` → Pool (N:1)
+- `user` → User (N:1)
+- `events` → PaymentEvent[] (1:N) — webhook idempotency log
+
+---
+
+### 3.29 PaymentEvent
+
+Webhook idempotency log. Every webhook event (Polar `order.paid`,
+`order.refunded`; MP IPN `payment.updated`) is persisted here before the
+handler processes it. A duplicate delivery with the same `polarEventId`
+is rejected by the UNIQUE constraint and returned as 200 without
+reprocessing — this is what protects against double capacity expansion
+and double refunds.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | String | PK, UUID | |
+| `polarEventId` | String | Unique | Webhook event id (Polar's real id for Polar webhooks; synthetic `mp-{payment_id}` for MP IPN so both gateways share one idempotency key column). |
+| `eventType` | String | | `"order.paid"`, `"order.refunded"`, `"mp.payment.updated"`, etc. |
+| `payloadJson` | Json | | Full webhook payload for forensics |
+| `processedAtUtc` | DateTime | Default: now() | |
+
+**Indexes:** `polarEventId` (unique), `eventType`
+
+---
+
+### 3.30 FailedAnalyticsEvent
+
+Dead-letter queue for server-side analytics sinks. When a `sendGa4Event`
+or `sendCapiEvent` call exhausts its in-process retry budget, the full
+payload is persisted here and the `capiRetryJob` cron drains it on the
+exponential ladder defined in `backend/src/lib/ANALYTICS_PIPELINE.md`.
+The drainer uses a Postgres advisory lock so multi-replica Railway
+deploys never double-send.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | String | PK, UUID | |
+| `provider` | String | | `"META_CAPI"` or `"GA4_MP"` — separates per-sink drain queries |
+| `eventName` | String | | Original event name (`"Purchase"`, `"CompleteRegistration"`, etc.) |
+| `eventId` | String | | Dedup key. `transaction_id` for purchases, UUID otherwise. Persisted so DLQ retries never duplicate in the destination. |
+| `payloadJson` | Json | | Full request body, replayed verbatim on retry |
+| `attemptCount` | Int | Default: 0 | Number of DLQ-worker attempts so far (capped at 8) |
+| `lastError` | String | VarChar(2000) | Truncated response body from the last failure |
+| `lastAttemptAt` | DateTime? | | |
+| `nextRetryAt` | DateTime? | | When the drainer will pick this up next. Null once resolved (success or permanent failure). |
+| `resolvedAt` | DateTime? | | Set when the event delivered OR when a 4xx (not 401/403/408/429) marked it as permanent |
+| `createdAtUtc` | DateTime | Default: now() | |
+
+**Indexes:** `[provider, resolvedAt, nextRetryAt]` for the drainer's `findMany` filter; `resolvedAt` for the 30-day purge.
 
 ---
 

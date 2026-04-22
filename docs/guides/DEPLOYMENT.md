@@ -141,10 +141,6 @@ All rate limit values are configurable via environment variables:
 |----------|-------------|
 | `BRAND_COLORS_JSON` | JSON override for brand colors (e.g., `{"primary":"#ff0000"}`) |
 
-#### Scores Service (picks4all-scores)
-
-| Variable | Description | Default |
-|----------|-------------|---------|
 #### Payments — Mercado Pago (Colombia / COP)
 
 | Variable | Description | Default |
@@ -188,6 +184,42 @@ All rate limit values are configurable via environment variables:
 | `SCORES_FALLBACK_DELAY_MS` | Delay before API-Football fallback | `1800000` |
 | `FIXTURE_TRACKING_CRON` | Fixture registration cron schedule | `0 * * * *` |
 
+#### Analytics — Google Analytics 4 Measurement Protocol (server-side)
+
+Server-side GA4 is the failsafe for conversion events that MUST reach
+GA4 even if the browser never fires (ad-blocker, tab closed mid-redirect,
+webhook-only async flows). When missing, `sendGa4Event` silently
+no-ops and startup logs a warning.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GA4_MEASUREMENT_ID` | GA4 Measurement ID (`G-XXXXXXXXXX`). Admin → Data Streams → Web. | (required for server-side GA4) |
+| `GA4_API_SECRET` | Measurement Protocol API secret. Admin → Data Streams → Web → Measurement Protocol API secrets → Create. | (required for server-side GA4) |
+| `GA4_DEBUG` | Set to `1` to route events to `/debug/mp/collect` (validation endpoint that does NOT ingest). | (unset = production endpoint) |
+
+#### Analytics — Meta Conversions API
+
+Server-side Meta CAPI for browser↔server deduplication. All PII is hashed
+SHA-256 before leaving the process. When missing, `sendCapiEvent` silently
+no-ops.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `META_PIXEL_ID` | Meta Pixel / Dataset ID (same one used on the browser Pixel). | (required for server-side Meta) |
+| `META_CAPI_ACCESS_TOKEN` | Conversions API access token. Events Manager → Settings → Conversions API → Generate Access Token. | (required for server-side Meta) |
+| `META_TEST_EVENT_CODE` | Test event code (`TEST12345` shape). When set, events land in Events Manager → Test Events instead of production reports. | (unset = production data) |
+
+#### Analytics — DLQ worker
+
+`capiRetryJob` drains failed server-side events across every provider
+via a Postgres advisory lock (multi-instance safe). See
+`backend/src/lib/ANALYTICS_PIPELINE.md` for the full retry ladder.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANALYTICS_RETRY_CRON` | Cron schedule for the drain job. | `*/5 * * * *` |
+| `ANALYTICS_RETRY_BATCH_SIZE` | Rows drained per sink per tick. | `20` |
+
 #### Railway-Injected
 
 | Variable | Description |
@@ -212,7 +244,8 @@ All rate limit values are configurable via environment variables:
 | `NEXT_PUBLIC_API_URL` | Backend API URL | `https://api.picks4all.com` |
 | `NEXT_PUBLIC_SITE_URL` | Frontend URL | `https://picks4all.com` |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client ID | `xxx.apps.googleusercontent.com` |
-| `NEXT_PUBLIC_GTM_ID` | Google Tag Manager container ID | `GTM-TJ86QBFG` |
+| `NEXT_PUBLIC_GTM_ID` | Google Tag Manager container ID. Required for ANY browser tracking (GA4 tag, consent mode). | `GTM-TJ86QBFG` |
+| `NEXT_PUBLIC_META_PIXEL_ID` | Meta Pixel / Dataset ID. Must match `META_PIXEL_ID` on the backend so browser↔server deduplication works. | `1234567890` |
 | `NEXT_PUBLIC_LIVE_POLL_INTERVAL_MS` | Frontend auto-refresh for live matches | `15000` |
 | `NEXT_PUBLIC_EMAIL_DOMAIN` | Email domain for display | `picks4all.com` |
 | `NEXT_PUBLIC_DEFAULT_DEADLINE` | Default deadline minutes | `10` |
