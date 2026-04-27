@@ -3,41 +3,17 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { TerminosContent } from "./TerminosContent";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const pathMap: Record<string, string> = {
-    es: "/terminos",
-    en: "/terms",
-    pt: "/termos",
-  };
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pagePath = pathMap[locale] || pathMap.es;
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("terms.title"),
     description: t("terms.description"),
-    openGraph: {
-      title: t("terms.title"),
-      description: t("terms.description"),
-      url,
-      type: "website",
-      siteName: "Picks4All",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/terminos`,
-        en: `${baseUrl}/en/terms`,
-        pt: `${baseUrl}/pt/termos`,
-        "x-default": `${baseUrl}/terminos`,
-      },
-    },
-  };
+    path: { es: "/terminos", en: "/terms", pt: "/termos" },
+  });
 }
 
 export default async function TerminosPage() {

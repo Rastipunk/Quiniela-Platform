@@ -240,13 +240,8 @@
     }
   },
 
-  "invite": {
-    "title": "Invitations",
-    "createCode": "Create code",
-    "codeCopied": "Code (copied if browser allowed):"
-  },
-
   "filters": {
+    "title": "Filters",
     "searchPlaceholder": "Search by team / group / roundLabel...",
     "onlyOpen": "Only OPEN",
     "noPick": "No pick",
@@ -760,6 +755,7 @@
   },
   "invite": {
     "title": "Invitations",
+    "inviteMore": "Invite more players",
     "createCode": "Create code",
     "codeCopied": "Code (copied if browser allowed):"
   },

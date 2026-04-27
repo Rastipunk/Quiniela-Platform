@@ -6,40 +6,26 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
+
+const PUBLISHED_AT = "2026-04-04T00:00:00Z";
+const MODIFIED_AT = "2026-04-16T00:00:00Z";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pathMap: Record<string, string> = {
-    es: "/mundial-2026/como-hacer-quiniela",
-    en: "/world-cup-2026/how-to-create-pool",
-    pt: "/copa-do-mundo-2026/como-criar-bolao",
-  };
-  const pagePath = pathMap[locale] || pathMap.es;
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("worldCupHowTo.title"),
     description: t("worldCupHowTo.description"),
-    openGraph: {
-      title: t("worldCupHowTo.title"),
-      description: t("worldCupHowTo.description"),
-      url,
-      type: "article",
+    path: {
+      es: "/mundial-2026/como-hacer-quiniela",
+      en: "/world-cup-2026/how-to-create-pool",
+      pt: "/copa-do-mundo-2026/como-criar-bolao",
     },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/mundial-2026/como-hacer-quiniela`,
-        en: `${baseUrl}/en/world-cup-2026/how-to-create-pool`,
-        pt: `${baseUrl}/pt/copa-do-mundo-2026/como-criar-bolao`,
-        "x-default": `${baseUrl}/mundial-2026/como-hacer-quiniela`,
-      },
-    },
-  };
+    type: "article",
+    article: { publishedTime: PUBLISHED_AT, modifiedTime: MODIFIED_AT },
+  });
 }
 
 interface HowToMessages {

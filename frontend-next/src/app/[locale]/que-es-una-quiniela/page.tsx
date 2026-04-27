@@ -6,41 +6,23 @@ import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 import { colors } from "@/lib/theme";
+
+const PUBLISHED_AT = "2026-02-13T00:00:00Z";
+const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const pathMap: Record<string, string> = {
-    es: "/que-es-una-quiniela",
-    en: "/what-is-a-pool",
-    pt: "/o-que-e-uma-penca",
-  };
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pagePath = pathMap[locale] || pathMap.es;
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("whatIsQuiniela.title"),
     description: t("whatIsQuiniela.description"),
-    openGraph: {
-      title: t("whatIsQuiniela.title"),
-      description: t("whatIsQuiniela.description"),
-      url,
-      type: "article",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/que-es-una-quiniela`,
-        en: `${baseUrl}/en/what-is-a-pool`,
-        pt: `${baseUrl}/pt/o-que-e-uma-penca`,
-        "x-default": `${baseUrl}/que-es-una-quiniela`,
-      },
-    },
-  };
+    path: { es: "/que-es-una-quiniela", en: "/what-is-a-pool", pt: "/o-que-e-uma-penca" },
+    type: "article",
+    article: { publishedTime: PUBLISHED_AT, modifiedTime: MODIFIED_AT },
+  });
 }
 
 interface CountryRow {
@@ -106,6 +88,9 @@ const articleStyle = {
 
 export default async function QueEsUnaQuinielaPage() {
   const locale = await getLocale();
+  // IMPORTANT: messages/{locale}/whatIsQuiniela.json is loaded via dynamic import (not
+  // registered in i18n/request.ts). DO NOT DELETE these files — see commit 27db35b
+  // for the regression that occurred when they were removed.
   const msg: WhatIsQuinielaMessages = (await import(`@/messages/${locale}/whatIsQuiniela.json`)).default;
   const baseUrl = SITE_URL;
   const pathMap: Record<string, string> = {

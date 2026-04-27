@@ -3,41 +3,17 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { ReembolsosContent } from "./ReembolsosContent";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const pathMap: Record<string, string> = {
-    es: "/reembolsos",
-    en: "/refunds",
-    pt: "/reembolsos",
-  };
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pagePath = pathMap[locale] || pathMap.es;
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("refunds.title"),
     description: t("refunds.description"),
-    openGraph: {
-      title: t("refunds.title"),
-      description: t("refunds.description"),
-      url,
-      type: "website",
-      siteName: "Picks4All",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/reembolsos`,
-        en: `${baseUrl}/en/refunds`,
-        pt: `${baseUrl}/pt/reembolsos`,
-        "x-default": `${baseUrl}/reembolsos`,
-      },
-    },
-  };
+    path: { es: "/reembolsos", en: "/refunds", pt: "/reembolsos" },
+  });
 }
 
 export default async function ReembolsosPage() {

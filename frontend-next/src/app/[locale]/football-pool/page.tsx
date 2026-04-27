@@ -4,33 +4,22 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd";
 import { RegionalArticlePage } from "@/components/RegionalArticlePage";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
+
+const PUBLISHED_AT = "2026-02-13T00:00:00Z";
+const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const url = `${baseUrl}${localePath}/football-pool`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("footballPool.title"),
     description: t("footballPool.description"),
-    openGraph: {
-      title: t("footballPool.title"),
-      description: t("footballPool.description"),
-      url,
-      type: "article",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/football-pool`,
-        en: `${baseUrl}/en/football-pool`,
-        pt: `${baseUrl}/pt/football-pool`,
-        "x-default": `${baseUrl}/football-pool`,
-      },
-    },
-  };
+    path: "/football-pool",
+    type: "article",
+    article: { publishedTime: PUBLISHED_AT, modifiedTime: MODIFIED_AT },
+  });
 }
 
 const relatedLinks = [

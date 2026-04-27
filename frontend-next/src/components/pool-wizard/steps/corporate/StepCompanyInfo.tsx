@@ -162,6 +162,10 @@ export function StepCompanyInfo() {
             <img
               src={state.logoBase64}
               alt="Company logo preview"
+              width={64}
+              height={64}
+              loading="lazy"
+              decoding="async"
               style={{
                 width: 64,
                 height: 64,

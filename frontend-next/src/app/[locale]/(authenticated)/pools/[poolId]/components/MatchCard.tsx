@@ -85,6 +85,10 @@ export function MatchCard({
                     <img
                       src={flag.flagUrl}
                       alt={homeName}
+                      width={32}
+                      height={24}
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: 32, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
                     />
                   ) : (
@@ -122,6 +126,10 @@ export function MatchCard({
                     <img
                       src={flag.flagUrl}
                       alt={awayName}
+                      width={32}
+                      height={24}
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: 32, height: "auto", borderRadius: 2, border: "1px solid #ddd" }}
                     />
                   ) : (

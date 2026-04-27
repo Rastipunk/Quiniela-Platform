@@ -15,35 +15,17 @@ import {
 } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pagePath = locale === "en" ? "/how-it-works" : "/como-funciona";
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("howItWorks.title"),
     description: t("howItWorks.description"),
-    openGraph: {
-      title: t("howItWorks.title"),
-      description: t("howItWorks.description"),
-      url,
-      type: "website",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/como-funciona`,
-        en: `${baseUrl}/en/how-it-works`,
-        pt: `${baseUrl}/pt/como-funciona`,
-        "x-default": `${baseUrl}/como-funciona`,
-      },
-    },
-  };
+    path: { es: "/como-funciona", en: "/how-it-works", pt: "/como-funciona" },
+  });
 }
 
 /** Replace ICU-style {key} placeholders with values from params */
@@ -147,6 +129,9 @@ function StepItem({
 
 export default async function ComoFuncionaPage() {
   const locale = await getLocale();
+  // IMPORTANT: messages/{locale}/howItWorks.json is loaded via dynamic import (not
+  // registered in i18n/request.ts). DO NOT DELETE these files — see commit 27db35b
+  // for the regression that occurred when they were removed.
   const rawMsg: HowItWorksMessages = (await import(`@/messages/${locale}/howItWorks.json`)).default;
 
   // Read pool region from cookie and build interpolation params

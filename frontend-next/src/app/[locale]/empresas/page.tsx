@@ -4,39 +4,17 @@ import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { EnterpriseLandingContent } from "@/components/EnterpriseLandingContent";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("enterprise.meta");
-  const baseUrl = SITE_URL;
-
-  const localePaths: Record<string, string> = {
-    es: "/empresas",
-    en: "/en/for-companies",
-    pt: "/pt/para-empresas",
-  };
-
-  const url = `${baseUrl}${localePaths[locale] || "/empresas"}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("title"),
     description: t("description"),
-    openGraph: {
-      title: t("title"),
-      description: t("description"),
-      url,
-      type: "website",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/empresas`,
-        en: `${baseUrl}/en/for-companies`,
-        pt: `${baseUrl}/pt/para-empresas`,
-        "x-default": `${baseUrl}/empresas`,
-      },
-    },
-  };
+    path: { es: "/empresas", en: "/for-companies", pt: "/para-empresas" },
+  });
 }
 
 export default function EnterprisePage() {

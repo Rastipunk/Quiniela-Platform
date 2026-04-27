@@ -4,31 +4,23 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd";
 import { RegionalArticlePage } from "@/components/RegionalArticlePage";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
+
+const PUBLISHED_AT = "2026-02-13T00:00:00Z";
+const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const url = `${baseUrl}${localePath}/prode-deportivo`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("prodeDeportivo.title"),
     description: t("prodeDeportivo.description"),
-    openGraph: {
-      title: t("prodeDeportivo.title"),
-      description: t("prodeDeportivo.description"),
-      url,
-      type: "article",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/prode-deportivo`,
-        "x-default": `${baseUrl}/prode-deportivo`,
-      },
-    },
-  };
+    path: { es: "/prode-deportivo" },
+    availableLocales: ["es"],
+    type: "article",
+    article: { publishedTime: PUBLISHED_AT, modifiedTime: MODIFIED_AT },
+  });
 }
 
 const relatedLinks = [

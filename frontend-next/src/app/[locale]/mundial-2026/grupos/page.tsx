@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 import { BRAND } from "@/lib/brand";
 
 /* ────────────────── Static Data ────────────────── */
@@ -96,36 +97,16 @@ function getGroupMatches(
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pagePath =
-    locale === "en"
-      ? "/world-cup-2026/groups"
-      : locale === "pt"
-        ? "/copa-do-mundo-2026/grupos"
-        : "/mundial-2026/grupos";
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("worldCupGroups.title"),
     description: t("worldCupGroups.description"),
-    openGraph: {
-      title: t("worldCupGroups.title"),
-      description: t("worldCupGroups.description"),
-      url,
-      type: "website",
+    path: {
+      es: "/mundial-2026/grupos",
+      en: "/world-cup-2026/groups",
+      pt: "/copa-do-mundo-2026/grupos",
     },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/mundial-2026/grupos`,
-        en: `${baseUrl}/en/world-cup-2026/groups`,
-        pt: `${baseUrl}/pt/copa-do-mundo-2026/grupos`,
-        "x-default": `${baseUrl}/mundial-2026/grupos`,
-      },
-    },
-  };
+  });
 }
 
 /* ────────────────── Page Component ────────────────── */

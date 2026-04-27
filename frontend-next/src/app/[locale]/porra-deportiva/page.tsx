@@ -4,31 +4,23 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd";
 import { RegionalArticlePage } from "@/components/RegionalArticlePage";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
+
+const PUBLISHED_AT = "2026-02-13T00:00:00Z";
+const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const url = `${baseUrl}${localePath}/porra-deportiva`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("porraDeportiva.title"),
     description: t("porraDeportiva.description"),
-    openGraph: {
-      title: t("porraDeportiva.title"),
-      description: t("porraDeportiva.description"),
-      url,
-      type: "article",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/porra-deportiva`,
-        "x-default": `${baseUrl}/porra-deportiva`,
-      },
-    },
-  };
+    path: { es: "/porra-deportiva" },
+    availableLocales: ["es"],
+    type: "article",
+    article: { publishedTime: PUBLISHED_AT, modifiedTime: MODIFIED_AT },
+  });
 }
 
 const relatedLinks = [

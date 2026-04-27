@@ -73,7 +73,9 @@
       "days": "Días",
       "hours": "Horas",
       "minutes": "Minutos",
-      "seconds": "Segundos"
+      "seconds": "Segundos",
+      "worldCupLabel": "FIFA World Cup",
+      "worldCupYear": "2026"
     },
     "whatIs": {
       "title": "¿Qué es Picks4All?",

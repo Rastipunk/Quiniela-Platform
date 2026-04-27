@@ -7,6 +7,7 @@ import { RegisterButton } from "@/components/RegisterButton";
 import { ShareButtons } from "@/components/ShareButtons";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 import { BRAND } from "@/lib/brand";
 
 /* ────────────────── Static Data ────────────────── */
@@ -46,36 +47,12 @@ const GROUP_FLAGS: Record<string, string[]> = {
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pagePath =
-    locale === "en"
-      ? "/world-cup-2026"
-      : locale === "pt"
-        ? "/copa-do-mundo-2026"
-        : "/mundial-2026";
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("worldCup.title"),
     description: t("worldCup.description"),
-    openGraph: {
-      title: t("worldCup.title"),
-      description: t("worldCup.description"),
-      url,
-      type: "website",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/mundial-2026`,
-        en: `${baseUrl}/en/world-cup-2026`,
-        pt: `${baseUrl}/pt/copa-do-mundo-2026`,
-        "x-default": `${baseUrl}/mundial-2026`,
-      },
-    },
-  };
+    path: { es: "/mundial-2026", en: "/world-cup-2026", pt: "/copa-do-mundo-2026" },
+  });
 }
 
 /* ────────────────── Sub-page link config ────────────────── */

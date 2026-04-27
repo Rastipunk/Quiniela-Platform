@@ -4,36 +4,21 @@ import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingContent } from "@/components/LandingContent";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const url = `${baseUrl}${localePath}`;
-
-  return {
-    title: {
-      absolute: t("home.title"),
-    },
+  return buildPageMetadata({
+    locale,
+    title: t("home.title"),
     description: t("home.description"),
-    openGraph: {
-      title: t("home.title"),
-      description: t("home.description"),
-      url,
-      type: "website",
+    path: "",
+    extra: {
+      // Home title is absolute (no template suffix appended).
+      title: { absolute: t("home.title") },
     },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: baseUrl,
-        en: `${baseUrl}/en`,
-        pt: `${baseUrl}/pt`,
-        "x-default": baseUrl,
-      },
-    },
-  };
+  });
 }
 
 export default async function LandingPage() {

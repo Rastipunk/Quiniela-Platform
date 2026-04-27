@@ -59,6 +59,10 @@ export function TeamFlag({
     <img
       src={flag.flagUrl}
       alt={flag.country}
+      width={sizeMap[size]}
+      height={Math.round(sizeMap[size] * 0.75)}
+      loading="lazy"
+      decoding="async"
       style={{
         width: sizeMap[size],
         height: "auto",

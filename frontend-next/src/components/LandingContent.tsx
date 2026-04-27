@@ -223,7 +223,7 @@ export function LandingContent() {
                     lineHeight: 1.4,
                   }}
                 >
-                  FIFA World Cup
+                  {t("hero.worldCupLabel")}
                 </span>
                 <span
                   style={{
@@ -239,7 +239,7 @@ export function LandingContent() {
                     lineHeight: 1.1,
                   }}
                 >
-                  2026
+                  {t("hero.worldCupYear")}
                 </span>
               </div>
             </div>

@@ -113,6 +113,10 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
               src={homeFlag.flagUrl}
               alt={homeName}
               title={homeName}
+              width={48}
+              height={36}
+              loading="lazy"
+              decoding="async"
               style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
@@ -133,6 +137,10 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
               src={awayFlag.flagUrl}
               alt={awayName}
               title={awayName}
+              width={48}
+              height={36}
+              loading="lazy"
+              decoding="async"
               style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
             />
           ) : (
@@ -219,7 +227,7 @@ function PickEditor(props: {
           {/* Home team: logo + name stacked */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 56 }}>
             {homeFlag?.flagUrl ? (
-              <img src={homeFlag.flagUrl} alt={homeName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
+              <img src={homeFlag.flagUrl} alt={homeName} width={48} height={36} loading="lazy" decoding="async" style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
             ) : (
               <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
                 <span style={{ fontSize: 18 }}>⚽</span>
@@ -242,7 +250,7 @@ function PickEditor(props: {
           {/* Away team: logo + name stacked */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 56 }}>
             {awayFlag?.flagUrl ? (
-              <img src={awayFlag.flagUrl} alt={awayName} style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
+              <img src={awayFlag.flagUrl} alt={awayName} width={48} height={36} loading="lazy" decoding="async" style={{ width: 48, height: "auto", borderRadius: 3, border: "1px solid #ddd", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />
             ) : (
               <div style={{ width: 48, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: colors.bgLight, borderRadius: 3, border: "1px solid #ddd" }}>
                 <span style={{ fontSize: 18 }}>⚽</span>

@@ -7,6 +7,8 @@
  * - BrandLogo: legacy alias for BrandIsotipo (kept for backwards compatibility)
  */
 
+import Image from "next/image";
+
 interface BrandIsotipoProps {
   /** Pixel size (default: 32) */
   size?: number;
@@ -16,6 +18,11 @@ interface BrandIsotipoProps {
   className?: string;
   /** Border radius in pixels (default: scales with size) */
   borderRadius?: number;
+  /**
+   * Mark above-the-fold logos as priority for LCP.
+   * Default false (most logos render after navbar/header).
+   */
+  priority?: boolean;
 }
 
 /**
@@ -24,7 +31,13 @@ interface BrandIsotipoProps {
  * - transparente-blanca: transparent bg, white P (use on dark backgrounds only)
  * - transparente-degradado: transparent bg, gradient P (use on light backgrounds only)
  */
-export function BrandIsotipo({ size = 32, variant = "degradado", className, borderRadius }: BrandIsotipoProps) {
+export function BrandIsotipo({
+  size = 32,
+  variant = "degradado",
+  className,
+  borderRadius,
+  priority = false,
+}: BrandIsotipoProps) {
   // Choose the best size variant available
   const fileSize = size <= 40 ? 32 : size <= 200 ? 180 : size <= 400 ? 320 : 500;
   const ext = variant === "degradado" ? "png" : "svg";
@@ -33,12 +46,13 @@ export function BrandIsotipo({ size = 32, variant = "degradado", className, bord
   const radius = borderRadius ?? Math.round(size * 0.22);
 
   return (
-    <img
+    <Image
       src={src}
       alt="Picks4All"
       width={size}
       height={size}
       className={className}
+      priority={priority}
       style={{
         display: "inline-block",
         flexShrink: 0,
@@ -55,22 +69,34 @@ interface BrandLogotipoProps {
   variant?: "blanco" | "degradado";
   /** Optional className */
   className?: string;
+  /** Mark above-the-fold logo as priority for LCP. */
+  priority?: boolean;
 }
 
 /**
  * Horizontal logotipo — full "Picks4All" wordmark with the P icon.
+ *
+ * Width is approximated as 3.2× height (matches the 40/80/120 source SVGs).
+ * Provided so next/image can reserve space and avoid CLS.
  */
-export function BrandLogotipo({ height = 40, variant = "blanco", className }: BrandLogotipoProps) {
-  // Choose the best size variant: 40, 80, or 120
+export function BrandLogotipo({
+  height = 40,
+  variant = "blanco",
+  className,
+  priority = false,
+}: BrandLogotipoProps) {
   const fileSize = height <= 50 ? 40 : height <= 100 ? 80 : 120;
   const src = `/brand/logotipo-${variant}-${fileSize}.svg`;
+  const width = Math.round(height * 3.2);
 
   return (
-    <img
+    <Image
       src={src}
       alt="Picks4All"
+      width={width}
       height={height}
       className={className}
+      priority={priority}
       style={{ display: "inline-block", height, width: "auto", flexShrink: 0 }}
     />
   );
@@ -80,6 +106,6 @@ export function BrandLogotipo({ height = 40, variant = "blanco", className }: Br
  * Legacy alias — defaults to the gradient isotipo.
  * Kept for backwards compatibility with existing components.
  */
-export function BrandLogo({ size = 28 }: { size?: number }) {
-  return <BrandIsotipo size={size} variant="degradado" />;
+export function BrandLogo({ size = 28, priority = false }: { size?: number; priority?: boolean }) {
+  return <BrandIsotipo size={size} variant="degradado" priority={priority} />;
 }

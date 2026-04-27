@@ -534,7 +534,7 @@ export default function PoolPage() {
               {org.logoBase64 ? (
                 <div style={{ position: "relative", marginBottom: 28 }}>
                   <div style={{ position: "absolute", inset: -6, borderRadius: 24, background: "linear-gradient(135deg, rgba(99,102,241,0.4), rgba(139,92,246,0.4))", filter: "blur(12px)" }} />
-                  <img src={org.logoBase64} alt={org.name} style={{ position: "relative", maxHeight: 200, maxWidth: 320, borderRadius: 16, objectFit: "contain", border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }} />
+                  <img src={org.logoBase64} alt={org.name} width={320} height={200} loading="lazy" decoding="async" style={{ position: "relative", maxHeight: 200, maxWidth: 320, height: "auto", width: "auto", borderRadius: 16, objectFit: "contain", border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }} />
                 </div>
               ) : (
                 <div style={{ width: 180, height: 180, borderRadius: 24, marginBottom: 28, background: "linear-gradient(135deg, #4f46e5, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72, fontWeight: 800, color: colors.white, border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }}>
@@ -592,7 +592,7 @@ export default function PoolPage() {
           {!showSplash && overview.pool.organization && (
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, marginBottom: 8 }}>
               {overview.pool.organization.logoBase64 ? (
-                <img src={overview.pool.organization.logoBase64} alt={overview.pool.organization.name} style={{ maxHeight: 128, maxWidth: 200, objectFit: "contain", borderRadius: 12, flexShrink: 0 }} />
+                <img src={overview.pool.organization.logoBase64} alt={overview.pool.organization.name} width={200} height={128} loading="lazy" decoding="async" style={{ maxHeight: 128, maxWidth: 200, height: "auto", width: "auto", objectFit: "contain", borderRadius: 12, flexShrink: 0 }} />
               ) : (
                 <div style={{ width: 100, height: 100, borderRadius: radii["3xl"], flexShrink: 0, background: `linear-gradient(135deg, ${colors.purple}, ${colors.brand})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: fontWeight.extrabold, color: colors.white }}>
                   {overview.pool.organization.name.charAt(0).toUpperCase()}

@@ -13,7 +13,8 @@ import { AttributionCapture } from "@/components/AttributionCapture";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
-import { SITE_URL } from "@/lib/siteConfig";
+import { SITE_URL, SITE_NAME } from "@/lib/siteConfig";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import {
   getConsentDefaultsScript,
   getGtmLoaderScript,
@@ -46,13 +47,15 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "seo.home" });
   const baseUrl = SITE_URL;
   const localeUrl = locale === "es" ? baseUrl : `${baseUrl}/${locale}`;
+  const defaultTitle = t("title");
+  const defaultDescription = t("description");
 
   return {
     title: {
-      default: t("title"),
-      template: "%s | Picks4All",
+      default: defaultTitle,
+      template: `%s | ${SITE_NAME}`,
     },
-    description: t("description"),
+    description: defaultDescription,
     keywords: [
       "quiniela",
       "sports pool",
@@ -70,17 +73,17 @@ export async function generateMetadata({
       type: "website",
       locale: OG_LOCALES[locale] || "es_LA",
       url: localeUrl,
-      siteName: "Picks4All",
-      images: [
-        {
-          url: "/opengraph-image",
-          width: 1200,
-          height: 630,
-          alt: "Picks4All",
-        },
-      ],
+      siteName: SITE_NAME,
+      title: defaultTitle,
+      description: defaultDescription,
+      images: [DEFAULT_OG_IMAGE],
     },
-    twitter: { card: "summary_large_image" },
+    twitter: {
+      card: "summary_large_image",
+      title: defaultTitle,
+      description: defaultDescription,
+      images: [DEFAULT_OG_IMAGE.url],
+    },
     metadataBase: new URL(baseUrl),
     alternates: {
       canonical: localeUrl,
@@ -172,12 +175,31 @@ export default async function LocaleLayout({
             <JsonLd
               data={{
                 "@context": "https://schema.org",
-                "@type": "Organization",
-                name: "Picks4All",
-                url: SITE_URL,
-                logo: `${SITE_URL}/opengraph-image`,
-                inLanguage: locale,
-                description: t("orgDescription"),
+                "@graph": [
+                  {
+                    "@type": "Organization",
+                    "@id": `${SITE_URL}#organization`,
+                    name: SITE_NAME,
+                    url: SITE_URL,
+                    logo: {
+                      "@type": "ImageObject",
+                      url: `${SITE_URL}/opengraph-image`,
+                      width: 1200,
+                      height: 630,
+                    },
+                    inLanguage: locale,
+                    description: t("orgDescription"),
+                  },
+                  {
+                    "@type": "WebSite",
+                    "@id": `${SITE_URL}#website`,
+                    url: SITE_URL,
+                    name: SITE_NAME,
+                    description: t("orgDescription"),
+                    inLanguage: locale,
+                    publisher: { "@id": `${SITE_URL}#organization` },
+                  },
+                ],
               }}
             />
             {children}

@@ -234,6 +234,8 @@ export default function AdminFeedbackContent() {
           <img
             src={`data:image/png;base64,${imageModal}`}
             alt="Screenshot"
+            loading="lazy"
+            decoding="async"
             style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 8 }}
           />
         </div>
@@ -378,6 +380,8 @@ function FeedbackCard({
               <img
                 src={`data:image/png;base64,${item.imageBase64}`}
                 alt="Screenshot"
+                loading="lazy"
+                decoding="async"
                 onClick={() => onImageClick(item.imageBase64!)}
                 style={{
                   maxWidth: "100%",

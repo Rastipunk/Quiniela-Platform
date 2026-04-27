@@ -276,6 +276,8 @@ export function FeedbackModal({ type: initialType = "BUG", onClose }: FeedbackMo
                   <img
                     src={imagePreview}
                     alt="Preview"
+                    loading="lazy"
+                    decoding="async"
                     style={{
                       maxWidth: "100%",
                       maxHeight: 150,

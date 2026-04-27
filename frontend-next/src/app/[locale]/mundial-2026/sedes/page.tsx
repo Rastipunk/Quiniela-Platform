@@ -6,41 +6,23 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 
 // ── Metadata ─────────────────────────────────────────────────
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const paths: Record<string, string> = {
-    es: "/mundial-2026/sedes",
-    en: "/world-cup-2026/venues",
-    pt: "/copa-do-mundo-2026/sedes",
-  };
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const url = `${baseUrl}${localePath}${paths[locale]}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("worldCupVenues.title"),
     description: t("worldCupVenues.description"),
-    openGraph: {
-      title: t("worldCupVenues.title"),
-      description: t("worldCupVenues.description"),
-      url,
-      type: "website",
+    path: {
+      es: "/mundial-2026/sedes",
+      en: "/world-cup-2026/venues",
+      pt: "/copa-do-mundo-2026/sedes",
     },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}${paths.es}`,
-        en: `${baseUrl}/en${paths.en}`,
-        pt: `${baseUrl}/pt${paths.pt}`,
-        "x-default": `${baseUrl}${paths.es}`,
-      },
-    },
-  };
+  });
 }
 
 // ── Venue Data ───────────────────────────────────────────────

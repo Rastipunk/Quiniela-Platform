@@ -6,40 +6,26 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
+
+const PUBLISHED_AT = "2026-04-04T00:00:00Z";
+const MODIFIED_AT = "2026-04-16T00:00:00Z";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pathMap: Record<string, string> = {
-    es: "/mundial-2026/reglas-quiniela",
-    en: "/world-cup-2026/pool-rules",
-    pt: "/copa-do-mundo-2026/regras-bolao",
-  };
-  const pagePath = pathMap[locale] || pathMap.es;
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("worldCupRules.title"),
     description: t("worldCupRules.description"),
-    openGraph: {
-      title: t("worldCupRules.title"),
-      description: t("worldCupRules.description"),
-      url,
-      type: "article",
+    path: {
+      es: "/mundial-2026/reglas-quiniela",
+      en: "/world-cup-2026/pool-rules",
+      pt: "/copa-do-mundo-2026/regras-bolao",
     },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/mundial-2026/reglas-quiniela`,
-        en: `${baseUrl}/en/world-cup-2026/pool-rules`,
-        pt: `${baseUrl}/pt/copa-do-mundo-2026/regras-bolao`,
-        "x-default": `${baseUrl}/mundial-2026/reglas-quiniela`,
-      },
-    },
-  };
+    type: "article",
+    article: { publishedTime: PUBLISHED_AT, modifiedTime: MODIFIED_AT },
+  });
 }
 
 interface RulesMessages {

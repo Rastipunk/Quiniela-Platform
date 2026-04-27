@@ -335,6 +335,16 @@ button:disabled {
   }
 }
 
+/* Skeleton loader shimmer — used by route-level loading.tsx files */
+@keyframes p4a-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 @media (max-width: 640px) {
   .modal-mobile {
     position: fixed;

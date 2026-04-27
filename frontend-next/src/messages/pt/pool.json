@@ -240,13 +240,8 @@
     }
   },
 
-  "invite": {
-    "title": "Convites",
-    "createCode": "Criar código",
-    "codeCopied": "Código (copiado se o navegador permitiu):"
-  },
-
   "filters": {
+    "title": "Filtros",
     "searchPlaceholder": "Buscar por time / grupo / rodada...",
     "onlyOpen": "Apenas ABERTOS",
     "noPick": "Sem palpite",
@@ -760,6 +755,7 @@
   },
   "invite": {
     "title": "Convites",
+    "inviteMore": "Convidar mais jogadores",
     "createCode": "Criar código",
     "codeCopied": "Código (copiado se o navegador permitiu):"
   },

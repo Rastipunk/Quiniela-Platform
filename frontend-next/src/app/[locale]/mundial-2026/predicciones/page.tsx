@@ -8,6 +8,7 @@ import { PredictionSubscribeButton } from "@/components/PredictionSubscribeButto
 import { ShareButtons } from "@/components/ShareButtons";
 import { colors } from "@/lib/theme";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 import { BRAND } from "@/lib/brand";
 
 /* ────────────────── Static Data ────────────────── */
@@ -95,39 +96,24 @@ const FINAL_MATCH: KnockoutMatch = {
 
 /* ────────────────── Metadata ────────────────── */
 
+const PUBLISHED_AT = "2026-04-04T00:00:00Z";
+const MODIFIED_AT = "2026-04-16T00:00:00Z";
+
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const pathMap: Record<string, string> = {
-    es: "/mundial-2026/predicciones",
-    en: "/world-cup-2026/predictions",
-    pt: "/copa-do-mundo-2026/previsoes",
-  };
-  const pagePath = pathMap[locale] || pathMap.es;
-  const url = `${baseUrl}${localePath}${pagePath}`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("worldCupPredictions.title"),
     description: t("worldCupPredictions.description"),
-    openGraph: {
-      title: t("worldCupPredictions.title"),
-      description: t("worldCupPredictions.description"),
-      url,
-      type: "article",
+    path: {
+      es: "/mundial-2026/predicciones",
+      en: "/world-cup-2026/predictions",
+      pt: "/copa-do-mundo-2026/previsoes",
     },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/mundial-2026/predicciones`,
-        en: `${baseUrl}/en/world-cup-2026/predictions`,
-        pt: `${baseUrl}/pt/copa-do-mundo-2026/previsoes`,
-        "x-default": `${baseUrl}/mundial-2026/predicciones`,
-      },
-    },
-  };
+    type: "article",
+    article: { publishedTime: PUBLISHED_AT, modifiedTime: MODIFIED_AT },
+  });
 }
 
 /* ────────────────── Helper Components ────────────────── */

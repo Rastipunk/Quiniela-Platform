@@ -15,34 +15,17 @@ import {
 } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
 import { SITE_URL } from "@/lib/siteConfig";
+import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
-  const baseUrl = SITE_URL;
-
-  const localePath = locale === "es" ? "" : `/${locale}`;
-  const url = `${baseUrl}${localePath}/faq`;
-
-  return {
+  return buildPageMetadata({
+    locale,
     title: t("faq.title"),
     description: t("faq.description"),
-    openGraph: {
-      title: t("faq.title"),
-      description: t("faq.description"),
-      url,
-      type: "website",
-    },
-    alternates: {
-      canonical: url,
-      languages: {
-        es: `${baseUrl}/faq`,
-        en: `${baseUrl}/en/faq`,
-        pt: `${baseUrl}/pt/faq`,
-        "x-default": `${baseUrl}/faq`,
-      },
-    },
-  };
+    path: "/faq",
+  });
 }
 
 interface FAQItem {
@@ -74,6 +57,10 @@ const SUPPORT_EMAILS: Record<string, string> = {
 
 export default async function FAQPage() {
   const locale = await getLocale();
+  // IMPORTANT: messages/{locale}/faq.json is loaded via dynamic import (not registered
+  // in i18n/request.ts) because it contains structured arrays (items[]) that benefit
+  // from typed loading. DO NOT DELETE these files — see commit 27db35b for the
+  // regression that occurred when they were removed.
   const rawFaqMessages: FAQMessages = (await import(`@/messages/${locale}/faq.json`)).default;
   const supportEmail = SUPPORT_EMAILS[locale] || SUPPORT_EMAILS.es;
   const baseUrl = SITE_URL;
