@@ -80,6 +80,7 @@
     "whatIs": {
       "title": "O que é o Picks4All?",
       "p1": "O Picks4All é a plataforma gratuita para criar <strong>pencas esportivas</strong> online e competir com amigos, família ou colegas de trabalho prevendo resultados de futebol. Também conhecida como <strong>polla</strong> na Colômbia, <strong>prode</strong> na Argentina, <strong>quiniela</strong> no México, ou <strong>porra</strong> na Espanha.",
+      "p1WorldCup": "O Picks4All é a plataforma gratuita para criar <strong>pencas esportivas</strong> online e competir com amigos, família ou colegas de trabalho prevendo resultados de futebol. Também conhecida como <strong>polla</strong> na Colômbia, <strong>prode</strong> na Argentina, <strong>quiniela</strong> no México, ou <strong>porra</strong> na Espanha.",
       "p2": "Crie seu {term} grátis para até 20 jogadores, convide quem quiser com um código, faça suas previsões e compita no placar. <strong>Grátis e sem apostas</strong> — só diversão e rivalidade saudável."
     },
     "features": {
@@ -255,6 +256,7 @@
   "jsonLd": {
     "orgDescription": "Plataforma gratuita de previsões esportivas (pencas, bolões) para competir com amigos prevendo resultados de futebol",
     "appDescription": "Plataforma gratuita de previsões esportivas (pencas, bolões) para competir com amigos prevendo resultados de futebol",
+    "appDescriptionWorldCup": "Plataforma gratuita de previsões esportivas (pencas, bolões) para competir com amigos prevendo resultados de futebol",
     "featureList": [
       "Criar pencas esportivas grátis",
       "Convidar amigos com código de convite",
@@ -263,7 +265,16 @@
       "Regras de pontuação personalizáveis",
       "Compatível com Copa do Mundo 2026 e Champions League"
     ],
-    "ctaName": "Criar Penca Grátis"
+    "featureListWorldCup": [
+      "Criar pencas esportivas grátis",
+      "Convidar amigos com código de convite",
+      "Previsões de partidas de futebol",
+      "Placar automático em tempo real",
+      "Regras de pontuação personalizáveis",
+      "Compatível com Copa do Mundo 2026 e Champions League"
+    ],
+    "ctaName": "Criar Penca Grátis",
+    "ctaNameWorldCup": "Criar Penca Grátis"
   },
   "whatsNew": {
     "title": "Novidades",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd";
@@ -11,6 +12,7 @@ const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
+  if (locale !== "es") notFound();
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -35,6 +37,7 @@ const relatedLinks = [
 
 export default async function PollaFutboleraPage() {
   const locale = await getLocale();
+  if (locale !== "es") notFound();
   const t = await getTranslations("polla");
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;

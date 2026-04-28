@@ -212,8 +212,11 @@ export function Footer() {
           >
             {t("whatIsQuiniela")}
           </Link>
+          {/* Regional pages are ES-only (see /[locale]/{polla|prode|penca|porra}/page.tsx).
+              Force locale="es" so EN/PT users don't land on a 404 from the footer. */}
           <Link
             href="/polla-futbolera"
+            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -224,6 +227,7 @@ export function Footer() {
           </Link>
           <Link
             href="/prode-deportivo"
+            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -234,6 +238,7 @@ export function Footer() {
           </Link>
           <Link
             href="/penca-futbol"
+            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -244,6 +249,7 @@ export function Footer() {
           </Link>
           <Link
             href="/porra-deportiva"
+            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",

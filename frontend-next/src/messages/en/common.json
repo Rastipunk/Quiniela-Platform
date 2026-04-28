@@ -80,6 +80,7 @@
     "whatIs": {
       "title": "What is Picks4All?",
       "p1": "Picks4All is the free platform to create <strong>sports pools</strong> online and compete with friends, family, or coworkers by predicting football results. Known as <strong>polla futbolera</strong> in Colombia, <strong>prode</strong> in Argentina, <strong>penca</strong> in Uruguay, or <strong>porra</strong> in Spain.",
+      "p1WorldCup": "Picks4All is the free platform to create <strong>sports pools</strong> online and compete with friends, family, or coworkers by predicting football results. Known as <strong>polla futbolera</strong> in Colombia, <strong>prode</strong> in Argentina, <strong>penca</strong> in Uruguay, or <strong>porra</strong> in Spain.",
       "p2": "Create your {term} for free (up to 20 players), invite anyone with a code, make your predictions and compete on the leaderboard. <strong>Free and with no gambling</strong> — just fun and friendly rivalry."
     },
     "features": {
@@ -255,6 +256,7 @@
   "jsonLd": {
     "orgDescription": "Free sports prediction platform (pools, picks, brackets) to compete with friends predicting football results",
     "appDescription": "Free sports prediction platform (pools, picks, brackets) to compete with friends predicting football results",
+    "appDescriptionWorldCup": "Free sports prediction platform (pools, picks, brackets) to compete with friends predicting football results",
     "featureList": [
       "Create free sports pools",
       "Invite friends with invitation codes",
@@ -263,7 +265,16 @@
       "Customizable scoring rules",
       "Compatible with World Cup 2026 and Champions League"
     ],
-    "ctaName": "Create Free Pool"
+    "featureListWorldCup": [
+      "Create free sports pools",
+      "Invite friends with invitation codes",
+      "Football match predictions",
+      "Real-time automatic leaderboard",
+      "Customizable scoring rules",
+      "Compatible with World Cup 2026 and Champions League"
+    ],
+    "ctaName": "Create Free Pool",
+    "ctaNameWorldCup": "Create Free Pool"
   },
   "whatsNew": {
     "title": "What's New",

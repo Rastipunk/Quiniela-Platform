@@ -1,7 +1,9 @@
 {
   "home": {
     "title": "Free Sports Predictions with Friends - Picks4All",
-    "description": "Create free football prediction pools with friends. Predict World Cup 2026 and Champions League results on custom leaderboards. No real money, just fun."
+    "description": "Create free football prediction pools with friends. Predict World Cup 2026 and Champions League results on custom leaderboards. No real money, just fun.",
+    "titleWorldCup": "Free Sports Predictions with Friends - Picks4All",
+    "descriptionWorldCup": "Create free football prediction pools with friends. Predict World Cup 2026 and Champions League results on custom leaderboards. No real money, just fun."
   },
   "faq": {
     "title": "FAQ — Sports Pools & Football Predictions",

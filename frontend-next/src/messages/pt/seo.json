@@ -1,7 +1,9 @@
 {
   "home": {
     "title": "Previsões Esportivas Grátis com Amigos - Picks4All",
-    "description": "Crie pencas e previsões de futebol grátis. Preveja resultados da Copa do Mundo 2026, Champions League e mais. Sem dinheiro real, só diversão entre amigos."
+    "description": "Crie pencas e previsões de futebol grátis. Preveja resultados da Copa do Mundo 2026, Champions League e mais. Sem dinheiro real, só diversão entre amigos.",
+    "titleWorldCup": "Previsões Esportivas Grátis com Amigos - Picks4All",
+    "descriptionWorldCup": "Crie pencas e previsões de futebol grátis. Preveja resultados da Copa do Mundo 2026, Champions League e mais. Sem dinheiro real, só diversão entre amigos."
   },
   "faq": {
     "title": "Perguntas Frequentes — Pencas e Previsões Esportivas",
