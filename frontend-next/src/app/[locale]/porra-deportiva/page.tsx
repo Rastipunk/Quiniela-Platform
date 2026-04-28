@@ -26,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const relatedLinks = [
+  { key: "relatedWorldCup", href: "/mundial-2026" },
   { key: "relatedQuiniela", href: "/que-es-una-quiniela" },
   { key: "relatedHowItWorks", href: "/como-funciona" },
   { key: "relatedFaq", href: "/faq" },
