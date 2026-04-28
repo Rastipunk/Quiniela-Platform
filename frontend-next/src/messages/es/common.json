@@ -80,6 +80,7 @@
     "whatIs": {
       "title": "¿Qué es Picks4All?",
       "p1": "Picks4All es la plataforma gratuita para crear <strong>quinielas deportivas</strong> online y competir con amigos, familia o compañeros de trabajo prediciendo resultados de fútbol. También conocida como <strong>polla futbolera</strong> en Colombia, Chile y Venezuela, <strong>prode</strong> en Argentina, <strong>penca</strong> en Uruguay, o <strong>porra</strong> en España.",
+      "p1WorldCup": "Picks4All es la plataforma gratuita para crear tu <strong>polla del Mundial 2026</strong> online y competir con amigos, familia o compañeros de trabajo prediciendo los 104 partidos del Mundial FIFA. Tu <strong>quiniela mundialista</strong>, <strong>prode</strong>, <strong>penca</strong> o <strong>porra</strong> de la Copa del Mundo, lista en minutos.",
       "p2": "Crea tu {term} gratis para hasta 20 jugadores, invita a quien quieras con un código, haz tus predicciones y compite en el leaderboard. <strong>Gratis y sin apuestas</strong> — solo diversión y rivalidad sana."
     },
     "features": {
@@ -252,16 +253,10 @@
     "successMessage": "Gracias por tu feedback. Nos ayuda mucho a mejorar la plataforma.",
     "submitError": "Error al enviar. Intenta de nuevo."
   },
-  "seo": {
-    "home": {
-      "title": "Predicciones Deportivas Gratis con Amigos - Picks4All",
-      "description": "Crea quinielas, pollas, prodes y pencas de fútbol gratis. Predice resultados del Mundial 2026, Champions League y más. Sin dinero real, solo diversión entre amigos.",
-      "ogDescription": "La plataforma gratuita para crear quinielas, pollas, prodes y pencas de fútbol. Compite con amigos prediciendo resultados."
-    }
-  },
   "jsonLd": {
     "orgDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de fútbol",
     "appDescription": "Plataforma gratuita de quinielas deportivas (pollas, prodes, pencas) para competir con amigos prediciendo resultados de fútbol",
+    "appDescriptionWorldCup": "Plataforma gratuita para crear tu polla del Mundial 2026. Compite con amigos prediciendo los 104 partidos del Mundial FIFA con resultados automáticos en tiempo real.",
     "featureList": [
       "Crear quinielas deportivas gratis",
       "Invitar amigos con código de invitación",
@@ -270,7 +265,16 @@
       "Reglas de puntuación personalizables",
       "Compatible con Mundial 2026 y Champions League"
     ],
-    "ctaName": "Crear Quiniela Gratis"
+    "featureListWorldCup": [
+      "Polla del Mundial 2026 gratis",
+      "Predicciones para los 104 partidos del Mundial FIFA",
+      "Resultados automáticos en tiempo real",
+      "Invitar amigos con código de invitación",
+      "Leaderboard automático del Mundial",
+      "Reglas de puntuación personalizables"
+    ],
+    "ctaName": "Crear Quiniela Gratis",
+    "ctaNameWorldCup": "Crear mi polla del Mundial gratis"
   },
   "whatsNew": {
     "title": "Novedades",

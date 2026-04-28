@@ -3,20 +3,23 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingContent } from "@/components/LandingContent";
-import { SITE_URL } from "@/lib/siteConfig";
+import { SITE_URL, WORLD_CUP_FOCUS } from "@/lib/siteConfig";
 import { buildPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
   const t = await getTranslations("seo");
+  const useWorldCup = WORLD_CUP_FOCUS && locale === "es";
+  const title = useWorldCup ? t("home.titleWorldCup") : t("home.title");
+  const description = useWorldCup ? t("home.descriptionWorldCup") : t("home.description");
   return buildPageMetadata({
     locale,
-    title: t("home.title"),
-    description: t("home.description"),
+    title,
+    description,
     path: "",
     extra: {
       // Home title is absolute (no template suffix appended).
-      title: { absolute: t("home.title") },
+      title: { absolute: title },
     },
   });
 }
@@ -27,11 +30,15 @@ export default async function LandingPage() {
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
   const url = `${baseUrl}${localePath}`;
+  const useWorldCup = WORLD_CUP_FOCUS && locale === "es";
 
+  const featureListKey = useWorldCup ? "featureListWorldCup" : "featureList";
   const featureList: string[] = [];
   for (let i = 0; i < 6; i++) {
-    featureList.push(t(`featureList.${i}`));
+    featureList.push(t(`${featureListKey}.${i}`));
   }
+  const appDescription = useWorldCup ? t("appDescriptionWorldCup") : t("appDescription");
+  const ctaName = useWorldCup ? t("ctaNameWorldCup") : t("ctaName");
 
   return (
     <>
@@ -40,7 +47,7 @@ export default async function LandingPage() {
           "@context": "https://schema.org",
           "@type": "WebApplication",
           name: "Picks4All",
-          description: t("appDescription"),
+          description: appDescription,
           url,
           applicationCategory: "SportsApplication",
           applicationSubCategory: "Game",
@@ -61,7 +68,7 @@ export default async function LandingPage() {
           potentialAction: {
             "@type": "ViewAction",
             target: url,
-            name: t("ctaName"),
+            name: ctaName,
           },
         }}
       />

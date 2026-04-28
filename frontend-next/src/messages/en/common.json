@@ -252,13 +252,6 @@
     "successMessage": "Thanks for your feedback. It helps us improve the platform.",
     "submitError": "Error sending. Please try again."
   },
-  "seo": {
-    "home": {
-      "title": "Free Sports Predictions with Friends - Picks4All",
-      "description": "Create free football pools and predictions. Predict World Cup 2026, Champions League results and more. No real money, just fun with friends.",
-      "ogDescription": "The free platform to create football pools and predictions. Compete with friends by predicting match results."
-    }
-  },
   "jsonLd": {
     "orgDescription": "Free sports prediction platform (pools, picks, brackets) to compete with friends predicting football results",
     "appDescription": "Free sports prediction platform (pools, picks, brackets) to compete with friends predicting football results",

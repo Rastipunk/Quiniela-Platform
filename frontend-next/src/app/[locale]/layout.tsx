@@ -13,7 +13,7 @@ import { AttributionCapture } from "@/components/AttributionCapture";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
 import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
 import type { PoolRegion } from "@/lib/poolTerms";
-import { SITE_URL, SITE_NAME } from "@/lib/siteConfig";
+import { SITE_URL, SITE_NAME, WORLD_CUP_FOCUS } from "@/lib/siteConfig";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import {
   getConsentDefaultsScript,
@@ -47,8 +47,11 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "seo.home" });
   const baseUrl = SITE_URL;
   const localeUrl = locale === "es" ? baseUrl : `${baseUrl}/${locale}`;
-  const defaultTitle = t("title");
-  const defaultDescription = t("description");
+  // ES pivots to World Cup messaging during the WORLD_CUP_FOCUS window.
+  // EN/PT keep their evergreen copy regardless.
+  const useWorldCup = WORLD_CUP_FOCUS && locale === "es";
+  const defaultTitle = useWorldCup ? t("titleWorldCup") : t("title");
+  const defaultDescription = useWorldCup ? t("descriptionWorldCup") : t("description");
 
   return {
     title: {

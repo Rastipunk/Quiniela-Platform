@@ -252,13 +252,6 @@
     "successMessage": "Obrigado pelo seu feedback. Nos ajuda muito a melhorar a plataforma.",
     "submitError": "Erro ao enviar. Tente novamente."
   },
-  "seo": {
-    "home": {
-      "title": "Previsões Esportivas Grátis com Amigos - Picks4All",
-      "description": "Crie pencas e previsões de futebol grátis. Preveja resultados da Copa do Mundo 2026, Champions League e mais. Sem dinheiro real, só diversão entre amigos.",
-      "ogDescription": "A plataforma gratuita para criar pencas e previsões de futebol. Compita com amigos prevendo resultados de partidas."
-    }
-  },
   "jsonLd": {
     "orgDescription": "Plataforma gratuita de previsões esportivas (pencas, bolões) para competir com amigos prevendo resultados de futebol",
     "appDescription": "Plataforma gratuita de previsões esportivas (pencas, bolões) para competir com amigos prevendo resultados de futebol",

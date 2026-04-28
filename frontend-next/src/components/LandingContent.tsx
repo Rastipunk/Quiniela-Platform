@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -14,9 +14,12 @@ import { BRAND } from "@/lib/brand";
 import { trackEvent } from "@/lib/analytics";
 import { trackMetaEvent } from "@/lib/metaPixel";
 import { getPaymentCountry } from "@/lib/api/payments";
+import { WORLD_CUP_FOCUS } from "@/lib/siteConfig";
 
 export function LandingContent() {
   const t = useTranslations("landing");
+  const locale = useLocale();
+  const useWorldCupCopy = WORLD_CUP_FOCUS && locale === "es";
   const isMobile = useIsMobile();
   const { openAuthPanel } = useAuthPanel();
   const { params: poolParams } = usePoolTerm();
@@ -336,7 +339,7 @@ export function LandingContent() {
             margin: "0 auto 16px",
           }}
         >
-          {t.rich("whatIs.p1", { strong: strongTag })}
+          {t.rich(useWorldCupCopy ? "whatIs.p1WorldCup" : "whatIs.p1", { strong: strongTag })}
         </p>
         <p
           style={{

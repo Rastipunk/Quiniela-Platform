@@ -1,7 +1,9 @@
 {
   "home": {
     "title": "Predicciones Deportivas Gratis con Amigos - Picks4All",
-    "description": "Crea quinielas, pollas, prodes y pencas de fútbol gratis. Predice resultados del Mundial 2026, Champions League y más. Solo diversión entre amigos."
+    "description": "Crea quinielas, pollas, prodes y pencas de fútbol gratis. Predice resultados del Mundial 2026, Champions League y más. Solo diversión entre amigos.",
+    "titleWorldCup": "Crea tu Polla Mundialista Gratis 2026 | Picks4All",
+    "descriptionWorldCup": "Crea tu polla mundialista gratis este 2026. Compite con amigos prediciendo los 104 partidos del Mundial FIFA. Resultados en vivo, sin pagar nada."
   },
   "faq": {
     "title": "Preguntas Frecuentes — Quinielas, Pollas y Prodes Deportivas",
