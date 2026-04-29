@@ -102,8 +102,12 @@ export type SubmitCorporateInquiryInput = {
   /** ISO 3166-1 alpha-2 (e.g. "CO", "AR"). */
   country: string;
   currency: "COP" | "USD";
-  numberOfPools: number;
-  slotsPerPool: number;
+  /**
+   * Per-pool slot counts. Length is the number of pools requested;
+   * each entry is the slot count for that pool. The backend derives
+   * numberOfPools and slotsPerPool from this array.
+   */
+  poolsConfig: number[];
   message?: string;
   locale: "es" | "en" | "pt";
 };

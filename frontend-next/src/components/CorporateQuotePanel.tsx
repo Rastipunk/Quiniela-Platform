@@ -36,9 +36,12 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
   const [contactPhone, setContactPhone] = useState("");
   const [countryInput, setCountryInput] = useState("");
   const [currency, setCurrency] = useState<"COP" | "USD">("USD");
-  const [numberOfPools, setNumberOfPools] = useState("1");
-  const [slotsPerPool, setSlotsPerPool] = useState("");
+  // One slot count per pool. The user starts with a single input ("how
+  // many slots") and can press "Add another pool" to append more
+  // entries — each pool can have a different size if they want.
+  const [poolSlots, setPoolSlots] = useState<string[]>([""]);
   const [message, setMessage] = useState("");
+  const MAX_POOLS = 50;
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("idle");
@@ -90,15 +93,14 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
     setContactEmail("");
     setContactPhone("");
     setCountryInput("");
-    setNumberOfPools("1");
-    setSlotsPerPool("");
+    setPoolSlots([""]);
     setMessage("");
     setErrors({});
     setStatus("idle");
     setSubmitError(null);
   }, [isOpen]);
 
-  function validate(): { ok: boolean; countryCode: string | null } {
+  function validate(): { ok: boolean; countryCode: string | null; parsedPools: number[] } {
     const next: Record<string, string> = {};
     const cn = companyName.trim();
     const ctn = contactName.trim();
@@ -120,33 +122,37 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
     const countryCode = resolveCountryCode(countryInput, locale);
     if (!countryCode) next.country = t("errors.invalidCountry");
 
-    const pools = parseInt(numberOfPools, 10);
-    if (!Number.isFinite(pools) || pools < LIMITS.numberOfPools.min) {
-      next.numberOfPools = t("errors.minPools");
-    } else if (pools > LIMITS.numberOfPools.max) {
-      next.numberOfPools = t("errors.maxPools");
-    }
-
-    const slots = parseInt(slotsPerPool, 10);
-    if (!Number.isFinite(slots) || slots < LIMITS.slotsPerPool.min) {
-      next.slotsPerPool = t("errors.minSlots");
-    } else if (slots > LIMITS.slotsPerPool.max) {
-      next.slotsPerPool = t("errors.maxSlots");
-    }
+    // Validate each pool slot input. The error key is suffixed with the
+    // index so we can highlight the specific row.
+    const parsedPools: number[] = [];
+    poolSlots.forEach((raw, i) => {
+      const v = parseInt(raw, 10);
+      if (!Number.isFinite(v) || v < LIMITS.slotsPerPool.min) {
+        next[`poolSlots.${i}`] = t("errors.minSlots");
+      } else if (v > LIMITS.slotsPerPool.max) {
+        next[`poolSlots.${i}`] = t("errors.maxSlots");
+      } else {
+        parsedPools.push(v);
+      }
+    });
 
     if (message.length > LIMITS.inquiryMessage.max) {
       next.message = t("errors.tooLong");
     }
 
     setErrors(next);
-    return { ok: Object.keys(next).length === 0, countryCode };
+    return {
+      ok: Object.keys(next).length === 0,
+      countryCode,
+      parsedPools,
+    };
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (status === "loading") return;
 
-    const { ok, countryCode } = validate();
+    const { ok, countryCode, parsedPools } = validate();
     if (!ok || !countryCode) return;
 
     setStatus("loading");
@@ -160,8 +166,7 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
         contactPhone: contactPhone.trim() || undefined,
         country: countryCode,
         currency,
-        numberOfPools: parseInt(numberOfPools, 10),
-        slotsPerPool: parseInt(slotsPerPool, 10),
+        poolsConfig: parsedPools,
         message: message.trim() || undefined,
         locale,
       });
@@ -169,8 +174,8 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
       trackEvent("corporate_quote_submitted", {
         country: countryCode,
         currency,
-        number_of_pools: parseInt(numberOfPools, 10),
-        slots_per_pool: parseInt(slotsPerPool, 10),
+        number_of_pools: parsedPools.length,
+        total_slots: parsedPools.reduce((sum, n) => sum + n, 0),
       });
 
       setStatus("success");
@@ -180,6 +185,40 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
       setSubmitError(errMsg);
       setStatus("error");
     }
+  }
+
+  // Pool list helpers — keep the array immutable and re-set state.
+  function updatePoolSlots(index: number, value: string) {
+    setPoolSlots((prev) => prev.map((v, i) => (i === index ? value : v)));
+    // Clear the per-row error as the user types.
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[`poolSlots.${index}`];
+      return next;
+    });
+  }
+
+  function addPool() {
+    setPoolSlots((prev) => (prev.length >= MAX_POOLS ? prev : [...prev, ""]));
+  }
+
+  function removePool(index: number) {
+    setPoolSlots((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+    setErrors((prev) => {
+      const next = { ...prev };
+      // Reindex error keys so highlighting still matches the new array.
+      const remapped: Record<string, string> = {};
+      for (const [k, v] of Object.entries(next)) {
+        if (!k.startsWith("poolSlots.")) {
+          remapped[k] = v;
+          continue;
+        }
+        const i = parseInt(k.split(".")[1] ?? "", 10);
+        if (i === index) continue;
+        remapped[`poolSlots.${i > index ? i - 1 : i}`] = v;
+      }
+      return remapped;
+    });
   }
 
   if (!isOpen) return null;
@@ -440,56 +479,101 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
               {errors.country && <p style={errorTextStyle}>{errors.country}</p>}
             </div>
 
-            {/* Pools and slots side-by-side on desktop */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: 12,
-                marginBottom: 16,
-              }}
-            >
-              <div>
-                <label htmlFor="cqp-pools" style={labelStyle}>
-                  {t("fields.numberOfPools")}
-                </label>
-                <input
-                  id="cqp-pools"
-                  type="number"
-                  min={LIMITS.numberOfPools.min}
-                  max={LIMITS.numberOfPools.max}
-                  value={numberOfPools}
-                  onChange={(e) => setNumberOfPools(e.target.value)}
-                  required
-                  inputMode="numeric"
-                  style={{
-                    ...inputStyle,
-                    borderColor: errors.numberOfPools ? "#dc2626" : inputStyle.borderColor,
-                  }}
-                />
-                {errors.numberOfPools && <p style={errorTextStyle}>{errors.numberOfPools}</p>}
+            {/* Pool slots — one input by default, plus an "Add another pool"
+                button so different pools can have different sizes. */}
+            <div style={{ marginBottom: 16 }}>
+              <span style={labelStyle}>
+                {poolSlots.length === 1 ? t("fields.slotsSingle") : t("fields.slotsMultiple")}
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {poolSlots.map((raw, i) => {
+                  const errKey = `poolSlots.${i}`;
+                  const err = errors[errKey];
+                  const showRemove = poolSlots.length > 1;
+                  return (
+                    <div key={i}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {poolSlots.length > 1 && (
+                          <span
+                            style={{
+                              fontSize: 13,
+                              color: "var(--muted)",
+                              minWidth: 64,
+                              fontWeight: fw.medium,
+                            }}
+                          >
+                            {t("fields.poolLabel", { n: i + 1 })}
+                          </span>
+                        )}
+                        <input
+                          type="number"
+                          min={LIMITS.slotsPerPool.min}
+                          max={LIMITS.slotsPerPool.max}
+                          value={raw}
+                          onChange={(e) => updatePoolSlots(i, e.target.value)}
+                          required
+                          inputMode="numeric"
+                          placeholder="50"
+                          aria-label={
+                            poolSlots.length === 1
+                              ? t("fields.slotsSingle")
+                              : t("fields.poolLabel", { n: i + 1 })
+                          }
+                          style={{
+                            ...inputStyle,
+                            flex: 1,
+                            borderColor: err ? "#dc2626" : inputStyle.borderColor,
+                          }}
+                        />
+                        {showRemove && (
+                          <button
+                            type="button"
+                            onClick={() => removePool(i)}
+                            aria-label={t("fields.removePool")}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid var(--border)",
+                              borderRadius: radii.md,
+                              color: "var(--muted)",
+                              fontSize: 18,
+                              lineHeight: 1,
+                              cursor: "pointer",
+                              minWidth: TOUCH_TARGET.minimum,
+                              minHeight: TOUCH_TARGET.minimum,
+                              ...mobileInteractiveStyles.tapHighlight,
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      {err && <p style={errorTextStyle}>{err}</p>}
+                    </div>
+                  );
+                })}
               </div>
-              <div>
-                <label htmlFor="cqp-slots" style={labelStyle}>
-                  {t("fields.slotsPerPool")}
-                </label>
-                <input
-                  id="cqp-slots"
-                  type="number"
-                  min={LIMITS.slotsPerPool.min}
-                  max={LIMITS.slotsPerPool.max}
-                  value={slotsPerPool}
-                  onChange={(e) => setSlotsPerPool(e.target.value)}
-                  required
-                  inputMode="numeric"
-                  placeholder="50"
+              {poolSlots.length < MAX_POOLS && (
+                <button
+                  type="button"
+                  onClick={addPool}
                   style={{
-                    ...inputStyle,
-                    borderColor: errors.slotsPerPool ? "#dc2626" : inputStyle.borderColor,
+                    marginTop: 10,
+                    background: "transparent",
+                    border: `1px dashed var(--border)`,
+                    borderRadius: radii.md,
+                    color: colors.brand,
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    fontWeight: fw.semibold,
+                    cursor: "pointer",
+                    width: "100%",
+                    minHeight: TOUCH_TARGET.minimum,
+                    ...mobileInteractiveStyles.tapHighlight,
                   }}
-                />
-                {errors.slotsPerPool && <p style={errorTextStyle}>{errors.slotsPerPool}</p>}
-              </div>
+                >
+                  + {t("fields.addPool")}
+                </button>
+              )}
             </div>
 
             {/* Currency radios */}

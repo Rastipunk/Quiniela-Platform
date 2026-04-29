@@ -47,6 +47,7 @@ export type SubmitInquiryInput = {
   employeeCount?: string;
   country?: string;
   currency?: "COP" | "USD";
+  poolsConfig?: number[];
   numberOfPools?: number;
   slotsPerPool?: number;
   message?: string;
@@ -134,8 +135,23 @@ export type DeleteEmployeeInput = {
 export async function submitInquiry(data: SubmitInquiryInput): Promise<SubmitInquiryResult> {
   const {
     companyName, contactName, contactEmail, contactPhone, employeeCount,
-    country, currency, numberOfPools, slotsPerPool, message, locale,
+    country, currency, poolsConfig, message, locale,
   } = data;
+
+  // When the quote panel sends poolsConfig, treat it as the source of
+  // truth: derive numberOfPools from its length, and only set the legacy
+  // scalar slotsPerPool when every pool has the same size (so back-compat
+  // reports still get a meaningful value).
+  let numberOfPools = data.numberOfPools ?? null;
+  let slotsPerPool = data.slotsPerPool ?? null;
+  let poolsConfigJson: string | null = null;
+
+  if (poolsConfig && poolsConfig.length > 0) {
+    numberOfPools = poolsConfig.length;
+    const allEqual = poolsConfig.every((n) => n === poolsConfig[0]);
+    slotsPerPool = allEqual ? (poolsConfig[0] as number) : null;
+    poolsConfigJson = JSON.stringify(poolsConfig);
+  }
 
   const inquiry = await prisma.organizationInquiry.create({
     data: {
@@ -146,20 +162,32 @@ export async function submitInquiry(data: SubmitInquiryInput): Promise<SubmitInq
       employeeCount: employeeCount || null,
       country: country || null,
       currency: currency || null,
-      numberOfPools: numberOfPools ?? null,
-      slotsPerPool: slotsPerPool ?? null,
+      numberOfPools,
+      slotsPerPool,
+      poolsConfigJson,
       message: message || null,
       locale,
     },
   });
 
-  // Pre-compute the quote summary so the admin email is scannable.
-  const totalSlots =
-    numberOfPools && slotsPerPool ? numberOfPools * slotsPerPool : null;
-  const quoteLine =
-    numberOfPools && slotsPerPool
-      ? `${numberOfPools} pools × ${slotsPerPool} slots = ${totalSlots} total slots`
-      : null;
+  // Build a scannable breakdown for the admin email.
+  let quoteSummary = "";
+  if (poolsConfig && poolsConfig.length > 0) {
+    const total = poolsConfig.reduce((sum, n) => sum + n, 0);
+    if (poolsConfig.length === 1) {
+      quoteSummary = `<p><strong>Cotización solicitada:</strong> 1 polla × ${poolsConfig[0]} cupos</p>`;
+    } else {
+      const lines = poolsConfig
+        .map((n, i) => `<li>Polla ${i + 1}: ${n} cupos</li>`)
+        .join("");
+      quoteSummary = `
+        <p><strong>Cotización solicitada:</strong> ${poolsConfig.length} pollas, ${total} cupos totales</p>
+        <ul style="margin: 4px 0 12px 20px; padding: 0;">${lines}</ul>
+      `;
+    }
+  } else if (numberOfPools && slotsPerPool) {
+    quoteSummary = `<p><strong>Cotización solicitada:</strong> ${numberOfPools} pollas × ${slotsPerPool} cupos = ${numberOfPools * slotsPerPool} cupos totales</p>`;
+  }
 
   fireAndForget("admin notification (inquiry)", sendAdminNotification({
     subject: `${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
@@ -169,7 +197,7 @@ export async function submitInquiry(data: SubmitInquiryInput): Promise<SubmitInq
       <p><strong>Contacto:</strong> ${escapeHtml(contactName)} &lt;${escapeHtml(contactEmail)}&gt;</p>
       ${contactPhone ? `<p><strong>Teléfono:</strong> ${escapeHtml(contactPhone)}</p>` : ""}
       ${country ? `<p><strong>País:</strong> ${escapeHtml(country)}</p>` : ""}
-      ${quoteLine ? `<p><strong>Cotización solicitada:</strong> ${escapeHtml(quoteLine)}</p>` : ""}
+      ${quoteSummary}
       ${currency ? `<p><strong>Moneda:</strong> ${escapeHtml(currency)}</p>` : ""}
       ${employeeCount ? `<p><strong>Empleados (legacy):</strong> ${employeeCount}</p>` : ""}
       ${message ? `<p><strong>Mensaje:</strong> ${escapeHtml(message)}</p>` : ""}

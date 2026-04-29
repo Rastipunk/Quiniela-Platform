@@ -1037,6 +1037,13 @@ model OrganizationInquiry {
   currency      String?
   numberOfPools Int?
   slotsPerPool  Int?
+  // JSON-encoded array of slot counts, one entry per pool requested.
+  // Lets the requester ask for several pools of different sizes
+  // (e.g. [50, 80, 30] for marketing/sales/HR). When all entries are
+  // identical, slotsPerPool is also populated for backwards-compatible
+  // querying; when heterogeneous, slotsPerPool is null and this column
+  // is the source of truth.
+  poolsConfigJson String?
 
   responded   Boolean   @default(false)
   respondedAt DateTime?

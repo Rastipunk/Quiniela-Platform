@@ -363,8 +363,11 @@
         "contactPhone": "Telefone (opcional)",
         "country": "País de residência da empresa",
         "countryPlaceholder": "Comece a digitar o seu país…",
-        "numberOfPools": "Quantos bolões você precisa?",
-        "slotsPerPool": "Quantas vagas por bolão?",
+        "slotsSingle": "Quantos participantes?",
+        "slotsMultiple": "Participantes por bolão",
+        "poolLabel": "Bolão {n}",
+        "addPool": "Adicionar outro bolão",
+        "removePool": "Remover bolão",
         "currency": "Moeda da cotação",
         "message": "Mensagem adicional (opcional)"
       },
@@ -377,8 +380,6 @@
         "tooLong": "Texto muito longo",
         "invalidEmail": "Email inválido",
         "invalidCountry": "Selecione um país da lista",
-        "minPools": "Mínimo 1 bolão",
-        "maxPools": "Máximo 100 bolões",
         "minSlots": "Mínimo 1 vaga",
         "maxSlots": "Máximo 10.000 vagas",
         "submitFailed": "Não foi possível enviar sua solicitação. Tente novamente."

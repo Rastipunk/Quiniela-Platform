@@ -363,8 +363,11 @@
         "contactPhone": "Phone (optional)",
         "country": "Country where the company is based",
         "countryPlaceholder": "Start typing your country…",
-        "numberOfPools": "How many pools do you need?",
-        "slotsPerPool": "How many slots per pool?",
+        "slotsSingle": "How many participants?",
+        "slotsMultiple": "Participants per pool",
+        "poolLabel": "Pool {n}",
+        "addPool": "Add another pool",
+        "removePool": "Remove pool",
         "currency": "Quote currency",
         "message": "Additional message (optional)"
       },
@@ -377,8 +380,6 @@
         "tooLong": "Text is too long",
         "invalidEmail": "Invalid email",
         "invalidCountry": "Select a country from the list",
-        "minPools": "Minimum 1 pool",
-        "maxPools": "Maximum 100 pools",
         "minSlots": "Minimum 1 slot",
         "maxSlots": "Maximum 10,000 slots",
         "submitFailed": "We couldn't submit your request. Please try again."

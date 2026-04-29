@@ -82,6 +82,10 @@ const inquirySchema = z.object({
   // still work; the quote panel always sends them.
   country: z.string().regex(/^[A-Z]{2}$/, "country must be ISO 3166-1 alpha-2").optional(),
   currency: z.enum(["COP", "USD"]).optional(),
+  // Structured per-pool slot list (the quote panel sends this). When
+  // present, the service will derive numberOfPools/slotsPerPool from
+  // the array, ignoring whatever the client also sends in those fields.
+  poolsConfig: z.array(z.number().int().min(1).max(10000)).min(1).max(50).optional(),
   numberOfPools: z.number().int().min(1).max(100).optional(),
   slotsPerPool: z.number().int().min(1).max(10000).optional(),
   message: z.string().max(2000).optional(),
