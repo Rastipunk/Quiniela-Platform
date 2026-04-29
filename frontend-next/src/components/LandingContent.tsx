@@ -123,7 +123,7 @@ export function LandingContent() {
               }}
             >
               <button
-                onClick={() => { trackEvent("cta_clicked", { cta_text: "register", page: "landing" }); trackMetaEvent("Lead", { content_name: "register_cta" }); openAuthPanel("register"); }}
+                onClick={() => { trackEvent("cta_clicked", { cta_text: useWorldCupCopy ? "register_world_cup" : "register", page: "landing" }); trackMetaEvent("Lead", { content_name: "register_cta" }); openAuthPanel("register"); }}
                 style={{
                   background: "white",
                   color: "#1a1a1a",
@@ -137,10 +137,10 @@ export function LandingContent() {
                   cursor: "pointer",
                 }}
               >
-                {t("hero.cta")}
+                {t(useWorldCupCopy ? "hero.ctaWorldCup" : "hero.cta")}
               </button>
               <Link
-                href="/como-funciona"
+                href={useWorldCupCopy ? "/mundial-2026" : "/como-funciona"}
                 style={{
                   background: "transparent",
                   color: "white",
@@ -153,7 +153,7 @@ export function LandingContent() {
                   display: "inline-block",
                 }}
               >
-                {t("hero.secondaryCta")}
+                {t(useWorldCupCopy ? "hero.secondaryCtaWorldCup" : "hero.secondaryCta")}
               </Link>
             </div>
           </div>
