@@ -1,0 +1,23 @@
+"use client";
+
+import { AuthGuard } from "@/components/AuthGuard";
+import { NavBar } from "@/components/NavBar";
+import { Footer } from "@/components/Footer";
+import { WhatsNewModal } from "@/components/WhatsNewModal";
+
+export function AuthenticatedLayoutClient({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthGuard>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <NavBar />
+        <WhatsNewModal />
+        <main id="main-content" style={{ flex: 1 }}>{children}</main>
+        <Footer />
+      </div>
+    </AuthGuard>
+  );
+}

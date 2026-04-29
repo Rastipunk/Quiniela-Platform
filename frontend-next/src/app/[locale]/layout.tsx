@@ -38,6 +38,47 @@ const OG_LOCALES: Record<string, string> = {
   pt: "pt_BR",
 };
 
+/**
+ * Main navigation surfaced to Google as SiteNavigationElement schema.
+ * These hints help Google understand the site structure and are one of
+ * the inputs it uses when deciding whether to render sitelinks under
+ * the home result in SERP.
+ *
+ * Keep this list in sync with the visible navbar/footer so the schema
+ * is not flagged as misleading.
+ */
+function getNavItems(locale: string): Array<{ name: string; url: string }> {
+  const prefix = locale === "es" ? "" : `/${locale}`;
+  if (locale === "en") {
+    return [
+      { name: "Home", url: `${SITE_URL}${prefix}` },
+      { name: "World Cup 2026", url: `${SITE_URL}${prefix}/world-cup-2026` },
+      { name: "How it Works", url: `${SITE_URL}${prefix}/how-it-works` },
+      { name: "Pricing", url: `${SITE_URL}${prefix}/pricing` },
+      { name: "FAQ", url: `${SITE_URL}${prefix}/faq` },
+      { name: "For Companies", url: `${SITE_URL}${prefix}/for-companies` },
+    ];
+  }
+  if (locale === "pt") {
+    return [
+      { name: "Início", url: `${SITE_URL}${prefix}` },
+      { name: "Copa do Mundo 2026", url: `${SITE_URL}${prefix}/copa-do-mundo-2026` },
+      { name: "Como Funciona", url: `${SITE_URL}${prefix}/como-funciona` },
+      { name: "Preços", url: `${SITE_URL}${prefix}/precos` },
+      { name: "FAQ", url: `${SITE_URL}${prefix}/faq` },
+      { name: "Para Empresas", url: `${SITE_URL}${prefix}/para-empresas` },
+    ];
+  }
+  return [
+    { name: "Inicio", url: `${SITE_URL}` },
+    { name: "Mundial 2026", url: `${SITE_URL}/mundial-2026` },
+    { name: "Cómo Funciona", url: `${SITE_URL}/como-funciona` },
+    { name: "Precios", url: `${SITE_URL}/precios` },
+    { name: "FAQ", url: `${SITE_URL}/faq` },
+    { name: "Empresas", url: `${SITE_URL}/empresas` },
+  ];
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -53,25 +94,18 @@ export async function generateMetadata({
   const defaultTitle = useWorldCup ? t("titleWorldCup") : t("title");
   const defaultDescription = useWorldCup ? t("descriptionWorldCup") : t("description");
 
+  // Bing Webmaster verification — populate NEXT_PUBLIC_BING_VERIFICATION
+  // in Railway with the value Bing gives you. Empty string = no tag rendered.
+  const bingVerification = process.env.NEXT_PUBLIC_BING_VERIFICATION ?? "";
+
   return {
     title: {
       default: defaultTitle,
       template: `%s | ${SITE_NAME}`,
     },
     description: defaultDescription,
-    keywords: [
-      "quiniela",
-      "sports pool",
-      "polla",
-      "prode",
-      "penca",
-      "football predictions",
-      "predictions with friends",
-      "free",
-      "World Cup 2026",
-      "Mundial 2026",
-      "Champions League",
-    ],
+    // The `keywords` meta tag has been ignored by Google since 2009 and is
+    // not used by Bing either. Removed to keep <head> clean.
     openGraph: {
       type: "website",
       locale: OG_LOCALES[locale] || "es_LA",
@@ -105,6 +139,7 @@ export async function generateMetadata({
       "color-scheme": "light only",
       "supported-color-schemes": "light only",
       "apple-mobile-web-app-status-bar-style": "default",
+      ...(bingVerification ? { "msvalidate.01": bingVerification } : {}),
     },
   };
 }
@@ -202,6 +237,12 @@ export default async function LocaleLayout({
                     inLanguage: locale,
                     publisher: { "@id": `${SITE_URL}#organization` },
                   },
+                  ...getNavItems(locale).map((item) => ({
+                    "@type": "SiteNavigationElement",
+                    name: item.name,
+                    url: item.url,
+                    inLanguage: locale,
+                  })),
                 ],
               }}
             />

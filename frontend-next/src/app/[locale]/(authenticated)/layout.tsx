@@ -1,23 +1,18 @@
-"use client";
+import type { Metadata } from "next";
+import { AuthenticatedLayoutClient } from "./AuthenticatedLayoutClient";
 
-import { AuthGuard } from "@/components/AuthGuard";
-import { NavBar } from "@/components/NavBar";
-import { Footer } from "@/components/Footer";
-import { WhatsNewModal } from "@/components/WhatsNewModal";
+// Authenticated routes (dashboard, pools, profile, crear-pool, admin/*) must
+// not be indexed. robots.txt already Disallows these paths, but a meta
+// noindex,nofollow here defends in depth in case any URL slips through
+// crawl-delay or sitemap leakage.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AuthGuard>
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <NavBar />
-        <WhatsNewModal />
-        <main id="main-content" style={{ flex: 1 }}>{children}</main>
-        <Footer />
-      </div>
-    </AuthGuard>
-  );
+  return <AuthenticatedLayoutClient>{children}</AuthenticatedLayoutClient>;
 }
