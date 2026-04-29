@@ -363,11 +363,12 @@
         "contactPhone": "Teléfono (opcional)",
         "country": "País de residencia de la empresa",
         "countryPlaceholder": "Empieza a escribir tu país…",
+        "poolCount": "¿Cuántas pollas independientes vas a organizar?",
+        "poolCountTooltipAria": "Más información sobre pollas independientes",
+        "poolCountTooltip": "Cada polla es un grupo separado con su propio leaderboard. El plan corporativo arranca en 100 cupos y puedes agregar tantos cupos como necesites. Cada polla puede tener su propia cantidad de cupos — por ejemplo: una polla \"Clientes\" con 400 cupos y otra \"Empleados\" con 150.",
         "slotsSingle": "¿Cuántos participantes?",
         "slotsMultiple": "Participantes por polla",
         "poolLabel": "Polla {n}",
-        "addPool": "Agregar otra polla",
-        "removePool": "Eliminar polla",
         "currency": "Moneda de la cotización",
         "message": "Mensaje adicional (opcional)"
       },
@@ -382,6 +383,7 @@
         "invalidCountry": "Selecciona un país de la lista",
         "minSlots": "Mínimo 1 cupo",
         "maxSlots": "Máximo 10.000 cupos",
+        "invalidPoolCount": "Debe ser entre 1 y 50",
         "submitFailed": "No pudimos enviar tu solicitud. Intenta de nuevo."
       },
       "submitting": "Enviando…",

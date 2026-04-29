@@ -36,10 +36,13 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
   const [contactPhone, setContactPhone] = useState("");
   const [countryInput, setCountryInput] = useState("");
   const [currency, setCurrency] = useState<"COP" | "USD">("USD");
-  // One slot count per pool. The user starts with a single input ("how
-  // many slots") and can press "Add another pool" to append more
-  // entries — each pool can have a different size if they want.
+  // The user first picks how many independent pools they want to run.
+  // Editing this number resizes `poolSlots` immediately so they see the
+  // matching number of slot inputs. Each pool can hold a different
+  // slot count.
+  const [poolCount, setPoolCount] = useState("1");
   const [poolSlots, setPoolSlots] = useState<string[]>([""]);
+  const [showCountTooltip, setShowCountTooltip] = useState(false);
   const [message, setMessage] = useState("");
   const MAX_POOLS = 50;
 
@@ -93,7 +96,9 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
     setContactEmail("");
     setContactPhone("");
     setCountryInput("");
+    setPoolCount("1");
     setPoolSlots([""]);
+    setShowCountTooltip(false);
     setMessage("");
     setErrors({});
     setStatus("idle");
@@ -187,7 +192,7 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
     }
   }
 
-  // Pool list helpers — keep the array immutable and re-set state.
+  // Per-pool slot edit — keep the array immutable and re-set state.
   function updatePoolSlots(index: number, value: string) {
     setPoolSlots((prev) => prev.map((v, i) => (i === index ? value : v)));
     // Clear the per-row error as the user types.
@@ -198,27 +203,48 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
     });
   }
 
-  function addPool() {
-    setPoolSlots((prev) => (prev.length >= MAX_POOLS ? prev : [...prev, ""]));
-  }
-
-  function removePool(index: number) {
-    setPoolSlots((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  // Live-resize the slot rows as the user edits the count input. We
+  // accept transient empty/invalid input (so the user can clear and
+  // retype) but only resize when the value parses inside the valid
+  // range. Out-of-range values are surfaced as an error and snapped
+  // back on blur.
+  function handlePoolCountChange(value: string) {
+    setPoolCount(value);
     setErrors((prev) => {
       const next = { ...prev };
-      // Reindex error keys so highlighting still matches the new array.
-      const remapped: Record<string, string> = {};
-      for (const [k, v] of Object.entries(next)) {
+      delete next.poolCount;
+      return next;
+    });
+    if (value.trim() === "") return;
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n) || n < 1 || n > MAX_POOLS) return;
+    setPoolSlots((prev) => {
+      if (n === prev.length) return prev;
+      if (n > prev.length) return [...prev, ...Array(n - prev.length).fill("")];
+      return prev.slice(0, n);
+    });
+    // Drop any per-row errors that now point past the end.
+    setErrors((prev) => {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(prev)) {
         if (!k.startsWith("poolSlots.")) {
-          remapped[k] = v;
+          out[k] = v;
           continue;
         }
         const i = parseInt(k.split(".")[1] ?? "", 10);
-        if (i === index) continue;
-        remapped[`poolSlots.${i > index ? i - 1 : i}`] = v;
+        if (Number.isFinite(i) && i < n) out[k] = v;
       }
-      return remapped;
+      return out;
     });
+  }
+
+  // Snap the count input back to the array length on blur, so the
+  // visible value always matches what will be submitted.
+  function handlePoolCountBlur() {
+    const n = parseInt(poolCount, 10);
+    if (!Number.isFinite(n) || n < 1 || n > MAX_POOLS) {
+      setPoolCount(String(poolSlots.length));
+    }
   }
 
   if (!isOpen) return null;
@@ -479,8 +505,89 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
               {errors.country && <p style={errorTextStyle}>{errors.country}</p>}
             </div>
 
-            {/* Pool slots — one input by default, plus an "Add another pool"
-                button so different pools can have different sizes. */}
+            {/* How many independent pools? Editing this number live-
+                resizes the slot rows below. */}
+            <div style={fieldGroupStyle}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginBottom: 6,
+                  position: "relative",
+                }}
+              >
+                <label htmlFor="cqp-pool-count" style={{ ...labelStyle, marginBottom: 0 }}>
+                  {t("fields.poolCount")}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowCountTooltip((s) => !s)}
+                  onBlur={() => setShowCountTooltip(false)}
+                  aria-label={t("fields.poolCountTooltipAria")}
+                  aria-expanded={showCountTooltip}
+                  style={{
+                    background: "transparent",
+                    padding: 0,
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    color: "var(--muted)",
+                    fontSize: 11,
+                    fontStyle: "italic",
+                    lineHeight: 1,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: fw.semibold,
+                    border: "1px solid var(--border)",
+                    flexShrink: 0,
+                  }}
+                >
+                  i
+                </button>
+                {showCountTooltip && (
+                  <div
+                    role="tooltip"
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      left: 0,
+                      right: 0,
+                      background: "var(--text)",
+                      color: "var(--surface)",
+                      padding: "10px 12px",
+                      borderRadius: radii.md,
+                      fontSize: 12,
+                      lineHeight: 1.5,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+                      zIndex: 2,
+                    }}
+                  >
+                    {t("fields.poolCountTooltip")}
+                  </div>
+                )}
+              </div>
+              <input
+                id="cqp-pool-count"
+                type="number"
+                min={1}
+                max={MAX_POOLS}
+                value={poolCount}
+                onChange={(e) => handlePoolCountChange(e.target.value)}
+                onBlur={handlePoolCountBlur}
+                required
+                inputMode="numeric"
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.poolCount ? "#dc2626" : inputStyle.borderColor,
+                }}
+              />
+              {errors.poolCount && <p style={errorTextStyle}>{errors.poolCount}</p>}
+            </div>
+
+            {/* Slot inputs — one row per pool. */}
             <div style={{ marginBottom: 16 }}>
               <span style={labelStyle}>
                 {poolSlots.length === 1 ? t("fields.slotsSingle") : t("fields.slotsMultiple")}
@@ -489,7 +596,6 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
                 {poolSlots.map((raw, i) => {
                   const errKey = `poolSlots.${i}`;
                   const err = errors[errKey];
-                  const showRemove = poolSlots.length > 1;
                   return (
                     <div key={i}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -525,55 +631,12 @@ export function CorporateQuotePanel({ isOpen, onClose }: CorporateQuotePanelProp
                             borderColor: err ? "#dc2626" : inputStyle.borderColor,
                           }}
                         />
-                        {showRemove && (
-                          <button
-                            type="button"
-                            onClick={() => removePool(i)}
-                            aria-label={t("fields.removePool")}
-                            style={{
-                              background: "transparent",
-                              border: "1px solid var(--border)",
-                              borderRadius: radii.md,
-                              color: "var(--muted)",
-                              fontSize: 18,
-                              lineHeight: 1,
-                              cursor: "pointer",
-                              minWidth: TOUCH_TARGET.minimum,
-                              minHeight: TOUCH_TARGET.minimum,
-                              ...mobileInteractiveStyles.tapHighlight,
-                            }}
-                          >
-                            ×
-                          </button>
-                        )}
                       </div>
                       {err && <p style={errorTextStyle}>{err}</p>}
                     </div>
                   );
                 })}
               </div>
-              {poolSlots.length < MAX_POOLS && (
-                <button
-                  type="button"
-                  onClick={addPool}
-                  style={{
-                    marginTop: 10,
-                    background: "transparent",
-                    border: `1px dashed var(--border)`,
-                    borderRadius: radii.md,
-                    color: colors.brand,
-                    padding: "10px 14px",
-                    fontSize: 14,
-                    fontWeight: fw.semibold,
-                    cursor: "pointer",
-                    width: "100%",
-                    minHeight: TOUCH_TARGET.minimum,
-                    ...mobileInteractiveStyles.tapHighlight,
-                  }}
-                >
-                  + {t("fields.addPool")}
-                </button>
-              )}
             </div>
 
             {/* Currency radios */}
