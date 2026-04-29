@@ -1030,6 +1030,14 @@ model OrganizationInquiry {
   message       String? @db.Text
   locale        String  @default("es")
 
+  // Quote-specific fields populated by the /empresas quote panel.
+  // Optional because the legacy inquiry path (employeeCount tier) doesn't
+  // capture them. Country uses ISO 3166-1 alpha-2 (e.g. "CO", "AR").
+  country       String?
+  currency      String?
+  numberOfPools Int?
+  slotsPerPool  Int?
+
   responded   Boolean   @default(false)
   respondedAt DateTime?
 

@@ -75,7 +75,15 @@ const inquirySchema = z.object({
   contactName: z.string().min(2).max(100),
   contactEmail: z.string().email().max(255),
   contactPhone: z.string().max(30).optional(),
+  // Legacy tiered selector (kept for back-compat). The new quote panel
+  // sends numberOfPools + slotsPerPool instead.
   employeeCount: z.enum(["1-50", "51-200", "201-500", "500+"]).optional(),
+  // Quote-panel fields. Optional at the API boundary so legacy callers
+  // still work; the quote panel always sends them.
+  country: z.string().regex(/^[A-Z]{2}$/, "country must be ISO 3166-1 alpha-2").optional(),
+  currency: z.enum(["COP", "USD"]).optional(),
+  numberOfPools: z.number().int().min(1).max(100).optional(),
+  slotsPerPool: z.number().int().min(1).max(10000).optional(),
   message: z.string().max(2000).optional(),
   locale: z.enum(SUPPORTED_LOCALES).default(DEFAULT_LOCALE),
 });

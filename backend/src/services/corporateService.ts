@@ -45,6 +45,10 @@ export type SubmitInquiryInput = {
   contactEmail: string;
   contactPhone?: string;
   employeeCount?: string;
+  country?: string;
+  currency?: "COP" | "USD";
+  numberOfPools?: number;
+  slotsPerPool?: number;
   message?: string;
   locale: string;
 };
@@ -128,7 +132,10 @@ export type DeleteEmployeeInput = {
 // -- Submit Inquiry --
 
 export async function submitInquiry(data: SubmitInquiryInput): Promise<SubmitInquiryResult> {
-  const { companyName, contactName, contactEmail, contactPhone, employeeCount, message, locale } = data;
+  const {
+    companyName, contactName, contactEmail, contactPhone, employeeCount,
+    country, currency, numberOfPools, slotsPerPool, message, locale,
+  } = data;
 
   const inquiry = await prisma.organizationInquiry.create({
     data: {
@@ -137,10 +144,22 @@ export async function submitInquiry(data: SubmitInquiryInput): Promise<SubmitInq
       contactEmail,
       contactPhone: contactPhone || null,
       employeeCount: employeeCount || null,
+      country: country || null,
+      currency: currency || null,
+      numberOfPools: numberOfPools ?? null,
+      slotsPerPool: slotsPerPool ?? null,
       message: message || null,
       locale,
     },
   });
+
+  // Pre-compute the quote summary so the admin email is scannable.
+  const totalSlots =
+    numberOfPools && slotsPerPool ? numberOfPools * slotsPerPool : null;
+  const quoteLine =
+    numberOfPools && slotsPerPool
+      ? `${numberOfPools} pools × ${slotsPerPool} slots = ${totalSlots} total slots`
+      : null;
 
   fireAndForget("admin notification (inquiry)", sendAdminNotification({
     subject: `${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
@@ -149,7 +168,10 @@ export async function submitInquiry(data: SubmitInquiryInput): Promise<SubmitInq
       <p><strong>Empresa:</strong> ${escapeHtml(companyName)}</p>
       <p><strong>Contacto:</strong> ${escapeHtml(contactName)} &lt;${escapeHtml(contactEmail)}&gt;</p>
       ${contactPhone ? `<p><strong>Teléfono:</strong> ${escapeHtml(contactPhone)}</p>` : ""}
-      ${employeeCount ? `<p><strong>Empleados:</strong> ${employeeCount}</p>` : ""}
+      ${country ? `<p><strong>País:</strong> ${escapeHtml(country)}</p>` : ""}
+      ${quoteLine ? `<p><strong>Cotización solicitada:</strong> ${escapeHtml(quoteLine)}</p>` : ""}
+      ${currency ? `<p><strong>Moneda:</strong> ${escapeHtml(currency)}</p>` : ""}
+      ${employeeCount ? `<p><strong>Empleados (legacy):</strong> ${employeeCount}</p>` : ""}
       ${message ? `<p><strong>Mensaje:</strong> ${escapeHtml(message)}</p>` : ""}
       <p><strong>Idioma:</strong> ${escapeHtml(locale)}</p>
     `,
