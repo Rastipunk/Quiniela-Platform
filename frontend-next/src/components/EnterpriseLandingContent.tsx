@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { colors } from "@/lib/theme";
 
 import { useTranslations } from "next-intl";
@@ -10,6 +11,7 @@ import { useAuthPanel } from "@/contexts/AuthPanelContext";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { trackEvent } from "@/lib/analytics";
 import { trackMetaEvent } from "@/lib/metaPixel";
+import { CorporateQuotePanel } from "@/components/CorporateQuotePanel";
 
 export function EnterpriseLandingContent() {
   const t = useTranslations("enterprise");
@@ -19,6 +21,8 @@ export function EnterpriseLandingContent() {
   const { openAuthPanel } = useAuthPanel();
   const { params: poolParams } = usePoolTerm();
 
+  const [quoteOpen, setQuoteOpen] = useState(false);
+
   const handleCta = () => {
     trackEvent("corporate_inquiry", { authenticated: isAuthenticated });
     trackMetaEvent("SubmitApplication", { content_name: "corporate" });
@@ -27,6 +31,11 @@ export function EnterpriseLandingContent() {
     } else {
       openAuthPanel("register", "/empresas/crear");
     }
+  };
+
+  const handleQuoteOpen = () => {
+    trackEvent("corporate_quote_opened", { source: "empresas_page" });
+    setQuoteOpen(true);
   };
 
   const benefits = [
@@ -148,6 +157,25 @@ export function EnterpriseLandingContent() {
               {t("hero.secondaryCta")}
             </a>
           </div>
+          {/* Tertiary path: companies that need a formal quote.
+              Subdued styling so self-service stays visually dominant. */}
+          <button
+            type="button"
+            onClick={handleQuoteOpen}
+            style={{
+              marginTop: 20,
+              background: "transparent",
+              color: "rgba(255,255,255,0.85)",
+              border: "none",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: "pointer",
+              textDecoration: "underline",
+              padding: 4,
+            }}
+          >
+            {t("hero.quoteHint")}
+          </button>
         </div>
       </section>
 
@@ -359,6 +387,65 @@ export function EnterpriseLandingContent() {
         </div>
       </section>
 
+      {/* Quote section — for companies that need a formal proposal */}
+      <section
+        style={{
+          padding: isMobile ? "48px 20px" : "80px 40px",
+          maxWidth: 800,
+          margin: "0 auto",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            border: "1px solid var(--border)",
+            borderRadius: 16,
+            padding: isMobile ? 24 : 40,
+            background: "var(--surface)",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: isMobile ? "1.4rem" : "1.75rem",
+              fontWeight: 700,
+              marginBottom: 12,
+              color: "var(--text)",
+            }}
+          >
+            {t("quoteSection.title")}
+          </h2>
+          <p
+            style={{
+              color: "var(--muted)",
+              marginBottom: 24,
+              fontSize: 15,
+              lineHeight: 1.6,
+              maxWidth: 600,
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            {t("quoteSection.subtitle")}
+          </p>
+          <button
+            type="button"
+            onClick={handleQuoteOpen}
+            style={{
+              background: "transparent",
+              color: colors.brand,
+              border: `2px solid ${colors.brand}`,
+              padding: isMobile ? "12px 26px" : "14px 32px",
+              borderRadius: 8,
+              fontSize: isMobile ? "1rem" : "1.05rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {t("quoteSection.button")}
+          </button>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section
         style={{
@@ -402,6 +489,8 @@ export function EnterpriseLandingContent() {
           {t("cta.button")}
         </button>
       </section>
+
+      <CorporateQuotePanel isOpen={quoteOpen} onClose={() => setQuoteOpen(false)} />
     </div>
   );
 }

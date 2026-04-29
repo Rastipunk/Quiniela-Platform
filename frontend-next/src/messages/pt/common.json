@@ -306,9 +306,10 @@
     },
     "hero": {
       "title": "{pluralUpper} corporativos para sua empresa",
-      "subtitle": "Promova o team building e a competição saudável entre suas equipes com {plural} esportivos. Configuração em minutos, sem complicações.",
+      "subtitle": "Crie, pague e comece em 10 minutos. Sem ligações nem esperas. Se precisar de cotação formal ou nota fiscal, também pode solicitar aqui.",
       "cta": "Criar bolão corporativo",
-      "secondaryCta": "Saiba mais"
+      "secondaryCta": "Saiba mais",
+      "quoteHint": "Precisa de cotação formal ou nota fiscal? Solicite aqui"
     },
     "benefits": {
       "title": "Por que escolher o Picks4All para sua empresa",
@@ -346,6 +347,47 @@
       "title": "Comece agora",
       "subtitle": "Crie seu bolão corporativo em menos de 5 minutos.",
       "button": "Criar bolão corporativo"
+    },
+    "quoteSection": {
+      "title": "Precisa de cotação formal?",
+      "subtitle": "Para empresas que precisam de nota fiscal, proposta personalizada ou processos de compra formais. Enviamos uma cotação em 24-48 horas.",
+      "button": "Solicitar cotação"
+    },
+    "quotePanel": {
+      "title": "Solicitar cotação corporativa",
+      "subtitle": "Preencha o formulário e enviaremos uma cotação formal ao seu email em 24-48 horas.",
+      "fields": {
+        "companyName": "Nome da empresa",
+        "contactName": "Seu nome",
+        "contactEmail": "Email de contato",
+        "contactPhone": "Telefone (opcional)",
+        "country": "País de residência da empresa",
+        "countryPlaceholder": "Comece a digitar o seu país…",
+        "numberOfPools": "Quantos bolões você precisa?",
+        "slotsPerPool": "Quantas vagas por bolão?",
+        "currency": "Moeda da cotação",
+        "message": "Mensagem adicional (opcional)"
+      },
+      "currencyOptions": {
+        "COP": "Pesos colombianos (COP)",
+        "USD": "Dólares (USD)"
+      },
+      "errors": {
+        "required": "Este campo é obrigatório",
+        "tooLong": "Texto muito longo",
+        "invalidEmail": "Email inválido",
+        "invalidCountry": "Selecione um país da lista",
+        "minPools": "Mínimo 1 bolão",
+        "maxPools": "Máximo 100 bolões",
+        "minSlots": "Mínimo 1 vaga",
+        "maxSlots": "Máximo 10.000 vagas",
+        "submitFailed": "Não foi possível enviar sua solicitação. Tente novamente."
+      },
+      "submitting": "Enviando…",
+      "submitButton": "Enviar solicitação",
+      "successTitle": "Solicitação enviada!",
+      "successMessage": "Recebemos sua solicitação. Enviaremos uma cotação ao seu email em 24-48 horas.",
+      "closeButton": "Fechar"
     },
     "badge": "Corporativo",
     "create": {

@@ -23,6 +23,9 @@ export const LIMITS = {
   contactPhone: { max: 30 },
   inquiryMessage: { max: 2000 },
   emailsArrayMax: 500,
+  // Quote panel — must mirror inquirySchema in backend/src/routes/corporate.ts
+  numberOfPools: { min: 1, max: 100 },
+  slotsPerPool: { min: 1, max: 10000 },
 
   // Match
   goals: { min: 0, max: 99 },

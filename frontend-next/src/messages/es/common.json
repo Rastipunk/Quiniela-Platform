@@ -306,9 +306,10 @@
     },
     "hero": {
       "title": "{pluralUpper} {adjPlural} para tu empresa",
-      "subtitle": "Fomenta el team building y la competencia sana entre tus equipos con {plural} {adjPlural}. Configuración en minutos, sin complicaciones.",
+      "subtitle": "Crea, paga y empieza en 10 minutos. Sin llamadas ni esperas. Si necesitas cotización formal o factura empresarial, también puedes solicitarla aquí.",
       "cta": "Crear pool corporativo",
-      "secondaryCta": "Conoce más"
+      "secondaryCta": "Conoce más",
+      "quoteHint": "¿Necesitas factura formal o cotización? Solicítala aquí"
     },
     "benefits": {
       "title": "Por qué elegir Picks4All para tu empresa",
@@ -346,6 +347,47 @@
       "title": "Empieza ahora",
       "subtitle": "Crea tu pool corporativo en menos de 5 minutos.",
       "button": "Crear pool corporativo"
+    },
+    "quoteSection": {
+      "title": "¿Necesitas cotización formal?",
+      "subtitle": "Para empresas que requieren factura empresarial, propuesta personalizada o procesos de compra formales. Te enviamos una cotización en 24-48 horas.",
+      "button": "Solicitar cotización"
+    },
+    "quotePanel": {
+      "title": "Solicitar cotización corporativa",
+      "subtitle": "Completa el formulario y te enviamos una cotización formal a tu correo en 24-48 horas.",
+      "fields": {
+        "companyName": "Nombre de la empresa",
+        "contactName": "Tu nombre",
+        "contactEmail": "Correo de contacto",
+        "contactPhone": "Teléfono (opcional)",
+        "country": "País de residencia de la empresa",
+        "countryPlaceholder": "Empieza a escribir tu país…",
+        "numberOfPools": "¿Cuántas pollas necesitas?",
+        "slotsPerPool": "¿Cuántos cupos por polla?",
+        "currency": "Moneda de la cotización",
+        "message": "Mensaje adicional (opcional)"
+      },
+      "currencyOptions": {
+        "COP": "Pesos colombianos (COP)",
+        "USD": "Dólares (USD)"
+      },
+      "errors": {
+        "required": "Este campo es obligatorio",
+        "tooLong": "Texto demasiado largo",
+        "invalidEmail": "Correo inválido",
+        "invalidCountry": "Selecciona un país de la lista",
+        "minPools": "Mínimo 1 polla",
+        "maxPools": "Máximo 100 pollas",
+        "minSlots": "Mínimo 1 cupo",
+        "maxSlots": "Máximo 10.000 cupos",
+        "submitFailed": "No pudimos enviar tu solicitud. Intenta de nuevo."
+      },
+      "submitting": "Enviando…",
+      "submitButton": "Enviar solicitud",
+      "successTitle": "¡Solicitud enviada!",
+      "successMessage": "Recibimos tu solicitud. Te enviaremos una cotización a tu correo en 24-48 horas.",
+      "closeButton": "Cerrar"
     },
     "badge": "Corporativo",
     "create": {

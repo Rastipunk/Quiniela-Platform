@@ -306,9 +306,10 @@
     },
     "hero": {
       "title": "Corporate sports {pluralUpper} for your company",
-      "subtitle": "Foster team building and friendly competition among your teams with sports {plural}. Set up in minutes, no hassle.",
+      "subtitle": "Create, pay, and start in 10 minutes. No calls, no waiting. If you need a formal quote or company invoice, you can request one here.",
       "cta": "Create corporate pool",
-      "secondaryCta": "Learn more"
+      "secondaryCta": "Learn more",
+      "quoteHint": "Need a formal quote or invoice? Request one here"
     },
     "benefits": {
       "title": "Why choose Picks4All for your company",
@@ -346,6 +347,47 @@
       "title": "Get started",
       "subtitle": "Create your corporate pool in less than 5 minutes.",
       "button": "Create corporate pool"
+    },
+    "quoteSection": {
+      "title": "Need a formal quote?",
+      "subtitle": "For companies that require a corporate invoice, custom proposal or formal procurement processes. We send you a quote within 24-48 hours.",
+      "button": "Request a quote"
+    },
+    "quotePanel": {
+      "title": "Request a corporate quote",
+      "subtitle": "Fill out the form and we'll send you a formal quote within 24-48 hours.",
+      "fields": {
+        "companyName": "Company name",
+        "contactName": "Your name",
+        "contactEmail": "Contact email",
+        "contactPhone": "Phone (optional)",
+        "country": "Country where the company is based",
+        "countryPlaceholder": "Start typing your country…",
+        "numberOfPools": "How many pools do you need?",
+        "slotsPerPool": "How many slots per pool?",
+        "currency": "Quote currency",
+        "message": "Additional message (optional)"
+      },
+      "currencyOptions": {
+        "COP": "Colombian Pesos (COP)",
+        "USD": "US Dollars (USD)"
+      },
+      "errors": {
+        "required": "This field is required",
+        "tooLong": "Text is too long",
+        "invalidEmail": "Invalid email",
+        "invalidCountry": "Select a country from the list",
+        "minPools": "Minimum 1 pool",
+        "maxPools": "Maximum 100 pools",
+        "minSlots": "Minimum 1 slot",
+        "maxSlots": "Maximum 10,000 slots",
+        "submitFailed": "We couldn't submit your request. Please try again."
+      },
+      "submitting": "Sending…",
+      "submitButton": "Submit request",
+      "successTitle": "Request submitted!",
+      "successMessage": "We received your request. We'll send a quote to your email within 24-48 hours.",
+      "closeButton": "Close"
     },
     "badge": "Corporate",
     "create": {

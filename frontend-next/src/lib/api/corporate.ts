@@ -91,3 +91,33 @@ export async function checkCorporateInvite(token: string): Promise<CheckCorporat
 export async function activateCorporateAccount(input: ActivateCorporateInput): Promise<ActivateCorporateResponse> {
   return requestJson<ActivateCorporateResponse>("/auth/activate-corporate", { method: "POST", body: JSON.stringify(input) });
 }
+
+// ─── Corporate Inquiry (Quote Panel) ─────────────────────────
+
+export type SubmitCorporateInquiryInput = {
+  companyName: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone?: string;
+  /** ISO 3166-1 alpha-2 (e.g. "CO", "AR"). */
+  country: string;
+  currency: "COP" | "USD";
+  numberOfPools: number;
+  slotsPerPool: number;
+  message?: string;
+  locale: "es" | "en" | "pt";
+};
+
+export type SubmitCorporateInquiryResponse = {
+  id: string;
+  message: string;
+};
+
+export async function submitCorporateInquiry(
+  input: SubmitCorporateInquiryInput,
+): Promise<SubmitCorporateInquiryResponse> {
+  return requestJson<SubmitCorporateInquiryResponse>("/corporate/inquiry", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
