@@ -18,6 +18,18 @@ import {
 
 const MAX_LOGO_SIZE = 500 * 1024; // 500 KB
 
+// Allowed logo MIME types — kept in sync with the backend Zod
+// regex in routes/corporate.ts. SVG is intentionally excluded
+// because email clients (Gmail, Outlook, Apple Mail) strip SVG,
+// and SVG can carry scripts that complicate sanitization.
+const ALLOWED_LOGO_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+] as const;
+const LOGO_ACCEPT_ATTR = ALLOWED_LOGO_TYPES.join(",");
+
 export function StepCompanyInfo() {
   const t = useTranslations("poolWizard");
   const isMobile = useIsMobile();
@@ -39,15 +51,20 @@ export function StepCompanyInfo() {
           defaultMessage: "El logo no puede exceder 500 KB.",
         })
       );
+      // Reset the input so picking the same bad file again still
+      // fires onChange (browsers de-dupe by name+lastModified).
+      if (fileRef.current) fileRef.current.value = "";
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
+    if (!ALLOWED_LOGO_TYPES.includes(file.type as typeof ALLOWED_LOGO_TYPES[number])) {
       setLogoError(
         t("companyInfo.logoInvalidType", {
-          defaultMessage: "El archivo debe ser una imagen (PNG, JPG, SVG).",
+          defaultMessage:
+            "Sube tu logo en PNG, JPG, GIF o WebP. Los SVG no son compatibles con todos los clientes de email.",
         })
       );
+      if (fileRef.current) fileRef.current.value = "";
       return;
     }
 
@@ -225,13 +242,25 @@ export function StepCompanyInfo() {
             >
               <span style={{ fontSize: 20 }}>&#128247;</span>
               {t("companyInfo.uploadLogo", {
-                defaultMessage: "Subir logo (max 500 KB)",
+                defaultMessage: "Subir logo",
               })}
             </button>
+            <p
+              style={{
+                margin: "6px 0 0",
+                fontSize: fontSize.xs,
+                color: colors.textLight,
+                lineHeight: 1.5,
+              }}
+            >
+              {t("companyInfo.logoFormats", {
+                defaultMessage: "PNG, JPG, GIF o WebP. Máximo 500 KB.",
+              })}
+            </p>
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept={LOGO_ACCEPT_ATTR}
               onChange={handleLogoChange}
               style={{ display: "none" }}
             />
