@@ -4019,4 +4019,45 @@ The platform is approaching its April 1st launch. Critical security and stabilit
 
 ---
 
+## ADR-045: Per-user invitation rate limit; capacity-threshold notifications
+
+**Date:** 2026-05-01 | **Status:** Accepted
+
+**Context:** The legacy `corporateInviteLimiter` capped any request to `/corporate/pools/*` at 5/hour per IP. Three problems compounded:
+
+1. **Wrong unit.** GETs (load pool, list employees, refresh) shared the same bucket as POST sends. Hosts hit the limit just by navigating their own pool.
+2. **Wrong key.** Per-IP collided co-hosts on the same office network and rate-limited the host's own static IP regardless of the action.
+3. **Wrong threshold.** 5/hour was unusable for any rollout above a handful of employees, while paradoxically not actually defending against the threat model (a compromised account could still send 5/hour from a legitimate IP).
+
+Separately, the existing `POOL_FULL` notification fired only at 100% capacity, with no early warning to the host that they were running out of slots, and no signal at all when someone tried to join a full pool.
+
+**Decision:**
+
+1. **Rate limit redesign.** Drop the catch-all on `/corporate/pools/*`. Introduce two per-user limiters applied only at `POST /corporate/pools/:poolId/send-invitations`:
+   - `inviteSendLimiter` — 200/hour per user (env `RATE_LIMIT_INVITE_SEND_MAX`).
+   - `inviteSendDailyLimiter` — 1000/day per user (env `RATE_LIMIT_INVITE_SEND_DAILY_MAX`).
+   Bucket key: `req.auth.userId`, falling back to `ipKeyGenerator(req.ip)` (IPv6-safe per express-rate-limit guidance).
+
+2. **Capacity-threshold notifications.** Single function `checkAndNotifyCapacityThresholds()` runs after every successful join (corporate activation + regular pool invite) and dispatches at most one of:
+   - `CAPACITY_WARNING` email at the configurable threshold (default 95%, overridable per pool via `Pool.capacityWarningThresholdPct`).
+   - `POOL_FULL` email at 100%.
+   Both deduped via `updateMany WHERE flag IS NULL` against `Pool.capacityWarningNotifiedAt` / `Pool.poolFullNotifiedAt`. Flags re-armed in `paymentService` whenever capacity expands, so notifications fire again if the pool refills.
+
+3. **Blocked-attempt notification.** When a join is rejected with `POOL_FULL`, the host receives `BLOCKED_JOIN_ATTEMPT` email (subject lists the attempting email). Throttled per-pool via `Pool.lastBlockedAttemptNotifiedAt` (env `BLOCKED_ATTEMPT_THROTTLE_HOURS`, default 24h) so a flood of failed joins (bots, link-share storms) produces at most one email per window. Audit event fires unconditionally.
+
+4. **Member count definition.** Both `ensurePoolCapacity` and `checkAndNotifyCapacityThresholds` count `ACTIVE + PENDING_APPROVAL`. Previously the join-block used both but the pool-full notification used `ACTIVE` only — pools with pending approvals could refuse joins without ever notifying the host they were at capacity.
+
+**Consequences:**
+- ✅ Hosts can run 200-employee rollouts without hitting any limit.
+- ✅ Co-hosts on the same network no longer collide.
+- ✅ Host gets early warning at 95%, decides whether to expand before the cap.
+- ✅ Host learns about demand for a full pool (blocked attempts) without spam.
+- ✅ Capacity definition consistent across enforcement and notification.
+- ⚠️ Two new nullable columns on `Pool` (additive migrations, no backfill).
+- ⚠️ `RATE_LIMIT_CORP_INVITE_MAX` / `RATE_LIMIT_CORP_INVITE_WINDOW_MS` env vars no longer read; safe to delete from prod.
+
+**Related code:** `backend/src/lib/poolCapacity.ts`, `backend/src/middleware/rateLimit.ts`, `backend/src/lib/emailTemplates.ts` (new `getCapacityWarningTemplate`, `getBlockedJoinAttemptTemplate`), migrations `20260502_add_capacity_warning_fields` + `20260502_add_blocked_attempt_notify`.
+
+---
+
 **END OF DOCUMENT**

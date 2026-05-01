@@ -216,7 +216,12 @@ DRAFT ──> ACTIVE ──> COMPLETED ──> ARCHIVED
 
 - Increment invite `uses` counter.
 - Trigger `transitionToActive()` if pool is DRAFT and join was direct.
-- Send `POOL_FULL` notification email to HOST if capacity reached.
+- Run `checkAndNotifyCapacityThresholds()` to dispatch (at most one of):
+  - `CAPACITY_WARNING` email when count crosses the configurable threshold (default 95%, overridable per pool via `Pool.capacityWarningThresholdPct`, env default `CAPACITY_WARNING_THRESHOLD_PCT`).
+  - `POOL_FULL` email when count >= `maxParticipants`.
+  Both deduped via `Pool.capacityWarningNotifiedAt` / `Pool.poolFullNotifiedAt`. Flags re-armed when capacity is expanded via payment, so notifications fire again if the pool refills.
+
+**Blocked join attempts:** if the capacity check fails (`POOL_FULL`), the attempting email is forwarded to the host via `sendBlockedJoinAttemptEmail`. Throttled per pool by `Pool.lastBlockedAttemptNotifiedAt` (env `BLOCKED_ATTEMPT_THROTTLE_HOURS`, default 24h) so a flood of failed joins produces at most one email per window. Audit event `BLOCKED_JOIN_ATTEMPT` fires unconditionally for forensics.
 
 ### 3.5 Invite Code Rules
 
@@ -641,9 +646,27 @@ Actions: creates `OrganizationInquiry`, sends admin notification, sends confirma
 - Marks invite as ACTIVATED.
 - Triggers `transitionToActive()`.
 
-**Capacity check:** both flows check `pool.maxParticipants`. Returns `409 POOL_FULL` if at capacity.
+**Capacity check:** both flows check `pool.maxParticipants` (counting ACTIVE + PENDING_APPROVAL members). Returns `409 POOL_FULL` if at capacity. On block, also fires `sendBlockedJoinAttemptEmail` to the host (throttled, see §3.4).
+
+**Capacity threshold notifications:** the same `checkAndNotifyCapacityThresholds()` flow used in `/pools/join` runs at the end of activation. The host receives:
+- `CAPACITY_WARNING` email at the configured threshold (default 95%, overridable per pool).
+- `POOL_FULL` email when capacity is reached.
+Both deduped, both re-armed on capacity expansion via payment.
 
 **Invite status enum:** `PENDING | SENT | ACTIVATED | FAILED`
+
+### 8.4 Corporate Invitation Rate Limits
+
+Per-host (not per-IP) limits on `POST /corporate/pools/:poolId/send-invitations`:
+
+| Limiter | Default | Env override | Error code |
+|---------|---------|--------------|------------|
+| Hourly | 200 sends per user | `RATE_LIMIT_INVITE_SEND_MAX` / `RATE_LIMIT_INVITE_SEND_WINDOW_MS` | `TOO_MANY_INVITE_REQUESTS_PER_HOUR` |
+| Daily | 1000 sends per user | `RATE_LIMIT_INVITE_SEND_DAILY_MAX` / `RATE_LIMIT_INVITE_SEND_DAILY_WINDOW_MS` | `DAILY_INVITE_LIMIT_EXCEEDED` |
+
+Bucket key: `req.auth.userId` (falls back to `ipKeyGenerator(req.ip)` for unauthenticated requests, which shouldn't reach this endpoint anyway). Sized for a 500-employee corporate rollout in one sitting; the daily ceiling exists to cap abuse from a compromised host account, not to constrain legitimate flows.
+
+The historical `corporateInviteLimiter` (5/hour per IP, applied catch-all to `/corporate/pools/*`) was removed — it conflated reads and writes, blocked co-hosts on the same office network from each other, and never enforced the right thing.
 
 ---
 

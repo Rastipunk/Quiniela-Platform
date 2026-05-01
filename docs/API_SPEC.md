@@ -81,7 +81,8 @@ All rate limits are configurable via environment variables.
 | Auth (login/register) | `/auth/login`, `/auth/register` | 15 min | 10 | `RATE_LIMIT_AUTH_WINDOW_MS`, `RATE_LIMIT_AUTH_MAX` |
 | Password reset | `/auth/forgot-password`, `/auth/reset-password` | 1 hour | 5 | `RATE_LIMIT_RESET_WINDOW_MS`, `RATE_LIMIT_RESET_MAX` |
 | Verification resend | `/auth/resend-verification` | 1 hour | 3 | `RATE_LIMIT_VERIFY_WINDOW_MS`, `RATE_LIMIT_VERIFY_MAX` |
-| Corporate invites | `/corporate/pools/*` | 1 hour | 5 | `RATE_LIMIT_CORP_INVITE_WINDOW_MS`, `RATE_LIMIT_CORP_INVITE_MAX` |
+| Invitation send (per user) | `POST /corporate/pools/:poolId/send-invitations` | 1 hour | 200 | `RATE_LIMIT_INVITE_SEND_WINDOW_MS`, `RATE_LIMIT_INVITE_SEND_MAX` |
+| Invitation send daily ceiling (per user) | `POST /corporate/pools/:poolId/send-invitations` | 24 hours | 1000 | `RATE_LIMIT_INVITE_SEND_DAILY_WINDOW_MS`, `RATE_LIMIT_INVITE_SEND_DAILY_MAX` |
 | Corporate inquiry | `/corporate/inquiry` | 15 min | 5 | `RATE_LIMIT_CORP_INQUIRY_WINDOW_MS`, `RATE_LIMIT_CORP_INQUIRY_MAX` |
 | Pool creation | `POST /pools` | 1 hour | 10 | (hardcoded) |
 | Result publish | `PUT /pools/:poolId/results/:matchId` | 1 min | 10 | (hardcoded) |
@@ -245,6 +246,8 @@ consent fields are only required if this is a new user registration.
 If the email matches an existing user, they are joined to the pool directly (password/username/displayName optional). If new, all fields are required.
 
 **Response (200 or 201):** `{ "user": { ... }, "poolId": "...", "alreadyExisted": boolean }`
+
+**Errors:** `INVALID_TOKEN`, `TOKEN_EXPIRED`, `ALREADY_ACTIVATED`, `VALIDATION_ERROR` (with `details.fieldErrors` per Zod), `CONSENT_REQUIRED`, `USERNAME_TAKEN`, `POOL_FULL` (409 — pool reached capacity; the host receives a throttled `BLOCKED_JOIN_ATTEMPT` email).
 
 #### POST /auth/resend-verification
 
@@ -951,6 +954,23 @@ Creates Organization + Pool + PoolMember(CORPORATE_HOST) + CorporateInvites in a
 #### POST /corporate/pools/:poolId/employees
 
 **Body:** `{ "emails": ["emp3@acme.com", "emp4@acme.com"] }`
+
+#### POST /corporate/pools/:poolId/send-invitations
+
+Sends activation emails to all `CorporateInvite` rows in `PENDING` status for the given pool.
+
+**Body:** none.
+
+**Response:** `{ "sent": <number>, "failed": <number> }`
+
+**Side effects:**
+- Each successful send moves the invite from `PENDING` to `SENT`.
+- Failures move it to `FAILED`. The activation token remains valid; another `send-invitations` call retries.
+- Audit event `CORPORATE_INVITATIONS_SENT` recorded with `{ sent, failed, total }`.
+
+**Errors:** `FORBIDDEN` (caller is not the pool's `CORPORATE_HOST`), `NOT_FOUND` (pool), `TOO_MANY_INVITE_REQUESTS_PER_HOUR`, `DAILY_INVITE_LIMIT_EXCEEDED`.
+
+**Rate limits:** see §3 — both apply at this endpoint, keyed by `req.auth.userId`.
 
 #### GET /corporate/csv-template
 

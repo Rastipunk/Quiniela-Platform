@@ -23,6 +23,8 @@ El sistema de notificaciones por email permite enviar comunicaciones automática
 | New Member Digest | Resumen diario de nuevos miembros (para hosts, 8AM COL) | No (siempre activo) | Sí (`emailNewMemberDigest`) |
 | Result Override | Host modificó un resultado publicado por API | No (siempre activo) | No |
 | Pool Full | Pool alcanzó capacidad máxima (notifica al host) | No (siempre activo) | No |
+| Capacity Warning | Pool cerca de capacidad máxima (umbral configurable, default 95%) | No (siempre activo) | No |
+| Blocked Join Attempt | Alguien intentó unirse a un pool lleno (throttled, default 24h por pool) | No (siempre activo) | No |
 | Member Removed | Notifica al miembro que fue removido/baneado | No (siempre activo) | No |
 | Prediction Update | Actualización de predicciones AI (suscripción) | No (siempre activo) | Sí (`predictionUpdates`) |
 | Payment Receipt | Recibo de pago | No (siempre activo) | No |
