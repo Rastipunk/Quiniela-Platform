@@ -10,7 +10,6 @@ import { ColorField } from "../../ColorField";
 import {
   PICKS4ALL_DEFAULT_PRIMARY,
   PICKS4ALL_DEFAULT_SECONDARY,
-  buildSplashGradient,
   darken,
   hasGoodContrastAgainstWhite,
   resolveBrandColors,
@@ -553,20 +552,22 @@ function BrandColorsSection({
         </button>
       )}
 
-      {/* Live preview */}
+      {/* Live preview — mirrors the corporate pool header on
+          pools/[poolId]/page.tsx so the host can see how the colors
+          will look in the persistent surface they'll see on every
+          pool visit. The splash and email get their own previews
+          below the welcome / invitation textareas. */}
       <div
         aria-hidden="true"
         style={{
           marginTop: spacing.md,
-          height: 88,
           borderRadius: radii.lg,
-          background: buildSplashGradient(resolved.primary, resolved.secondary),
+          background: `linear-gradient(135deg, ${resolved.primary}1f 0%, ${resolved.secondary}1f 100%)`,
+          borderBottom: `3px solid ${resolved.primary}`,
+          padding: "14px 16px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
           gap: spacing.md,
-          padding: `0 ${spacing.lg}px`,
-          color: colors.white,
           overflow: "hidden",
         }}
       >
@@ -574,54 +575,77 @@ function BrandColorsSection({
           <img
             src={logoBase64}
             alt=""
-            width={48}
-            height={48}
+            width={56}
+            height={56}
             style={{
-              width: 48,
-              height: 48,
+              width: 56,
+              height: 56,
               objectFit: "contain",
               borderRadius: radii.md,
-              background: "rgba(255,255,255,0.12)",
-              padding: 4,
               flexShrink: 0,
+              background: colors.white,
+              padding: 4,
+              border: `1px solid ${colors.borderLight}`,
             }}
           />
         ) : (
           <div
             style={{
-              width: 48,
-              height: 48,
+              width: 56,
+              height: 56,
               borderRadius: radii.md,
-              background: "rgba(255,255,255,0.18)",
+              background: `linear-gradient(135deg, ${resolved.secondary}, ${resolved.primary})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: fontWeight.extrabold,
+              color: colors.white,
               flexShrink: 0,
             }}
           >
             {previewName.charAt(0).toUpperCase()}
           </div>
         )}
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div
             style={{
               fontSize: fontSize.lg,
               fontWeight: fontWeight.extrabold,
+              color: colors.textDark,
               lineHeight: 1.2,
+              letterSpacing: -0.3,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
           >
-            {previewName}
+            {t("companyInfo.headerPreviewPoolName", { defaultMessage: "Tu polla aquí" })}
           </div>
-          <div style={{ fontSize: fontSize.xs, opacity: 0.85 }}>
-            {t("companyInfo.previewSubtitle", {
-              defaultMessage: "Vista previa del splash",
-            })}
+          <div
+            style={{
+              fontSize: fontSize.xs,
+              color: resolved.primary,
+              fontWeight: fontWeight.semibold,
+              marginTop: 2,
+            }}
+          >
+            {t("companyInfo.headerPreviewByCompany", { company: previewName })}
           </div>
+        </div>
+        <div
+          style={{
+            fontSize: fontSize.xs,
+            fontWeight: fontWeight.medium,
+            color: colors.textLight,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+            flexShrink: 0,
+          }}
+        >
+          {t("companyInfo.headerPreviewSubtitle", {
+            defaultMessage: "Vista previa del header",
+          })}
         </div>
       </div>
 

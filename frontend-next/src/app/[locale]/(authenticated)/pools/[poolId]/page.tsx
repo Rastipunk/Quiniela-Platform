@@ -609,8 +609,20 @@ export default function PoolPage() {
             const headerBrand = resolveBrandColors(headerOrg.primaryColor, headerOrg.secondaryColor);
             const headerAccent = headerBrand.isCustom ? headerBrand.primary : colors.purple;
             const headerLogoBg = `linear-gradient(135deg, ${headerBrand.secondary}, ${headerBrand.primary})`;
+            // Subtle tinted band when the org has custom colors. We use
+            // 12% alpha (`1f`) so the gradient is visible but doesn't
+            // compete with the tabs and content below. A 3px solid
+            // border at the bottom in the saturated primary marks the
+            // edge of the corporate zone — guarantees the personalization
+            // is felt even when the picked colors are pale.
+            const headerBg = headerBrand.isCustom
+              ? `linear-gradient(135deg, ${headerBrand.primary}1f 0%, ${headerBrand.secondary}1f 100%)`
+              : "transparent";
+            const headerBorderBottom = headerBrand.isCustom
+              ? `3px solid ${headerBrand.primary}`
+              : undefined;
             return (
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, marginBottom: 16, padding: headerBrand.isCustom ? "16px 18px" : 0, borderRadius: headerBrand.isCustom ? radii["2xl"] : 0, background: headerBg, borderBottom: headerBorderBottom }}>
               {headerOrg.logoBase64 ? (
                 <img src={headerOrg.logoBase64} alt={headerOrg.name} width={200} height={128} loading="lazy" decoding="async" style={{ maxHeight: 128, maxWidth: 200, height: "auto", width: "auto", objectFit: "contain", borderRadius: 12, flexShrink: 0 }} />
               ) : (
