@@ -53,6 +53,15 @@ export const ADVANCEMENT = {
   DELAY_MS: envInt("ADVANCEMENT_DELAY_MS", 10 * 60_000), // 10 min
 } as const;
 
+// ── Capacity warnings ───────────────────────────────────────
+// Default percentage of maxParticipants at which the host receives the
+// "near full" email. Can be overridden per pool via Pool.capacityWarningThresholdPct.
+// Clamped to the valid range 1..99 to prevent both "always fires" and "never fires" misconfig.
+const _capacityWarningRaw = envInt("CAPACITY_WARNING_THRESHOLD_PCT", 95);
+export const CAPACITY = {
+  WARNING_THRESHOLD_PCT_DEFAULT: Math.min(99, Math.max(1, _capacityWarningRaw)),
+} as const;
+
 // ── Locales ──────────────────────────────────────────────────
 export const SUPPORTED_LOCALES = ["es", "en", "pt"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
