@@ -265,9 +265,17 @@
     "welcomeLabel": "Welcome message",
     "welcomeHelp": "This is the message your team will see every time they open the pool.",
     "welcomePlaceholder": "E.g.: Welcome to the corporate pool. Good luck!",
+    "welcomePreviewLabel": "Preview: welcome screen",
+    "previewBadge": "Corporate",
+    "previewCta": "Play",
     "invitationLabel": "Invitation message",
     "invitationHelp": "This is the message your team will receive in the invitation email when you invite them to join.",
-    "invitationPlaceholder": "This message will be included in the employee invitation email."
+    "invitationPlaceholder": "This message will be included in the employee invitation email.",
+    "invitationPreviewLabel": "Preview: invitation email",
+    "previewEmailSubject": "challenges you to play",
+    "previewEmailGreeting": "Hey Maria!",
+    "previewEmailBody": "Your crew at {company} is setting up a sports pool and they need you in.",
+    "previewEmailCta": "Get in the game →"
   },
 
   "summary": {

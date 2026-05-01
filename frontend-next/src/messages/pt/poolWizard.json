@@ -265,9 +265,17 @@
     "welcomeLabel": "Mensagem de boas-vindas",
     "welcomeHelp": "Esta é a mensagem que sua equipe verá toda vez que abrir o bolão.",
     "welcomePlaceholder": "Ex: Bem-vindos ao pool corporativo. Boa sorte!",
+    "welcomePreviewLabel": "Prévia: tela de boas-vindas",
+    "previewBadge": "Corporativo",
+    "previewCta": "Jogar",
     "invitationLabel": "Mensagem de convite",
     "invitationHelp": "Esta é a mensagem que sua equipe receberá no email de convite quando você convidá-los a participar.",
-    "invitationPlaceholder": "Esta mensagem será incluída no email de convite aos funcionários."
+    "invitationPlaceholder": "Esta mensagem será incluída no email de convite aos funcionários.",
+    "invitationPreviewLabel": "Prévia: email de convite",
+    "previewEmailSubject": "te desafia a jogar",
+    "previewEmailGreeting": "E aí, Maria!",
+    "previewEmailBody": "A galera da {company} já está montando o bolão e precisa de você.",
+    "previewEmailCta": "Entrar no jogo →"
   },
 
   "summary": {
