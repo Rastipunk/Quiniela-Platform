@@ -121,7 +121,8 @@
       "WebFetch(domain:picks4all.com)",
       "Bash(python3:*)",
       "Bash(git checkout *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "Bash(git fetch *)"
     ]
   }
 }
