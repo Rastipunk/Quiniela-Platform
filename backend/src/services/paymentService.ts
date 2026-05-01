@@ -352,7 +352,13 @@ export async function handleOrderPaid(payload: {
     // Expand pool capacity
     await tx.pool.update({
       where: { id: metadata.poolId! },
-      data: { maxParticipants: metadata.toCapacity! },
+      data: {
+        maxParticipants: metadata.toCapacity!,
+        // Re-arm capacity threshold notifications so the warning + full
+        // emails fire again if the pool refills after the expansion.
+        poolFullNotifiedAt: null,
+        capacityWarningNotifiedAt: null,
+      },
     });
   });
 
@@ -876,7 +882,13 @@ export async function processMpPayment(
       });
       await tx.pool.update({
         where: { id: payment.poolId },
-        data: { maxParticipants: payment.toCapacity },
+        data: {
+        maxParticipants: payment.toCapacity,
+        // Re-arm capacity threshold notifications so the warning + full
+        // emails fire again if the pool refills after the expansion.
+        poolFullNotifiedAt: null,
+        capacityWarningNotifiedAt: null,
+      },
       });
     });
 
@@ -1055,7 +1067,13 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       });
       await tx.pool.update({
         where: { id: payment.poolId },
-        data: { maxParticipants: payment.toCapacity },
+        data: {
+        maxParticipants: payment.toCapacity,
+        // Re-arm capacity threshold notifications so the warning + full
+        // emails fire again if the pool refills after the expansion.
+        poolFullNotifiedAt: null,
+        capacityWarningNotifiedAt: null,
+      },
       });
     });
     console.log(`[PaymentService] MP IPN: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);

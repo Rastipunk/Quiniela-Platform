@@ -138,7 +138,12 @@ describe("handleOrderPaid", () => {
     );
     expect(prisma.pool.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { maxParticipants: 50 },
+        data: expect.objectContaining({
+          maxParticipants: 50,
+          // Re-armed so capacity threshold notifications fire again post-expansion.
+          poolFullNotifiedAt: null,
+          capacityWarningNotifiedAt: null,
+        }),
       }),
     );
   });
@@ -325,7 +330,12 @@ describe("processMpPayment", () => {
     );
     expect(prisma.pool.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { maxParticipants: 50 },
+        data: expect.objectContaining({
+          maxParticipants: 50,
+          // Re-armed so capacity threshold notifications fire again post-expansion.
+          poolFullNotifiedAt: null,
+          capacityWarningNotifiedAt: null,
+        }),
       }),
     );
   });
@@ -376,7 +386,12 @@ describe("handleMpWebhook", () => {
     );
     expect(prisma.pool.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { maxParticipants: 50 },
+        data: expect.objectContaining({
+          maxParticipants: 50,
+          // Re-armed so capacity threshold notifications fire again post-expansion.
+          poolFullNotifiedAt: null,
+          capacityWarningNotifiedAt: null,
+        }),
       }),
     );
   });
