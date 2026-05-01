@@ -1360,6 +1360,135 @@ export function getPoolFullTemplate({ hostName, poolName, poolId, maxParticipant
 }
 
 // =========================================================================
+// TEMPLATE: CAPACITY WARNING (near full)
+// =========================================================================
+
+export interface CapacityWarningEmailParams {
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  currentMembers: number;
+  maxParticipants: number;
+  locale?: string;
+}
+
+export function getCapacityWarningTemplate({
+  hostName, poolName, poolId, currentMembers, maxParticipants, locale = "es",
+}: CapacityWarningEmailParams): string {
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("capacity_warning"));
+  const remaining = Math.max(0, maxParticipants - currentMembers);
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    capacity: string; cta: string; tip: string; preheader: string;
+  }> = {
+    es: {
+      heading: "📊 Tu pool está casi lleno",
+      greeting: `Hola ${hostName},`,
+      body: `Tu pool <strong>${poolName}</strong> está acercándose a su capacidad máxima. Quedan <strong>${remaining} cupo${remaining === 1 ? "" : "s"}</strong> disponibles.`,
+      capacity: `${currentMembers}/${maxParticipants}`,
+      cta: "Ampliar capacidad",
+      tip: "Si esperás más participantes, ampliá la capacidad antes de que se llene para no rechazar a nadie.",
+      preheader: `"${poolName}" tiene ${currentMembers}/${maxParticipants} participantes.`,
+    },
+    en: {
+      heading: "📊 Your pool is almost full",
+      greeting: `Hi ${hostName},`,
+      body: `Your pool <strong>${poolName}</strong> is approaching its maximum capacity. Only <strong>${remaining} slot${remaining === 1 ? "" : "s"}</strong> remaining.`,
+      capacity: `${currentMembers}/${maxParticipants}`,
+      cta: "Expand capacity",
+      tip: "If you're expecting more participants, expand the capacity before it fills up to avoid turning anyone away.",
+      preheader: `"${poolName}" has ${currentMembers}/${maxParticipants} participants.`,
+    },
+    pt: {
+      heading: "📊 Seu bolão está quase lotado",
+      greeting: `Olá ${hostName},`,
+      body: `Seu bolão <strong>${poolName}</strong> está se aproximando da capacidade máxima. Restam <strong>${remaining} vaga${remaining === 1 ? "" : "s"}</strong> disponíveis.`,
+      capacity: `${currentMembers}/${maxParticipants}`,
+      cta: "Ampliar capacidade",
+      tip: "Se você espera mais participantes, amplie a capacidade antes que se encha para não recusar ninguém.",
+      preheader: `"${poolName}" tem ${currentMembers}/${maxParticipants} participantes.`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getHighlightBox(`
+      <p style="margin:0;font-size:32px;font-weight:700;color:${BRAND.primaryColor};text-align:center;">
+        ${t.capacity}
+      </p>
+    `)}
+    ${getButton(t.cta, poolUrl)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.tip}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
+// TEMPLATE: BLOCKED JOIN ATTEMPT (someone tried to join a full pool)
+// =========================================================================
+
+export interface BlockedJoinAttemptEmailParams {
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  attemptedEmail: string;
+  maxParticipants: number;
+  locale?: string;
+}
+
+export function getBlockedJoinAttemptTemplate({
+  hostName, poolName, poolId, attemptedEmail, maxParticipants, locale = "es",
+}: BlockedJoinAttemptEmailParams): string {
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("blocked_join_attempt"));
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; body: string;
+    cta: string; tip: string; preheader: string;
+  }> = {
+    es: {
+      heading: "🚪 Alguien intentó unirse a tu pool",
+      greeting: `Hola ${hostName},`,
+      body: `<strong>${attemptedEmail}</strong> intentó unirse a tu pool <strong>${poolName}</strong>, pero no pudo hacerlo porque ya alcanzaste la capacidad máxima de ${maxParticipants} participantes.`,
+      cta: "Ampliar capacidad",
+      tip: "Si querés que esa persona se sume, ampliá la capacidad del pool y avisale para que vuelva a intentarlo.",
+      preheader: `${attemptedEmail} no pudo unirse a "${poolName}" porque está lleno.`,
+    },
+    en: {
+      heading: "🚪 Someone tried to join your pool",
+      greeting: `Hi ${hostName},`,
+      body: `<strong>${attemptedEmail}</strong> tried to join your pool <strong>${poolName}</strong>, but couldn't because you've reached the maximum capacity of ${maxParticipants} participants.`,
+      cta: "Expand capacity",
+      tip: "If you want that person to join, expand the pool capacity and let them know to try again.",
+      preheader: `${attemptedEmail} couldn't join "${poolName}" because it's full.`,
+    },
+    pt: {
+      heading: "🚪 Alguém tentou entrar no seu bolão",
+      greeting: `Olá ${hostName},`,
+      body: `<strong>${attemptedEmail}</strong> tentou entrar no seu bolão <strong>${poolName}</strong>, mas não conseguiu porque você atingiu a capacidade máxima de ${maxParticipants} participantes.`,
+      cta: "Ampliar capacidade",
+      tip: "Se você quer que essa pessoa entre, amplie a capacidade do bolão e avise-a para tentar novamente.",
+      preheader: `${attemptedEmail} não conseguiu entrar em "${poolName}" porque está lotado.`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getButton(t.cta, poolUrl)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.tip}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
 // TEMPLATE: NEW MEMBER JOINED NOTIFICATION
 // =========================================================================
 

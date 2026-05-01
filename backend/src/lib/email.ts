@@ -23,6 +23,8 @@ import {
   getResultPublishedTemplate,
   getPoolCompletedTemplate,
   getPoolFullTemplate,
+  getCapacityWarningTemplate,
+  getBlockedJoinAttemptTemplate,
   getNewMemberTemplate,
   getPasswordChangedTemplate,
   getMemberRemovedTemplate,
@@ -996,6 +998,106 @@ export async function sendPoolFullNotificationEmail(params: {
     return { success: true };
   } catch (err) {
     console.error("❌ Excepción al enviar email pool full:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Notifica al host que su pool se acerca a la capacidad máxima (umbral configurable, default 95%).
+ */
+export async function sendCapacityWarningEmail(params: {
+  to: string;
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  currentMembers: number;
+  maxParticipants: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `Tu pool "${params.poolName}" está casi lleno (${params.currentMembers}/${params.maxParticipants})`,
+    en: `Your pool "${params.poolName}" is almost full (${params.currentMembers}/${params.maxParticipants})`,
+    pt: `Seu bolão "${params.poolName}" está quase lotado (${params.currentMembers}/${params.maxParticipants})`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getCapacityWarningTemplate({
+        hostName: params.hostName,
+        poolName: params.poolName,
+        poolId: params.poolId,
+        currentMembers: params.currentMembers,
+        maxParticipants: params.maxParticipants,
+        locale: loc,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar email capacity warning:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Capacity warning enviada a ${params.to}:`, data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar email capacity warning:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Notifica al host que alguien intentó unirse a un pool que ya está lleno.
+ * Throttle: la frecuencia se controla en el caller (un email por pool por ventana
+ * configurable) para evitar spam si muchos intentan unirse simultáneamente.
+ */
+export async function sendBlockedJoinAttemptEmail(params: {
+  to: string;
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  attemptedEmail: string;
+  maxParticipants: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const subjects: Record<string, string> = {
+    es: `Alguien intentó unirse a "${params.poolName}" pero está lleno`,
+    en: `Someone tried to join "${params.poolName}" but it's full`,
+    pt: `Alguém tentou entrar em "${params.poolName}" mas está lotado`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getBlockedJoinAttemptTemplate({
+        hostName: params.hostName,
+        poolName: params.poolName,
+        poolId: params.poolId,
+        attemptedEmail: params.attemptedEmail,
+        maxParticipants: params.maxParticipants,
+        locale: loc,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar email blocked join attempt:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ Blocked join attempt notification enviada a ${params.to}:`, data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar email blocked join attempt:", err);
     return { success: false, error: String(err) };
   }
 }
