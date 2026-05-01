@@ -10,7 +10,7 @@ import {
   canCreateInvites,
 } from "../services/poolStateMachine";
 import { sendPoolInvitationEmail } from "../lib/email";
-import { ensurePoolCapacity, checkAndNotifyCapacityThresholds } from "../lib/poolCapacity";
+import { ensurePoolCapacity, checkAndNotifyCapacityThresholds, notifyHostOfBlockedAttempt } from "../lib/poolCapacity";
 import { TOKEN_EXPIRY_MS, countryToLocale } from "../lib/constants";
 import { poolJoinLimiter } from "../middleware/rateLimit";
 import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
@@ -273,6 +273,22 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
       return sendForbidden(res, "BANNED_FROM_POOL");
     }
     if (err.message === "POOL_FULL") {
+      // Fire-and-forget host notification (throttled). Look up the attempting
+      // user's email for the message body — if the lookup fails, skip the email
+      // but still surface POOL_FULL to the client.
+      prisma.user
+        .findUnique({ where: { id: req.auth!.userId }, select: { email: true } })
+        .then((u) => {
+          if (u?.email) {
+            return notifyHostOfBlockedAttempt({
+              poolId: invite.poolId,
+              attemptedEmail: u.email,
+              attemptedUserId: req.auth!.userId,
+            });
+          }
+          return undefined;
+        })
+        .catch(() => {});
       return sendConflict(res, "POOL_FULL");
     }
     throw err; // Re-throw if it's another error

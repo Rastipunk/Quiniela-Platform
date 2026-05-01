@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { fireAndForget } from "./asyncHelpers";
 import { writeAuditEvent } from "./audit";
-import { sendCapacityWarningEmail, sendPoolFullNotificationEmail } from "./email";
+import { sendBlockedJoinAttemptEmail, sendCapacityWarningEmail, sendPoolFullNotificationEmail } from "./email";
 import { CAPACITY, countryToLocale } from "./constants";
 import { HOST_NOTIFICATION_ROLES } from "./roles";
 
@@ -220,6 +220,70 @@ async function tryClaimAndNotifyWarning(args: {
     dataJson: { currentMembers: args.currentMembers, maxParticipants: args.maxParticipants },
   }));
   return { state: "warning", emailSent };
+}
+
+/**
+ * Notifies the host that someone tried to join their pool but couldn't because
+ * it's at capacity. Throttled per pool via Pool.lastBlockedAttemptNotifiedAt
+ * (env BLOCKED_ATTEMPT_THROTTLE_HOURS, default 24h) so a flood of failed joins
+ * (bots, link-share storms) produces at most one email per window.
+ *
+ * Returns true iff an email was actually dispatched. Audit fires unconditionally
+ * so forensics has the full attempt log even when emails are throttled.
+ */
+export async function notifyHostOfBlockedAttempt(args: {
+  poolId: string;
+  attemptedEmail: string;
+  attemptedUserId?: string | null;
+}): Promise<{ emailSent: boolean }> {
+  const pool = await prisma.pool.findUnique({
+    where: { id: args.poolId },
+    select: { id: true, name: true, maxParticipants: true, lastBlockedAttemptNotifiedAt: true },
+  });
+  if (!pool || !pool.maxParticipants) {
+    return { emailSent: false };
+  }
+
+  // Audit every attempt, regardless of whether the email actually goes out.
+  fireAndForget("audit:blocked-join-attempt", writeAuditEvent({
+    actorUserId: args.attemptedUserId ?? undefined,
+    action: "BLOCKED_JOIN_ATTEMPT",
+    entityType: "Pool",
+    entityId: args.poolId,
+    poolId: args.poolId,
+    dataJson: { attemptedEmail: args.attemptedEmail, maxParticipants: pool.maxParticipants },
+  }));
+
+  const now = Date.now();
+  const cutoff = new Date(now - CAPACITY.BLOCKED_ATTEMPT_THROTTLE_MS);
+  // Atomic claim: only update (and dispatch) if the last notification is null
+  // or older than the cutoff. updateMany returns count=0 when another concurrent
+  // attempt already claimed the window, so we send at most one email per window.
+  const { count: claimed } = await prisma.pool.updateMany({
+    where: {
+      id: args.poolId,
+      OR: [
+        { lastBlockedAttemptNotifiedAt: null },
+        { lastBlockedAttemptNotifiedAt: { lt: cutoff } },
+      ],
+    },
+    data: { lastBlockedAttemptNotifiedAt: new Date(now) },
+  });
+  if (claimed === 0) return { emailSent: false };
+
+  const host = await findHostForNotification(args.poolId);
+  if (!host) return { emailSent: false };
+
+  fireAndForget("capacity:blocked-attempt", sendBlockedJoinAttemptEmail({
+    to: host.email,
+    hostName: host.displayName,
+    poolName: pool.name,
+    poolId: pool.id,
+    attemptedEmail: args.attemptedEmail,
+    maxParticipants: pool.maxParticipants,
+    locale: host.locale,
+  }));
+  return { emailSent: true };
 }
 
 interface HostNotificationTarget {

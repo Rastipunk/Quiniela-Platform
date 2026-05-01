@@ -398,6 +398,11 @@ model Pool {
   // dispara el email de aviso al host. null = usa el default global (env CAPACITY_WARNING_THRESHOLD_PCT).
   capacityWarningThresholdPct Int?
 
+  // Comentario en español: throttle del email "alguien intentó unirse a un pool lleno".
+  // Se envía solo si NULL o más antiguo que la ventana configurable (env BLOCKED_ATTEMPT_THROTTLE_HOURS, default 24h).
+  // Sin esto, una ráfaga de bots intentando unirse al mismo pool generaría un email por intento.
+  lastBlockedAttemptNotifiedAt DateTime?
+
   members          PoolMember[]
   invites          PoolInvite[]
   corporateInvites CorporateInvite[]

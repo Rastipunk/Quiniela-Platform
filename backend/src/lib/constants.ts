@@ -60,6 +60,10 @@ export const ADVANCEMENT = {
 const _capacityWarningRaw = envInt("CAPACITY_WARNING_THRESHOLD_PCT", 95);
 export const CAPACITY = {
   WARNING_THRESHOLD_PCT_DEFAULT: Math.min(99, Math.max(1, _capacityWarningRaw)),
+  // Throttle window for the "someone tried to join a full pool" email. One
+  // email per pool per window — keeps the host informed without spamming
+  // when bots / link-sharing storms hit a full pool repeatedly.
+  BLOCKED_ATTEMPT_THROTTLE_MS: envInt("BLOCKED_ATTEMPT_THROTTLE_HOURS", 24) * MS.HOUR,
 } as const;
 
 // ── Locales ──────────────────────────────────────────────────

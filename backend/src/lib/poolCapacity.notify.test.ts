@@ -31,10 +31,10 @@ vi.mock("./asyncHelpers", () => ({
 }));
 
 import { prisma } from "../db";
-import { sendPoolFullNotificationEmail, sendCapacityWarningEmail } from "./email";
+import { sendPoolFullNotificationEmail, sendCapacityWarningEmail, sendBlockedJoinAttemptEmail } from "./email";
 import { writeAuditEvent } from "./audit";
 import { fireAndForget } from "./asyncHelpers";
-import { checkAndNotifyCapacityThresholds } from "./poolCapacity";
+import { checkAndNotifyCapacityThresholds, notifyHostOfBlockedAttempt } from "./poolCapacity";
 
 const HOST_USER = {
   email: "host@example.com",
@@ -289,5 +289,131 @@ describe("checkAndNotifyCapacityThresholds", () => {
     expect(sendPoolFullNotificationEmail).toHaveBeenCalledWith(
       expect.objectContaining({ hostName: "Host" }),
     );
+  });
+});
+
+// Helper for the notifyHostOfBlockedAttempt tests — the function reads slightly
+// different fields from Pool, so a separate setup keeps assertions tight.
+function setupBlockedAttemptMocks(args: {
+  pool: { id: string; name: string; maxParticipants: number | null; lastBlockedAttemptNotifiedAt?: Date | null } | null;
+  host?: { user: typeof HOST_USER } | null;
+  claimResult?: number;
+}) {
+  vi.clearAllMocks();
+  (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(
+    args.pool === null
+      ? null
+      : {
+          id: args.pool.id,
+          name: args.pool.name,
+          maxParticipants: args.pool.maxParticipants,
+          lastBlockedAttemptNotifiedAt: args.pool.lastBlockedAttemptNotifiedAt ?? null,
+        },
+  );
+  (prisma.poolMember.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(
+    args.host === undefined ? { user: HOST_USER } : args.host,
+  );
+  (prisma.pool.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({
+    count: args.claimResult ?? 1,
+  });
+}
+
+const POOL_FOR_BLOCK = {
+  id: "p-block",
+  name: "Mundial 2026",
+  maxParticipants: 100,
+};
+
+describe("notifyHostOfBlockedAttempt", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("dispatches the email and audits the attempt when the throttle window is open", async () => {
+    setupBlockedAttemptMocks({ pool: POOL_FOR_BLOCK });
+    const result = await notifyHostOfBlockedAttempt({
+      poolId: POOL_FOR_BLOCK.id,
+      attemptedEmail: "ls@unal.edu.co",
+      attemptedUserId: "u-1",
+    });
+    expect(result.emailSent).toBe(true);
+    expect(sendBlockedJoinAttemptEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptedEmail: "ls@unal.edu.co",
+        maxParticipants: 100,
+      }),
+    );
+    expect(writeAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "BLOCKED_JOIN_ATTEMPT",
+        actorUserId: "u-1",
+        dataJson: expect.objectContaining({ attemptedEmail: "ls@unal.edu.co" }),
+      }),
+    );
+  });
+
+  it("audits even when the throttle window blocks the email", async () => {
+    setupBlockedAttemptMocks({ pool: POOL_FOR_BLOCK, claimResult: 0 });
+    const result = await notifyHostOfBlockedAttempt({
+      poolId: POOL_FOR_BLOCK.id,
+      attemptedEmail: "bot@example.com",
+    });
+    expect(result.emailSent).toBe(false);
+    expect(sendBlockedJoinAttemptEmail).not.toHaveBeenCalled();
+    // Audit fires regardless — forensics still has the full attempt log.
+    expect(writeAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "BLOCKED_JOIN_ATTEMPT" }),
+    );
+  });
+
+  it("returns emailSent=false when pool not found (no audit either)", async () => {
+    setupBlockedAttemptMocks({ pool: null });
+    const result = await notifyHostOfBlockedAttempt({
+      poolId: "missing",
+      attemptedEmail: "x@y.com",
+    });
+    expect(result.emailSent).toBe(false);
+    expect(sendBlockedJoinAttemptEmail).not.toHaveBeenCalled();
+    expect(writeAuditEvent).not.toHaveBeenCalled();
+    expect(prisma.pool.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("returns emailSent=false when pool has no maxParticipants (legacy pool)", async () => {
+    setupBlockedAttemptMocks({ pool: { ...POOL_FOR_BLOCK, maxParticipants: null } });
+    const result = await notifyHostOfBlockedAttempt({
+      poolId: POOL_FOR_BLOCK.id,
+      attemptedEmail: "x@y.com",
+    });
+    expect(result.emailSent).toBe(false);
+  });
+
+  it("uses null OR cutoff in the throttle WHERE clause", async () => {
+    setupBlockedAttemptMocks({ pool: POOL_FOR_BLOCK });
+    await notifyHostOfBlockedAttempt({
+      poolId: POOL_FOR_BLOCK.id,
+      attemptedEmail: "x@y.com",
+    });
+    expect(prisma.pool.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: POOL_FOR_BLOCK.id,
+          OR: [
+            { lastBlockedAttemptNotifiedAt: null },
+            { lastBlockedAttemptNotifiedAt: { lt: expect.any(Date) } },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it("returns emailSent=false when host has no email (audit still fires)", async () => {
+    setupBlockedAttemptMocks({ pool: POOL_FOR_BLOCK, host: null });
+    const result = await notifyHostOfBlockedAttempt({
+      poolId: POOL_FOR_BLOCK.id,
+      attemptedEmail: "x@y.com",
+    });
+    expect(result.emailSent).toBe(false);
+    expect(sendBlockedJoinAttemptEmail).not.toHaveBeenCalled();
+    expect(writeAuditEvent).toHaveBeenCalled();
   });
 });

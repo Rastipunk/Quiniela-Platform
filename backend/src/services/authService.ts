@@ -21,7 +21,7 @@ import {
 } from "../lib/email";
 import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "./poolStateMachine";
-import { ensurePoolCapacity, checkAndNotifyCapacityThresholds } from "../lib/poolCapacity";
+import { ensurePoolCapacity, checkAndNotifyCapacityThresholds, notifyHostOfBlockedAttempt } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "../routes/legal";
 import { TOKEN_EXPIRY_MS, CRYPTO_BYTES, countryToLocale } from "../lib/constants";
 import { serializeUser } from "../lib/serializers";
@@ -645,9 +645,17 @@ export async function activateCorporateAccount(
           data: { poolId, userId: existingUser.id, role: "PLAYER", status: "ACTIVE" },
         });
       }
-    }).catch((err) => {
+    }).catch(async (err) => {
       if (err.message === "ALREADY_ACTIVATED") throw new ServiceError("ALREADY_ACTIVATED", 409);
-      if (err.message === "POOL_FULL") throw new ServiceError("POOL_FULL", 409);
+      if (err.message === "POOL_FULL") {
+        // Notify host (throttled) so they see the demand and can expand.
+        await notifyHostOfBlockedAttempt({
+          poolId,
+          attemptedEmail: invite.email,
+          attemptedUserId: existingUser.id,
+        }).catch(() => {});
+        throw new ServiceError("POOL_FULL", 409);
+      }
       throw err;
     });
 
@@ -715,7 +723,15 @@ export async function activateCorporateAccount(
     });
   } catch (err: any) {
     if (err.message === "ALREADY_ACTIVATED") throw new ServiceError("ALREADY_ACTIVATED", 409);
-    if (err.message === "POOL_FULL") throw new ServiceError("POOL_FULL", 409);
+    if (err.message === "POOL_FULL") {
+      // No userId yet — the user wasn't created because the tx rolled back.
+      await notifyHostOfBlockedAttempt({
+        poolId,
+        attemptedEmail: invite.email,
+        attemptedUserId: null,
+      }).catch(() => {});
+      throw new ServiceError("POOL_FULL", 409);
+    }
     throw err;
   }
 
