@@ -13,6 +13,38 @@ import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
 type Status = "form" | "submitting" | "success" | "error";
 type CheckStatus = "loading" | "new_user" | "existing_user" | "error";
 
+// Build a human-readable message from an ApiError thrown by the
+// activation endpoint. Pulls out the Zod `details` (fieldErrors,
+// formErrors) and any service-side `reason` field so the user
+// sees more than the bare error code.
+function formatActivationError(err: unknown): string {
+  if (!err || typeof err !== "object") return "Error";
+  const errObj = err as { message?: string; payload?: unknown };
+  const baseMsg = errObj.message || "Error";
+  const payload = errObj.payload;
+  if (!payload || typeof payload !== "object") return baseMsg;
+  const p = payload as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof p.reason === "string") parts.push(p.reason);
+  const details = p.details;
+  if (details && typeof details === "object") {
+    const fieldErrors = (details as Record<string, unknown>).fieldErrors;
+    const formErrors = (details as Record<string, unknown>).formErrors;
+    if (fieldErrors && typeof fieldErrors === "object") {
+      for (const [field, errs] of Object.entries(fieldErrors as Record<string, unknown>)) {
+        if (Array.isArray(errs) && errs.length > 0) {
+          parts.push(`${field}: ${(errs as string[]).join(", ")}`);
+        }
+      }
+    }
+    if (Array.isArray(formErrors) && formErrors.length > 0) {
+      parts.push(...(formErrors as string[]));
+    }
+  }
+  if (typeof p.message === "string") parts.push(p.message);
+  return parts.length > 0 ? `${baseMsg} — ${parts.join("; ")}` : baseMsg;
+}
+
 export function ActivationContent() {
   const t = useTranslations("activation");
   const { params: poolParams } = usePoolTerm();
@@ -113,6 +145,7 @@ export function ActivationContent() {
       setCompanyName(result.companyName ?? null);
       setStatus("success");
     } catch (err: any) {
+      console.error("[ActivationContent] activate-corporate (new user) failed:", err);
       setStatus("error");
       const payload = err?.payload;
       if (payload?.error === "INVALID_TOKEN" || payload?.error === "TOKEN_EXPIRED") {
@@ -120,7 +153,7 @@ export function ActivationContent() {
       } else if (payload?.error === "ALREADY_ACTIVATED") {
         setErrorMsg(t("alreadyActivated"));
       } else {
-        setErrorMsg(payload?.message || err.message || "Error");
+        setErrorMsg(formatActivationError(err));
       }
     }
   };
@@ -141,6 +174,10 @@ export function ActivationContent() {
       setCompanyName(result.companyName ?? null);
       setStatus("success");
     } catch (err: any) {
+      // Surface the actual reason. Without this, every backend
+      // failure surfaces as the bare error code (e.g. "VALIDATION_ERROR")
+      // with no clue which field or rule fired.
+      console.error("[ActivationContent] activate-corporate failed:", err);
       setStatus("form");
       const payload = err?.payload;
       if (payload?.error === "POOL_FULL") {
@@ -148,7 +185,7 @@ export function ActivationContent() {
       } else if (payload?.error === "ALREADY_ACTIVATED") {
         setErrorMsg(t("alreadyActivated"));
       } else {
-        setErrorMsg(payload?.message || err.message || "Error");
+        setErrorMsg(formatActivationError(err));
       }
     }
   };

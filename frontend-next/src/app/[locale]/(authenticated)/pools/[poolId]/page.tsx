@@ -609,14 +609,13 @@ export default function PoolPage() {
             const headerBrand = resolveBrandColors(headerOrg.primaryColor, headerOrg.secondaryColor);
             const headerAccent = headerBrand.isCustom ? headerBrand.primary : colors.purple;
             const headerLogoBg = `linear-gradient(135deg, ${headerBrand.secondary}, ${headerBrand.primary})`;
-            // Subtle tinted band when the org has custom colors. We use
-            // 12% alpha (`1f`) so the gradient is visible but doesn't
-            // compete with the tabs and content below. A 3px solid
-            // border at the bottom in the saturated primary marks the
-            // edge of the corporate zone — guarantees the personalization
-            // is felt even when the picked colors are pale.
+            // Tinted band when the org has custom colors. 33 = 20% alpha,
+            // visible enough that pale colors still register but light
+            // enough that the tabs and content below keep their hierarchy.
+            // A 3px solid border at the bottom in the saturated primary
+            // marks the edge of the corporate zone.
             const headerBg = headerBrand.isCustom
-              ? `linear-gradient(135deg, ${headerBrand.primary}1f 0%, ${headerBrand.secondary}1f 100%)`
+              ? `linear-gradient(135deg, ${headerBrand.primary}33 0%, ${headerBrand.secondary}33 100%)`
               : "transparent";
             const headerBorderBottom = headerBrand.isCustom
               ? `3px solid ${headerBrand.primary}`

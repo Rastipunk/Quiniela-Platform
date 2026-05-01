@@ -562,7 +562,7 @@ function BrandColorsSection({
         style={{
           marginTop: spacing.md,
           borderRadius: radii.lg,
-          background: `linear-gradient(135deg, ${resolved.primary}1f 0%, ${resolved.secondary}1f 100%)`,
+          background: `linear-gradient(135deg, ${resolved.primary}33 0%, ${resolved.secondary}33 100%)`,
           borderBottom: `3px solid ${resolved.primary}`,
           padding: "14px 16px",
           display: "flex",
