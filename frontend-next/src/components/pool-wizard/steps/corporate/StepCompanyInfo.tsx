@@ -406,9 +406,8 @@ export function StepCompanyInfo() {
             defaultMessage: "Hey María!",
           })}
           body={t("companyInfo.previewEmailBody", {
-            defaultMessage:
-              "Tu equipo en {company} ya está armando su quiniela y necesitan que te sumes.",
-          }).replace("{company}", state.companyName.trim() || "tu empresa")}
+            company: state.companyName.trim() || "tu empresa",
+          })}
           ctaLabel={t("companyInfo.previewEmailCta", {
             defaultMessage: "Entrar a jugar →",
           })}
@@ -429,7 +428,7 @@ interface BrandColorsSectionProps {
   onSecondaryChange: (value: string) => void;
   onReset: () => void;
   marginBottom: number;
-  t: (key: string, opts?: { defaultMessage?: string }) => string;
+  t: (key: string, opts?: Record<string, string | number | Date>) => string;
   isMobile: boolean;
 }
 
@@ -652,10 +651,11 @@ function WelcomeSplashPreview({
   ctaLabel,
 }: WelcomeSplashPreviewProps) {
   const brand = resolveBrandColors(primary || null, secondary || null);
-  // Same darkening that pools/[poolId]/page.tsx applies to the
-  // splash background, so the preview matches reality.
+  // Mirror what pools/[poolId]/page.tsx renders. We keep the user's
+  // colors verbatim so the preview matches the picker — the contrast
+  // warning already nudges hosts toward darker tones when needed.
   const splashBg = brand.isCustom
-    ? `linear-gradient(160deg, ${darken(brand.primary, 0.35)} 0%, ${darken(brand.secondary, 0.3)} 100%)`
+    ? `linear-gradient(160deg, ${brand.primary} 0%, ${brand.secondary} 100%)`
     : "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)";
   const previewName = companyName.trim() || "Acme Corp";
   const showsMessage = welcomeMessage.trim().length > 0;
@@ -815,10 +815,11 @@ function InvitationEmailPreview({
   ctaLabel,
 }: InvitationEmailPreviewProps) {
   const brand = resolveBrandColors(primary || null, secondary || null);
-  // Mirror the email template in backend/src/lib/emailTemplates.ts:
-  // hero is a deep 3-stop gradient, CTA is a vibrant 2-stop.
+  // Mirror backend/src/lib/emailTemplates.ts. Same philosophy as the
+  // splash: keep custom colors literal so the preview matches what
+  // the host picked.
   const heroGradient = brand.isCustom
-    ? `linear-gradient(135deg,${darken(brand.primary, 0.45)} 0%,${darken(brand.secondary, 0.3)} 50%,${darken(brand.primary, 0.15)} 100%)`
+    ? `linear-gradient(135deg,${brand.primary} 0%,${brand.secondary} 100%)`
     : "linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 100%)";
   const ctaGradient = brand.isCustom
     ? `linear-gradient(135deg,${brand.primary} 0%,${brand.secondary} 100%)`

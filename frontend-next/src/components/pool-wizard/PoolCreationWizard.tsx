@@ -224,8 +224,35 @@ function WizardInner() {
       // wizard used to silently swallow errors into state.error with
       // no UI to render them, which read as "the button does nothing").
       console.error("[PoolCreationWizard] Pool creation failed:", err);
-      const message =
-        err instanceof Error ? err.message : "Error al crear el pool";
+      // ApiError carries the parsed body in `.payload`. For VALIDATION_ERROR
+      // that includes `details: { fieldErrors, formErrors }` from Zod's
+      // .flatten(), which is what we actually need to fix the bad field.
+      let message: string;
+      if (err instanceof Error) {
+        message = err.message;
+        const payload = (err as { payload?: unknown }).payload;
+        if (payload && typeof payload === "object") {
+          const details = (payload as Record<string, unknown>).details;
+          if (details && typeof details === "object") {
+            const fieldErrors = (details as Record<string, unknown>).fieldErrors;
+            const formErrors = (details as Record<string, unknown>).formErrors;
+            const parts: string[] = [];
+            if (fieldErrors && typeof fieldErrors === "object") {
+              for (const [field, errs] of Object.entries(fieldErrors as Record<string, unknown>)) {
+                if (Array.isArray(errs) && errs.length > 0) {
+                  parts.push(`${field}: ${(errs as string[]).join(", ")}`);
+                }
+              }
+            }
+            if (Array.isArray(formErrors) && formErrors.length > 0) {
+              parts.push(...(formErrors as string[]));
+            }
+            if (parts.length > 0) message = `${message} — ${parts.join("; ")}`;
+          }
+        }
+      } else {
+        message = "Error al crear el pool";
+      }
       dispatch({ type: "SET_FIELD", field: "error", value: message });
     } finally {
       setSubmitBusy(false);

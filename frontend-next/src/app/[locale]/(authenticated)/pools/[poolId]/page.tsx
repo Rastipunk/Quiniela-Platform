@@ -524,17 +524,18 @@ export default function PoolPage() {
         const org = overview.pool.organization;
         const brand = resolveBrandColors(org.primaryColor, org.secondaryColor);
         // For non-customized orgs, preserve the original deep
-        // indigo/violet gradient. For customized ones, derive a
-        // dramatically darker version of the picked colors so
-        // white text stays legible on top.
+        // indigo/violet gradient. For customized ones, render the
+        // host-picked colors verbatim so the splash matches the
+        // wizard preview. The contrast warning at creation time
+        // already nudges hosts toward darker tones if needed.
         const splashBg = brand.isCustom
-          ? `linear-gradient(160deg, ${darken(brand.primary, 0.35)} 0%, ${darken(brand.secondary, 0.3)} 100%)`
+          ? `linear-gradient(160deg, ${brand.primary} 0%, ${brand.secondary} 100%)`
           : "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)";
         const logoBg = `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`;
-        // Play button text reads against a near-white CTA, so a
-        // saturated mid-tone of the primary works in both default
-        // and customized cases.
-        const playTextColor = darken(brand.primary, 0.2);
+        // Play button sits on a near-white pill, so we tint the text
+        // with a darker primary to keep contrast regardless of how
+        // light the host's primary is.
+        const playTextColor = darken(brand.primary, 0.25);
         return (
           <div
             style={{ position: "fixed", inset: 0, zIndex: zIndex.expulsion, display: "flex", alignItems: "center", justifyContent: "center", background: splashBg, padding: 24, overflow: "hidden" }}

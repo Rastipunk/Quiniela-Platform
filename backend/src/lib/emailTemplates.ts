@@ -829,24 +829,10 @@ function isHex(value: string | null | undefined): value is string {
   return typeof value === "string" && HEX_RE.test(value);
 }
 
-// Darken a hex color by `amount` (0..1). Naive RGB linear shift —
-// good enough for email backgrounds where the goal is "deeper
-// version of the same hue" rather than perceptual accuracy.
-function darken(hex: string, amount: number): string {
-  if (!isHex(hex)) return hex;
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const f = 1 - amount;
-  const c = (n: number) =>
-    Math.max(0, Math.min(255, Math.round(n * f)))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${c(r)}${c(g)}${c(b)}`;
-}
-
 // Resolve hero + CTA gradients for a corporate email. Returns the
 // Picks4All defaults when no branding is set on the organization.
+// Custom colors are rendered verbatim so the email matches what the
+// host saw in the wizard preview at creation time.
 function resolveCorporateGradients(
   primaryColor: string | null | undefined,
   secondaryColor: string | null | undefined,
@@ -862,7 +848,7 @@ function resolveCorporateGradients(
   const primary = p || s!;
   const secondary = s || p!;
   return {
-    heroGradient: `linear-gradient(135deg,${darken(primary, 0.45)} 0%,${darken(secondary, 0.3)} 50%,${darken(primary, 0.15)} 100%)`,
+    heroGradient: `linear-gradient(135deg,${primary} 0%,${secondary} 100%)`,
     ctaGradient: `linear-gradient(135deg,${primary} 0%,${secondary} 100%)`,
   };
 }
