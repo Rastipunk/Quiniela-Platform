@@ -2,15 +2,15 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
-import { requirePoolAdmin, HOST_NOTIFICATION_ROLES } from "../lib/roles";
+import { requirePoolAdmin } from "../lib/roles";
 import { makeInviteCode } from "../lib/poolHelpers";
 import {
   transitionToActive,
   canJoinPool,
   canCreateInvites,
 } from "../services/poolStateMachine";
-import { sendPoolInvitationEmail, sendPoolFullNotificationEmail } from "../lib/email";
-import { ensurePoolCapacity } from "../lib/poolCapacity";
+import { sendPoolInvitationEmail } from "../lib/email";
+import { ensurePoolCapacity, checkAndNotifyCapacityThresholds } from "../lib/poolCapacity";
 import { TOKEN_EXPIRY_MS, countryToLocale } from "../lib/constants";
 import { poolJoinLimiter } from "../middleware/rateLimit";
 import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
@@ -336,34 +336,12 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
 
   }
 
-  // Notificar al host si el pool acaba de llenarse (atomic dedup via poolFullNotifiedAt)
-  if (joined.status === "ACTIVE" && invite.pool.maxParticipants) {
-    const currentCount = await prisma.poolMember.count({
-      where: { poolId: invite.poolId, status: "ACTIVE" },
-    });
-    if (currentCount >= invite.pool.maxParticipants) {
-      const { count } = await prisma.pool.updateMany({
-        where: { id: invite.poolId, poolFullNotifiedAt: null },
-        data: { poolFullNotifiedAt: new Date() },
-      });
-      if (count > 0) {
-        const host = await prisma.poolMember.findFirst({
-          where: { poolId: invite.poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
-          include: { user: { select: { email: true, displayName: true, country: true } } },
-        });
-        if (host?.user?.email) {
-          sendPoolFullNotificationEmail({
-            to: host.user.email,
-            hostName: host.user.displayName || "Host",
-            poolName: invite.pool.name,
-            poolId: invite.poolId,
-            maxParticipants: invite.pool.maxParticipants,
-            locale: countryToLocale(host.user.country),
-          }).catch(() => {});
-        }
-      }
-    }
-  }
+  // Threshold notifications (warning at configurable %, full at 100%) — runs
+  // for both ACTIVE and PENDING_APPROVAL joins because both count toward capacity.
+  await checkAndNotifyCapacityThresholds({
+    poolId: invite.poolId,
+    actorUserId: req.auth!.userId,
+  });
 
   return sendOk(res, {
     poolId: joined.poolId,

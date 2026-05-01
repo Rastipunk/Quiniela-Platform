@@ -17,14 +17,12 @@ import {
   sendPasswordResetEmail,
   sendWelcomeEmail,
   sendVerificationEmail,
-  sendPoolFullNotificationEmail,
   sendPasswordChangedEmail,
 } from "../lib/email";
 import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "./poolStateMachine";
-import { ensurePoolCapacity } from "../lib/poolCapacity";
+import { ensurePoolCapacity, checkAndNotifyCapacityThresholds } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "../routes/legal";
-import { HOST_NOTIFICATION_ROLES } from "../lib/roles";
 import { TOKEN_EXPIRY_MS, CRYPTO_BYTES, countryToLocale } from "../lib/constants";
 import { serializeUser } from "../lib/serializers";
 import type { SerializedUser } from "../lib/serializers";
@@ -54,38 +52,6 @@ export class ServiceError extends Error {
 
 // Re-export for consumers that import from authService
 export type { SerializedUser };
-
-/**
- * After a user joins a pool via corporate activation, check if the pool is
- * full and notify the host. Extracted to avoid duplication.
- */
-async function notifyIfPoolFull(poolId: string, poolName: string, maxParticipants: number | null): Promise<void> {
-  if (!maxParticipants) return;
-  const curCount = await prisma.poolMember.count({ where: { poolId, status: "ACTIVE" } });
-  if (curCount < maxParticipants) return;
-
-  // Atomic dedup: only set poolFullNotifiedAt if it hasn't been set yet
-  const { count } = await prisma.pool.updateMany({
-    where: { id: poolId, poolFullNotifiedAt: null },
-    data: { poolFullNotifiedAt: new Date() },
-  });
-  if (count === 0) return; // already notified
-
-  const host = await prisma.poolMember.findFirst({
-    where: { poolId, role: { in: [...HOST_NOTIFICATION_ROLES] } },
-    include: { user: { select: { email: true, displayName: true, country: true } } },
-  });
-  if (!host?.user?.email) return;
-
-  fireAndForget("pool-full notification", sendPoolFullNotificationEmail({
-    to: host.user.email,
-    hostName: host.user.displayName || "Host",
-    poolName,
-    poolId,
-    maxParticipants,
-    locale: countryToLocale(host.user.country),
-  }));
-}
 
 /**
  * Generate a unique username from an email local part.
@@ -689,7 +655,7 @@ export async function activateCorporateAccount(
       console.error("[AuthService] transitionToActive error (existing):", err instanceof Error ? err.message : String(err)),
     );
 
-    await notifyIfPoolFull(poolId, poolName, invite.pool.maxParticipants);
+    await checkAndNotifyCapacityThresholds({ poolId, actorUserId: existingUser.id });
 
     return {
       user: serializeUser(existingUser),
@@ -757,7 +723,7 @@ export async function activateCorporateAccount(
     console.error("[AuthService] transitionToActive error (new):", err instanceof Error ? err.message : String(err)),
   );
 
-  await notifyIfPoolFull(poolId, poolName, invite.pool.maxParticipants);
+  await checkAndNotifyCapacityThresholds({ poolId, actorUserId: newUser.id });
 
   fireAndForget("audit:corporate-activation", writeAuditEvent({
     actorUserId: newUser.id, action: "CORPORATE_ACCOUNT_ACTIVATED",
