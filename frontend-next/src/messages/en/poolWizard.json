@@ -60,7 +60,9 @@
     "next": "Next",
     "create": "Create Pool",
     "creating": "Creating...",
-    "createCorporate": "Create Corporate Pool"
+    "createCorporate": "Create Corporate Pool",
+    "errorTitle": "We couldn't create the pool",
+    "dismissError": "Dismiss"
   },
 
   "tournament": {

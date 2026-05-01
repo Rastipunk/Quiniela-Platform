@@ -60,7 +60,9 @@
     "next": "Próximo",
     "create": "Criar Pool",
     "creating": "Criando...",
-    "createCorporate": "Criar Pool Corporativo"
+    "createCorporate": "Criar Pool Corporativo",
+    "errorTitle": "Não conseguimos criar o bolão",
+    "dismissError": "Fechar"
   },
 
   "tournament": {

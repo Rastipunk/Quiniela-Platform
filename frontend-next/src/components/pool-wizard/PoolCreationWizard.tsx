@@ -219,6 +219,11 @@ function WizardInner() {
 
       router.push(`/pools/${poolId}`);
     } catch (err) {
+      // Surface the failure: log to console for diagnostics AND show
+      // a banner so the user actually sees something happened (the
+      // wizard used to silently swallow errors into state.error with
+      // no UI to render them, which read as "the button does nothing").
+      console.error("[PoolCreationWizard] Pool creation failed:", err);
       const message =
         err instanceof Error ? err.message : "Error al crear el pool";
       dispatch({ type: "SET_FIELD", field: "error", value: message });
@@ -285,6 +290,55 @@ function WizardInner() {
 
       {/* Progress bar */}
       <PoolWizardProgressBar />
+
+      {/* Submit error banner — sticks to the top of the step content
+          when handleSubmit catches a failure. Without this the error
+          silently goes into state and the user sees the "Crear Pool"
+          button do nothing. */}
+      {state.error && (
+        <div
+          role="alert"
+          style={{
+            margin: "12px auto 0",
+            maxWidth: 720,
+            width: "calc(100% - 24px)",
+            padding: "12px 16px",
+            borderRadius: 8,
+            background: colors.errorBg,
+            border: `1px solid ${colors.errorBorder}`,
+            color: colors.error,
+            fontSize: 14,
+            lineHeight: 1.5,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>&#9888;&#65039;</span>
+          <div style={{ flex: 1 }}>
+            <strong style={{ display: "block", marginBottom: 2 }}>
+              {t("nav.errorTitle", { defaultMessage: "No pudimos crear el pool" })}
+            </strong>
+            <span>{state.error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "SET_FIELD", field: "error", value: null })}
+            aria-label={t("nav.dismissError", { defaultMessage: "Cerrar" })}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: colors.error,
+              fontSize: 18,
+              lineHeight: 1,
+              cursor: "pointer",
+              padding: 4,
+            }}
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Step content */}
       <div style={{ flex: 1 }}>
