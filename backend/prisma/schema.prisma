@@ -389,6 +389,15 @@ model Pool {
 
   poolFullNotifiedAt DateTime?
 
+  // Comentario en español: timestamp del último envío del email de "capacidad casi llena"
+  // (cuando se cruza el umbral configurable, default 95%). Se limpia al expandir capacidad
+  // para que la alerta vuelva a dispararse si vuelve a llenarse.
+  capacityWarningNotifiedAt DateTime?
+
+  // Comentario en español: porcentaje (1..99) sobre maxParticipants a partir del cual se
+  // dispara el email de aviso al host. null = usa el default global (env CAPACITY_WARNING_THRESHOLD_PCT).
+  capacityWarningThresholdPct Int?
+
   members          PoolMember[]
   invites          PoolInvite[]
   corporateInvites CorporateInvite[]
