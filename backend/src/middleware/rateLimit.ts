@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 // ── Helpers ─────────────────────────────────────────────────
 const envInt = (key: string, fallback: number): number =>
@@ -56,11 +56,37 @@ export const poolJoinLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Corporate invitations — default 5 req/hour per IP
-export const corporateInviteLimiter = rateLimit({
-  windowMs: envInt("RATE_LIMIT_CORP_INVITE_WINDOW_MS", HOUR),
-  max: envInt("RATE_LIMIT_CORP_INVITE_MAX", 5),
-  message: { error: "TOO_MANY_INVITE_REQUESTS" },
+// Per-user invitation send (corporate or regular). Keyed by req.auth.userId
+// (falls back to IP for unauthenticated requests, which shouldn't reach the
+// invitation endpoints anyway since those require auth). Bucket sized for a
+// large corporate event: ~200 invites in a single sitting is normal.
+export const inviteSendLimiter = rateLimit({
+  windowMs: envInt("RATE_LIMIT_INVITE_SEND_WINDOW_MS", HOUR),
+  max: envInt("RATE_LIMIT_INVITE_SEND_MAX", 200),
+  keyGenerator: (req) => {
+    // Per-user when auth'd; fall back to IP normalized for IPv6 (/64 prefix)
+    // so attackers can't bypass the limit by rotating addresses in the same block.
+    const u = (req as { auth?: { userId?: string } }).auth?.userId;
+    return u ?? ipKeyGenerator(req.ip ?? "");
+  },
+  message: { error: "TOO_MANY_INVITE_REQUESTS_PER_HOUR" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Hard daily ceiling — defends against compromised host accounts spamming
+// invitation emails at scale. Tuned high enough that even a 500-employee
+// rollout split across the day passes cleanly.
+export const inviteSendDailyLimiter = rateLimit({
+  windowMs: envInt("RATE_LIMIT_INVITE_SEND_DAILY_WINDOW_MS", 24 * HOUR),
+  max: envInt("RATE_LIMIT_INVITE_SEND_DAILY_MAX", 1000),
+  keyGenerator: (req) => {
+    // Per-user when auth'd; fall back to IP normalized for IPv6 (/64 prefix)
+    // so attackers can't bypass the limit by rotating addresses in the same block.
+    const u = (req as { auth?: { userId?: string } }).auth?.userId;
+    return u ?? ipKeyGenerator(req.ip ?? "");
+  },
+  message: { error: "DAILY_INVITE_LIMIT_EXCEEDED" },
   standardHeaders: true,
   legacyHeaders: false,
 });

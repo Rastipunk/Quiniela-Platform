@@ -10,6 +10,7 @@ import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from "../lib/constants";
 import { requireAuth } from "../middleware/requireAuth";
+import { inviteSendLimiter, inviteSendDailyLimiter } from "../middleware/rateLimit";
 import {
   sendData, sendOk, sendCreated, sendBadRequest,
   sendForbidden, sendNotFound, sendConflict, sendInternal,
@@ -184,8 +185,11 @@ corporateRouter.get("/pools/:poolId/employees", requireAuth, async (req, res) =>
   }
 });
 
-// POST /corporate/pools/:poolId/send-invitations — Send invitations
-corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, async (req, res) => {
+// POST /corporate/pools/:poolId/send-invitations — Send invitations.
+// Rate limit is per-host (200/hour, 1000/day) to absorb large rollouts while
+// still capping abuse from a compromised account. Order matters: requireAuth
+// first so the limiters can read req.auth.userId for keying.
+corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, inviteSendLimiter, inviteSendDailyLimiter, async (req, res) => {
   try {
     const result = await sendInvitations(
       { userId: req.auth!.userId, poolId: req.params.poolId as string },

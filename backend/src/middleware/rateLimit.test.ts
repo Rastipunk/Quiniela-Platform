@@ -5,7 +5,8 @@ import {
   poolJoinLimiter,
   passwordResetLimiter,
   verificationResendLimiter,
-  corporateInviteLimiter,
+  inviteSendLimiter,
+  inviteSendDailyLimiter,
 } from "./rateLimit";
 
 describe("rate limiters — configuration", () => {
@@ -34,15 +35,72 @@ describe("rate limiters — configuration", () => {
     expect(typeof verificationResendLimiter).toBe("function");
   });
 
-  it("corporateInviteLimiter is configured", () => {
-    expect(corporateInviteLimiter).toBeDefined();
-    expect(typeof corporateInviteLimiter).toBe("function");
+  it("inviteSendLimiter is configured (per-user hourly)", () => {
+    expect(inviteSendLimiter).toBeDefined();
+    expect(typeof inviteSendLimiter).toBe("function");
+  });
+
+  it("inviteSendDailyLimiter is configured (per-user daily ceiling)", () => {
+    expect(inviteSendDailyLimiter).toBeDefined();
+    expect(typeof inviteSendDailyLimiter).toBe("function");
   });
 
   it("health check is exempt from API limiter", () => {
-    const mockReq = { path: "/health", ip: "127.0.0.1" } as any;
-    // The skip function is internal — we verify it via the limiter's options
-    // by checking that the limiter middleware is a function (it exists and is importable)
     expect(apiLimiter.length).toBeGreaterThanOrEqual(3); // Express middleware signature
+  });
+});
+
+describe("rate limiters — per-user keying", () => {
+  // Behavioral test: when two distinct users send invites, they should be
+  // tracked in separate buckets so one user can't exhaust another's budget.
+  // This verifies the keyGenerator wires correctly.
+  it("inviteSendLimiter uses req.auth.userId as the bucket key", async () => {
+    const userA = "user-a-id";
+    const userB = "user-b-id";
+    const seen: string[] = [];
+
+    // Stand up a fake limiter using the same options pattern as inviteSendLimiter
+    // so we can probe the key without a full Express integration test.
+    // (Black-box check: we simulate two requests with different userIds,
+    //  confirm that the limiter tracks them separately by hitting it.)
+    const limiter = inviteSendLimiter as unknown as (req: any, res: any, next: any) => void;
+
+    function fakeRes() {
+      const headers: Record<string, string> = {};
+      return {
+        setHeader: (k: string, v: string) => { headers[k] = v; },
+        getHeader: (k: string) => headers[k],
+        status: () => ({ json: () => {}, send: () => {} }),
+        statusCode: 200,
+      };
+    }
+
+    function call(userId: string): Promise<void> {
+      return new Promise((resolve) => {
+        const req = { auth: { userId }, ip: "10.0.0.1", method: "POST", path: "/x" } as any;
+        const res = fakeRes();
+        limiter(req, res, () => {
+          seen.push(`${userId}:${res.getHeader("RateLimit-Remaining") ?? "?"}`);
+          resolve();
+        });
+      });
+    }
+
+    await call(userA);
+    await call(userA);
+    await call(userB);
+
+    // userA should have been rate-tracked twice (remaining decreases),
+    // userB should still be at the full bucket (remaining higher than userA's last).
+    const userAEntries = seen.filter((s) => s.startsWith(`${userA}:`));
+    const userBEntries = seen.filter((s) => s.startsWith(`${userB}:`));
+    expect(userAEntries).toHaveLength(2);
+    expect(userBEntries).toHaveLength(1);
+
+    const userARemainings = userAEntries.map((s) => parseInt(s.split(":")[1] ?? "0", 10));
+    const userBRemainings = userBEntries.map((s) => parseInt(s.split(":")[1] ?? "0", 10));
+    // Each call against userA decrements; userB's first hit should match userA's first.
+    expect(userARemainings[1]).toBeLessThan(userARemainings[0]!);
+    expect(userBRemainings[0]).toBe(userARemainings[0]);
   });
 });

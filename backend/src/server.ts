@@ -19,7 +19,7 @@ import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
 import { sendOk, sendForbidden, sendInternal, sendNotFound } from "./lib/apiResponse";
 import { logger } from "./lib/logger";
-import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteLimiter } from "./middleware/rateLimit";
+import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 import { startNewMemberDigestJob, stopNewMemberDigestJob } from "./jobs/newMemberDigestJob";
@@ -221,7 +221,8 @@ app.use("/auth/register", authLimiter);
 app.use("/auth/forgot-password", passwordResetLimiter);
 app.use("/auth/reset-password", passwordResetLimiter);
 app.use("/auth/resend-verification", verificationResendLimiter);
-app.use("/corporate/pools", corporateInviteLimiter);
+// /corporate/pools rate limiting now applied per-endpoint in routes/corporate.ts
+// (only on the actual invitation-send action, keyed per-user instead of per-IP).
 
 // Routes — each path has a single composed router
 app.use("/auth", authRouter);
