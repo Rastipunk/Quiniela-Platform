@@ -236,7 +236,12 @@
       "statusPending": "Pendente",
       "statusSent": "Enviado",
       "statusActivated": "Ativado",
-      "statusFailed": "Falhou"
+      "statusFailed": "Falhou",
+      "capacityBadge": "{current} / {max} funcionários ({pct}%)",
+      "capacityCta": "Ampliar capacidade",
+      "capacityBadgeWarningNote": "Seu bolão está quase lotado. Amplie a capacidade antes de ficar sem vagas.",
+      "capacityBadgeFullNote": "Bolão lotado. Amplie a capacidade para que mais funcionários possam entrar.",
+      "capacityWarning": "Você pode enviar os convites, mas apenas os primeiros {remaining} poderão entrar. Amplie a capacidade do bolão para que todos participem."
     }
   },
 

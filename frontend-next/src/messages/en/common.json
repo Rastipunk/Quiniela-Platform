@@ -493,6 +493,7 @@
     "invalidTokenHelp": "Contact your company administrator to receive a new invitation.",
     "alreadyActivated": "This invitation has already been activated.",
     "alreadyActivatedHelp": "If you already have an account, log in normally.",
+    "poolFull": "This pool is already full. We notified the organizer so they can expand the capacity. If you want to join, reach out to them directly.",
     "success": "Account activated successfully",
     "welcomeTo": "Invited by {company}",
     "passwordMismatch": "Passwords do not match",

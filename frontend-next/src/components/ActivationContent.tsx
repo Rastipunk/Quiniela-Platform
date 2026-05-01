@@ -181,7 +181,7 @@ export function ActivationContent() {
       setStatus("form");
       const payload = err?.payload;
       if (payload?.error === "POOL_FULL") {
-        setErrorMsg(t("poolFull", { defaultMessage: "Esta pool ha alcanzado su capacidad máxima. Contacta al administrador de tu empresa." }));
+        setErrorMsg(t("poolFull"));
       } else if (payload?.error === "ALREADY_ACTIVATED") {
         setErrorMsg(t("alreadyActivated"));
       } else {

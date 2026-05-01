@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "@/i18n/navigation";
 import { colors } from "@/lib/theme";
 
 import { useState, useMemo, useCallback, useRef } from "react";
@@ -30,6 +31,7 @@ type Props = {
 
 export function CorporateEmployeeManager({ poolId, token, isMobile, maxParticipants, currentMembers }: Props) {
   const t = useTranslations("pool.admin.employees");
+  const router = useRouter();
   const { params: poolParams } = usePoolTerm();
 
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -178,6 +180,72 @@ export function CorporateEmployeeManager({ poolId, token, isMobile, maxParticipa
       <p style={{ fontSize: 13, color: "#6b21a8", margin: "0 0 16px" }}>
         {t("subtitle", poolParams)}
       </p>
+
+      {/* Capacity badge — always visible when capacity is configured.
+          Three states: normal (<95%), warning (95–99%), full (100%). */}
+      {maxParticipants != null && currentMembers != null && maxParticipants > 0 && (() => {
+        const pct = Math.min(100, Math.round((currentMembers / maxParticipants) * 100));
+        const isFull = currentMembers >= maxParticipants;
+        // 95% threshold mirrors the backend default (CAPACITY_WARNING_THRESHOLD_PCT).
+        // The UI doesn't know per-pool overrides, so we treat 95 as the universal trigger
+        // for the visual alert; backend dispatches the actual email by its own threshold.
+        const isWarning = !isFull && pct >= 95;
+        const palette = isFull
+          ? { bg: colors.errorBg, border: colors.errorBorder, text: colors.errorDarker, fill: colors.error }
+          : isWarning
+            ? { bg: colors.warningBgAmber, border: colors.warningBorder, text: colors.warningDarker, fill: colors.warning }
+            : { bg: "white", border: "#c4b5fd", text: "#4c1d95", fill: colors.purple };
+        const noteKey = isFull ? "capacityBadgeFullNote" : isWarning ? "capacityBadgeWarningNote" : null;
+        return (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: 12,
+              background: palette.bg,
+              border: `1px solid ${palette.border}`,
+              borderRadius: 8,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: palette.text }}>
+                {t("capacityBadge", { current: currentMembers, max: maxParticipants, pct })}
+              </span>
+              {(isWarning || isFull) && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/pools/${poolId}?tab=admin` as never)}
+                  style={{
+                    fontSize: 12,
+                    color: palette.text,
+                    fontWeight: 600,
+                    textDecoration: "underline",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  {t("capacityCta")}
+                </button>
+              )}
+            </div>
+            <div
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              style={{ height: 6, borderRadius: 3, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}
+            >
+              <div style={{ width: `${pct}%`, height: "100%", background: palette.fill, transition: "width 0.3s ease" }} />
+            </div>
+            {noteKey && (
+              <p style={{ margin: "8px 0 0", fontSize: 12, color: palette.text, lineHeight: 1.4 }}>
+                {t(noteKey)}
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Progress */}
       {invites.length > 0 && (

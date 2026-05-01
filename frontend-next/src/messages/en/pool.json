@@ -236,7 +236,12 @@
       "statusPending": "Pending",
       "statusSent": "Sent",
       "statusActivated": "Activated",
-      "statusFailed": "Failed"
+      "statusFailed": "Failed",
+      "capacityBadge": "{current} / {max} employees ({pct}%)",
+      "capacityCta": "Expand capacity",
+      "capacityBadgeWarningNote": "Your pool is almost full. Expand the capacity before you run out of slots.",
+      "capacityBadgeFullNote": "Pool is full. Expand the capacity so more employees can join.",
+      "capacityWarning": "You can send the invitations but only the first {remaining} will be able to join. Expand the pool capacity so everyone can participate."
     }
   },
 

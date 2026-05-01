@@ -493,6 +493,7 @@
     "invalidTokenHelp": "Entre em contato com o administrador da sua empresa para receber um novo convite.",
     "alreadyActivated": "Este convite já foi ativado.",
     "alreadyActivatedHelp": "Se você já tem uma conta, faça login normalmente.",
+    "poolFull": "Este bolão já está lotado. Avisamos o organizador para que ele possa ampliar a capacidade. Se você quer entrar, fale com ele diretamente.",
     "success": "Conta ativada com sucesso",
     "welcomeTo": "Convidado por {company}",
     "passwordMismatch": "As senhas não coincidem",
