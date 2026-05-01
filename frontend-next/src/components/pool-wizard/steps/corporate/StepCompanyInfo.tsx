@@ -6,6 +6,14 @@ import { colors, radii, spacing, fontSize, fontWeight } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../../PoolWizardContext";
 import { PoolWizardStepContainer } from "../../PoolWizardStepContainer";
+import { ColorField } from "../../ColorField";
+import {
+  PICKS4ALL_DEFAULT_PRIMARY,
+  PICKS4ALL_DEFAULT_SECONDARY,
+  buildSplashGradient,
+  hasGoodContrastAgainstWhite,
+  resolveBrandColors,
+} from "@/lib/brandColors";
 
 const MAX_LOGO_SIZE = 500 * 1024; // 500 KB
 
@@ -103,7 +111,7 @@ export function StepCompanyInfo() {
       {/* Company name */}
       <div style={{ marginBottom: fieldGap }}>
         <label style={labelStyle}>
-          {t("companyInfo.nameLabel", { defaultMessage: "Nombre de la empresa" })}{" "}
+          {t("companyInfo.nameLabel", { defaultMessage: "Nombre de tu empresa" })}{" "}
           <span style={{ color: colors.error }}>*</span>
         </label>
         <input
@@ -242,6 +250,27 @@ export function StepCompanyInfo() {
         )}
       </div>
 
+      {/* Brand colors */}
+      <BrandColorsSection
+        primary={state.primaryColor}
+        secondary={state.secondaryColor}
+        companyName={state.companyName}
+        logoBase64={state.logoBase64}
+        onPrimaryChange={(value) =>
+          dispatch({ type: "SET_FIELD", field: "primaryColor", value })
+        }
+        onSecondaryChange={(value) =>
+          dispatch({ type: "SET_FIELD", field: "secondaryColor", value })
+        }
+        onReset={() => {
+          dispatch({ type: "SET_FIELD", field: "primaryColor", value: "" });
+          dispatch({ type: "SET_FIELD", field: "secondaryColor", value: "" });
+        }}
+        marginBottom={fieldGap}
+        t={t}
+        isMobile={isMobile}
+      />
+
       {/* Welcome message */}
       <div style={{ marginBottom: fieldGap }}>
         <label style={labelStyle}>
@@ -252,6 +281,19 @@ export function StepCompanyInfo() {
             ({t("companyInfo.optional", { defaultMessage: "opcional" })})
           </span>
         </label>
+        <p
+          style={{
+            margin: "0 0 8px",
+            fontSize: fontSize.sm,
+            color: colors.textLight,
+            lineHeight: 1.5,
+          }}
+        >
+          {t("companyInfo.welcomeHelp", {
+            defaultMessage:
+              "Este es el mensaje que verán tus colaboradores cada vez que entren a la polla.",
+          })}
+        </p>
         <textarea
           value={state.welcomeMessage}
           onChange={(e) =>
@@ -290,6 +332,19 @@ export function StepCompanyInfo() {
             ({t("companyInfo.optional", { defaultMessage: "opcional" })})
           </span>
         </label>
+        <p
+          style={{
+            margin: "0 0 8px",
+            fontSize: fontSize.sm,
+            color: colors.textLight,
+            lineHeight: 1.5,
+          }}
+        >
+          {t("companyInfo.invitationHelp", {
+            defaultMessage:
+              "Este es el mensaje que recibirán tus colaboradores en su correo cuando los invites a unirse.",
+          })}
+        </p>
         <textarea
           value={state.invitationMessage}
           onChange={(e) =>
@@ -318,5 +373,208 @@ export function StepCompanyInfo() {
         </div>
       </div>
     </PoolWizardStepContainer>
+  );
+}
+
+// ─── Brand colors subsection ─────────────────────────────────
+
+interface BrandColorsSectionProps {
+  primary: string;
+  secondary: string;
+  companyName: string;
+  logoBase64: string;
+  onPrimaryChange: (value: string) => void;
+  onSecondaryChange: (value: string) => void;
+  onReset: () => void;
+  marginBottom: number;
+  t: (key: string, opts?: { defaultMessage?: string }) => string;
+  isMobile: boolean;
+}
+
+function BrandColorsSection({
+  primary,
+  secondary,
+  companyName,
+  logoBase64,
+  onPrimaryChange,
+  onSecondaryChange,
+  onReset,
+  marginBottom,
+  t,
+  isMobile,
+}: BrandColorsSectionProps) {
+  const resolved = resolveBrandColors(primary || null, secondary || null);
+  // Show the contrast warning only when the user has actually picked
+  // colors — never nag about the safe Picks4All default.
+  const showContrastWarning =
+    resolved.isCustom && !hasGoodContrastAgainstWhite(resolved.primary, resolved.secondary);
+  const hasOverride = primary !== "" || secondary !== "";
+  const previewName = companyName.trim() || "Acme Corp";
+
+  return (
+    <div style={{ marginBottom }}>
+      <label
+        style={{
+          display: "block",
+          fontSize: fontSize.base,
+          fontWeight: fontWeight.semibold,
+          color: colors.textDark,
+          marginBottom: 4,
+        }}
+      >
+        {t("companyInfo.colorsLabel", { defaultMessage: "Colores de tu marca" })}{" "}
+        <span style={{ color: colors.textLight, fontWeight: fontWeight.normal }}>
+          ({t("companyInfo.optional", { defaultMessage: "opcional" })})
+        </span>
+      </label>
+      <p
+        style={{
+          margin: "0 0 12px",
+          fontSize: fontSize.sm,
+          color: colors.textLight,
+          lineHeight: 1.5,
+        }}
+      >
+        {t("companyInfo.colorsHelp", {
+          defaultMessage:
+            "Personaliza el splash, el header y los emails de invitación. Podrás cambiarlos más adelante desde el panel de administración.",
+        })}
+      </p>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: spacing.md,
+        }}
+      >
+        <ColorField
+          label={t("companyInfo.colorPrimary", { defaultMessage: "Color primario" })}
+          value={primary}
+          onChange={onPrimaryChange}
+          fallback={PICKS4ALL_DEFAULT_PRIMARY}
+        />
+        <ColorField
+          label={t("companyInfo.colorSecondary", { defaultMessage: "Color secundario" })}
+          value={secondary}
+          onChange={onSecondaryChange}
+          fallback={PICKS4ALL_DEFAULT_SECONDARY}
+        />
+      </div>
+
+      {hasOverride && (
+        <button
+          type="button"
+          onClick={onReset}
+          style={{
+            marginTop: spacing.sm,
+            background: "transparent",
+            border: "none",
+            color: colors.brand,
+            fontSize: fontSize.sm,
+            fontWeight: fontWeight.medium,
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          {t("companyInfo.colorsReset", {
+            defaultMessage: "Restablecer al default Picks4All",
+          })}
+        </button>
+      )}
+
+      {/* Live preview */}
+      <div
+        aria-hidden="true"
+        style={{
+          marginTop: spacing.md,
+          height: 88,
+          borderRadius: radii.lg,
+          background: buildSplashGradient(resolved.primary, resolved.secondary),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: spacing.md,
+          padding: `0 ${spacing.lg}px`,
+          color: colors.white,
+          overflow: "hidden",
+        }}
+      >
+        {logoBase64 ? (
+          <img
+            src={logoBase64}
+            alt=""
+            width={48}
+            height={48}
+            style={{
+              width: 48,
+              height: 48,
+              objectFit: "contain",
+              borderRadius: radii.md,
+              background: "rgba(255,255,255,0.12)",
+              padding: 4,
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: radii.md,
+              background: "rgba(255,255,255,0.18)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 22,
+              fontWeight: fontWeight.extrabold,
+              flexShrink: 0,
+            }}
+          >
+            {previewName.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: fontSize.lg,
+              fontWeight: fontWeight.extrabold,
+              lineHeight: 1.2,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {previewName}
+          </div>
+          <div style={{ fontSize: fontSize.xs, opacity: 0.85 }}>
+            {t("companyInfo.previewSubtitle", {
+              defaultMessage: "Vista previa del splash",
+            })}
+          </div>
+        </div>
+      </div>
+
+      {showContrastWarning && (
+        <div
+          role="alert"
+          style={{
+            marginTop: spacing.sm,
+            padding: spacing.sm,
+            borderRadius: radii.md,
+            background: colors.warningBg,
+            border: `1px solid ${colors.warningBorder}`,
+            color: colors.warningDarker,
+            fontSize: fontSize.sm,
+            lineHeight: 1.5,
+          }}
+        >
+          {t("companyInfo.contrastWarning", {
+            defaultMessage:
+              "Estos colores podrían dificultar la lectura del texto blanco. Te recomendamos elegir tonos más oscuros.",
+          })}
+        </div>
+      )}
+    </div>
   );
 }

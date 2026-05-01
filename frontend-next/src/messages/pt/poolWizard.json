@@ -10,7 +10,7 @@
   "phasesLoadError": "Erro ao carregar fases do torneio",
   "comingSoon": "Em breve",
 
-  "nameDetailsTitle": "Dê personalidade ao seu pool",
+  "nameDetailsTitle": "Escolha um nome divertido para seu bolão",
   "nameDetailsSubtitle": "Nome, descrição e configuração básica",
   "poolNameLabel": "Nome do pool",
   "poolNamePlaceholder": "Ex: Bolão com amigos",
@@ -72,7 +72,7 @@
   },
 
   "nameDetails": {
-    "title": "Dê personalidade ao seu pool",
+    "title": "Escolha um nome divertido para seu bolão",
     "subtitle": "Nome, descrição e configuração básica",
     "icon": "✏️",
     "poolName": "Nome do pool",
@@ -236,14 +236,15 @@
     "count": "{count} emails inseridos",
     "clearAll": "Limpar tudo",
     "invalidTitle": "Emails com formato inválido:",
-    "note": "Esta etapa é opcional. Você pode adicionar funcionários pelo painel de administração após criar o pool."
+    "skipReassuranceLead": "Calma, você pode fazer isso depois",
+    "skipReassuranceBody": "pelo painel de administração. Pule esta etapa se quiser."
   },
 
   "companyInfo": {
     "title": "Informações da sua empresa",
     "subtitle": "Esses dados aparecerão no pool corporativo",
     "icon": "🏢",
-    "nameLabel": "Nome da empresa",
+    "nameLabel": "Nome da sua empresa",
     "namePlaceholder": "Ex: Acme Corp",
     "nameMinLength": "O nome deve ter pelo menos 2 caracteres.",
     "logoLabel": "Logo da empresa",
@@ -252,9 +253,18 @@
     "removeLogo": "Remover",
     "logoTooLarge": "O logo não pode exceder 500 KB.",
     "logoInvalidType": "O arquivo deve ser uma imagem (PNG, JPG, SVG).",
+    "colorsLabel": "Cores da sua marca",
+    "colorsHelp": "Personalize a tela inicial, o cabeçalho e os emails de convite. Você poderá alterá-los depois pelo painel de administração.",
+    "colorPrimary": "Cor primária",
+    "colorSecondary": "Cor secundária",
+    "colorsReset": "Restaurar padrão Picks4All",
+    "previewSubtitle": "Prévia da tela inicial",
+    "contrastWarning": "Estas cores podem dificultar a leitura do texto branco. Recomendamos escolher tons mais escuros.",
     "welcomeLabel": "Mensagem de boas-vindas",
+    "welcomeHelp": "Esta é a mensagem que sua equipe verá toda vez que abrir o bolão.",
     "welcomePlaceholder": "Ex: Bem-vindos ao pool corporativo. Boa sorte!",
     "invitationLabel": "Mensagem de convite",
+    "invitationHelp": "Esta é a mensagem que sua equipe receberá no email de convite quando você convidá-los a participar.",
     "invitationPlaceholder": "Esta mensagem será incluída no email de convite aos funcionários."
   },
 

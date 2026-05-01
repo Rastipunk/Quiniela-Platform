@@ -1004,6 +1004,12 @@ model Organization {
   employeeCount     String? // Rango: "1-50", "51-200", "201-500", "500+"
   welcomeMessage    String?            @db.Text // Se muestra en el splash del pool
   invitationMessage String?            @db.Text // Se incluye en el email de invitación
+  // Custom branding colors (hex #RRGGBB). Optional — when null the
+  // pool splash/header/email fall back to the Picks4All default
+  // gradient. Set during corporate pool creation and editable later
+  // from the admin panel.
+  primaryColor      String? // #RRGGBB
+  secondaryColor    String? // #RRGGBB
   notes             String?            @db.Text
   status            OrganizationStatus @default(INQUIRY)
 

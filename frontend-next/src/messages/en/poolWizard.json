@@ -10,7 +10,7 @@
   "phasesLoadError": "Error loading tournament phases",
   "comingSoon": "Coming soon",
 
-  "nameDetailsTitle": "Give your pool some personality",
+  "nameDetailsTitle": "Pick a fun name for your pool",
   "nameDetailsSubtitle": "Name, description, and basic settings",
   "poolNameLabel": "Pool name",
   "poolNamePlaceholder": "E.g.: Pool with friends",
@@ -72,7 +72,7 @@
   },
 
   "nameDetails": {
-    "title": "Give your pool some personality",
+    "title": "Pick a fun name for your pool",
     "subtitle": "Name, description, and basic settings",
     "icon": "✏️",
     "poolName": "Pool name",
@@ -236,14 +236,15 @@
     "count": "{count} emails entered",
     "clearAll": "Clear all",
     "invalidTitle": "Invalid email format:",
-    "note": "This step is optional. You can add employees from the admin panel after creating the pool."
+    "skipReassuranceLead": "Don't worry, you can do this later",
+    "skipReassuranceBody": "from the admin panel. Skip this step if you want."
   },
 
   "companyInfo": {
     "title": "Company information",
     "subtitle": "This information will appear on the corporate pool",
     "icon": "🏢",
-    "nameLabel": "Company name",
+    "nameLabel": "Your company name",
     "namePlaceholder": "E.g.: Acme Corp",
     "nameMinLength": "Name must be at least 2 characters.",
     "logoLabel": "Company logo",
@@ -252,9 +253,18 @@
     "removeLogo": "Remove",
     "logoTooLarge": "Logo cannot exceed 500 KB.",
     "logoInvalidType": "File must be an image (PNG, JPG, SVG).",
+    "colorsLabel": "Your brand colors",
+    "colorsHelp": "Customize the splash, header, and invitation emails. You can change these later from the admin panel.",
+    "colorPrimary": "Primary color",
+    "colorSecondary": "Secondary color",
+    "colorsReset": "Reset to Picks4All default",
+    "previewSubtitle": "Splash preview",
+    "contrastWarning": "These colors may make white text hard to read. Try picking darker tones.",
     "welcomeLabel": "Welcome message",
+    "welcomeHelp": "This is the message your team will see every time they open the pool.",
     "welcomePlaceholder": "E.g.: Welcome to the corporate pool. Good luck!",
     "invitationLabel": "Invitation message",
+    "invitationHelp": "This is the message your team will receive in the invitation email when you invite them to join.",
     "invitationPlaceholder": "This message will be included in the employee invitation email."
   },
 

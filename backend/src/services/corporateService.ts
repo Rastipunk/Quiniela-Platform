@@ -65,6 +65,8 @@ export type CreateCorporatePoolInput = {
   logoBase64?: string;
   welcomeMessage?: string;
   invitationMessage?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   tournamentInstanceId: string;
   poolName: string;
   poolDescription?: string;
@@ -226,6 +228,7 @@ export async function createCorporatePool(
 ): Promise<CreateCorporatePoolResult> {
   const {
     userId, companyName, logoBase64, welcomeMessage, invitationMessage,
+    primaryColor, secondaryColor,
     tournamentInstanceId, poolName, poolDescription,
     timeZone, deadlineMinutesBeforeKickoff, requireApproval,
     pickTypesConfig, maxParticipants, emails,
@@ -282,6 +285,8 @@ export async function createCorporatePool(
         logoBase64: logoBase64 || null,
         welcomeMessage: welcomeMessage ? escapeHtml(welcomeMessage) : null,
         invitationMessage: invitationMessage ? escapeHtml(invitationMessage) : null,
+        primaryColor: primaryColor || null,
+        secondaryColor: secondaryColor || null,
         status: "ACTIVE",
       },
     });
@@ -457,13 +462,15 @@ export async function sendInvitations(
   // Get pool and org for email data
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    include: { organization: { select: { name: true, logoBase64: true, invitationMessage: true } } },
+    include: { organization: { select: { name: true, logoBase64: true, invitationMessage: true, primaryColor: true, secondaryColor: true } } },
   });
   if (!pool) throw new ServiceError("NOT_FOUND", 404);
 
   const companyName = pool.organization?.name || "Empresa";
   const orgLogoBase64 = pool.organization?.logoBase64 || null;
   const orgInvitationMessage = pool.organization?.invitationMessage || null;
+  const orgPrimaryColor = pool.organization?.primaryColor || null;
+  const orgSecondaryColor = pool.organization?.secondaryColor || null;
 
   // Find PENDING invites
   const pendingInvites = await prisma.corporateInvite.findMany({
@@ -490,6 +497,8 @@ export async function sendInvitations(
         activationToken: invite.activationToken,
         logoBase64: orgLogoBase64,
         invitationMessage: orgInvitationMessage,
+        primaryColor: orgPrimaryColor,
+        secondaryColor: orgSecondaryColor,
       });
 
       if (emailResult.success) {

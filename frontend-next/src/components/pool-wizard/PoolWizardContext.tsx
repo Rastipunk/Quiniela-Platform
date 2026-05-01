@@ -26,6 +26,8 @@ function getInitialState(mode: WizardMode): WizardState {
     logoBase64: "",
     welcomeMessage: "",
     invitationMessage: "",
+    primaryColor: "",
+    secondaryColor: "",
     instanceId: "",
     instanceName: "",
     instancePhases: [],

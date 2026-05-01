@@ -10,7 +10,7 @@
   "phasesLoadError": "Error al cargar fases del torneo",
   "comingSoon": "Próximamente",
 
-  "nameDetailsTitle": "Dale personalidad a tu pool",
+  "nameDetailsTitle": "Ponle un nombre divertido a tu pool",
   "nameDetailsSubtitle": "Nombre, descripción y configuración básica",
   "poolNameLabel": "Nombre del pool",
   "poolNamePlaceholder": "Ej: Polla con amigos",
@@ -72,7 +72,7 @@
   },
 
   "nameDetails": {
-    "title": "Dale personalidad a tu pool",
+    "title": "Ponle un nombre divertido a tu pool",
     "subtitle": "Nombre, descripción y configuración básica",
     "icon": "✏️",
     "poolName": "Nombre del pool",
@@ -236,14 +236,15 @@
     "count": "{count} emails ingresados",
     "clearAll": "Limpiar todo",
     "invalidTitle": "Emails con formato inválido:",
-    "note": "Este paso es opcional. Puedes agregar empleados desde el panel de administración después de crear el pool."
+    "skipReassuranceLead": "Tranquilo, esto lo puedes hacer después",
+    "skipReassuranceBody": "desde el panel de administración. Si quieres, salta este paso."
   },
 
   "companyInfo": {
     "title": "Información de tu empresa",
     "subtitle": "Estos datos aparecerán en el pool corporativo",
     "icon": "🏢",
-    "nameLabel": "Nombre de la empresa",
+    "nameLabel": "Nombre de tu empresa",
     "namePlaceholder": "Ej: Acme Corp",
     "nameMinLength": "El nombre debe tener al menos 2 caracteres.",
     "logoLabel": "Logo de la empresa",
@@ -252,9 +253,18 @@
     "removeLogo": "Quitar",
     "logoTooLarge": "El logo no puede exceder 500 KB.",
     "logoInvalidType": "El archivo debe ser una imagen (PNG, JPG, SVG).",
+    "colorsLabel": "Colores de tu marca",
+    "colorsHelp": "Personaliza el splash, el header y los emails de invitación. Podrás cambiarlos más adelante desde el panel de administración.",
+    "colorPrimary": "Color primario",
+    "colorSecondary": "Color secundario",
+    "colorsReset": "Restablecer al default Picks4All",
+    "previewSubtitle": "Vista previa del splash",
+    "contrastWarning": "Estos colores podrían dificultar la lectura del texto blanco. Te recomendamos elegir tonos más oscuros.",
     "welcomeLabel": "Mensaje de bienvenida",
+    "welcomeHelp": "Este es el mensaje que verán tus colaboradores cada vez que entren a la polla.",
     "welcomePlaceholder": "Ej: Bienvenidos a la quiniela corporativa. ¡Buena suerte!",
     "invitationLabel": "Mensaje de invitación",
+    "invitationHelp": "Este es el mensaje que recibirán tus colaboradores en su correo cuando los invites a unirse.",
     "invitationPlaceholder": "Este mensaje se incluirá en el email de invitación a los empleados."
   },
 

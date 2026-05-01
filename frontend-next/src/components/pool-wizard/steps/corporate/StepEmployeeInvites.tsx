@@ -129,6 +129,36 @@ export function StepEmployeeInvites() {
       })}
       icon="&#x1F4E7;"
     >
+      {/* Skippable-step reassurance — surfaced up top, since the
+          employees screen is the most likely place for users to
+          bail out if they don't have emails ready. */}
+      <div style={{
+        marginBottom: spacing.xl,
+        padding: spacing.md,
+        borderRadius: radii["2xl"],
+        background: colors.infoBgLight,
+        border: `1px solid ${colors.infoBorder}`,
+        display: "flex",
+        alignItems: "flex-start",
+        gap: spacing.sm,
+        fontSize: fontSize.md,
+        color: colors.infoDarker,
+        lineHeight: 1.5,
+      }}>
+        <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1, flexShrink: 0 }}>&#128172;</span>
+        <span>
+          <strong style={{ fontWeight: fontWeight.bold }}>
+            {t("employeeInvites.skipReassuranceLead", {
+              defaultMessage: "Tranquilo, esto lo puedes hacer después",
+            })}
+          </strong>
+          {" "}
+          {t("employeeInvites.skipReassuranceBody", {
+            defaultMessage: "desde el panel de administración. Si quieres, salta este paso.",
+          })}
+        </span>
+      </div>
+
       {/* Step 1: Download + Upload template */}
       <div style={{
         padding: isMobile ? spacing.lg : spacing.xl,
@@ -372,20 +402,6 @@ export function StepEmployeeInvites() {
       )}
 
       {/* Info note */}
-      <div style={{
-        marginTop: spacing.lg,
-        padding: spacing.md,
-        borderRadius: radii["2xl"],
-        background: colors.infoBgLight,
-        border: `1px solid ${colors.infoBorder}`,
-        fontSize: fontSize.md,
-        color: colors.infoDarker,
-        lineHeight: 1.5,
-      }}>
-        {t("employeeInvites.note", {
-          defaultMessage: "Este paso es opcional. Puedes agregar empleados desde el panel de administración después de crear el pool.",
-        })}
-      </div>
     </PoolWizardStepContainer>
   );
 }

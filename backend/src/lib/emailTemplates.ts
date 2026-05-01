@@ -817,6 +817,54 @@ export interface CorporateActivationEmailParams {
   locale?: string;
   logoCid?: string | null;
   invitationMessage?: string | null;
+  // Optional per-organization branding. When null/missing the email
+  // falls back to the Picks4All default indigo/violet gradient.
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+}
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+function isHex(value: string | null | undefined): value is string {
+  return typeof value === "string" && HEX_RE.test(value);
+}
+
+// Darken a hex color by `amount` (0..1). Naive RGB linear shift —
+// good enough for email backgrounds where the goal is "deeper
+// version of the same hue" rather than perceptual accuracy.
+function darken(hex: string, amount: number): string {
+  if (!isHex(hex)) return hex;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const f = 1 - amount;
+  const c = (n: number) =>
+    Math.max(0, Math.min(255, Math.round(n * f)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${c(r)}${c(g)}${c(b)}`;
+}
+
+// Resolve hero + CTA gradients for a corporate email. Returns the
+// Picks4All defaults when no branding is set on the organization.
+function resolveCorporateGradients(
+  primaryColor: string | null | undefined,
+  secondaryColor: string | null | undefined,
+): { heroGradient: string; ctaGradient: string } {
+  const p = isHex(primaryColor) ? primaryColor : null;
+  const s = isHex(secondaryColor) ? secondaryColor : null;
+  if (!p && !s) {
+    return {
+      heroGradient: "linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 100%)",
+      ctaGradient: "linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%)",
+    };
+  }
+  const primary = p || s!;
+  const secondary = s || p!;
+  return {
+    heroGradient: `linear-gradient(135deg,${darken(primary, 0.45)} 0%,${darken(secondary, 0.3)} 50%,${darken(primary, 0.15)} 100%)`,
+    ctaGradient: `linear-gradient(135deg,${primary} 0%,${secondary} 100%)`,
+  };
 }
 
 export function getCorporateActivationTemplate({
@@ -827,8 +875,11 @@ export function getCorporateActivationTemplate({
   locale = "es",
   logoCid,
   invitationMessage,
+  primaryColor,
+  secondaryColor,
 }: CorporateActivationEmailParams): string {
   const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
+  const { heroGradient, ctaGradient } = resolveCorporateGradients(primaryColor, secondaryColor);
 
   const i18n: Record<string, {
     heroSubtitle: string;
@@ -947,7 +998,7 @@ export function getCorporateActivationTemplate({
 
           <!-- Hero banner -->
           <tr>
-            <td style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#4338ca 100%);border-radius:16px 16px 0 0;padding:44px 40px 40px;text-align:center;">
+            <td style="background:${heroGradient};border-radius:16px 16px 0 0;padding:44px 40px 40px;text-align:center;">
               <!-- Company logo or initial -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin-bottom:18px;">
                 <tr>
@@ -990,7 +1041,7 @@ export function getCorporateActivationTemplate({
               <!-- CTA Button -->
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px 0 24px;">
                 <tr>
-                  <td style="border-radius:14px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);box-shadow:0 4px 14px rgba(99,102,241,0.3);">
+                  <td style="border-radius:14px;background:${ctaGradient};box-shadow:0 4px 14px rgba(99,102,241,0.3);">
                     <a href="${activationUrl}" style="display:inline-block;padding:18px 52px;font-size:18px;font-weight:800;color:#ffffff;text-decoration:none;letter-spacing:0.5px;">
                       ${t.ctaLabel}
                     </a>

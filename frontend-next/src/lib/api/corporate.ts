@@ -6,6 +6,10 @@ export type CreateCorporatePoolInput = {
   logoBase64?: string;
   welcomeMessage?: string;
   invitationMessage?: string;
+  /** Hex #RRGGBB. Applied to splash, header, and invitation email. */
+  primaryColor?: string;
+  /** Hex #RRGGBB. Paired with primaryColor for the splash gradient. */
+  secondaryColor?: string;
   tournamentInstanceId: string;
   poolName: string;
   poolDescription?: string;

@@ -100,6 +100,8 @@ const createCorporatePoolSchema = z.object({
   ),
   welcomeMessage: z.string().max(1000).optional(),
   invitationMessage: z.string().max(1000).optional(),
+  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #4F46E5)").optional(),
+  secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #4F46E5)").optional(),
   tournamentInstanceId: z.string().min(1),
   poolName: z.string().min(3).max(120),
   poolDescription: z.string().max(500).optional(),

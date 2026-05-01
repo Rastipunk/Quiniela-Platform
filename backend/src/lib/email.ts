@@ -825,6 +825,8 @@ export async function sendCorporateActivationEmail(params: {
   locale?: string;
   logoBase64?: string | null;
   invitationMessage?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
@@ -870,6 +872,8 @@ export async function sendCorporateActivationEmail(params: {
         locale,
         logoCid,
         invitationMessage: params.invitationMessage,
+        primaryColor: params.primaryColor,
+        secondaryColor: params.secondaryColor,
       }),
       ...(logoAttachment ? { attachments: [logoAttachment] } : {}),
     });

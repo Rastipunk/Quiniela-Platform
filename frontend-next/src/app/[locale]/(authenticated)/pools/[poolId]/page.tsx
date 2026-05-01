@@ -19,6 +19,7 @@ import { getPendingMembers } from "@/lib/api";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
 import { trackEvent } from "@/lib/analytics";
 import { trackMetaEvent, trackMetaCustomEvent } from "@/lib/metaPixel";
+import { resolveBrandColors, darken } from "@/lib/brandColors";
 
 // Dynamic imports for heavy tab components (HI-06)
 const PoolAdminTab = dynamic(() => import("./components/PoolAdminTab").then(m => ({ default: m.PoolAdminTab })), {
@@ -521,9 +522,22 @@ export default function PoolPage() {
       {/* Corporate Splash Screen */}
       {overview && showSplash && overview.pool.organization && (() => {
         const org = overview.pool.organization;
+        const brand = resolveBrandColors(org.primaryColor, org.secondaryColor);
+        // For non-customized orgs, preserve the original deep
+        // indigo/violet gradient. For customized ones, derive a
+        // dramatically darker version of the picked colors so
+        // white text stays legible on top.
+        const splashBg = brand.isCustom
+          ? `linear-gradient(160deg, ${darken(brand.primary, 0.35)} 0%, ${darken(brand.secondary, 0.3)} 100%)`
+          : "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)";
+        const logoBg = `linear-gradient(135deg, ${brand.primary}, ${brand.secondary})`;
+        // Play button text reads against a near-white CTA, so a
+        // saturated mid-tone of the primary works in both default
+        // and customized cases.
+        const playTextColor = darken(brand.primary, 0.2);
         return (
           <div
-            style={{ position: "fixed", inset: 0, zIndex: zIndex.expulsion, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg, #0f0a2e 0%, #1a1145 35%, #2d1b69 65%, #1e1b4b 100%)", padding: 24, overflow: "hidden" }}
+            style={{ position: "fixed", inset: 0, zIndex: zIndex.expulsion, display: "flex", alignItems: "center", justifyContent: "center", background: splashBg, padding: 24, overflow: "hidden" }}
           >
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
               <div style={{ position: "absolute", width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", top: "-5%", right: "-5%" }} />
@@ -537,7 +551,7 @@ export default function PoolPage() {
                   <img src={org.logoBase64} alt={org.name} width={320} height={200} loading="lazy" decoding="async" style={{ position: "relative", maxHeight: 200, maxWidth: 320, height: "auto", width: "auto", borderRadius: 16, objectFit: "contain", border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }} />
                 </div>
               ) : (
-                <div style={{ width: 180, height: 180, borderRadius: 24, marginBottom: 28, background: "linear-gradient(135deg, #4f46e5, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72, fontWeight: 800, color: colors.white, border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }}>
+                <div style={{ width: 180, height: 180, borderRadius: 24, marginBottom: 28, background: logoBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72, fontWeight: 800, color: colors.white, border: "3px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 24px rgba(0,0,0,0.4)" }}>
                   {org.name.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -556,7 +570,7 @@ export default function PoolPage() {
               )}
               <button
                 onClick={() => { sessionStorage.setItem(`corporate-splash-${poolId}`, "1"); setShowSplash(false); }}
-                style={{ marginTop: 32, padding: "16px 48px", fontSize: 17, fontWeight: fontWeight.bold, background: "linear-gradient(135deg, #fff 0%, #e0e7ff 100%)", color: "#3730a3", border: "none", borderRadius: radii["3xl"], cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)", transition: "transform 0.15s, box-shadow 0.15s", letterSpacing: 0.3 }}
+                style={{ marginTop: 32, padding: "16px 48px", fontSize: 17, fontWeight: fontWeight.bold, background: "linear-gradient(135deg, #fff 0%, #e0e7ff 100%)", color: playTextColor, border: "none", borderRadius: radii["3xl"], cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)", transition: "transform 0.15s, box-shadow 0.15s", letterSpacing: 0.3 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(99,102,241,0.4), 0 0 0 1px rgba(255,255,255,0.15)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.3), 0 0 0 1px rgba(255,255,255,0.1)"; }}
               >
@@ -589,18 +603,23 @@ export default function PoolPage() {
           )}
 
           {/* Pool header - Corporate */}
-          {!showSplash && overview.pool.organization && (
+          {!showSplash && overview.pool.organization && (() => {
+            const headerOrg = overview.pool.organization;
+            const headerBrand = resolveBrandColors(headerOrg.primaryColor, headerOrg.secondaryColor);
+            const headerAccent = headerBrand.isCustom ? headerBrand.primary : colors.purple;
+            const headerLogoBg = `linear-gradient(135deg, ${headerBrand.secondary}, ${headerBrand.primary})`;
+            return (
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, marginBottom: 8 }}>
-              {overview.pool.organization.logoBase64 ? (
-                <img src={overview.pool.organization.logoBase64} alt={overview.pool.organization.name} width={200} height={128} loading="lazy" decoding="async" style={{ maxHeight: 128, maxWidth: 200, height: "auto", width: "auto", objectFit: "contain", borderRadius: 12, flexShrink: 0 }} />
+              {headerOrg.logoBase64 ? (
+                <img src={headerOrg.logoBase64} alt={headerOrg.name} width={200} height={128} loading="lazy" decoding="async" style={{ maxHeight: 128, maxWidth: 200, height: "auto", width: "auto", objectFit: "contain", borderRadius: 12, flexShrink: 0 }} />
               ) : (
-                <div style={{ width: 100, height: 100, borderRadius: radii["3xl"], flexShrink: 0, background: `linear-gradient(135deg, ${colors.purple}, ${colors.brand})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: fontWeight.extrabold, color: colors.white }}>
-                  {overview.pool.organization.name.charAt(0).toUpperCase()}
+                <div style={{ width: 100, height: 100, borderRadius: radii["3xl"], flexShrink: 0, background: headerLogoBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, fontWeight: fontWeight.extrabold, color: colors.white }}>
+                  {headerOrg.name.charAt(0).toUpperCase()}
                 </div>
               )}
               <div>
                 <div style={{ fontSize: 28, fontWeight: fontWeight.extrabold, color: "#1a1a2e", lineHeight: 1.2, letterSpacing: "-0.5px" }}>{overview.pool.name}</div>
-                <div style={{ fontSize: fontSize.md, color: colors.purple, fontWeight: fontWeight.semibold, marginTop: 2 }}>{t("corporate.byCompany", { company: overview.pool.organization.name })}</div>
+                <div style={{ fontSize: fontSize.md, color: headerAccent, fontWeight: fontWeight.semibold, marginTop: 2 }}>{t("corporate.byCompany", { company: headerOrg.name })}</div>
               </div>
               {overview.pool.status && (() => {
                 const badge = getPoolStatusBadge(overview.pool.status, t);
@@ -611,7 +630,8 @@ export default function PoolPage() {
                 );
               })()}
             </div>
-          )}
+            );
+          })()}
 
           {/* Pool header - Standard (with invite button integrated) */}
           {!overview.pool.organization && (

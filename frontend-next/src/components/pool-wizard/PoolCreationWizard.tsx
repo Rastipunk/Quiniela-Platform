@@ -101,6 +101,8 @@ function WizardInner() {
           logoBase64: state.logoBase64 || undefined,
           welcomeMessage: state.welcomeMessage.trim() || undefined,
           invitationMessage: state.invitationMessage.trim() || undefined,
+          primaryColor: state.primaryColor || undefined,
+          secondaryColor: state.secondaryColor || undefined,
           tournamentInstanceId: state.instanceId,
           poolName: state.poolName.trim(),
           poolDescription: state.poolDescription.trim() || undefined,

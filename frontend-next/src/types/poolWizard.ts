@@ -66,6 +66,9 @@ export interface WizardState {
   logoBase64: string;
   welcomeMessage: string;
   invitationMessage: string;
+  // Brand colors — empty string means "use Picks4All default".
+  primaryColor: string;
+  secondaryColor: string;
 
   // Step 1: Tournament
   instanceId: string;
