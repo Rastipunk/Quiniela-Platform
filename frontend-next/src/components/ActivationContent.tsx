@@ -50,7 +50,13 @@ export function ActivationContent() {
   const { params: poolParams } = usePoolTerm();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const tokenParam = searchParams.get("token") || "";
+  // Capture the activation token from the URL ONCE on first mount. The
+  // useEffect below strips ?token=... from the visible URL for security
+  // (HI-02), and that strip — via window.history.replaceState — desyncs
+  // useSearchParams on subsequent renders so re-reading would return "".
+  // Storing the captured value in state keeps it stable across re-renders
+  // and across the existing-user "Unirme al pool" handler.
+  const [tokenParam] = useState<string>(() => searchParams.get("token") || "");
 
   // Check status
   const [checkStatus, setCheckStatus] = useState<CheckStatus>("loading");
