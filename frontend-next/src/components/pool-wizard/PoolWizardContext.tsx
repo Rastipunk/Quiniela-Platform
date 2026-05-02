@@ -11,8 +11,8 @@ import {
   STANDARD_STEPS,
   CORPORATE_STEPS,
   RECOMMENDED_DEADLINE,
-  RECOMMENDED_MAX_PARTICIPANTS_STANDARD,
-  RECOMMENDED_MAX_PARTICIPANTS_CORPORATE,
+  DEFAULT_MAX_PARTICIPANTS_STANDARD,
+  DEFAULT_MAX_PARTICIPANTS_CORPORATE,
 } from "../../types/poolWizard";
 
 // ── Initial state ───────────────────────────────────────────
@@ -42,8 +42,8 @@ function getInitialState(mode: WizardMode): WizardState {
     scoringStyle: null,
     scoringConfig: [],
     maxParticipants: isStandard
-      ? RECOMMENDED_MAX_PARTICIPANTS_STANDARD
-      : RECOMMENDED_MAX_PARTICIPANTS_CORPORATE,
+      ? DEFAULT_MAX_PARTICIPANTS_STANDARD
+      : DEFAULT_MAX_PARTICIPANTS_CORPORATE,
     employeeEmails: "",
     error: null,
     busy: false,

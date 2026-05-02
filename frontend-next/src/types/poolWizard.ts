@@ -113,10 +113,19 @@ export type WizardAction =
   | { type: "RESTORE"; state: Partial<WizardState> }
   | { type: "RESET" };
 
-// ── Recommended values ──────────────────────────────────────
+// ── Wizard defaults ─────────────────────────────────────────
 
 export const RECOMMENDED_DEADLINE = parseInt(process.env.NEXT_PUBLIC_DEFAULT_DEADLINE || "10", 10);
-export const RECOMMENDED_MAX_PARTICIPANTS_STANDARD = parseInt(process.env.NEXT_PUBLIC_PERSONAL_FREE_LIMIT || "20", 10);
-export const RECOMMENDED_MAX_PARTICIPANTS_CORPORATE = parseInt(process.env.NEXT_PUBLIC_CORPORATE_FREE_LIMIT || "100", 10);
+
+// These are the values the wizard pre-selects in the CapacitySelector when a
+// new pool is being created. They intentionally match the corresponding
+// FREE_LIMIT env vars (NOT a "recommended" upgrade tier) — pools are always
+// CREATED at the free-tier capacity, and any paid upgrade is applied after
+// checkout via the payment webhook (see backend corporateService.ts cap and
+// paymentService.handleOrderPaid). Dev fallbacks match the backend defaults
+// in backend/src/lib/pricing.ts so a dev environment without env vars set
+// behaves like prod.
+export const DEFAULT_MAX_PARTICIPANTS_STANDARD = parseInt(process.env.NEXT_PUBLIC_PERSONAL_FREE_LIMIT || "20", 10);
+export const DEFAULT_MAX_PARTICIPANTS_CORPORATE = parseInt(process.env.NEXT_PUBLIC_CORPORATE_FREE_LIMIT || "2", 10);
 
 // Phase display names are in i18n: messages/{locale}/poolWizard.json → "phases"

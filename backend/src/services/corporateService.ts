@@ -305,7 +305,14 @@ export async function createCorporatePool(
         pickTypesConfig: finalPickTypesConfig as Prisma.InputJsonValue,
         fixtureSnapshot: instance.dataJson as Prisma.InputJsonValue,
         organizationId: org.id,
-        // Cap at corporate free limit — payment required for larger capacity
+        // SECURITY GATE: pool is always created at the corporate free tier
+        // (CORPORATE_FREE_LIMIT, default 2). When the wizard requested a paid
+        // tier, it captures the requested value in PoolPayment.toCapacity and
+        // initiates checkout immediately after creation. On confirmed payment,
+        // paymentService.handleOrderPaid raises Pool.maxParticipants to the
+        // paid value. Without this cap, a malicious caller could POST any
+        // maxParticipants and create a high-capacity pool without paying —
+        // the wizard's pre-payment value is treated as "intent", never trust.
         maxParticipants: Math.min(maxParticipants ?? CORPORATE_FREE_LIMIT, CORPORATE_FREE_LIMIT),
         status: "DRAFT",
       },

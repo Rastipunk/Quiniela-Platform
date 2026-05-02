@@ -613,7 +613,7 @@ Actions: creates `OrganizationInquiry`, sends admin notification, sends confirma
 | `deadlineMinutesBeforeKickoff` | 0-1440 | 10 |
 | `requireApproval` | Boolean | `false` |
 | `pickTypesConfig` | Preset key or custom config | `null` |
-| `maxParticipants` | Integer 100-10000 | 100 |
+| `maxParticipants` | Integer `CORPORATE_POOL_MIN_PARTICIPANTS` to `CORPORATE_POOL_MAX_PARTICIPANTS` (env, default 2-10000) | `CORPORATE_FREE_LIMIT` (env, default 2) |
 | `emails` | Array of emails, max 500 | `null` |
 
 **Transaction creates:**
@@ -622,6 +622,8 @@ Actions: creates `OrganizationInquiry`, sends admin notification, sends confirma
 2. `Pool` (visibility: PRIVATE) linked to organization.
 3. `PoolMember` with role `CORPORATE_HOST`.
 4. `CorporateInvite` records for each email (with activation tokens).
+
+**Capacity security gate:** the pool is **always** created with `maxParticipants = CORPORATE_FREE_LIMIT` regardless of the value in the request body. The wizard's requested value is treated as intent: if it exceeds the free tier, the wizard initiates checkout immediately after creation (Polar for international, Mercado Pago for Colombia) using the requested capacity as `PoolPayment.toCapacity`. On confirmed payment, `paymentService.handleOrderPaid` raises `Pool.maxParticipants` to the paid value. This cap is the only barrier preventing a malicious caller from creating a high-capacity pool by POSTing directly to the API without paying.
 
 **Corporate invite token:** 48 bytes `crypto.randomBytes`, hex (96 chars), 30-day expiry. Unique per `(poolId, email)`.
 
