@@ -30,11 +30,6 @@ const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
   "admin",
 ]);
 
-// Slightly purpled near-black so the header still belongs to the
-// brand instead of feeling like a generic OS toolbar.
-const HEADER_BG = "#16121f";
-const HEADER_BORDER_BOTTOM = "rgba(255,255,255,0.08)";
-
 export function PoolSectionHeader() {
   const t = useTranslations("pool");
   const searchParams = useSearchParams();
@@ -57,10 +52,12 @@ export function PoolSectionHeader() {
         // band when open — but above page content so it stays
         // readable while users scroll long match lists.
         zIndex: zIndex.base,
-        background: HEADER_BG,
-        borderBottom: `1px solid ${HEADER_BORDER_BOTTOM}`,
-        color: colors.white,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        // Soft brand wash (8% primary) — clearly distinct from white
+        // cards and the page's grey surface, but light enough to
+        // belong to the same family as the rest of the page chrome.
+        background: colors.brandBg,
+        borderBottom: `1px solid ${colors.borderLight}`,
+        color: colors.text,
       }}
     >
       <h1
@@ -68,16 +65,18 @@ export function PoolSectionHeader() {
           maxWidth: 1180,
           margin: "0 auto",
           padding: isMobile
-            ? `${spacing.md}px ${spacing.lg}px`
-            : `${spacing.md}px ${spacing.xl}px`,
+            ? `${spacing.lg}px ${spacing.lg}px`
+            : `${spacing.lg}px ${spacing.xl}px`,
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: spacing.md,
-          fontSize: isMobile ? fontSize["2xl"] : fontSize["3xl"],
+          fontSize: isMobile ? fontSize["3xl"] : fontSize["4xl"],
           fontWeight: fontWeight.bold,
-          color: colors.white,
+          color: colors.text,
           letterSpacing: -0.3,
           lineHeight: 1.2,
+          textAlign: "center",
         }}
       >
         <span aria-hidden="true" style={{ flexShrink: 0 }}>{icon}</span>
