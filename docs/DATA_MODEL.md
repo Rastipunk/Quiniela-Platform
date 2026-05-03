@@ -1,6 +1,6 @@
 # Data Model — Picks4All Platform
 
-> **Last updated:** 2026-04-04
+> **Last updated:** 2026-05-03
 >
 > This document describes every model, enum, relationship, index, and pattern in the PostgreSQL database as defined in `backend/prisma/schema.prisma`.
 
@@ -41,6 +41,8 @@
    - [PoolPayment](#328-poolpayment)
    - [PaymentEvent](#329-paymentevent)
    - [FailedAnalyticsEvent](#330-failedanalyticsevent)
+   - [EmailSuppression](#331-emailsuppression)
+   - [OrganizationBrandingAudit](#332-organizationbrandingaudit)
 4. [Relationship Diagram](#4-relationship-diagram)
 
 ---
@@ -205,12 +207,15 @@ PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
 
 ### ResultSource
 
+Sources are listed by precedence — higher rows are never overwritten by lower ones.
+
 | Value | Description |
 |-------|-------------|
-| `HOST_MANUAL` | Host entered in MANUAL-mode instance |
-| `HOST_PROVISIONAL` | Host entered in AUTO-mode instance while waiting for API |
-| `API_CONFIRMED` | Confirmed result from API-Football (authoritative) |
-| `HOST_OVERRIDE` | Host corrected an API result (errata, requires mandatory reason) |
+| `HOST_OVERRIDE` | Host corrected a previously published result (errata, requires mandatory reason) |
+| `API_CONFIRMED` | Confirmed result from API-Football (final, authoritative) |
+| `SCRAPER_PROVISIONAL` | Live score from picks4all-scores. Provisional until API confirms or grace period expires |
+| `HOST_PROVISIONAL` | Host entered in AUTO-mode instance while waiting for sync layers |
+| `HOST_MANUAL` | Host entered in MANUAL-mode instance (legacy) |
 
 ### SyncStatus
 
@@ -331,7 +336,7 @@ Core user account. Supports email/password and Google OAuth registration.
 | `createdAtUtc` | DateTime | Default: now() | |
 | `updatedAtUtc` | DateTime | @updatedAt | |
 
-**Indexes:** `username`, `resetToken`, `googleId`, `emailVerificationToken`, `referredByUserId`
+**Indexes:** `username`, `resetToken`, `googleId`, `emailVerificationToken`
 
 **Relations:**
 - `predictions` -> Prediction[] (1:N)
@@ -345,6 +350,7 @@ Core user account. Supports email/password and Google OAuth registration.
 - `groupStandingsResults` -> GroupStandingsResult[] (1:N)
 - `poolMatchOverrides` -> PoolMatchOverride[] (1:N)
 - `poolPayments` -> PoolPayment[] (1:N)
+- `brandingAuditEntries` -> OrganizationBrandingAudit[] (1:N)
 - `referredByUser` -> User? (self-FK, many referrals → one referrer)
 - `referrals` -> User[] (inverse of `referredByUser`)
 
@@ -779,6 +785,7 @@ Singleton table for platform-wide configuration (email toggles).
 | `emailDeadlineReminderEnabled` | Boolean | Default: false | Deadline reminders (off by default) |
 | `emailResultPublishedEnabled` | Boolean | Default: true | Result published notifications |
 | `emailPoolCompletedEnabled` | Boolean | Default: true | Pool completed notifications |
+| `scoresServiceEnabled` | Boolean | Default: false | Kill switch for the picks4all-scores live scoring service. When false, `liveScoresJob` skips its polling cycle. |
 | `updatedAt` | DateTime | @updatedAt | |
 | `updatedById` | String? | | Admin who last changed settings |
 
@@ -939,6 +946,8 @@ Company entity for corporate pools.
 | `employeeCount` | String? | | Range: "1-50", "51-200", "201-500", "500+" |
 | `welcomeMessage` | String? | @db.Text | Shown in pool splash |
 | `invitationMessage` | String? | @db.Text | Included in invitation email |
+| `primaryColor` | String? | | Custom branding hex (#RRGGBB). Null falls back to Picks4All default gradient. |
+| `secondaryColor` | String? | | Secondary branding hex (#RRGGBB). |
 | `notes` | String? | @db.Text | Internal admin notes |
 | `status` | OrganizationStatus | Default: INQUIRY | |
 | `createdAtUtc` | DateTime | Default: now() | |
@@ -949,6 +958,7 @@ Company entity for corporate pools.
 **Relations:**
 - `inquiries` -> OrganizationInquiry[] (1:N)
 - `pools` -> Pool[] (1:N)
+- `brandingAudit` -> OrganizationBrandingAudit[] (1:N)
 
 ---
 
@@ -985,7 +995,7 @@ Employee invitation to a corporate pool. Token-based activation with 30-day expi
 | `poolId` | String | FK -> Pool | |
 | `email` | String | Required | Employee email |
 | `name` | String? | | Employee name (from CSV) |
-| `activationToken` | String | Unique | 48-byte crypto token |
+| `activationToken` | String | Unique | 32-byte crypto token (64 hex chars). Generated via `crypto.randomBytes(CRYPTO_BYTES.TOKEN)`. |
 | `activationTokenExpiresAt` | DateTime | Required | 30-day expiry |
 | `status` | CorporateInviteStatus | Default: PENDING | |
 | `activatedUserId` | String? | | User ID after activation |
@@ -994,7 +1004,7 @@ Employee invitation to a corporate pool. Token-based activation with 30-day expi
 
 **Unique:** `[poolId, email]`
 
-**Indexes:** `activationToken`, `poolId`, `status`
+**Indexes:** `activationToken`, `poolId`, `status`, `[poolId, status, createdAtUtc]` (compound — supports the paginated employee list `WHERE poolId AND status IN (...) ORDER BY createdAtUtc DESC`)
 
 ---
 
@@ -1050,8 +1060,9 @@ and double refunds.
 | `eventType` | String | | `"order.paid"`, `"order.refunded"`, `"mp.payment.updated"`, etc. |
 | `payloadJson` | Json | | Full webhook payload for forensics |
 | `processedAtUtc` | DateTime | Default: now() | |
+| `createdAtUtc` | DateTime | Default: now() | |
 
-**Indexes:** `polarEventId` (unique), `eventType`
+**Indexes:** `polarEventId` (unique constraint and index)
 
 ---
 
@@ -1071,14 +1082,62 @@ deploys never double-send.
 | `eventName` | String | | Original event name (`"Purchase"`, `"CompleteRegistration"`, etc.) |
 | `eventId` | String | | Dedup key. `transaction_id` for purchases, UUID otherwise. Persisted so DLQ retries never duplicate in the destination. |
 | `payloadJson` | Json | | Full request body, replayed verbatim on retry |
-| `attemptCount` | Int | Default: 0 | Number of DLQ-worker attempts so far (capped at 8) |
-| `lastError` | String | VarChar(2000) | Truncated response body from the last failure |
-| `lastAttemptAt` | DateTime? | | |
+| `attemptCount` | Int | Default: 1 | Number of DLQ-worker attempts so far |
+| `lastError` | String | @db.Text | Response body from the last failure |
+| `lastAttemptAt` | DateTime | Default: now() | |
 | `nextRetryAt` | DateTime? | | When the drainer will pick this up next. Null once resolved (success or permanent failure). |
 | `resolvedAt` | DateTime? | | Set when the event delivered OR when a 4xx (not 401/403/408/429) marked it as permanent |
 | `createdAtUtc` | DateTime | Default: now() | |
+| `updatedAtUtc` | DateTime | @updatedAt | |
 
-**Indexes:** `[provider, resolvedAt, nextRetryAt]` for the drainer's `findMany` filter; `resolvedAt` for the 30-day purge.
+**Indexes:** `[provider, nextRetryAt, resolvedAt]` for the drainer's `findMany` filter; `eventId` for dedup lookups.
+
+---
+
+### 3.31 EmailSuppression
+
+Persistent block-list for email recipients. Populated by the Resend webhook
+(`POST /webhooks/resend`) on `bounced` and `complained` events so the
+platform stops sending to addresses that hard-bounced or marked us as
+spam — Resend itself enforces this on its side, but we duplicate the list
+locally to short-circuit `sendEmail()` before hitting Resend (saves API
+quota and lets the admin dashboard surface the count).
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | String | PK, UUID | |
+| `email` | String | Unique | Suppressed address (lower-cased on insert) |
+| `reason` | String | Required | `"bounced"` \| `"complained"` |
+| `resendId` | String? | | Resend email id that triggered the event (forensics) |
+| `eventData` | Json? | | Raw webhook payload at the time of suppression |
+| `createdAt` | DateTime | Default: now() | |
+
+**Indexes:** `email`
+
+---
+
+### 3.32 OrganizationBrandingAudit
+
+Append-only log of every change a corporate host or co-admin makes to
+their organization's branding (logo, colors, welcome / invitation
+messages). Used by the admin panel to render a per-org timeline and
+makes a one-click revert trivial because the snapshot is right there.
+Platform-admin edits made through the admin panel are NOT recorded here
+— those go through the regular `AuditEvent` log.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | String | PK, UUID | |
+| `organizationId` | String | FK -> Organization | Org being edited |
+| `userId` | String | FK -> User | User who made the change |
+| `changedAt` | DateTime | Default: now() | |
+| `fieldsChanged` | String[] | Required | Field names mutated this time (`"logoBase64"`, `"primaryColor"`, `"secondaryColor"`, `"welcomeMessage"`, `"invitationMessage"`) |
+| `beforeJson` | Json | Required | Snapshot of the changed fields BEFORE this edit |
+| `afterJson` | Json | Required | Snapshot of the changed fields AFTER this edit |
+| `ipAddress` | String? | | Best-effort client IP (trust-proxy aware) |
+| `userAgent` | String? | | Best-effort client UA |
+
+**Indexes:** `[organizationId, changedAt]`, `[userId, changedAt]`
 
 ---
 
@@ -1104,7 +1163,9 @@ Pool ── N:1 ── TournamentInstance ── N:1 ── TournamentTemplateVe
   |                  '-- 1:N ── PendingPhaseSync
   |
   |-- N:1 ── Organization ── 1:N ── OrganizationInquiry
+  |                       '─ 1:N ── OrganizationBrandingAudit ── N:1 ── User
   |-- 1:N ── CorporateInvite
+  |-- 1:N ── PoolPayment ─── 1:N ── PaymentEvent (idempotency log, FK by polarEventId)
   '-- 1:N ── PoolMatchResult ── 1:N ── PoolMatchResultVersion
 
 PlatformSettings (singleton)
@@ -1112,4 +1173,6 @@ LegalDocument (standalone, versioned)
 AuditEvent (standalone, append-only)
 DeadlineReminderLog (standalone)
 BetaFeedback (standalone)
+EmailSuppression (standalone — populated by Resend webhook)
+FailedAnalyticsEvent (standalone — DLQ for GA4 MP / Meta CAPI)
 ```

@@ -3,7 +3,7 @@
 
 > **Status:** Production (Railway)
 > **Domain:** picks4all.com | api.picks4all.com
-> **Document reflects:** Codebase as of 2026-04-04
+> **Document reflects:** Codebase as of 2026-05-03
 
 ---
 
@@ -52,12 +52,13 @@
 │  next-intl v4           │  │                                          │
 │  standalone output      │  │  ┌────────┐ ┌──────────┐ ┌────────┐    │
 │                         │  │  │ Routes │ │ Services │ │  Jobs  │    │
-│  SSR: public/SEO pages  │  │  │  23    │ │   20     │ │   4    │    │
+│  SSR: public/SEO pages  │  │  │  28    │ │   24     │ │   10   │    │
 │  CSR: authenticated app │  │  └───┬────┘ └────┬─────┘ └───┬────┘    │
 │                         │  │      │           │           │          │
 │  CSS custom properties  │  │  ┌───▼───────────▼───────────▼──────┐   │
 │  (no Tailwind)          │  │  │         Libraries (34 files)      │   │
-│                         │  │  │  jwt, email, scoring, audit, etc. │   │
+│                         │  │  │  jwt, email, scoring, pricing,    │   │
+│                         │  │  │  ga4, metaCapi, audit, etc.       │   │
 │                         │  │  └──────────────┬───────────────────┘   │
 │                         │  │                 │                        │
 │                         │  │  ┌──────────────▼───────────────────┐   │
@@ -71,16 +72,22 @@
                              │          POSTGRESQL 16                    │
                              │          Railway managed                  │
                              │                                          │
-                             │  27 models, 36 migrations                │
+                             │  32 models, 57+ migrations               │
                              │  ACID transactions, indexes, FK, JSON    │
                              └──────────────────────────────────────────┘
 
 External Integrations:
-  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐
-  │ API-Football │  │   Resend     │  │ Google Identity Svcs  │
-  │ (api-sports) │  │   (email)    │  │ (OAuth)               │
-  │ SmartSync    │  │   6 types    │  │ Sign-In + verify      │
-  └──────────────┘  └──────────────┘  └──────────────────────┘
+  ┌────────────────────────┐  ┌─────────────────┐  ┌─────────────────────┐
+  │ picks4all-scores (1°)  │  │     Resend      │  │ Google Identity Svcs │
+  │ API-Football (fallback)│  │  (email out)    │  │ Sign-In + verify     │
+  │ Live scores + fixtures │  │ Cloudflare Mail │  │                      │
+  │                        │  │  (email in)     │  │                      │
+  └────────────────────────┘  └─────────────────┘  └─────────────────────┘
+  ┌────────────────────────┐  ┌─────────────────┐  ┌─────────────────────┐
+  │  Mercado Pago (CO/COP) │  │   Polar.sh      │  │  GA4 + Meta CAPI    │
+  │  Payment Brick + IPN   │  │  Hosted USD     │  │  (server-side w/    │
+  │                        │  │  checkout       │  │  retry queue)       │
+  └────────────────────────┘  └─────────────────┘  └─────────────────────┘
 ```
 
 ### 1.2 Architecture Style
@@ -144,8 +151,12 @@ External Integrations:
 | DNS | Cloudflare | DNS management, CNAME to Railway, Email Routing |
 | Email (outbound) | Resend | Transactional emails (verified domain) |
 | Email (inbound) | Cloudflare Email Routing | 16 addresses + catch-all |
-| Sports data | API-Football (api-sports.io) | Live match results and fixtures |
-| Analytics | Google Analytics (GA4) | User analytics |
+| Sports data (primary) | picks4all-scores | In-house scraper, 15s polling during live windows |
+| Sports data (fallback) | API-Football (api-sports.io) | ~30 min after estimated FT, fills gaps the scraper missed |
+| Payments (CO) | Mercado Pago | Payment Brick + IPN webhooks (COP) |
+| Payments (Intl) | Polar.sh | Hosted checkout (USD) |
+| Analytics (browser) | Google Analytics (GA4) + GTM | Pageview / event tracking |
+| Analytics (server) | GA4 Measurement Protocol + Meta CAPI | Purchase dedup, EMQ uplift, DLQ retry |
 | OAuth | Google Identity Services | Google Sign-In |
 
 ---
@@ -157,7 +168,7 @@ External Integrations:
 ```
 quiniela-platform/
 ├── backend/                  # Node.js + Express backend
-│   ├── prisma/               # Schema + 36 migrations
+│   ├── prisma/               # Schema + 57+ migrations
 │   ├── src/                  # TypeScript source
 │   ├── dist/                 # Compiled JS (gitignored)
 │   ├── .env                  # Environment variables (gitignored)
@@ -173,11 +184,13 @@ quiniela-platform/
 │   └── tsconfig.json
 ├── infra/                    # Docker compose for local DB
 ├── docs/                     # Documentation
-│   ├── sot/                  # Source of Truth docs
-│   └── guides/               # Operational guides
+│   ├── PRD.md, ARCHITECTURE.md, DATA_MODEL.md, API_SPEC.md,
+│   ├── BUSINESS_RULES.md, GLOSSARY.md, DECISION_LOG.md
+│   └── guides/               # Setup, deployment, email, scores, OAuth, analytics
 ├── CLAUDE.md                 # Development standards (operational manual)
 ├── CHANGELOG.md              # Version history
 ├── README.md                 # Repository entry point
+├── TECH_DEBT.md              # Tracked tech-debt deferred to post-launch
 ├── railway.toml              # Railway deployment config (backend)
 └── .gitignore
 ```
@@ -192,107 +205,79 @@ backend/src/
 │   ├── requireAuth.ts                 # JWT authentication
 │   ├── requireAdmin.ts                # Platform admin role check
 │   └── rateLimit.ts                   # Rate limiters (api, auth, password, create)
-├── lib/
-│   ├── jwt.ts                         # JWT sign/verify
-│   ├── password.ts                    # bcrypt hash/verify
-│   ├── passwordRules.ts              # Password strength validation
+├── lib/                               # 34 utility modules. Highlights:
+│   ├── jwt.ts, password.ts, passwordRules.ts, authCookies.ts
 │   ├── googleAuth.ts                  # Google OAuth token verification
-│   ├── audit.ts                       # Audit event logger
-│   ├── email.ts                       # Resend email client + send functions
-│   ├── emailTemplates.ts             # HTML email templates (locale-aware)
-│   ├── brand.ts                       # Brand identity (colors, name, domain)
-│   ├── constants.ts                   # Centralized constants (time, tokens, sync, locales)
-│   ├── schemas.ts                     # Shared Zod field schemas
-│   ├── env.ts                         # Environment variable helpers
-│   ├── roles.ts                       # Role permission helpers
-│   ├── scoringPresets.ts             # Legacy scoring presets (CLASSIC, OUTCOME_ONLY, EXACT_HEAVY)
-│   ├── scoringAdvanced.ts            # Advanced scoring engine
-│   ├── scoringBreakdown.ts           # Detailed scoring breakdown per match
-│   ├── pickPresets.ts                 # Pick config presets (BASIC, SIMPLE, CUMULATIVE)
-│   ├── poolCapacity.ts               # Pool capacity enforcement with row-level locking
-│   ├── poolHelpers.ts                # Pool utility functions
-│   ├── fixture.ts                     # Fixture data helpers
-│   ├── serializers.ts                # Response serialization
-│   ├── timezone.ts                    # Timezone utilities
-│   ├── username.ts                    # Username generation/validation
-│   ├── logger.ts                      # Logging utility
-│   ├── authCookies.ts                # HTTP-only cookie handling
-│   ├── apiResponse.ts                # Standardized API response helpers
-│   ├── asyncHelpers.ts               # Async utility functions
-│   └── validateBase64Image.ts        # Base64 image validation
-├── routes/
+│   ├── audit.ts, roles.ts             # Audit logging + role helpers
+│   ├── email.ts, emailTemplates.ts, htmlSafe.ts
+│   ├── brand.ts, constants.ts, schemas.ts, env.ts
+│   ├── scoringPresets.ts              # Legacy presets (CLASSIC, OUTCOME_ONLY, EXACT_HEAVY)
+│   ├── scoringAdvanced.ts, scoringBreakdown.ts, pickPresets.ts
+│   ├── poolCapacity.ts, poolHelpers.ts
+│   ├── pricing.ts                     # USD + COP dynamic pricing with volume discounts
+│   ├── ga4.ts, metaCapi.ts            # Server-side analytics sinks (DLQ-aware)
+│   ├── fixture.ts, serializers.ts, timezone.ts, username.ts
+│   └── apiResponse.ts, asyncHelpers.ts, logger.ts, validateBase64Image.ts
+├── routes/                            # 28 mounted route files. Categories:
 │   ├── auth.ts                        # Register, login, Google OAuth, password reset,
 │   │                                  #   email verify, corporate activation
-│   ├── me.ts                          # /me/pools, /me/email-preferences
-│   ├── pools.ts                       # Pool CRUD, join
-│   ├── poolOverview.ts               # Single-call pool overview endpoint
-│   ├── poolMembers.ts                # Member management (promote, kick, ban)
-│   ├── poolInvites.ts                # Invite code management
-│   ├── poolAdmin.ts                  # Pool admin actions
-│   ├── picks.ts                       # Match pick upsert and list
-│   ├── structuralPicks.ts            # Group standings + knockout predictions
+│   ├── me.ts, userProfile.ts          # /me/pools, /me/email-preferences, /users/me/profile
+│   ├── pools.ts, poolOverview.ts, poolMembers.ts, poolInvites.ts, poolAdmin.ts
+│   ├── picks.ts, structuralPicks.ts, structuralResults.ts, groupStandings.ts
 │   ├── results.ts                     # Result publish + leaderboard + breakdown
-│   ├── structuralResults.ts          # Structural results (group/knockout)
-│   ├── groupStandings.ts             # Granular group standings picks/results
-│   ├── catalog.ts                     # /catalog/instances (public tournament catalog)
-│   ├── pickPresets.ts                 # /pick-presets (available configs)
-│   ├── userProfile.ts                # /users/me/profile (CRUD)
-│   ├── feedback.ts                    # /feedback (user bug reports)
-│   ├── legal.ts                       # /legal (terms, privacy documents)
-│   ├── corporate.ts                   # Corporate pool endpoints (inquiry, create, employees)
-│   ├── admin.ts                       # /admin/ping
-│   ├── adminCorporate.ts             # Admin corporate management
-│   ├── adminTemplates.ts             # Template CRUD
-│   ├── adminInstances.ts             # Instance CRUD + phase advancement
-│   └── adminSettings.ts              # Platform-wide settings (email toggles)
+│   ├── catalog.ts, pickPresets.ts, legal.ts
+│   ├── feedback.ts, unsubscribe.ts    # Public surfaces
+│   ├── corporate.ts                   # Corporate inquiry, pool create, employees
+│   ├── payments.ts                    # Polar + MP checkout init, country detection
+│   ├── resendWebhook.ts               # Resend bounce/complaint suppression
+│   ├── analyticsHealth.ts             # Server-analytics health probe
+│   ├── admin.ts, adminAnalyticsDashboard.ts, adminCorporate.ts,
+│   ├── adminTemplates.ts, adminInstances.ts, adminSettings.ts
 ├── services/
-│   ├── smartSync/                     # Smart Sync: per-match API-Football polling
-│   │   ├── index.ts
-│   │   └── service.ts                # Core sync logic
-│   ├── resultSync/                    # Legacy result sync (batch mode, inactive)
-│   │   ├── index.ts
-│   │   └── service.ts
-│   ├── apiFootball/                   # API-Football HTTP client
-│   │   ├── index.ts
-│   │   ├── client.ts                 # Rate-limited HTTP client
-│   │   └── types.ts                  # API response types
-│   ├── authService.ts                # Authentication business logic
-│   ├── pickService.ts                # Pick submission logic
-│   ├── resultService.ts              # Result publication logic
-│   ├── poolStateMachine.ts           # Pool lifecycle (DRAFT/ACTIVE/COMPLETED/ARCHIVED)
-│   ├── poolOverviewService.ts        # Single-call overview assembly
-│   ├── poolMemberService.ts          # Member management logic
-│   ├── poolAdminService.ts           # Pool admin business logic
-│   ├── corporateService.ts           # Corporate pool business logic
-│   ├── adminService.ts               # Admin business logic
-│   ├── adminInstanceService.ts       # Instance management logic
-│   ├── instanceAdvancement.ts        # Tournament phase advancement
-│   ├── tournamentAdvancement.ts      # Bracket advancement logic
-│   ├── structuralScoring.ts          # Scoring for structural picks
-│   ├── groupStandingsService.ts      # Group standings logic
-│   └── deadlineReminderService.ts    # Email reminder scheduling logic
-├── jobs/
-│   ├── smartSyncJob.ts               # Cron: SmartSync scheduler
-│   ├── phaseSyncJob.ts               # Cron: Phase sync / advancement
-│   ├── deadlineReminderJob.ts        # Cron: Deadline reminder emails
-│   └── resultSyncJob.ts              # Cron: Legacy batch sync (inactive)
+│   ├── scoresService/                 # picks4all-scores client (PRIMARY live scores)
+│   ├── smartSync/                     # API-Football per-match polling (FALLBACK)
+│   ├── resultSync/                    # Legacy batch sync (kept for backfill)
+│   ├── apiFootball/                   # API-Football HTTP client + types
+│   ├── mercadopago/                   # MP SDK wrapper, signature verification, IPN
+│   ├── polar/                         # Polar SDK wrapper, webhook verification
+│   ├── authService.ts                 # Authentication business logic
+│   ├── pickService.ts                 # Pick submission with deadline + lockedPhases enforcement
+│   ├── resultService.ts               # Result publication logic
+│   ├── advancementTrigger.ts          # Triggers phase advancement after results
+│   ├── poolStateMachine.ts            # DRAFT/ACTIVE/COMPLETED/ARCHIVED transitions
+│   ├── poolOverviewService.ts         # Single-call overview assembly
+│   ├── poolMemberService.ts, poolAdminService.ts
+│   ├── corporateService.ts, corporateBrandingService.ts
+│   ├── paymentService.ts              # Cross-gateway payment orchestration
+│   ├── adminService.ts, adminInstanceService.ts
+│   ├── instanceAdvancement.ts, tournamentAdvancement.ts
+│   ├── structuralScoring.ts, groupStandingsService.ts
+│   ├── newMemberDigestService.ts      # Daily host digest of new joiners
+│   └── deadlineReminderService.ts     # Email reminder scheduling logic
+├── jobs/                              # 10 cron jobs (started in server.ts)
+│   ├── liveScoresJob.ts               # picks4all-scores polling (15s during live windows)
+│   ├── smartSyncJob.ts                # API-Football fallback (~30min after est. FT)
+│   ├── resultSyncJob.ts               # Legacy batch sync (kept for backfill)
+│   ├── phaseSyncJob.ts                # Process PendingPhaseSync queue
+│   ├── deadlineReminderJob.ts         # Send deadline reminder emails (48h window)
+│   ├── fixtureTrackingJob.ts          # Track fixture changes from API-Football
+│   ├── fixtureVerificationJob.ts      # Verify mappings stay aligned
+│   ├── newMemberDigestJob.ts          # Daily digest of new pool joiners
+│   ├── capiRetryJob.ts                # Drain FailedAnalyticsEvent DLQ (advisory lock)
+│   └── trackStatusCheckerJob.ts       # External status monitoring
 ├── validation/
-│   └── pickConfig.ts                 # Zod schemas for pick configuration
+│   └── pickConfig.ts                  # Zod schemas for pick configuration
 ├── schemas/
-│   └── templateData.ts              # Zod schema for tournament template data
-├── scripts/
-│   ├── seedAdmin.ts                  # Create admin user
-│   ├── seedTestAccounts.ts           # Create test accounts
-│   ├── seedWc2026Sandbox.ts          # Seed WC2026 tournament data
-│   ├── seedUcl2025.ts                # Seed UCL 2025-26 data
-│   ├── seedLegalDocuments.ts         # Seed terms/privacy documents
-│   ├── initSmartSyncStates.ts        # Initialize MatchSyncState records
-│   ├── fetchUclData.ts              # Fetch UCL data from API-Football
-│   └── ...                           # Various utility scripts
+│   └── templateData.ts                # Zod schema for tournament template data
+├── scripts/                           # Seeds + ad-hoc admin scripts
+│   ├── seedAdmin.ts, seedTestAccounts.ts
+│   ├── seedWc2026Sandbox.ts, seedUcl2025.ts, seedLegalDocuments.ts
+│   ├── initSmartSyncStates.ts, fetchUclData.ts, updateUclR16Draw.ts
+│   └── migrateExtraTimeConfig.ts
 ├── types/
-│   ├── express.d.ts                  # Extend Express.Request with auth
-│   └── pickConfig.ts                 # Pick configuration types
-└── wc2026Sandbox.ts                  # WC2026 data builder
+│   ├── express.d.ts                   # Extend Express.Request with auth
+│   └── pickConfig.ts                  # Pick configuration types
+└── wc2026Sandbox.ts                   # WC2026 data builder
 ```
 
 ### 3.3 Frontend Directory Structure
@@ -333,12 +318,16 @@ frontend-next/src/
 │       ├── porra-deportiva/           # Regional SEO (ES)
 │       ├── football-pool/             # Regional SEO (EN)
 │       └── (authenticated)/           # Route group: AuthGuard wrapper
-│           ├── layout.tsx             # AuthGuard + NavBar + Footer
+│           ├── layout.tsx             # AuthGuard + NavBar + Footer + PoolNavRootProvider
 │           ├── dashboard/page.tsx     # User dashboard (my pools)
-│           ├── pools/[poolId]/page.tsx # Pool detail page
+│           ├── pools/[poolId]/page.tsx # Pool detail page (single-call overview)
+│           ├── pools/join/page.tsx    # Join pool by code
 │           ├── profile/page.tsx       # User profile
+│           ├── pago/                  # Payment pages (checkout, exitoso, cancelado)
+│           ├── crear-pool/page.tsx    # Standard pool creation wizard
 │           └── admin/                 # Platform admin pages
-│               ├── feedback/page.tsx
+│               ├── analytics/page.tsx # Real-time growth dashboard
+│               ├── feedback/page.tsx  # Feedback inbox
 │               └── settings/email/page.tsx
 ├── i18n/
 │   ├── routing.ts                     # next-intl routing config
@@ -405,13 +394,16 @@ frontend-next/src/
 │   │   ├── scoring.ts                # match/phase/group breakdowns
 │   │   ├── members.ts                # member management
 │   │   ├── profile.ts                # user profile and preferences
-│   │   ├── admin.ts                   # admin operations
+│   │   ├── admin.ts                   # admin operations + analytics dashboard
 │   │   ├── corporate.ts              # corporate pool operations
+│   │   ├── payments.ts               # checkout init (Polar/MP), country detection
 │   │   └── index.ts                   # Re-exports
 │   ├── auth.ts                        # Token storage + auth event system
 │   ├── brand.ts                       # Brand identity (mirrors backend)
 │   ├── siteConfig.ts                 # SITE_URL, SITE_NAME, EMAIL_DOMAIN
 │   ├── theme.ts                       # Theme derived from brand
+│   ├── pricing.ts                     # COP + USD tier computation (mirrors backend)
+│   ├── analytics.ts                   # GTM dataLayer event helpers
 │   ├── validation.ts                  # Centralized form constraints
 │   └── timezone.ts                    # Timezone detection
 ├── data/
@@ -451,9 +443,9 @@ Business logic never lives in route handlers. Routes validate input and call ser
 3. JSON body parser (1MB limit)
 4. Global rate limiting
 5. Stricter rate limiting on auth endpoints
-6. Router mounting (23 route files)
+6. Router mounting (28 route files)
 7. Health check endpoint with version/commit info
-8. Cron job startup (SmartSync, phase sync, deadline reminders)
+8. Cron job startup (10 jobs — see §4.5)
 
 ### 4.3 Middleware
 
@@ -483,25 +475,35 @@ Key services and their responsibilities:
 
 | Service | Purpose |
 |---------|---------|
-| `smartSync/service.ts` | Per-match API-Football polling, result auto-publication |
+| `scoresService/` | picks4all-scores HTTP client. **Primary** live scoring source (15s polling during match live windows). |
+| `smartSync/service.ts` | Per-match API-Football polling. Fallback layer; activates ~30 min after estimated FT for matches the scraper hasn't reported. |
+| `resultService.ts` | Result publication (any source), override, errata, leaderboard recalculation. Enforces source hierarchy (HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL > HOST_PROVISIONAL > HOST_MANUAL). |
+| `advancementTrigger.ts` | Triggers phase advancement after a match result publishes. |
 | `poolStateMachine.ts` | Pool lifecycle transitions (DRAFT -> ACTIVE -> COMPLETED -> ARCHIVED) |
 | `instanceAdvancement.ts` | Tournament phase advancement (group -> R16 -> QF -> SF -> F) |
 | `tournamentAdvancement.ts` | Bracket advancement logic (populating knockout matches) |
-| `resultService.ts` | Result publication, override, errata, leaderboard recalculation |
-| `pickService.ts` | Pick submission with deadline enforcement |
+| `pickService.ts` | Pick submission with deadline + lockedPhases enforcement. Reads from `pool.fixtureSnapshot ?? instance.dataJson`. |
 | `poolOverviewService.ts` | Single-call overview assembly (matches, picks, results, leaderboard) |
-| `corporateService.ts` | Corporate pool creation, employee management, invitation |
+| `corporateService.ts` / `corporateBrandingService.ts` | Corporate pool creation, employee invitation, branding edits with audit trail. |
+| `paymentService.ts` | Cross-gateway orchestration (Polar USD / Mercado Pago COP), capacity expansion, idempotent webhook handling. |
 | `deadlineReminderService.ts` | Email reminder scheduling (48h window, excludes pools with muted reminders) |
+| `newMemberDigestService.ts` | Daily digest of new joiners delivered to pool hosts. |
 | `structuralScoring.ts` | Scoring for group standings and knockout bracket predictions |
 
 ### 4.5 Cron Jobs
 
 | Job | File | Schedule | Purpose |
 |-----|------|----------|---------|
-| Smart Sync | `smartSyncJob.ts` | Periodic (configurable) | Poll API-Football for live match results |
-| Phase Sync | `phaseSyncJob.ts` | Periodic | Check and process pending phase advancement |
-| Deadline Reminders | `deadlineReminderJob.ts` | Periodic | Send email reminders for upcoming match deadlines |
-| Result Sync (legacy) | `resultSyncJob.ts` | Inactive | Batch mode sync (replaced by SmartSync) |
+| Live Scores | `liveScoresJob.ts` | 15s during match live windows | **Primary** results channel — polls picks4all-scores. Gated by `PlatformSettings.scoresServiceEnabled`. |
+| Smart Sync | `smartSyncJob.ts` | Periodic (configurable) | **Fallback** — polls API-Football and only publishes results the scraper hasn't already reported. |
+| Result Sync (legacy) | `resultSyncJob.ts` | Inactive | Batch mode sync (kept for backfill) |
+| Phase Sync | `phaseSyncJob.ts` | Periodic | Drains the `PendingPhaseSync` queue (advances pool fixtureSnapshots after a phase completes). |
+| Fixture Tracking | `fixtureTrackingJob.ts` | Periodic | Tracks fixture changes from API-Football. |
+| Fixture Verification | `fixtureVerificationJob.ts` | Periodic | Re-verifies that mappings stay aligned. |
+| Deadline Reminders | `deadlineReminderJob.ts` | Periodic | Email reminders 48h before kickoff (excludes muted pools). |
+| New-Member Digest | `newMemberDigestJob.ts` | Daily | Digest of new joiners delivered to hosts. |
+| CAPI Retry | `capiRetryJob.ts` | Periodic | Drains `FailedAnalyticsEvent` DLQ for GA4 MP / Meta CAPI; advisory-locked so multi-replica deploys never double-send. |
+| Track Status | `trackStatusCheckerJob.ts` | Periodic | External status monitoring. |
 
 ### 4.6 Validation
 
@@ -553,7 +555,7 @@ export const routing = defineRouting({
 - `picks4all.com/pt/` -- Portuguese
 - `picks4all.com/en/how-it-works` -- Localized path
 
-**Messages:** JSON files split by namespace (auth, dashboard, pool, seo, faq, etc.). 15+ namespaces per locale.
+**Messages:** JSON files split by namespace (auth, dashboard, pool, seo, faq, corporate, etc.). 23 namespaces per locale.
 
 ### 5.3 Middleware (`proxy.ts`)
 
@@ -636,7 +638,7 @@ Modular API client organized by domain:
 - **Local development:** Docker container via `backend/docker-compose.yml`
 - **ORM:** Prisma 6.19+ with type-safe client and migration system
 
-### 6.2 Models (27 total)
+### 6.2 Models (32 total)
 
 | Category | Models |
 |----------|--------|
@@ -646,8 +648,9 @@ Modular API client organized by domain:
 | **Predictions** | `Prediction`, `StructuralPrediction`, `GroupStandingsPrediction` |
 | **Results** | `PoolMatchResult`, `PoolMatchResultVersion`, `PoolMatchOverride`, `StructuralPhaseResult`, `GroupStandingsResult` |
 | **Sync** | `MatchExternalMapping`, `MatchSyncState`, `ResultSyncLog`, `PendingPhaseSync` |
-| **Corporate** | `Organization`, `OrganizationInquiry`, `CorporateInvite` |
-| **Platform** | `AuditEvent`, `BetaFeedback`, `LegalDocument`, `PlatformSettings`, `DeadlineReminderLog` |
+| **Corporate** | `Organization`, `OrganizationInquiry`, `CorporateInvite`, `OrganizationBrandingAudit` |
+| **Payments** | `PoolPayment`, `PaymentEvent` |
+| **Platform / ops** | `AuditEvent`, `BetaFeedback`, `LegalDocument`, `PlatformSettings`, `DeadlineReminderLog`, `EmailSuppression`, `FailedAnalyticsEvent` |
 
 ### 6.3 Design Principles
 
@@ -662,7 +665,7 @@ Modular API client organized by domain:
 
 ### 6.4 Migration Strategy
 
-- **36 migrations** applied (from `20251228053519_init_m0` to `20260404120000_add_mute_reminders`)
+- **57+ migrations** applied since `20251228053519_init_m0`. Each new feature lands its own migration; the count is fluid and `npx prisma migrate status` is the source of truth, not this doc.
 - Created with `npx prisma migrate dev --name <name>`
 - Production migrations run automatically on deploy:
   ```
@@ -696,12 +699,13 @@ Modular API client organized by domain:
 
 ### 7.3 Corporate Activation Tokens
 
-- Generated with `crypto.randomBytes(48)` (96-character hex string)
-- Stored in `CorporateInvite` model (status: PENDING -> ACTIVATED -> EXPIRED)
+- Generated with `crypto.randomBytes(CRYPTO_BYTES.TOKEN)` — **32 bytes / 64 hex chars**
+- Stored in `CorporateInvite` model (status: PENDING / SENT / ACTIVATED / FAILED)
 - 30-day expiry
-- Single-use (status changes to ACTIVATED after use)
+- Single-use: activation atomically claims the invite (`updateMany WHERE status IN (PENDING, SENT, FAILED)`); concurrent attempts surface as `ALREADY_ACTIVATED`
+- Resend rotates the token: `POST /corporate/pools/:poolId/employees/:inviteId/resend` invalidates the previous token and resets the 30-day expiry
 - Verification: `GET /auth/check-corporate-invite?token=xxx`
-- Activation: `POST /auth/activate-corporate` (creates account + joins pool)
+- Activation: `POST /auth/activate-corporate` (creates account + joins pool, refuses with `SESSION_MISMATCH` if the request cookie identifies a user whose email differs from `invite.email`)
 
 ### 7.4 Password Security
 
@@ -732,50 +736,64 @@ Configured in `next.config.ts`:
 
 ### 8.1 RESTful Endpoints
 
+Full reference lives in `docs/API_SPEC.md`. Highlights below.
+
 ```
 AUTH
-  POST   /auth/register              Register with email/password
-  POST   /auth/login                 Login
-  POST   /auth/google                Google OAuth
-  POST   /auth/forgot-password       Request password reset
-  POST   /auth/reset-password        Reset password
-  GET    /auth/verify-email          Email verification
-  GET    /auth/check-corporate-invite Check corporate token
-  POST   /auth/activate-corporate    Corporate employee activation
+  POST   /auth/register, /auth/login, /auth/google
+  POST   /auth/forgot-password, /auth/reset-password
+  GET    /auth/verify-email, /auth/check-corporate-invite
+  POST   /auth/activate-corporate
 
 USER
-  GET    /me/pools                   User's pools
-  GET/PUT /me/email-preferences      Email notification preferences
-  GET/PATCH /users/me/profile        User profile
+  GET    /me/pools
+  GET/PUT /me/email-preferences
+  GET/PATCH /users/me/profile
 
 POOLS
-  POST   /pools                      Create pool
+  POST   /pools                      Create pool (standard or corporate)
   POST   /pools/join                 Join pool by code
   GET    /pools/:id/overview         Single-call pool overview
   PUT    /pools/:id/picks/:matchId   Upsert match pick
+  PUT    /pools/:id/structural-picks/:phaseId  Upsert structural pick
+  PUT    /pools/:id/group-standings/:phaseId/:groupId  Group standings pick
   PUT    /pools/:id/results/:matchId Publish/update result
-  POST   /pools/:id/members/:mid/promote  Promote to co-admin
-  POST   /pools/:id/members/:mid/kick     Kick member
+  POST   /pools/:id/members/:mid/(promote|approve|kick|ban)
 
 CATALOG
   GET    /catalog/instances          Available tournament instances
   GET    /pick-presets               Pick configuration presets
 
 CORPORATE
-  POST   /corporate/inquiry          Enterprise inquiry form
-  POST   /corporate/pools            Create corporate pool
-  POST   /corporate/pools/:id/employees      Add employees
-  POST   /corporate/pools/:id/send-invitations  Send invitations
+  POST   /corporate/inquiry
+  POST   /corporate/pools                              Create corporate pool
+  POST   /corporate/pools/:id/employees                Add employees
+  POST   /corporate/pools/:id/send-invitations         Send invitations
+  POST   /corporate/pools/:id/employees/:inviteId/resend
+  GET    /corporate/pools/:id/employees-csv-template
 
-ADMIN
-  GET    /admin/ping                 Health check
-  CRUD   /admin/templates            Tournament template management
-  CRUD   /admin/instances            Instance management + advancement
-  GET/PUT /admin/settings/email      Platform email toggles
+PAYMENTS
+  POST   /payments/checkout/polar                      Init Polar (USD) checkout
+  POST   /payments/checkout/mercadopago                Init MP (COP) checkout
+  POST   /payments/webhooks/polar                      Polar webhook (signature verified)
+  POST   /payments/webhooks/mercadopago                MP IPN (signature + drift)
+  GET    /payments/country-detect                      Cloudflare-based COP/USD routing
 
-OTHER
-  POST   /feedback                   Submit user feedback
-  GET    /legal/:type                Legal documents
+ADMIN (gated by requireAdmin)
+  GET    /admin/ping
+  GET    /admin/analytics/dashboard                    Platform-wide growth/health snapshot
+  CRUD   /admin/templates                              Tournament template management
+  CRUD   /admin/instances                              Instance management + advancement
+  CRUD   /admin/corporate                              Corporate org / inquiry management
+  GET/PUT /admin/settings/email                        Email toggles + scoresServiceEnabled
+  GET    /admin/feedback                               BetaFeedback inbox
+
+WEBHOOKS / OTHER
+  POST   /feedback                                     Submit user feedback (auth optional)
+  GET    /legal/:type                                  Active TOS / privacy doc per locale
+  POST   /webhooks/resend                              Resend bounce/complaint suppression
+  GET    /unsubscribe/:token                           Tokenised email unsubscribe
+  GET    /analytics-health                             Server-analytics health probe
 ```
 
 ### 8.2 Response Format
@@ -837,32 +855,56 @@ Service: pickService.ts
 200 OK { prediction }
 ```
 
-### 9.2 Result Publication (SmartSync)
+### 9.2 Result Publication (Scraper-first + API-Football fallback)
+
+**Layer 1 — picks4all-scores (primary):**
 
 ```
-Cron job triggers
+liveScoresJob (every 15s during live windows; gated by
+                PlatformSettings.scoresServiceEnabled)
   │
   ▼
-smartSyncJob.ts: Query MatchSyncState records
+GET picks4all-scores: live scores for tracked fixtures
   │
   ▼
-Filter: matches in "live window"
-  (kickoff + FIRST_CHECK_MIN to kickoff + FINISH_CHECK_MIN)
-  │
-  ▼
-For each active match:
-  ├── Call API-Football: GET /fixtures?id={externalId}
-  ├── If match finished:
-  │     ├── Extract home/away goals, penalties
-  │     ├── Update MatchSyncState -> FINISHED
-  │     ├── For each pool containing this match:
-  │     │     ├── Create PoolMatchResult + PoolMatchResultVersion
-  │     │     ├── Recalculate leaderboard
-  │     │     └── Send "result published" email notifications
-  │     └── Write ResultSyncLog
-  └── If match still live:
-        └── Update MatchSyncState, retry next cycle
+For each match update:
+  ├── If still in play:
+  │     └── Publish SCRAPER_PROVISIONAL version
+  │           (will be overwritten by API_CONFIRMED later)
+  ├── If FT confirmed by scraper AND grace period elapsed
+  │   (SCORES_GRACE_PERIOD_MS = 5 min):
+  │     ├── Publish PoolMatchResultVersion (SCRAPER_PROVISIONAL)
+  │     ├── Recalculate leaderboard
+  │     ├── Trigger advancementTrigger
+  │     └── Send "result published" emails
+  └── Always honour source hierarchy:
+        HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL
+        > HOST_PROVISIONAL > HOST_MANUAL
 ```
+
+**Layer 2 — API-Football (fallback, ~30 min after estimated FT):**
+
+```
+smartSyncJob (cron, configurable)
+  │
+  ▼
+Query MatchSyncState records (kickoff + FIRST_CHECK_MIN to
+                              kickoff + FINISH_CHECK_MIN)
+  │
+  ▼
+For each active match without a current API_CONFIRMED version:
+  ├── Call API-Football: GET /fixtures?id={externalId}
+  ├── If match finished AND scraper hasn't already confirmed:
+  │     ├── Publish PoolMatchResultVersion (API_CONFIRMED) — UPGRADES
+  │     │   any previous SCRAPER_PROVISIONAL version
+  │     ├── Recalculate leaderboard, trigger advancement
+  │     └── Write ResultSyncLog
+  └── Else: update MatchSyncState, retry next cycle
+```
+
+**Host override (any time):** mandatory `reason`, creates a new
+`PoolMatchResultVersion` with `source = HOST_OVERRIDE`, which is the
+top of the hierarchy and is never overwritten by sync layers.
 
 ### 9.3 Phase Advancement
 
@@ -913,6 +955,71 @@ Write AuditEvent (POOL_CREATED)
   ▼
 201 Created { pool, membership, inviteCode }
 ```
+
+### 9.5 Payment & Capacity Upgrade
+
+```
+Host opens capacity upgrade
+  │
+  ▼
+Frontend → GET /payments/country-detect
+            (Cloudflare CF-IPCountry header → CO ⇒ MP, else ⇒ Polar)
+  │
+  ▼
+POST /payments/checkout/{polar|mercadopago}
+  │
+  ▼
+Backend: paymentService creates PoolPayment row
+  ├── Captures fbp / fbc / ip / ua for Meta CAPI Advanced Matching
+  ├── Idempotency: re-entries return the existing checkoutId / preferenceId
+  └── Returns hosted-checkout URL (Polar) or Brick preference (MP)
+  │
+  ▼
+Customer pays
+  │
+  ▼
+Webhook arrives (POST /payments/webhooks/{polar|mercadopago})
+  ├── Verify signature (return 401 on mismatch)
+  ├── MP-only: reject events whose timestamp drifts > MP_WEBHOOK_MAX_DRIFT_MS
+  ├── BEGIN TRANSACTION
+  │     ├── INSERT PaymentEvent { polarEventId } (UNIQUE — claims the slot;
+  │     │   duplicate retries fail here and exit 200 without side-effects)
+  │     ├── UPDATE PoolPayment status = COMPLETED, paidAtUtc = now()
+  │     └── UPDATE Pool maxParticipants = toCapacity, reset capacity
+  │         notification flags so warning emails can fire again if it refills
+  │   COMMIT (so rollback also frees the idempotency slot for a real retry)
+  ├── Emit Purchase to GA4 MP and Meta CAPI (deduped by metaEventId)
+  │   On retry-budget exhaust → enqueue FailedAnalyticsEvent (see §9.6)
+  └── Return 200. Processing errors return 5xx so the gateway retries.
+```
+
+### 9.6 Server-Side Analytics DLQ
+
+```
+sendCapiEvent / sendGa4Event
+  │
+  ▼
+Try in-process retry ladder
+  ├── Success → done
+  └── Exhausted → INSERT FailedAnalyticsEvent
+                   { provider, eventName, eventId, payloadJson,
+                     attemptCount, lastError, nextRetryAt }
+  │
+  ▼
+capiRetryJob (cron)
+  ├── Acquire Postgres advisory lock (multi-replica safety)
+  ├── findMany WHERE resolvedAt IS NULL
+  │              AND nextRetryAt <= now()
+  │              ORDER BY nextRetryAt
+  ├── Replay payloadJson verbatim against the sink
+  │     ├── 2xx           → resolvedAt = now()
+  │     ├── 4xx permanent → resolvedAt = now() (no retry)
+  │     └── Else          → bump attemptCount, schedule next retry
+  └── Release lock
+```
+
+The full retry ladder, dedup keys, and purge policy live in
+`docs/guides/ANALYTICS_PIPELINE.md`.
 
 ---
 
