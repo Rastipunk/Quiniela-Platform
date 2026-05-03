@@ -5,7 +5,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { Prisma } from "@prisma/client";
 import { canMakePicks } from "../services/poolStateMachine";
-import { extractPhases, typed, type StructuralPickJson } from "../lib/fixture";
+import { extractMatches, extractPhases, typed, type StructuralPickJson } from "../lib/fixture";
 import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const structuralPicksRouter = Router();
@@ -82,12 +82,64 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
     return sendConflict(res, "CONFLICT", { message: "TournamentInstance is ARCHIVED" });
   }
 
-  // Validar que la fase existe en el template
-  const phases = extractPhases(pool.tournamentInstance.dataJson);
+  // Read from the per-pool fixture snapshot first (CLAUDE.md §6
+  // invariant 6) so phases auto-generated after advancement are
+  // recognised, and validate the phase exists.
+  const fixtureData = pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson;
+  const phases = extractPhases(fixtureData);
   const phase = phases.find((p) => p.id === phaseId);
 
   if (!phase) {
     return sendNotFound(res, "NOT_FOUND", { message: "Phase not found in tournament instance" });
+  }
+
+  // Host can manually freeze a phase. Reject any write while it's
+  // listed in pool.lockedPhases.
+  const lockedPhases = (pool.lockedPhases as string[] | null) ?? [];
+  if (lockedPhases.includes(phaseId)) {
+    return sendConflict(res, "PHASE_LOCKED", {
+      message: "Phase is locked by the host",
+      phaseId,
+    });
+  }
+
+  // Per-match deadline filter for knockout winner picks. Each match
+  // has its own kickoff, so a single phase-level lock would
+  // unnecessarily freeze later matches when only the earliest one
+  // started. Drop any incoming pick whose match has already passed
+  // its lock window; merge the rest with the existing prediction so
+  // already-saved picks for locked matches are preserved verbatim.
+  const allMatches = extractMatches(fixtureData);
+  const phaseMatches = allMatches.filter((m) => m.phaseId === phaseId);
+  const lockBufferMs = pool.deadlineMinutesBeforeKickoff * 60_000;
+  const lockedMatchIds: string[] = [];
+  let validIncomingMatches: { matchId: string; winnerId: string }[] = [];
+  if ("matches" in parsed.data) {
+    for (const incoming of parsed.data.matches) {
+      const fixtureMatch = phaseMatches.find((m) => m.id === incoming.matchId);
+      if (!fixtureMatch) {
+        // Unknown matchId — drop. Could be a stale UI sending a
+        // fixture that no longer matches the snapshot.
+        lockedMatchIds.push(incoming.matchId);
+        continue;
+      }
+      const lockTime =
+        new Date(fixtureMatch.kickoffUtc).getTime() - lockBufferMs;
+      if (Date.now() >= lockTime) {
+        lockedMatchIds.push(incoming.matchId);
+        continue;
+      }
+      validIncomingMatches.push(incoming);
+    }
+    // If the user attempted to update at least one match and every
+    // single one is locked, surface a clear 409 instead of silently
+    // saving an empty update.
+    if (parsed.data.matches.length > 0 && validIncomingMatches.length === 0) {
+      return sendConflict(res, "DEADLINE_PASSED", {
+        message: "All submitted matches are past their lock time",
+        lockedMatchIds,
+      });
+    }
   }
 
   // Obtener pick existente para hacer merge si es knockout
@@ -102,7 +154,10 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
   });
 
   // Para knockout picks, hacer merge con picks existentes
-  let finalPickData = parsed.data;
+  let finalPickData =
+    "matches" in parsed.data
+      ? { matches: validIncomingMatches }
+      : parsed.data;
   if ("matches" in parsed.data && existingPick?.pickJson) {
     const existingData = typed<StructuralPickJson>(existingPick.pickJson);
     if (existingData.matches && Array.isArray(existingData.matches)) {
@@ -111,8 +166,8 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
       for (const m of existingData.matches) {
         matchesMap.set(m.matchId, m.winnerId);
       }
-      // Actualizar con los nuevos picks
-      for (const m of parsed.data.matches) {
+      // Actualizar con los nuevos picks (solo los que pasaron el filtro de lock)
+      for (const m of validIncomingMatches) {
         matchesMap.set(m.matchId, m.winnerId);
       }
       // Convertir de vuelta a array
