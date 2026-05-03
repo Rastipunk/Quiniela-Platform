@@ -238,10 +238,23 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
       return { poolId: invite.poolId, status: existing.status };
     }
 
-    await tx.poolInvite.update({
-      where: { id: invite.id },
+    // Atomic conditional increment — Postgres serialises UPDATEs on
+    // the same row via row-level locks, so the WHERE clause is
+    // re-evaluated against the committed value. With `uses: { lt:
+    // maxUses }`, two concurrent single-use redeems can no longer
+    // both succeed: the second one finds `uses >= maxUses` after
+    // the first commits and lands in `count === 0`. The outer
+    // pre-check at line 183 stays as a fast-path optimisation.
+    const claim = await tx.poolInvite.updateMany({
+      where: {
+        id: invite.id,
+        ...(invite.maxUses !== null ? { uses: { lt: invite.maxUses } } : {}),
+      },
       data: { uses: { increment: 1 } },
     });
+    if (claim.count === 0) {
+      throw new Error("INVITE_EXHAUSTED");
+    }
 
     let referrerUserId: string | null = null;
     if (isFirstTimeReferral) {
@@ -271,6 +284,12 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
   } catch (err: any) {
     if (err.message === "BANNED_FROM_POOL") {
       return sendForbidden(res, "BANNED_FROM_POOL");
+    }
+    if (err.message === "INVITE_EXHAUSTED") {
+      // The atomic conditional increment lost the race — another
+      // joiner consumed the last slot between our pre-check and the
+      // transaction. Same conflict shape as the line-183 pre-check.
+      return sendConflict(res, "CONFLICT", { message: "Invite maxUses reached" });
     }
     if (err.message === "POOL_FULL") {
       // Fire-and-forget host notification (throttled). Look up the attempting
