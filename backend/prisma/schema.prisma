@@ -1169,6 +1169,13 @@ model PoolPayment {
   clientIpAddress String? // Remote IP at checkout init (for GEO + EMQ)
   clientUserAgent String? // UA at checkout init (for EMQ)
 
+  // Mercado Pago preference ID (only set for MP/COP payments). Persisted so
+  // that idempotent re-entries to initiateMpCheckout (e.g. host double-click)
+  // can return the EXISTING preference instead of creating a second one and
+  // racing the customer into paying twice. Polar uses polarCheckoutId for
+  // the same purpose.
+  mpPreferenceId String?
+
   paidAtUtc    DateTime?
   createdAtUtc DateTime  @default(now())
   updatedAtUtc DateTime  @updatedAt

@@ -274,7 +274,9 @@ export async function handleOrderPaid(payload: {
   const eventId = payload.data.id;
   const eventType = payload.type || "order.paid";
 
-  // 1. Idempotency check
+  // 1. Cheap idempotency pre-check (avoids opening a tx for known duplicates).
+  // Not a correctness boundary — the real lock is the UNIQUE constraint
+  // claimed inside the transaction below.
   const existing = await prisma.paymentEvent.findUnique({
     where: { polarEventId: eventId },
   });
@@ -283,26 +285,7 @@ export async function handleOrderPaid(payload: {
     return;
   }
 
-  // 2. Record the raw event (immutable audit log)
-  // Wrapped in try/catch to handle race condition: two concurrent webhooks
-  // may both pass the findUnique check above and attempt to create.
-  try {
-    await prisma.paymentEvent.create({
-      data: {
-        polarEventId: eventId,
-        eventType,
-        payloadJson: JSON.parse(JSON.stringify(payload)),
-      },
-    });
-  } catch (err: any) {
-    if (err?.code === "P2002") {
-      console.log(`[PaymentService] Race-condition duplicate event ${eventId}, skipping`);
-      return;
-    }
-    throw err;
-  }
-
-  // 3. Extract metadata
+  // 2. Validate metadata BEFORE entering the tx (cheap, no DB cost on bad input).
   const metadata = payload.data.metadata as {
     poolId?: string;
     userId?: string;
@@ -322,7 +305,7 @@ export async function handleOrderPaid(payload: {
     return;
   }
 
-  // 4. Find the PoolPayment by checkout ID
+  // 3. Find the PoolPayment by checkout ID.
   const payment = await prisma.poolPayment.findUnique({
     where: { polarCheckoutId: checkoutId },
   });
@@ -337,30 +320,56 @@ export async function handleOrderPaid(payload: {
     return;
   }
 
-  // 5. Expand capacity in a transaction
-  await prisma.$transaction(async (tx) => {
-    // Update payment status
-    await tx.poolPayment.update({
-      where: { id: payment.id },
-      data: {
-        status: "COMPLETED",
-        polarOrderId: eventId,
-        paidAtUtc: new Date(),
-      },
-    });
+  // 4. Generate the Meta event ID up-front so it can be persisted INSIDE the
+  // same tx as the rest of the state changes. The success-page Pixel emission
+  // and the server-side CAPI emission below both use this ID; if it weren't
+  // committed atomically with COMPLETED, a tx that failed AFTER metaEventId
+  // was set could leave the pool expanded but the Pixel/CAPI dedup broken.
+  const metaEventId = metadata.userId ? crypto.randomUUID() : null;
+  const paidAt = new Date();
 
-    // Expand pool capacity
-    await tx.pool.update({
-      where: { id: metadata.poolId! },
-      data: {
-        maxParticipants: metadata.toCapacity!,
-        // Re-arm capacity threshold notifications so the warning + full
-        // emails fire again if the pool refills after the expansion.
-        poolFullNotifiedAt: null,
-        capacityWarningNotifiedAt: null,
-      },
+  // 5. Atomic claim + state changes. PaymentEvent.create is now INSIDE the
+  // tx so the UNIQUE-constraint slot only stays committed if the rest of the
+  // writes succeed. If anything throws, the slot rolls back and Polar's retry
+  // (which our 5xx response triggers — see fix in routes/payments.ts) gets
+  // a fresh shot at processing.
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentEvent.create({
+        data: {
+          polarEventId: eventId,
+          eventType,
+          payloadJson: JSON.parse(JSON.stringify(payload)),
+        },
+      });
+      await tx.poolPayment.update({
+        where: { id: payment.id },
+        data: {
+          status: "COMPLETED",
+          polarOrderId: eventId,
+          paidAtUtc: paidAt,
+          ...(metaEventId ? { metaEventId } : {}),
+        },
+      });
+      await tx.pool.update({
+        where: { id: metadata.poolId! },
+        data: {
+          maxParticipants: metadata.toCapacity!,
+          // Re-arm capacity threshold notifications so the warning + full
+          // emails fire again if the pool refills after the expansion.
+          poolFullNotifiedAt: null,
+          capacityWarningNotifiedAt: null,
+        },
+      });
     });
-  });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      // Concurrent webhook claimed the event slot first; safe to skip.
+      console.log(`[PaymentService] Race-condition duplicate event ${eventId}, skipping`);
+      return;
+    }
+    throw err; // Real failure → propagate so route returns 5xx and Polar retries.
+  }
 
   console.log(
     `[PaymentService] Pool ${metadata.poolId} expanded: ${metadata.fromCapacity} → ${metadata.toCapacity} participants`
@@ -388,15 +397,11 @@ export async function handleOrderPaid(payload: {
     type: "feedback",
   }));
 
-  if (metadata.userId) {
-    // Stable event_id shared by CAPI and (eventually) the browser Pixel.
-    // Persist on the payment row so the success-page pixel emission uses
-    // the same ID and Meta deduplicates automatically.
-    const metaEventId = crypto.randomUUID();
-    await prisma.poolPayment.update({
-      where: { id: payment.id },
-      data: { metaEventId },
-    });
+  if (metadata.userId && metaEventId) {
+    // metaEventId was generated and persisted INSIDE the atomic tx above —
+    // no separate update here. The success-page Pixel emission and the
+    // server-side CAPI emission below both use the same ID, so Meta
+    // deduplicates the Purchase event automatically.
     // Enriched Advanced Matching: everything we know about the user that
     // Meta accepts (email, name, DOB, gender, country) improves EMQ score
     // and match quality in Events Manager.
@@ -519,24 +524,11 @@ export async function handleOrderRefunded(payload: {
   const eventId = payload.data.id;
   const eventType = payload.type || "order.refunded";
 
-  // Idempotency — refund webhooks can be replayed by Polar.
+  // Cheap pre-check (real lock is the UNIQUE constraint inside the tx below).
   const existing = await prisma.paymentEvent.findUnique({
     where: { polarEventId: eventId },
   });
   if (existing) return;
-
-  try {
-    await prisma.paymentEvent.create({
-      data: {
-        polarEventId: eventId,
-        eventType,
-        payloadJson: JSON.parse(JSON.stringify(payload)),
-      },
-    });
-  } catch (err: any) {
-    if (err?.code === "P2002") return;
-    throw err;
-  }
 
   const checkoutId = payload.data.checkout_id;
   const payment = checkoutId
@@ -553,10 +545,28 @@ export async function handleOrderRefunded(payload: {
     return;
   }
 
-  await prisma.poolPayment.update({
-    where: { id: payment.id },
-    data: { status: "REFUNDED" },
-  });
+  // Atomic claim + state change. PaymentEvent.create is INSIDE the tx so the
+  // UNIQUE-constraint slot only stays committed if the REFUNDED update
+  // succeeds. If anything throws, the slot rolls back and Polar's retry
+  // (triggered by our 5xx) gets a fresh shot.
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentEvent.create({
+        data: {
+          polarEventId: eventId,
+          eventType,
+          payloadJson: JSON.parse(JSON.stringify(payload)),
+        },
+      });
+      await tx.poolPayment.update({
+        where: { id: payment.id },
+        data: { status: "REFUNDED" },
+      });
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") return; // race with concurrent webhook — safe skip
+    throw err;
+  }
 
   fireAndForget("audit:payment-refunded", writeAuditEvent({
     actorUserId: payment.userId,
@@ -752,6 +762,28 @@ export async function initiateMpCheckout(
   }
 
   const amountUsd = calculateUpgradePrice(poolType, currentCapacity, targetCapacity);
+
+  // Idempotency: re-entry (host double-click, page reload mid-flow) for the
+  // SAME pool+target+currency must NOT spawn a second PoolPayment + MP
+  // preference. A second preference would let the customer accidentally pay
+  // twice (e.g. by reopening an old tab). Mirrors the Polar version above.
+  const existingPayment = await prisma.poolPayment.findFirst({
+    where: { poolId, status: "PENDING", toCapacity: targetCapacity, currency: "cop" },
+    orderBy: { createdAtUtc: "desc" },
+  });
+
+  if (existingPayment?.mpPreferenceId) {
+    console.log(`[Payments] Reusing existing MP preference ${existingPayment.mpPreferenceId} for payment ${existingPayment.id}`);
+    return {
+      publicKey: getMpPublicKey(),
+      paymentId: existingPayment.id,
+      amountCop: existingPayment.amountCop ?? amountCop,
+      reference: existingPayment.polarCheckoutId,
+      poolId,
+      preferenceId: existingPayment.mpPreferenceId,
+    };
+  }
+
   const reference = `P4A-${poolId.slice(0, 8)}-${Date.now()}`;
 
   // Build URLs for preference
@@ -780,6 +812,10 @@ export async function initiateMpCheckout(
       poolId,
       userId,
       polarCheckoutId: reference,
+      // Persist the MP preference so the idempotency guard above can reuse it
+      // on a subsequent re-entry — without this column the re-entry guard
+      // would always have to re-create the preference, defeating the point.
+      mpPreferenceId: preference.preferenceId,
       status: "PENDING",
       amountUsd: usdToCents(amountUsd),
       // Real pesos paid — used later for accurate Purchase event value.
@@ -1032,26 +1068,12 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   // while genuine retries of the SAME status (MP re-delivery after our 5xx)
   // still dedupe correctly.
   const eventId = `mp-${paymentMpId}-${mpPayment.status}`;
+
+  // Cheap pre-check (real lock is the UNIQUE constraint inside each branch's tx).
   const existing = await prisma.paymentEvent.findUnique({
     where: { polarEventId: eventId },
   });
   if (existing) return;
-
-  try {
-    await prisma.paymentEvent.create({
-      data: {
-        polarEventId: eventId,
-        eventType: "mp.payment.updated",
-        payloadJson: { id: paymentMpId, status: mpPayment.status, reference },
-      },
-    });
-  } catch (err: any) {
-    if (err?.code === "P2002") {
-      console.log(`[PaymentService] Race-condition duplicate MP event ${eventId}, skipping`);
-      return;
-    }
-    throw err;
-  }
 
   const payment = await prisma.poolPayment.findUnique({
     where: { polarCheckoutId: reference },
@@ -1065,33 +1087,52 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   // even when the local payment is COMPLETED — that IS the precondition.
   if (!isRefundSignal && payment.status === "COMPLETED") return;
 
+  // Build the PaymentEvent.create payload once — it's the same in every
+  // branch and goes INSIDE the branch tx to keep the idempotency slot
+  // atomic with the actual state change. If a branch tx rolls back, the
+  // slot rolls back with it and MP's retry can re-process cleanly.
+  const eventCreateData = {
+    polarEventId: eventId,
+    eventType: "mp.payment.updated",
+    payloadJson: { id: paymentMpId, status: mpPayment.status, reference },
+  };
+
   if (mpPayment.status === "approved") {
     // Re-use the event_id from the sync flow if the browser already fired
     // a Pixel event (dedupe). Otherwise mint a new one and persist it for
     // any future re-entry (rare but possible with MP retries).
     const metaEventId = payment.metaEventId ?? crypto.randomUUID();
 
-    await prisma.$transaction(async (tx) => {
-      await tx.poolPayment.update({
-        where: { id: payment.id },
-        data: {
-          status: "COMPLETED",
-          polarOrderId: `mp-${paymentMpId}`,
-          paidAtUtc: new Date(),
-          metaEventId,
-        },
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.paymentEvent.create({ data: eventCreateData });
+        await tx.poolPayment.update({
+          where: { id: payment.id },
+          data: {
+            status: "COMPLETED",
+            polarOrderId: `mp-${paymentMpId}`,
+            paidAtUtc: new Date(),
+            metaEventId,
+          },
+        });
+        await tx.pool.update({
+          where: { id: payment.poolId },
+          data: {
+            maxParticipants: payment.toCapacity,
+            // Re-arm capacity threshold notifications so the warning + full
+            // emails fire again if the pool refills after the expansion.
+            poolFullNotifiedAt: null,
+            capacityWarningNotifiedAt: null,
+          },
+        });
       });
-      await tx.pool.update({
-        where: { id: payment.poolId },
-        data: {
-        maxParticipants: payment.toCapacity,
-        // Re-arm capacity threshold notifications so the warning + full
-        // emails fire again if the pool refills after the expansion.
-        poolFullNotifiedAt: null,
-        capacityWarningNotifiedAt: null,
-      },
-      });
-    });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        console.log(`[PaymentService] Race-condition duplicate MP event ${eventId}, skipping`);
+        return;
+      }
+      throw err;
+    }
     console.log(`[PaymentService] MP IPN: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
 
     const userForIpnCapi = await prisma.user.findUnique({
@@ -1186,10 +1227,21 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       });
     })());
   } else if (mpPayment.status === "rejected" || mpPayment.status === "cancelled") {
-    await prisma.poolPayment.update({
-      where: { id: payment.id },
-      data: { status: "FAILED" },
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.paymentEvent.create({ data: eventCreateData });
+        await tx.poolPayment.update({
+          where: { id: payment.id },
+          data: { status: "FAILED" },
+        });
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        console.log(`[PaymentService] Race-condition duplicate MP event ${eventId}, skipping`);
+        return;
+      }
+      throw err;
+    }
     fireAndForget("ga4mp:payment_failed-mp-ipn", sendGa4Event({
       userId: payment.userId,
       events: [{
@@ -1208,10 +1260,21 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
     // Only meaningful if the payment was previously COMPLETED; otherwise
     // there is no revenue to reverse.
     if (payment.status !== "COMPLETED") return;
-    await prisma.poolPayment.update({
-      where: { id: payment.id },
-      data: { status: "REFUNDED" },
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.paymentEvent.create({ data: eventCreateData });
+        await tx.poolPayment.update({
+          where: { id: payment.id },
+          data: { status: "REFUNDED" },
+        });
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        console.log(`[PaymentService] Race-condition duplicate MP event ${eventId}, skipping`);
+        return;
+      }
+      throw err;
+    }
 
     const originalTransactionId = payment.polarOrderId ?? `mp-${paymentMpId}`;
 

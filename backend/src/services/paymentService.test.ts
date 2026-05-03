@@ -58,6 +58,7 @@ import {
   handleOrderPaid,
   handleCheckoutUpdated,
   initiateCheckout,
+  initiateMpCheckout,
   processMpPayment,
   handleMpWebhook,
   getPaymentStatus,
@@ -66,6 +67,7 @@ import { ServiceError } from "./authService";
 import {
   processPaymentDirect as mpProcessPaymentDirect,
   getPayment as mpGetPayment,
+  createPreference as mpCreatePreference,
 } from "./mercadopago/client";
 import { createCheckout as polarCreateCheckout } from "./polar/client";
 
@@ -157,8 +159,13 @@ describe("handleOrderPaid", () => {
     expect(prisma.poolPayment.update).not.toHaveBeenCalled();
   });
 
-  it("handles race-condition duplicate (P2002 unique constraint)", async () => {
+  it("handles race-condition duplicate (P2002 unique constraint inside tx)", async () => {
+    // Post-fix: paymentEvent.create runs INSIDE the $transaction. A concurrent
+    // webhook that also passed the cheap pre-check will lose the race at the
+    // UNIQUE constraint, the tx rolls back atomically (no payment/pool update
+    // happens), and we silently skip.
     (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     const prismaError = new Error("Unique constraint failed");
     (prismaError as any).code = "P2002";
     (prisma.paymentEvent.create as any).mockRejectedValue(prismaError);
@@ -167,6 +174,37 @@ describe("handleOrderPaid", () => {
 
     expect(prisma.poolPayment.update).not.toHaveBeenCalled();
     expect(prisma.pool.update).not.toHaveBeenCalled();
+  });
+
+  it("commits paymentEvent.create + poolPayment.update + pool.update atomically", async () => {
+    // Regression for the bug where paymentEvent.create lived OUTSIDE the tx:
+    // a tx failure left the idempotency slot persisted, blocking retries.
+    // Now all three writes go through the same tx — verify the create call
+    // is mocked through the $transaction passthrough.
+    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.create as any).mockResolvedValue({});
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
+    (prisma.poolPayment.update as any).mockResolvedValue({});
+    (prisma.pool.update as any).mockResolvedValue({});
+
+    await handleOrderPaid(orderPaidPayload());
+
+    // $transaction was invoked exactly once and ran the callback through the
+    // mock-passthrough so the inner calls hit the prisma mocks.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.paymentEvent.create).toHaveBeenCalledTimes(1);
+    expect(prisma.poolPayment.update).toHaveBeenCalledTimes(1);
+    expect(prisma.pool.update).toHaveBeenCalledTimes(1);
+    // metaEventId is now persisted in the SAME tx update — there is no
+    // second poolPayment.update later in the function (post-fix #9 bonus).
+    expect(prisma.poolPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          metaEventId: expect.any(String), // userId present in default payload
+        }),
+      }),
+    );
   });
 
   it("skips when payment is already COMPLETED", async () => {
@@ -364,6 +402,103 @@ describe("processMpPayment", () => {
   });
 });
 
+describe("initiateMpCheckout (idempotency)", () => {
+  const HOST_POOL = {
+    id: "pool-aaa",
+    maxParticipants: 2,
+    members: [{ userId: "user-bbb", role: "CORPORATE_HOST" }],
+    organization: { id: "org-zzz" },
+  };
+
+  it("REUSES existing PENDING payment + MP preference instead of creating a duplicate", async () => {
+    // Regression for the bug where doube-clicking "Pagar" produced two
+    // PoolPayment rows + two MP preferences for the same poolId/target —
+    // racing the customer into paying twice. Mirror of the Polar
+    // initiateCheckout idempotency block (already tested at line ~283).
+    (prisma.pool.findUnique as any).mockResolvedValue(HOST_POOL);
+    (prisma.poolPayment.findFirst as any).mockResolvedValue({
+      id: "existing-mp-payment",
+      polarCheckoutId: "P4A-pool-aaa-existing",
+      mpPreferenceId: "pref-existing-123",
+      amountCop: 200000,
+      status: "PENDING",
+      toCapacity: 100,
+      currency: "cop",
+    });
+
+    const result = await initiateMpCheckout({
+      userId: "user-bbb",
+      poolId: "pool-aaa",
+      targetCapacity: 100,
+    });
+
+    expect(result.preferenceId).toBe("pref-existing-123");
+    expect(result.paymentId).toBe("existing-mp-payment");
+    // Crucially: NO new MP preference was created and NO new PoolPayment row.
+    expect(mpCreatePreference).not.toHaveBeenCalled();
+    expect(prisma.poolPayment.create).not.toHaveBeenCalled();
+  });
+
+  it("creates a new payment + persists mpPreferenceId when no PENDING exists", async () => {
+    (prisma.pool.findUnique as any).mockResolvedValue(HOST_POOL);
+    (prisma.poolPayment.findFirst as any).mockResolvedValue(null);
+    (mpCreatePreference as any).mockResolvedValue({ preferenceId: "pref-new-456" });
+    (prisma.poolPayment.create as any).mockResolvedValue({
+      id: "new-mp-payment",
+      polarCheckoutId: "P4A-pool-aaa-new",
+      mpPreferenceId: "pref-new-456",
+    });
+
+    const result = await initiateMpCheckout({
+      userId: "user-bbb",
+      poolId: "pool-aaa",
+      targetCapacity: 100,
+    });
+
+    expect(mpCreatePreference).toHaveBeenCalledTimes(1);
+    expect(prisma.poolPayment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          mpPreferenceId: "pref-new-456",
+        }),
+      }),
+    );
+    expect(result.preferenceId).toBe("pref-new-456");
+  });
+
+  it("if existing PENDING has mpPreferenceId=null (legacy row), creates a fresh preference", async () => {
+    // Pre-migration rows lack mpPreferenceId. We can't reuse them safely
+    // (no preference to point the Brick at), so we treat them as if they
+    // didn't exist and create a new payment. Acceptable: legacy rows are
+    // a finite, one-time set; new rows always have the column populated.
+    (prisma.pool.findUnique as any).mockResolvedValue(HOST_POOL);
+    (prisma.poolPayment.findFirst as any).mockResolvedValue({
+      id: "legacy-mp-payment",
+      polarCheckoutId: "P4A-pool-aaa-legacy",
+      mpPreferenceId: null, // pre-migration
+      amountCop: 200000,
+      status: "PENDING",
+      toCapacity: 100,
+      currency: "cop",
+    });
+    (mpCreatePreference as any).mockResolvedValue({ preferenceId: "pref-fresh-789" });
+    (prisma.poolPayment.create as any).mockResolvedValue({
+      id: "new-mp-payment",
+      mpPreferenceId: "pref-fresh-789",
+    });
+
+    const result = await initiateMpCheckout({
+      userId: "user-bbb",
+      poolId: "pool-aaa",
+      targetCapacity: 100,
+    });
+
+    expect(mpCreatePreference).toHaveBeenCalledTimes(1);
+    expect(prisma.poolPayment.create).toHaveBeenCalledTimes(1);
+    expect(result.preferenceId).toBe("pref-fresh-789");
+  });
+});
+
 describe("handleMpWebhook", () => {
   it("expands capacity when MP IPN reports approved payment", async () => {
     (mpGetPayment as any).mockResolvedValue({
@@ -396,12 +531,17 @@ describe("handleMpWebhook", () => {
     );
   });
 
-  it("handles race-condition duplicate (P2002) in MP webhook", async () => {
+  it("handles race-condition duplicate (P2002) inside the approved-branch tx", async () => {
+    // Post-fix #9: the paymentEvent.create call now happens INSIDE the same
+    // tx as the poolPayment + pool updates. A concurrent webhook losing the
+    // UNIQUE-constraint race causes the tx to roll back atomically — neither
+    // payment nor pool gets touched, and we silently skip.
     (mpGetPayment as any).mockResolvedValue({
       status: "approved",
       external_reference: "P4A-pool-aaa-12345",
     });
     (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     const prismaError = new Error("Unique constraint failed");
     (prismaError as any).code = "P2002";
     (prisma.paymentEvent.create as any).mockRejectedValue(prismaError);
@@ -409,6 +549,7 @@ describe("handleMpWebhook", () => {
     await handleMpWebhook("mp-payment-999");
 
     expect(prisma.poolPayment.update).not.toHaveBeenCalled();
+    expect(prisma.pool.update).not.toHaveBeenCalled();
   });
 
   it("eventId includes mpPayment.status — different statuses are distinct events", async () => {

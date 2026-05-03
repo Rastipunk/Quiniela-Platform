@@ -492,6 +492,23 @@ export async function sendInvitations(
   let failed = 0;
 
   for (const invite of pendingInvites) {
+    // Atomic claim: only this caller proceeds with sending if the invite is
+    // still PENDING. If two `sendInvitations` calls land at the same time
+    // (host double-clicked, or a tab restored), both findMany() see the same
+    // PENDING set, but only the first updateMany WHERE status=PENDING flips
+    // each row — the second sees count=0 and silently skips, so each
+    // employee receives exactly one email.
+    // Optimistically marking as SENT before the email is the standard
+    // claim-then-confirm pattern: if the email actually fails, we revert to
+    // FAILED in the catch path. The window where "SENT" is set but the email
+    // hasn't actually left is the same window the previous code had between
+    // sendEmail and update — no worse, but now race-safe.
+    const claim = await prisma.corporateInvite.updateMany({
+      where: { id: invite.id, status: "PENDING" },
+      data: { status: "SENT" },
+    });
+    if (claim.count === 0) continue; // another concurrent call already claimed this invite
+
     try {
       // Always send the invitation email — even if the user already has an account.
       // The activation link handles both cases (new account creation or existing user joining).
@@ -509,11 +526,7 @@ export async function sendInvitations(
       });
 
       if (emailResult.success) {
-        await prisma.corporateInvite.update({
-          where: { id: invite.id },
-          data: { status: "SENT" },
-        });
-        sent++;
+        sent++; // status already SENT from the claim above
       } else {
         console.error(`[CorporateService] Email failed for ${invite.email}: ${emailResult.error}`);
         await prisma.corporateInvite.update({
