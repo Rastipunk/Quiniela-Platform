@@ -91,65 +91,20 @@ export function PhaseStatusPanel({
                   </div>
                 )}
               </div>
-              {status === "COMPLETED" && (
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {!hasPhaseAdvanced(phase.id) && nextPhaseMap[phase.id] && (
-                    <button
-                      disabled={busyKey === `advance:${phase.id}`}
-                      onClick={async () => {
-                        if (!token || !poolId) return;
-                        setBusyKey(`advance:${phase.id}`);
-                        setError(null);
-                        try {
-                          const result = await manualAdvancePhase(token, poolId, phase.id);
-                          await reload();
-                          alert(`✅ ${t("admin.phasePanel.advanceSuccess")}: ${result.message || ''}`);
-                        } catch (err: any) {
-                          setError(friendlyError(err));
-                        } finally {
-                          setBusyKey(null);
-                        }
-                      }}
-                      style={{
-                        padding: "8px 16px",
-                        borderRadius: radii.lg,
-                        border: `1px solid ${colors.blue}`,
-                        background: busyKey === `advance:${phase.id}` ? colors.disabled : colors.blue,
-                        color: colors.white,
-                        cursor: busyKey === `advance:${phase.id}` ? "wait" : "pointer",
-                        fontSize: fontSize.md,
-                        fontWeight: fontWeight.semibold,
-                        whiteSpace: "nowrap"
-                      }}
-                    >
-                      {busyKey === `advance:${phase.id}` ? `⏳ ${t("admin.phasePanel.advancing")}` : `🚀 ${t("admin.phasePanel.advanceButton")}`}
-                    </button>
-                  )}
-                  {hasPhaseAdvanced(phase.id) && (
-                    <span style={{
-                      padding: "6px 12px",
-                      borderRadius: radii.lg,
-                      background: colors.successBg,
-                      border: `1px solid ${colors.success}`,
-                      color: colors.successDark,
-                      fontSize: fontSize.md,
-                      fontWeight: fontWeight.semibold,
-                      whiteSpace: "nowrap"
-                    }}>
-                      ✓ {t("admin.phasePanel.alreadyAdvanced")}
-                    </span>
-                  )}
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* Advance is only meaningful once every match in the
+                    phase has a result — keep it gated to COMPLETED. */}
+                {status === "COMPLETED" && !hasPhaseAdvanced(phase.id) && nextPhaseMap[phase.id] && (
                   <button
-                    disabled={busyKey === `lock:${phase.id}`}
+                    disabled={busyKey === `advance:${phase.id}`}
                     onClick={async () => {
                       if (!token || !poolId) return;
-                      const isCurrentlyLocked = (overview.pool.lockedPhases || []).includes(phase.id);
-                      setBusyKey(`lock:${phase.id}`);
+                      setBusyKey(`advance:${phase.id}`);
                       setError(null);
                       try {
-                        await lockPhase(token, poolId, phase.id, !isCurrentlyLocked);
+                        const result = await manualAdvancePhase(token, poolId, phase.id);
                         await reload();
-                        alert(isCurrentlyLocked ? `✅ ${t("admin.phasePanel.phaseUnlocked")}` : `🔒 ${t("admin.phasePanel.phaseLocked")}`);
+                        alert(`✅ ${t("admin.phasePanel.advanceSuccess")}: ${result.message || ''}`);
                       } catch (err: any) {
                         setError(friendlyError(err));
                       } finally {
@@ -159,23 +114,75 @@ export function PhaseStatusPanel({
                     style={{
                       padding: "8px 16px",
                       borderRadius: radii.lg,
-                      border: `1px solid ${(overview.pool.lockedPhases || []).includes(phase.id) ? colors.success : colors.warning}`,
-                      background: busyKey === `lock:${phase.id}` ? colors.disabled : ((overview.pool.lockedPhases || []).includes(phase.id) ? colors.success : colors.warning),
+                      border: `1px solid ${colors.blue}`,
+                      background: busyKey === `advance:${phase.id}` ? colors.disabled : colors.blue,
                       color: colors.white,
-                      cursor: busyKey === `lock:${phase.id}` ? "wait" : "pointer",
+                      cursor: busyKey === `advance:${phase.id}` ? "wait" : "pointer",
                       fontSize: fontSize.md,
                       fontWeight: fontWeight.semibold,
                       whiteSpace: "nowrap"
                     }}
                   >
-                    {busyKey === `lock:${phase.id}`
-                      ? `⏳ ${t("admin.phasePanel.processing")}`
-                      : (overview.pool.lockedPhases || []).includes(phase.id)
-                        ? `🔓 ${t("admin.phasePanel.unlockButton")}`
-                        : `🔒 ${t("admin.phasePanel.lockButton")}`}
+                    {busyKey === `advance:${phase.id}` ? `⏳ ${t("admin.phasePanel.advancing")}` : `🚀 ${t("admin.phasePanel.advanceButton")}`}
                   </button>
-                </div>
-              )}
+                )}
+                {status === "COMPLETED" && hasPhaseAdvanced(phase.id) && (
+                  <span style={{
+                    padding: "6px 12px",
+                    borderRadius: radii.lg,
+                    background: colors.successBg,
+                    border: `1px solid ${colors.success}`,
+                    color: colors.successDark,
+                    fontSize: fontSize.md,
+                    fontWeight: fontWeight.semibold,
+                    whiteSpace: "nowrap"
+                  }}>
+                    ✓ {t("admin.phasePanel.alreadyAdvanced")}
+                  </span>
+                )}
+                {/* Lock/unlock must be available BEFORE the phase
+                    finishes — that's the whole point of locking
+                    (freeze picks while preparing errata results,
+                    block edits during a known incident). The old
+                    UI only showed this button on COMPLETED phases,
+                    where locking has no practical effect because
+                    the kickoff deadlines have already passed. */}
+                <button
+                  disabled={busyKey === `lock:${phase.id}`}
+                  onClick={async () => {
+                    if (!token || !poolId) return;
+                    const isCurrentlyLocked = (overview.pool.lockedPhases || []).includes(phase.id);
+                    setBusyKey(`lock:${phase.id}`);
+                    setError(null);
+                    try {
+                      await lockPhase(token, poolId, phase.id, !isCurrentlyLocked);
+                      await reload();
+                      alert(isCurrentlyLocked ? `✅ ${t("admin.phasePanel.phaseUnlocked")}` : `🔒 ${t("admin.phasePanel.phaseLocked")}`);
+                    } catch (err: any) {
+                      setError(friendlyError(err));
+                    } finally {
+                      setBusyKey(null);
+                    }
+                  }}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: radii.lg,
+                    border: `1px solid ${(overview.pool.lockedPhases || []).includes(phase.id) ? colors.success : colors.warning}`,
+                    background: busyKey === `lock:${phase.id}` ? colors.disabled : ((overview.pool.lockedPhases || []).includes(phase.id) ? colors.success : colors.warning),
+                    color: colors.white,
+                    cursor: busyKey === `lock:${phase.id}` ? "wait" : "pointer",
+                    fontSize: fontSize.md,
+                    fontWeight: fontWeight.semibold,
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  {busyKey === `lock:${phase.id}`
+                    ? `⏳ ${t("admin.phasePanel.processing")}`
+                    : (overview.pool.lockedPhases || []).includes(phase.id)
+                      ? `🔓 ${t("admin.phasePanel.unlockButton")}`
+                      : `🔒 ${t("admin.phasePanel.lockButton")}`}
+                </button>
+              </div>
             </div>
           );
         })}
