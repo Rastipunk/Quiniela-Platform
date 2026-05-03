@@ -230,6 +230,23 @@ function verifyMpSignature(req: Request): boolean {
   }
   if (!ts || !hash) return false;
 
+  // Drift / replay protection. The HMAC alone is forever-valid: an attacker
+  // who captures a legitimate webhook (proxy logs, mirrored TLS, etc.) could
+  // re-deliver it indefinitely. Standard practice (Stripe, Polar) is to
+  // reject anything outside a small window around the current clock.
+  // MP's docs example shows ts in seconds (10 digits); we auto-detect ms vs s
+  // for forward-compat in case MP ever switches. anything below 1e12 is
+  // seconds because 1e12 ms ≈ year 2001 and 1e12 s ≈ year 33658.
+  let tsMs = parseInt(ts, 10);
+  if (isNaN(tsMs)) return false;
+  if (tsMs < 1e12) tsMs *= 1000;
+  const driftMs = Math.abs(Date.now() - tsMs);
+  const MAX_DRIFT_MS = parseInt(process.env.MP_WEBHOOK_MAX_DRIFT_MS || "300000", 10); // 5min default
+  if (driftMs > MAX_DRIFT_MS) {
+    console.warn(`[Payments] MP webhook ts drift ${driftMs}ms > ${MAX_DRIFT_MS}ms — rejecting`);
+    return false;
+  }
+
   // data.id comes from query params per MP spec
   const dataId = req.query["data.id"] as string | undefined;
 
@@ -273,7 +290,11 @@ export function createMpWebhookHandler() {
       res.status(200).json({ received: true });
     } catch (err) {
       console.error("[Payments] MP webhook error:", err instanceof Error ? err.message : String(err));
-      res.status(200).json({ received: true });
+      // 5xx so MP retries the delivery with backoff. The handler is idempotent
+      // via PaymentEvent.polarEventId UNIQUE, so retries are safe.
+      // Returning 200 here was the previous behaviour and silently lost pagos
+      // when the DB or downstream MP API was momentarily unavailable.
+      res.status(500).json({ error: "Processing failed", retryable: true });
     }
   };
 }
@@ -325,12 +346,17 @@ export function createWebhookHandler() {
       res.status(200).json({ received: true });
     } catch (err) {
       console.error("[Payments] Webhook error:", err instanceof Error ? err.message : String(err));
-      // Return 200 anyway to prevent Polar from retrying on our errors
-      // Only return 401 for signature verification failures
       if (err instanceof Error && err.message.includes("signature")) {
+        // 401 — signature mismatch is a config/security issue, not a transient
+        // failure. Polar will not retry these (correct).
         res.status(401).json({ error: "Invalid signature" });
       } else {
-        res.status(200).json({ received: true, error: "Processing failed" });
+        // 500 — transient (DB outage, network, race) errors must surface as
+        // 5xx so Polar's exponential backoff retries the delivery. The handler
+        // is idempotent at the PaymentEvent.polarEventId UNIQUE constraint, so
+        // duplicate retries are safe. Returning 200 here was the previous
+        // behaviour and silently lost pagos when the DB was momentarily down.
+        res.status(500).json({ error: "Processing failed", retryable: true });
       }
     }
   };

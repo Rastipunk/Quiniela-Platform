@@ -410,6 +410,90 @@ describe("handleMpWebhook", () => {
 
     expect(prisma.poolPayment.update).not.toHaveBeenCalled();
   });
+
+  it("eventId includes mpPayment.status — different statuses are distinct events", async () => {
+    // Regression: previous eventId was `mp-${paymentMpId}` only. The first
+    // webhook (often `pending` or `in_process` for PSE/Nequi) consumed that
+    // single slot, and a later `approved` webhook for the same payment was
+    // dedup-skipped, leaving the pool stuck in PENDING forever.
+    (mpGetPayment as any).mockResolvedValue({
+      status: "approved",
+      external_reference: "P4A-pool-aaa-12345",
+    });
+    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.create as any).mockResolvedValue({});
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
+    (prisma.poolPayment.update as any).mockResolvedValue({});
+    (prisma.pool.update as any).mockResolvedValue({});
+    (prisma.user.findUnique as any).mockResolvedValue(null);
+
+    await handleMpWebhook("mp-payment-999");
+
+    expect(prisma.paymentEvent.findUnique).toHaveBeenCalledWith({
+      where: { polarEventId: "mp-mp-payment-999-approved" },
+    });
+    expect(prisma.paymentEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ polarEventId: "mp-mp-payment-999-approved" }),
+      }),
+    );
+  });
+
+  it("an intermediate `pending` webhook is dedup-independent from a later `approved` one", async () => {
+    // Walk-through:
+    //   1) Webhook arrives, MP returns status=pending
+    //      eventId="mp-X-pending", findUnique→null, create succeeds, no expansion
+    //   2) Webhook arrives later, MP returns status=approved
+    //      eventId="mp-X-approved", findUnique→null (different key!), create
+    //      succeeds, expansion runs ✓
+    // We assert step 2 expands even though step 1 already wrote a row. The
+    // bug we're fixing was: step 2's findUnique HIT step 1's row and returned.
+
+    // ── Step 1: pending webhook ────────────────────────────────────────
+    (mpGetPayment as any).mockResolvedValueOnce({
+      status: "pending",
+      external_reference: "P4A-pool-aaa-12345",
+    });
+    (prisma.paymentEvent.findUnique as any).mockResolvedValueOnce(null);
+    (prisma.paymentEvent.create as any).mockResolvedValueOnce({});
+    (prisma.poolPayment.findUnique as any).mockResolvedValueOnce({
+      ...MOCK_PAYMENT,
+      status: "PENDING",
+    });
+    // No pool.update or poolPayment.update in step 1 (pending falls through).
+
+    await handleMpWebhook("mp-payment-777");
+
+    expect(prisma.pool.update).not.toHaveBeenCalled();
+    expect(prisma.poolPayment.update).not.toHaveBeenCalled();
+
+    // ── Step 2: approved webhook for the SAME payment ──────────────────
+    (mpGetPayment as any).mockResolvedValueOnce({
+      status: "approved",
+      external_reference: "P4A-pool-aaa-12345",
+    });
+    // Critical: the find for the new eventId returns null even though the
+    // pending eventId is "stored". With the old single-key scheme this would
+    // have hit the existing row and returned without doing anything.
+    (prisma.paymentEvent.findUnique as any).mockResolvedValueOnce(null);
+    (prisma.paymentEvent.create as any).mockResolvedValueOnce({});
+    (prisma.poolPayment.findUnique as any).mockResolvedValueOnce(MOCK_PAYMENT);
+    (prisma.poolPayment.update as any).mockResolvedValueOnce({});
+    (prisma.pool.update as any).mockResolvedValueOnce({});
+    (prisma.user.findUnique as any).mockResolvedValue(null);
+
+    await handleMpWebhook("mp-payment-777");
+
+    expect(prisma.paymentEvent.findUnique).toHaveBeenLastCalledWith({
+      where: { polarEventId: "mp-mp-payment-777-approved" },
+    });
+    expect(prisma.poolPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "COMPLETED" }),
+      }),
+    );
+    expect(prisma.pool.update).toHaveBeenCalled();
+  });
 });
 
 describe("getPaymentStatus", () => {

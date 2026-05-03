@@ -6,9 +6,14 @@ import type { Request, Response } from "express";
 
 vi.mock("../services/paymentService", () => ({
   handleOrderPaid: vi.fn().mockResolvedValue(undefined),
+  handleOrderRefunded: vi.fn().mockResolvedValue(undefined),
   handleCheckoutUpdated: vi.fn().mockResolvedValue(undefined),
   handleMpWebhook: vi.fn().mockResolvedValue(undefined),
 }));
+
+// Bring the mocked handlers into scope so individual tests can re-mock them
+// (e.g. force a throw to exercise the 500 retry-on-error path).
+import { handleOrderPaid, handleMpWebhook } from "../services/paymentService";
 
 vi.mock("standardwebhooks", () => {
   class MockWebhook {
@@ -108,6 +113,38 @@ describe("Polar webhook (createWebhookHandler)", () => {
     );
 
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("returns 500 (not 200) when the inner handler throws — so Polar retries", async () => {
+    // Regression: the previous implementation returned 200 in this catch branch
+    // to "prevent Polar from retrying on our errors". That swallowed transient
+    // failures (DB outage, etc.) and lost pagos permanently. Idempotency at
+    // PaymentEvent.polarEventId UNIQUE makes retries safe — surface the 5xx.
+    process.env.POLAR_WEBHOOK_SECRET = "test-secret";
+    (handleOrderPaid as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("DB connection lost"),
+    );
+
+    const { createWebhookHandler: freshCreate } = await import("./payments");
+    const handler = freshCreate();
+    const res = mockRes();
+
+    await handler(
+      mockReq({
+        body: Buffer.from(JSON.stringify({ type: "order.paid", data: { id: "evt_123" } })),
+        headers: {
+          "webhook-id": "wh_123",
+          "webhook-timestamp": "12345",
+          "webhook-signature": "valid-sig",
+        },
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ retryable: true }),
+    );
   });
 });
 
@@ -210,5 +247,131 @@ describe("MP webhook (createMpWebhookHandler)", () => {
     );
 
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("accepts a fresh timestamp in seconds (MP's documented format)", async () => {
+    // MP docs example shows 10-digit ts (Unix seconds). Verify our auto-detect
+    // recognises that and validates drift against the current clock correctly.
+    process.env.MP_WEBHOOK_SECRET = MP_SECRET;
+
+    const ts = String(Math.floor(Date.now() / 1000));
+    const requestId = "req-secs-1";
+    const dataId = "mp-pay-secs";
+    const xSignature = computeMpSignature(dataId, requestId, ts, MP_SECRET);
+
+    const handler = createMpWebhookHandler();
+    const res = mockRes();
+
+    await handler(
+      mockReq({
+        body: { type: "payment", data: { id: dataId } },
+        headers: { "x-signature": xSignature, "x-request-id": requestId },
+        query: { "data.id": dataId },
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("rejects (401) a stale timestamp older than the drift window — replay defence", async () => {
+    // Capture-and-replay attack scenario: an attacker re-delivers a webhook
+    // captured days/weeks ago. HMAC is forever-valid, so without a drift check
+    // we'd accept it. 5 min default window matches Stripe/Polar industry standard.
+    process.env.MP_WEBHOOK_SECRET = MP_SECRET;
+
+    // 10 minutes in the past (in ms — auto-detect path)
+    const oldTs = String(Date.now() - 10 * 60 * 1000);
+    const requestId = "req-stale-1";
+    const dataId = "mp-pay-stale";
+    const xSignature = computeMpSignature(dataId, requestId, oldTs, MP_SECRET);
+
+    const handler = createMpWebhookHandler();
+    const res = mockRes();
+
+    await handler(
+      mockReq({
+        body: { type: "payment", data: { id: dataId } },
+        headers: { "x-signature": xSignature, "x-request-id": requestId },
+        query: { "data.id": dataId },
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it("rejects (401) a stale timestamp in seconds format too", async () => {
+    // Same defence, but with the timestamp expressed in MP's documented
+    // seconds format. Ensures the auto-detect path doesn't accidentally
+    // bypass the drift check.
+    process.env.MP_WEBHOOK_SECRET = MP_SECRET;
+
+    const oldTsSecs = String(Math.floor(Date.now() / 1000) - 600); // 10 min ago
+    const requestId = "req-stale-secs";
+    const dataId = "mp-pay-stale-secs";
+    const xSignature = computeMpSignature(dataId, requestId, oldTsSecs, MP_SECRET);
+
+    const handler = createMpWebhookHandler();
+    const res = mockRes();
+
+    await handler(
+      mockReq({
+        body: { type: "payment", data: { id: dataId } },
+        headers: { "x-signature": xSignature, "x-request-id": requestId },
+        query: { "data.id": dataId },
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it("rejects (401) a non-numeric timestamp", async () => {
+    process.env.MP_WEBHOOK_SECRET = MP_SECRET;
+    const handler = createMpWebhookHandler();
+    const res = mockRes();
+
+    await handler(
+      mockReq({
+        body: { type: "payment", data: { id: "x" } },
+        headers: { "x-signature": "ts=notanumber,v1=00", "x-request-id": "r" },
+        query: { "data.id": "x" },
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it("returns 500 (not 200) when the inner handler throws — so MP retries", async () => {
+    // Regression: the previous implementation returned 200 in this catch branch.
+    // Same problem and same fix as the Polar handler — surface 5xx so MP retries.
+    process.env.MP_WEBHOOK_SECRET = MP_SECRET;
+    (handleMpWebhook as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("MP API timeout"),
+    );
+
+    const ts = String(Date.now());
+    const requestId = "req-throw";
+    const dataId = "mp-pay-throw";
+    const xSignature = computeMpSignature(dataId, requestId, ts, MP_SECRET);
+
+    const handler = createMpWebhookHandler();
+    const res = mockRes();
+
+    await handler(
+      mockReq({
+        body: { type: "payment", data: { id: dataId } },
+        headers: { "x-signature": xSignature, "x-request-id": requestId },
+        query: { "data.id": dataId },
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ retryable: true }),
+    );
   });
 });

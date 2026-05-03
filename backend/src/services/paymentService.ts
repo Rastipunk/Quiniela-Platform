@@ -1023,23 +1023,31 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
 
   const reference = mpPayment.external_reference;
 
-  // Idempotency
+  // Idempotency keyed on (paymentId, status). The MP payment lifecycle emits
+  // multiple webhooks per payment (pending → in_process → approved → maybe
+  // refunded later). Keying only on paymentId would dedupe ALL webhooks after
+  // the first — so a payment that arrived as `pending` first would never see
+  // its `approved` webhook processed, leaving the pool stuck in PENDING.
+  // Including the status in the key means each transition gets its own slot,
+  // while genuine retries of the SAME status (MP re-delivery after our 5xx)
+  // still dedupe correctly.
+  const eventId = `mp-${paymentMpId}-${mpPayment.status}`;
   const existing = await prisma.paymentEvent.findUnique({
-    where: { polarEventId: `mp-${paymentMpId}` },
+    where: { polarEventId: eventId },
   });
   if (existing) return;
 
   try {
     await prisma.paymentEvent.create({
       data: {
-        polarEventId: `mp-${paymentMpId}`,
+        polarEventId: eventId,
         eventType: "mp.payment.updated",
         payloadJson: { id: paymentMpId, status: mpPayment.status, reference },
       },
     });
   } catch (err: any) {
     if (err?.code === "P2002") {
-      console.log(`[PaymentService] Race-condition duplicate MP event ${paymentMpId}, skipping`);
+      console.log(`[PaymentService] Race-condition duplicate MP event ${eventId}, skipping`);
       return;
     }
     throw err;
