@@ -17,13 +17,22 @@
 
 ### User Roles
 
+**Platform roles** (`PlatformRole` enum):
+
 | Role | Description |
 |------|-------------|
-| **PLAYER** | Joins pools, makes picks, views leaderboard |
-| **HOST** | Creates/manages pools, invites players, can override results (with justification + notification) |
-| **CO_ADMIN** | Same as HOST except cannot delete pool |
-| **CORPORATE_HOST** | HOST for corporate pools created via enterprise flow |
-| **PLATFORM ADMIN** | Manages templates, instances, platform settings |
+| **PLAYER** | Default. Standard user. |
+| **HOST** | Reserved (currently equivalent to PLAYER at the platform level; pool-level HOST is set via `PoolMemberRole`). |
+| **ADMIN** | Platform administrator. Manages templates, instances, platform settings, analytics dashboard. |
+
+**Pool roles** (`PoolMemberRole` enum, scoped per pool):
+
+| Role | Description |
+|------|-------------|
+| **PLAYER** | Joins pools, makes picks, views leaderboard. |
+| **HOST** | Creates/manages pools, invites players, can override results (with justification + notification). |
+| **CO_ADMIN** | Same as HOST except cannot delete pool or nominate other co-admins. |
+| **CORPORATE_HOST** | HOST for corporate pools created via the enterprise flow. |
 
 ---
 
@@ -152,18 +161,23 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 |----------|-------|
 | Entry point | `server.ts` |
 | Database | `db.ts`, `prisma/schema.prisma` |
-| Auth | `lib/jwt.ts`, `lib/password.ts`, `middleware/requireAuth.ts` |
+| Auth | `lib/jwt.ts`, `lib/password.ts`, `lib/passwordRules.ts`, `lib/authCookies.ts`, `middleware/requireAuth.ts`, `middleware/requireAdmin.ts` |
+| Roles & audit | `lib/roles.ts`, `lib/audit.ts` |
 | Branding | `lib/brand.ts` |
 | Constants | `lib/constants.ts` (time, pagination, sync, locales, user rules) |
 | Shared schemas | `lib/schemas.ts` (Zod field schemas for reuse) |
-| Email | `lib/email.ts`, `lib/emailTemplates.ts` |
-| Scoring | `lib/scoringAdvanced.ts`, `lib/pickPresets.ts` |
+| Email | `lib/email.ts`, `lib/emailTemplates.ts`, `lib/htmlSafe.ts` |
+| Scoring | `lib/scoringAdvanced.ts`, `lib/pickPresets.ts`, `lib/scoringBreakdown.ts` |
+| Pool capacity | `lib/poolCapacity.ts` |
+| Server analytics | `lib/ga4.ts`, `lib/metaCapi.ts` |
 | API-Football | `services/apiFootball/client.ts` (fallback only) |
 | picks4all-scores | `services/scoresService/client.ts` (primary live scores) |
 | Smart Sync | `services/smartSync/service.ts` (API-Football fallback) |
-| Payments | `services/mercadopago/client.ts`, `services/polar/client.ts`, `services/paymentService.ts` |
+| Payments | `services/mercadopago/`, `services/polar/`, `services/paymentService.ts` |
 | Pricing | `lib/pricing.ts` (USD + COP dynamic pricing with volume discounts) |
-| Jobs | `jobs/liveScoresJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts` |
+| Result publishing | `services/resultService.ts`, `services/resultSync/`, `services/advancementTrigger.ts` |
+| Admin routes | `routes/admin.ts`, `routes/adminAnalyticsDashboard.ts`, `routes/adminInstances.ts`, `routes/adminTemplates.ts`, `routes/adminCorporate.ts`, `routes/adminSettings.ts` |
+| Jobs | `jobs/liveScoresJob.ts`, `jobs/smartSyncJob.ts`, `jobs/resultSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/fixtureVerificationJob.ts`, `jobs/newMemberDigestJob.ts`, `jobs/capiRetryJob.ts`, `jobs/trackStatusCheckerJob.ts` |
 
 ### Frontend (`frontend-next/src/`)
 | Category | Files |

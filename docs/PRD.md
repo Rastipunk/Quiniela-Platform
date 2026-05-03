@@ -2,7 +2,7 @@
 # Picks4All
 
 > **Status:** Live at picks4all.com
-> **Document reflects:** Codebase as of 2026-04-04
+> **Document reflects:** Codebase as of 2026-05-03
 
 ---
 
@@ -58,13 +58,16 @@ TournamentTemplate (reusable format definition)
 1. **Authentication** -- Email/password + Google OAuth, JWT-based sessions
 2. **Pool management** -- Create, configure, invite, join, administer prediction pools
 3. **Predictions** -- Match score picks, structural picks (group standings, knockout brackets)
-4. **Results** -- API-first automatic results (SmartSync), host override with justification
-5. **Scoring** -- 7 pick types, 3 presets + custom, cumulative scoring with auto-scaling
+4. **Results** -- Scraper-first live scoring (picks4all-scores) with API-Football as fallback. Host override with justification.
+5. **Scoring** -- 7 pick types, 4 presets (3 base + custom), cumulative scoring with auto-scaling
 6. **Leaderboard** -- Real-time rankings with scoring breakdowns per match/phase
 7. **Corporate self-service** -- Enterprise inquiry, pool creation wizard, employee activation
-8. **Internationalization** -- Full ES/EN/PT support for UI, emails, legal pages, SEO
-9. **SEO** -- SSR public pages, JSON-LD, hreflang, localized sitemap, regional landing pages
-10. **Email notifications** -- Welcome, verification, invitation, deadline reminder, result published, pool completed, corporate activation
+8. **Payments** -- Dual gateway: Mercado Pago (Colombia/COP) + Polar.sh (international/USD)
+9. **Internationalization** -- Full ES/EN/PT support for UI, emails, legal pages, SEO
+10. **SEO** -- SSR public pages, JSON-LD, hreflang, localized sitemap, regional landing pages
+11. **Email notifications** -- Welcome, verification, invitation, deadline reminder, result published, pool completed, corporate activation, capacity warnings, new-member digest, admin alerts
+12. **Admin tooling** -- Platform analytics dashboard (`/admin/analytics`), feedback inbox (`/admin/feedback`), email/settings panels
+13. **Server-side analytics** -- GA4 Measurement Protocol + Meta CAPI (with retry queue) for purchase deduplication and EMQ uplift
 
 ---
 
@@ -195,12 +198,14 @@ DELETE (allowed when 0-1 members)
 
 | Action | Who Can Do It | Details |
 |--------|--------------|---------|
-| Expel (permanent ban) | HOST, CO_ADMIN | Player cannot rejoin. Reason required. Picks remain visible. |
-| Suspend (temporary) | HOST, CO_ADMIN | Ban for N days. Reason required. |
-| Reactivate | HOST, CO_ADMIN | Restores expelled/suspended player. |
+| Expel (ban) | HOST, CO_ADMIN | Status -> BANNED. Player cannot rejoin. Reason required. Picks remain visible in leaderboard. |
+| Unban | HOST, CO_ADMIN | Restores BANNED player to ACTIVE. |
+| Approve / reject join request | HOST, CO_ADMIN | Only when pool requires approval. PENDING_APPROVAL -> ACTIVE / removed. |
 | Leave pool | PLAYER only | Status -> LEFT. Points preserved. Read-only access. |
 | Promote to CO_ADMIN | HOST only | By username. |
 | Remove CO_ADMIN | HOST only | Demotes back to PLAYER. |
+
+**`PoolMemberStatus` enum:** `PENDING_APPROVAL`, `ACTIVE`, `LEFT`, `BANNED`. There is no temporary "suspended" state — bans are revertible only via explicit unban.
 
 ---
 
@@ -260,33 +265,39 @@ Structural predictions are scored separately using the structural scoring engine
 
 ## 7. Results System
 
-### 7.1 API-First Results (SmartSync)
+### 7.1 Scraper-First Results
 
-Results are fetched automatically from API-Football via the SmartSync system:
+Results are fetched automatically. The platform runs two sync layers:
 
-1. A cron job runs periodically and checks `MatchSyncState` records
-2. Matches in their "live window" (kickoff + 5min to kickoff + 110min) are polled
-3. When a match finishes, results are auto-published to all pools containing that match
-4. Leaderboard is recalculated immediately after publication
-5. Email notifications sent to pool members (if enabled)
+1. **picks4all-scores (primary)** — In-house scraper service polled by `liveScoresJob` every 15 seconds during a match's live window. Reports provisional and final scores in near real-time.
+2. **API-Football (fallback)** — `smartSyncJob` polls API-Football and only publishes results that the scraper has not already reported, activating ~30 minutes after estimated full-time as a safety net.
+
+**Source hierarchy** (higher sources never overwritten by lower ones): `HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL > HOST_PROVISIONAL > HOST_MANUAL`.
+
+**Grace period:** 5 minutes after estimated full-time before a result is finalized (configurable via `SCORES_GRACE_PERIOD_MS`).
+
+When a result is published in any source:
+- Leaderboard is recalculated immediately
+- Email notifications go out to pool members (if enabled)
+- All match-aware advancement is triggered for the relevant tournament instance
 
 **Key models:**
-- `MatchExternalMapping` -- Maps internal match IDs to API-Football fixture IDs
-- `MatchSyncState` -- Tracks per-match sync status (PENDING, LIVE, FINISHED)
-- `ResultSyncLog` -- Audit trail of all sync operations
+- `PoolMatchResult` / `PoolMatchResultVersion` — Per-pool result, immutable version history
+- `MatchExternalMapping` — Maps internal match IDs to API-Football fixture IDs
+- `MatchSyncState` — Tracks per-match sync status (PENDING, LIVE, FINISHED)
+- `ResultSyncLog` — Audit trail of all sync operations
+- `PlatformSettings.scoresServiceEnabled` — Kill switch for the scraper layer
 
 ### 7.2 Host Override
 
-The host **cannot** publish results manually. Results must come from SmartSync.
-
-The host **can override** an existing result:
+The host can correct an existing result (does not publish from scratch in the AUTO modes — sync layers do that). Override requirements:
 
 - Mandatory: written justification (stored in `PoolMatchOverride`)
 - Warning dialog shown before confirmation
 - Email notification sent to all pool members informing of the correction
 - All result versions are immutable and auditable via `PoolMatchResultVersion`
 
-Legacy tournament instances with MANUAL mode are exempt from the API-first rule.
+Legacy tournament instances configured with MANUAL mode are exempt from the scraper-first rule and rely on host publication.
 
 ### 7.3 Result Data
 
@@ -295,7 +306,7 @@ Each result includes:
 - Penalties home/away (knockout phases)
 - Extra time regulation scores (when applicable)
 - Result version number
-- Publisher info (system for SmartSync, user for overrides)
+- Publisher info (system source for sync layers, user for overrides)
 
 ---
 
@@ -320,7 +331,7 @@ Each result includes:
 | **2. Inquiry** | Company submits contact info via `OrganizationInquiry` (no auth required) |
 | **3. Pool creation** | Authenticated CORPORATE_HOST uses 6-step wizard at `/empresas/crear` |
 | **4. Employee management** | Add employees manually or via CSV upload (UTF-8 BOM for Excel compatibility) |
-| **5. Invitation** | System generates `CorporateInvite` tokens (48-byte, 30-day expiry) and sends activation emails |
+| **5. Invitation** | System generates `CorporateInvite` tokens (32-byte / 64-char hex, 30-day expiry) and sends activation emails |
 | **6. Activation** | Employee visits `/activar-cuenta?token=xxx`, creates password, joins pool |
 
 ### 9.2 Corporate Models
