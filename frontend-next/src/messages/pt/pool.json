@@ -105,6 +105,14 @@
     "players": "Jogadores"
   },
 
+  "nav": {
+    "openMenu": "Abrir menu de seções",
+    "closeMenu": "Fechar menu",
+    "sectionsTitle": "Seções",
+    "playerGroup": "Seu pool",
+    "hostGroup": "Gerenciar"
+  },
+
   "admin": {
     "title": "Painel de Administração do Host",
     "capacity": {

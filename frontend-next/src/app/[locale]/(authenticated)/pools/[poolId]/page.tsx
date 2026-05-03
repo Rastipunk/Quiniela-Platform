@@ -8,9 +8,8 @@ import dynamic from "next/dynamic";
 import { createInvite, getPoolOverview, upsertPick, upsertResult, getUserProfile, type PoolOverview } from "@/lib/api";
 import type { PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { getToken } from "@/lib/auth";
-import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/hooks/usePoolNotifications";
-import { NotificationBadge } from "@/components/NotificationBadge";
 import { ScoringBreakdownModal } from "@/components/ScoringBreakdownModal";
 import { PlayerSummary } from "@/components/PlayerSummary";
 import { PoolPlayersTab } from "./components/PoolPlayersTab";
@@ -36,7 +35,8 @@ const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m =>
 });
 import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
-import { colors, radii, fontSize, fontWeight, shadows, zIndex } from "@/lib/theme";
+import { PoolNavDrawer, PoolNavTrigger } from "./components/PoolNavDrawer";
+import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
 const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "admin"] as const;
 type PoolTab = typeof VALID_TABS[number];
@@ -103,6 +103,7 @@ export default function PoolPage() {
   // ── UI state ──
   const [showSplash, setShowSplash] = useState(false);
   const [showCapacityPopup, setShowCapacityPopup] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   // Pending members
   const [pendingMembers, setPendingMembers] = useState<Array<{ id: string; userId: string; user: { displayName: string; email: string } }>>([]);
@@ -717,120 +718,99 @@ export default function PoolPage() {
             </div>
           )}
 
-          {/* Tab Navigation */}
+          {/* ── Section navigation + content (sidebar at ≥1024px, drawer below) ── */}
           <div style={{
-            marginTop: isMobile ? 8 : 12, paddingTop: 4,
-            display: "flex", gap: 6, overflowX: "auto", overflowY: "visible",
-            WebkitOverflowScrolling: "touch",
-            paddingBottom: 4,
+            display: "flex",
+            gap: spacing.xl,
+            alignItems: "flex-start",
+            marginTop: isMobile ? spacing.md : spacing.lg,
           }}>
-            {(["partidos", "leaderboard", "resumen", "reglas", ...(overview.permissions.canManageResults ? ["jugadores" as const, "admin" as const] : [])] as const).map((tab) => {
-              const badgeCount = tabBadges[tab] || 0;
-              const isUrgent = tab === "partidos" && hasUrgent;
-              const tabLabels: Record<string, string> = {
-                partidos: `⚽ ${t("tabs.matches")}`,
-                leaderboard: `📊 ${t("tabs.leaderboard")}`,
-                resumen: `📈 ${t("tabs.summary")}`,
-                reglas: `📋 ${t("tabs.rules")}`,
-                jugadores: `👥 ${t("tabs.players")}`,
-                admin: `⚙️ ${t("tabs.admin")}`,
-              };
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    position: "relative",
-                    padding: isMobile ? "8px 14px" : "10px 18px",
-                    border: activeTab === tab ? "none" : `1px solid ${colors.borderLight}`,
-                    borderRadius: radii.pill,
-                    background: activeTab === tab ? colors.brand : colors.white,
-                    color: activeTab === tab ? colors.white : colors.textMuted,
-                    fontWeight: fontWeight.semibold,
-                    fontSize: isMobile ? 12 : 14,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    flexShrink: 0,
-                    minHeight: TOUCH_TARGET.minimum,
-                    whiteSpace: "nowrap",
-                    ...mobileInteractiveStyles.tapHighlight,
-                  }}
-                  title={tab.charAt(0).toUpperCase() + tab.slice(1)}
-                >
-                  {tabLabels[tab]}
-                  {badgeCount > 0 && <NotificationBadge count={badgeCount} pulse={isUrgent} />}
-                </button>
-              );
-            })}
+            <PoolNavDrawer
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              isOpen={navOpen}
+              onClose={() => setNavOpen(false)}
+              showHostItems={overview.permissions.canManageResults}
+              tabBadges={tabBadges}
+              hasUrgent={hasUrgent}
+            />
+
+            <main style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ marginBottom: spacing.lg }}>
+                <PoolNavTrigger
+                  activeTab={activeTab}
+                  onOpen={() => setNavOpen(true)}
+                  tabBadges={tabBadges}
+                  hasUrgent={hasUrgent}
+                />
+              </div>
+
+              {activeTab === "jugadores" && overview.permissions.canManageResults && token && (
+                <PoolPlayersTab
+                  poolId={poolId!} token={token} overview={overview} isMobile={isMobile}
+                  busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
+                  friendlyError={friendlyError} reload={load}
+                />
+              )}
+
+              {activeTab === "admin" && overview.permissions.canManageResults && (
+                <PoolAdminTab
+                  poolId={poolId} token={token!} overview={overview} isMobile={isMobile}
+                  busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
+                  userTimezone={userTimezone} reload={load} refetchNotifications={refetchNotifications}
+                  friendlyError={friendlyError} phases={phases} getPhaseStatus={getPhaseStatus}
+                  hasPhaseAdvanced={hasPhaseAdvanced} nextPhaseMap={nextPhaseMap}
+                  notifications={notifications} tabBadges={tabBadges}
+                  pendingMembers={pendingMembers} loadPendingMembers={loadPendingMembers}
+                />
+              )}
+
+              {activeTab === "resumen" && (
+                <div style={{ padding: 20, border: `1px solid ${colors.border}`, borderRadius: radii["3xl"], background: colors.white }}>
+                  <PlayerSummary
+                    poolId={poolId!}
+                    userId={overview.myMembership.userId ?? ""}
+                    tournamentKey={overview.tournamentInstance.templateKey ?? "wc_2026_sandbox"}
+                  />
+                </div>
+              )}
+
+              {activeTab === "reglas" && (
+                <PoolRulesTab overview={overview} allowScorePick={allowScorePick} />
+              )}
+
+              {activeTab === "partidos" && (
+                <PoolMatchesTab
+                  poolId={poolId} token={token!} overview={overview} isMobile={isMobile}
+                  busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
+                  userTimezone={userTimezone} reload={load} refetchNotifications={refetchNotifications}
+                  friendlyError={friendlyError}
+                  phases={phases} activePhase={activePhase} setActivePhase={setActivePhase}
+                  getPhaseStatus={getPhaseStatus}
+                  allowScorePick={allowScorePick} activePhaseConfig={activePhaseConfig}
+                  requiresStructuralPicks={requiresStructuralPicks} activePhaseData={activePhaseData}
+                  nextOpenGroup={nextOpenGroup} filteredMatches={filteredMatches}
+                  matchesByGroup={matchesByGroup} groupOrder={groupOrder} phaseMatchResults={phaseMatchResults}
+                  search={search} setSearch={setSearch} onlyOpen={onlyOpen} setOnlyOpen={setOnlyOpen}
+                  onlyNoPick={onlyNoPick} setOnlyNoPick={setOnlyNoPick}
+                  onlyNoResult={onlyNoResult} setOnlyNoResult={setOnlyNoResult}
+                  selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup}
+                  savePick={savePick} saveResult={saveResult}
+                  onCreateInvite={onCreateInvite} inviteCode={inviteCode}
+                  notifications={notifications} tabBadges={tabBadges}
+                  setBreakdownModalData={setBreakdownModalData}
+                />
+              )}
+
+              {activeTab === "leaderboard" && (
+                <PoolLeaderboardTab
+                  overview={overview} poolId={poolId} isMobile={isMobile}
+                  playerSummaryModal={playerSummaryModal}
+                  setPlayerSummaryModal={setPlayerSummaryModal}
+                />
+              )}
+            </main>
           </div>
-
-
-          {/* ── Tab Content ── */}
-
-          {activeTab === "jugadores" && overview.permissions.canManageResults && token && (
-            <PoolPlayersTab
-              poolId={poolId!} token={token} overview={overview} isMobile={isMobile}
-              busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
-              friendlyError={friendlyError} reload={load}
-            />
-          )}
-
-          {activeTab === "admin" && overview.permissions.canManageResults && (
-            <PoolAdminTab
-              poolId={poolId} token={token!} overview={overview} isMobile={isMobile}
-              busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
-              userTimezone={userTimezone} reload={load} refetchNotifications={refetchNotifications}
-              friendlyError={friendlyError} phases={phases} getPhaseStatus={getPhaseStatus}
-              hasPhaseAdvanced={hasPhaseAdvanced} nextPhaseMap={nextPhaseMap}
-              notifications={notifications} tabBadges={tabBadges}
-              pendingMembers={pendingMembers} loadPendingMembers={loadPendingMembers}
-            />
-          )}
-
-          {activeTab === "resumen" && (
-            <div style={{ marginTop: 14, padding: 20, border: `1px solid ${colors.border}`, borderRadius: radii["3xl"], background: colors.white }}>
-              <PlayerSummary
-                poolId={poolId!}
-                userId={overview.myMembership.userId ?? ""}
-                tournamentKey={overview.tournamentInstance.templateKey ?? "wc_2026_sandbox"}
-              />
-            </div>
-          )}
-
-          {activeTab === "reglas" && (
-            <PoolRulesTab overview={overview} allowScorePick={allowScorePick} />
-          )}
-
-          {activeTab === "partidos" && (
-            <PoolMatchesTab
-              poolId={poolId} token={token!} overview={overview} isMobile={isMobile}
-              busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
-              userTimezone={userTimezone} reload={load} refetchNotifications={refetchNotifications}
-              friendlyError={friendlyError}
-              phases={phases} activePhase={activePhase} setActivePhase={setActivePhase}
-              getPhaseStatus={getPhaseStatus}
-              allowScorePick={allowScorePick} activePhaseConfig={activePhaseConfig}
-              requiresStructuralPicks={requiresStructuralPicks} activePhaseData={activePhaseData}
-              nextOpenGroup={nextOpenGroup} filteredMatches={filteredMatches}
-              matchesByGroup={matchesByGroup} groupOrder={groupOrder} phaseMatchResults={phaseMatchResults}
-              search={search} setSearch={setSearch} onlyOpen={onlyOpen} setOnlyOpen={setOnlyOpen}
-              onlyNoPick={onlyNoPick} setOnlyNoPick={setOnlyNoPick}
-              onlyNoResult={onlyNoResult} setOnlyNoResult={setOnlyNoResult}
-              selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup}
-              savePick={savePick} saveResult={saveResult}
-              onCreateInvite={onCreateInvite} inviteCode={inviteCode}
-              notifications={notifications} tabBadges={tabBadges}
-              setBreakdownModalData={setBreakdownModalData}
-            />
-          )}
-
-          {activeTab === "leaderboard" && (
-            <PoolLeaderboardTab
-              overview={overview} poolId={poolId} isMobile={isMobile}
-              playerSummaryModal={playerSummaryModal}
-              setPlayerSummaryModal={setPlayerSummaryModal}
-            />
-          )}
 
           {/* Scoring Breakdown Modal */}
           {poolId && (
