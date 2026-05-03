@@ -35,7 +35,8 @@ const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m =>
 });
 import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
-import { PoolNavDrawer, PoolNavTrigger } from "./components/PoolNavDrawer";
+import { PoolNavDrawer } from "./components/PoolNavDrawer";
+import { PoolNavProvider } from "@/components/pool/PoolNav";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
 const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "admin"] as const;
@@ -103,7 +104,6 @@ export default function PoolPage() {
   // ── UI state ──
   const [showSplash, setShowSplash] = useState(false);
   const [showCapacityPopup, setShowCapacityPopup] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
 
   // Pending members
   const [pendingMembers, setPendingMembers] = useState<Array<{ id: string; userId: string; user: { displayName: string; email: string } }>>([]);
@@ -718,7 +718,16 @@ export default function PoolPage() {
             </div>
           )}
 
-          {/* ── Section navigation + content (sidebar at ≥1024px, drawer below) ── */}
+          {/* ── Section navigation + content (sidebar at ≥1024px; mobile menu lives in global navbar) ── */}
+          <PoolNavProvider
+            value={{
+              activeTab,
+              onTabChange: setActiveTab,
+              showHostItems: overview.permissions.canManageResults,
+              tabBadges,
+              hasUrgent,
+            }}
+          >
           <div style={{
             display: "flex",
             gap: spacing.xl,
@@ -728,23 +737,12 @@ export default function PoolPage() {
             <PoolNavDrawer
               activeTab={activeTab}
               onTabChange={setActiveTab}
-              isOpen={navOpen}
-              onClose={() => setNavOpen(false)}
               showHostItems={overview.permissions.canManageResults}
               tabBadges={tabBadges}
               hasUrgent={hasUrgent}
             />
 
             <main style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ marginBottom: spacing.lg }}>
-                <PoolNavTrigger
-                  activeTab={activeTab}
-                  onOpen={() => setNavOpen(true)}
-                  tabBadges={tabBadges}
-                  hasUrgent={hasUrgent}
-                />
-              </div>
-
               {activeTab === "jugadores" && overview.permissions.canManageResults && token && (
                 <PoolPlayersTab
                   poolId={poolId!} token={token} overview={overview} isMobile={isMobile}
@@ -811,6 +809,7 @@ export default function PoolPage() {
               )}
             </main>
           </div>
+          </PoolNavProvider>
 
           {/* Scoring Breakdown Modal */}
           {poolId && (

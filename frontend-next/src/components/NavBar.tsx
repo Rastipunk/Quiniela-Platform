@@ -7,16 +7,21 @@ import { clearToken, getToken } from "@/lib/auth";
 import { getUserProfile, logout as apiLogout, type UserProfile } from "@/lib/api";
 import { setAnalyticsUserId } from "@/lib/analytics";
 import { revokeMetaPixelConsent } from "@/lib/metaPixel";
-import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { useIsMobile, BREAKPOINTS, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { BrandIsotipo, BrandLogotipo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
 import { FeedbackModal } from "./FeedbackModal";
-import { colors, radii, shadows, fontWeight as fw, zIndex } from "@/lib/theme";
+import { PoolNavItems, usePoolNavContext } from "./pool/PoolNav";
+import { colors, radii, shadows, spacing, fontSize, fontWeight as fw, zIndex } from "@/lib/theme";
 
 export function NavBar() {
   const t = useTranslations("nav");
+  const tPool = useTranslations("pool");
   const router = useRouter();
-  const isMobile = useIsMobile();
+  // Below tabletLg (1024px) we collapse to the consolidated drawer so
+  // the global menu and pool sections live in one familiar place.
+  const isMobile = useIsMobile({ breakpoint: BREAKPOINTS.tabletLg });
+  const poolNav = usePoolNavContext();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -118,24 +123,82 @@ export function NavBar() {
         zIndex: zIndex.sticky,
       }}
     >
-      {/* Logo / Brand */}
-      <Link
-        href="/"
-        style={{
-          textDecoration: "none",
-          display: "flex",
-          alignItems: "center",
-          gap: isMobile ? 10 : 12,
-          ...mobileInteractiveStyles.tapHighlight,
-        }}
-      >
-        <BrandIsotipo
-          size={isMobile ? 40 : 48}
-          variant="degradado"
-          borderRadius={isMobile ? 8 : 10}
-        />
-        <BrandLogotipo height={isMobile ? 30 : 36} variant="blanco" />
-      </Link>
+      {/* Left slot: hamburger (mobile only) + logo */}
+      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 4 : 12 }}>
+        {isMobile && (
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            aria-label={t("openMenu")}
+            aria-expanded={showMobileMenu}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "5px",
+              width: TOUCH_TARGET.comfortable,
+              height: TOUCH_TARGET.comfortable,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px",
+              borderRadius: "8px",
+              ...mobileInteractiveStyles.tapHighlight,
+            }}
+          >
+            <span
+              style={{
+                display: "block",
+                width: "22px",
+                height: "2px",
+                background: "white",
+                borderRadius: "2px",
+                transition: "transform 0.2s ease, opacity 0.2s ease",
+                transform: showMobileMenu ? "rotate(45deg) translate(5px, 5px)" : "none",
+              }}
+            />
+            <span
+              style={{
+                display: "block",
+                width: "22px",
+                height: "2px",
+                background: "white",
+                borderRadius: "2px",
+                transition: "opacity 0.2s ease",
+                opacity: showMobileMenu ? 0 : 1,
+              }}
+            />
+            <span
+              style={{
+                display: "block",
+                width: "22px",
+                height: "2px",
+                background: "white",
+                borderRadius: "2px",
+                transition: "transform 0.2s ease, opacity 0.2s ease",
+                transform: showMobileMenu ? "rotate(-45deg) translate(5px, -5px)" : "none",
+              }}
+            />
+          </button>
+        )}
+        <Link
+          href="/"
+          style={{
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: isMobile ? 10 : 12,
+            ...mobileInteractiveStyles.tapHighlight,
+          }}
+        >
+          <BrandIsotipo
+            size={isMobile ? 40 : 48}
+            variant="degradado"
+            borderRadius={isMobile ? 8 : 10}
+          />
+          <BrandLogotipo height={isMobile ? 30 : 36} variant="blanco" />
+        </Link>
+      </div>
 
       {/* Desktop Navigation */}
       {!isMobile && (
@@ -390,68 +453,24 @@ export function NavBar() {
         </div>
       )}
 
-      {/* Mobile: Hamburger Button + Avatar */}
+      {/* Mobile: Avatar (right slot — also opens drawer for thumb access) */}
       {isMobile && (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <button
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          aria-label={t("openMenu")}
+          aria-expanded={showMobileMenu}
+          style={{
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            cursor: "pointer",
+            ...mobileInteractiveStyles.tapHighlight,
+          }}
+        >
           <div style={avatarStyle}>
             {profile?.displayName?.charAt(0).toUpperCase() || "U"}
           </div>
-
-          <button
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            aria-label={t("openMenu")}
-            aria-expanded={showMobileMenu}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "5px",
-              width: TOUCH_TARGET.comfortable,
-              height: TOUCH_TARGET.comfortable,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: "8px",
-              borderRadius: "8px",
-              ...mobileInteractiveStyles.tapHighlight,
-            }}
-          >
-            <span
-              style={{
-                display: "block",
-                width: "22px",
-                height: "2px",
-                background: "white",
-                borderRadius: "2px",
-                transition: "transform 0.2s ease, opacity 0.2s ease",
-                transform: showMobileMenu ? "rotate(45deg) translate(5px, 5px)" : "none",
-              }}
-            />
-            <span
-              style={{
-                display: "block",
-                width: "22px",
-                height: "2px",
-                background: "white",
-                borderRadius: "2px",
-                transition: "opacity 0.2s ease",
-                opacity: showMobileMenu ? 0 : 1,
-              }}
-            />
-            <span
-              style={{
-                display: "block",
-                width: "22px",
-                height: "2px",
-                background: "white",
-                borderRadius: "2px",
-                transition: "transform 0.2s ease, opacity 0.2s ease",
-                transform: showMobileMenu ? "rotate(-45deg) translate(5px, -5px)" : "none",
-              }}
-            />
-          </button>
-        </div>
+        </button>
       )}
 
       {/* Mobile Menu Overlay */}
@@ -475,13 +494,13 @@ export function NavBar() {
             style={{
               position: "fixed",
               top: 0,
-              right: 0,
+              left: 0,
               bottom: 0,
               width: "min(280px, 85vw)",
               background: "#1a1a1a",
               zIndex: zIndex.overlay,
-              boxShadow: "-4px 0 20px rgba(0,0,0,0.3)",
-              animation: "slideInRight 0.25s ease",
+              boxShadow: "4px 0 20px rgba(0,0,0,0.3)",
+              animation: "slideInLeft 0.25s ease",
               display: "flex",
               flexDirection: "column",
               overflowY: "auto",
@@ -543,8 +562,56 @@ export function NavBar() {
               </div>
             </div>
 
+            {/* Pool sections — only when the user is on a pool page (priority block) */}
+            {poolNav && (
+              <>
+                <div
+                  style={{
+                    padding: `${spacing.md}px ${spacing.lg}px ${spacing.xs}px`,
+                    fontSize: fontSize.xs,
+                    fontWeight: fw.bold,
+                    color: "rgba(255,255,255,0.55)",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.6,
+                  }}
+                >
+                  {tPool("nav.sectionsTitle")}
+                </div>
+                <PoolNavItems
+                  variant="dark"
+                  activeTab={poolNav.activeTab}
+                  onTabChange={poolNav.onTabChange}
+                  showHostItems={poolNav.showHostItems}
+                  tabBadges={poolNav.tabBadges}
+                  hasUrgent={poolNav.hasUrgent}
+                  onAfterSelect={() => setShowMobileMenu(false)}
+                />
+                <div
+                  style={{
+                    margin: `${spacing.md}px 0`,
+                    height: 1,
+                    background: "rgba(255,255,255,0.12)",
+                  }}
+                />
+              </>
+            )}
+
             {/* Navigation Links */}
             <div style={{ flex: 1, padding: "0.5rem 0" }}>
+              {poolNav && (
+                <div
+                  style={{
+                    padding: `${spacing.xs}px ${spacing.lg}px ${spacing.xs}px`,
+                    fontSize: fontSize.xs,
+                    fontWeight: fw.bold,
+                    color: "rgba(255,255,255,0.55)",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.6,
+                  }}
+                >
+                  {t("appSection")}
+                </div>
+              )}
               <Link
                 href="/dashboard"
                 onClick={() => setShowMobileMenu(false)}
@@ -765,8 +832,8 @@ export function NavBar() {
             from { opacity: 0; }
             to { opacity: 1; }
           }
-          @keyframes slideInRight {
-            from { transform: translateX(100%); }
+          @keyframes slideInLeft {
+            from { transform: translateX(-100%); }
             to { transform: translateX(0); }
           }
         `}
