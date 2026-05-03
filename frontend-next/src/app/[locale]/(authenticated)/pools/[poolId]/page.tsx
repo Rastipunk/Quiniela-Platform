@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { createInvite, getPoolOverview, upsertPick, upsertResult, getUserProfile, type PoolOverview } from "@/lib/api";
 import type { PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { getToken } from "@/lib/auth";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { useIsMobile, BREAKPOINTS } from "@/hooks/useIsMobile";
 import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/hooks/usePoolNotifications";
 import { ScoringBreakdownModal } from "@/components/ScoringBreakdownModal";
 import { PlayerSummary } from "@/components/PlayerSummary";
@@ -36,6 +36,7 @@ const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m =>
 import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
+import { PoolSectionHeader } from "./components/PoolSectionHeader";
 import { usePublishPoolNav } from "@/components/pool/PoolNav";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
@@ -46,6 +47,10 @@ export default function PoolPage() {
   const { poolId } = useParams() as { poolId: string };
   const token = useMemo(() => getToken(), []);
   const isMobile = useIsMobile();
+  // Compact = below tabletLg (1024px) — same threshold as the hamburger
+  // menu. We hide the in-page "back to dashboard" link in compact mode
+  // because the hamburger drawer already exposes "Mis Pools".
+  const isCompact = useIsMobile({ breakpoint: BREAKPOINTS.tabletLg });
   const t = useTranslations("pool");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -445,19 +450,21 @@ export default function PoolPage() {
   // ── Render ──
   return (
     <div style={{ maxWidth: 1180, margin: "8px auto", padding: isMobile ? "8px 12px" : "8px 16px" }}>
-      <Link
-        href="/dashboard"
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 4,
-          color: colors.brand, textDecoration: "none", fontWeight: fontWeight.semibold, fontSize: fontSize.sm,
-          padding: "6px 12px", borderRadius: radii.lg,
-          border: `1px solid ${colors.brand}30`,
-          background: `${colors.brand}08`,
-          marginBottom: 8,
-        }}
-      >
-        {t("backToDashboard")}
-      </Link>
+      {!isCompact && (
+        <Link
+          href="/dashboard"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            color: colors.brand, textDecoration: "none", fontWeight: fontWeight.semibold, fontSize: fontSize.sm,
+            padding: "6px 12px", borderRadius: radii.lg,
+            border: `1px solid ${colors.brand}30`,
+            background: `${colors.brand}08`,
+            marginBottom: 8,
+          }}
+        >
+          {t("backToDashboard")}
+        </Link>
+      )}
 
       {error && error === "PENDING_APPROVAL" ? (
         <div style={{
@@ -745,6 +752,8 @@ export default function PoolPage() {
             />
 
             <main style={{ flex: 1, minWidth: 0 }}>
+              <PoolSectionHeader />
+
               {activeTab === "jugadores" && overview.permissions.canManageResults && token && (
                 <PoolPlayersTab
                   poolId={poolId!} token={token} overview={overview} isMobile={isMobile}

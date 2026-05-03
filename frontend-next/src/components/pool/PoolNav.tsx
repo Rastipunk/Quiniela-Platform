@@ -65,6 +65,16 @@ const HOST_ITEMS: ReadonlyArray<NavItem> = [
   { key: "admin", icon: "⚙️", labelKey: "tabs.admin" },
 ];
 
+const ALL_ITEMS: ReadonlyArray<NavItem> = [...PLAYER_ITEMS, ...HOST_ITEMS];
+
+/**
+ * Returns the icon + label key for a pool nav tab. Single source of
+ * truth so the drawer, sidebar, and section header stay in sync.
+ */
+export function getPoolNavMeta(tab: PoolNavTab): { icon: string; labelKey: string } {
+  return ALL_ITEMS.find((item) => item.key === tab) ?? ALL_ITEMS[0];
+}
+
 // ── Cross-tree state (layout-level) ─────────────────────────
 //
 // The global navbar lives in the authenticated layout, above the
