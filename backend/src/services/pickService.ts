@@ -141,12 +141,20 @@ export async function getPoolMatches(data: GetPoolMatchesInput): Promise<GetPool
   });
   if (!pool) throw new ServiceError("NOT_FOUND", 404);
 
-  const matches = extractMatches(pool.tournamentInstance.dataJson);
+  // Pool independence (CLAUDE.md §6 invariant 6): every pool carries its
+  // own fixtureSnapshot so per-pool customisations (custom kickoffs,
+  // locally-generated knockout matches after auto-advance) stay
+  // isolated from the master template. Fall back to instance.dataJson
+  // for legacy pools that predate the snapshot.
+  const fixtureData = pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson;
+  const matches = extractMatches(fixtureData);
   const now = new Date();
+  const lockedPhases = (pool.lockedPhases as string[] | null) ?? [];
 
   const enriched = matches.map((m) => {
     const deadlineUtc = computeDeadlineUtc(m.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
-    const isLocked = deadlineUtc ? now.getTime() >= deadlineUtc.getTime() : false;
+    const isPhaseLocked = m.phaseId ? lockedPhases.includes(m.phaseId) : false;
+    const isLocked = isPhaseLocked || (deadlineUtc ? now.getTime() >= deadlineUtc.getTime() : false);
 
     return {
       ...m,
@@ -196,7 +204,11 @@ export async function upsertPick(
     throw new ServiceError("CONFLICT", 409, { message: "TournamentInstance is ARCHIVED" });
   }
 
-  const matches = extractMatches(pool.tournamentInstance.dataJson);
+  // Read the per-pool snapshot first so this lookup matches what the
+  // overview / matches list show — see getPoolMatches above and
+  // CLAUDE.md §6 invariant 6.
+  const fixtureData = pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson;
+  const matches = extractMatches(fixtureData);
   const match = matches.find((m) => m.id === matchId);
   if (!match) throw new ServiceError("NOT_FOUND", 404, { message: "Match not found in instance snapshot" });
 
@@ -205,6 +217,18 @@ export async function upsertPick(
     PLACEHOLDER_TEAM_PREFIXES.some((p: string) => teamId === p || teamId.startsWith(p));
   if (isPlaceholder(match.homeTeamId) || isPlaceholder(match.awayTeamId)) {
     throw new ServiceError("MATCH_PENDING", 409, { message: "Cannot make picks on matches with teams not yet determined" });
+  }
+
+  // Host can manually lock a phase to freeze picks while preparing
+  // errata results. The lock takes precedence over the kickoff
+  // deadline — if the host locked a phase whose deadline hasn't yet
+  // passed, this is the gate that catches it.
+  const lockedPhases = (pool.lockedPhases as string[] | null) ?? [];
+  if (match.phaseId && lockedPhases.includes(match.phaseId)) {
+    throw new ServiceError("PHASE_LOCKED", 409, {
+      message: "Phase is locked by the host",
+      phaseId: match.phaseId,
+    });
   }
 
   const deadlineUtc = computeDeadlineUtc(match.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
