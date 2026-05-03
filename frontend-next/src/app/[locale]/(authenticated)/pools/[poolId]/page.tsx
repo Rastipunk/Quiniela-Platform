@@ -449,7 +449,14 @@ export default function PoolPage() {
 
   // ── Render ──
   return (
-    <div style={{ maxWidth: 1180, margin: "8px auto", padding: isMobile ? "8px 12px" : "8px 16px" }}>
+    <>
+      {/* Sticky section header sits flush under the navbar so the
+          dark navbar + section band read as one continuous chrome.
+          Only renders once the overview is loaded so we don't show
+          a stale section title during the loading state. */}
+      {overview && <PoolSectionHeader />}
+
+      <div style={{ maxWidth: 1180, margin: "8px auto", padding: isMobile ? "8px 12px" : "8px 16px" }}>
       {!isCompact && (
         <Link
           href="/dashboard"
@@ -752,8 +759,6 @@ export default function PoolPage() {
             />
 
             <main style={{ flex: 1, minWidth: 0 }}>
-              <PoolSectionHeader />
-
               {activeTab === "jugadores" && overview.permissions.canManageResults && token && (
                 <PoolPlayersTab
                   poolId={poolId!} token={token} overview={overview} isMobile={isMobile}
@@ -835,6 +840,7 @@ export default function PoolPage() {
           )}
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
