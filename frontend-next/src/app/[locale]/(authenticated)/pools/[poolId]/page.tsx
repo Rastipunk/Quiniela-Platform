@@ -36,7 +36,7 @@ const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m =>
 import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
-import { PoolNavProvider } from "@/components/pool/PoolNav";
+import { usePublishPoolNav } from "@/components/pool/PoolNav";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
 const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "admin"] as const;
@@ -134,6 +134,19 @@ export default function PoolPage() {
   });
   const tabBadges = calculateTabBadges(notifications);
   const hasUrgent = hasUrgentDeadlines(notifications);
+
+  // Publish pool nav state to the layout-level store so the global
+  // navbar drawer can render pool sections at the top of its menu
+  // on mobile. Snapshot clears on unmount so other routes are clean.
+  usePublishPoolNav(
+    overview
+      ? {
+          showHostItems: overview.permissions.canManageResults,
+          tabBadges,
+          hasUrgent,
+        }
+      : null,
+  );
 
   // ── Data loading ──
   async function load() {
@@ -719,15 +732,6 @@ export default function PoolPage() {
           )}
 
           {/* ── Section navigation + content (sidebar at ≥1024px; mobile menu lives in global navbar) ── */}
-          <PoolNavProvider
-            value={{
-              activeTab,
-              onTabChange: setActiveTab,
-              showHostItems: overview.permissions.canManageResults,
-              tabBadges,
-              hasUrgent,
-            }}
-          >
           <div style={{
             display: "flex",
             gap: spacing.xl,
@@ -735,8 +739,6 @@ export default function PoolPage() {
             marginTop: isMobile ? spacing.md : spacing.lg,
           }}>
             <PoolNavDrawer
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
               showHostItems={overview.permissions.canManageResults}
               tabBadges={tabBadges}
               hasUrgent={hasUrgent}
@@ -809,7 +811,6 @@ export default function PoolPage() {
               )}
             </main>
           </div>
-          </PoolNavProvider>
 
           {/* Scoring Breakdown Modal */}
           {poolId && (

@@ -18,25 +18,17 @@ import {
 // Persistent left sidebar shown on viewports ≥ tabletLg (1024px).
 // Below that breakpoint, the consolidated mobile drawer in NavBar
 // renders the same items at the top of the global menu — see
-// `usePoolNavContext` in components/pool/PoolNav.tsx.
+// `usePoolNavSnapshot` in components/pool/PoolNav.tsx.
 
 const SIDEBAR_WIDTH_PX = 248;
 
 interface Props {
-  activeTab: PoolNavTab;
-  onTabChange: (tab: PoolNavTab) => void;
   showHostItems: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
   hasUrgent: boolean;
 }
 
-export function PoolNavDrawer({
-  activeTab,
-  onTabChange,
-  showHostItems,
-  tabBadges,
-  hasUrgent,
-}: Props) {
+export function PoolNavDrawer({ showHostItems, tabBadges, hasUrgent }: Props) {
   const isCompact = useIsMobile({ breakpoint: BREAKPOINTS.tabletLg });
   if (isCompact) return null;
 
@@ -57,8 +49,6 @@ export function PoolNavDrawer({
       }}
     >
       <PoolNavItems
-        activeTab={activeTab}
-        onTabChange={onTabChange}
         showHostItems={showHostItems}
         tabBadges={tabBadges}
         hasUrgent={hasUrgent}

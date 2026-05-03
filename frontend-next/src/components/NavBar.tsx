@@ -11,7 +11,7 @@ import { useIsMobile, BREAKPOINTS, TOUCH_TARGET, mobileInteractiveStyles } from 
 import { BrandIsotipo, BrandLogotipo } from "./BrandLogo";
 import { LanguageSelector } from "./LanguageSelector";
 import { FeedbackModal } from "./FeedbackModal";
-import { PoolNavItems, usePoolNavContext } from "./pool/PoolNav";
+import { PoolNavItems, usePoolNavSnapshot } from "./pool/PoolNav";
 import { colors, radii, shadows, spacing, fontSize, fontWeight as fw, zIndex } from "@/lib/theme";
 
 export function NavBar() {
@@ -21,7 +21,7 @@ export function NavBar() {
   // Below tabletLg (1024px) we collapse to the consolidated drawer so
   // the global menu and pool sections live in one familiar place.
   const isMobile = useIsMobile({ breakpoint: BREAKPOINTS.tabletLg });
-  const poolNav = usePoolNavContext();
+  const poolNav = usePoolNavSnapshot();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -579,8 +579,6 @@ export function NavBar() {
                 </div>
                 <PoolNavItems
                   variant="dark"
-                  activeTab={poolNav.activeTab}
-                  onTabChange={poolNav.onTabChange}
                   showHostItems={poolNav.showHostItems}
                   tabBadges={poolNav.tabBadges}
                   hasUrgent={poolNav.hasUrgent}

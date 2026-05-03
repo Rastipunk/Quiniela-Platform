@@ -1,7 +1,15 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   TOUCH_TARGET,
   mobileInteractiveStyles,
@@ -13,13 +21,13 @@ import {
   fontWeight,
 } from "@/lib/theme";
 import { NotificationBadge } from "@/components/NotificationBadge";
+import { trackEvent } from "@/lib/analytics";
 
-// ── Types ──────────────────────────────────────────────────────
+// ── Types & item config ─────────────────────────────────────
 //
-// Single source of truth for the pool's section navigation. Used by
-// the persistent sidebar at desktop (PoolNavDrawer) AND by the
-// global navbar's mobile drawer (NavBar) so a host has one place to
-// reach every section regardless of viewport.
+// Single source of truth for the pool's section navigation. Used
+// by the persistent sidebar at desktop AND by the global navbar's
+// mobile drawer so both surfaces stay in sync.
 
 export type PoolNavTab =
   | "partidos"
@@ -29,78 +37,112 @@ export type PoolNavTab =
   | "jugadores"
   | "admin";
 
+const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
+  "partidos",
+  "leaderboard",
+  "resumen",
+  "reglas",
+  "jugadores",
+  "admin",
+]);
+
 interface NavItem {
   key: PoolNavTab;
   icon: string;
   labelKey: string;
 }
 
-export const POOL_NAV_PLAYER_ITEMS: ReadonlyArray<NavItem> = [
+const PLAYER_ITEMS: ReadonlyArray<NavItem> = [
   { key: "partidos", icon: "⚽", labelKey: "tabs.matches" },
   { key: "leaderboard", icon: "📊", labelKey: "tabs.leaderboard" },
   { key: "resumen", icon: "📈", labelKey: "tabs.summary" },
   { key: "reglas", icon: "📋", labelKey: "tabs.rules" },
 ];
 
-export const POOL_NAV_HOST_ITEMS: ReadonlyArray<NavItem> = [
+const HOST_ITEMS: ReadonlyArray<NavItem> = [
   { key: "jugadores", icon: "👥", labelKey: "tabs.players" },
   { key: "admin", icon: "⚙️", labelKey: "tabs.admin" },
 ];
 
-// ── Context ────────────────────────────────────────────────────
+// ── Cross-tree state (layout-level) ─────────────────────────
 //
-// Pool detail page publishes its nav state via this provider so the
-// global NavBar can render pool sections at the top of its drawer
-// without having to refetch overview data or duplicate role gating.
+// The global navbar lives in the authenticated layout, above the
+// pool page in the React tree. To let the navbar render the pool's
+// own sections at the top of its drawer, we hoist a tiny store to
+// the layout: the pool page publishes its current snapshot via
+// `usePublishPoolNav`, and the navbar reads it via
+// `usePoolNavSnapshot`. Outside a pool page the snapshot stays null
+// and the navbar falls back to app-only items.
 
-export interface PoolNavContextValue {
-  activeTab: PoolNavTab;
-  onTabChange: (tab: PoolNavTab) => void;
+export interface PoolNavSnapshot {
   showHostItems: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
-  /** Pulse the matches badge when there are imminent deadlines. */
   hasUrgent: boolean;
 }
 
-const PoolNavContext = createContext<PoolNavContextValue | null>(null);
+interface PoolNavStore {
+  snapshot: PoolNavSnapshot | null;
+  setSnapshot: (snapshot: PoolNavSnapshot | null) => void;
+}
 
-export function PoolNavProvider({
-  value,
-  children,
-}: {
-  value: PoolNavContextValue;
-  children: ReactNode;
-}) {
+const PoolNavContext = createContext<PoolNavStore | null>(null);
+
+export function PoolNavRootProvider({ children }: { children: ReactNode }) {
+  const [snapshot, setSnapshot] = useState<PoolNavSnapshot | null>(null);
+  const value = useMemo<PoolNavStore>(
+    () => ({ snapshot, setSnapshot }),
+    [snapshot],
+  );
   return (
     <PoolNavContext.Provider value={value}>{children}</PoolNavContext.Provider>
   );
 }
 
-export function usePoolNavContext(): PoolNavContextValue | null {
-  return useContext(PoolNavContext);
+export function usePoolNavSnapshot(): PoolNavSnapshot | null {
+  return useContext(PoolNavContext)?.snapshot ?? null;
 }
 
-// ── Shared item list renderer ─────────────────────────────────
+/**
+ * Pool page calls this to publish its current nav state to the
+ * layout-level store so the navbar drawer can render pool sections.
+ * Snapshot clears automatically on unmount so other routes don't
+ * inherit stale pool nav.
+ */
+export function usePublishPoolNav(snapshot: PoolNavSnapshot | null) {
+  const ctx = useContext(PoolNavContext);
+  // Stable signature — the effect should re-run when the actual
+  // values change, not on every parent render. Stringifying small
+  // POJOs is fine here and avoids subtle dep-array mistakes.
+  const signature = snapshot
+    ? `${snapshot.showHostItems}|${snapshot.hasUrgent}|${JSON.stringify(snapshot.tabBadges)}`
+    : null;
+
+  useEffect(() => {
+    if (!ctx) return;
+    ctx.setSnapshot(snapshot);
+    return () => ctx.setSnapshot(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx, signature]);
+}
+
+// ── Shared item list renderer ───────────────────────────────
 //
-// Renders the player + (optional) host sections with badges and
-// active-state styling. Both the desktop sidebar and the navbar
-// drawer mount this same list so behaviour stays consistent.
+// PoolNavItems is mounted by both the desktop sidebar and the
+// navbar drawer. It owns the navigation: reads the active tab from
+// the URL, and on click swaps `?tab=` via relative `router.replace`
+// so the current path (and locale prefix) are preserved.
 
 interface PoolNavItemsProps {
-  activeTab: PoolNavTab;
-  onTabChange: (tab: PoolNavTab) => void;
   showHostItems: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
   hasUrgent: boolean;
-  /** Optional callback fired after a tab is selected (e.g. close drawer). */
+  /** Fired after a tab is selected — typically to close a drawer. */
   onAfterSelect?: () => void;
-  /** Variant: dark (navbar drawer) or light (sidebar). */
+  /** Visual variant. "dark" is for the navbar drawer. */
   variant?: "light" | "dark";
 }
 
 export function PoolNavItems({
-  activeTab,
-  onTabChange,
   showHostItems,
   tabBadges,
   hasUrgent,
@@ -108,11 +150,30 @@ export function PoolNavItems({
   variant = "light",
 }: PoolNavItemsProps) {
   const t = useTranslations("pool");
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const isDark = variant === "dark";
+
+  const rawTab = searchParams.get("tab");
+  const activeTab: PoolNavTab =
+    rawTab && VALID_TABS.has(rawTab as PoolNavTab)
+      ? (rawTab as PoolNavTab)
+      : "partidos";
+
+  function handleSelect(tab: PoolNavTab) {
+    trackEvent("tab_changed", { tab });
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "partidos") params.delete("tab");
+    else params.set("tab", tab);
+    const query = params.toString();
+    router.replace(query ? `?${query}` : "?", { scroll: false });
+    onAfterSelect?.();
+  }
 
   const inactiveColor = isDark ? "#fff" : colors.textDark;
   const activeBg = isDark ? "rgba(255,255,255,0.08)" : colors.brandBg;
   const activeColor = isDark ? "#fff" : colors.brand;
+  const activeAccent = isDark ? colors.brandLight : colors.brand;
   const groupColor = isDark ? "rgba(255,255,255,0.55)" : colors.textLight;
   const dividerColor = isDark ? "rgba(255,255,255,0.1)" : colors.borderLight;
 
@@ -124,10 +185,7 @@ export function PoolNavItems({
       <button
         key={item.key}
         type="button"
-        onClick={() => {
-          onTabChange(item.key);
-          onAfterSelect?.();
-        }}
+        onClick={() => handleSelect(item.key)}
         aria-current={isActive ? "page" : undefined}
         style={{
           position: "relative",
@@ -138,7 +196,7 @@ export function PoolNavItems({
           padding: `${spacing.md}px ${spacing.lg}px`,
           minHeight: TOUCH_TARGET.comfortable,
           border: "none",
-          borderLeft: `3px solid ${isActive ? (isDark ? colors.brandLight : colors.brand) : "transparent"}`,
+          borderLeft: `3px solid ${isActive ? activeAccent : "transparent"}`,
           background: isActive ? activeBg : "transparent",
           color: isActive ? activeColor : inactiveColor,
           fontWeight: isActive ? fontWeight.bold : fontWeight.medium,
@@ -184,11 +242,11 @@ export function PoolNavItems({
       style={{ display: "flex", flexDirection: "column" }}
     >
       {renderGroupLabel(t("nav.playerGroup"), false)}
-      {POOL_NAV_PLAYER_ITEMS.map(renderItem)}
+      {PLAYER_ITEMS.map(renderItem)}
       {showHostItems && (
         <>
           {renderGroupLabel(t("nav.hostGroup"), true)}
-          {POOL_NAV_HOST_ITEMS.map(renderItem)}
+          {HOST_ITEMS.map(renderItem)}
         </>
       )}
     </nav>
