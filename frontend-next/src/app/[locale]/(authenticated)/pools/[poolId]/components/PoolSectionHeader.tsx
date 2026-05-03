@@ -47,15 +47,21 @@ export function PoolSectionHeader() {
     <div
       style={{
         position: "sticky",
-        top: 0,
+        // Sticks just below the (auto-hiding) navbar on mobile. NavBar
+        // toggles --p4a-navbar-h between its rendered height and 0px,
+        // so this header smoothly stacks under the navbar when it's
+        // visible and slides up to top:0 when the navbar hides on
+        // scroll-down. Falls back to 0 on desktop where the navbar
+        // simply scrolls away with the page.
+        top: "var(--p4a-navbar-h, 0px)",
+        transition: "top 0.25s ease",
         // Below NavBar (zIndex.sticky=100) so its drawer covers this
         // band when open — but above page content so it stays
         // readable while users scroll long match lists.
         zIndex: zIndex.base,
-        // Soft brand wash (8% primary) — clearly distinct from white
-        // cards and the page's grey surface, but light enough to
-        // belong to the same family as the rest of the page chrome.
-        background: colors.brandBg,
+        // Solid soft-brand surface — equivalent to ~10% indigo on
+        // white, but opaque so scrolling content doesn't bleed through.
+        background: "#eee9fa",
         borderBottom: `1px solid ${colors.borderLight}`,
         color: colors.text,
       }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { clearToken, getToken } from "@/lib/auth";
@@ -14,6 +14,20 @@ import { FeedbackModal } from "./FeedbackModal";
 import { PoolNavItems, usePoolNavSnapshot } from "./pool/PoolNav";
 import { colors, radii, shadows, spacing, fontSize, fontWeight as fw, zIndex } from "@/lib/theme";
 
+// Hardcoded mobile height mirrors the rendered nav: 12px padding y +
+// 40px logo. Update if the padding / logo size in the JSX below
+// changes so the section header stacks under the navbar at the right
+// offset (CSS var below). Desktop doesn't need this — the navbar
+// stays in normal flow and the section header sticks at top:0 once
+// the navbar scrolls past.
+const NAVBAR_HEIGHT_MOBILE = 64;
+// Don't auto-hide while the user is near the top — feels twitchy when
+// the navbar snaps away on a tiny downward gesture.
+const SCROLL_HIDE_THRESHOLD_PX = 80;
+// Minimum delta in either direction before we react to a scroll
+// gesture, smooths out trackpad jitter on mobile browsers.
+const SCROLL_DELTA_THRESHOLD_PX = 6;
+
 export function NavBar() {
   const t = useTranslations("nav");
   const tPool = useTranslations("pool");
@@ -26,6 +40,12 @@ export function NavBar() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  // Auto-hide the navbar on mobile while the user is scrolling down,
+  // bring it back as soon as they scroll up. Standard mobile pattern
+  // (Twitter, Medium): keeps the section header anchored at the top
+  // when reading, but a quick upward swipe surfaces global nav.
+  const [navHidden, setNavHidden] = useState(false);
+  const lastScrollYRef = useRef(0);
 
   useEffect(() => {
     loadProfile();
@@ -36,6 +56,58 @@ export function NavBar() {
       setShowMobileMenu(false);
     }
   }, [isMobile]);
+
+  // Scroll-direction-aware hide. Only active on mobile; desktop
+  // keeps the navbar in normal flow so it scrolls away with the page.
+  useEffect(() => {
+    if (!isMobile) {
+      setNavHidden(false);
+      return;
+    }
+
+    lastScrollYRef.current = window.scrollY;
+    let ticking = false;
+
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const currentY = window.scrollY;
+        const delta = currentY - lastScrollYRef.current;
+
+        if (currentY < SCROLL_HIDE_THRESHOLD_PX) {
+          // Near the top: always visible. Avoids the "bouncy" feeling
+          // when the user is at the start of the page.
+          setNavHidden(false);
+        } else if (delta > SCROLL_DELTA_THRESHOLD_PX) {
+          setNavHidden(true);
+        } else if (delta < -SCROLL_DELTA_THRESHOLD_PX) {
+          setNavHidden(false);
+        }
+
+        lastScrollYRef.current = currentY;
+        ticking = false;
+      });
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isMobile]);
+
+  // Publish the rendered navbar height as a CSS variable so any sticky
+  // chrome below (e.g. PoolSectionHeader) can stack under the navbar
+  // when it's visible and slide up to top:0 when it's hidden.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!isMobile) {
+      // Desktop: navbar lives in normal flow, sticky descendants don't
+      // need to offset for it. Reset to 0.
+      root.style.setProperty("--p4a-navbar-h", "0px");
+      return;
+    }
+    const visibleHeight = navHidden ? 0 : NAVBAR_HEIGHT_MOBILE;
+    root.style.setProperty("--p4a-navbar-h", `${visibleHeight}px`);
+  }, [isMobile, navHidden]);
 
   async function loadProfile() {
     try {
@@ -119,8 +191,18 @@ export function NavBar() {
         background: "#1a1a1a",
         color: "white",
         boxShadow: shadows.card,
-        position: "relative",
+        // Mobile: sticky so the navbar can slide back in when the user
+        // scrolls up without having to return to the top. Desktop:
+        // relative so the navbar scrolls away with the page like before.
+        position: isMobile ? "sticky" : "relative",
+        top: 0,
+        transform: navHidden ? "translateY(-100%)" : "translateY(0)",
+        transition: "transform 0.25s ease",
         zIndex: zIndex.sticky,
+        // Track height matches NAVBAR_HEIGHT_MOBILE constant so the
+        // CSS variable above stays in sync with what's actually rendered.
+        height: isMobile ? NAVBAR_HEIGHT_MOBILE : undefined,
+        boxSizing: "border-box" as const,
       }}
     >
       {/* Left slot: hamburger (mobile only) + logo */}
