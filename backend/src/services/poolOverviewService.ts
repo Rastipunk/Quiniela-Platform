@@ -54,7 +54,7 @@ export async function getPoolOverview(
     where: { id: poolId },
     include: {
       tournamentInstance: { include: { template: { select: { key: true } } } },
-      organization: { select: { id: true, name: true, logoBase64: true, welcomeMessage: true, primaryColor: true, secondaryColor: true } },
+      organization: { select: { id: true, name: true, logoBase64: true, welcomeMessage: true, invitationMessage: true, primaryColor: true, secondaryColor: true } },
     },
   });
   if (!pool) throw new ServiceError("NOT_FOUND", 404);
@@ -488,6 +488,7 @@ export async function getPoolOverview(
             name: pool.organization.name,
             logoBase64: pool.organization.logoBase64 ?? null,
             welcomeMessage: pool.organization.welcomeMessage ?? null,
+            invitationMessage: pool.organization.invitationMessage ?? null,
             primaryColor: pool.organization.primaryColor ?? null,
             secondaryColor: pool.organization.secondaryColor ?? null,
           }

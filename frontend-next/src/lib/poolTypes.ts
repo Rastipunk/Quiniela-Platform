@@ -14,6 +14,7 @@ export interface PoolOrganization {
   name: string;
   logoBase64: string | null;
   welcomeMessage: string | null;
+  invitationMessage: string | null;
   primaryColor: string | null;
   secondaryColor: string | null;
 }

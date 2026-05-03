@@ -98,6 +98,48 @@ export async function resendCorporateInvitation(
   });
 }
 
+// ─── Branding (post-creation editing) ────────────────────────
+
+export type UpdatePoolBrandingInput = {
+  /** Base64 data URL. `null` to clear, omit to leave unchanged. */
+  logoBase64?: string | null;
+  /** Hex #RRGGBB. `null` to revert to Picks4All default. */
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  /** Plain text, max 1000 chars. `null` to clear. */
+  welcomeMessage?: string | null;
+  invitationMessage?: string | null;
+};
+
+export type UpdatePoolBrandingResponse = {
+  organizationId: string;
+  fieldsChanged: Array<
+    | "logoBase64"
+    | "primaryColor"
+    | "secondaryColor"
+    | "welcomeMessage"
+    | "invitationMessage"
+  >;
+  branding: {
+    logoBase64: string | null;
+    primaryColor: string | null;
+    secondaryColor: string | null;
+    welcomeMessage: string | null;
+    invitationMessage: string | null;
+  };
+};
+
+export async function updatePoolBranding(
+  token: string,
+  poolId: string,
+  input: UpdatePoolBrandingInput,
+): Promise<UpdatePoolBrandingResponse> {
+  return requestJson<UpdatePoolBrandingResponse>(
+    `/corporate/pools/${poolId}/branding`,
+    { method: "PATCH", body: JSON.stringify(input) },
+  );
+}
+
 export async function checkCorporateInvite(token: string): Promise<CheckCorporateInviteResponse> {
   return requestJson<CheckCorporateInviteResponse>(`/auth/check-corporate-invite?token=${encodeURIComponent(token)}`);
 }

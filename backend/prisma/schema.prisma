@@ -148,6 +148,7 @@ model User {
   groupStandingsResults     GroupStandingsResult[]
   poolMatchOverrides        PoolMatchOverride[]
   poolPayments              PoolPayment[]
+  brandingAuditEntries      OrganizationBrandingAudit[]
 
   @@index([username])
   @@index([resetToken])
@@ -1027,13 +1028,54 @@ model Organization {
   notes             String?            @db.Text
   status            OrganizationStatus @default(INQUIRY)
 
-  inquiries OrganizationInquiry[]
-  pools     Pool[]
+  inquiries     OrganizationInquiry[]
+  pools         Pool[]
+  brandingAudit OrganizationBrandingAudit[]
 
   createdAtUtc DateTime @default(now())
   updatedAtUtc DateTime @updatedAt
 
   @@index([status])
+}
+
+// =========================================================================
+// BRANDING AUDIT — every host-driven branding change is logged so we can
+// trace who changed what and when. Required because branding edits affect
+// what employees see in their splash/emails (legal/compliance trail).
+// =========================================================================
+
+model OrganizationBrandingAudit {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  // The user who triggered the change (host or co-admin of a pool that
+  // belongs to the organization). Platform admin edits go through the
+  // admin panel and aren't tracked here.
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  changedAt DateTime @default(now())
+
+  // Names of the org fields that changed in this update. Stored as a
+  // string array so reports/UI can group by "edited colors", "edited
+  // welcome message", etc. Possible values: "logoBase64",
+  // "primaryColor", "secondaryColor", "welcomeMessage", "invitationMessage".
+  fieldsChanged String[]
+
+  // Snapshots of the changed fields only — keeps logs compact and
+  // makes reverts trivial. Each is a JSON object keyed by field name.
+  beforeJson Json
+  afterJson  Json
+
+  // Forensic context. Both nullable: trust-proxy and UA detection are
+  // best-effort and we never want a missing IP to block a legitimate
+  // edit.
+  ipAddress String?
+  userAgent String?
+
+  @@index([organizationId, changedAt])
+  @@index([userId, changedAt])
 }
 
 model OrganizationInquiry {

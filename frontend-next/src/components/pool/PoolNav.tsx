@@ -37,6 +37,7 @@ export type PoolNavTab =
   | "reglas"
   | "jugadores"
   | "capacidad"
+  | "personalizacion"
   | "admin";
 
 const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
@@ -46,6 +47,7 @@ const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
   "reglas",
   "jugadores",
   "capacidad",
+  "personalizacion",
   "admin",
 ]);
 
@@ -68,7 +70,16 @@ const HOST_ITEMS: ReadonlyArray<NavItem> = [
   { key: "admin", icon: "⚙️", labelKey: "tabs.admin" },
 ];
 
-const ALL_ITEMS: ReadonlyArray<NavItem> = [...PLAYER_ITEMS, ...HOST_ITEMS];
+// Branding lives outside the static HOST_ITEMS array because it's
+// only available on pools that have an Organization (corporate).
+// Standard pools never see it.
+const BRANDING_ITEM: NavItem = {
+  key: "personalizacion",
+  icon: "🎨",
+  labelKey: "tabs.branding",
+};
+
+const ALL_ITEMS: ReadonlyArray<NavItem> = [...PLAYER_ITEMS, ...HOST_ITEMS, BRANDING_ITEM];
 
 /**
  * Returns the icon + label key for a pool nav tab. Single source of
@@ -76,6 +87,21 @@ const ALL_ITEMS: ReadonlyArray<NavItem> = [...PLAYER_ITEMS, ...HOST_ITEMS];
  */
 export function getPoolNavMeta(tab: PoolNavTab): { icon: string; labelKey: string } {
   return ALL_ITEMS.find((item) => item.key === tab) ?? ALL_ITEMS[0];
+}
+
+/**
+ * Inserts an item right before the Administración entry so the
+ * "settings-flavored" tab (Personalización) sits next to capacity
+ * rather than after admin operations. Defensive: if "admin" is ever
+ * removed from HOST_ITEMS, the new item lands at the end.
+ */
+function insertBeforeAdmin(
+  items: ReadonlyArray<NavItem>,
+  newItem: NavItem,
+): ReadonlyArray<NavItem> {
+  const idx = items.findIndex((i) => i.key === "admin");
+  if (idx < 0) return [...items, newItem];
+  return [...items.slice(0, idx), newItem, ...items.slice(idx)];
 }
 
 // ── Cross-tree state (layout-level) ─────────────────────────
@@ -90,6 +116,12 @@ export function getPoolNavMeta(tab: PoolNavTab): { icon: string; labelKey: strin
 
 export interface PoolNavSnapshot {
   showHostItems: boolean;
+  /**
+   * True only for corporate pools (those tied to an Organization).
+   * Gates the Personalización tab so standard pools don't see a tab
+   * with no editable fields behind it.
+   */
+  showBrandingTab: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
   hasUrgent: boolean;
 }
@@ -139,7 +171,7 @@ export function usePublishPoolNav(snapshot: PoolNavSnapshot | null) {
   snapshotRef.current = snapshot;
 
   const signature = snapshot
-    ? `${snapshot.showHostItems}|${snapshot.hasUrgent}|${JSON.stringify(snapshot.tabBadges)}`
+    ? `${snapshot.showHostItems}|${snapshot.showBrandingTab}|${snapshot.hasUrgent}|${JSON.stringify(snapshot.tabBadges)}`
     : null;
 
   useEffect(() => {
@@ -158,6 +190,11 @@ export function usePublishPoolNav(snapshot: PoolNavSnapshot | null) {
 
 interface PoolNavItemsProps {
   showHostItems: boolean;
+  /**
+   * Show the Personalización item (corporate-only). When false, the
+   * branding entry is omitted from the host group entirely.
+   */
+  showBrandingTab: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
   hasUrgent: boolean;
   /** Fired after a tab is selected — typically to close a drawer. */
@@ -168,6 +205,7 @@ interface PoolNavItemsProps {
 
 export function PoolNavItems({
   showHostItems,
+  showBrandingTab,
   tabBadges,
   hasUrgent,
   onAfterSelect,
@@ -270,7 +308,10 @@ export function PoolNavItems({
       {showHostItems && (
         <>
           {renderGroupLabel(t("nav.hostGroup"), true)}
-          {HOST_ITEMS.map(renderItem)}
+          {(showBrandingTab
+            ? insertBeforeAdmin(HOST_ITEMS, BRANDING_ITEM)
+            : HOST_ITEMS
+          ).map(renderItem)}
         </>
       )}
     </nav>

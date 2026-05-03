@@ -28,6 +28,7 @@ import {
   deleteEmployee,
   resendInvitation,
 } from "../services/corporateService";
+import { updateBranding } from "../services/corporateBrandingService";
 
 export const corporateRouter = Router();
 
@@ -122,6 +123,33 @@ const addEmployeesSchema = z.object({
   emails: z.array(z.string().email()).min(1).max(500),
 });
 
+// PATCH /corporate/pools/:poolId/branding — every field is optional;
+// `null` clears the field, a string sets it. Limits mirror the create
+// schema so what's allowed at creation is also allowed at edit time.
+const updateBrandingSchema = z.object({
+  logoBase64: z
+    .string()
+    .max(700_000)
+    .nullable()
+    .optional()
+    .refine(
+      (val) => val == null || validateBase64Image(val) !== null,
+      { message: "Logo must be a valid image (PNG, JPEG, GIF, or WebP)" },
+    ),
+  welcomeMessage: z.string().max(1000).nullable().optional(),
+  invitationMessage: z.string().max(1000).nullable().optional(),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #4F46E5)")
+    .nullable()
+    .optional(),
+  secondaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #4F46E5)")
+    .nullable()
+    .optional(),
+});
+
 // ─── Routes ──────────────────────────────────────────────────
 
 // POST /corporate/inquiry — Public, no auth (contact form)
@@ -194,6 +222,32 @@ corporateRouter.post("/pools/:poolId/send-invitations", requireAuth, inviteSendL
   try {
     const result = await sendInvitations(
       { userId: req.auth!.userId, poolId: req.params.poolId as string },
+      auditCtx(req),
+    );
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// PATCH /corporate/pools/:poolId/branding — Edit organization branding
+// after the pool exists. Host-only (CORPORATE_HOST / HOST / CO_ADMIN)
+// for that pool. Pass `null` to clear a field; omit a field to leave
+// it unchanged. Every successful change is recorded in
+// OrganizationBrandingAudit.
+corporateRouter.patch("/pools/:poolId/branding", requireAuth, async (req, res) => {
+  const parsed = updateBrandingSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+
+  try {
+    const result = await updateBranding(
+      {
+        userId: req.auth!.userId,
+        poolId: req.params.poolId as string,
+        payload: parsed.data,
+      },
       auditCtx(req),
     );
     return sendOk(res, result);

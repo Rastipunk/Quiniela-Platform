@@ -28,6 +28,7 @@ const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
   "reglas",
   "jugadores",
   "capacidad",
+  "personalizacion",
   "admin",
 ]);
 

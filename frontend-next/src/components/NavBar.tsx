@@ -662,6 +662,7 @@ export function NavBar() {
                 <PoolNavItems
                   variant="dark"
                   showHostItems={poolNav.showHostItems}
+                  showBrandingTab={poolNav.showBrandingTab}
                   tabBadges={poolNav.tabBadges}
                   hasUrgent={poolNav.hasUrgent}
                   onAfterSelect={() => setShowMobileMenu(false)}

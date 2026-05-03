@@ -38,10 +38,11 @@ import type { BreakdownModalData, PlayerSummaryModalData } from "./components/po
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
 import { PoolSectionHeader } from "./components/PoolSectionHeader";
 import { PoolCapacityTab } from "./components/PoolCapacityTab";
+import { PoolBrandingTab } from "./components/PoolBrandingTab";
 import { usePublishPoolNav } from "@/components/pool/PoolNav";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
-const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "capacidad", "admin"] as const;
+const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "capacidad", "personalizacion", "admin"] as const;
 type PoolTab = typeof VALID_TABS[number];
 
 export default function PoolPage() {
@@ -144,10 +145,14 @@ export default function PoolPage() {
   // Publish pool nav state to the layout-level store so the global
   // navbar drawer can render pool sections at the top of its menu
   // on mobile. Snapshot clears on unmount so other routes are clean.
+  // showBrandingTab is host-only AND corporate-only — standard pools
+  // never see Personalización because they have no Organization.
   usePublishPoolNav(
     overview
       ? {
           showHostItems: overview.permissions.canManageResults,
+          showBrandingTab:
+            overview.permissions.canManageResults && !!overview.pool.organizationId,
           tabBadges,
           hasUrgent,
         }
@@ -755,6 +760,9 @@ export default function PoolPage() {
           }}>
             <PoolNavDrawer
               showHostItems={overview.permissions.canManageResults}
+              showBrandingTab={
+                overview.permissions.canManageResults && !!overview.pool.organizationId
+              }
               tabBadges={tabBadges}
               hasUrgent={hasUrgent}
             />
@@ -771,6 +779,16 @@ export default function PoolPage() {
               {activeTab === "capacidad" && overview.permissions.canManageResults && (
                 <PoolCapacityTab poolId={poolId!} overview={overview} />
               )}
+
+              {activeTab === "personalizacion" &&
+                overview.permissions.canManageResults &&
+                overview.pool.organizationId && (
+                  <PoolBrandingTab
+                    poolId={poolId!}
+                    overview={overview}
+                    onSaved={load}
+                  />
+                )}
 
               {activeTab === "admin" && overview.permissions.canManageResults && (
                 <PoolAdminTab

@@ -103,7 +103,8 @@
     "rules": "Reglas",
     "admin": "Administración",
     "players": "Jugadores",
-    "capacity": "Capacidad"
+    "capacity": "Capacidad",
+    "branding": "Personalización"
   },
 
   "nav": {
@@ -112,6 +113,16 @@
     "sectionsTitle": "Secciones",
     "playerGroup": "Tu pool",
     "hostGroup": "Administrar"
+  },
+
+  "branding": {
+    "futureOnlyNote": "Los emails ya enviados no se modifican. Los nuevos envíos y reenvíos usarán el diseño y texto actualizados.",
+    "saveChanges": "Guardar cambios",
+    "discardChanges": "Descartar",
+    "saving": "Guardando...",
+    "saved": "Cambios guardados",
+    "saveError": "No pudimos guardar los cambios. Intenta de nuevo.",
+    "noChanges": "No hay cambios pendientes"
   },
 
   "admin": {
