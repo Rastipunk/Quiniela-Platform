@@ -17,6 +17,7 @@ import { fireAndForget } from "../lib/asyncHelpers";
 import { FINISHED_STATUSES } from "../services/apiFootball/types";
 import { SCORES } from "../lib/constants";
 import { checkAndTriggerAdvancement } from "../services/advancementTrigger";
+import { transitionToCompleted } from "../services/poolStateMachine";
 
 // ============================================================================
 // Configuration
@@ -393,6 +394,20 @@ async function publishScraperResult(
       `(pool ${poolId}): ${score.homeGoals}-${score.awayGoals} ` +
       `[${score.status}, confidence=${score.confidence}]`
   );
+
+  // The host-publish path (resultService.handleAutoAdvance) calls
+  // transitionToCompleted after every result; the scraper path used to
+  // skip this entirely, so AUTO-mode pools were stuck in ACTIVE forever
+  // once the scraper finalised the last match. transitionToCompleted is
+  // idempotent (it returns immediately if status !== ACTIVE or any
+  // match still has no result), so calling it on every publish is
+  // safe.
+  if (isFinished) {
+    fireAndForget(
+      "LiveScoresJob:check-pool-completed",
+      transitionToCompleted(poolId, null),
+    );
+  }
 }
 
 // ============================================================================
@@ -482,6 +497,15 @@ async function finalizeResult(
   fireAndForget(
     "LiveScoresJob:advancement-trigger",
     checkAndTriggerAdvancement(poolId, entry.internalMatchId, null)
+  );
+
+  // Same completion check as in publishScraperResult — finalize is
+  // an upgrade of a provisional result, but if the provisional check
+  // missed (race, transient DB error) this is the second chance.
+  // Idempotent.
+  fireAndForget(
+    "LiveScoresJob:check-pool-completed-finalize",
+    transitionToCompleted(poolId, null),
   );
 }
 
