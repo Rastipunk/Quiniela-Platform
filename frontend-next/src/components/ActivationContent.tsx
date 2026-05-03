@@ -5,7 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { activateCorporateAccount, checkCorporateInvite } from "@/lib/api";
-import { setToken } from "@/lib/auth";
+import { logout as apiLogout } from "@/lib/api/auth";
+import { setToken, clearToken } from "@/lib/auth";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import { colors } from "@/lib/theme";
 import PasswordStrengthIndicator from "./PasswordStrengthIndicator";
@@ -77,6 +78,16 @@ export function ActivationContent() {
   const [status, setStatus] = useState<Status>("form");
   const [errorMsg, setErrorMsg] = useState("");
   const [poolId, setPoolId] = useState<string | null>(null);
+
+  // Session-mismatch state — populated when the backend rejects activation
+  // because the cookie session belongs to a user with a different email
+  // than the invite recipient. Surfacing both emails lets the host see why
+  // we're refusing the magic-link silent sign-in.
+  const [sessionMismatch, setSessionMismatch] = useState<{
+    currentUserEmail: string;
+    inviteEmail: string;
+  } | null>(null);
+  const [logoutBusy, setLogoutBusy] = useState(false);
 
   // Check invite on mount
   useEffect(() => {
@@ -190,9 +201,36 @@ export function ActivationContent() {
         setErrorMsg(t("poolFull"));
       } else if (payload?.error === "ALREADY_ACTIVATED") {
         setErrorMsg(t("alreadyActivated"));
+      } else if (payload?.error === "SESSION_MISMATCH") {
+        // Backend refused to overwrite the current session cookie because it
+        // belongs to a different user. Show a dedicated panel with both emails
+        // and a "log out and continue" button rather than the generic error UI.
+        const current = (payload as Record<string, unknown>).currentUserEmail;
+        const invitee = (payload as Record<string, unknown>).inviteEmail;
+        if (typeof current === "string" && typeof invitee === "string") {
+          setSessionMismatch({ currentUserEmail: current, inviteEmail: invitee });
+        } else {
+          setErrorMsg(formatActivationError(err));
+        }
       } else {
         setErrorMsg(formatActivationError(err));
       }
+    }
+  };
+
+  // SESSION_MISMATCH handler: log the current user out, clear local state,
+  // and re-open the activation flow with no cookie. The backend will then
+  // proceed normally and sign the invitee in.
+  const handleSessionMismatchLogout = async () => {
+    setLogoutBusy(true);
+    try {
+      await apiLogout().catch(() => {});
+      clearToken();
+      setSessionMismatch(null);
+      // Retry the activation with the (now empty) session.
+      await handleExistingUserJoin();
+    } finally {
+      setLogoutBusy(false);
     }
   };
 
@@ -260,6 +298,45 @@ export function ActivationContent() {
   }
 
   // ---- Existing user: simplified join UI ----
+  // ---- Session mismatch: a different user is logged in ----
+  // Rendered for BOTH existing_user and new_user check states because the
+  // mismatch is detected at activation time, not at check time. The user
+  // is offered a single resolution path: log out + retry (which re-runs
+  // handleExistingUserJoin without the cookie, letting the backend proceed).
+  if (sessionMismatch) {
+    return (
+      <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 20px", textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>{"\u{1F501}"}</div>
+        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 12, color: "var(--text)" }}>
+          {t("sessionMismatchTitle")}
+        </h1>
+        <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+          {t("sessionMismatchDesc", {
+            currentEmail: sessionMismatch.currentUserEmail,
+            inviteEmail: sessionMismatch.inviteEmail,
+          })}
+        </p>
+        <button
+          onClick={handleSessionMismatchLogout}
+          disabled={logoutBusy}
+          style={{
+            padding: "14px 32px",
+            borderRadius: 10,
+            border: "none",
+            background: colors.brand,
+            color: "white",
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: logoutBusy ? "not-allowed" : "pointer",
+            opacity: logoutBusy ? 0.7 : 1,
+          }}
+        >
+          {logoutBusy ? t("sessionMismatchBusy") : t("sessionMismatchCta")}
+        </button>
+      </div>
+    );
+  }
+
   if (checkStatus === "existing_user") {
     return (
       <div style={{ maxWidth: 480, margin: "80px auto", padding: "0 20px", textAlign: "center" }}>

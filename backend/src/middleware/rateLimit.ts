@@ -56,6 +56,33 @@ export const poolJoinLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Per-IP limit on the public corporate invite check endpoint.
+// `/auth/check-corporate-invite` is unauthenticated and reveals (a) the
+// invite email, (b) whether that email already has an account, (c) the pool
+// + company name. The limit is loose enough to allow page reload after a
+// network error but tight enough to block mass token enumeration if a leak
+// happens. Stricter than the global apiLimiter (100/min) but looser than
+// authLimiter (10/15min) since legitimate page loads happen often.
+export const corporateInviteCheckLimiter = rateLimit({
+  windowMs: envInt("RATE_LIMIT_INVITE_CHECK_WINDOW_MS", MINUTE),
+  max: envInt("RATE_LIMIT_INVITE_CHECK_MAX", 20),
+  message: { error: "TOO_MANY_INVITE_CHECKS" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Per-IP limit on the actual activation endpoint. The token entropy makes
+// brute-force impractical anyway, but this defends against the leaked-token
+// scenario (where attacker has a small handful of valid tokens) and
+// matches the conservatism of authLimiter on /login + /register.
+export const corporateActivateLimiter = rateLimit({
+  windowMs: envInt("RATE_LIMIT_INVITE_ACTIVATE_WINDOW_MS", 15 * MINUTE),
+  max: envInt("RATE_LIMIT_INVITE_ACTIVATE_MAX", 10),
+  message: { error: "TOO_MANY_ACTIVATION_ATTEMPTS" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Per-user invitation send (corporate or regular). Keyed by req.auth.userId
 // (falls back to IP for unauthenticated requests, which shouldn't reach the
 // invitation endpoints anyway since those require auth). Bucket sized for a

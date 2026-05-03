@@ -7,9 +7,9 @@
 
 import { Router } from "express";
 import { z } from "zod";
-import { signToken } from "../lib/jwt";
+import { signToken, verifyToken } from "../lib/jwt";
 import { requireAuth } from "../middleware/requireAuth";
-import { setAuthCookies, clearAuthCookies } from "../lib/authCookies";
+import { setAuthCookies, clearAuthCookies, getTokenFromCookies } from "../lib/authCookies";
 import {
   sendData, sendOk, sendCreated, sendBadRequest,
   sendUnauthorized, sendForbidden, sendNotFound,
@@ -251,8 +251,27 @@ authRouter.post("/activate-corporate", async (req, res) => {
   const parsed = activateCorporateSchema.safeParse(req.body);
   if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
 
+  // Read the current session cookie (if any) so the service can detect a
+  // magic-link mismatch — i.e. someone logged in as Alice opening a link
+  // addressed to Bob. We swallow verify errors silently because an invalid
+  // or expired cookie is equivalent to "no session" for this check, not an
+  // error to surface.
+  let currentUserId: string | null = null;
+  const sessionToken = getTokenFromCookies(req.cookies);
+  if (sessionToken) {
+    try {
+      const payload = verifyToken(sessionToken);
+      currentUserId = payload.userId ?? null;
+    } catch {
+      // Expired / malformed cookie → treat as anonymous, no mismatch.
+    }
+  }
+
   try {
-    const result = await activateCorporateAccount(parsed.data, auditCtx(req));
+    const result = await activateCorporateAccount(
+      { ...parsed.data, currentUserId },
+      auditCtx(req),
+    );
     const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
     setAuthCookies(res, token, { isAdmin: result.user.platformRole === "ADMIN" });
     const status = result.alreadyExisted ? sendData : sendCreated;

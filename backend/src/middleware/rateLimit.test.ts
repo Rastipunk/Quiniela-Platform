@@ -7,6 +7,8 @@ import {
   verificationResendLimiter,
   inviteSendLimiter,
   inviteSendDailyLimiter,
+  corporateInviteCheckLimiter,
+  corporateActivateLimiter,
 } from "./rateLimit";
 
 describe("rate limiters — configuration", () => {
@@ -43,6 +45,16 @@ describe("rate limiters — configuration", () => {
   it("inviteSendDailyLimiter is configured (per-user daily ceiling)", () => {
     expect(inviteSendDailyLimiter).toBeDefined();
     expect(typeof inviteSendDailyLimiter).toBe("function");
+  });
+
+  it("corporateInviteCheckLimiter is configured (per-IP, blocks token enumeration)", () => {
+    expect(corporateInviteCheckLimiter).toBeDefined();
+    expect(typeof corporateInviteCheckLimiter).toBe("function");
+  });
+
+  it("corporateActivateLimiter is configured (per-IP, blocks token brute-force)", () => {
+    expect(corporateActivateLimiter).toBeDefined();
+    expect(typeof corporateActivateLimiter).toBe("function");
   });
 
   it("health check is exempt from API limiter", () => {

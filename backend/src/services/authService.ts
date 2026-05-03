@@ -595,6 +595,11 @@ export type CorporateActivationInput = {
   acceptTerms?: boolean;
   acceptPrivacy?: boolean;
   acceptAge?: boolean;
+  /** Optional: ID of the user currently logged in (read from auth cookie by
+   *  the route handler). Used to detect a magic-link session mismatch — if
+   *  someone logged in as Alice opens an invitation link addressed to Bob,
+   *  we refuse to silently overwrite Alice's session with Bob's. */
+  currentUserId?: string | null;
 };
 
 export type CorporateActivationResult = {
@@ -625,6 +630,35 @@ export async function activateCorporateAccount(
   const poolId = invite.poolId;
   const poolName = invite.pool.name;
   const companyName = invite.pool.organization?.name ?? null;
+
+  // Session mismatch defence — if there's already a logged-in user in this
+  // browser session AND their email doesn't match the invite's, refuse to
+  // silently overwrite their cookies with someone else's. This protects
+  // against three real scenarios:
+  //   (1) Alice (logged in) accidentally opens Bob's invite from a shared
+  //       inbox / forwarded chat → previously she'd be silently signed in
+  //       as Bob with no warning.
+  //   (2) An attacker who controls the email account of an invitee can,
+  //       when the victim is already logged in, take over the victim's
+  //       browser session by clicking the magic-link.
+  //   (3) Genuine UX confusion when the host has multiple test accounts.
+  // The frontend handles the SESSION_MISMATCH error by offering a "log out
+  // and continue" flow.
+  if (data.currentUserId) {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: data.currentUserId },
+      select: { email: true },
+    });
+    if (
+      currentUser &&
+      currentUser.email.toLowerCase() !== invite.email.toLowerCase()
+    ) {
+      throw new ServiceError("SESSION_MISMATCH", 409, {
+        currentUserEmail: currentUser.email,
+        inviteEmail: invite.email,
+      });
+    }
+  }
 
   // ── Existing user path ──
   const existingUser = await prisma.user.findUnique({ where: { email: invite.email } });

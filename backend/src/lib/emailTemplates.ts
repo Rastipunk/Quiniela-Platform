@@ -14,6 +14,7 @@
 
 import { BRAND as B } from "./brand";
 import { appendUtm, emailUtm } from "./utm";
+import { escapeHtml } from "./htmlSafe";
 
 const BRAND = {
   name: B.name,
@@ -304,13 +305,15 @@ export interface VerificationEmailParams {
 }
 
 export function getVerificationTemplate({ displayName, verificationUrl, locale = "es" }: VerificationEmailParams): string {
+  // XSS defence — user-controlled displayName.
+  const safeDisplayName = escapeHtml(displayName);
   const i18n: Record<string, {
     heading: string; greeting: string; intro: string; cta: string;
     altLabel: string; expiry: string; ignore: string; preheader: string;
   }> = {
     es: {
       heading: "Verifica tu email",
-      greeting: `¡Hola, ${displayName}!`,
+      greeting: `¡Hola, ${safeDisplayName}!`,
       intro: "Gracias por registrarte. Para completar tu registro y acceder a todas las funciones, necesitamos verificar tu dirección de email.",
       cta: "✓ Verificar mi email",
       altLabel: "O copia y pega este enlace en tu navegador:",
@@ -320,7 +323,7 @@ export function getVerificationTemplate({ displayName, verificationUrl, locale =
     },
     en: {
       heading: "Verify your email",
-      greeting: `Hi, ${displayName}!`,
+      greeting: `Hi, ${safeDisplayName}!`,
       intro: "Thanks for signing up. To complete your registration and access all features, we need to verify your email address.",
       cta: "✓ Verify my email",
       altLabel: "Or copy and paste this link in your browser:",
@@ -330,7 +333,7 @@ export function getVerificationTemplate({ displayName, verificationUrl, locale =
     },
     pt: {
       heading: "Verifique seu email",
-      greeting: `Olá, ${displayName}!`,
+      greeting: `Olá, ${safeDisplayName}!`,
       intro: "Obrigado por se registrar. Para concluir seu cadastro e acessar todas as funcionalidades, precisamos verificar seu endereço de email.",
       cta: "✓ Verificar meu email",
       altLabel: "Ou copie e cole este link no seu navegador:",
@@ -365,13 +368,15 @@ export interface WelcomeEmailParams {
 }
 
 export function getWelcomeTemplate({ displayName, locale = "es" }: WelcomeEmailParams): string {
+  // XSS defence — user-controlled.
+  const safeDisplayName = escapeHtml(displayName);
   const i18n: Record<string, {
     heading: string; intro: string; canDo: string;
     li1: string; li2: string; li3: string; li4: string;
     cta: string; tip: string; footer: string; preheader: string;
   }> = {
     es: {
-      heading: `¡Bienvenido, ${displayName}!`,
+      heading: `¡Bienvenido, ${safeDisplayName}!`,
       intro: `Gracias por unirte a ${BRAND.name}. Estamos emocionados de tenerte con nosotros.`,
       canDo: "Con tu nueva cuenta puedes:",
       li1: "Crear tus propias quinielas y competir con amigos",
@@ -384,7 +389,7 @@ export function getWelcomeTemplate({ displayName, locale = "es" }: WelcomeEmailP
       preheader: `¡Bienvenido a ${BRAND.name}! Tu cuenta está lista para hacer pronósticos.`,
     },
     en: {
-      heading: `Welcome, ${displayName}!`,
+      heading: `Welcome, ${safeDisplayName}!`,
       intro: `Thanks for joining ${BRAND.name}. We're excited to have you with us.`,
       canDo: "With your new account you can:",
       li1: "Create your own pools and compete with friends",
@@ -397,7 +402,7 @@ export function getWelcomeTemplate({ displayName, locale = "es" }: WelcomeEmailP
       preheader: `Welcome to ${BRAND.name}! Your account is ready to make predictions.`,
     },
     pt: {
-      heading: `Bem-vindo, ${displayName}!`,
+      heading: `Bem-vindo, ${safeDisplayName}!`,
       intro: `Obrigado por se juntar ao ${BRAND.name}. Estamos felizes em ter você conosco.`,
       canDo: "Com sua nova conta você pode:",
       li1: "Criar seus próprios bolões e competir com amigos",
@@ -447,6 +452,10 @@ export function getPoolInvitationTemplate({
   inviterName, poolName, inviteCode, poolDescription, locale = "es",
 }: PoolInvitationEmailParams): string {
   const joinUrl = appendUtm(`${BRAND.baseUrl}/join/${inviteCode}`, emailUtm("pool_invite"));
+  // XSS defence — host-controlled (poolName, inviterName, poolDescription).
+  const safeInviterName = escapeHtml(inviterName);
+  const safePoolName = escapeHtml(poolName);
+  const safePoolDescription = poolDescription ? escapeHtml(poolDescription) : poolDescription;
 
   const i18n: Record<string, {
     heading: string; intro: string; compete: string; cta: string;
@@ -454,30 +463,30 @@ export function getPoolInvitationTemplate({
   }> = {
     es: {
       heading: "¡Te han invitado a una quiniela!",
-      intro: `<strong>${inviterName}</strong> te ha invitado a unirte a la quiniela:`,
+      intro: `<strong>${safeInviterName}</strong> te ha invitado a unirte a la quiniela:`,
       compete: "Haz tus pronósticos y compite por el primer lugar del leaderboard.",
       cta: "Unirme a la Quiniela",
       codeAlt: `O usa este código de invitación: <strong style="color:${BRAND.primaryColor};">${inviteCode}</strong>`,
-      safety: `Si no conoces a ${inviterName} o no esperabas esta invitación, puedes ignorar este email.`,
-      preheader: `${inviterName} te invitó a la quiniela "${poolName}". ¡Únete y compite!`,
+      safety: `Si no conoces a ${safeInviterName} o no esperabas esta invitación, puedes ignorar este email.`,
+      preheader: `${safeInviterName} te invitó a la quiniela "${safePoolName}". ¡Únete y compite!`,
     },
     en: {
       heading: "You've been invited to a pool!",
-      intro: `<strong>${inviterName}</strong> has invited you to join the pool:`,
+      intro: `<strong>${safeInviterName}</strong> has invited you to join the pool:`,
       compete: "Make your predictions and compete for the top of the leaderboard.",
       cta: "Join the Pool",
       codeAlt: `Or use this invite code: <strong style="color:${BRAND.primaryColor};">${inviteCode}</strong>`,
-      safety: `If you don't know ${inviterName} or weren't expecting this invitation, you can ignore this email.`,
-      preheader: `${inviterName} invited you to the pool "${poolName}". Join and compete!`,
+      safety: `If you don't know ${safeInviterName} or weren't expecting this invitation, you can ignore this email.`,
+      preheader: `${safeInviterName} invited you to the pool "${safePoolName}". Join and compete!`,
     },
     pt: {
       heading: "Você foi convidado para um bolão!",
-      intro: `<strong>${inviterName}</strong> convidou você para participar do bolão:`,
+      intro: `<strong>${safeInviterName}</strong> convidou você para participar do bolão:`,
       compete: "Faça seus palpites e dispute o primeiro lugar no ranking.",
       cta: "Entrar no Bolão",
       codeAlt: `Ou use este código de convite: <strong style="color:${BRAND.primaryColor};">${inviteCode}</strong>`,
-      safety: `Se você não conhece ${inviterName} ou não esperava este convite, pode ignorar este email.`,
-      preheader: `${inviterName} convidou você para o bolão "${poolName}". Entre e jogue!`,
+      safety: `Se você não conhece ${safeInviterName} ou não esperava este convite, pode ignorar este email.`,
+      preheader: `${safeInviterName} convidou você para o bolão "${safePoolName}". Entre e jogue!`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -486,8 +495,8 @@ export function getPoolInvitationTemplate({
     ${getHeading(t.heading)}
     ${getParagraph(t.intro)}
     ${getHighlightBox(`
-      <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:${BRAND.primaryColor};">${poolName}</p>
-      ${poolDescription ? `<p style="margin:0;font-size:14px;color:${BRAND.mutedColor};">${poolDescription}</p>` : ""}
+      <p style="margin:0 0 8px;font-size:20px;font-weight:700;color:${BRAND.primaryColor};">${safePoolName}</p>
+      ${poolDescription ? `<p style="margin:0;font-size:14px;color:${BRAND.mutedColor};">${safePoolDescription}</p>` : ""}
     `)}
     ${getParagraph(t.compete)}
     ${getButton(t.cta, joinUrl)}
@@ -516,6 +525,9 @@ export function getDeadlineReminderTemplate({
 }: DeadlineReminderEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("deadline_reminder"));
   const plural = matchesCount > 1;
+  // XSS defence — host (poolName) + user (displayName) controlled.
+  const safeDisplayName = escapeHtml(displayName);
+  const safePoolName = escapeHtml(poolName);
 
   const i18n: Record<string, {
     heading: string; greeting: string; pending: string;
@@ -523,30 +535,30 @@ export function getDeadlineReminderTemplate({
   }> = {
     es: {
       heading: "¡No olvides hacer tus pronósticos!",
-      greeting: `Hola ${displayName},`,
-      pending: `Tienes <strong>${matchesCount} partido${plural ? "s" : ""}</strong> sin pronóstico en la quiniela <strong>${poolName}</strong>.`,
+      greeting: `Hola ${safeDisplayName},`,
+      pending: `Tienes <strong>${matchesCount} partido${plural ? "s" : ""}</strong> sin pronóstico en la quiniela <strong>${safePoolName}</strong>.`,
       warning: "Después del deadline no podrás modificar tus pronósticos para estos partidos.",
       cta: "Hacer mis Pronósticos",
       optout: "Puedes desactivar estos recordatorios desde tu perfil en Preferencias de Email.",
-      preheader: `Tienes ${matchesCount} partido${plural ? "s" : ""} pendiente${plural ? "s" : ""} en "${poolName}". Deadline: ${deadlineTime}`,
+      preheader: `Tienes ${matchesCount} partido${plural ? "s" : ""} pendiente${plural ? "s" : ""} en "${safePoolName}". Deadline: ${deadlineTime}`,
     },
     en: {
       heading: "Don't forget to make your predictions!",
-      greeting: `Hi ${displayName},`,
-      pending: `You have <strong>${matchesCount} match${plural ? "es" : ""}</strong> without a prediction in the pool <strong>${poolName}</strong>.`,
+      greeting: `Hi ${safeDisplayName},`,
+      pending: `You have <strong>${matchesCount} match${plural ? "es" : ""}</strong> without a prediction in the pool <strong>${safePoolName}</strong>.`,
       warning: "After the deadline, you won't be able to modify your predictions for these matches.",
       cta: "Make my Predictions",
       optout: "You can disable these reminders from your profile in Email Preferences.",
-      preheader: `You have ${matchesCount} pending match${plural ? "es" : ""} in "${poolName}". Deadline: ${deadlineTime}`,
+      preheader: `You have ${matchesCount} pending match${plural ? "es" : ""} in "${safePoolName}". Deadline: ${deadlineTime}`,
     },
     pt: {
       heading: "Não esqueça de fazer seus palpites!",
-      greeting: `Olá ${displayName},`,
-      pending: `Você tem <strong>${matchesCount} partida${plural ? "s" : ""}</strong> sem palpite no bolão <strong>${poolName}</strong>.`,
+      greeting: `Olá ${safeDisplayName},`,
+      pending: `Você tem <strong>${matchesCount} partida${plural ? "s" : ""}</strong> sem palpite no bolão <strong>${safePoolName}</strong>.`,
       warning: "Após o prazo, você não poderá modificar seus palpites para essas partidas.",
       cta: "Fazer meus Palpites",
       optout: "Você pode desativar esses lembretes no seu perfil em Preferências de Email.",
-      preheader: `Você tem ${matchesCount} partida${plural ? "s" : ""} pendente${plural ? "s" : ""} em "${poolName}". Prazo: ${deadlineTime}`,
+      preheader: `Você tem ${matchesCount} partida${plural ? "s" : ""} pendente${plural ? "s" : ""} em "${safePoolName}". Prazo: ${deadlineTime}`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -590,6 +602,11 @@ export function getResultPublishedTemplate({
 }: ResultPublishedEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("result_published"));
   const pointsEmoji = pointsEarned > 0 ? "🎉" : "😅";
+  // XSS defence — host (poolName, matchDescription) + user (displayName) controlled.
+  const safeDisplayName = escapeHtml(displayName);
+  const safePoolName = escapeHtml(poolName);
+  const safeMatchDescription = escapeHtml(matchDescription);
+  const safeResult = escapeHtml(result);
   const rankEmoji = currentRank <= 3 ? "🏆" : "📊";
 
   const i18n: Record<string, {
@@ -598,33 +615,33 @@ export function getResultPublishedTemplate({
   }> = {
     es: {
       heading: "¡Resultado publicado!",
-      greeting: `Hola ${displayName},`,
-      intro: `Se ha publicado el resultado de un partido en <strong>${poolName}</strong>:`,
+      greeting: `Hola ${safeDisplayName},`,
+      intro: `Se ha publicado el resultado de un partido en <strong>${safePoolName}</strong>:`,
       points: "Puntos ganados",
       rank: "Tu posición",
       cta: "Ver Leaderboard",
       optout: "Puedes desactivar estas notificaciones desde tu perfil en Preferencias de Email.",
-      preheader: `${matchDescription}: ${result}. Ganaste ${pointsEarned} puntos. Posición actual: #${currentRank}`,
+      preheader: `${safeMatchDescription}: ${safeResult}. Ganaste ${pointsEarned} puntos. Posición actual: #${currentRank}`,
     },
     en: {
       heading: "Result published!",
-      greeting: `Hi ${displayName},`,
-      intro: `A match result has been published in <strong>${poolName}</strong>:`,
+      greeting: `Hi ${safeDisplayName},`,
+      intro: `A match result has been published in <strong>${safePoolName}</strong>:`,
       points: "Points earned",
       rank: "Your position",
       cta: "View Leaderboard",
       optout: "You can disable these notifications from your profile in Email Preferences.",
-      preheader: `${matchDescription}: ${result}. You earned ${pointsEarned} points. Current position: #${currentRank}`,
+      preheader: `${safeMatchDescription}: ${safeResult}. You earned ${pointsEarned} points. Current position: #${currentRank}`,
     },
     pt: {
       heading: "Resultado publicado!",
-      greeting: `Olá ${displayName},`,
-      intro: `O resultado de uma partida foi publicado em <strong>${poolName}</strong>:`,
+      greeting: `Olá ${safeDisplayName},`,
+      intro: `O resultado de uma partida foi publicado em <strong>${safePoolName}</strong>:`,
       points: "Pontos ganhos",
       rank: "Sua posição",
       cta: "Ver Ranking",
       optout: "Você pode desativar estas notificações no seu perfil em Preferências de Email.",
-      preheader: `${matchDescription}: ${result}. Você ganhou ${pointsEarned} pontos. Posição atual: #${currentRank}`,
+      preheader: `${safeMatchDescription}: ${safeResult}. Você ganhou ${pointsEarned} pontos. Posição atual: #${currentRank}`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -634,8 +651,8 @@ export function getResultPublishedTemplate({
     ${getParagraph(t.greeting)}
     ${getParagraph(t.intro)}
     ${getHighlightBox(`
-      <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:${BRAND.textColor};">${matchDescription}</p>
-      <p style="margin:0;font-size:32px;font-weight:700;color:${BRAND.primaryColor};">${result}</p>
+      <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:${BRAND.textColor};">${safeMatchDescription}</p>
+      <p style="margin:0;font-size:32px;font-weight:700;color:${BRAND.primaryColor};">${safeResult}</p>
     `)}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
       <tr>
@@ -672,6 +689,9 @@ export function getPoolCompletedTemplate({
 }: PoolCompletedEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("pool_completed"));
   const lp = locale === "es" ? "" : `/${locale}`;
+  // XSS defence — host (poolName) + user (displayName) controlled.
+  const safeDisplayName = escapeHtml(displayName);
+  const safePoolName = escapeHtml(poolName);
 
   const congrats: Record<string, Record<string, { msg: string; emoji: string }>> = {
     es: { "1": { msg: "¡Felicidades, campeón! Dominaste esta quiniela de principio a fin.", emoji: "🏆" }, "2": { msg: "¡Increíble segundo lugar! Estuviste muy cerca de la cima.", emoji: "🥈" }, "3": { msg: "¡Excelente tercer lugar! Subiste al podio.", emoji: "🥉" }, top: { msg: "¡Gran desempeño! Terminaste en el top 25%.", emoji: "⭐" }, other: { msg: "¡Gracias por participar! Cada quiniela es una nueva oportunidad.", emoji: "🎮" } },
@@ -689,31 +709,31 @@ export function getPoolCompletedTemplate({
     ctaResults: string; rematch: string; ctaExplore: string; preheader: string;
   }> = {
     es: {
-      heading: `${emoji} ¡Quiniela finalizada!`, greeting: `Hola ${displayName},`,
-      ended: `La quiniela <strong>${poolName}</strong> ha terminado.`,
+      heading: `${emoji} ¡Quiniela finalizada!`, greeting: `Hola ${safeDisplayName},`,
+      ended: `La quiniela <strong>${safePoolName}</strong> ha terminado.`,
       rankLabel: "Posición final", pointsLabel: "Puntos totales", exactLabel: "Marcadores exactos",
       ctaResults: "Ver Resultados Finales",
       rematch: "¿Listo para la revancha? Crea tu propia quiniela o únete a una nueva.",
       ctaExplore: "Explorar Quinielas",
-      preheader: `"${poolName}" terminó. Posición final: #${finalRank} de ${totalParticipants} con ${totalPoints} puntos.`,
+      preheader: `"${safePoolName}" terminó. Posición final: #${finalRank} de ${totalParticipants} con ${totalPoints} puntos.`,
     },
     en: {
-      heading: `${emoji} Pool completed!`, greeting: `Hi ${displayName},`,
-      ended: `The pool <strong>${poolName}</strong> has ended.`,
+      heading: `${emoji} Pool completed!`, greeting: `Hi ${safeDisplayName},`,
+      ended: `The pool <strong>${safePoolName}</strong> has ended.`,
       rankLabel: "Final position", pointsLabel: "Total points", exactLabel: "Exact scores",
       ctaResults: "View Final Results",
       rematch: "Ready for a rematch? Create your own pool or join a new one.",
       ctaExplore: "Explore Pools",
-      preheader: `"${poolName}" ended. Final position: #${finalRank} of ${totalParticipants} with ${totalPoints} points.`,
+      preheader: `"${safePoolName}" ended. Final position: #${finalRank} of ${totalParticipants} with ${totalPoints} points.`,
     },
     pt: {
-      heading: `${emoji} Bolão finalizado!`, greeting: `Olá ${displayName},`,
-      ended: `O bolão <strong>${poolName}</strong> terminou.`,
+      heading: `${emoji} Bolão finalizado!`, greeting: `Olá ${safeDisplayName},`,
+      ended: `O bolão <strong>${safePoolName}</strong> terminou.`,
       rankLabel: "Posição final", pointsLabel: "Pontos totais", exactLabel: "Placares exatos",
       ctaResults: "Ver Resultados Finais",
       rematch: "Pronto para a revanche? Crie seu próprio bolão ou entre em um novo.",
       ctaExplore: "Explorar Bolões",
-      preheader: `"${poolName}" terminou. Posição final: #${finalRank} de ${totalParticipants} com ${totalPoints} pontos.`,
+      preheader: `"${safePoolName}" terminou. Posição final: #${finalRank} de ${totalParticipants} com ${totalPoints} pontos.`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -758,36 +778,44 @@ export function getCorporateInquiryConfirmationTemplate({
   const enterpriseEmail = ENTERPRISE_EMAILS[locale] ?? ENTERPRISE_EMAILS.es!;
   const enterpriseUrl = appendUtm(`${BRAND.baseUrl}/${locale === "en" ? "en/enterprise" : locale === "pt" ? "pt/empresas" : "empresas"}`, emailUtm("corporate_inquiry"));
 
+  // XSS defence — this is a PUBLIC endpoint, an attacker can submit any
+  // contactName/companyName they want as part of an inquiry whose
+  // confirmation email goes to a victim address (any contactEmail). Without
+  // escaping these here, the attacker could inject arbitrary HTML / phishing
+  // links / script that renders inside an email signed by our domain.
+  const safeContactName = escapeHtml(contactName);
+  const safeCompanyName = escapeHtml(companyName);
+
   const i18n: Record<string, { heading: string; greeting: string; body: string; summary: string; cta: string; ctaLabel: string; footer: string; preheader: string }> = {
     es: {
       heading: "Hemos recibido tu solicitud",
-      greeting: `Hola ${contactName},`,
-      body: `Gracias por tu interés en ${BRAND.name} para <strong>${companyName}</strong>. Hemos recibido tu solicitud y nuestro equipo se pondrá en contacto contigo pronto para discutir cómo podemos ayudarte a organizar quinielas corporativas.`,
-      summary: `Empresa: <strong>${companyName}</strong>`,
+      greeting: `Hola ${safeContactName},`,
+      body: `Gracias por tu interés en ${BRAND.name} para <strong>${safeCompanyName}</strong>. Hemos recibido tu solicitud y nuestro equipo se pondrá en contacto contigo pronto para discutir cómo podemos ayudarte a organizar quinielas corporativas.`,
+      summary: `Empresa: <strong>${safeCompanyName}</strong>`,
       cta: enterpriseUrl,
       ctaLabel: "Ver Plan Empresarial",
       footer: `Si tienes preguntas mientras tanto, escríbenos a <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
-      preheader: `Recibimos tu solicitud corporativa para ${companyName}. Te contactaremos pronto.`,
+      preheader: `Recibimos tu solicitud corporativa para ${safeCompanyName}. Te contactaremos pronto.`,
     },
     en: {
       heading: "We've received your request",
       greeting: `Hi ${contactName},`,
-      body: `Thank you for your interest in ${BRAND.name} for <strong>${companyName}</strong>. We've received your request and our team will get in touch soon to discuss how we can help you organize corporate pools.`,
-      summary: `Company: <strong>${companyName}</strong>`,
+      body: `Thank you for your interest in ${BRAND.name} for <strong>${safeCompanyName}</strong>. We've received your request and our team will get in touch soon to discuss how we can help you organize corporate pools.`,
+      summary: `Company: <strong>${safeCompanyName}</strong>`,
       cta: enterpriseUrl,
       ctaLabel: "View Enterprise Plan",
       footer: `If you have questions in the meantime, reach us at <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
-      preheader: `We received your corporate request for ${companyName}. We'll be in touch soon.`,
+      preheader: `We received your corporate request for ${safeCompanyName}. We'll be in touch soon.`,
     },
     pt: {
       heading: "Recebemos sua solicitação",
       greeting: `Olá ${contactName},`,
-      body: `Obrigado pelo seu interesse no ${BRAND.name} para <strong>${companyName}</strong>. Recebemos sua solicitação e nossa equipe entrará em contato em breve para discutir como podemos ajudá-lo a organizar bolões corporativos.`,
-      summary: `Empresa: <strong>${companyName}</strong>`,
+      body: `Obrigado pelo seu interesse no ${BRAND.name} para <strong>${safeCompanyName}</strong>. Recebemos sua solicitação e nossa equipe entrará em contato em breve para discutir como podemos ajudá-lo a organizar bolões corporativos.`,
+      summary: `Empresa: <strong>${safeCompanyName}</strong>`,
       cta: enterpriseUrl,
       ctaLabel: "Ver Plano Empresarial",
       footer: `Se tiver dúvidas, entre em contato pelo <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
-      preheader: `Recebemos sua solicitação corporativa para ${companyName}. Entraremos em contato em breve.`,
+      preheader: `Recebemos sua solicitação corporativa para ${safeCompanyName}. Entraremos em contato em breve.`,
     },
   };
 
@@ -867,6 +895,18 @@ export function getCorporateActivationTemplate({
   const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
   const { heroGradient, ctaGradient } = resolveCorporateGradients(primaryColor, secondaryColor);
 
+  // XSS defence — companyName, poolName, employeeName are all host-controlled
+  // (companyName/poolName at pool creation, employeeName via the CSV upload).
+  // A host with a legitimate account can register an "organization" with HTML
+  // payload in companyName, then send invites whose emails arrive at every
+  // employee's inbox SIGNED BY OUR DOMAIN. Escaping here neutralises that.
+  // invitationMessage is already escaped at persistence time
+  // (corporateService.ts:286-287) so it stays raw here — escaping it twice
+  // would render entity-encoded HTML literally to recipients.
+  const safeCompanyName = escapeHtml(companyName);
+  const safePoolName = escapeHtml(poolName);
+  const safeEmployeeName = employeeName ? escapeHtml(employeeName) : null;
+
   const i18n: Record<string, {
     heroSubtitle: string;
     greeting: string;
@@ -880,36 +920,36 @@ export function getCorporateActivationTemplate({
   }> = {
     es: {
       heroSubtitle: "te reta a jugar",
-      greeting: employeeName ? `Hey ${employeeName}!` : "Hey!",
-      body: `Tu equipo en <strong>${companyName}</strong> ya está armando su quiniela y necesitan que te sumes. Demuestra que eres el/la que más sabe de fútbol.`,
-      poolLabel: poolName,
+      greeting: safeEmployeeName ? `Hey ${safeEmployeeName}!` : "Hey!",
+      body: `Tu equipo en <strong>${safeCompanyName}</strong> ya está armando su quiniela y necesitan que te sumes. Demuestra que eres el/la que más sabe de fútbol.`,
+      poolLabel: safePoolName,
       ctaLabel: "Entrar a jugar →",
       instructions: "Solo necesitas crear usuario y clave. Toma 30 segundos.",
       expiry: "Tienes 30 días para activar tu cuenta.",
       footer: `¿Dudas? Escríbenos a <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
-      preheader: `${companyName} te reta! Únete a la quiniela "${poolName}" y demuestra lo que sabes.`,
+      preheader: `${safeCompanyName} te reta! Únete a la quiniela "${safePoolName}" y demuestra lo que sabes.`,
     },
     en: {
       heroSubtitle: "challenges you to play",
-      greeting: employeeName ? `Hey ${employeeName}!` : "Hey!",
-      body: `Your crew at <strong>${companyName}</strong> is setting up a sports pool and they need you in. Show everyone who really knows football.`,
-      poolLabel: poolName,
+      greeting: safeEmployeeName ? `Hey ${safeEmployeeName}!` : "Hey!",
+      body: `Your crew at <strong>${safeCompanyName}</strong> is setting up a sports pool and they need you in. Show everyone who really knows football.`,
+      poolLabel: safePoolName,
       ctaLabel: "Get in the game →",
       instructions: "Just create a username and password. Takes 30 seconds.",
       expiry: "You have 30 days to activate your account.",
       footer: `Questions? Hit us up at <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
-      preheader: `${companyName} challenges you! Join the pool "${poolName}" and prove what you know.`,
+      preheader: `${safeCompanyName} challenges you! Join the pool "${safePoolName}" and prove what you know.`,
     },
     pt: {
       heroSubtitle: "te desafia a jogar",
-      greeting: employeeName ? `E aí ${employeeName}!` : "E aí!",
-      body: `A galera da <strong>${companyName}</strong> já está montando o bolão e precisa de você. Mostra quem realmente entende de futebol.`,
-      poolLabel: poolName,
+      greeting: safeEmployeeName ? `E aí ${safeEmployeeName}!` : "E aí!",
+      body: `A galera da <strong>${safeCompanyName}</strong> já está montando o bolão e precisa de você. Mostra quem realmente entende de futebol.`,
+      poolLabel: safePoolName,
       ctaLabel: "Entrar no jogo →",
       instructions: "Só criar usuário e senha. Leva 30 segundos.",
       expiry: "Você tem 30 dias para ativar sua conta.",
       footer: `Dúvidas? Manda pra gente em <a href="mailto:${supportEmail}" style="color:${BRAND.primaryColor};">${supportEmail}</a>.`,
-      preheader: `${companyName} te desafia! Entre no bolão "${poolName}" e mostre o que você sabe.`,
+      preheader: `${safeCompanyName} te desafia! Entre no bolão "${safePoolName}" e mostre o que você sabe.`,
     },
   };
 
@@ -918,7 +958,7 @@ export function getCorporateActivationTemplate({
   // Logo: CID inline image (works in Gmail!) or letter-initial fallback
   const initial = companyName.charAt(0).toUpperCase();
   const logoHtml = logoCid
-    ? `<img src="cid:${logoCid}" alt="${companyName}" style="max-height:200px;max-width:400px;border-radius:16px;" />`
+    ? `<img src="cid:${logoCid}" alt="${safeCompanyName}" style="max-height:200px;max-width:400px;border-radius:16px;" />`
     : `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center">
         <tr>
           <td style="width:120px;height:120px;border-radius:20px;background-color:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.25);text-align:center;vertical-align:middle;font-size:52px;font-weight:800;color:#ffffff;line-height:120px;">
@@ -933,7 +973,7 @@ export function getCorporateActivationTemplate({
         <tr>
           <td style="background-color:#F5F3FF;border-radius:12px;padding:20px 24px;">
             <p style="margin:0;font-size:15px;line-height:1.6;color:#4c1d95;font-style:italic;">&ldquo;${invitationMessage}&rdquo;</p>
-            <p style="margin:10px 0 0;font-size:13px;color:#7c3aed;text-align:right;font-weight:600;">— ${companyName}</p>
+            <p style="margin:10px 0 0;font-size:13px;color:#7c3aed;text-align:right;font-weight:600;">— ${safeCompanyName}</p>
           </td>
         </tr>
       </table>`
@@ -947,7 +987,7 @@ export function getCorporateActivationTemplate({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>${companyName} - ${BRAND.name}</title>
+  <title>${safeCompanyName} - ${BRAND.name}</title>
   <!--[if mso]>
   <style type="text/css">
     table {border-collapse:collapse;border-spacing:0;margin:0;}
@@ -994,7 +1034,7 @@ export function getCorporateActivationTemplate({
                 </tr>
               </table>
               <h1 class="hero-title" style="margin:0;font-size:32px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
-                ${companyName}
+                ${safeCompanyName}
               </h1>
               <p style="margin:10px 0 0;font-size:16px;color:rgba(255,255,255,0.8);font-weight:600;">
                 ${t.heroSubtitle}
@@ -1084,6 +1124,8 @@ export interface PredictionUpdateEmailParams {
 
 export function getPredictionUpdateTemplate(params: PredictionUpdateEmailParams): { subject: string; html: string } {
   const { displayName, locale, changes, predictionUrl, unsubscribeUrl } = params;
+  // XSS defence — user-controlled.
+  const safeDisplayName = escapeHtml(displayName);
 
   type Locale = "es" | "en" | "pt";
   const loc = (["es", "en", "pt"].includes(locale) ? locale : "es") as Locale;
@@ -1101,9 +1143,9 @@ export function getPredictionUpdateTemplate(params: PredictionUpdateEmailParams)
   };
 
   const greetings: Record<Locale, string> = {
-    es: `Hola ${displayName},`,
-    en: `Hi ${displayName},`,
-    pt: `Olá ${displayName},`,
+    es: `Hola ${safeDisplayName},`,
+    en: `Hi ${safeDisplayName},`,
+    pt: `Olá ${safeDisplayName},`,
   };
 
   const intros: Record<Locale, string> = {
@@ -1202,6 +1244,9 @@ export interface PaymentReceiptEmailParams {
 
 export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): string {
   const loc = params.locale || "en";
+  // XSS defence — both user-controlled (displayName) and host-controlled (poolName).
+  const safeDisplayName = escapeHtml(params.displayName);
+  const safePoolName = escapeHtml(params.poolName);
 
   const i18n: Record<string, {
     heading: string; intro: string; details: string; pool: string;
@@ -1210,7 +1255,7 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
   }> = {
     es: {
       heading: "Comprobante de pago",
-      intro: `Hola ${params.displayName}, tu pago fue procesado exitosamente.`,
+      intro: `Hola ${safeDisplayName}, tu pago fue procesado exitosamente.`,
       details: "Detalles de la transacción",
       pool: "Pool",
       transaction: "ID Transacción",
@@ -1219,12 +1264,12 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
       date: "Fecha",
       participants: "participantes",
       cta: "Ir a mi pool",
-      preheader: `Pago confirmado — ${params.poolName}`,
+      preheader: `Pago confirmado — ${safePoolName}`,
       footer: "Conserva este correo como comprobante de tu transacción.",
     },
     en: {
       heading: "Payment receipt",
-      intro: `Hi ${params.displayName}, your payment was processed successfully.`,
+      intro: `Hi ${safeDisplayName}, your payment was processed successfully.`,
       details: "Transaction details",
       pool: "Pool",
       transaction: "Transaction ID",
@@ -1233,12 +1278,12 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
       date: "Date",
       participants: "participants",
       cta: "Go to my pool",
-      preheader: `Payment confirmed — ${params.poolName}`,
+      preheader: `Payment confirmed — ${safePoolName}`,
       footer: "Keep this email as proof of your transaction.",
     },
     pt: {
       heading: "Comprovante de pagamento",
-      intro: `Olá ${params.displayName}, seu pagamento foi processado com sucesso.`,
+      intro: `Olá ${safeDisplayName}, seu pagamento foi processado com sucesso.`,
       details: "Detalhes da transação",
       pool: "Bolão",
       transaction: "ID Transação",
@@ -1247,7 +1292,7 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
       date: "Data",
       participants: "participantes",
       cta: "Ir ao meu bolão",
-      preheader: `Pagamento confirmado — ${params.poolName}`,
+      preheader: `Pagamento confirmado — ${safePoolName}`,
       footer: "Guarde este e-mail como comprovante da sua transação.",
     },
   };
@@ -1263,7 +1308,7 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
         <tr>
           <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.pool}</td>
-          <td style="padding:8px 0;text-align:right;font-weight:600;color:${BRAND.textColor};font-size:14px;">${params.poolName}</td>
+          <td style="padding:8px 0;text-align:right;font-weight:600;color:${BRAND.textColor};font-size:14px;">${safePoolName}</td>
         </tr>
         <tr>
           <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.transaction}</td>
@@ -1308,6 +1353,9 @@ export interface PoolFullEmailParams {
 
 export function getPoolFullTemplate({ hostName, poolName, poolId, maxParticipants, locale = "es" }: PoolFullEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("pool_full"));
+  // hostName + poolName are user-controlled — escape before HTML interpolation.
+  const safeHostName = escapeHtml(hostName);
+  const safePoolName = escapeHtml(poolName);
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;
@@ -1315,30 +1363,30 @@ export function getPoolFullTemplate({ hostName, poolName, poolId, maxParticipant
   }> = {
     es: {
       heading: "🎉 ¡Tu pool está lleno!",
-      greeting: `Hola ${hostName},`,
-      body: `Tu pool <strong>${poolName}</strong> ha alcanzado la capacidad máxima de <strong>${maxParticipants} participantes</strong>.`,
+      greeting: `Hola ${safeHostName},`,
+      body: `Tu pool <strong>${safePoolName}</strong> ha alcanzado la capacidad máxima de <strong>${maxParticipants} participantes</strong>.`,
       capacity: `${maxParticipants}/${maxParticipants}`,
       cta: "Administrar Pool",
       tip: "Si necesitas más espacio, puedes ampliar la capacidad desde la configuración del pool.",
-      preheader: `"${poolName}" alcanzó ${maxParticipants} participantes. ¡Pool completo!`,
+      preheader: `"${safePoolName}" alcanzó ${maxParticipants} participantes. ¡Pool completo!`,
     },
     en: {
       heading: "🎉 Your pool is full!",
-      greeting: `Hi ${hostName},`,
-      body: `Your pool <strong>${poolName}</strong> has reached the maximum capacity of <strong>${maxParticipants} participants</strong>.`,
+      greeting: `Hi ${safeHostName},`,
+      body: `Your pool <strong>${safePoolName}</strong> has reached the maximum capacity of <strong>${maxParticipants} participants</strong>.`,
       capacity: `${maxParticipants}/${maxParticipants}`,
       cta: "Manage Pool",
       tip: "If you need more room, you can upgrade the pool capacity from the pool settings.",
-      preheader: `"${poolName}" reached ${maxParticipants} participants. Pool full!`,
+      preheader: `"${safePoolName}" reached ${maxParticipants} participants. Pool full!`,
     },
     pt: {
       heading: "🎉 Seu bolão está lotado!",
-      greeting: `Olá ${hostName},`,
-      body: `Seu bolão <strong>${poolName}</strong> atingiu a capacidade máxima de <strong>${maxParticipants} participantes</strong>.`,
+      greeting: `Olá ${safeHostName},`,
+      body: `Seu bolão <strong>${safePoolName}</strong> atingiu a capacidade máxima de <strong>${maxParticipants} participantes</strong>.`,
       capacity: `${maxParticipants}/${maxParticipants}`,
       cta: "Gerenciar Bolão",
       tip: "Se precisar de mais espaço, você pode ampliar a capacidade nas configurações do bolão.",
-      preheader: `"${poolName}" atingiu ${maxParticipants} participantes. Bolão completo!`,
+      preheader: `"${safePoolName}" atingiu ${maxParticipants} participantes. Bolão completo!`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -1377,6 +1425,9 @@ export function getCapacityWarningTemplate({
 }: CapacityWarningEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("capacity_warning"));
   const remaining = Math.max(0, maxParticipants - currentMembers);
+  // XSS defence — host-controlled inputs.
+  const safeHostName = escapeHtml(hostName);
+  const safePoolName = escapeHtml(poolName);
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;
@@ -1384,30 +1435,30 @@ export function getCapacityWarningTemplate({
   }> = {
     es: {
       heading: "📊 Tu pool está casi lleno",
-      greeting: `Hola ${hostName},`,
-      body: `Tu pool <strong>${poolName}</strong> está acercándose a su capacidad máxima. Quedan <strong>${remaining} cupo${remaining === 1 ? "" : "s"}</strong> disponibles.`,
+      greeting: `Hola ${safeHostName},`,
+      body: `Tu pool <strong>${safePoolName}</strong> está acercándose a su capacidad máxima. Quedan <strong>${remaining} cupo${remaining === 1 ? "" : "s"}</strong> disponibles.`,
       capacity: `${currentMembers}/${maxParticipants}`,
       cta: "Ampliar capacidad",
       tip: "Si esperás más participantes, ampliá la capacidad antes de que se llene para no rechazar a nadie.",
-      preheader: `"${poolName}" tiene ${currentMembers}/${maxParticipants} participantes.`,
+      preheader: `"${safePoolName}" tiene ${currentMembers}/${maxParticipants} participantes.`,
     },
     en: {
       heading: "📊 Your pool is almost full",
-      greeting: `Hi ${hostName},`,
-      body: `Your pool <strong>${poolName}</strong> is approaching its maximum capacity. Only <strong>${remaining} slot${remaining === 1 ? "" : "s"}</strong> remaining.`,
+      greeting: `Hi ${safeHostName},`,
+      body: `Your pool <strong>${safePoolName}</strong> is approaching its maximum capacity. Only <strong>${remaining} slot${remaining === 1 ? "" : "s"}</strong> remaining.`,
       capacity: `${currentMembers}/${maxParticipants}`,
       cta: "Expand capacity",
       tip: "If you're expecting more participants, expand the capacity before it fills up to avoid turning anyone away.",
-      preheader: `"${poolName}" has ${currentMembers}/${maxParticipants} participants.`,
+      preheader: `"${safePoolName}" has ${currentMembers}/${maxParticipants} participants.`,
     },
     pt: {
       heading: "📊 Seu bolão está quase lotado",
-      greeting: `Olá ${hostName},`,
-      body: `Seu bolão <strong>${poolName}</strong> está se aproximando da capacidade máxima. Restam <strong>${remaining} vaga${remaining === 1 ? "" : "s"}</strong> disponíveis.`,
+      greeting: `Olá ${safeHostName},`,
+      body: `Seu bolão <strong>${safePoolName}</strong> está se aproximando da capacidade máxima. Restam <strong>${remaining} vaga${remaining === 1 ? "" : "s"}</strong> disponíveis.`,
       capacity: `${currentMembers}/${maxParticipants}`,
       cta: "Ampliar capacidade",
       tip: "Se você espera mais participantes, amplie a capacidade antes que se encha para não recusar ninguém.",
-      preheader: `"${poolName}" tem ${currentMembers}/${maxParticipants} participantes.`,
+      preheader: `"${safePoolName}" tem ${currentMembers}/${maxParticipants} participantes.`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -1445,6 +1496,11 @@ export function getBlockedJoinAttemptTemplate({
   hostName, poolName, poolId, attemptedEmail, maxParticipants, locale = "es",
 }: BlockedJoinAttemptEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("blocked_join_attempt"));
+  // XSS defence — hostName & poolName are host-controlled; attemptedEmail is
+  // attacker-controlled (anyone who tries to join can pick any email shape).
+  const safeHostName = escapeHtml(hostName);
+  const safePoolName = escapeHtml(poolName);
+  const safeAttemptedEmail = escapeHtml(attemptedEmail);
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;
@@ -1452,27 +1508,27 @@ export function getBlockedJoinAttemptTemplate({
   }> = {
     es: {
       heading: "🚪 Alguien intentó unirse a tu pool",
-      greeting: `Hola ${hostName},`,
-      body: `<strong>${attemptedEmail}</strong> intentó unirse a tu pool <strong>${poolName}</strong>, pero no pudo hacerlo porque ya alcanzaste la capacidad máxima de ${maxParticipants} participantes.`,
+      greeting: `Hola ${safeHostName},`,
+      body: `<strong>${safeAttemptedEmail}</strong> intentó unirse a tu pool <strong>${safePoolName}</strong>, pero no pudo hacerlo porque ya alcanzaste la capacidad máxima de ${maxParticipants} participantes.`,
       cta: "Ampliar capacidad",
       tip: "Si querés que esa persona se sume, ampliá la capacidad del pool y avisale para que vuelva a intentarlo.",
-      preheader: `${attemptedEmail} no pudo unirse a "${poolName}" porque está lleno.`,
+      preheader: `${safeAttemptedEmail} no pudo unirse a "${safePoolName}" porque está lleno.`,
     },
     en: {
       heading: "🚪 Someone tried to join your pool",
-      greeting: `Hi ${hostName},`,
-      body: `<strong>${attemptedEmail}</strong> tried to join your pool <strong>${poolName}</strong>, but couldn't because you've reached the maximum capacity of ${maxParticipants} participants.`,
+      greeting: `Hi ${safeHostName},`,
+      body: `<strong>${safeAttemptedEmail}</strong> tried to join your pool <strong>${safePoolName}</strong>, but couldn't because you've reached the maximum capacity of ${maxParticipants} participants.`,
       cta: "Expand capacity",
       tip: "If you want that person to join, expand the pool capacity and let them know to try again.",
-      preheader: `${attemptedEmail} couldn't join "${poolName}" because it's full.`,
+      preheader: `${safeAttemptedEmail} couldn't join "${safePoolName}" because it's full.`,
     },
     pt: {
       heading: "🚪 Alguém tentou entrar no seu bolão",
-      greeting: `Olá ${hostName},`,
-      body: `<strong>${attemptedEmail}</strong> tentou entrar no seu bolão <strong>${poolName}</strong>, mas não conseguiu porque você atingiu a capacidade máxima de ${maxParticipants} participantes.`,
+      greeting: `Olá ${safeHostName},`,
+      body: `<strong>${safeAttemptedEmail}</strong> tentou entrar no seu bolão <strong>${safePoolName}</strong>, mas não conseguiu porque você atingiu a capacidade máxima de ${maxParticipants} participantes.`,
       cta: "Ampliar capacidade",
       tip: "Se você quer que essa pessoa entre, amplie a capacidade do bolão e avise-a para tentar novamente.",
-      preheader: `${attemptedEmail} não conseguiu entrar em "${poolName}" porque está lotado.`,
+      preheader: `${safeAttemptedEmail} não conseguiu entrar em "${safePoolName}" porque está lotado.`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -1507,6 +1563,10 @@ export function getNewMemberTemplate({
 }: NewMemberEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("new_member"));
   const capacityStr = maxParticipants ? `${currentCount}/${maxParticipants}` : `${currentCount}`;
+  // XSS defence — all three are user-controlled.
+  const safeHostName = escapeHtml(hostName);
+  const safeMemberName = escapeHtml(memberName);
+  const safePoolName = escapeHtml(poolName);
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;
@@ -1514,27 +1574,27 @@ export function getNewMemberTemplate({
   }> = {
     es: {
       heading: "👋 Nuevo miembro en tu pool",
-      greeting: `Hola ${hostName},`,
-      body: `<strong>${memberName}</strong> se ha unido a tu pool <strong>${poolName}</strong>.`,
+      greeting: `Hola ${safeHostName},`,
+      body: `<strong>${safeMemberName}</strong> se ha unido a tu pool <strong>${safePoolName}</strong>.`,
       membersLabel: "Participantes",
       cta: "Ver Pool",
-      preheader: `${memberName} se unió a "${poolName}".`,
+      preheader: `${safeMemberName} se unió a "${safePoolName}".`,
     },
     en: {
       heading: "👋 New member in your pool",
-      greeting: `Hi ${hostName},`,
-      body: `<strong>${memberName}</strong> has joined your pool <strong>${poolName}</strong>.`,
+      greeting: `Hi ${safeHostName},`,
+      body: `<strong>${safeMemberName}</strong> has joined your pool <strong>${safePoolName}</strong>.`,
       membersLabel: "Participants",
       cta: "View Pool",
-      preheader: `${memberName} joined "${poolName}".`,
+      preheader: `${safeMemberName} joined "${safePoolName}".`,
     },
     pt: {
       heading: "👋 Novo membro no seu bolão",
-      greeting: `Olá ${hostName},`,
-      body: `<strong>${memberName}</strong> entrou no seu bolão <strong>${poolName}</strong>.`,
+      greeting: `Olá ${safeHostName},`,
+      body: `<strong>${safeMemberName}</strong> entrou no seu bolão <strong>${safePoolName}</strong>.`,
       membersLabel: "Participantes",
       cta: "Ver Bolão",
-      preheader: `${memberName} entrou em "${poolName}".`,
+      preheader: `${safeMemberName} entrou em "${safePoolName}".`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -1563,6 +1623,8 @@ export interface PasswordChangedEmailParams {
 }
 
 export function getPasswordChangedTemplate({ displayName, locale = "es" }: PasswordChangedEmailParams): string {
+  // XSS defence — user-controlled.
+  const safeDisplayName = escapeHtml(displayName);
   const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
 
   const i18n: Record<string, {
@@ -1571,21 +1633,21 @@ export function getPasswordChangedTemplate({ displayName, locale = "es" }: Passw
   }> = {
     es: {
       heading: "🔒 Tu contraseña fue cambiada",
-      greeting: `Hola ${displayName},`,
+      greeting: `Hola ${safeDisplayName},`,
       body: "Tu contraseña ha sido restablecida exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.",
       warning: "Si no realizaste este cambio, contacta a nuestro equipo de soporte inmediatamente.",
       preheader: "Tu contraseña ha sido restablecida exitosamente.",
     },
     en: {
       heading: "🔒 Your password was changed",
-      greeting: `Hi ${displayName},`,
+      greeting: `Hi ${safeDisplayName},`,
       body: "Your password has been reset successfully. You can now log in with your new password.",
       warning: "If you didn't make this change, contact our support team immediately.",
       preheader: "Your password has been reset successfully.",
     },
     pt: {
       heading: "🔒 Sua senha foi alterada",
-      greeting: `Olá ${displayName},`,
+      greeting: `Olá ${safeDisplayName},`,
       body: "Sua senha foi redefinida com sucesso. Agora você pode fazer login com sua nova senha.",
       warning: "Se você não fez essa alteração, entre em contato com nossa equipe de suporte imediatamente.",
       preheader: "Sua senha foi redefinida com sucesso.",
@@ -1616,6 +1678,10 @@ export interface MemberRemovedEmailParams {
 }
 
 export function getMemberRemovedTemplate({ displayName, poolName, reason, type, locale = "es" }: MemberRemovedEmailParams): string {
+  // XSS defence — host-controlled.
+  const safeDisplayName = escapeHtml(displayName);
+  const safePoolName = escapeHtml(poolName);
+  const safeReason = reason ? escapeHtml(reason) : reason;
   const isBan = type === "banned";
 
   const i18n: Record<string, {
@@ -1624,45 +1690,45 @@ export function getMemberRemovedTemplate({ displayName, poolName, reason, type, 
   }> = {
     es: {
       heading: isBan ? "⛔ Has sido expulsado de un pool" : "Has sido removido de un pool",
-      greeting: `Hola ${displayName},`,
+      greeting: `Hola ${safeDisplayName},`,
       body: isBan
-        ? `Has sido permanentemente expulsado del pool <strong>${poolName}</strong> por el organizador.`
-        : `Has sido removido del pool <strong>${poolName}</strong> por el organizador.`,
+        ? `Has sido permanentemente expulsado del pool <strong>${safePoolName}</strong> por el organizador.`
+        : `Has sido removido del pool <strong>${safePoolName}</strong> por el organizador.`,
       reasonLabel: "Motivo",
       note: isBan
         ? "Esta acción es permanente y no podrás volver a unirte a este pool."
         : "Puedes volver a unirte si recibes una nueva invitación.",
       preheader: isBan
-        ? `Has sido expulsado del pool "${poolName}".`
-        : `Has sido removido del pool "${poolName}".`,
+        ? `Has sido expulsado del pool "${safePoolName}".`
+        : `Has sido removido del pool "${safePoolName}".`,
     },
     en: {
       heading: isBan ? "⛔ You've been banned from a pool" : "You've been removed from a pool",
-      greeting: `Hi ${displayName},`,
+      greeting: `Hi ${safeDisplayName},`,
       body: isBan
-        ? `You have been permanently banned from the pool <strong>${poolName}</strong> by the organizer.`
-        : `You have been removed from the pool <strong>${poolName}</strong> by the organizer.`,
+        ? `You have been permanently banned from the pool <strong>${safePoolName}</strong> by the organizer.`
+        : `You have been removed from the pool <strong>${safePoolName}</strong> by the organizer.`,
       reasonLabel: "Reason",
       note: isBan
         ? "This action is permanent and you won't be able to rejoin this pool."
         : "You can rejoin if you receive a new invitation.",
       preheader: isBan
-        ? `You've been banned from the pool "${poolName}".`
-        : `You've been removed from the pool "${poolName}".`,
+        ? `You've been banned from the pool "${safePoolName}".`
+        : `You've been removed from the pool "${safePoolName}".`,
     },
     pt: {
       heading: isBan ? "⛔ Você foi banido de um bolão" : "Você foi removido de um bolão",
-      greeting: `Olá ${displayName},`,
+      greeting: `Olá ${safeDisplayName},`,
       body: isBan
-        ? `Você foi permanentemente banido do bolão <strong>${poolName}</strong> pelo organizador.`
-        : `Você foi removido do bolão <strong>${poolName}</strong> pelo organizador.`,
+        ? `Você foi permanentemente banido do bolão <strong>${safePoolName}</strong> pelo organizador.`
+        : `Você foi removido do bolão <strong>${safePoolName}</strong> pelo organizador.`,
       reasonLabel: "Motivo",
       note: isBan
         ? "Esta ação é permanente e você não poderá voltar a este bolão."
         : "Você pode voltar se receber um novo convite.",
       preheader: isBan
-        ? `Você foi banido do bolão "${poolName}".`
-        : `Você foi removido do bolão "${poolName}".`,
+        ? `Você foi banido do bolão "${safePoolName}".`
+        : `Você foi removido do bolão "${safePoolName}".`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
@@ -1670,7 +1736,7 @@ export function getMemberRemovedTemplate({ displayName, poolName, reason, type, 
   const reasonHtml = reason
     ? getHighlightBox(`
         <p style="margin:0 0 4px;font-size:13px;color:${BRAND.mutedColor};">${t.reasonLabel}:</p>
-        <p style="margin:0;font-size:15px;color:${BRAND.textColor};font-style:italic;">"${reason}"</p>
+        <p style="margin:0;font-size:15px;color:${BRAND.textColor};font-style:italic;">"${safeReason}"</p>
       `)
     : "";
 
@@ -1703,6 +1769,9 @@ export function getNewMemberDigestTemplate({
 }: NewMemberDigestEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("new_member_digest"));
   const count = newMembers.length;
+  // XSS defence — host-controlled.
+  const safeHostName = escapeHtml(hostName);
+  const safePoolName = escapeHtml(poolName);
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;
@@ -1710,36 +1779,37 @@ export function getNewMemberDigestTemplate({
   }> = {
     es: {
       heading: `👥 ${count} ${count === 1 ? "nuevo miembro" : "nuevos miembros"} en tu pool`,
-      greeting: `Hola ${hostName},`,
-      body: `${count === 1 ? "Una persona se unió" : `${count} personas se unieron`} a tu pool <strong>${poolName}</strong> en las últimas 24 horas.`,
+      greeting: `Hola ${safeHostName},`,
+      body: `${count === 1 ? "Una persona se unió" : `${count} personas se unieron`} a tu pool <strong>${safePoolName}</strong> en las últimas 24 horas.`,
       membersLabel: "Total participantes",
       newLabel: count === 1 ? "Nuevo miembro" : "Nuevos miembros",
       cta: "Ver Pool",
-      preheader: `${count} ${count === 1 ? "nuevo miembro" : "nuevos miembros"} en "${poolName}".`,
+      preheader: `${count} ${count === 1 ? "nuevo miembro" : "nuevos miembros"} en "${safePoolName}".`,
     },
     en: {
       heading: `👥 ${count} new ${count === 1 ? "member" : "members"} in your pool`,
-      greeting: `Hi ${hostName},`,
-      body: `${count} ${count === 1 ? "person" : "people"} joined your pool <strong>${poolName}</strong> in the last 24 hours.`,
+      greeting: `Hi ${safeHostName},`,
+      body: `${count} ${count === 1 ? "person" : "people"} joined your pool <strong>${safePoolName}</strong> in the last 24 hours.`,
       membersLabel: "Total participants",
       newLabel: `New ${count === 1 ? "member" : "members"}`,
       cta: "View Pool",
-      preheader: `${count} new ${count === 1 ? "member" : "members"} in "${poolName}".`,
+      preheader: `${count} new ${count === 1 ? "member" : "members"} in "${safePoolName}".`,
     },
     pt: {
       heading: `👥 ${count} ${count === 1 ? "novo membro" : "novos membros"} no seu bolão`,
-      greeting: `Olá ${hostName},`,
-      body: `${count} ${count === 1 ? "pessoa entrou" : "pessoas entraram"} no seu bolão <strong>${poolName}</strong> nas últimas 24 horas.`,
+      greeting: `Olá ${safeHostName},`,
+      body: `${count} ${count === 1 ? "pessoa entrou" : "pessoas entraram"} no seu bolão <strong>${safePoolName}</strong> nas últimas 24 horas.`,
       membersLabel: "Total participantes",
       newLabel: count === 1 ? "Novo membro" : "Novos membros",
       cta: "Ver Bolão",
-      preheader: `${count} ${count === 1 ? "novo membro" : "novos membros"} em "${poolName}".`,
+      preheader: `${count} ${count === 1 ? "novo membro" : "novos membros"} em "${safePoolName}".`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;
 
   const memberListHtml = newMembers.map((m) =>
-    `<tr><td style="padding:8px 12px;border-bottom:1px solid #F3F4F6;font-size:15px;color:${BRAND.textColor};">👤 ${m.name}</td></tr>`
+    // m.name comes from user-controlled User.displayName at signup — escape.
+    `<tr><td style="padding:8px 12px;border-bottom:1px solid #F3F4F6;font-size:15px;color:${BRAND.textColor};">👤 ${escapeHtml(m.name)}</td></tr>`
   ).join("");
 
   const content = `
@@ -1781,6 +1851,11 @@ export function getPhaseCompletionSummaryTemplate({
   totalParticipants, top10, locale = "es",
 }: PhaseCompletionSummaryEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("phase_completed"));
+  // XSS defence — host-controlled (poolName) + user-controlled (displayName).
+  // top10 entries also escape their displayName when iterated below.
+  const safeDisplayName = escapeHtml(displayName);
+  const safePoolName = escapeHtml(poolName);
+  const safePhaseName = escapeHtml(phaseName);
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;
@@ -1789,34 +1864,34 @@ export function getPhaseCompletionSummaryTemplate({
     cta: string; preheader: string;
   }> = {
     es: {
-      heading: `📊 Fase completada: ${phaseName}`,
-      greeting: `Hola ${displayName},`,
-      body: `La fase <strong>${phaseName}</strong> de la pool <strong>${poolName}</strong> ha terminado.`,
+      heading: `📊 Fase completada: ${safePhaseName}`,
+      greeting: `Hola ${safeDisplayName},`,
+      body: `La fase <strong>${safePhaseName}</strong> de la pool <strong>${safePoolName}</strong> ha terminado.`,
       rankLabel: "Tu posición", pointsLabel: "Tus puntos", ofLabel: `de ${totalParticipants}`,
       leaderboardTitle: "Top 10",
       rankCol: "#", playerCol: "Jugador", ptsCol: "Pts",
       cta: "Ver Leaderboard Completo",
-      preheader: `${phaseName} completada en "${poolName}". Tu posición: #${userRank} con ${userPoints} pts.`,
+      preheader: `${safePhaseName} completada en "${safePoolName}". Tu posición: #${userRank} con ${userPoints} pts.`,
     },
     en: {
-      heading: `📊 Phase completed: ${phaseName}`,
-      greeting: `Hi ${displayName},`,
-      body: `The <strong>${phaseName}</strong> phase of pool <strong>${poolName}</strong> has ended.`,
+      heading: `📊 Phase completed: ${safePhaseName}`,
+      greeting: `Hi ${safeDisplayName},`,
+      body: `The <strong>${safePhaseName}</strong> phase of pool <strong>${safePoolName}</strong> has ended.`,
       rankLabel: "Your position", pointsLabel: "Your points", ofLabel: `of ${totalParticipants}`,
       leaderboardTitle: "Top 10",
       rankCol: "#", playerCol: "Player", ptsCol: "Pts",
       cta: "View Full Leaderboard",
-      preheader: `${phaseName} completed in "${poolName}". Your position: #${userRank} with ${userPoints} pts.`,
+      preheader: `${safePhaseName} completed in "${safePoolName}". Your position: #${userRank} with ${userPoints} pts.`,
     },
     pt: {
-      heading: `📊 Fase concluída: ${phaseName}`,
-      greeting: `Olá ${displayName},`,
-      body: `A fase <strong>${phaseName}</strong> do bolão <strong>${poolName}</strong> terminou.`,
+      heading: `📊 Fase concluída: ${safePhaseName}`,
+      greeting: `Olá ${safeDisplayName},`,
+      body: `A fase <strong>${safePhaseName}</strong> do bolão <strong>${safePoolName}</strong> terminou.`,
       rankLabel: "Sua posição", pointsLabel: "Seus pontos", ofLabel: `de ${totalParticipants}`,
       leaderboardTitle: "Top 10",
       rankCol: "#", playerCol: "Jogador", ptsCol: "Pts",
       cta: "Ver Leaderboard Completo",
-      preheader: `${phaseName} concluída em "${poolName}". Sua posição: #${userRank} com ${userPoints} pts.`,
+      preheader: `${safePhaseName} concluída em "${safePoolName}". Sua posição: #${userRank} com ${userPoints} pts.`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;

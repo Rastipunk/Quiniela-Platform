@@ -1,12 +1,7 @@
 // backend/src/lib/email.ts
-export function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+// Re-export from the cycle-free module so existing call sites that import
+// `escapeHtml` from this file keep working without modification.
+export { escapeHtml } from "./htmlSafe";
 
 import { Resend } from "resend";
 import { prisma } from "../db";
