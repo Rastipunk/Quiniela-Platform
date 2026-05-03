@@ -71,13 +71,17 @@ function personalCumulativePrice(capacity: number): number {
 
 /** Calculate cumulative price for a corporate pool at a given capacity */
 function corporateCumulativePrice(capacity: number): number {
-  // Corporate free limit (100 players) is genuinely free
   if (capacity <= CORPORATE_FREE_LIMIT) return 0;
 
-  // Any expansion beyond free limit incurs the base price + block increments
-  // Round up to nearest INCREMENT
+  // The base price ($49.99) covers exactly up to 100 players. Anything
+  // between (FREE_LIMIT, 100] pays the base only — additional 50-player
+  // blocks at $7.99 with volume discount kick in only beyond 100.
+  // Mirror of corporateCumulativePriceCop (below) — kept identical to
+  // avoid the BE-vs-FE divergence that was charging 32% over the UI price.
+  if (capacity <= 100) return CORPORATE_BASE_PRICE_USD;
+
   const target = Math.ceil(capacity / INCREMENT) * INCREMENT;
-  const extraBlocks = (target - CORPORATE_FREE_LIMIT) / INCREMENT;
+  const extraBlocks = (target - 100) / INCREMENT;
 
   let total = CORPORATE_BASE_PRICE_USD;
   for (let step = 0; step < extraBlocks; step++) {

@@ -678,9 +678,14 @@ export async function getPaymentStatus(
   if (!payment) return null;
 
   const currency = payment.currency.toUpperCase() as "USD" | "COP";
-  // USD payments are stored in cents (Polar standard). COP payments are
-  // stored as whole pesos (no cents in COP). Convert only for USD.
-  const amountMajor = currency === "USD" ? payment.amountUsd / 100 : payment.amountUsd;
+  // USD payments: amountUsd is cents (Polar standard) → convert to dollars.
+  // COP payments: amountUsd is ALSO USD cents (mislabeled column for MP rows);
+  //   the real pesos are in amountCop (or recoverable via mpPurchaseValue).
+  //   Without this, the success page shows "$6.597 COP" for a real $260,000
+  //   COP payment — same root cause as the receipt-email bug.
+  const amountMajor = currency === "USD"
+    ? payment.amountUsd / 100
+    : mpPurchaseValue(payment);
 
   return {
     status: payment.status,
@@ -859,7 +864,10 @@ export async function processMpPayment(
         description: "Upgrade pool capacity to allow more players",
         category_id: "services",
         quantity: 1,
-        unit_price: payment.amountUsd, // stored in cents but MP wants the COP amount from formData
+        // MP expects this in the transaction currency (COP pesos), NOT in
+        // USD cents. Using payment.amountUsd here would mismatch the actual
+        // formData total and could trip MP's antifraud / consistency checks.
+        unit_price: mpPurchaseValue(payment),
       },
     ],
   };
@@ -1148,7 +1156,12 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
         select: { name: true },
       });
       if (!user || !pool) return;
-      const amountCop = payment.amountUsd;
+      // amountUsd stores USD cents (e.g. 6597 for $65.97). Using it here
+      // would render "$6.597 COP" in the receipt while the customer's bank
+      // shows ~$260,000 COP — a ~40x discrepancy that triggers chargebacks.
+      // mpPurchaseValue prefers the persisted amountCop column and falls back
+      // to recomputing from pricing for pre-migration rows.
+      const amountCop = mpPurchaseValue(payment);
       await sendPaymentReceiptEmail({
         to: user.email,
         userId: payment.userId,
@@ -1203,6 +1216,12 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       dataJson: { mpPaymentId: paymentMpId, mpStatus: mpPayment.status },
     }));
 
+    // Refund analytics — value MUST be in COP pesos (the transaction currency
+    // declared right below). amountUsd would be USD cents and would underreport
+    // refunded revenue by ~40x in GA4/Meta dashboards. mpPurchaseValue returns
+    // the persisted COP amount or recomputes it from the pricing library.
+    const refundValueCop = mpPurchaseValue(payment);
+
     fireAndForget("ga4mp:refund-mp", sendGa4Event({
       userId: payment.userId,
       events: [{
@@ -1210,13 +1229,13 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
         params: {
           transaction_id: originalTransactionId,
           currency: "COP",
-          value: payment.amountUsd,
+          value: refundValueCop,
           items: [{
             item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
             item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
             item_category: "pool_capacity",
             item_variant: payment.poolType,
-            price: payment.amountUsd,
+            price: refundValueCop,
             quantity: 1,
             currency: "COP",
           }],
@@ -1229,7 +1248,7 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       eventId: `${payment.metaEventId ?? originalTransactionId}-refund`,
       userData: { externalId: payment.userId },
       customData: {
-        value: payment.amountUsd,
+        value: refundValueCop,
         currency: "COP",
         content_type: "product",
         content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
