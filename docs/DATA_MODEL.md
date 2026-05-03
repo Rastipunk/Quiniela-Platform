@@ -474,6 +474,10 @@ A prediction contest. Each pool has its own fixtureSnapshot, scoring config, and
 | `fixtureSnapshot` | Json? | | Pool's own copy of tournament fixture data |
 | `organizationId` | String? | FK -> Organization | Corporate pool link |
 | `logoUrl` | String? | | Logo URL for pool header |
+| `poolFullNotifiedAt` | DateTime? | | Set when host received the "pool reached capacity" email; atomic-claim flag prevents duplicate emails on concurrent joins. Reset to null on capacity expansion via payment so the email fires again if the pool refills. |
+| `capacityWarningNotifiedAt` | DateTime? | | Set when host received the "pool nearing capacity" email (default 95% threshold). Same atomic-claim pattern as `poolFullNotifiedAt`; same reset on expansion. |
+| `capacityWarningThresholdPct` | Int? | 1..99 | Per-pool override for the warning email threshold. Null falls back to `CAPACITY_WARNING_THRESHOLD_PCT` env (default 95). |
+| `lastBlockedAttemptNotifiedAt` | DateTime? | | Throttle for the "someone tried to join a full pool" email. Updated atomically in a `WHERE lastBlockedAttemptNotifiedAt < now() - throttle_window` claim so a flood of failed joins produces at most one email per `BLOCKED_ATTEMPT_THROTTLE_HOURS` window (default 24h). |
 | `createdByUserId` | String | FK -> User | |
 | `createdAtUtc` | DateTime | Default: now() | |
 | `updatedAtUtc` | DateTime | @updatedAt | |
@@ -1018,6 +1022,7 @@ checkout attempt across both gateways (Polar USD / Mercado Pago COP).
 | `metaFbc` | String? | | `_fbc` cookie captured at checkout init. Only present when the user arrived via an `fbclid` URL. |
 | `clientIpAddress` | String? | | Remote IP at checkout init. Used for GEO enrichment and Meta EMQ score. |
 | `clientUserAgent` | String? | | User-Agent at checkout init. Same purpose as `clientIpAddress`. |
+| `mpPreferenceId` | String? | | Mercado Pago preference ID. Only set for MP/COP payments. Persisted so a re-entry into `initiateMpCheckout` (host double-click, page reload mid-flow) can return the EXISTING preference instead of creating a duplicate that would race the customer into paying twice. Polar uses `polarCheckoutId` for the same purpose. |
 | `paidAtUtc` | DateTime? | | When the gateway confirmed the charge |
 | `createdAtUtc` | DateTime | Default: now() | Checkout initiation |
 | `updatedAtUtc` | DateTime | @updatedAt | |

@@ -81,8 +81,10 @@ All rate limits are configurable via environment variables.
 | Auth (login/register) | `/auth/login`, `/auth/register` | 15 min | 10 | `RATE_LIMIT_AUTH_WINDOW_MS`, `RATE_LIMIT_AUTH_MAX` |
 | Password reset | `/auth/forgot-password`, `/auth/reset-password` | 1 hour | 5 | `RATE_LIMIT_RESET_WINDOW_MS`, `RATE_LIMIT_RESET_MAX` |
 | Verification resend | `/auth/resend-verification` | 1 hour | 3 | `RATE_LIMIT_VERIFY_WINDOW_MS`, `RATE_LIMIT_VERIFY_MAX` |
-| Invitation send (per user) | `POST /corporate/pools/:poolId/send-invitations` | 1 hour | 200 | `RATE_LIMIT_INVITE_SEND_WINDOW_MS`, `RATE_LIMIT_INVITE_SEND_MAX` |
-| Invitation send daily ceiling (per user) | `POST /corporate/pools/:poolId/send-invitations` | 24 hours | 1000 | `RATE_LIMIT_INVITE_SEND_DAILY_WINDOW_MS`, `RATE_LIMIT_INVITE_SEND_DAILY_MAX` |
+| Invitation send (per user) | `POST /corporate/pools/:poolId/send-invitations`, `POST /corporate/pools/:poolId/employees/:inviteId/resend` | 1 hour | 200 | `RATE_LIMIT_INVITE_SEND_WINDOW_MS`, `RATE_LIMIT_INVITE_SEND_MAX` |
+| Invitation send daily ceiling (per user) | same as above | 24 hours | 1000 | `RATE_LIMIT_INVITE_SEND_DAILY_WINDOW_MS`, `RATE_LIMIT_INVITE_SEND_DAILY_MAX` |
+| Corporate invite check (per IP) | `GET /auth/check-corporate-invite` | 1 min | 20 | `RATE_LIMIT_INVITE_CHECK_WINDOW_MS`, `RATE_LIMIT_INVITE_CHECK_MAX` |
+| Corporate activation (per IP) | `POST /auth/activate-corporate` | 15 min | 10 | `RATE_LIMIT_INVITE_ACTIVATE_WINDOW_MS`, `RATE_LIMIT_INVITE_ACTIVATE_MAX` |
 | Corporate inquiry | `/corporate/inquiry` | 15 min | 5 | `RATE_LIMIT_CORP_INQUIRY_WINDOW_MS`, `RATE_LIMIT_CORP_INQUIRY_MAX` |
 | Pool creation | `POST /pools` | 1 hour | 10 | (hardcoded) |
 | Result publish | `PUT /pools/:poolId/results/:matchId` | 1 min | 10 | (hardcoded) |
@@ -115,6 +117,19 @@ Common error codes:
 | 409 | `CONFLICT` | State conflict (e.g., duplicate, wrong status) |
 | 429 | `RATE_LIMIT_EXCEEDED` | Too many requests |
 | 500 | `INTERNAL_ERROR` | Server error (no details exposed) |
+
+Domain-specific error codes:
+
+| HTTP | Code | Where | Description |
+|------|------|-------|-------------|
+| 409 | `POOL_FULL` | `POST /pools/join`, `POST /auth/activate-corporate` | Pool reached `maxParticipants`. Host receives a throttled `BLOCKED_JOIN_ATTEMPT` email. |
+| 409 | `ALREADY_ACTIVATED` | `POST /auth/activate-corporate`, `POST /corporate/pools/:poolId/employees/:inviteId/resend` | Invite was already activated by the same email; no further activation/resend possible. |
+| 409 | `SESSION_MISMATCH` | `POST /auth/activate-corporate` | A different user is already authenticated in the browser session than the one targeted by the invite. Body includes `currentUserEmail` and `inviteEmail` so the frontend can offer a "log out and continue" UI. |
+| 400 | `INVALID_TOKEN` / `TOKEN_EXPIRED` | `POST /auth/activate-corporate`, `GET /auth/check-corporate-invite` | Activation token unknown or past its 30-day expiry. |
+| 429 | `TOO_MANY_INVITE_CHECKS` | `GET /auth/check-corporate-invite` | Per-IP throttle on the public invite-check endpoint (env `RATE_LIMIT_INVITE_CHECK_MAX`, default 20/min). |
+| 429 | `TOO_MANY_ACTIVATION_ATTEMPTS` | `POST /auth/activate-corporate` | Per-IP throttle on activation (env `RATE_LIMIT_INVITE_ACTIVATE_MAX`, default 10/15min). |
+| 429 | `TOO_MANY_INVITE_REQUESTS_PER_HOUR` / `DAILY_INVITE_LIMIT_EXCEEDED` | `POST /corporate/pools/:poolId/send-invitations`, `POST /corporate/pools/:poolId/employees/:inviteId/resend` | Per-user throttle on invitation sends (200/hour / 1000/day defaults). |
+| 500 | `PAYMENT_NOT_FOUND_RETRYABLE` | Webhook handlers (Polar `order.paid` / `order.refunded`, MP IPN) | The webhook arrived before the corresponding `PoolPayment` row was committed (50–200ms race). The 5xx response triggers the gateway's retry — the row will exist on retry. Internal-only; never surfaced to API clients. |
 
 ---
 
@@ -247,7 +262,21 @@ If the email matches an existing user, they are joined to the pool directly (pas
 
 **Response (200 or 201):** `{ "user": { ... }, "poolId": "...", "alreadyExisted": boolean }`
 
-**Errors:** `INVALID_TOKEN`, `TOKEN_EXPIRED`, `ALREADY_ACTIVATED`, `VALIDATION_ERROR` (with `details.fieldErrors` per Zod), `CONSENT_REQUIRED`, `USERNAME_TAKEN`, `POOL_FULL` (409 — pool reached capacity; the host receives a throttled `BLOCKED_JOIN_ATTEMPT` email).
+**Errors:** `INVALID_TOKEN`, `TOKEN_EXPIRED`, `ALREADY_ACTIVATED`, `VALIDATION_ERROR` (with `details.fieldErrors` per Zod), `CONSENT_REQUIRED`, `USERNAME_TAKEN`, `POOL_FULL` (409 — pool reached capacity; the host receives a throttled `BLOCKED_JOIN_ATTEMPT` email), `SESSION_MISMATCH` (409 — see below).
+
+**Session-mismatch defence:** if the request arrives with a valid auth cookie for a user whose email differs from `invite.email`, the endpoint returns `409 SESSION_MISMATCH` WITHOUT setting cookies and WITHOUT joining the pool. The response body includes:
+
+```json
+{
+  "error": "SESSION_MISMATCH",
+  "currentUserEmail": "alice@empresa.com",
+  "inviteEmail": "bob@empresa.com"
+}
+```
+
+The frontend uses this to render a "you're signed in as X, this invite is for Y — log out and continue" panel. Comparison is case-insensitive. A null/expired/invalid cookie is treated as anonymous (no mismatch) and activation proceeds normally.
+
+**Rate limit:** 10 attempts / 15 min per IP (env `RATE_LIMIT_INVITE_ACTIVATE_*`).
 
 #### POST /auth/resend-verification
 
@@ -909,7 +938,8 @@ Endpoints under `/corporate`. Mix of public and authenticated.
 | POST | `/corporate/pools` | Yes | Create corporate pool (self-service) |
 | POST | `/corporate/pools/:poolId/employees` | Yes | Add employees to corporate pool |
 | GET | `/corporate/pools/:poolId/employees` | Yes | List employees/invites |
-| POST | `/corporate/pools/:poolId/send-invitations` | Yes | Send invitation emails to pending employees |
+| POST | `/corporate/pools/:poolId/send-invitations` | Yes | Send invitation emails to all pending employees |
+| POST | `/corporate/pools/:poolId/employees/:inviteId/resend` | Yes | Re-send a single activation email; rotates the activation token |
 | DELETE | `/corporate/pools/:poolId/employees/:inviteId` | Yes | Remove pending employee |
 | GET | `/corporate/csv-template` | No | Download CSV template for employee upload |
 
@@ -949,7 +979,11 @@ Endpoints under `/corporate`. Mix of public and authenticated.
 }
 ```
 
-Creates Organization + Pool + PoolMember(CORPORATE_HOST) + CorporateInvites in a transaction.
+Creates Organization + Pool + PoolMember(CORPORATE_HOST) (+ CorporateInvites if `emails` was provided) in a transaction.
+
+`emails` is **optional** and accepted only for back-compat with older clients. The current corporate wizard (post-audit) does NOT pre-load invitees; the flow is: create pool → host enters the pool's admin tab → adds emails via `POST /pools/:poolId/employees` → sends invitations via `POST /pools/:poolId/send-invitations`. Single source of truth for invite management.
+
+**Capacity gate:** the request's `maxParticipants` is treated as INTENT only. The pool is created at `CORPORATE_FREE_LIMIT` (env, default 2) regardless of input. If the wizard requested a paid tier, it immediately initiates Polar/MP checkout; on confirmed payment, `paymentService.handleOrderPaid` raises `Pool.maxParticipants` to the requested value via `PoolPayment.toCapacity`. Without this cap, a malicious caller could POST a large `maxParticipants` and create a high-capacity pool without paying.
 
 #### POST /corporate/pools/:poolId/employees
 
@@ -971,6 +1005,29 @@ Sends activation emails to all `CorporateInvite` rows in `PENDING` status for th
 **Errors:** `FORBIDDEN` (caller is not the pool's `CORPORATE_HOST`), `NOT_FOUND` (pool), `TOO_MANY_INVITE_REQUESTS_PER_HOUR`, `DAILY_INVITE_LIMIT_EXCEEDED`.
 
 **Rate limits:** see §3 — both apply at this endpoint, keyed by `req.auth.userId`.
+
+#### POST /corporate/pools/:poolId/employees/:inviteId/resend
+
+Re-sends the activation email for a single corporate invite. Use case: the original email was lost (spam folder, accidentally deleted, employee mistyped at activation, etc.).
+
+**Body:** none.
+
+**Response:** `{ "email": "<invitee>", "status": "SENT" | "FAILED" }`
+
+**Side effects:**
+- Atomically rotates the invite's `activationToken` to a fresh random value AND resets `activationTokenExpiresAt` to now + 30 days. The previous token is invalidated; a forwarded copy of the OLD email becomes useless after a resend.
+- The rotation runs inside `updateMany WHERE status IN (PENDING, SENT, FAILED)` so a concurrent activation race losing the claim surfaces as `ALREADY_ACTIVATED` rather than dispatching a now-stale token.
+- Audit event `CORPORATE_INVITATION_RESENT` with `{ email, inviteId }`.
+
+**Errors:** `FORBIDDEN` (not `CORPORATE_HOST` of the pool), `NOT_FOUND` (invite ID belongs to a different pool — IDOR defence), `ALREADY_ACTIVATED` (employee already has account; no resend possible), `TOO_MANY_INVITE_REQUESTS_PER_HOUR`, `DAILY_INVITE_LIMIT_EXCEEDED`.
+
+**Rate limits:** SAME per-user buckets as `/send-invitations` (200/hour, 1000/day) keyed on `req.auth.userId`. The bulk-send and individual-resend share the budget so a host cannot bypass the bulk cap by spamming individual resends.
+
+#### DELETE /corporate/pools/:poolId/employees/:inviteId
+
+Removes a corporate invite from the pool. Allowed only if `status !== "ACTIVATED"` (an employee who already created their account can be removed via the regular pool member flow).
+
+**Errors:** `FORBIDDEN` (not `CORPORATE_HOST`), `NOT_FOUND`, `ALREADY_ACTIVATED`.
 
 #### GET /corporate/csv-template
 

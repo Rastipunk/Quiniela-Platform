@@ -6,6 +6,66 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.11.0] — 2026-05-03
+
+### Deep audit — corporate flow hardening + payments correctness
+
+A multi-day audit of the corporate pool flow surfaced 22 critical issues. This release closes 18 of them across pricing correctness, webhook reliability, race conditions, security hardening, and UX. Six PRs deployed to main. The remaining 4 (one schema migration on FK `onDelete`, captcha on public inquiry, two minor race fixes) are tracked for the next sprint.
+
+See `docs/DECISION_LOG.md` ADR-045 through ADR-051 for the rationale behind each design decision.
+
+#### Fixed — Pricing & money
+- **Corporate USD pricing divergence (`pricing.ts`).** The BE charged 32% over the price the wizard showed for the 100-employee tier ($65.97 vs $49.99) because `corporateCumulativePrice` counted blocks from `CORPORATE_FREE_LIMIT` (2) instead of from the first paid tier (100). Aligned the USD function with the COP version which already had the correct logic. Same gap closed at 150, 200, 300, etc.
+- **Mercado Pago receipt amount (`paymentService.ts`).** The receipt email displayed `$6.597 COP` to a customer who had paid `$260.000 COP` because the formatter read the USD-cents column (`amountUsd`) and labelled it as pesos. Now uses `amountCop` via the `mpPurchaseValue()` helper. Same fix applied to refund analytics (GA4 `refund` value, Meta CAPI `Refund`) and to `getPaymentStatus` consumed by the success page.
+- **MP `unit_price` in `additional_info`.** Was sent as USD cents; changed to COP pesos so the metadata matches the actual charge (avoids tripping MP's antifraud).
+
+#### Fixed — Webhook reliability
+- **5xx-on-error contract.** Polar and MP webhook routes returned `200` even when the inner handler threw, with the explicit comment "to prevent retries on our errors." That swallowed transient failures (DB outage, network) and lost pagos. Now: signature failures return 401, everything else returns 500 + `retryable: true`, the gateway retries with exponential backoff. Idempotency via `PaymentEvent.polarEventId` UNIQUE makes retries safe.
+- **MP webhook timestamp drift validation.** The HMAC verification used the timestamp in the signature but never compared it to `Date.now()`. Replay window was infinite. Now rejects anything outside `MP_WEBHOOK_MAX_DRIFT_MS` (default 5 min, env). Auto-detects seconds vs ms units (MP's docs example shows seconds; ms is forward-compat).
+- **MP eventId now includes status (`mp-{paymentId}-{status}`).** The previous key (`mp-{paymentId}` only) deduped ALL webhooks after the first, so a payment that arrived as `pending` first never saw its later `approved` webhook processed — pool stuck in PENDING. Each transition now gets its own slot; genuine same-status retries still dedupe.
+- **`PaymentEvent.create` moved INSIDE the transaction** in all three webhook handlers (Polar `order.paid`, Polar `order.refunded`, MP IPN per status branch). Previously the slot persisted even when the rest of the tx failed, blocking retries. Now rolls back atomically.
+- **`PAYMENT_NOT_FOUND_RETRYABLE` instead of silent return** when the webhook arrives before the `PoolPayment` row is committed (50–200ms race). The throw triggers the gateway's retry; the row exists on the second attempt.
+
+#### Fixed — Race conditions
+- **`initiateMpCheckout` is now idempotent.** Mirrors Polar's existing pattern: re-entry (host double-click, page reload mid-flow) returns the EXISTING `PoolPayment` and reuses the MP preference. Required adding `PoolPayment.mpPreferenceId String?` (additive migration `20260503_add_mp_preference_id`).
+- **`sendInvitations` atomic per-invite claim.** Bulk send used to fetch all PENDING invites and loop sequentially, so two concurrent host clicks doubled the email volume per employee. Now claims each row inside the loop with `updateMany WHERE id=X AND status=PENDING SET status=SENT`; the second concurrent call sees `count=0` per row and skips silently.
+- **`metaEventId` generated up-front and persisted in the same tx** as `status: COMPLETED` (was a separate update afterwards). Prevents Pixel ↔ CAPI dedup from breaking when the second update fails.
+
+#### Fixed — Security
+- **HTML escape across all 17 email templates.** Host-controlled values (`companyName`, `poolName`, `displayName`, etc.) and attacker-controlled values (`attemptedEmail`, `contactName`) now pass through `escapeHtml()` before HTML interpolation. Closed the XSS-via-public-inquiry vector and the host-injected-HTML vector for activation emails. Full coverage verified by `emailTemplates.xss.test.ts` (renders every template with `<script>...</script>` payloads). New helper module `backend/src/lib/htmlSafe.ts`.
+- **Magic-link session-mismatch defence.** `POST /auth/activate-corporate` now refuses with `409 SESSION_MISMATCH` when the request carries an auth cookie for a different user than the invite's recipient. Frontend renders a "you're signed in as X — sign out and continue" panel. Email comparison is case-insensitive; null/expired/invalid cookies are treated as anonymous.
+- **Per-IP rate limits on the public corporate-invite endpoints.** `GET /auth/check-corporate-invite` (env `RATE_LIMIT_INVITE_CHECK_*`, default 20/min) blocks token-list enumeration. `POST /auth/activate-corporate` (env `RATE_LIMIT_INVITE_ACTIVATE_*`, default 10/15min) defends against token brute-force.
+
+#### Fixed — UX
+- **Wizard alerts on checkout creation failure.** When `createCheckout` / `createMpCheckout` rejected, the wizard used to silently redirect to the pool, leaving the host on a 2-cap pool thinking the price they saw had been applied. Now shows an alert before redirecting so the host knows to retry expansion from the admin tab. New i18n key `poolWizard.checkoutFailedFallback` in ES/EN/PT.
+
+#### Changed — Corporate flow simplification
+- **Wizard no longer has an "invite employees" step.** `StepEmployeeInvites` and `state.employeeEmails` removed. Pool is created with only the host as `CORPORATE_HOST`. ALL employee invitations now happen post-creation from the pool admin tab via `CorporateEmployeeManager`. Single source of truth, simpler funnel. Backend `createCorporatePool` still accepts an optional `emails` array for back-compat.
+- **Per-user rate limit replaces per-IP catch-all on `/corporate/pools/*`.** The old `corporateInviteLimiter` (5/hour per IP) blocked hosts from navigating their own pool because GETs shared the bucket with POSTs. Replaced by `inviteSendLimiter` (200/hour per host) + `inviteSendDailyLimiter` (1000/day per host) applied only to the actual send endpoint. `RATE_LIMIT_CORP_INVITE_*` env vars no longer read.
+
+#### Added — Corporate features
+- **Per-employee resend invitation** (`POST /corporate/pools/:poolId/employees/:inviteId/resend`). Rotates the activation token (old one invalidated — defends against forwarded leaked emails) and resets the 30-day expiry. Refused for `ACTIVATED` invites. Reuses the same per-user rate limits as bulk send (shared budget). UI in `CorporateEmployeeManager` shows "Reenviar" on `SENT` rows and "Reintentar" on `FAILED` rows.
+- **Capacity-threshold notifications.** Single function `checkAndNotifyCapacityThresholds()` runs after every pool join and dispatches at most one of: `CAPACITY_WARNING` email at the configurable threshold (env `CAPACITY_WARNING_THRESHOLD_PCT`, default 95%, overridable per pool), `POOL_FULL` email at 100%. Both deduped; flags re-armed when capacity expands.
+- **Blocked-attempt notification.** When a join is rejected with `POOL_FULL`, the host receives `BLOCKED_JOIN_ATTEMPT` email. Throttled per pool by `Pool.lastBlockedAttemptNotifiedAt` (env `BLOCKED_ATTEMPT_THROTTLE_HOURS`, default 24h).
+- **Capacity badge in `CorporateEmployeeManager`.** Always-visible card showing `X / Y employees (NN%)` with a thin progress bar; three visual states (normal <95%, warning 95–99%, full =100%) and an "Expand capacity" CTA on warning/full.
+- **Friendlier `POOL_FULL` activation message** in `ActivationContent`. Confirms the host was notified and offers a path forward (contact the host directly).
+- **Activation token preservation across renders fix.** The HI-02 URL strip (`window.history.replaceState` removing `?token=...`) was racing the `useSearchParams` re-read, leaving `tokenParam=""` for the existing-user "Unirme al pool" handler. Captured the token via `useState` lazy initializer at first mount; survives the URL strip.
+
+#### Schema (additive migrations)
+- `Pool.poolFullNotifiedAt`, `Pool.capacityWarningNotifiedAt`, `Pool.capacityWarningThresholdPct`, `Pool.lastBlockedAttemptNotifiedAt` (migrations `20260502_add_capacity_warning_fields`, `20260502_add_blocked_attempt_notify`).
+- `PoolPayment.mpPreferenceId` (`20260503_add_mp_preference_id`).
+- All nullable; no backfill required.
+
+#### Removed
+- `RATE_LIMIT_CORP_INVITE_MAX` and `RATE_LIMIT_CORP_INVITE_WINDOW_MS` env vars (replaced by `RATE_LIMIT_INVITE_SEND_*`, `RATE_LIMIT_INVITE_CHECK_*`, `RATE_LIMIT_INVITE_ACTIVATE_*`).
+- `frontend-next/src/components/pool-wizard/steps/corporate/StepEmployeeInvites.tsx` and the `state.employeeEmails` wizard state field.
+- The `RECOMMENDED_MAX_PARTICIPANTS_*` constant name (renamed to `DEFAULT_MAX_PARTICIPANTS_*` to reflect the actual semantics — it's the wizard's pre-selected default, not a recommended upgrade).
+
+#### Tests
+30+ new unit tests across pricing parity, webhook retry semantics, race-condition claims, XSS escape coverage, `SESSION_MISMATCH` handling, rate-limit configuration, MP idempotency, and resend token rotation. Total backend suite: 600+ passing (12 pre-existing failures in unrelated `pickPresets` and email-toggle tests; tracked in `TECH_DEBT.md`).
+
+---
+
 ## [0.10.0] — 2026-04-22
 
 ### Analytics stack restored + deep-audit hardening

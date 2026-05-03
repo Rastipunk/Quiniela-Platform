@@ -75,6 +75,15 @@ Templates HTML profesionales con:
 - Botones de acción (CTAs)
 - Footer con links de configuración
 
+#### XSS escape (defensa al render)
+
+Todas las interpolaciones de variables controladas por usuario (`companyName`, `poolName`, `displayName`, `inviterName`, `memberName`, `attemptedEmail`, etc., incluyendo entradas iteradas como `top10[].displayName` o `newMembers[].name`) pasan por `escapeHtml()` ANTES de entrar al string HTML del template.
+
+- **Helper:** `backend/src/lib/htmlSafe.ts` (módulo aislado para evitar dependencia circular con `email.ts`).
+- **Convención:** el patrón es `const safeX = escapeHtml(x)` al inicio de la función del template, y todos los lugares de interpolación usan `${safeX}` en vez de `${x}`. Cualquier nuevo template debe seguir esta convención.
+- **Cobertura verificada:** `backend/src/lib/emailTemplates.xss.test.ts` renderiza CADA uno de los 17 templates con un payload `<script>alert(...)</script>` en cada variable host/user-controlled y asserta que el script raw no sobrevive en el HTML rendered.
+- **Por qué al render y no a la persistencia:** el contexto de renderizado es lo que define qué necesita escape. Lo que es seguro en `<p>` puede no serlo en `<img alt="...">`. Escapar al render hace explícita la frontera. Excepción: `welcomeMessage`/`invitationMessage` también se escapan al persistir como defensa adicional (defence in depth).
+
 #### API de Configuración Admin
 **Archivo**: `backend/src/routes/adminSettings.ts`
 

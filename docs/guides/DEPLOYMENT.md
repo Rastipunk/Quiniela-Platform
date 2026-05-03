@@ -132,8 +132,17 @@ All rate limit values are configurable via environment variables:
 | `RATE_LIMIT_RESET_WINDOW_MS` | Reset window in ms | `3600000` (1 hour) |
 | `RATE_LIMIT_VERIFY_MAX` | Max verification resend requests | `3` |
 | `RATE_LIMIT_VERIFY_WINDOW_MS` | Verify window in ms | `3600000` (1 hour) |
-| `RATE_LIMIT_CORP_INVITE_MAX` | Max corporate invite requests | `5` |
-| `RATE_LIMIT_CORP_INVITE_WINDOW_MS` | Corp invite window in ms | `3600000` (1 hour) |
+| `RATE_LIMIT_INVITE_SEND_MAX` | Per-host hourly cap on corporate invitation sends — covers both bulk `/send-invitations` and individual `/resend` (shared budget). | `200` |
+| `RATE_LIMIT_INVITE_SEND_WINDOW_MS` | Invite send window in ms | `3600000` (1 hour) |
+| `RATE_LIMIT_INVITE_SEND_DAILY_MAX` | Per-host daily ceiling on corporate invitation sends. Defends against compromised host accounts. | `1000` |
+| `RATE_LIMIT_INVITE_SEND_DAILY_WINDOW_MS` | Daily ceiling window in ms | `86400000` (24 hours) |
+| `RATE_LIMIT_INVITE_CHECK_MAX` | Per-IP throttle on `GET /auth/check-corporate-invite` (blocks token enumeration). | `20` |
+| `RATE_LIMIT_INVITE_CHECK_WINDOW_MS` | Invite-check window in ms | `60000` (1 min) |
+| `RATE_LIMIT_INVITE_ACTIVATE_MAX` | Per-IP throttle on `POST /auth/activate-corporate` (blocks token brute-force). | `10` |
+| `RATE_LIMIT_INVITE_ACTIVATE_WINDOW_MS` | Activate window in ms | `900000` (15 min) |
+| `MP_WEBHOOK_MAX_DRIFT_MS` | Max acceptable timestamp drift on MP webhook HMAC signatures (replay defence). Auto-detects seconds vs ms units. | `300000` (5 min) |
+| `CAPACITY_WARNING_THRESHOLD_PCT` | Default percentage of `maxParticipants` at which the host receives the "near full" email. Clamped to 1–99. Overridable per pool via `Pool.capacityWarningThresholdPct`. | `95` |
+| `BLOCKED_ATTEMPT_THROTTLE_HOURS` | Throttle window (hours) for the "someone tried to join a full pool" email. One email per pool per window even under flood. | `24` |
 
 #### Branding (Optional)
 
@@ -250,7 +259,7 @@ via a Postgres advisory lock (multi-instance safe). See
 | `NEXT_PUBLIC_EMAIL_DOMAIN` | Email domain for display | `picks4all.com` |
 | `NEXT_PUBLIC_DEFAULT_DEADLINE` | Default deadline minutes | `10` |
 | `NEXT_PUBLIC_PERSONAL_FREE_LIMIT` | Free tier participant limit (personal) | `20` |
-| `NEXT_PUBLIC_CORPORATE_FREE_LIMIT` | Free tier participant limit (corporate) | `100` |
+| `NEXT_PUBLIC_CORPORATE_FREE_LIMIT` | Free tier participant limit (corporate). MUST match the backend `CORPORATE_FREE_LIMIT` (env, default `2`). The wizard's CapacitySelector uses this as the "free trial" tier label. | `2` |
 | `NEXT_PUBLIC_BASE_PRICE_COP` | Base price per 50-player block (COP) | `28000` |
 | `NEXT_PUBLIC_CORPORATE_BASE_PRICE_COP` | Base price for corporate pools (COP) | `200000` |
 

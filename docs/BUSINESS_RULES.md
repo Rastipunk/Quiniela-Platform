@@ -655,7 +655,30 @@ Actions: creates `OrganizationInquiry`, sends admin notification, sends confirma
 - `POOL_FULL` email when capacity is reached.
 Both deduped, both re-armed on capacity expansion via payment.
 
+**Session-mismatch defence (magic-link):** if the activation request arrives with a valid auth cookie for a DIFFERENT user than the invite recipient, the endpoint returns `409 SESSION_MISMATCH` without setting cookies and without joining the pool. The response body carries `currentUserEmail` and `inviteEmail` so the frontend renders a clear "log out and continue" UI. Email comparison is case-insensitive. Null/expired/invalid cookies are treated as anonymous and activation proceeds normally. This prevents a magic-link from silently overwriting Alice's session with Bob's when Alice accidentally opens Bob's invite.
+
 **Invite status enum:** `PENDING | SENT | ACTIVATED | FAILED`
+
+**Invitation lifecycle:**
+
+```
+   addEmployees                    sendInvitations / resendInvitation
+       │                                       │
+       ▼                                       ▼
+   PENDING ─── activation token (30d) ─── PENDING ──email sent OK──► SENT
+                                              │
+                                              └──email send failed──► FAILED
+                                                                       │
+                                                                       └──resendInvitation──► PENDING (token rotated)
+                                                                                                  │
+                                                                                                  ▼ activate-corporate
+                                                                                              ACTIVATED
+```
+
+- `addEmployees` creates rows directly in `PENDING` (token + 30-day expiry generated server-side).
+- `sendInvitations` is bulk: it claims every PENDING invite atomically (`updateMany WHERE status=PENDING SET status=SENT`) BEFORE sending, so concurrent host clicks (double-click, browser restore) don't double-email any employee. If the email send actually fails, the row reverts to `FAILED`.
+- `resendInvitation` is per-employee. It rotates the activation token and resets the 30-day expiry inside the same `updateMany` claim (`status IN (PENDING, SENT, FAILED)`), invalidating any leaked old email after the resend was issued. Refused for `ACTIVATED` invites.
+- `ACTIVATED` is terminal. The corresponding `User` is now a `PLAYER` of the pool; further changes go through normal pool member flows.
 
 ### 8.4 Corporate Invitation Rate Limits
 

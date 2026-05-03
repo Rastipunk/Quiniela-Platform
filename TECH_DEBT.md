@@ -102,9 +102,46 @@ Deferred, but worth picking up once ad spend makes them worth the setup:
 
 ## 🗃️ Database / schema cleanups
 
-- **`PoolPayment.amountCop` backfill for pre-migration rows**: current code falls back to `calculateUpgradePriceCop()` from the pricing library so GA4/Meta values are correct, but `getPaymentStatus` still reports `amountUsd / 100` for legacy rows. A one-shot backfill would let us drop the fallback.
+- **`PoolPayment.amountCop` backfill for pre-migration rows**: the current code falls back to `calculateUpgradePriceCop()` (via the `mpPurchaseValue()` helper) so GA4/Meta and the success page show correct values, but a one-shot UPDATE that fills the column from the pricing library would let us drop the fallback path entirely. Low priority; the fallback is correct.
 - **Deprecate legacy scoring types (`EXACT_SCORE`, `PARTIAL_SCORE`)**: verify via `SELECT COUNT(*) FROM Pool WHERE pickConfig::text LIKE '%EXACT_SCORE%'`. If zero, remove the branch in `scoringAdvanced.ts` + type union.
 - **Retire the three one-time seed scripts** (`scripts/fetchUclData.ts`, `scripts/initSmartSyncStates.ts`, `scripts/updateUclR16Draw.ts`) — archive into `docs/seed-history/` and remove from `backend/src/scripts/`.
+
+---
+
+## 🔐 Audit follow-ups (Ronda 4 grupos C + D — pending)
+
+Five criticals from the May 2026 deep audit that were deferred to a separate session because of risk profile or migration complexity. None are exploitable today on real prod traffic but each is on the backlog.
+
+- **`#13` Foreign-key `onDelete` policies missing on Pool / CorporateInvite / Organization / PoolMember relations.** Currently every relation defaults to `NoAction`, so deleting an Organization with active pools fails with an opaque error and GDPR right-to-erasure on a User leaves orphaned `acceptedByUserId` / `bannedByUserId` / `approvedByUserId` IDs pointing at nothing. Fix is a single Prisma migration with one `Cascade` / `SetNull` per relation; the analysis to pick the right action per relation is what's deferred.
+- **`#16` Public `/corporate/inquiry` endpoint has no captcha and no audit event.** Today's `RATE_LIMIT_CORP_INQUIRY` (5 / 15 min per IP) is loose enough that an attacker with a few IPs can flood the admin inbox. Add Cloudflare Turnstile or hCaptcha + emit `CORPORATE_INQUIRY_SUBMITTED` audit with IP/UA so we can investigate after the fact.
+- **`#19` `addEmployees` race condition: P2002 not caught.** Two concurrent `addEmployees` requests for overlapping emails throw the unique-constraint error to the user instead of skipping silently. Fix is one `try/catch` for `P2002` + `createMany skipDuplicates`.
+- **`#20` `requireCorporateHost` doesn't filter `status: "ACTIVE"`.** A `CORPORATE_HOST` row with `status=BANNED/LEFT` could still operate the pool. Edge case (we don't currently expose a way to ban the host) but defence-in-depth.
+- **`#21` Capacity check sits outside the tx in `activateCorporateAccount`.** `pool.findUnique` reads `maxParticipants` before opening the tx; in a 10ms window a concurrent expansion or join can move the goalpost. Wrapping the check inside the tx closes it.
+
+**Plan:** one PR per item, smallest first (`#19` → `#20` → `#21`), then `#16` (requires Cloudflare Turnstile setup), then `#13` (the migration; needs the most analysis).
+
+---
+
+## 🧯 Reconciliation script for orphan PENDING `PoolPayment` rows
+
+The pre-Ronda-2 MP-eventId bug (now ADR-046 in `DECISION_LOG.md`) could leave MP payments stuck in `PENDING` even after the customer paid — the IPN was deduped silently because the eventId lacked the status. The fix is in place going forward, but rows BEFORE the 2026-05-03 deploy may be in this state and need a one-shot reconciliation:
+
+```sql
+SELECT id, "polarCheckoutId", "fromCapacity", "toCapacity", "createdAtUtc"
+FROM "PoolPayment"
+WHERE status = 'PENDING'
+  AND currency = 'cop'
+  AND "createdAtUtc" < '2026-05-03'::date
+ORDER BY "createdAtUtc" DESC;
+```
+
+For each candidate: query MP's `/v1/payments/<id>` API with the row's `polarOrderId` (or via `external_reference` if `polarOrderId` is null), and if MP says `approved`, run the `handleMpWebhook` claim + expand flow manually with admin auth. Tracked here so it doesn't get lost; not blocking any current user.
+
+---
+
+## ⚠️ Pre-existing test failures (not from this audit)
+
+12 tests fail in `pickPresets.test.ts` (`generateDynamicPresetConfig — BASIC preset dynamic generation` etc.) and `email.test.ts` (`isEmailEnabled — Platform Settings`). They were failing before the audit started and continue to fail after; my changes did not introduce nor fix them. Confirmed by checking out HEAD pre-audit and re-running. Likely related to expectations against config that drifted in earlier sprints. Surface area is unrelated to the corporate flow / payments.
 
 ---
 

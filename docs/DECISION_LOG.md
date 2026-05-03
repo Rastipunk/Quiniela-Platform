@@ -4060,4 +4060,181 @@ Separately, the existing `POOL_FULL` notification fired only at 100% capacity, w
 
 ---
 
+## ADR-046: Webhook retry contract (5xx-on-error, throw-on-orphan)
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** Polar and Mercado Pago webhooks were silently dropping pagos in two failure modes:
+
+1. **DB / network blip during processing.** The handler caught the error, logged it, and returned `200 received: true, error: "Processing failed"` with the explicit comment "Return 200 anyway to prevent Polar from retrying on our errors." This was paranoia mis-applied — the inner code is idempotent at `PaymentEvent.polarEventId` UNIQUE, so retries are safe. The 200 caused the gateway to dequeue the event and never come back. Customer paid into nothing.
+
+2. **PoolPayment row not yet committed when the webhook arrived.** A 50-200ms race between `initiateCheckout` returning and the gateway firing its first webhook. `findUnique` returned null, the handler did `console.error(...); return;`, route returned 200, gateway dequeued. Same outcome.
+
+The audit (round 4 grupo B) confirmed both via code reading and a grep through past payment metrics.
+
+**Decision:**
+
+1. **Wrap the catch block to return 5xx for everything except signature errors.** Polar and MP both use exponential backoff on 5xx. Idempotency at the `PaymentEvent.polarEventId` UNIQUE constraint guarantees that successful retries dedupe correctly; failed retries roll the slot back atomically (see ADR-046b below). Signature errors stay 401 — those won't get fixed by retry.
+
+2. **Throw `PAYMENT_NOT_FOUND_RETRYABLE` instead of returning silently** when the local `PoolPayment` row isn't found. The throw happens BEFORE the handler claims the `PaymentEvent` slot, so a retry isn't dedup-skipped. After the gateway exhausts its retry budget the event lands in their DLQ for human triage — the right outcome for a genuinely orphan webhook.
+
+3. **Add MP webhook timestamp drift validation.** MP's HMAC includes a timestamp but the verification function never compared it to `Date.now()`. An attacker who captured a valid webhook (mirrored TLS, proxy logs, screenshots) could replay it indefinitely. Fixed: reject anything outside `MP_WEBHOOK_MAX_DRIFT_MS` (default 5 min, env-overridable). Auto-detects seconds vs ms units (MP's docs example shows seconds; ms is forward-compat).
+
+4. **Make the MP eventId include the payment status.** Previously the ID was `mp-${paymentId}`, so when MP fired multiple webhooks for the same payment (`pending → in_process → approved`), the FIRST one consumed the only slot and the `approved` was deduped silently — pool stuck in PENDING. Now the ID is `mp-${paymentId}-${status}`; each transition gets its own slot, while genuine retries of the SAME status still dedupe.
+
+**ADR-046b — sub-decision (atomic claim):** the `PaymentEvent.create` call now lives INSIDE the same `$transaction` as the `PoolPayment.update` + `Pool.update`. Previously it ran first as a standalone INSERT, so a tx failure mid-flight left the slot persisted and blocked retries. Both Polar (`handleOrderPaid` / `handleOrderRefunded`) and MP (`handleMpWebhook` per branch) follow this pattern.
+
+**Consequences:**
+- ✅ Cero pagos perdidos por blips transitorios — gateway retries until the row exists.
+- ✅ Replay attack window on MP closed (was infinite, now 5 min).
+- ✅ MP async payments (PSE / Nequi) reliably transition to COMPLETED.
+- ⚠️ Slightly more 5xx noise in observability when the DB blips. Monitoring threshold may need adjustment.
+- ⚠️ Genuine orphan events (test webhooks, deleted PoolPayments) consume retry budget before landing in DLQ. Acceptable trade-off; happens rarely.
+
+**Related code:** `backend/src/services/paymentService.ts` (handleOrderPaid + handleOrderRefunded + handleMpWebhook), `backend/src/routes/payments.ts` (Polar + MP webhook handlers).
+
+---
+
+## ADR-047: HTML escape strategy for email templates (defence at render time)
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** The original template code interpolated host-controlled values (`companyName`, `poolName`, `displayName`, etc.) directly into HTML without escaping. Two attack vectors materialised:
+
+1. The `/corporate/inquiry` confirmation email is sent by a PUBLIC endpoint. An attacker submits an inquiry with `companyName: "<script>...</script>"` and `contactEmail: "victim@target.com"`; the resulting confirmation email arrives at the victim's inbox SIGNED BY OUR DOMAIN with arbitrary HTML.
+
+2. The corporate activation email is sent by a legitimate host. The host registers an "organization" with HTML payload in `companyName`, then mass-invites employees — each receives a phishing-grade email that looks like it came from us.
+
+A scattered approach (escape some inputs at persistence time, leave others raw at render time) had already created bugs (double-escape on `welcomeMessage` / `invitationMessage`).
+
+**Decision:**
+
+- **Escape at render time, not at persistence time.** The DB stores user-controlled values raw; templates wrap each with `escapeHtml()` at the point of HTML interpolation. This is the standard for safe HTML emission because the rendering context is what matters — a value that's safe in JSON metadata is unsafe in `<p>` content, and a value that's safe in `<p>` is unsafe in `<img alt="...">`. Escaping at render makes the boundary explicit.
+
+- **Cover EVERY user-controlled interpolation across all email templates**, not just the two flagged in the audit. The codebase has 17 email templates; we audited all of them and added `safeX` locals for `companyName`, `poolName`, `employeeName`, `displayName`, `memberName`, `inviterName`, `poolDescription`, `phaseName`, `matchDescription`, `result`, `reason`, `attemptedEmail`, `hostName`, and array-iterated `top10[].displayName` / `newMembers[].name`. Defence in depth — even templates with no flagged attack vector get the same treatment so the codebase doesn't drift back into "some are escaped, some aren't" inconsistency.
+
+- **Keep the existing persistence-time escape on `welcomeMessage` / `invitationMessage`** (`corporateService.ts:286-287`). Belt-and-suspenders. The slight cosmetic overhead of double-escaping HTML special characters in user-typed messages (rare in normal use) is acceptable; reverting that escape in a separate refactor is non-blocking.
+
+- **Extract `escapeHtml` to its own module** (`backend/src/lib/htmlSafe.ts`) to break a circular dependency: `email.ts` imports `emailTemplates.ts` (to send them); the templates import `htmlSafe.ts`. `email.ts` re-exports `escapeHtml` for back-compat with existing call sites.
+
+**Consequences:**
+- ✅ XSS via email is closed at the rendering boundary; new templates added in the future inherit the same escape pattern by convention.
+- ✅ A regression test (`emailTemplates.xss.test.ts`) renders every template with a `<script>...</script>` payload as input and asserts the raw payload does NOT survive in the rendered HTML.
+- ⚠️ Adding new template variables requires the author to remember to wrap with `safeX = escapeHtml(x)` and reference `safeX` in the JSX strings. Mitigated by code review + the regression test catching omissions.
+
+**Related code:** `backend/src/lib/htmlSafe.ts` (new), `backend/src/lib/emailTemplates.ts` (17 templates), `backend/src/lib/emailTemplates.xss.test.ts` (regression).
+
+---
+
+## ADR-048: Magic-link session-mismatch defence
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** `POST /auth/activate-corporate` is a public endpoint that, on success, issues a fresh JWT for the user matched by `invite.email` and sets it as the auth cookie. The endpoint did not check whether the request already carried a valid auth cookie — so if Alice was logged in and clicked Bob's invite link (shared inbox, forwarded chat, accidental tab), her session was silently overwritten with Bob's. Three real risk scenarios:
+
+1. UX confusion — Alice didn't ask to switch accounts but suddenly is Bob.
+2. Family/shared device pivot — invite link forwarded by an attacker who controls Bob's email; if Alice was already logged in, opening the link takes over her browser session.
+3. Multi-tenant test environments where a host has both an admin and a player account.
+
+Magic-link auto-sign-in is a deliberate UX choice (ADR-N — see CLAUDE.md §1 corporate magic-link decision); we keep it as the default path. But silent identity replacement is a separate harm.
+
+**Decision:**
+
+- The `activate-corporate` route handler reads the auth cookie (if any) BEFORE calling the service. It passes the resolved `currentUserId` (or null) into `activateCorporateAccount`.
+- The service compares the current user's email (case-insensitive) to `invite.email`. On mismatch it throws `ServiceError("SESSION_MISMATCH", 409, { currentUserEmail, inviteEmail })` — BEFORE issuing any new cookies, BEFORE marking the invite ACTIVATED, BEFORE adding the user to the pool.
+- The frontend (`ActivationContent.tsx`) catches this error code and renders a dedicated panel: "You're signed in as X, this invite is for Y. [Sign out and continue]". The button calls the existing logout endpoint, clears the local token, and re-runs the activation handler — which now succeeds without a cookie.
+- A null/expired/invalid cookie is treated as anonymous (no mismatch) so first-time visitors aren't blocked.
+
+**Consequences:**
+- ✅ Silent identity replacement is no longer possible. Alice keeps her session; Bob's invite waits for Bob.
+- ✅ Frontend has explicit messaging instead of a confused "why am I logged in as someone else" experience.
+- ⚠️ One extra `user.findUnique` per activation when a cookie is present. Negligible.
+
+**Related code:** `backend/src/services/authService.ts` (activateCorporateAccount), `backend/src/routes/auth.ts` (activate-corporate handler), `frontend-next/src/components/ActivationContent.tsx` (mismatch UI), i18n keys `activation.sessionMismatchTitle/Desc/Cta/Busy` in ES/EN/PT.
+
+---
+
+## ADR-049: Corporate wizard — drop the "invite employees" step
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** The corporate pool creation wizard had a step (`StepEmployeeInvites`) where the host pasted a list of employee emails. Those emails became `CorporateInvite` rows when the pool was created. After creation, the host could ALSO add/remove/manage employees from the pool admin tab via `CorporateEmployeeManager`. Two sources of truth for the same operation produced:
+
+- A wizard funnel that required a "list of all my emails ready" commitment up-front.
+- Hosts mid-wizard cleaning their CSV and having to backtrack.
+- A Summary step counting emails whose number had no impact on what could actually be invited later.
+- Surface area for race conditions between the two paths.
+
+**Decision:**
+
+- Remove `StepEmployeeInvites` and `state.employeeEmails` from the wizard. The wizard ends at the Summary → Capacity → checkout flow.
+- Pool is created with only the host as `CORPORATE_HOST`. ALL employee invitations are managed post-creation from the pool admin tab via `CorporateEmployeeManager`.
+- The backend `createCorporatePool` endpoint still accepts an optional `emails` array for back-compat with any older callers, but the wizard never sends it.
+- Pair this change with the new resend-invitation endpoint (ADR-050 below) so hosts have full lifecycle control over each invite from the same UI.
+
+**Consequences:**
+- ✅ Wizard is shorter and less commit-heavy.
+- ✅ Single source of truth for invitation management.
+- ✅ Race conditions between wizard preload and admin-tab additions disappear by construction.
+- ⚠️ Hosts who used to upload a CSV during the wizard now upload it from the admin tab after creation. Same UI element (CSV import lives in `CorporateEmployeeManager`), one extra navigation step.
+
+**Related code:** `frontend-next/src/components/pool-wizard/PoolCreationWizard.tsx`, `frontend-next/src/components/pool-wizard/PoolWizardContext.tsx`, `frontend-next/src/types/poolWizard.ts`, deleted `frontend-next/src/components/pool-wizard/steps/corporate/StepEmployeeInvites.tsx`.
+
+---
+
+## ADR-050: Per-invite resend with token rotation
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** Once a corporate invite hit `SENT` status, the host had no way to re-send it. Real failure modes (employee deleted the email, spam filter, address typo at the activation page, Resend transient bounce) had no recovery path other than deleting the row and re-adding the email — which generated a new token and was awkward to coordinate with the affected employee.
+
+**Decision:**
+
+- New endpoint `POST /corporate/pools/:poolId/employees/:inviteId/resend`. Authorised to `CORPORATE_HOST` only. Refused if `invite.status === "ACTIVATED"`.
+- The resend ROTATES the activation token: a fresh `crypto.randomBytes(...)` token replaces the previous one in the same `updateMany WHERE status IN (PENDING, SENT, FAILED) SET status=PENDING, activationToken=<new>, activationTokenExpiresAt=now()+30d`. Any forwarded copy of the OLD email becomes useless after the resend was issued — defence-in-depth against leaked-email scenarios.
+- The atomic claim guards against an activation race: if the employee just activated their account in another tab between our `findUnique` and `updateMany`, the count returns 0 and the endpoint surfaces `ALREADY_ACTIVATED` instead of dispatching a now-stale token.
+- The resend reuses the same per-user rate limiters (`inviteSendLimiter` / `inviteSendDailyLimiter`) as the bulk send. A host cannot use this endpoint to bypass the bulk-send caps; both flows draw from the same per-user budget.
+- Frontend: `CorporateEmployeeManager` shows a per-row "Reenviar" button on `SENT` invites and "Reintentar" on `FAILED` invites. `ACTIVATED` rows show no button.
+
+**Consequences:**
+- ✅ Real recovery path for the most common invite-delivery failures.
+- ✅ Token rotation closes the "leaked email forever valid" gap.
+- ✅ Bulk + individual share the rate budget so abuse paths converge.
+- ⚠️ Audit trail must distinguish bulk send vs individual resend; emit `CORPORATE_INVITATION_RESENT` for the latter.
+
+**Related code:** `backend/src/services/corporateService.ts` (resendInvitation), `backend/src/routes/corporate.ts` (route + rate limiters), `frontend-next/src/components/CorporateEmployeeManager.tsx` (per-row UI), `frontend-next/src/lib/api/corporate.ts` (client), i18n keys `pool.admin.employees.resend/retry/resendSuccess/resendFailed` in ES/EN/PT.
+
+---
+
+## ADR-051: USD-cents vs COP-pesos field discipline
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** `PoolPayment.amountUsd` stores USD CENTS (Polar's native unit). For Mercado Pago payments we ALSO need the actual COP pesos paid (MP has no sub-unit; pesos are integers). The original code stored both correctly (migration 20260421 added `amountCop`), but five different code paths read `payment.amountUsd` and emitted/displayed it as if it were pesos:
+
+1. Receipt email to the customer — showed `$6.597 COP` when the customer's bank statement read `$260,000 COP`.
+2. GA4 `refund` event — under-reported refunded revenue ~40×.
+3. Meta CAPI `Refund` — same.
+4. GA4 `refund` items[].price — same.
+5. `getPaymentStatus()` consumed by the success page — showed cents-as-pesos.
+
+Plus a bug in the corporate USD pricing function itself (the BE used `(target - CORPORATE_FREE_LIMIT) / INCREMENT` blocks counting from the free tier; the FE used `(target - 100) / INCREMENT` blocks counting from the first paid tier). For 100-employee corporate the BE charged $65.97 while the UI showed $49.99 — a 32% over-charge.
+
+**Decision:**
+
+- Single helper `mpPurchaseValue(payment)` is the ONLY way to read the COP amount for an MP payment. It prefers the persisted `amountCop` column; falls back to recomputing from `pricing.calculateUpgradePriceCop` for pre-migration rows where the column is null.
+- All five sites that previously read `payment.amountUsd` for COP context now go through this helper. Visual / numeric parity verified by tests.
+- The corporate USD pricing function `corporateCumulativePrice` was rewritten to mirror the COP version exactly: short-circuit at `capacity <= 100` returning `CORPORATE_BASE_PRICE_USD`, then count `extraBlocks = (capacity - 100) / INCREMENT` for tiers above 100. Regression tests assert BE-vs-FE parity at 100, 150, 200, 300.
+- The MP `additional_info.unit_price` field sent to the gateway also moves to `mpPurchaseValue(payment)` (was USD cents, MP expects COP). Fixes a metadata-vs-charge mismatch that could trip MP's antifraud.
+
+**Consequences:**
+- ✅ Customer never sees a receipt amount mismatched from their bank statement.
+- ✅ Refund analytics report the right magnitude in dashboards.
+- ✅ MP antifraud sees consistent metadata.
+- ✅ Corporate USD checkout charges exactly what the UI promised.
+
+**Related code:** `backend/src/lib/pricing.ts` (`corporateCumulativePrice`), `backend/src/services/paymentService.ts` (5 sites), `backend/src/lib/pricing.test.ts` (regression).
+
+---
+
 **END OF DOCUMENT**

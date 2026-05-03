@@ -1,6 +1,6 @@
 # CLAUDE.md — Picks4All Development Standards
 
-> **Last updated:** 2026-04-22
+> **Last updated:** 2026-05-03
 >
 > This file defines the mandatory standards, principles, and constraints for ALL work in this repository. Every change — code, documentation, infrastructure — must comply with these rules.
 
@@ -65,8 +65,20 @@
 ### Security
 - **Never expose** stack traces, internal errors, or database details to clients.
 - **Rate limiting** on all public and auth endpoints (configurable via env vars).
-- **Input sanitization** for any user content rendered as HTML (use `escapeHtml`).
+- **Input sanitization** for any user content rendered as HTML (use `escapeHtml` from `lib/htmlSafe.ts`). Email templates escape host/user-controlled values at render time, not at persistence — see ADR-047.
 - **CORS** restricted to configured origins via `SITE_DOMAIN` env var.
+
+### Payments & webhooks (ADR-046)
+- **Webhook handlers are idempotent at `PaymentEvent.polarEventId` UNIQUE.** The slot is claimed INSIDE the same transaction as the `PoolPayment.update` + `Pool.update` so a tx failure rolls back atomically and the gateway's retry can re-process.
+- **Webhooks return 5xx on processing errors**, not 200. Polar / Mercado Pago retry with exponential backoff. The signature-error path stays 401.
+- **MP webhook drift validation** rejects webhooks with timestamps outside `MP_WEBHOOK_MAX_DRIFT_MS` (default 5 min).
+- **MP eventId includes status** (`mp-{paymentId}-{status}`) so `pending → in_process → approved` transitions don't dedupe each other.
+- **`amountUsd` is USD CENTS; `amountCop` is COP PESOS.** Reading the wrong field for the wrong currency context underreports revenue ~40× and breaks customer receipts. Always go through `mpPurchaseValue(payment)` for the COP value.
+
+### Activation tokens (corporate)
+- **Single-use:** `activate-corporate` atomically claims the invite (`updateMany WHERE status IN (PENDING, SENT, FAILED)`). Concurrent activations of the same token surface as `ALREADY_ACTIVATED`.
+- **Magic-link session-mismatch defence:** if the request carries a cookie for a user whose email differs from `invite.email`, the endpoint refuses with `SESSION_MISMATCH` (409) without setting cookies — see ADR-048.
+- **Resend rotates the token:** `POST /corporate/pools/:poolId/employees/:inviteId/resend` invalidates the previous token and resets the 30-day expiry — old emails forwarded after a resend become useless.
 
 ### Results System
 - **Results are scraper-first.** In AUTO mode, picks4all-scores is the primary source. API-Football is fallback only (activates 30min after estimated FT if scraper hasn't reported).
