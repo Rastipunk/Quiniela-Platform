@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -107,22 +108,32 @@ export function usePoolNavSnapshot(): PoolNavSnapshot | null {
  * layout-level store so the navbar drawer can render pool sections.
  * Snapshot clears automatically on unmount so other routes don't
  * inherit stale pool nav.
+ *
+ * Implementation note: depends on `setSnapshot` (stable identity from
+ * useState) and a stringified `signature`, NEVER on the ctx wrapper.
+ * Including `ctx` in deps creates a feedback loop because every
+ * setSnapshot call re-memoizes the provider's value, which changes
+ * `ctx`, which re-runs the effect — that loop blocked all click
+ * handlers in production.
  */
 export function usePublishPoolNav(snapshot: PoolNavSnapshot | null) {
   const ctx = useContext(PoolNavContext);
-  // Stable signature — the effect should re-run when the actual
-  // values change, not on every parent render. Stringifying small
-  // POJOs is fine here and avoids subtle dep-array mistakes.
+  const setSnapshot = ctx?.setSnapshot;
+
+  // Hold the latest snapshot in a ref so the effect can apply it
+  // without listing `snapshot` (a fresh object every render) in deps.
+  const snapshotRef = useRef(snapshot);
+  snapshotRef.current = snapshot;
+
   const signature = snapshot
     ? `${snapshot.showHostItems}|${snapshot.hasUrgent}|${JSON.stringify(snapshot.tabBadges)}`
     : null;
 
   useEffect(() => {
-    if (!ctx) return;
-    ctx.setSnapshot(snapshot);
-    return () => ctx.setSnapshot(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx, signature]);
+    if (!setSnapshot) return;
+    setSnapshot(snapshotRef.current);
+    return () => setSnapshot(null);
+  }, [setSnapshot, signature]);
 }
 
 // ── Shared item list renderer ───────────────────────────────
