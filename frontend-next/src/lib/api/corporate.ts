@@ -28,18 +28,50 @@ export type CreateCorporatePoolResponse = {
   pendingInvites: number;
 };
 
+export type DerivedInviteStatus =
+  | "PENDING"
+  | "SENT"
+  | "ACTIVATED"
+  | "FAILED"
+  | "EXPIRED";
+
 export type CorporateInvite = {
   id: string;
   email: string;
   name: string | null;
-  status: "PENDING" | "SENT" | "ACTIVATED" | "FAILED";
+  /**
+   * Derived status — `EXPIRED` reflects a SENT invite whose token
+   * window has lapsed (computed server-side, never stored in the DB).
+   */
+  status: DerivedInviteStatus;
   activatedAt: string | null;
   createdAtUtc: string;
+  activationTokenExpiresAt: string;
 };
 
 export type CorporateEmployeesResponse = {
   invites: CorporateInvite[];
-  summary: { total: number; pending: number; sent: number; activated: number; failed: number };
+  summary: {
+    total: number;
+    pending: number;
+    sent: number;
+    activated: number;
+    failed: number;
+    expired: number;
+  };
+  page: number;
+  limit: number;
+  totalFiltered: number;
+  totalPages: number;
+};
+
+export type ListCorporateEmployeesParams = {
+  search?: string;
+  status?: ReadonlyArray<DerivedInviteStatus>;
+  /** 0-based page index. */
+  page?: number;
+  /** Default 25, max 100. */
+  limit?: number;
 };
 
 export type ActivateCorporateInput = {
@@ -72,8 +104,40 @@ export async function createCorporatePool(token: string, input: CreateCorporateP
   return requestJson<CreateCorporatePoolResponse>("/corporate/pools", { method: "POST", body: JSON.stringify(input) });
 }
 
-export async function getCorporateEmployees(token: string, poolId: string): Promise<CorporateEmployeesResponse> {
-  return requestJson<CorporateEmployeesResponse>(`/corporate/pools/${poolId}/employees`, { method: "GET" });
+export async function getCorporateEmployees(
+  token: string,
+  poolId: string,
+  params: ListCorporateEmployeesParams = {},
+): Promise<CorporateEmployeesResponse> {
+  const qs = new URLSearchParams();
+  if (params.search && params.search.trim().length > 0) {
+    qs.set("search", params.search.trim());
+  }
+  if (params.status && params.status.length > 0) {
+    qs.set("status", params.status.join(","));
+  }
+  if (typeof params.page === "number") qs.set("page", String(params.page));
+  if (typeof params.limit === "number") qs.set("limit", String(params.limit));
+  const query = qs.toString();
+  const path = `/corporate/pools/${poolId}/employees${query ? `?${query}` : ""}`;
+  return requestJson<CorporateEmployeesResponse>(path, { method: "GET" });
+}
+
+export type BulkResendExpiredResponse = {
+  attempted: number;
+  sent: number;
+  failed: number;
+  hasMore: boolean;
+};
+
+export async function bulkResendExpiredInvitations(
+  token: string,
+  poolId: string,
+): Promise<BulkResendExpiredResponse> {
+  return requestJson<BulkResendExpiredResponse>(
+    `/corporate/pools/${poolId}/employees/bulk-resend-expired`,
+    { method: "POST" },
+  );
 }
 
 export async function addCorporateEmployees(token: string, poolId: string, emails: string[]): Promise<{ success: boolean; added: number; skipped: number; total: number }> {

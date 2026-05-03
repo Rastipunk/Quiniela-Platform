@@ -96,14 +96,45 @@ export type AddEmployeesResult = {
   total: number;
 };
 
+/**
+ * `EXPIRED` is a derived state — an invite is `EXPIRED` when its
+ * native status is `SENT`, the activation token's window has lapsed,
+ * and the invitee never completed activation. The DB never stores
+ * "EXPIRED" so we don't need a status migration or a cron job; we
+ * compute it on read everywhere it's surfaced.
+ */
+export type DerivedInviteStatus =
+  | "PENDING"
+  | "SENT"
+  | "ACTIVATED"
+  | "FAILED"
+  | "EXPIRED";
+
+export type ListEmployeesInput = {
+  userId: string;
+  poolId: string;
+  search?: string;
+  /** Multi-select. Empty/undefined = no filter. */
+  statusFilter?: ReadonlyArray<DerivedInviteStatus>;
+  /** 0-based page index. */
+  page?: number;
+  /** Default 25, max 100. */
+  limit?: number;
+};
+
 export type ListEmployeesResult = {
   invites: Array<{
     id: string;
     email: string;
     name: string | null;
-    status: string;
+    /**
+     * Status as displayed to the host — may be `EXPIRED` even though
+     * the DB row is still `SENT`. Use this for UI; never persist back.
+     */
+    status: DerivedInviteStatus;
     activatedAt: Date | null;
     createdAtUtc: Date;
+    activationTokenExpiresAt: Date;
   }>;
   summary: {
     total: number;
@@ -111,7 +142,13 @@ export type ListEmployeesResult = {
     sent: number;
     activated: number;
     failed: number;
+    expired: number;
   };
+  /** Echoed query state for the client to pin its UI to. */
+  page: number;
+  limit: number;
+  totalFiltered: number;
+  totalPages: number;
 };
 
 export type SendInvitationsInput = {
@@ -425,33 +462,175 @@ export async function addEmployees(data: AddEmployeesInput): Promise<AddEmployee
 
 // -- List Employees --
 
-export async function listEmployees(userId: string, poolId: string): Promise<ListEmployeesResult> {
+const DEFAULT_LIMIT = 25;
+const MAX_LIMIT = 100;
+
+export async function listEmployees(input: ListEmployeesInput): Promise<ListEmployeesResult> {
+  const { userId, poolId } = input;
   if (!(await requireCorporateHost(userId, poolId))) {
     throw new ServiceError("FORBIDDEN", 403, { reason: "CORPORATE_HOST_ONLY" });
   }
 
-  const invites = await prisma.corporateInvite.findMany({
-    where: { poolId },
-    orderBy: { createdAtUtc: "desc" },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      status: true,
-      activatedAt: true,
-      createdAtUtc: true,
-    },
-  });
+  const search = input.search?.trim() || "";
+  const statusFilter = input.statusFilter ?? [];
+  const page = Math.max(0, Math.floor(input.page ?? 0));
+  const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(input.limit ?? DEFAULT_LIMIT)));
+  const now = new Date();
 
+  // Build the WHERE clause. The status filter combines native enum
+  // values (PENDING/ACTIVATED/FAILED) with the derived EXPIRED branch
+  // (status=SENT AND token expired). When both SENT and EXPIRED are
+  // selected, we just match all SENT rows.
+  const statusConditions = buildStatusConditions(statusFilter, now);
+  const searchCondition: Prisma.CorporateInviteWhereInput | null =
+    search.length > 0
+      ? {
+          OR: [
+            { email: { contains: search, mode: "insensitive" } },
+            { name: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : null;
+
+  const filterClauses: Prisma.CorporateInviteWhereInput[] = [];
+  if (statusConditions) filterClauses.push(statusConditions);
+  if (searchCondition) filterClauses.push(searchCondition);
+
+  const baseWhere: Prisma.CorporateInviteWhereInput = { poolId };
+  const where: Prisma.CorporateInviteWhereInput =
+    filterClauses.length > 0 ? { ...baseWhere, AND: filterClauses } : baseWhere;
+
+  // Summary counts cover the WHOLE pool (not the current filter) so
+  // the chip badges always show the overall picture even when the
+  // host has narrowed the list to "Expirados", say.
+  const [statusGroups, expiredCount, totalFiltered, rawInvites] = await Promise.all([
+    prisma.corporateInvite.groupBy({
+      by: ["status"],
+      where: { poolId },
+      _count: { _all: true },
+    }),
+    prisma.corporateInvite.count({
+      where: {
+        poolId,
+        status: "SENT",
+        activationTokenExpiresAt: { lt: now },
+        activatedUserId: null,
+      },
+    }),
+    prisma.corporateInvite.count({ where }),
+    prisma.corporateInvite.findMany({
+      where,
+      orderBy: { createdAtUtc: "desc" },
+      skip: page * limit,
+      take: limit,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        status: true,
+        activatedAt: true,
+        createdAtUtc: true,
+        activationTokenExpiresAt: true,
+        activatedUserId: true,
+      },
+    }),
+  ]);
+
+  const totalSent = statusGroups.find((g) => g.status === "SENT")?._count._all ?? 0;
   const summary = {
-    total: invites.length,
-    pending: invites.filter((i) => i.status === "PENDING").length,
-    sent: invites.filter((i) => i.status === "SENT").length,
-    activated: invites.filter((i) => i.status === "ACTIVATED").length,
-    failed: invites.filter((i) => i.status === "FAILED").length,
+    total:
+      (statusGroups.find((g) => g.status === "PENDING")?._count._all ?? 0) +
+      (statusGroups.find((g) => g.status === "SENT")?._count._all ?? 0) +
+      (statusGroups.find((g) => g.status === "ACTIVATED")?._count._all ?? 0) +
+      (statusGroups.find((g) => g.status === "FAILED")?._count._all ?? 0),
+    pending: statusGroups.find((g) => g.status === "PENDING")?._count._all ?? 0,
+    // "sent" in the summary means "sent and still actionable for the
+    // recipient" — it excludes the expired tail so the chip badges
+    // line up with the rows the host can act on.
+    sent: Math.max(0, totalSent - expiredCount),
+    activated: statusGroups.find((g) => g.status === "ACTIVATED")?._count._all ?? 0,
+    failed: statusGroups.find((g) => g.status === "FAILED")?._count._all ?? 0,
+    expired: expiredCount,
   };
 
-  return { invites, summary };
+  const invites = rawInvites.map((row) => {
+    const isExpired =
+      row.status === "SENT" &&
+      row.activationTokenExpiresAt < now &&
+      row.activatedUserId === null;
+    const status: DerivedInviteStatus = isExpired
+      ? "EXPIRED"
+      : (row.status as DerivedInviteStatus);
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      status,
+      activatedAt: row.activatedAt,
+      createdAtUtc: row.createdAtUtc,
+      activationTokenExpiresAt: row.activationTokenExpiresAt,
+    };
+  });
+
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / limit));
+
+  return {
+    invites,
+    summary,
+    page,
+    limit,
+    totalFiltered,
+    totalPages,
+  };
+}
+
+/**
+ * Translate the host's status filter selection into a Prisma WHERE
+ * clause that combines native enum values with the EXPIRED branch.
+ * Returns null when no filter is requested.
+ */
+function buildStatusConditions(
+  filter: ReadonlyArray<DerivedInviteStatus>,
+  now: Date,
+): Prisma.CorporateInviteWhereInput | null {
+  if (filter.length === 0) return null;
+
+  const wantsPending = filter.includes("PENDING");
+  const wantsActivated = filter.includes("ACTIVATED");
+  const wantsFailed = filter.includes("FAILED");
+  const wantsSent = filter.includes("SENT");
+  const wantsExpired = filter.includes("EXPIRED");
+
+  const branches: Prisma.CorporateInviteWhereInput[] = [];
+
+  if (wantsPending) branches.push({ status: "PENDING" });
+  if (wantsActivated) branches.push({ status: "ACTIVATED" });
+  if (wantsFailed) branches.push({ status: "FAILED" });
+
+  if (wantsSent && wantsExpired) {
+    // Both selected → all SENT rows regardless of expiry.
+    branches.push({ status: "SENT" });
+  } else if (wantsSent) {
+    branches.push({
+      status: "SENT",
+      OR: [
+        { activationTokenExpiresAt: { gte: now } },
+        // An already-activated row would have status=ACTIVATED, but
+        // be defensive in case future writes leave SENT+activated.
+        { activatedUserId: { not: null } },
+      ],
+    });
+  } else if (wantsExpired) {
+    branches.push({
+      status: "SENT",
+      activationTokenExpiresAt: { lt: now },
+      activatedUserId: null,
+    });
+  }
+
+  if (branches.length === 0) return null;
+  if (branches.length === 1) return branches[0]!;
+  return { OR: branches };
 }
 
 // -- Send Invitations --
@@ -698,4 +877,147 @@ export async function resendInvitation(
   }));
 
   return { email: invite.email, status: "SENT" };
+}
+
+// ─── Bulk resend to expired invites ─────────────────────────────────────────
+
+export type BulkResendExpiredInput = {
+  userId: string;
+  poolId: string;
+};
+
+export type BulkResendExpiredResult = {
+  attempted: number;
+  sent: number;
+  failed: number;
+  /** True when more expired rows existed than this single call processed. */
+  hasMore: boolean;
+};
+
+/**
+ * Reissue invitation emails to every expired invite in the pool.
+ *
+ * "Expired" mirrors the derived state used by listEmployees: status=SENT,
+ * token expired, never activated. Each row gets a fresh token and a new
+ * 30-day expiry — same logic as the single-invite resend, just batched.
+ *
+ * The HTTP route fronts this with the existing per-host invite send rate
+ * limiter (200/hour, 1000/day) so a malicious host can't use this path to
+ * blast emails. We additionally cap each call at MAX_BULK_RESEND so a
+ * single click on a 1k-pool can't tie up the request for 30+ seconds; the
+ * client is told via `hasMore` to call again if needed.
+ */
+const MAX_BULK_RESEND = 100;
+
+export async function bulkResendExpired(
+  data: BulkResendExpiredInput,
+): Promise<BulkResendExpiredResult> {
+  const { userId, poolId } = data;
+
+  if (!(await requireCorporateHost(userId, poolId))) {
+    throw new ServiceError("FORBIDDEN", 403, { reason: "CORPORATE_HOST_ONLY" });
+  }
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    include: {
+      organization: {
+        select: {
+          name: true,
+          logoBase64: true,
+          invitationMessage: true,
+          primaryColor: true,
+          secondaryColor: true,
+        },
+      },
+    },
+  });
+  if (!pool) throw new ServiceError("NOT_FOUND", 404);
+
+  const now = new Date();
+  const expired = await prisma.corporateInvite.findMany({
+    where: {
+      poolId,
+      status: "SENT",
+      activationTokenExpiresAt: { lt: now },
+      activatedUserId: null,
+    },
+    orderBy: { createdAtUtc: "asc" }, // oldest expired first — those are the ones the user has been waiting on the longest
+    take: MAX_BULK_RESEND + 1, // +1 to detect hasMore without a separate count
+  });
+
+  const hasMore = expired.length > MAX_BULK_RESEND;
+  const batch = hasMore ? expired.slice(0, MAX_BULK_RESEND) : expired;
+
+  const companyName = pool.organization?.name || "Empresa";
+  const orgLogoBase64 = pool.organization?.logoBase64 || null;
+  const orgInvitationMessage = pool.organization?.invitationMessage || null;
+  const orgPrimaryColor = pool.organization?.primaryColor || null;
+  const orgSecondaryColor = pool.organization?.secondaryColor || null;
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const invite of batch) {
+    const newToken = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
+    const newExpiry = new Date(Date.now() + TOKEN_EXPIRY_MS.CORPORATE_INVITE);
+
+    // Same defensive update as resendInvitation: only rotate the token if the
+    // row is still in a resendable state. Skips rows that just got activated
+    // by a concurrent request between the SELECT above and this UPDATE.
+    const claim = await prisma.corporateInvite.updateMany({
+      where: { id: invite.id, status: { in: ["PENDING", "SENT", "FAILED"] } },
+      data: {
+        status: "PENDING",
+        activationToken: newToken,
+        activationTokenExpiresAt: newExpiry,
+      },
+    });
+    if (claim.count === 0) continue;
+
+    try {
+      const emailResult = await sendCorporateActivationEmail({
+        to: invite.email,
+        employeeName: invite.name || undefined,
+        companyName,
+        poolName: pool.name,
+        activationToken: newToken,
+        logoBase64: orgLogoBase64,
+        invitationMessage: orgInvitationMessage,
+        primaryColor: orgPrimaryColor,
+        secondaryColor: orgSecondaryColor,
+      });
+
+      if (emailResult.success) {
+        await prisma.corporateInvite.update({
+          where: { id: invite.id },
+          data: { status: "SENT" },
+        });
+        sent++;
+      } else {
+        await prisma.corporateInvite.update({
+          where: { id: invite.id },
+          data: { status: "FAILED" },
+        });
+        failed++;
+      }
+    } catch {
+      await prisma.corporateInvite.update({
+        where: { id: invite.id },
+        data: { status: "FAILED" },
+      }).catch(() => {});
+      failed++;
+    }
+  }
+
+  fireAndForget("audit:bulk-resend-expired", writeAuditEvent({
+    actorUserId: userId,
+    action: "CORPORATE_BULK_RESEND_EXPIRED",
+    entityType: "Pool",
+    entityId: poolId,
+    poolId,
+    dataJson: { attempted: batch.length, sent, failed, hasMore },
+  }));
+
+  return { attempted: batch.length, sent, failed, hasMore };
 }

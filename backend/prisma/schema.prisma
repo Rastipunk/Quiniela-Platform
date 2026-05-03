@@ -1152,6 +1152,10 @@ model CorporateInvite {
   @@index([activationToken])
   @@index([poolId])
   @@index([status])
+  // Compound index for the paginated employee list — supports the
+  // common WHERE poolId AND status IN (...) ORDER BY createdAtUtc DESC
+  // query pattern with no extra sort step at scale.
+  @@index([poolId, status, createdAtUtc])
 }
 
 // =========================================================================

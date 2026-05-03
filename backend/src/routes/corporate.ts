@@ -27,6 +27,8 @@ import {
   sendInvitations,
   deleteEmployee,
   resendInvitation,
+  bulkResendExpired,
+  type DerivedInviteStatus,
 } from "../services/corporateService";
 import { updateBranding } from "../services/corporateBrandingService";
 
@@ -204,15 +206,60 @@ corporateRouter.post("/pools/:poolId/employees", requireAuth, async (req, res) =
   }
 });
 
-// GET /corporate/pools/:poolId/employees — List employees
+// GET /corporate/pools/:poolId/employees — Paginated list with search + multi-select status filter
 corporateRouter.get("/pools/:poolId/employees", requireAuth, async (req, res) => {
+  // Query params arrive as strings — coerce/validate before calling the service.
+  const qs = req.query;
+
+  let statusFilter: DerivedInviteStatus[] = [];
+  if (typeof qs.status === "string" && qs.status.length > 0) {
+    const allowed: ReadonlySet<DerivedInviteStatus> = new Set([
+      "PENDING", "SENT", "ACTIVATED", "FAILED", "EXPIRED",
+    ]);
+    statusFilter = qs.status
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter((s): s is DerivedInviteStatus => allowed.has(s as DerivedInviteStatus));
+  }
+
+  const page = typeof qs.page === "string" ? parseInt(qs.page, 10) : undefined;
+  const limit = typeof qs.limit === "string" ? parseInt(qs.limit, 10) : undefined;
+
   try {
-    const result = await listEmployees(req.auth!.userId, req.params.poolId as string);
+    const result = await listEmployees({
+      userId: req.auth!.userId,
+      poolId: req.params.poolId as string,
+      search: typeof qs.search === "string" ? qs.search : undefined,
+      statusFilter,
+      page: Number.isFinite(page) ? page : undefined,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
     return sendData(res, result);
   } catch (err) {
     return handleServiceError(res, err);
   }
 });
+
+// POST /corporate/pools/:poolId/employees/bulk-resend-expired — Reissue
+// emails for every expired invite. Reuses the per-host invite send rate
+// limit so this is not a way to bypass the bulk-send cap.
+corporateRouter.post(
+  "/pools/:poolId/employees/bulk-resend-expired",
+  requireAuth,
+  inviteSendLimiter,
+  inviteSendDailyLimiter,
+  async (req, res) => {
+    try {
+      const result = await bulkResendExpired({
+        userId: req.auth!.userId,
+        poolId: req.params.poolId as string,
+      });
+      return sendOk(res, result);
+    } catch (err) {
+      return handleServiceError(res, err);
+    }
+  },
+);
 
 // POST /corporate/pools/:poolId/send-invitations — Send invitations.
 // Rate limit is per-host (200/hour, 1000/day) to absorb large rollouts while

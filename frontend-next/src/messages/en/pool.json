@@ -265,7 +265,27 @@
       "resend": "Resend",
       "retry": "Retry",
       "resendSuccess": "Invitation resent to {email}",
-      "resendFailed": "Could not resend to {email}. Please try again."
+      "resendFailed": "Could not resend to {email}. Please try again.",
+      "statusExpired": "Expired",
+      "searchPlaceholder": "Search name or email...",
+      "filterAll": "All",
+      "filterPending": "Pending",
+      "filterSent": "Sent",
+      "filterActivated": "Activated",
+      "filterExpired": "Expired",
+      "filterFailed": "Failed",
+      "summaryWithExpired": "{total} employees · {expired} expired",
+      "noResults": "No employees match the current filters.",
+      "tokenExpiresIn": "Expires in {days}d",
+      "tokenExpired": "Token expired",
+      "bulkResendExpiredButton": "Resend to {count} expired",
+      "bulkResendingExpired": "Resending to expired...",
+      "bulkResendConfirm": "Resend invitations to {count} expired employees? Tokens will be rotated and new emails will go out.",
+      "bulkResendResult": "{sent} resent · {failed} failed",
+      "bulkResendHasMore": "More expired remain — tap again to continue.",
+      "resendRecentConfirm": "This invitation was sent less than 24 hours ago. Resend anyway? The previous link will stop working.",
+      "loadingEmployees": "Loading employees...",
+      "pageInfo": "Page {current} of {total}"
     }
   },
 

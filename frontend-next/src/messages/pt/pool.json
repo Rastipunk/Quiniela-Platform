@@ -265,7 +265,27 @@
       "resend": "Reenviar",
       "retry": "Tentar novamente",
       "resendSuccess": "Convite reenviado para {email}",
-      "resendFailed": "Não conseguimos reenviar para {email}. Tente novamente."
+      "resendFailed": "Não conseguimos reenviar para {email}. Tente novamente.",
+      "statusExpired": "Expirado",
+      "searchPlaceholder": "Buscar nome ou email...",
+      "filterAll": "Todos",
+      "filterPending": "Pendentes",
+      "filterSent": "Enviados",
+      "filterActivated": "Ativados",
+      "filterExpired": "Expirados",
+      "filterFailed": "Falharam",
+      "summaryWithExpired": "{total} funcionários · {expired} expirados",
+      "noResults": "Nenhum funcionário corresponde aos filtros.",
+      "tokenExpiresIn": "Vence em {days}d",
+      "tokenExpired": "Token vencido",
+      "bulkResendExpiredButton": "Reenviar aos {count} expirados",
+      "bulkResendingExpired": "Reenviando aos expirados...",
+      "bulkResendConfirm": "Reenviar convites a {count} funcionários expirados? Os tokens serão rotacionados e novos emails serão enviados.",
+      "bulkResendResult": "{sent} reenviados · {failed} falharam",
+      "bulkResendHasMore": "Ainda existem expirados — toque novamente para continuar.",
+      "resendRecentConfirm": "Este convite foi enviado há menos de 24 horas. Reenviar mesmo assim? O link anterior deixará de funcionar.",
+      "loadingEmployees": "Carregando funcionários...",
+      "pageInfo": "Página {current} de {total}"
     }
   },
 
