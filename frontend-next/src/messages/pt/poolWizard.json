@@ -1,6 +1,7 @@
 {
   "pageTitle": "Crear Pool",
   "pageSubtitle": "Configura tu pool paso a paso",
+  "checkoutFailedFallback": "Seu bolão foi criado, mas não conseguimos iniciar o pagamento. Você será levado ao seu bolão — pela aba de admin pode tentar ampliar a capacidade novamente.",
   "backToDashboard": "← Voltar aos meus pools",
 
   "tournamentTitle": "Qual torneio você vai jogar?",

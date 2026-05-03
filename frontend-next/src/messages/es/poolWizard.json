@@ -1,6 +1,7 @@
 {
   "pageTitle": "Crear Pool",
   "pageSubtitle": "Configura tu pool paso a paso",
+  "checkoutFailedFallback": "Tu pool fue creado, pero no pudimos iniciar el pago. Te llevamos a tu pool — desde la pestaña de admin podés reintentar la expansión de capacidad.",
   "backToDashboard": "← Volver a mis pools",
 
   "tournamentTitle": "¿Qué torneo vas a jugar?",

@@ -311,8 +311,15 @@ export async function handleOrderPaid(payload: {
   });
 
   if (!payment) {
-    console.error(`[PaymentService] No PoolPayment found for checkout ${checkoutId}`);
-    return;
+    // Common cause: race between checkout creation and webhook delivery
+    // (50-200ms window where the PoolPayment row was not yet committed
+    // when Polar fired this webhook). Throw so the route returns 5xx
+    // and Polar retries with exponential backoff — the row will exist
+    // on retry. If after Polar's full retry budget the row still doesn't
+    // exist, the event lands in Polar's DLQ for human triage.
+    // The pre-fix `return` here silently dropped pagos when the race hit.
+    console.error(`[PaymentService] order.paid: PoolPayment not found for checkout ${checkoutId} — signalling retry`);
+    throw new Error("PAYMENT_NOT_FOUND_RETRYABLE");
   }
 
   if (payment.status === "COMPLETED") {
@@ -536,8 +543,12 @@ export async function handleOrderRefunded(payload: {
     : null;
 
   if (!payment) {
-    console.error(`[PaymentService] order.refunded: no PoolPayment for checkout ${checkoutId}`);
-    return;
+    // Same retryable race as handleOrderPaid above. Refund webhooks normally
+    // arrive long after the original PoolPayment row has been committed,
+    // but if Polar's refund delivery beats our DB write for some reason,
+    // signal retry so we don't silently drop the refund.
+    console.error(`[PaymentService] order.refunded: PoolPayment not found for checkout ${checkoutId} — signalling retry`);
+    throw new Error("PAYMENT_NOT_FOUND_RETRYABLE");
   }
 
   if (payment.status === "REFUNDED") {
@@ -1078,7 +1089,16 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   const payment = await prisma.poolPayment.findUnique({
     where: { polarCheckoutId: reference },
   });
-  if (!payment) return;
+  if (!payment) {
+    // Same retryable race as the Polar handlers above. MP IPN can fire for
+    // an external_reference whose PoolPayment row is still in the middle
+    // of being committed (rare but possible — both writes happen in
+    // initiateMpCheckout). Throw to make the route return 5xx so MP's
+    // IPN retry policy kicks in. Without this, the previous silent return
+    // dropped the COMPLETED transition for a paid order.
+    console.error(`[PaymentService] MP IPN: PoolPayment not found for reference ${reference} — signalling retry`);
+    throw new Error("PAYMENT_NOT_FOUND_RETRYABLE");
+  }
 
   const isRefundSignal =
     mpPayment.status === "refunded" || mpPayment.status === "charged_back";

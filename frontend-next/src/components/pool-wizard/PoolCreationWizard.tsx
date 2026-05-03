@@ -205,8 +205,17 @@ function WizardInner() {
             return;
           }
         } catch (checkoutErr) {
+          // The pool DID get created (security gate caps it at the free
+          // tier until payment confirms via webhook). But the checkout
+          // didn't start, so the host needs to know — otherwise they land
+          // on a pool with 2-cap thinking the price they saw was applied.
+          // Surfacing here via alert(): not the prettiest UX but
+          // GUARANTEES the host sees something. The pool admin tab has
+          // a CapacitySelector with mode="expansion" so they can retry.
           console.error("[Wizard] Checkout creation failed:", checkoutErr);
-          // If checkout fails, still go to pool (they can expand later)
+          if (typeof window !== "undefined") {
+            window.alert(t("checkoutFailedFallback"));
+          }
         }
       }
 

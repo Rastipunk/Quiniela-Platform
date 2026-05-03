@@ -56,6 +56,7 @@ vi.mock("./mercadopago/client", () => ({
 
 import {
   handleOrderPaid,
+  handleOrderRefunded,
   handleCheckoutUpdated,
   initiateCheckout,
   initiateMpCheckout,
@@ -241,14 +242,39 @@ describe("handleOrderPaid", () => {
     expect(prisma.poolPayment.findUnique).not.toHaveBeenCalled();
   });
 
-  it("returns without crash when no PoolPayment found for checkout", async () => {
+  it("throws PAYMENT_NOT_FOUND_RETRYABLE when no PoolPayment matches the checkout (race with checkout creation)", async () => {
+    // Regression: pre-fix, this returned silently → route returned 200 → Polar
+    // dropped the event from its queue and the customer's payment was lost
+    // when the webhook beat the row commit. Now we throw so the route returns
+    // 5xx and Polar retries — the row will exist on the second attempt.
     (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
-    (prisma.paymentEvent.create as any).mockResolvedValue({});
     (prisma.poolPayment.findUnique as any).mockResolvedValue(null);
 
-    await handleOrderPaid(orderPaidPayload());
-
+    await expect(handleOrderPaid(orderPaidPayload())).rejects.toThrow(
+      "PAYMENT_NOT_FOUND_RETRYABLE",
+    );
     expect(prisma.pool.update).not.toHaveBeenCalled();
+    // We must NOT claim the paymentEvent slot in this case — otherwise the
+    // retry would dedupe and skip. The throw happens BEFORE we enter the tx.
+    expect(prisma.paymentEvent.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleOrderRefunded — retryable not-found", () => {
+  it("throws PAYMENT_NOT_FOUND_RETRYABLE when no PoolPayment matches the refund's checkoutId", async () => {
+    // Same defence as handleOrderPaid: if the refund webhook lands when the
+    // PoolPayment row isn't yet committed (or the checkoutId is malformed
+    // in transit), throw to trigger retry rather than silently dropping
+    // the refund signal.
+    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(null);
+
+    await expect(
+      handleOrderRefunded({
+        type: "order.refunded",
+        data: { id: "evt_refund_123", checkout_id: "chk_unknown" },
+      }),
+    ).rejects.toThrow("PAYMENT_NOT_FOUND_RETRYABLE");
   });
 });
 
@@ -634,6 +660,28 @@ describe("handleMpWebhook", () => {
       }),
     );
     expect(prisma.pool.update).toHaveBeenCalled();
+  });
+
+  it("throws PAYMENT_NOT_FOUND_RETRYABLE when no PoolPayment matches the MP external_reference", async () => {
+    // Same retryable-race defence as the Polar handlers. MP IPN can fire
+    // for a reference whose PoolPayment row hasn't been committed yet
+    // (rare, but possible). The pre-fix `if (!payment) return;` would
+    // silently swallow the COMPLETED transition for a paid order.
+    (mpGetPayment as any).mockResolvedValue({
+      status: "approved",
+      external_reference: "P4A-orphan-reference",
+    });
+    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(null);
+
+    await expect(handleMpWebhook("mp-payment-orphan")).rejects.toThrow(
+      "PAYMENT_NOT_FOUND_RETRYABLE",
+    );
+    // Critical: we must NOT have claimed a PaymentEvent slot — otherwise
+    // the retry would dedupe and skip. The throw happens BEFORE we enter
+    // the per-status tx (which is where paymentEvent.create runs).
+    expect(prisma.paymentEvent.create).not.toHaveBeenCalled();
+    expect(prisma.poolPayment.update).not.toHaveBeenCalled();
   });
 });
 
