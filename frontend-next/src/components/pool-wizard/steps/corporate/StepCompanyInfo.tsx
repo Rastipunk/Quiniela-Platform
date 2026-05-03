@@ -6,6 +6,7 @@ import { colors, radii, spacing, fontSize, fontWeight } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../../PoolWizardContext";
 import { PoolWizardStepContainer } from "../../PoolWizardStepContainer";
+import { WizardSubStep } from "../../WizardSubStep";
 import { ColorField } from "../../ColorField";
 import {
   PICKS4ALL_DEFAULT_PRIMARY,
@@ -86,14 +87,6 @@ export function StepCompanyInfo() {
 
   // ── Styles ────────────────────────────────────────────────
 
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: colors.textDark,
-    marginBottom: spacing.xs,
-  };
-
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: isMobile ? "14px 12px" : "10px 12px",
@@ -112,7 +105,7 @@ export function StepCompanyInfo() {
     fontFamily: "inherit",
   };
 
-  const fieldGap = isMobile ? spacing.xl : spacing["2xl"];
+  const optionalLabel = t("companyInfo.optional", { defaultMessage: "opcional" });
 
   return (
     <PoolWizardStepContainer
@@ -125,12 +118,17 @@ export function StepCompanyInfo() {
       })}
       icon="&#x1F3E2;"
     >
-      {/* Company name */}
-      <div style={{ marginBottom: fieldGap }}>
-        <label style={labelStyle}>
-          {t("companyInfo.nameLabel", { defaultMessage: "Nombre de tu empresa" })}{" "}
-          <span style={{ color: colors.error }}>*</span>
-        </label>
+      {/* 1. Company name */}
+      <WizardSubStep
+        isFirst
+        number={1}
+        title={t("companyInfo.nameLabel", { defaultMessage: "Nombre de tu empresa" })}
+        subtitle={t("companyInfo.subSteps.nameHelp", {
+          defaultMessage:
+            "Cómo aparecerá tu empresa en la pool, los emails de invitación y el splash de bienvenida.",
+        })}
+        requiredMark
+      >
         <input
           type="text"
           value={state.companyName}
@@ -143,6 +141,9 @@ export function StepCompanyInfo() {
           }
           placeholder={t("companyInfo.namePlaceholder", {
             defaultMessage: "Ej: Acme Corp",
+          })}
+          aria-label={t("companyInfo.nameLabel", {
+            defaultMessage: "Nombre de tu empresa",
           })}
           style={inputStyle}
           maxLength={100}
@@ -161,17 +162,18 @@ export function StepCompanyInfo() {
             })}
           </div>
         )}
-      </div>
+      </WizardSubStep>
 
-      {/* Logo upload */}
-      <div style={{ marginBottom: fieldGap }}>
-        <label style={labelStyle}>
-          {t("companyInfo.logoLabel", { defaultMessage: "Logo de la empresa" })}{" "}
-          <span style={{ color: colors.textLight, fontWeight: fontWeight.normal }}>
-            ({t("companyInfo.optional", { defaultMessage: "opcional" })})
-          </span>
-        </label>
-
+      {/* 2. Logo upload */}
+      <WizardSubStep
+        number={2}
+        title={t("companyInfo.logoLabel", { defaultMessage: "Logo de la empresa" })}
+        subtitle={t("companyInfo.subSteps.logoHelp", {
+          defaultMessage:
+            "Lo verán tus colaboradores en el splash, el header de la pool y los emails. Recomendado: cuadrado, fondo transparente.",
+        })}
+        optionalLabel={optionalLabel}
+      >
         {state.logoBase64 ? (
           <div
             style={{
@@ -277,52 +279,52 @@ export function StepCompanyInfo() {
             {logoError}
           </div>
         )}
-      </div>
+      </WizardSubStep>
 
-      {/* Brand colors */}
-      <BrandColorsSection
-        primary={state.primaryColor}
-        secondary={state.secondaryColor}
-        companyName={state.companyName}
-        logoBase64={state.logoBase64}
-        onPrimaryChange={(value) =>
-          dispatch({ type: "SET_FIELD", field: "primaryColor", value })
-        }
-        onSecondaryChange={(value) =>
-          dispatch({ type: "SET_FIELD", field: "secondaryColor", value })
-        }
-        onReset={() => {
-          dispatch({ type: "SET_FIELD", field: "primaryColor", value: "" });
-          dispatch({ type: "SET_FIELD", field: "secondaryColor", value: "" });
-        }}
-        marginBottom={fieldGap}
-        t={t}
-        isMobile={isMobile}
-      />
-
-      {/* Welcome message */}
-      <div style={{ marginBottom: fieldGap }}>
-        <label style={labelStyle}>
-          {t("companyInfo.welcomeLabel", {
-            defaultMessage: "Mensaje de bienvenida",
-          })}{" "}
-          <span style={{ color: colors.textLight, fontWeight: fontWeight.normal }}>
-            ({t("companyInfo.optional", { defaultMessage: "opcional" })})
-          </span>
-        </label>
-        <p
-          style={{
-            margin: "0 0 8px",
-            fontSize: fontSize.sm,
-            color: colors.textLight,
-            lineHeight: 1.5,
+      {/* 3. Brand colors */}
+      <WizardSubStep
+        number={3}
+        title={t("companyInfo.colorsLabel", {
+          defaultMessage: "Colores de tu marca",
+        })}
+        subtitle={t("companyInfo.colorsHelp", {
+          defaultMessage:
+            "Personaliza el splash, el header y los emails de invitación. Podrás cambiarlos más adelante desde el panel de administración.",
+        })}
+        optionalLabel={optionalLabel}
+      >
+        <BrandColorsSection
+          primary={state.primaryColor}
+          secondary={state.secondaryColor}
+          companyName={state.companyName}
+          logoBase64={state.logoBase64}
+          onPrimaryChange={(value) =>
+            dispatch({ type: "SET_FIELD", field: "primaryColor", value })
+          }
+          onSecondaryChange={(value) =>
+            dispatch({ type: "SET_FIELD", field: "secondaryColor", value })
+          }
+          onReset={() => {
+            dispatch({ type: "SET_FIELD", field: "primaryColor", value: "" });
+            dispatch({ type: "SET_FIELD", field: "secondaryColor", value: "" });
           }}
-        >
-          {t("companyInfo.welcomeHelp", {
-            defaultMessage:
-              "Este es el mensaje que verán tus colaboradores cada vez que entren a la polla.",
-          })}
-        </p>
+          t={t}
+          isMobile={isMobile}
+        />
+      </WizardSubStep>
+
+      {/* 4. Welcome message */}
+      <WizardSubStep
+        number={4}
+        title={t("companyInfo.welcomeLabel", {
+          defaultMessage: "Mensaje de bienvenida",
+        })}
+        subtitle={t("companyInfo.welcomeHelp", {
+          defaultMessage:
+            "Este es el mensaje que verán tus colaboradores cada vez que entren a la polla.",
+        })}
+        optionalLabel={optionalLabel}
+      >
         <textarea
           value={state.welcomeMessage}
           onChange={(e) =>
@@ -335,6 +337,9 @@ export function StepCompanyInfo() {
           placeholder={t("companyInfo.welcomePlaceholder", {
             defaultMessage:
               "Ej: Bienvenidos a la quiniela corporativa de Acme Corp. Buena suerte!",
+          })}
+          aria-label={t("companyInfo.welcomeLabel", {
+            defaultMessage: "Mensaje de bienvenida",
           })}
           style={textareaStyle}
           maxLength={500}
@@ -366,31 +371,20 @@ export function StepCompanyInfo() {
           badgeLabel={t("companyInfo.previewBadge", { defaultMessage: "Corporativo" })}
           ctaLabel={t("companyInfo.previewCta", { defaultMessage: "Jugar" })}
         />
-      </div>
+      </WizardSubStep>
 
-      {/* Invitation message */}
-      <div>
-        <label style={labelStyle}>
-          {t("companyInfo.invitationLabel", {
-            defaultMessage: "Mensaje de invitacion",
-          })}{" "}
-          <span style={{ color: colors.textLight, fontWeight: fontWeight.normal }}>
-            ({t("companyInfo.optional", { defaultMessage: "opcional" })})
-          </span>
-        </label>
-        <p
-          style={{
-            margin: "0 0 8px",
-            fontSize: fontSize.sm,
-            color: colors.textLight,
-            lineHeight: 1.5,
-          }}
-        >
-          {t("companyInfo.invitationHelp", {
-            defaultMessage:
-              "Este es el mensaje que recibirán tus colaboradores en su correo cuando los invites a unirse.",
-          })}
-        </p>
+      {/* 5. Invitation message */}
+      <WizardSubStep
+        number={5}
+        title={t("companyInfo.invitationLabel", {
+          defaultMessage: "Mensaje de invitacion",
+        })}
+        subtitle={t("companyInfo.invitationHelp", {
+          defaultMessage:
+            "Este es el mensaje que recibirán tus colaboradores en su correo cuando los invites a unirse.",
+        })}
+        optionalLabel={optionalLabel}
+      >
         <textarea
           value={state.invitationMessage}
           onChange={(e) =>
@@ -403,6 +397,9 @@ export function StepCompanyInfo() {
           placeholder={t("companyInfo.invitationPlaceholder", {
             defaultMessage:
               "Este mensaje se incluira en el email de invitacion a los empleados.",
+          })}
+          aria-label={t("companyInfo.invitationLabel", {
+            defaultMessage: "Mensaje de invitacion",
           })}
           style={textareaStyle}
           maxLength={500}
@@ -440,7 +437,7 @@ export function StepCompanyInfo() {
             defaultMessage: "Entrar a jugar →",
           })}
         />
-      </div>
+      </WizardSubStep>
     </PoolWizardStepContainer>
   );
 }
@@ -455,7 +452,6 @@ interface BrandColorsSectionProps {
   onPrimaryChange: (value: string) => void;
   onSecondaryChange: (value: string) => void;
   onReset: () => void;
-  marginBottom: number;
   t: (key: string, opts?: Record<string, string | number | Date>) => string;
   isMobile: boolean;
 }
@@ -468,7 +464,6 @@ function BrandColorsSection({
   onPrimaryChange,
   onSecondaryChange,
   onReset,
-  marginBottom,
   t,
   isMobile,
 }: BrandColorsSectionProps) {
@@ -481,35 +476,7 @@ function BrandColorsSection({
   const previewName = companyName.trim() || "Acme Corp";
 
   return (
-    <div style={{ marginBottom }}>
-      <label
-        style={{
-          display: "block",
-          fontSize: fontSize.base,
-          fontWeight: fontWeight.semibold,
-          color: colors.textDark,
-          marginBottom: 4,
-        }}
-      >
-        {t("companyInfo.colorsLabel", { defaultMessage: "Colores de tu marca" })}{" "}
-        <span style={{ color: colors.textLight, fontWeight: fontWeight.normal }}>
-          ({t("companyInfo.optional", { defaultMessage: "opcional" })})
-        </span>
-      </label>
-      <p
-        style={{
-          margin: "0 0 12px",
-          fontSize: fontSize.sm,
-          color: colors.textLight,
-          lineHeight: 1.5,
-        }}
-      >
-        {t("companyInfo.colorsHelp", {
-          defaultMessage:
-            "Personaliza el splash, el header y los emails de invitación. Podrás cambiarlos más adelante desde el panel de administración.",
-        })}
-      </p>
-
+    <div>
       <div
         style={{
           display: "flex",

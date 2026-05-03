@@ -2,11 +2,10 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { colors, radii, spacing, fontSize, fontWeight, shadows } from "@/lib/theme";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { colors, radii, spacing, fontSize, fontWeight } from "@/lib/theme";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
-import { RECOMMENDED_DEADLINE } from "@/types/poolWizard";
+import { WizardSubStep } from "../WizardSubStep";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 
 // ── Deadline presets ──────────────────────────────────────────
@@ -22,7 +21,6 @@ import { COMMON_TIMEZONES } from "@/lib/timezones";
 
 export function StepNameDetails() {
   const t = useTranslations("poolWizard");
-  const isMobile = useIsMobile();
   const { state, dispatch } = useWizard();
 
   // Auto-detect timezone
@@ -55,89 +53,95 @@ export function StepNameDetails() {
       subtitle={t("nameDetailsSubtitle")}
       icon="✏️"
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: spacing["2xl"] }}>
-        {/* ── Pool name ────────────────────────────────────────── */}
-        <div>
-          <label style={labelStyle}>
-            {t("poolNameLabel")} <span style={{ color: colors.error }}>*</span>
-          </label>
-          <input
-            type="text"
-            value={state.poolName}
-            onChange={(e) => setField("poolName", e.target.value)}
-            placeholder={t("poolNamePlaceholder")}
-            maxLength={60}
-            style={{
-              ...inputBaseStyle,
-              borderColor: poolNameError ? colors.error : colors.borderLight,
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = poolNameError ? colors.error : colors.brand;
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${poolNameError ? "rgba(220,38,38,0.1)" : "rgba(79,70,229,0.1)"}`;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = poolNameError ? colors.error : colors.borderLight;
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          />
-          {poolNameError && (
-            <p style={errorTextStyle}>{poolNameError}</p>
-          )}
-          <p style={helpTextStyle}>{t("poolNameHelp")}</p>
-        </div>
+      {/* 1. Pool name */}
+      <WizardSubStep
+        isFirst
+        number={1}
+        title={t("poolNameLabel")}
+        subtitle={t("poolNameHelp")}
+        requiredMark
+      >
+        <input
+          type="text"
+          value={state.poolName}
+          onChange={(e) => setField("poolName", e.target.value)}
+          placeholder={t("poolNamePlaceholder")}
+          aria-label={t("poolNameLabel")}
+          maxLength={60}
+          style={{
+            ...inputBaseStyle,
+            borderColor: poolNameError ? colors.error : colors.borderLight,
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = poolNameError ? colors.error : colors.brand;
+            e.currentTarget.style.boxShadow = `0 0 0 3px ${poolNameError ? "rgba(220,38,38,0.1)" : "rgba(79,70,229,0.1)"}`;
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = poolNameError ? colors.error : colors.borderLight;
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        />
+        {poolNameError && (
+          <p style={errorTextStyle}>{poolNameError}</p>
+        )}
+      </WizardSubStep>
 
-        {/* ── Description ──────────────────────────────────────── */}
-        <div>
-          <label style={labelStyle}>{t("descriptionLabel")}</label>
-          <textarea
-            value={state.poolDescription}
-            onChange={(e) => setField("poolDescription", e.target.value)}
-            placeholder={t("descriptionPlaceholder")}
-            maxLength={500}
-            rows={3}
-            style={{
-              ...inputBaseStyle,
-              resize: "vertical" as const,
-              minHeight: 80,
-              fontFamily: "inherit",
-              borderColor: descriptionOver ? colors.error : colors.borderLight,
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = colors.brand;
-              e.currentTarget.style.boxShadow = `0 0 0 3px rgba(79,70,229,0.1)`;
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = colors.borderLight;
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          />
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: spacing.xs,
+      {/* 2. Description */}
+      <WizardSubStep
+        number={2}
+        title={t("descriptionLabel")}
+        subtitle={t("descriptionHelp")}
+      >
+        <textarea
+          value={state.poolDescription}
+          onChange={(e) => setField("poolDescription", e.target.value)}
+          placeholder={t("descriptionPlaceholder")}
+          aria-label={t("descriptionLabel")}
+          maxLength={500}
+          rows={3}
+          style={{
+            ...inputBaseStyle,
+            resize: "vertical" as const,
+            minHeight: 80,
+            fontFamily: "inherit",
+            borderColor: descriptionOver ? colors.error : colors.borderLight,
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = colors.brand;
+            e.currentTarget.style.boxShadow = `0 0 0 3px rgba(79,70,229,0.1)`;
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = colors.borderLight;
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        />
+        <div style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          marginTop: spacing.xs,
+        }}>
+          <span style={{
+            fontSize: fontSize.xs,
+            color: descriptionOver ? colors.error : colors.textLight,
           }}>
-            <p style={helpTextStyle}>{t("descriptionHelp")}</p>
-            <span style={{
-              fontSize: fontSize.xs,
-              color: descriptionOver ? colors.error : colors.textLight,
-            }}>
-              {descriptionLength}/500
-            </span>
-          </div>
+            {descriptionLength}/500
+          </span>
         </div>
+      </WizardSubStep>
 
-        {/* ── Deadline ─────────────────────────────────────────── */}
-        <div>
-          <label style={labelStyle}>{t("deadlineLabel")}</label>
-
-          {/* Quick preset pills */}
-          <div style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: spacing.sm,
-            marginTop: spacing.xs,
-          }}>
+      {/* 3. Deadline */}
+      <WizardSubStep
+        number={3}
+        title={t("deadlineLabel")}
+        subtitle={t("deadlineHelp")}
+      >
+        {/* Quick preset pills */}
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: spacing.sm,
+        }}>
             {DEADLINE_PRESETS.map((opt) => {
               const isActive = state.deadlineMinutesBeforeKickoff === opt.value;
               return (
@@ -251,16 +255,18 @@ export function StepNameDetails() {
               antes
             </span>
           </div>
+        </WizardSubStep>
 
-          <p style={helpTextStyle}>{t("deadlineHelp")}</p>
-        </div>
-
-        {/* ── Timezone ─────────────────────────────────────────── */}
-        <div>
-          <label style={labelStyle}>{t("timezoneLabel")}</label>
+        {/* 4. Timezone */}
+        <WizardSubStep
+          number={4}
+          title={t("timezoneLabel")}
+          subtitle={t("timezoneHelp")}
+        >
           <select
             value={state.timeZone || detectedTimezone}
             onChange={(e) => setField("timeZone", e.target.value)}
+            aria-label={t("timezoneLabel")}
             style={{
               ...inputBaseStyle,
               cursor: "pointer",
@@ -279,49 +285,31 @@ export function StepNameDetails() {
               </option>
             ))}
           </select>
-          <p style={helpTextStyle}>{t("timezoneHelp")}</p>
-        </div>
+        </WizardSubStep>
 
-        {/* ── Require Approval toggle ──────────────────────────── */}
-        <div>
+        {/* 5. Require Approval toggle */}
+        <WizardSubStep
+          number={5}
+          title={t("requireApprovalLabel")}
+          subtitle={t("requireApprovalHelp")}
+        >
           <div style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             gap: spacing.md,
           }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ ...labelStyle, marginBottom: 0 }}>
-                {t("requireApprovalLabel")}
-              </label>
-              <p style={{
-                ...helpTextStyle,
-                marginTop: spacing.xs,
-              }}>
-                {t("requireApprovalHelp")}
-              </p>
-            </div>
-
             <ToggleSwitch
               checked={state.requireApproval}
               onChange={(v) => setField("requireApproval", v)}
             />
           </div>
-        </div>
-      </div>
+        </WizardSubStep>
     </PoolWizardStepContainer>
   );
 }
 
 // ── Shared styles ─────────────────────────────────────────────
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: fontSize.base,
-  fontWeight: fontWeight.semibold,
-  color: colors.text,
-  marginBottom: spacing.sm,
-};
 
 const inputBaseStyle: React.CSSProperties = {
   width: "100%",
@@ -334,13 +322,6 @@ const inputBaseStyle: React.CSSProperties = {
   transition: "border-color 0.2s ease, box-shadow 0.2s ease",
   boxSizing: "border-box",
   lineHeight: 1.5,
-};
-
-const helpTextStyle: React.CSSProperties = {
-  fontSize: fontSize.sm,
-  color: colors.textLight,
-  margin: `${spacing.xs}px 0 0`,
-  lineHeight: 1.4,
 };
 
 const errorTextStyle: React.CSSProperties = {

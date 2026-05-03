@@ -279,7 +279,11 @@
     "previewEmailSubject": "te reta a jugar",
     "previewEmailGreeting": "¡Hey María!",
     "previewEmailBody": "Tu equipo en {company} ya está armando su quiniela y necesitan que te sumes.",
-    "previewEmailCta": "Entrar a jugar →"
+    "previewEmailCta": "Entrar a jugar →",
+    "subSteps": {
+      "nameHelp": "Cómo aparecerá tu empresa en la pool, los emails de invitación y el splash de bienvenida.",
+      "logoHelp": "Lo verán tus colaboradores en el splash, el header de la pool y los emails. Recomendado cuadrado, con fondo transparente."
+    }
   },
 
   "summary": {

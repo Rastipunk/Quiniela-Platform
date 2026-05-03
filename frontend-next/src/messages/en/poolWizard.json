@@ -279,7 +279,11 @@
     "previewEmailSubject": "challenges you to play",
     "previewEmailGreeting": "Hey Maria!",
     "previewEmailBody": "Your crew at {company} is setting up a sports pool and they need you in.",
-    "previewEmailCta": "Get in the game →"
+    "previewEmailCta": "Get in the game →",
+    "subSteps": {
+      "nameHelp": "How your company appears in the pool, invitation emails, and welcome splash.",
+      "logoHelp": "Shown to your team in the splash, pool header, and emails. A square logo with transparent background works best."
+    }
   },
 
   "summary": {

@@ -5,6 +5,7 @@ import { colors, radii, spacing, fontSize, fontWeight } from "@/lib/theme";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
+import { WizardSubStep } from "../WizardSubStep";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 
 export function StepAdvancedRules() {
@@ -27,14 +28,6 @@ export function StepAdvancedRules() {
   }
 
   // ── Styles ────────────────────────────────────────────────
-
-  const sectionStyle: React.CSSProperties = {
-    padding: isMobile ? spacing.lg : spacing.xl,
-    borderRadius: radii["2xl"],
-    border: `1px solid ${colors.borderLight}`,
-    background: colors.bgLighter,
-    marginBottom: spacing.lg,
-  };
 
   const toggleRowStyle: React.CSSProperties = {
     display: "flex",
@@ -63,32 +56,19 @@ export function StepAdvancedRules() {
       })}
       icon="&#x2699;&#xFE0F;"
     >
-      {/* Extra time section */}
+      {/* 1. Extra time */}
       {knockoutPhases.length > 0 && (
-        <div style={sectionStyle}>
-          <h3 style={{
-            margin: 0,
-            fontSize: fontSize.lg,
-            fontWeight: fontWeight.bold,
-            color: colors.text,
-            marginBottom: spacing.xs,
-          }}>
-            {t("advancedRules.extraTimeTitle", {
-              defaultMessage: "Incluir tiempo extra",
-            })}
-          </h3>
-          <p style={{
-            margin: `0 0 ${spacing.sm}px`,
-            fontSize: fontSize.md,
-            color: colors.textMuted,
-            lineHeight: 1.5,
-          }}>
-            {t("advancedRules.extraTimeDesc", {
-              defaultMessage:
-                "Contar los goles del tiempo extra en eliminatorias (no incluye penales).",
-            })}
-          </p>
-
+        <WizardSubStep
+          isFirst
+          number={1}
+          title={t("advancedRules.extraTimeTitle", {
+            defaultMessage: "Incluir tiempo extra",
+          })}
+          subtitle={t("advancedRules.extraTimeDesc", {
+            defaultMessage:
+              "Contar los goles del tiempo extra en eliminatorias (no incluye penales).",
+          })}
+        >
           {/* Explanation boxes */}
           <div style={{
             display: "grid",
@@ -154,11 +134,12 @@ export function StepAdvancedRules() {
               </div>
             ))}
           </div>
-        </div>
+        </WizardSubStep>
       )}
 
       {/* Info note */}
       <div style={{
+        marginTop: spacing.xl,
         padding: spacing.md,
         borderRadius: radii["2xl"],
         background: colors.infoBgLight,

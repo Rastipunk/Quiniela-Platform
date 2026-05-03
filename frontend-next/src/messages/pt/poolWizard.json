@@ -279,7 +279,11 @@
     "previewEmailSubject": "te desafia a jogar",
     "previewEmailGreeting": "E aí, Maria!",
     "previewEmailBody": "A galera da {company} já está montando o bolão e precisa de você.",
-    "previewEmailCta": "Entrar no jogo →"
+    "previewEmailCta": "Entrar no jogo →",
+    "subSteps": {
+      "nameHelp": "Como sua empresa aparecerá no pool, nos emails de convite e na tela de boas-vindas.",
+      "logoHelp": "Aparece para sua equipe no splash, no cabeçalho do pool e nos emails. Recomendado quadrado, com fundo transparente."
+    }
   },
 
   "summary": {
