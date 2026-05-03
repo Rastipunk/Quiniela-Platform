@@ -102,7 +102,8 @@
     "summary": "Mi Resumen",
     "rules": "Reglas",
     "admin": "Administración",
-    "players": "Jugadores"
+    "players": "Jugadores",
+    "capacity": "Capacidad"
   },
 
   "nav": {

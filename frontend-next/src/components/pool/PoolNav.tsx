@@ -36,6 +36,7 @@ export type PoolNavTab =
   | "resumen"
   | "reglas"
   | "jugadores"
+  | "capacidad"
   | "admin";
 
 const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
@@ -44,6 +45,7 @@ const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
   "resumen",
   "reglas",
   "jugadores",
+  "capacidad",
   "admin",
 ]);
 
@@ -62,6 +64,7 @@ const PLAYER_ITEMS: ReadonlyArray<NavItem> = [
 
 const HOST_ITEMS: ReadonlyArray<NavItem> = [
   { key: "jugadores", icon: "👥", labelKey: "tabs.players" },
+  { key: "capacidad", icon: "💺", labelKey: "tabs.capacity" },
   { key: "admin", icon: "⚙️", labelKey: "tabs.admin" },
 ];
 

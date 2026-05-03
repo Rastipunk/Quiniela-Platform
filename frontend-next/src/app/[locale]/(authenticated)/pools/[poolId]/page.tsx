@@ -37,10 +37,11 @@ import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./comp
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
 import { PoolSectionHeader } from "./components/PoolSectionHeader";
+import { PoolCapacityTab } from "./components/PoolCapacityTab";
 import { usePublishPoolNav } from "@/components/pool/PoolNav";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
-const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "admin"] as const;
+const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "capacidad", "admin"] as const;
 type PoolTab = typeof VALID_TABS[number];
 
 export default function PoolPage() {
@@ -520,7 +521,7 @@ export default function PoolPage() {
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button
-                onClick={() => { setShowCapacityPopup(false); setActiveTab("admin"); }}
+                onClick={() => { setShowCapacityPopup(false); setActiveTab("capacidad"); }}
                 style={{ padding: "12px 24px", borderRadius: radii.xl, border: "none", background: colors.brand, color: "white", fontSize: fontSize.base, fontWeight: fontWeight.bold, cursor: "pointer" }}
               >
                 {t("admin.capacity.title")}
@@ -765,6 +766,10 @@ export default function PoolPage() {
                   busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
                   friendlyError={friendlyError} reload={load}
                 />
+              )}
+
+              {activeTab === "capacidad" && overview.permissions.canManageResults && (
+                <PoolCapacityTab poolId={poolId!} overview={overview} />
               )}
 
               {activeTab === "admin" && overview.permissions.canManageResults && (
