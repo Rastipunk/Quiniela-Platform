@@ -1,14 +1,14 @@
 /**
  * Admin Analytics Dashboard
  *
- * Single platform-wide growth & health endpoint, admin-only. Returns
- * a comprehensive snapshot of users, pools, corporate funnel, revenue,
- * engagement, retention, and operational health in one JSON payload.
+ * Single platform-wide growth & health endpoint, admin-only.
  *
- * Cached in memory for 60s — the dashboard polls every 30s but the
- * data underneath rarely changes meaningfully sub-minute. Pass
- * `?refresh=true` to bypass the cache (the UI's manual "Refresh
- * ahora" button).
+ * Each section's query bundle is wrapped in `safeRun` so a failure
+ * in one corner of the dashboard (a busted SQL fragment, a model
+ * field that drifted) doesn't take down the whole thing — the
+ * payload still arrives with sensible defaults for the broken
+ * sections, and the names of the failed sections come back in the
+ * `errors` array for the UI to surface.
  *
  * GET /admin/analytics/dashboard
  *   Authorization: Bearer <admin JWT>
@@ -32,6 +32,7 @@ let cache: { data: DashboardPayload; timestamp: number } | null = null;
 interface DashboardPayload {
   generatedAtUtc: string;
   cacheTtlSeconds: number;
+  errors: { section: string; message: string }[];
   topLine: TopLineKPIs;
   signupsByWeek: WeeklySignups[];
   poolsByWeek: WeeklyPools[];
@@ -102,7 +103,7 @@ interface WeeklyPicks {
 interface WeeklyRevenue {
   weekStart: string;
   paidPaymentsCount: number;
-  revenueUsdMinor: number; // cents
+  revenueUsdMinor: number;
   revenueCop: number;
 }
 interface DailyActive {
@@ -203,171 +204,254 @@ interface OperationalHealth {
   auditEventsLast24h: number;
 }
 
-// ─── Helpers ────────────────────────────────────────────────
+// ─── Section runner ─────────────────────────────────────────
 
-function startOfWeekUtc(d: Date): Date {
-  const day = d.getUTCDay(); // 0=Sun..6=Sat
-  const offset = (day + 6) % 7; // shift so Mon=0
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  start.setUTCDate(start.getUTCDate() - offset);
-  return start;
+const errors: { section: string; message: string }[] = [];
+
+async function safeRun<T>(section: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[admin analytics] section "${section}" failed:`, err);
+    errors.push({ section, message });
+    return fallback;
+  }
 }
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-function lastNWeeks(n: number): Date[] {
-  const now = new Date();
-  const currentWeek = startOfWeekUtc(now);
-  const out: Date[] = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(currentWeek);
-    d.setUTCDate(d.getUTCDate() - i * 7);
-    out.push(d);
-  }
-  return out;
-}
+// ─── Defaults ───────────────────────────────────────────────
+
+const DEFAULT_TOP_LINE: TopLineKPIs = {
+  totalUsers: 0,
+  verifiedUsers: 0,
+  googleSignups: 0,
+  marketingOptIns: 0,
+  predictionSubscribers: 0,
+  activeUsers7d: 0,
+  activeUsers30d: 0,
+  totalPools: 0,
+  draftPools: 0,
+  activePools: 0,
+  completedPools: 0,
+  archivedPools: 0,
+  personalPools: 0,
+  corporatePools: 0,
+  totalOrganizations: 0,
+  pendingInquiries: 0,
+  totalCorporateInvites: 0,
+  activatedInvites: 0,
+  inviteActivationRate: 0,
+  totalRevenueUsd: 0,
+  totalRevenueCop: 0,
+  pendingApprovalMembers: 0,
+  totalMatchPicks: 0,
+  totalStructuralPicks: 0,
+};
+
+const DEFAULT_FUNNEL: ActivationFunnel = {
+  signups: 0,
+  joinedPool: 0,
+  madePick: 0,
+  joinedRate: 0,
+  pickRateOfJoiners: 0,
+  pickRateOfSignups: 0,
+};
+
+const DEFAULT_CORPORATE_FUNNEL: CorporateFunnel = {
+  inquiries: 0,
+  respondedInquiries: 0,
+  organizationsActive: 0,
+  corporatePools: 0,
+  invitesTotal: 0,
+  invitesSent: 0,
+  invitesActivated: 0,
+  invitesExpired: 0,
+  invitesFailed: 0,
+  responseRate: 0,
+  activationRate: 0,
+};
+
+const DEFAULT_POOL_HEALTH: PoolHealth = {
+  zombiePools: 0,
+  poolsWithNoMembers: 0,
+  emptyDraftsOlderThan30Days: 0,
+  fullPools: 0,
+};
+
+const DEFAULT_PAYMENT: PaymentBreakdown = {
+  totalCheckoutsStarted: 0,
+  totalCheckoutsCompleted: 0,
+  totalCheckoutsFailed: 0,
+  conversionRate: 0,
+  byProvider: [],
+  byTier: [],
+  avgPaymentUsd: 0,
+  avgPaymentCop: 0,
+};
+
+const DEFAULT_OPERATIONAL: OperationalHealth = {
+  emailSuppressions: 0,
+  failedAnalyticsEvents: 0,
+  recentFeedback: [],
+  auditEventsLast24h: 0,
+};
 
 // ─── Builder ────────────────────────────────────────────────
 
 async function buildDashboardData(): Promise<DashboardPayload> {
+  errors.length = 0; // reset per call
   const now = new Date();
   const day7Ago = new Date(now.getTime() - 7 * 86_400_000);
   const day30Ago = new Date(now.getTime() - 30 * 86_400_000);
-  const week12StartFloor = lastNWeeks(12)[0]!;
+  const day90Ago = new Date(now.getTime() - 90 * 86_400_000);
 
-  // ── Top-line counts (parallel) ──────────────────────────
-  const [
-    totalUsers,
-    verifiedUsers,
-    googleSignups,
-    marketingOptIns,
-    predictionSubscribers,
-    poolStatusCounts,
-    corporatePoolCount,
-    organizationCount,
-    pendingInquiriesCount,
-    inviteStatusCounts,
-    totalMatchPicks,
-    totalStructuralPicks,
-    activeMemberCount,
-    pendingApprovalCount,
-    activeUsers7dRows,
-    activeUsers30dRows,
-    revenueAggUsd,
-    revenueAggCop,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { emailVerified: true } }),
-    prisma.user.count({ where: { googleId: { not: null } } }),
-    prisma.user.count({ where: { marketingConsent: true } }),
-    prisma.user.count({ where: { predictionUpdates: true } }),
-    prisma.pool.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.pool.count({ where: { organizationId: { not: null } } }),
-    prisma.organization.count(),
-    prisma.organizationInquiry.count({ where: { responded: false } }),
-    prisma.corporateInvite.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.prediction.count(),
-    prisma.structuralPrediction.count(),
-    prisma.poolMember.count({ where: { status: "ACTIVE" } }),
-    prisma.poolMember.count({ where: { status: "PENDING_APPROVAL" } }),
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(DISTINCT "userId")::bigint AS count
-      FROM "Prediction"
-      WHERE "createdAtUtc" >= ${day7Ago}
-    `,
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(DISTINCT "userId")::bigint AS count
-      FROM "Prediction"
-      WHERE "createdAtUtc" >= ${day30Ago}
-    `,
-    prisma.poolPayment.aggregate({
-      where: { status: "COMPLETED" },
-      _sum: { amountUsd: true },
-    }),
-    prisma.poolPayment.aggregate({
-      where: { status: "COMPLETED" },
-      _sum: { amountCop: true },
-    }),
-  ]);
+  // ── Top-line KPIs ───────────────────────────────────────
+  const topLine = await safeRun<TopLineKPIs>("topLine", DEFAULT_TOP_LINE, async () => {
+    const [
+      totalUsers,
+      verifiedUsers,
+      googleSignups,
+      marketingOptIns,
+      predictionSubscribers,
+      poolStatusCounts,
+      corporatePoolCount,
+      organizationCount,
+      pendingInquiriesCount,
+      inviteStatusCounts,
+      totalMatchPicks,
+      totalStructuralPicks,
+      pendingApprovalCount,
+      activeUsers7dRows,
+      activeUsers30dRows,
+      revenueAggUsd,
+      revenueAggCop,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { emailVerified: true } }),
+      prisma.user.count({ where: { googleId: { not: null } } }),
+      prisma.user.count({ where: { marketingConsent: true } }),
+      prisma.user.count({ where: { predictionUpdates: true } }),
+      prisma.pool.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.pool.count({ where: { organizationId: { not: null } } }),
+      prisma.organization.count(),
+      prisma.organizationInquiry.count({ where: { responded: false } }),
+      prisma.corporateInvite.groupBy({ by: ["status"], _count: { _all: true } }),
+      prisma.prediction.count(),
+      prisma.structuralPrediction.count(),
+      prisma.poolMember.count({ where: { status: "PENDING_APPROVAL" } }),
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(DISTINCT "userId")::bigint AS count
+        FROM "Prediction" WHERE "createdAtUtc" >= ${day7Ago}
+      `,
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(DISTINCT "userId")::bigint AS count
+        FROM "Prediction" WHERE "createdAtUtc" >= ${day30Ago}
+      `,
+      prisma.poolPayment.aggregate({
+        where: { status: "COMPLETED" },
+        _sum: { amountUsd: true },
+      }),
+      prisma.poolPayment.aggregate({
+        where: { status: "COMPLETED" },
+        _sum: { amountCop: true },
+      }),
+    ]);
 
-  const totalPools = poolStatusCounts.reduce((s, g) => s + g._count._all, 0);
-  const personalPools = totalPools - corporatePoolCount;
-  const draftPools = poolStatusCounts.find((g) => g.status === "DRAFT")?._count._all ?? 0;
-  const activePools = poolStatusCounts.find((g) => g.status === "ACTIVE")?._count._all ?? 0;
-  const completedPools = poolStatusCounts.find((g) => g.status === "COMPLETED")?._count._all ?? 0;
-  const archivedPools = poolStatusCounts.find((g) => g.status === "ARCHIVED")?._count._all ?? 0;
-  const totalCorporateInvites = inviteStatusCounts.reduce((s, g) => s + g._count._all, 0);
-  const activatedInvites = inviteStatusCounts.find((g) => g.status === "ACTIVATED")?._count._all ?? 0;
+    const totalPools = poolStatusCounts.reduce((s, g) => s + g._count._all, 0);
+    const totalCorporateInvites = inviteStatusCounts.reduce((s, g) => s + g._count._all, 0);
+    const activatedInvites = inviteStatusCounts.find((g) => g.status === "ACTIVATED")?._count._all ?? 0;
 
-  const topLine: TopLineKPIs = {
-    totalUsers,
-    verifiedUsers,
-    googleSignups,
-    marketingOptIns,
-    predictionSubscribers,
-    activeUsers7d: Number(activeUsers7dRows[0]?.count ?? 0),
-    activeUsers30d: Number(activeUsers30dRows[0]?.count ?? 0),
-    totalPools,
-    draftPools,
-    activePools,
-    completedPools,
-    archivedPools,
-    personalPools,
-    corporatePools: corporatePoolCount,
-    totalOrganizations: organizationCount,
-    pendingInquiries: pendingInquiriesCount,
-    totalCorporateInvites,
-    activatedInvites,
-    inviteActivationRate: totalCorporateInvites > 0 ? activatedInvites / totalCorporateInvites : 0,
-    totalRevenueUsd: revenueAggUsd._sum.amountUsd ?? 0,
-    totalRevenueCop: revenueAggCop._sum.amountCop ?? 0,
-    pendingApprovalMembers: pendingApprovalCount,
-    totalMatchPicks,
-    totalStructuralPicks,
-  };
+    return {
+      totalUsers,
+      verifiedUsers,
+      googleSignups,
+      marketingOptIns,
+      predictionSubscribers,
+      activeUsers7d: Number(activeUsers7dRows[0]?.count ?? 0),
+      activeUsers30d: Number(activeUsers30dRows[0]?.count ?? 0),
+      totalPools,
+      draftPools: poolStatusCounts.find((g) => g.status === "DRAFT")?._count._all ?? 0,
+      activePools: poolStatusCounts.find((g) => g.status === "ACTIVE")?._count._all ?? 0,
+      completedPools: poolStatusCounts.find((g) => g.status === "COMPLETED")?._count._all ?? 0,
+      archivedPools: poolStatusCounts.find((g) => g.status === "ARCHIVED")?._count._all ?? 0,
+      personalPools: totalPools - corporatePoolCount,
+      corporatePools: corporatePoolCount,
+      totalOrganizations: organizationCount,
+      pendingInquiries: pendingInquiriesCount,
+      totalCorporateInvites,
+      activatedInvites,
+      inviteActivationRate: totalCorporateInvites > 0 ? activatedInvites / totalCorporateInvites : 0,
+      totalRevenueUsd: revenueAggUsd._sum.amountUsd ?? 0,
+      totalRevenueCop: revenueAggCop._sum.amountCop ?? 0,
+      pendingApprovalMembers: pendingApprovalCount,
+      totalMatchPicks,
+      totalStructuralPicks,
+    };
+  });
 
-  // ── Time series — last 12 weeks (raw SQL for date_trunc) ──
-  const [signupsRaw, poolsRaw, picksRaw, revenueRaw, dailyActiveRaw] = await Promise.all([
-    prisma.$queryRaw<
+  // ── Time series — last 12 weeks ────────────────────────
+  const signupsByWeek = await safeRun<WeeklySignups[]>("signupsByWeek", [], async () => {
+    const rows = await prisma.$queryRaw<
       { week_start: Date; total: bigint; verified: bigint; google: bigint; referred: bigint }[]
     >`
       SELECT date_trunc('week', "createdAtUtc") AS week_start,
              COUNT(*)::bigint AS total,
-             COUNT(*) FILTER (WHERE "emailVerified") ::bigint AS verified,
-             COUNT(*) FILTER (WHERE "googleId" IS NOT NULL) ::bigint AS google,
-             COUNT(*) FILTER (WHERE "referredByUserId" IS NOT NULL) ::bigint AS referred
+             COUNT(*) FILTER (WHERE "emailVerified")::bigint AS verified,
+             COUNT(*) FILTER (WHERE "googleId" IS NOT NULL)::bigint AS google,
+             COUNT(*) FILTER (WHERE "referredByUserId" IS NOT NULL)::bigint AS referred
       FROM "User"
-      WHERE "createdAtUtc" >= ${week12StartFloor}
+      WHERE "createdAtUtc" >= ${day90Ago}
       GROUP BY week_start
       ORDER BY week_start
-    `,
-    prisma.$queryRaw<
+    `;
+    return rows.map((r) => ({
+      weekStart: isoDate(r.week_start),
+      total: Number(r.total),
+      verified: Number(r.verified),
+      google: Number(r.google),
+      referred: Number(r.referred),
+    }));
+  });
+
+  const poolsByWeek = await safeRun<WeeklyPools[]>("poolsByWeek", [], async () => {
+    const rows = await prisma.$queryRaw<
       { week_start: Date; total: bigint; personal: bigint; corporate: bigint }[]
     >`
       SELECT date_trunc('week', "createdAtUtc") AS week_start,
              COUNT(*)::bigint AS total,
-             COUNT(*) FILTER (WHERE "organizationId" IS NULL) ::bigint AS personal,
-             COUNT(*) FILTER (WHERE "organizationId" IS NOT NULL) ::bigint AS corporate
+             COUNT(*) FILTER (WHERE "organizationId" IS NULL)::bigint AS personal,
+             COUNT(*) FILTER (WHERE "organizationId" IS NOT NULL)::bigint AS corporate
       FROM "Pool"
-      WHERE "createdAtUtc" >= ${week12StartFloor}
+      WHERE "createdAtUtc" >= ${day90Ago}
       GROUP BY week_start
       ORDER BY week_start
-    `,
-    prisma.$queryRaw<
+    `;
+    return rows.map((r) => ({
+      weekStart: isoDate(r.week_start),
+      total: Number(r.total),
+      personal: Number(r.personal),
+      corporate: Number(r.corporate),
+    }));
+  });
+
+  const picksByWeek = await safeRun<WeeklyPicks[]>("picksByWeek", [], async () => {
+    const rows = await prisma.$queryRaw<
       { week_start: Date; match_picks: bigint; structural_picks: bigint }[]
     >`
       WITH match_p AS (
         SELECT date_trunc('week', "createdAtUtc") AS week_start, COUNT(*)::bigint AS c
         FROM "Prediction"
-        WHERE "createdAtUtc" >= ${week12StartFloor}
+        WHERE "createdAtUtc" >= ${day90Ago}
         GROUP BY week_start
       ),
       struct_p AS (
         SELECT date_trunc('week', "createdAtUtc") AS week_start, COUNT(*)::bigint AS c
         FROM "StructuralPrediction"
-        WHERE "createdAtUtc" >= ${week12StartFloor}
+        WHERE "createdAtUtc" >= ${day90Ago}
         GROUP BY week_start
       )
       SELECT COALESCE(m.week_start, s.week_start) AS week_start,
@@ -376,8 +460,16 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       FROM match_p m
       FULL OUTER JOIN struct_p s ON m.week_start = s.week_start
       ORDER BY week_start
-    `,
-    prisma.$queryRaw<
+    `;
+    return rows.map((r) => ({
+      weekStart: isoDate(r.week_start),
+      matchPicks: Number(r.match_picks),
+      structuralPicks: Number(r.structural_picks),
+    }));
+  });
+
+  const revenueByWeek = await safeRun<WeeklyRevenue[]>("revenueByWeek", [], async () => {
+    const rows = await prisma.$queryRaw<
       { week_start: Date; paid_count: bigint; revenue_usd_minor: bigint; revenue_cop: bigint }[]
     >`
       SELECT date_trunc('week', COALESCE("paidAtUtc", "createdAtUtc")) AS week_start,
@@ -385,11 +477,21 @@ async function buildDashboardData(): Promise<DashboardPayload> {
              COALESCE(SUM("amountUsd"), 0)::bigint AS revenue_usd_minor,
              COALESCE(SUM("amountCop"), 0)::bigint AS revenue_cop
       FROM "PoolPayment"
-      WHERE status = 'COMPLETED' AND COALESCE("paidAtUtc", "createdAtUtc") >= ${week12StartFloor}
+      WHERE status = 'COMPLETED'
+      AND COALESCE("paidAtUtc", "createdAtUtc") >= ${day90Ago}
       GROUP BY week_start
       ORDER BY week_start
-    `,
-    prisma.$queryRaw<
+    `;
+    return rows.map((r) => ({
+      weekStart: isoDate(r.week_start),
+      paidPaymentsCount: Number(r.paid_count),
+      revenueUsdMinor: Number(r.revenue_usd_minor),
+      revenueCop: Number(r.revenue_cop),
+    }));
+  });
+
+  const dailyActiveUsers = await safeRun<DailyActive[]>("dailyActiveUsers", [], async () => {
+    const rows = await prisma.$queryRaw<
       { day: Date; unique_users: bigint; picks_count: bigint }[]
     >`
       SELECT date_trunc('day', "createdAtUtc") AS day,
@@ -399,48 +501,41 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       WHERE "createdAtUtc" >= ${day30Ago}
       GROUP BY day
       ORDER BY day
-    `,
-  ]);
+    `;
+    return rows.map((r) => ({
+      day: isoDate(r.day),
+      uniqueActiveUsers: Number(r.unique_users),
+      picksCount: Number(r.picks_count),
+    }));
+  });
 
-  const signupsByWeek: WeeklySignups[] = signupsRaw.map((r) => ({
-    weekStart: isoDate(r.week_start),
-    total: Number(r.total),
-    verified: Number(r.verified),
-    google: Number(r.google),
-    referred: Number(r.referred),
-  }));
-  const poolsByWeek: WeeklyPools[] = poolsRaw.map((r) => ({
-    weekStart: isoDate(r.week_start),
-    total: Number(r.total),
-    personal: Number(r.personal),
-    corporate: Number(r.corporate),
-  }));
-  const picksByWeek: WeeklyPicks[] = picksRaw.map((r) => ({
-    weekStart: isoDate(r.week_start),
-    matchPicks: Number(r.match_picks),
-    structuralPicks: Number(r.structural_picks),
-  }));
-  const revenueByWeek: WeeklyRevenue[] = revenueRaw.map((r) => ({
-    weekStart: isoDate(r.week_start),
-    paidPaymentsCount: Number(r.paid_count),
-    revenueUsdMinor: Number(r.revenue_usd_minor),
-    revenueCop: Number(r.revenue_cop),
-  }));
-  const dailyActiveUsers: DailyActive[] = dailyActiveRaw.map((r) => ({
-    day: isoDate(r.day),
-    uniqueActiveUsers: Number(r.unique_users),
-    picksCount: Number(r.picks_count),
-  }));
-
-  // ── Geo + tournament breakdown ──────────────────────────
-  const [usersByCountryRaw, poolsByTournamentRaw, poolSizesRaw] = await Promise.all([
-    prisma.$queryRaw<{ country: string | null; count: bigint }[]>`
+  // ── Geo + tournaments ──────────────────────────────────
+  const usersByCountry = await safeRun<CountryRow[]>("usersByCountry", [], async () => {
+    const rows = await prisma.$queryRaw<{ country: string | null; count: bigint }[]>`
       SELECT country, COUNT(*)::bigint AS count
       FROM "User"
       GROUP BY country
       ORDER BY COUNT(*) DESC
-    `,
-    prisma.$queryRaw<
+    `;
+    const total = rows.reduce((s, r) => s + Number(r.count), 0);
+    return rows.slice(0, 20).map((r) => ({
+      country: r.country ?? "(unknown)",
+      count: Number(r.count),
+      pct: total > 0 ? Number(r.count) / total : 0,
+    }));
+  });
+
+  const poolsByStatus = await safeRun<{ status: string; count: number }[]>(
+    "poolsByStatus",
+    [],
+    async () => {
+      const rows = await prisma.pool.groupBy({ by: ["status"], _count: { _all: true } });
+      return rows.map((r) => ({ status: r.status, count: r._count._all }));
+    },
+  );
+
+  const poolsByTournament = await safeRun<TournamentRow[]>("poolsByTournament", [], async () => {
+    const rows = await prisma.$queryRaw<
       { name: string; template_key: string | null; pool_count: bigint; avg_members: number }[]
     >`
       SELECT ti.name,
@@ -451,137 +546,136 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       JOIN "TournamentInstance" ti ON ti.id = p."tournamentInstanceId"
       LEFT JOIN (
         SELECT "poolId", COUNT(*)::int AS member_count
-        FROM "PoolMember"
-        WHERE status = 'ACTIVE'
-        GROUP BY "poolId"
+        FROM "PoolMember" WHERE status = 'ACTIVE' GROUP BY "poolId"
       ) member_counts ON member_counts."poolId" = p.id
       GROUP BY ti.name, ti."templateKey"
       ORDER BY pool_count DESC
-    `,
-    prisma.$queryRaw<{ size_bucket: string; count: bigint }[]>`
-      SELECT size_bucket, COUNT(*)::bigint AS count
-      FROM (
-        SELECT
-          CASE
-            WHEN active_members BETWEEN 1 AND 5 THEN '1-5'
-            WHEN active_members BETWEEN 6 AND 10 THEN '6-10'
-            WHEN active_members BETWEEN 11 AND 20 THEN '11-20'
-            WHEN active_members BETWEEN 21 AND 50 THEN '21-50'
-            WHEN active_members BETWEEN 51 AND 100 THEN '51-100'
-            WHEN active_members > 100 THEN '100+'
-            ELSE '0'
-          END AS size_bucket
+    `;
+    return rows.map((r) => ({
+      name: r.name,
+      templateKey: r.template_key,
+      poolCount: Number(r.pool_count),
+      avgMembers: Number(r.avg_members),
+    }));
+  });
+
+  const poolSizeDistribution = await safeRun<{ range: string; count: number }[]>(
+    "poolSizeDistribution",
+    [],
+    async () => {
+      const rows = await prisma.$queryRaw<{ size_bucket: string; count: bigint }[]>`
+        SELECT size_bucket, COUNT(*)::bigint AS count
         FROM (
-          SELECT p.id,
-                 COALESCE((SELECT COUNT(*) FROM "PoolMember" pm
-                           WHERE pm."poolId" = p.id AND pm.status = 'ACTIVE'), 0) AS active_members
-          FROM "Pool" p
-        ) sized
-      ) bucketed
-      GROUP BY size_bucket
-      ORDER BY CASE size_bucket
-        WHEN '0' THEN 0
-        WHEN '1-5' THEN 1
-        WHEN '6-10' THEN 2
-        WHEN '11-20' THEN 3
-        WHEN '21-50' THEN 4
-        WHEN '51-100' THEN 5
-        WHEN '100+' THEN 6
-      END
-    `,
-  ]);
+          SELECT
+            CASE
+              WHEN active_members BETWEEN 1 AND 5 THEN '1-5'
+              WHEN active_members BETWEEN 6 AND 10 THEN '6-10'
+              WHEN active_members BETWEEN 11 AND 20 THEN '11-20'
+              WHEN active_members BETWEEN 21 AND 50 THEN '21-50'
+              WHEN active_members BETWEEN 51 AND 100 THEN '51-100'
+              WHEN active_members > 100 THEN '100+'
+              ELSE '0'
+            END AS size_bucket
+          FROM (
+            SELECT p.id,
+                   COALESCE((SELECT COUNT(*) FROM "PoolMember" pm
+                             WHERE pm."poolId" = p.id AND pm.status = 'ACTIVE'), 0) AS active_members
+            FROM "Pool" p
+          ) sized
+        ) bucketed
+        GROUP BY size_bucket
+        ORDER BY CASE size_bucket
+          WHEN '0' THEN 0 WHEN '1-5' THEN 1 WHEN '6-10' THEN 2
+          WHEN '11-20' THEN 3 WHEN '21-50' THEN 4 WHEN '51-100' THEN 5
+          WHEN '100+' THEN 6
+        END
+      `;
+      return rows.map((r) => ({ range: r.size_bucket, count: Number(r.count) }));
+    },
+  );
 
-  const totalUsersWithCountry = usersByCountryRaw.reduce((s, r) => s + Number(r.count), 0);
-  const usersByCountry: CountryRow[] = usersByCountryRaw.slice(0, 20).map((r) => ({
-    country: r.country ?? "(unknown)",
-    count: Number(r.count),
-    pct: totalUsersWithCountry > 0 ? Number(r.count) / totalUsersWithCountry : 0,
-  }));
+  // ── Activation funnel ──────────────────────────────────
+  const funnel = await safeRun<ActivationFunnel>("funnel", DEFAULT_FUNNEL, async () => {
+    const [usersJoined, usersPicked, totalUsers] = await Promise.all([
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(DISTINCT "userId")::bigint AS count
+        FROM "PoolMember" WHERE status IN ('ACTIVE', 'LEFT')
+      `,
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(DISTINCT "userId")::bigint AS count FROM "Prediction"
+      `,
+      prisma.user.count(),
+    ]);
+    const joinedPool = Number(usersJoined[0]?.count ?? 0);
+    const madePick = Number(usersPicked[0]?.count ?? 0);
+    return {
+      signups: totalUsers,
+      joinedPool,
+      madePick,
+      joinedRate: totalUsers > 0 ? joinedPool / totalUsers : 0,
+      pickRateOfJoiners: joinedPool > 0 ? madePick / joinedPool : 0,
+      pickRateOfSignups: totalUsers > 0 ? madePick / totalUsers : 0,
+    };
+  });
 
-  const poolsByStatus = poolStatusCounts.map((g) => ({
-    status: g.status,
-    count: g._count._all,
-  }));
-  const poolsByTournament: TournamentRow[] = poolsByTournamentRaw.map((r) => ({
-    name: r.name,
-    templateKey: r.template_key,
-    poolCount: Number(r.pool_count),
-    avgMembers: Number(r.avg_members),
-  }));
-  const poolSizeDistribution = poolSizesRaw.map((r) => ({
-    range: r.size_bucket,
-    count: Number(r.count),
-  }));
+  // ── Corporate funnel ───────────────────────────────────
+  const corporateFunnel = await safeRun<CorporateFunnel>(
+    "corporateFunnel",
+    DEFAULT_CORPORATE_FUNNEL,
+    async () => {
+      const [
+        totalInquiries,
+        respondedInquiriesCount,
+        organizationsActiveCount,
+        corporatePoolCount,
+        invitesByStatus,
+        invitesSentNotExpired,
+        invitesExpired,
+      ] = await Promise.all([
+        prisma.organizationInquiry.count(),
+        prisma.organizationInquiry.count({ where: { responded: true } }),
+        prisma.organization.count({ where: { status: { not: "INQUIRY" } } }),
+        prisma.pool.count({ where: { organizationId: { not: null } } }),
+        prisma.corporateInvite.groupBy({ by: ["status"], _count: { _all: true } }),
+        prisma.corporateInvite.count({
+          where: {
+            status: "SENT",
+            activationTokenExpiresAt: { gte: now },
+            activatedUserId: null,
+          },
+        }),
+        prisma.corporateInvite.count({
+          where: {
+            status: "SENT",
+            activationTokenExpiresAt: { lt: now },
+            activatedUserId: null,
+          },
+        }),
+      ]);
+      const total = invitesByStatus.reduce((s, g) => s + g._count._all, 0);
+      const activated = invitesByStatus.find((g) => g.status === "ACTIVATED")?._count._all ?? 0;
+      const failed = invitesByStatus.find((g) => g.status === "FAILED")?._count._all ?? 0;
+      return {
+        inquiries: totalInquiries,
+        respondedInquiries: respondedInquiriesCount,
+        organizationsActive: organizationsActiveCount,
+        corporatePools: corporatePoolCount,
+        invitesTotal: total,
+        invitesSent: invitesSentNotExpired,
+        invitesActivated: activated,
+        invitesExpired,
+        invitesFailed: failed,
+        responseRate: totalInquiries > 0 ? respondedInquiriesCount / totalInquiries : 0,
+        activationRate: total > 0 ? activated / total : 0,
+      };
+    },
+  );
 
-  // ── Funnel: signup → joined pool → made pick ────────────
-  const [usersWithPoolCount, usersWithPickCount] = await Promise.all([
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(DISTINCT "userId")::bigint AS count
-      FROM "PoolMember"
-      WHERE status IN ('ACTIVE', 'LEFT')
-    `,
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(DISTINCT "userId")::bigint AS count
-      FROM "Prediction"
-    `,
-  ]);
-  const joinedPool = Number(usersWithPoolCount[0]?.count ?? 0);
-  const madePick = Number(usersWithPickCount[0]?.count ?? 0);
-  const funnel: ActivationFunnel = {
-    signups: totalUsers,
-    joinedPool,
-    madePick,
-    joinedRate: totalUsers > 0 ? joinedPool / totalUsers : 0,
-    pickRateOfJoiners: joinedPool > 0 ? madePick / joinedPool : 0,
-    pickRateOfSignups: totalUsers > 0 ? madePick / totalUsers : 0,
-  };
-
-  // ── Corporate funnel ────────────────────────────────────
-  const [
-    totalInquiries,
-    respondedInquiriesCount,
-    organizationsActiveCount,
-    invitesSentNotExpiredCount,
-    invitesExpiredCount,
-    invitesFailedCount,
-  ] = await Promise.all([
-    prisma.organizationInquiry.count(),
-    prisma.organizationInquiry.count({ where: { responded: true } }),
-    prisma.organization.count({ where: { status: { not: "INQUIRY" } } }),
-    prisma.corporateInvite.count({
-      where: {
-        status: "SENT",
-        activationTokenExpiresAt: { gte: now },
-        activatedUserId: null,
-      },
-    }),
-    prisma.corporateInvite.count({
-      where: {
-        status: "SENT",
-        activationTokenExpiresAt: { lt: now },
-        activatedUserId: null,
-      },
-    }),
-    prisma.corporateInvite.count({ where: { status: "FAILED" } }),
-  ]);
-
-  const corporateFunnel: CorporateFunnel = {
-    inquiries: totalInquiries,
-    respondedInquiries: respondedInquiriesCount,
-    organizationsActive: organizationsActiveCount,
-    corporatePools: corporatePoolCount,
-    invitesTotal: totalCorporateInvites,
-    invitesSent: invitesSentNotExpiredCount,
-    invitesActivated: activatedInvites,
-    invitesExpired: invitesExpiredCount,
-    invitesFailed: invitesFailedCount,
-    responseRate: totalInquiries > 0 ? respondedInquiriesCount / totalInquiries : 0,
-    activationRate: totalCorporateInvites > 0 ? activatedInvites / totalCorporateInvites : 0,
-  };
-
-  // ── Acquisition + referrals ─────────────────────────────
-  const [acquisitionRaw, referralStats, topReferrersRaw, recentInquiriesRaw] = await Promise.all([
-    prisma.$queryRaw<{ source: string | null; medium: string | null; count: bigint }[]>`
+  // ── Acquisition + referrals ────────────────────────────
+  const topAcquisition = await safeRun<AcquisitionRow[]>("topAcquisition", [], async () => {
+    const rows = await prisma.$queryRaw<
+      { source: string | null; medium: string | null; count: bigint }[]
+    >`
       SELECT "acquisitionSource" AS source,
              "acquisitionMedium" AS medium,
              COUNT(*)::bigint AS count
@@ -590,28 +684,49 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       GROUP BY source, medium
       ORDER BY COUNT(*) DESC
       LIMIT 10
-    `,
-    prisma.user.count({ where: { referredByUserId: { not: null } } }),
-    prisma.$queryRaw<
-      { user_id: string; display_name: string; referral_count: bigint }[]
-    >`
-      SELECT u.id AS user_id,
-             u."displayName" AS display_name,
-             COUNT(*)::bigint AS referral_count
-      FROM "User" u
-      WHERE u.id IN (SELECT "referredByUserId" FROM "User" WHERE "referredByUserId" IS NOT NULL)
-      AND u.id IN (
-        SELECT "referredByUserId" FROM "User"
-        WHERE "referredByUserId" IS NOT NULL
-        GROUP BY "referredByUserId"
-        ORDER BY COUNT(*) DESC
-        LIMIT 10
-      )
-      GROUP BY u.id, u."displayName", u.id
-      ORDER BY (SELECT COUNT(*) FROM "User" r WHERE r."referredByUserId" = u.id) DESC
-      LIMIT 10
-    `,
-    prisma.organizationInquiry.findMany({
+    `;
+    return rows.map((r) => ({
+      source: r.source ?? "(none)",
+      medium: r.medium ?? "(none)",
+      count: Number(r.count),
+    }));
+  });
+
+  const organicReferrals = await safeRun<{ totalReferred: number; topReferrers: TopReferrer[] }>(
+    "organicReferrals",
+    { totalReferred: 0, topReferrers: [] },
+    async () => {
+      const [totalReferred, topRefRows] = await Promise.all([
+        prisma.user.count({ where: { referredByUserId: { not: null } } }),
+        // Cleaner query: inner join to count referrals per referrer
+        prisma.$queryRaw<
+          { user_id: string; display_name: string; referral_count: bigint }[]
+        >`
+          SELECT
+            referrer.id AS user_id,
+            referrer."displayName" AS display_name,
+            COUNT(referred.id)::bigint AS referral_count
+          FROM "User" referrer
+          INNER JOIN "User" referred ON referred."referredByUserId" = referrer.id
+          GROUP BY referrer.id, referrer."displayName"
+          ORDER BY referral_count DESC
+          LIMIT 10
+        `,
+      ]);
+      return {
+        totalReferred,
+        topReferrers: topRefRows.map((r) => ({
+          userId: r.user_id,
+          displayName: r.display_name,
+          referralCount: Number(r.referral_count),
+        })),
+      };
+    },
+  );
+
+  // ── Recent inquiries ───────────────────────────────────
+  const recentInquiries = await safeRun<InquiryRow[]>("recentInquiries", [], async () => {
+    const rows = await prisma.organizationInquiry.findMany({
       orderBy: { createdAtUtc: "desc" },
       take: 15,
       select: {
@@ -625,272 +740,277 @@ async function buildDashboardData(): Promise<DashboardPayload> {
         responded: true,
         respondedAt: true,
       },
-    }),
-  ]);
+    });
+    return rows.map((i) => ({
+      createdAtUtc: i.createdAtUtc.toISOString(),
+      companyName: i.companyName,
+      contactEmail: i.contactEmail,
+      country: i.country,
+      currency: i.currency,
+      numberOfPools: i.numberOfPools,
+      slotsPerPool: i.slotsPerPool,
+      responded: i.responded,
+      responseLagHours:
+        i.responded && i.respondedAt
+          ? (i.respondedAt.getTime() - i.createdAtUtc.getTime()) / 3_600_000
+          : null,
+    }));
+  });
 
-  const topAcquisition: AcquisitionRow[] = acquisitionRaw.map((r) => ({
-    source: r.source ?? "(none)",
-    medium: r.medium ?? "(none)",
-    count: Number(r.count),
-  }));
+  // ── Top organizations ──────────────────────────────────
+  const topOrganizations = await safeRun<OrgRow[]>("topOrganizations", [], async () => {
+    const rows = await prisma.$queryRaw<
+      {
+        id: string;
+        name: string;
+        status: string;
+        created_at: Date;
+        pool_count: bigint;
+        invites_total: bigint;
+        invites_activated: bigint;
+      }[]
+    >`
+      SELECT o.id,
+             o.name,
+             o.status,
+             o."createdAtUtc" AS created_at,
+             COALESCE(COUNT(DISTINCT p.id), 0)::bigint AS pool_count,
+             COALESCE(COUNT(ci.id), 0)::bigint AS invites_total,
+             COALESCE(COUNT(*) FILTER (WHERE ci.status = 'ACTIVATED'), 0)::bigint AS invites_activated
+      FROM "Organization" o
+      LEFT JOIN "Pool" p ON p."organizationId" = o.id
+      LEFT JOIN "CorporateInvite" ci ON ci."poolId" = p.id
+      GROUP BY o.id, o.name, o.status, o."createdAtUtc"
+      ORDER BY pool_count DESC, invites_total DESC
+      LIMIT 15
+    `;
+    return rows.map((o) => {
+      const total = Number(o.invites_total);
+      const activated = Number(o.invites_activated);
+      return {
+        id: o.id,
+        name: o.name,
+        status: o.status,
+        createdAtUtc: o.created_at.toISOString(),
+        poolCount: Number(o.pool_count),
+        invitesTotal: total,
+        invitesActivated: activated,
+        activationRate: total > 0 ? activated / total : 0,
+      };
+    });
+  });
 
-  const topReferrers: TopReferrer[] = topReferrersRaw.map((r) => ({
-    userId: r.user_id,
-    displayName: r.display_name,
-    referralCount: Number(r.referral_count),
-  }));
-
-  const recentInquiries: InquiryRow[] = recentInquiriesRaw.map((i) => ({
-    createdAtUtc: i.createdAtUtc.toISOString(),
-    companyName: i.companyName,
-    contactEmail: i.contactEmail,
-    country: i.country,
-    currency: i.currency,
-    numberOfPools: i.numberOfPools,
-    slotsPerPool: i.slotsPerPool,
-    responded: i.responded,
-    responseLagHours:
-      i.responded && i.respondedAt
-        ? (i.respondedAt.getTime() - i.createdAtUtc.getTime()) / 3_600_000
-        : null,
-  }));
-
-  // ── Top organizations ───────────────────────────────────
-  const topOrgsRaw = await prisma.$queryRaw<
-    {
-      id: string;
-      name: string;
-      status: string;
-      created_at: Date;
-      pool_count: bigint;
-      invites_total: bigint;
-      invites_activated: bigint;
-    }[]
-  >`
-    SELECT o.id,
-           o.name,
-           o.status,
-           o."createdAtUtc" AS created_at,
-           COALESCE(COUNT(DISTINCT p.id), 0)::bigint AS pool_count,
-           COALESCE(COUNT(ci.id), 0)::bigint AS invites_total,
-           COALESCE(COUNT(*) FILTER (WHERE ci.status = 'ACTIVATED'), 0)::bigint AS invites_activated
-    FROM "Organization" o
-    LEFT JOIN "Pool" p ON p."organizationId" = o.id
-    LEFT JOIN "CorporateInvite" ci ON ci."poolId" = p.id
-    GROUP BY o.id, o.name, o.status, o."createdAtUtc"
-    ORDER BY pool_count DESC, invites_total DESC
-    LIMIT 15
-  `;
-  const topOrganizations: OrgRow[] = topOrgsRaw.map((o) => {
-    const total = Number(o.invites_total);
-    const activated = Number(o.invites_activated);
+  // ── Pool health checks ─────────────────────────────────
+  const poolHealth = await safeRun<PoolHealth>("poolHealth", DEFAULT_POOL_HEALTH, async () => {
+    const [zombiePools, poolsWithNoMembers, oldEmptyDrafts, fullPools] = await Promise.all([
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(*)::bigint AS count FROM "Pool" p
+        WHERE p.status = 'ACTIVE'
+        AND NOT EXISTS (SELECT 1 FROM "Prediction" pr WHERE pr."poolId" = p.id)
+      `,
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(*)::bigint AS count FROM "Pool" p
+        WHERE NOT EXISTS (
+          SELECT 1 FROM "PoolMember" pm
+          WHERE pm."poolId" = p.id AND pm.status = 'ACTIVE'
+          AND pm.role NOT IN ('HOST', 'CORPORATE_HOST')
+        )
+      `,
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(*)::bigint AS count FROM "Pool" p
+        WHERE p.status = 'DRAFT' AND p."createdAtUtc" < ${new Date(now.getTime() - 30 * 86_400_000)}
+      `,
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(*)::bigint AS count FROM "Pool" p
+        WHERE p."maxParticipants" IS NOT NULL
+        AND (
+          SELECT COUNT(*) FROM "PoolMember" pm
+          WHERE pm."poolId" = p.id AND pm.status IN ('ACTIVE', 'PENDING_APPROVAL')
+        ) >= p."maxParticipants"
+      `,
+    ]);
     return {
-      id: o.id,
-      name: o.name,
-      status: o.status,
-      createdAtUtc: o.created_at.toISOString(),
-      poolCount: Number(o.pool_count),
-      invitesTotal: total,
-      invitesActivated: activated,
-      activationRate: total > 0 ? activated / total : 0,
+      zombiePools: Number(zombiePools[0]?.count ?? 0),
+      poolsWithNoMembers: Number(poolsWithNoMembers[0]?.count ?? 0),
+      emptyDraftsOlderThan30Days: Number(oldEmptyDrafts[0]?.count ?? 0),
+      fullPools: Number(fullPools[0]?.count ?? 0),
     };
   });
 
-  // ── Pool health checks ──────────────────────────────────
-  const [zombiePools, poolsWithNoMembers, oldEmptyDrafts, fullPools] = await Promise.all([
-    // ACTIVE pools with no picks
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "Pool" p
-      WHERE p.status = 'ACTIVE'
-      AND NOT EXISTS (SELECT 1 FROM "Prediction" pr WHERE pr."poolId" = p.id)
-    `,
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "Pool" p
-      WHERE NOT EXISTS (
-        SELECT 1 FROM "PoolMember" pm
-        WHERE pm."poolId" = p.id AND pm.status = 'ACTIVE' AND pm.role != 'HOST' AND pm.role != 'CORPORATE_HOST'
+  // ── Cohort retention (last 8 weeks) ────────────────────
+  const cohortRetention = await safeRun<CohortRow[]>("cohortRetention", [], async () => {
+    const since = new Date(now.getTime() - 8 * 7 * 86_400_000);
+    const rows = await prisma.$queryRaw<
+      {
+        cohort_week: Date;
+        cohort_size: bigint;
+        retained_w1: bigint;
+        retained_w2: bigint;
+        retained_w4: bigint;
+      }[]
+    >`
+      WITH cohorts AS (
+        SELECT id AS user_id,
+               date_trunc('week', "createdAtUtc") AS cohort_week
+        FROM "User"
+        WHERE "createdAtUtc" >= ${since}
       )
-    `,
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "Pool" p
-      WHERE p.status = 'DRAFT'
-      AND p."createdAtUtc" < ${new Date(now.getTime() - 30 * 86_400_000)}
-    `,
-    prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint AS count
-      FROM "Pool" p
-      WHERE p."maxParticipants" IS NOT NULL
-      AND (
-        SELECT COUNT(*) FROM "PoolMember" pm
-        WHERE pm."poolId" = p.id AND pm.status IN ('ACTIVE', 'PENDING_APPROVAL')
-      ) >= p."maxParticipants"
-    `,
-  ]);
-  const poolHealth: PoolHealth = {
-    zombiePools: Number(zombiePools[0]?.count ?? 0),
-    poolsWithNoMembers: Number(poolsWithNoMembers[0]?.count ?? 0),
-    emptyDraftsOlderThan30Days: Number(oldEmptyDrafts[0]?.count ?? 0),
-    fullPools: Number(fullPools[0]?.count ?? 0),
-  };
+      SELECT c.cohort_week,
+             COUNT(DISTINCT c.user_id)::bigint AS cohort_size,
+             COUNT(DISTINCT c.user_id) FILTER (
+               WHERE EXISTS (
+                 SELECT 1 FROM "Prediction" p
+                 WHERE p."userId" = c.user_id
+                 AND p."createdAtUtc" >= c.cohort_week + INTERVAL '7 days'
+                 AND p."createdAtUtc" < c.cohort_week + INTERVAL '14 days'
+               )
+             )::bigint AS retained_w1,
+             COUNT(DISTINCT c.user_id) FILTER (
+               WHERE EXISTS (
+                 SELECT 1 FROM "Prediction" p
+                 WHERE p."userId" = c.user_id
+                 AND p."createdAtUtc" >= c.cohort_week + INTERVAL '14 days'
+                 AND p."createdAtUtc" < c.cohort_week + INTERVAL '21 days'
+               )
+             )::bigint AS retained_w2,
+             COUNT(DISTINCT c.user_id) FILTER (
+               WHERE EXISTS (
+                 SELECT 1 FROM "Prediction" p
+                 WHERE p."userId" = c.user_id
+                 AND p."createdAtUtc" >= c.cohort_week + INTERVAL '28 days'
+                 AND p."createdAtUtc" < c.cohort_week + INTERVAL '35 days'
+               )
+             )::bigint AS retained_w4
+      FROM cohorts c
+      GROUP BY c.cohort_week
+      ORDER BY c.cohort_week
+    `;
+    return rows.map((r) => ({
+      cohortWeekStart: isoDate(r.cohort_week),
+      cohortSize: Number(r.cohort_size),
+      retainedW1: Number(r.retained_w1),
+      retainedW2: Number(r.retained_w2),
+      retainedW4: Number(r.retained_w4),
+    }));
+  });
 
-  // ── Cohort retention (last 8 weeks of cohorts × W1/W2/W4) ─
-  const cohortRaw = await prisma.$queryRaw<
-    {
-      cohort_week: Date;
-      cohort_size: bigint;
-      retained_w1: bigint;
-      retained_w2: bigint;
-      retained_w4: bigint;
-    }[]
-  >`
-    WITH cohorts AS (
-      SELECT id AS user_id,
-             date_trunc('week', "createdAtUtc") AS cohort_week
-      FROM "User"
-      WHERE "createdAtUtc" >= ${new Date(now.getTime() - 8 * 7 * 86_400_000)}
-    )
-    SELECT c.cohort_week,
-           COUNT(DISTINCT c.user_id)::bigint AS cohort_size,
-           COUNT(DISTINCT c.user_id) FILTER (
-             WHERE EXISTS (
-               SELECT 1 FROM "Prediction" p
-               WHERE p."userId" = c.user_id
-               AND p."createdAtUtc" >= c.cohort_week + INTERVAL '7 days'
-               AND p."createdAtUtc" < c.cohort_week + INTERVAL '14 days'
-             )
-           )::bigint AS retained_w1,
-           COUNT(DISTINCT c.user_id) FILTER (
-             WHERE EXISTS (
-               SELECT 1 FROM "Prediction" p
-               WHERE p."userId" = c.user_id
-               AND p."createdAtUtc" >= c.cohort_week + INTERVAL '14 days'
-               AND p."createdAtUtc" < c.cohort_week + INTERVAL '21 days'
-             )
-           )::bigint AS retained_w2,
-           COUNT(DISTINCT c.user_id) FILTER (
-             WHERE EXISTS (
-               SELECT 1 FROM "Prediction" p
-               WHERE p."userId" = c.user_id
-               AND p."createdAtUtc" >= c.cohort_week + INTERVAL '28 days'
-               AND p."createdAtUtc" < c.cohort_week + INTERVAL '35 days'
-             )
-           )::bigint AS retained_w4
-    FROM cohorts c
-    GROUP BY c.cohort_week
-    ORDER BY c.cohort_week
-  `;
-  const cohortRetention: CohortRow[] = cohortRaw.map((r) => ({
-    cohortWeekStart: isoDate(r.cohort_week),
-    cohortSize: Number(r.cohort_size),
-    retainedW1: Number(r.retained_w1),
-    retainedW2: Number(r.retained_w2),
-    retainedW4: Number(r.retained_w4),
-  }));
+  // ── Payment breakdown ──────────────────────────────────
+  const paymentBreakdown = await safeRun<PaymentBreakdown>(
+    "paymentBreakdown",
+    DEFAULT_PAYMENT,
+    async () => {
+      const [statusCounts, byProviderRaw, byTierRaw, avgRaw] = await Promise.all([
+        prisma.poolPayment.groupBy({ by: ["status"], _count: { _all: true } }),
+        prisma.$queryRaw<
+          { provider: string; currency: string; count: bigint; revenue: bigint }[]
+        >`
+          SELECT
+            CASE
+              WHEN "polarOrderId" IS NOT NULL THEN 'polar'
+              WHEN "mpPreferenceId" IS NOT NULL THEN 'mercadopago'
+              ELSE 'unknown'
+            END AS provider,
+            currency,
+            COUNT(*)::bigint AS count,
+            CASE
+              WHEN currency = 'cop' THEN COALESCE(SUM("amountCop"), 0)
+              ELSE COALESCE(SUM("amountUsd"), 0)
+            END::bigint AS revenue
+          FROM "PoolPayment"
+          WHERE status = 'COMPLETED'
+          GROUP BY provider, currency
+          ORDER BY count DESC
+        `,
+        prisma.$queryRaw<
+          { from_capacity: number; to_capacity: number; count: bigint }[]
+        >`
+          SELECT "fromCapacity" AS from_capacity,
+                 "toCapacity" AS to_capacity,
+                 COUNT(*)::bigint AS count
+          FROM "PoolPayment"
+          WHERE status = 'COMPLETED'
+          GROUP BY "fromCapacity", "toCapacity"
+          ORDER BY count DESC
+          LIMIT 10
+        `,
+        prisma.$queryRaw<{ avg_usd: number | null; avg_cop: number | null }[]>`
+          SELECT AVG("amountUsd")::float AS avg_usd,
+                 AVG("amountCop")::float AS avg_cop
+          FROM "PoolPayment" WHERE status = 'COMPLETED'
+        `,
+      ]);
 
-  // ── Payment breakdown ───────────────────────────────────
-  const [paymentStatusCounts, paymentByProviderRaw, paymentByTierRaw, paymentAvgRaw] =
-    await Promise.all([
-      prisma.poolPayment.groupBy({ by: ["status"], _count: { _all: true } }),
-      prisma.$queryRaw<{ provider: string; count: bigint; revenue: bigint }[]>`
-        SELECT
-          CASE WHEN "polarOrderId" IS NOT NULL THEN 'polar'
-               WHEN "mpPreferenceId" IS NOT NULL THEN 'mercadopago'
-               ELSE 'unknown'
-          END AS provider,
-          COUNT(*)::bigint AS count,
-          CASE
-            WHEN "currency" = 'cop' THEN COALESCE(SUM("amountCop"), 0)
-            ELSE COALESCE(SUM("amountUsd"), 0)
-          END::bigint AS revenue
-        FROM "PoolPayment"
-        WHERE status = 'COMPLETED'
-        GROUP BY provider, currency
-        ORDER BY count DESC
-      `,
-      prisma.$queryRaw<
-        { from_capacity: number; to_capacity: number; count: bigint }[]
-      >`
-        SELECT "fromCapacity" AS from_capacity,
-               "toCapacity" AS to_capacity,
-               COUNT(*)::bigint AS count
-        FROM "PoolPayment"
-        WHERE status = 'COMPLETED'
-        GROUP BY from_capacity, to_capacity
-        ORDER BY count DESC
-        LIMIT 10
-      `,
-      prisma.$queryRaw<{ avg_usd: number | null; avg_cop: number | null }[]>`
-        SELECT AVG("amountUsd")::float AS avg_usd,
-               AVG("amountCop")::float AS avg_cop
-        FROM "PoolPayment"
-        WHERE status = 'COMPLETED'
-      `,
-    ]);
+      const totals = statusCounts.reduce(
+        (acc, g) => ({
+          total: acc.total + g._count._all,
+          completed: acc.completed + (g.status === "COMPLETED" ? g._count._all : 0),
+          failed: acc.failed + (g.status === "FAILED" ? g._count._all : 0),
+        }),
+        { total: 0, completed: 0, failed: 0 },
+      );
 
-  const paymentTotals = paymentStatusCounts.reduce(
-    (acc, g) => ({
-      total: acc.total + g._count._all,
-      completed: acc.completed + (g.status === "COMPLETED" ? g._count._all : 0),
-      failed: acc.failed + (g.status === "FAILED" ? g._count._all : 0),
-    }),
-    { total: 0, completed: 0, failed: 0 },
+      return {
+        totalCheckoutsStarted: totals.total,
+        totalCheckoutsCompleted: totals.completed,
+        totalCheckoutsFailed: totals.failed,
+        conversionRate: totals.total > 0 ? totals.completed / totals.total : 0,
+        byProvider: byProviderRaw.map((r) => ({
+          provider: `${r.provider} (${r.currency})`,
+          count: Number(r.count),
+          revenueLocalUnits: Number(r.revenue),
+        })),
+        byTier: byTierRaw.map((r) => ({
+          fromCapacity: Number(r.from_capacity),
+          toCapacity: Number(r.to_capacity),
+          count: Number(r.count),
+        })),
+        avgPaymentUsd: Number(avgRaw[0]?.avg_usd ?? 0),
+        avgPaymentCop: Number(avgRaw[0]?.avg_cop ?? 0),
+      };
+    },
   );
 
-  const paymentBreakdown: PaymentBreakdown = {
-    totalCheckoutsStarted: paymentTotals.total,
-    totalCheckoutsCompleted: paymentTotals.completed,
-    totalCheckoutsFailed: paymentTotals.failed,
-    conversionRate: paymentTotals.total > 0 ? paymentTotals.completed / paymentTotals.total : 0,
-    byProvider: paymentByProviderRaw.map((r) => ({
-      provider: r.provider,
-      count: Number(r.count),
-      revenueLocalUnits: Number(r.revenue),
-    })),
-    byTier: paymentByTierRaw.map((r) => ({
-      fromCapacity: Number(r.from_capacity),
-      toCapacity: Number(r.to_capacity),
-      count: Number(r.count),
-    })),
-    avgPaymentUsd: Number(paymentAvgRaw[0]?.avg_usd ?? 0),
-    avgPaymentCop: Number(paymentAvgRaw[0]?.avg_cop ?? 0),
-  };
-
-  // ── Operational health ──────────────────────────────────
-  const [emailSuppressions, failedAnalytics, recentFeedback, auditLast24h] = await Promise.all([
-    prisma.emailSuppression.count(),
-    prisma.failedAnalyticsEvent.count(),
-    prisma.betaFeedback.findMany({
-      orderBy: { createdAtUtc: "desc" },
-      take: 10,
-      select: {
-        id: true,
-        type: true,
-        message: true,
-        createdAtUtc: true,
-      },
-    }),
-    prisma.auditEvent.count({
-      where: { createdAtUtc: { gte: new Date(now.getTime() - 86_400_000) } },
-    }),
-  ]);
-  const operationalHealth: OperationalHealth = {
-    emailSuppressions,
-    failedAnalyticsEvents: failedAnalytics,
-    recentFeedback: recentFeedback.map((f) => ({
-      id: f.id,
-      type: f.type,
-      message: f.message ?? "",
-      createdAtUtc: f.createdAtUtc.toISOString(),
-    })),
-    auditEventsLast24h: auditLast24h,
-  };
+  // ── Operational health ─────────────────────────────────
+  const operationalHealth = await safeRun<OperationalHealth>(
+    "operationalHealth",
+    DEFAULT_OPERATIONAL,
+    async () => {
+      const [emailSuppressions, failedAnalytics, recentFeedback, auditLast24h] =
+        await Promise.all([
+          prisma.emailSuppression.count(),
+          prisma.failedAnalyticsEvent.count(),
+          prisma.betaFeedback.findMany({
+            orderBy: { createdAtUtc: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              type: true,
+              message: true,
+              createdAtUtc: true,
+            },
+          }),
+          prisma.auditEvent.count({
+            where: { createdAtUtc: { gte: new Date(now.getTime() - 86_400_000) } },
+          }),
+        ]);
+      return {
+        emailSuppressions,
+        failedAnalyticsEvents: failedAnalytics,
+        recentFeedback: recentFeedback.map((f) => ({
+          id: f.id,
+          type: f.type,
+          message: f.message ?? "",
+          createdAtUtc: f.createdAtUtc.toISOString(),
+        })),
+        auditEventsLast24h: auditLast24h,
+      };
+    },
+  );
 
   return {
     generatedAtUtc: now.toISOString(),
     cacheTtlSeconds: CACHE_TTL_MS / 1000,
+    errors: [...errors],
     topLine,
     signupsByWeek,
     poolsByWeek,
@@ -904,7 +1024,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     funnel,
     corporateFunnel,
     topAcquisition,
-    organicReferrals: { totalReferred: referralStats, topReferrers },
+    organicReferrals,
     recentInquiries,
     topOrganizations,
     poolHealth,
@@ -931,7 +1051,7 @@ adminAnalyticsDashboardRouter.get(
       cache = { data, timestamp: now };
       return sendData(res, { ...data, cached: false });
     } catch (err) {
-      console.error("[admin analytics dashboard] failed:", err);
+      console.error("[admin analytics dashboard] FAILED:", err);
       return sendInternal(res, "INTERNAL_ERROR", {
         message: err instanceof Error ? err.message : String(err),
       });

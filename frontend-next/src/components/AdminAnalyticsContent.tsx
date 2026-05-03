@@ -419,6 +419,11 @@ export default function AdminAnalyticsContent() {
         isMobile={isMobile}
       />
 
+      {/* Section errors banner */}
+      {data.errors && data.errors.length > 0 && (
+        <SectionErrorsBanner errors={data.errors} />
+      )}
+
       {/* Top-line KPIs */}
       <TopLineSection topLine={data.topLine} isMobile={isMobile} />
 
@@ -510,6 +515,74 @@ export default function AdminAnalyticsContent() {
         Snapshot generado {fmtRelativeTime(data.generatedAtUtc)} · TTL caché:{" "}
         {data.cacheTtlSeconds}s {data.cached ? "· (cache hit)" : "· (fresh)"}
       </div>
+    </div>
+  );
+}
+
+// ─── Section errors banner ──────────────────────────────────
+
+function SectionErrorsBanner({
+  errors,
+}: {
+  errors: { section: string; message: string }[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div
+      style={{
+        backgroundColor: "rgba(239, 68, 68, 0.08)",
+        border: `1px solid ${colors.error}`,
+        borderRadius: radii.md,
+        padding: spacing.md,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          color: colors.error,
+          fontSize: fontSize.sm,
+          fontWeight: fontWeight.semibold,
+          textAlign: "left",
+        }}
+      >
+        <span>
+          ⚠️ {errors.length} secci{errors.length === 1 ? "ón" : "ones"} con
+          errores — los demás datos se cargaron correctamente
+        </span>
+        <span style={{ fontSize: fontSize.xs }}>
+          {expanded ? "Ocultar ▲" : "Ver detalle ▼"}
+        </span>
+      </button>
+      {expanded && (
+        <ul
+          style={{
+            marginTop: spacing.sm,
+            marginBottom: 0,
+            paddingLeft: spacing.lg,
+            color: colors.text,
+            fontSize: fontSize.xs,
+            display: "flex",
+            flexDirection: "column",
+            gap: spacing.xs,
+          }}
+        >
+          {errors.map((err, i) => (
+            <li key={`${err.section}-${i}`}>
+              <strong>{err.section}:</strong>{" "}
+              <code style={{ color: colors.textMuted }}>{err.message}</code>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

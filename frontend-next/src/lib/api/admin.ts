@@ -217,6 +217,7 @@ export interface AnalyticsDashboardResponse {
     recentFeedback: { id: string; type: string; message: string; createdAtUtc: string }[];
     auditEventsLast24h: number;
   };
+  errors: { section: string; message: string }[];
 }
 
 export async function getAdminAnalyticsDashboard(
