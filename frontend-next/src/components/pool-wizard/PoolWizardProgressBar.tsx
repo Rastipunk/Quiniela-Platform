@@ -13,7 +13,6 @@ const STEP_ICONS: Record<WizardStep, string> = {
   SCORING: "⭐",
   ADVANCED_RULES: "⚙️",
   CAPACITY: "👥",
-  EMPLOYEE_INVITES: "📧",
   SUMMARY: "✅",
 };
 

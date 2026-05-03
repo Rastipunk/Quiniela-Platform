@@ -20,7 +20,6 @@ export type WizardStep =
   | "SCORING"            // Preset selection + editable configuration
   | "ADVANCED_RULES"     // Extra time, phase multipliers
   | "CAPACITY"           // Max participants
-  | "EMPLOYEE_INVITES"   // Corporate only
   | "SUMMARY";           // Review & create
 
 export const STANDARD_STEPS: WizardStep[] = [
@@ -31,12 +30,16 @@ export const STANDARD_STEPS: WizardStep[] = [
   "CAPACITY",
 ];
 
+// Corporate flow no longer includes an "invite employees" step in the wizard.
+// The pool is created with only the host as CORPORATE_HOST; employees are
+// invited from the pool admin tab (CorporateEmployeeManager) after creation.
+// Single source of truth for invitations, simpler funnel, no pre-creation
+// commitment to a list of emails the host might still be cleaning up.
 export const CORPORATE_STEPS: WizardStep[] = [
   "COMPANY_INFO",
   "TOURNAMENT",
   "NAME_DETAILS",
   "SCORING",
-  "EMPLOYEE_INVITES",
   "SUMMARY",
   "CAPACITY",
 ];
@@ -92,9 +95,6 @@ export interface WizardState {
 
   // Step 5: Capacity
   maxParticipants: number;
-
-  // Step 6.5: Employee invites (corporate only)
-  employeeEmails: string;
 
   // UI state
   error: string | null;

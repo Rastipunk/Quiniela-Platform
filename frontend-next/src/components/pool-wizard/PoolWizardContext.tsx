@@ -44,7 +44,6 @@ function getInitialState(mode: WizardMode): WizardState {
     maxParticipants: isStandard
       ? DEFAULT_MAX_PARTICIPANTS_STANDARD
       : DEFAULT_MAX_PARTICIPANTS_CORPORATE,
-    employeeEmails: "",
     error: null,
     busy: false,
   };
@@ -139,9 +138,6 @@ function validateStep(state: WizardState): boolean {
 
     case "CAPACITY":
       return state.maxParticipants >= 2;
-
-    case "EMPLOYEE_INVITES":
-      return true; // Optional step
 
     case "SUMMARY":
       return true;

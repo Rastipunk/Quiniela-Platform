@@ -579,3 +579,123 @@ export async function deleteEmployee(data: DeleteEmployeeInput): Promise<void> {
 
   await prisma.corporateInvite.delete({ where: { id: inviteId } });
 }
+
+// ─── Resend single invitation ───────────────────────────────────────────────
+
+export type ResendInvitationInput = {
+  userId: string;
+  poolId: string;
+  inviteId: string;
+};
+
+export type ResendInvitationResult = {
+  email: string;
+  status: "SENT" | "FAILED";
+};
+
+/**
+ * Resend an activation email for a single corporate invitation. Useful when
+ * the original email was lost (spam, deleted, typo at activation time, etc.).
+ *
+ * Generates a FRESH activation token and 30-day expiry — the previous token
+ * is invalidated, so an old email forwarded to the wrong inbox can no longer
+ * be used after a resend was requested. Refuses to resend if the invite has
+ * already been ACTIVATED (the user has an account, no further invite makes sense).
+ */
+export async function resendInvitation(
+  data: ResendInvitationInput,
+): Promise<ResendInvitationResult> {
+  const { userId, poolId, inviteId } = data;
+
+  if (!(await requireCorporateHost(userId, poolId))) {
+    throw new ServiceError("FORBIDDEN", 403, { reason: "CORPORATE_HOST_ONLY" });
+  }
+
+  const invite = await prisma.corporateInvite.findUnique({
+    where: { id: inviteId },
+    include: {
+      pool: {
+        include: {
+          organization: {
+            select: {
+              name: true,
+              logoBase64: true,
+              invitationMessage: true,
+              primaryColor: true,
+              secondaryColor: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!invite || invite.poolId !== poolId) {
+    throw new ServiceError("NOT_FOUND", 404);
+  }
+  if (invite.status === "ACTIVATED") {
+    throw new ServiceError("ALREADY_ACTIVATED", 409);
+  }
+
+  // Fresh token + reset expiry. Atomically rotate so a concurrent activation
+  // race against the OLD token can't slip through after the resend was issued.
+  const newToken = crypto.randomBytes(CRYPTO_BYTES.TOKEN).toString("hex");
+  const newExpiry = new Date(Date.now() + TOKEN_EXPIRY_MS.CORPORATE_INVITE);
+
+  // Optimistic update — only proceed if the invite is still in a resendable
+  // state (anything except ACTIVATED). If it just got activated by a
+  // concurrent request, surface ALREADY_ACTIVATED rather than send a useless
+  // email with a token that the activation flow will reject.
+  const claim = await prisma.corporateInvite.updateMany({
+    where: { id: inviteId, status: { in: ["PENDING", "SENT", "FAILED"] } },
+    data: {
+      status: "PENDING",
+      activationToken: newToken,
+      activationTokenExpiresAt: newExpiry,
+    },
+  });
+  if (claim.count === 0) {
+    throw new ServiceError("ALREADY_ACTIVATED", 409);
+  }
+
+  const companyName = invite.pool.organization?.name || "Empresa";
+  const orgLogoBase64 = invite.pool.organization?.logoBase64 || null;
+  const orgInvitationMessage = invite.pool.organization?.invitationMessage || null;
+  const orgPrimaryColor = invite.pool.organization?.primaryColor || null;
+  const orgSecondaryColor = invite.pool.organization?.secondaryColor || null;
+
+  const emailResult = await sendCorporateActivationEmail({
+    to: invite.email,
+    employeeName: invite.name || undefined,
+    companyName,
+    poolName: invite.pool.name,
+    activationToken: newToken,
+    logoBase64: orgLogoBase64,
+    invitationMessage: orgInvitationMessage,
+    primaryColor: orgPrimaryColor,
+    secondaryColor: orgSecondaryColor,
+  });
+
+  if (!emailResult.success) {
+    await prisma.corporateInvite.update({
+      where: { id: inviteId },
+      data: { status: "FAILED" },
+    });
+    return { email: invite.email, status: "FAILED" };
+  }
+
+  await prisma.corporateInvite.update({
+    where: { id: inviteId },
+    data: { status: "SENT" },
+  });
+
+  fireAndForget("audit:invitation-resent", writeAuditEvent({
+    actorUserId: userId,
+    action: "CORPORATE_INVITATION_RESENT",
+    entityType: "CorporateInvite",
+    entityId: inviteId,
+    poolId,
+    dataJson: { email: invite.email },
+  }));
+
+  return { email: invite.email, status: "SENT" };
+}

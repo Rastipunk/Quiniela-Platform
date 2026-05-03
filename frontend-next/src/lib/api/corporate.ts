@@ -88,6 +88,16 @@ export async function deleteCorporateEmployee(token: string, poolId: string, inv
   return requestJson(`/corporate/pools/${poolId}/employees/${inviteId}`, { method: "DELETE" });
 }
 
+export async function resendCorporateInvitation(
+  token: string,
+  poolId: string,
+  inviteId: string,
+): Promise<{ email: string; status: "SENT" | "FAILED" }> {
+  return requestJson(`/corporate/pools/${poolId}/employees/${inviteId}/resend`, {
+    method: "POST",
+  });
+}
+
 export async function checkCorporateInvite(token: string): Promise<CheckCorporateInviteResponse> {
   return requestJson<CheckCorporateInviteResponse>(`/auth/check-corporate-invite?token=${encodeURIComponent(token)}`);
 }

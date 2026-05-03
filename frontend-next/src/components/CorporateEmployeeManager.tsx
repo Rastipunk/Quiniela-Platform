@@ -11,6 +11,7 @@ import {
   addCorporateEmployees,
   sendCorporateInvitations,
   deleteCorporateEmployee,
+  resendCorporateInvitation,
 } from "@/lib/api";
 
 type Invite = {
@@ -106,6 +107,27 @@ export function CorporateEmployeeManager({ poolId, token, isMobile, maxParticipa
     setMessage(null);
     try {
       await deleteCorporateEmployee(token, poolId, inviteId);
+      await loadEmployees();
+    } catch (e: any) {
+      setMessage(e?.message ?? "Error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleResend(inviteId: string) {
+    setBusy(`resend-${inviteId}`);
+    setMessage(null);
+    try {
+      const result = await resendCorporateInvitation(token, poolId, inviteId);
+      // Reflect the actual outcome — the backend rotates the token and tries
+      // to send. Email-provider failures are surfaced as result.status="FAILED"
+      // so the host sees real status (the row is now FAILED in the list too).
+      setMessage(
+        result.status === "SENT"
+          ? t("resendSuccess", { email: result.email })
+          : t("resendFailed", { email: result.email }),
+      );
       await loadEmployees();
     } catch (e: any) {
       setMessage(e?.message ?? "Error");
@@ -489,6 +511,29 @@ export function CorporateEmployeeManager({ poolId, token, isMobile, maxParticipa
                       }}
                     >
                       {busy === `delete-${inv.id}` ? "..." : t("delete")}
+                    </button>
+                  )}
+                  {(inv.status === "SENT" || inv.status === "FAILED") && (
+                    <button
+                      onClick={() => handleResend(inv.id)}
+                      disabled={busy === `resend-${inv.id}`}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #c4b5fd",
+                        background: "#ede9fe",
+                        color: "#4c1d95",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {busy === `resend-${inv.id}`
+                        ? "..."
+                        : inv.status === "FAILED"
+                          ? t("retry")
+                          : t("resend")}
                     </button>
                   )}
                 </div>

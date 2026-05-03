@@ -26,6 +26,7 @@ import {
   listEmployees,
   sendInvitations,
   deleteEmployee,
+  resendInvitation,
 } from "../services/corporateService";
 
 export const corporateRouter = Router();
@@ -209,6 +210,29 @@ corporateRouter.get("/csv-template", (_req, res) => {
   res.setHeader("Content-Disposition", "attachment; filename=empleados_template.csv");
   return res.send(csv);
 });
+
+// POST /corporate/pools/:poolId/employees/:inviteId/resend — Resend a single
+// invitation. Reuses the same per-user rate limit as bulk send (200/hour,
+// 1000/day) keyed on req.auth.userId — a malicious host cannot use this
+// endpoint to bypass the bulk limit.
+corporateRouter.post(
+  "/pools/:poolId/employees/:inviteId/resend",
+  requireAuth,
+  inviteSendLimiter,
+  inviteSendDailyLimiter,
+  async (req, res) => {
+    try {
+      const result = await resendInvitation({
+        userId: req.auth!.userId,
+        poolId: req.params.poolId as string,
+        inviteId: req.params.inviteId as string,
+      });
+      return sendOk(res, result);
+    } catch (err) {
+      return handleServiceError(res, err);
+    }
+  },
+);
 
 // DELETE /corporate/pools/:poolId/employees/:inviteId — Remove pending employee
 corporateRouter.delete("/pools/:poolId/employees/:inviteId", requireAuth, async (req, res) => {

@@ -13,6 +13,7 @@ vi.mock("../db", () => ({
     },
     corporateInvite: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
     },
@@ -31,7 +32,8 @@ vi.mock("../lib/asyncHelpers", () => ({
   fireAndForget: vi.fn(),
 }));
 
-import { sendInvitations } from "./corporateService";
+import { sendInvitations, resendInvitation } from "./corporateService";
+import { ServiceError } from "./authService";
 import { sendCorporateActivationEmail } from "../lib/email";
 
 const HOST_USER_ID = "host-1";
@@ -189,5 +191,164 @@ describe("sendInvitations — atomic per-invite claim (race safety)", () => {
       expect.objectContaining({ to: "winner@acme.com" }),
     );
     expect(result).toEqual({ sent: 1, failed: 0 });
+  });
+});
+
+describe("resendInvitation — single-invite resend with token rotation", () => {
+  const HOST_USER_ID = "host-1";
+  const POOL_ID = "pool-aaa";
+  const INVITE_ID = "inv-1";
+
+  const baseInvite = {
+    id: INVITE_ID,
+    poolId: POOL_ID,
+    email: "lost@acme.com",
+    name: null,
+    activationToken: "OLD-TOKEN-abc123",
+    activationTokenExpiresAt: new Date(Date.now() - 1000), // already expired
+    status: "SENT",
+    pool: {
+      id: POOL_ID,
+      name: "Mundial 2026 — Acme",
+      organization: {
+        name: "Acme Corp",
+        logoBase64: null,
+        invitationMessage: null,
+        primaryColor: null,
+        secondaryColor: null,
+      },
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.poolMember.findUnique as any).mockResolvedValue({
+      poolId_userId: { poolId: POOL_ID, userId: HOST_USER_ID },
+      role: "CORPORATE_HOST",
+    });
+  });
+
+  it("rotates the activation token (old token invalidated, new one in DB)", async () => {
+    // Critical: a forwarded/leaked old email must NOT remain usable after a
+    // resend was issued. The fix rotates the token in the same updateMany
+    // claim that flips status back to PENDING, so the activation flow that
+    // looks up by token will only recognise the new value.
+    (prisma.corporateInvite.findUnique as any).mockResolvedValue(baseInvite);
+    (prisma.corporateInvite.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.corporateInvite.update as any).mockResolvedValue({});
+    (sendCorporateActivationEmail as any).mockResolvedValue({ success: true });
+
+    const result = await resendInvitation({
+      userId: HOST_USER_ID,
+      poolId: POOL_ID,
+      inviteId: INVITE_ID,
+    });
+
+    // The updateMany call must rotate to a fresh non-empty token distinct
+    // from the original. We can't predict the random token but we can
+    // assert it was passed AND it isn't the old one.
+    const updateManyCall = (prisma.corporateInvite.updateMany as any).mock.calls[0][0];
+    expect(updateManyCall.data.activationToken).toBeTruthy();
+    expect(updateManyCall.data.activationToken).not.toBe(baseInvite.activationToken);
+    expect(updateManyCall.data.activationTokenExpiresAt).toBeInstanceOf(Date);
+    // Email is sent with the NEW token — not the stale one from the row.
+    const emailCall = (sendCorporateActivationEmail as any).mock.calls[0][0];
+    expect(emailCall.activationToken).toBe(updateManyCall.data.activationToken);
+    expect(result).toEqual({ email: baseInvite.email, status: "SENT" });
+  });
+
+  it("rejects with FORBIDDEN when the caller is not the corporate host", async () => {
+    (prisma.poolMember.findUnique as any).mockResolvedValue(null);
+
+    await expect(
+      resendInvitation({
+        userId: "outsider",
+        poolId: POOL_ID,
+        inviteId: INVITE_ID,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", statusHint: 403 });
+  });
+
+  it("rejects with NOT_FOUND when the invite ID belongs to a different pool", async () => {
+    // Defence against an attacker who is host of pool A and tries to
+    // resend an invite ID that belongs to pool B.
+    (prisma.corporateInvite.findUnique as any).mockResolvedValue({
+      ...baseInvite,
+      poolId: "different-pool",
+    });
+
+    await expect(
+      resendInvitation({
+        userId: HOST_USER_ID,
+        poolId: POOL_ID,
+        inviteId: INVITE_ID,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", statusHint: 404 });
+  });
+
+  it("rejects with ALREADY_ACTIVATED when the invite status is ACTIVATED", async () => {
+    // The user already created an account and joined the pool — there's no
+    // sensible re-send. Avoids the awkward UX of sending a "create your
+    // account" email to someone who already has an account.
+    (prisma.corporateInvite.findUnique as any).mockResolvedValue({
+      ...baseInvite,
+      status: "ACTIVATED",
+    });
+
+    await expect(
+      resendInvitation({
+        userId: HOST_USER_ID,
+        poolId: POOL_ID,
+        inviteId: INVITE_ID,
+      }),
+    ).rejects.toMatchObject({ code: "ALREADY_ACTIVATED", statusHint: 409 });
+  });
+
+  it("loses the atomic claim race (count=0) → ALREADY_ACTIVATED", async () => {
+    // Race scenario: between the findUnique above (where status was PENDING)
+    // and the updateMany, the user activated their account in another tab.
+    // updateMany returns count=0 because the WHERE filter requires status
+    // to still be PENDING/SENT/FAILED. Surface ALREADY_ACTIVATED rather
+    // than silently sending an email with a token the activation flow
+    // would now reject.
+    (prisma.corporateInvite.findUnique as any).mockResolvedValue(baseInvite);
+    (prisma.corporateInvite.updateMany as any).mockResolvedValue({ count: 0 });
+
+    await expect(
+      resendInvitation({
+        userId: HOST_USER_ID,
+        poolId: POOL_ID,
+        inviteId: INVITE_ID,
+      }),
+    ).rejects.toMatchObject({ code: "ALREADY_ACTIVATED", statusHint: 409 });
+    // No email send + no further DB writes when we lose the race.
+    expect(sendCorporateActivationEmail).not.toHaveBeenCalled();
+  });
+
+  it("marks the invite FAILED when the email provider rejects the send", async () => {
+    (prisma.corporateInvite.findUnique as any).mockResolvedValue(baseInvite);
+    (prisma.corporateInvite.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.corporateInvite.update as any).mockResolvedValue({});
+    (sendCorporateActivationEmail as any).mockResolvedValue({
+      success: false,
+      error: "Resend bounce",
+    });
+
+    const result = await resendInvitation({
+      userId: HOST_USER_ID,
+      poolId: POOL_ID,
+      inviteId: INVITE_ID,
+    });
+
+    // The token rotation already committed (updateMany with status=PENDING)
+    // so the host can retry. The follow-up update flips status to FAILED so
+    // the UI shows it as failed and offers another resend.
+    expect(prisma.corporateInvite.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: INVITE_ID },
+        data: { status: "FAILED" },
+      }),
+    );
+    expect(result).toEqual({ email: baseInvite.email, status: "FAILED" });
   });
 });

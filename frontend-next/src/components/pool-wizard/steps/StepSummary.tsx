@@ -22,12 +22,6 @@ export function StepSummary() {
 
   const isCorporate = state.mode === "corporate";
 
-  // Count employee emails
-  const emailCount = state.employeeEmails
-    .split(/[,\n]/)
-    .map((e) => e.trim())
-    .filter((e) => e.length > 0).length;
-
   // Build scoring summary string
   const enabledTypes = state.scoringConfig
     .flatMap((p) => p.matchPicks?.types ?? [])
@@ -263,26 +257,6 @@ export function StepSummary() {
           }
           step="COMPANY_INFO"
           multiline
-        />
-      )}
-
-      {/* Employee invites — corporate only */}
-      {isCorporate && (
-        <SummarySection
-          label={t("summary.employeeInvites", {
-            defaultMessage: "Invitaciones de empleados",
-          })}
-          value={
-            emailCount > 0
-              ? t("summary.emailCount", {
-                  defaultMessage: "{count} emails ingresados",
-                  count: emailCount,
-                })
-              : t("summary.noEmails", {
-                  defaultMessage: "Sin invitaciones (puedes agregarlos despues)",
-                })
-          }
-          step="EMPLOYEE_INVITES"
         />
       )}
 

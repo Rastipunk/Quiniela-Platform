@@ -40,9 +40,6 @@ const StepScoring = lazy(
 const StepCapacity = lazy(
   () => import("./steps/StepCapacity").then((m) => ({ default: m.StepCapacity }))
 );
-const StepEmployeeInvites = lazy(
-  () => import("./steps/corporate/StepEmployeeInvites").then((m) => ({ default: m.StepEmployeeInvites }))
-);
 const StepSummary = lazy(
   () => import("./steps/StepSummary").then((m) => ({ default: m.StepSummary }))
 );
@@ -90,12 +87,9 @@ function WizardInner() {
       let poolId: string;
 
       if (state.mode === "corporate") {
-        // Parse employee emails
-        const emails = state.employeeEmails
-          .split(/[,\n]/)
-          .map((e) => e.trim().toLowerCase())
-          .filter((e) => e.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
-
+        // Pool is created with only the host as CORPORATE_HOST. Employees are
+        // invited later from the pool admin tab (CorporateEmployeeManager).
+        // Single source of truth for invitations + simpler wizard funnel.
         const res = await createCorporatePool(token, {
           companyName: state.companyName.trim(),
           logoBase64: state.logoBase64 || undefined,
@@ -111,7 +105,6 @@ function WizardInner() {
           requireApproval: state.requireApproval,
           pickTypesConfig: state.scoringConfig,
           maxParticipants: effectiveCapacity,
-          emails: emails.length > 0 ? emails : undefined,
         });
 
         poolId = (res.pool as Record<string, string>).id;
@@ -273,8 +266,6 @@ function WizardInner() {
         return <StepScoring />;
       case "CAPACITY":
         return <StepCapacity onSubmit={handleSubmit} submitBusy={submitBusy} />;
-      case "EMPLOYEE_INVITES":
-        return <StepEmployeeInvites />;
       case "SUMMARY":
         return <StepSummary />;
       default:
