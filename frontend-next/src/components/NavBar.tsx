@@ -182,6 +182,7 @@ export function NavBar() {
   };
 
   return (
+    <>
     <nav
       style={{
         display: "flex",
@@ -196,7 +197,14 @@ export function NavBar() {
         // relative so the navbar scrolls away with the page like before.
         position: isMobile ? "sticky" : "relative",
         top: 0,
-        transform: navHidden ? "translateY(-100%)" : "translateY(0)",
+        // The hide animation only kicks in when navHidden flips. We
+        // intentionally don't set transform when navHidden=false because
+        // any non-`none` transform turns this <nav> into the containing
+        // block for `position: fixed` descendants — and the drawer used
+        // to live inside <nav>, which is what made it collapse to a
+        // 64px-tall sliver on mobile. The drawer now lives outside the
+        // <nav> below, so this is double-safe.
+        transform: navHidden ? "translateY(-100%)" : undefined,
         transition: "transform 0.25s ease",
         zIndex: zIndex.sticky,
         // Track height matches NAVBAR_HEIGHT_MOBILE constant so the
@@ -554,8 +562,13 @@ export function NavBar() {
           </div>
         </button>
       )}
+    </nav>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay — rendered OUTSIDE <nav> on purpose. The
+          nav uses `transform` for its hide-on-scroll animation, which
+          would turn it into the containing block for `position: fixed`
+          descendants (the drawer is fixed-positioned). Sibling-of-nav
+          keeps the drawer fixed-to-viewport regardless of nav state. */}
       {isMobile && showMobileMenu && (
         <>
           <div
@@ -923,6 +936,6 @@ export function NavBar() {
       {showFeedback && (
         <FeedbackModal type="BUG" onClose={() => setShowFeedback(false)} />
       )}
-    </nav>
+    </>
   );
 }
