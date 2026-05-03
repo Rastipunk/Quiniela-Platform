@@ -50,6 +50,9 @@ backend/prisma/migrations/*_temp/
 nul
 tmp_*.js
 
+# Growth snapshots (contain user emails, payment amounts, etc.)
+backend/scripts/growth-snapshot/
+
 # Next.js
 .next/
 .vercel/

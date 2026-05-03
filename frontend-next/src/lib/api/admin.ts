@@ -97,3 +97,131 @@ export async function submitFeedback(
     },
   );
 }
+
+// ─── Analytics dashboard ────────────────────────────────────
+
+export interface AnalyticsTopLineKPIs {
+  totalUsers: number;
+  verifiedUsers: number;
+  googleSignups: number;
+  marketingOptIns: number;
+  predictionSubscribers: number;
+  activeUsers7d: number;
+  activeUsers30d: number;
+  totalPools: number;
+  draftPools: number;
+  activePools: number;
+  completedPools: number;
+  archivedPools: number;
+  personalPools: number;
+  corporatePools: number;
+  totalOrganizations: number;
+  pendingInquiries: number;
+  totalCorporateInvites: number;
+  activatedInvites: number;
+  inviteActivationRate: number;
+  totalRevenueUsd: number; // cents
+  totalRevenueCop: number; // pesos
+  pendingApprovalMembers: number;
+  totalMatchPicks: number;
+  totalStructuralPicks: number;
+}
+
+export interface AnalyticsDashboardResponse {
+  generatedAtUtc: string;
+  cacheTtlSeconds: number;
+  cached: boolean;
+  topLine: AnalyticsTopLineKPIs;
+  signupsByWeek: { weekStart: string; total: number; verified: number; google: number; referred: number }[];
+  poolsByWeek: { weekStart: string; total: number; personal: number; corporate: number }[];
+  picksByWeek: { weekStart: string; matchPicks: number; structuralPicks: number }[];
+  revenueByWeek: { weekStart: string; paidPaymentsCount: number; revenueUsdMinor: number; revenueCop: number }[];
+  dailyActiveUsers: { day: string; uniqueActiveUsers: number; picksCount: number }[];
+  usersByCountry: { country: string; count: number; pct: number }[];
+  poolsByStatus: { status: string; count: number }[];
+  poolsByTournament: { name: string; templateKey: string | null; poolCount: number; avgMembers: number }[];
+  poolSizeDistribution: { range: string; count: number }[];
+  funnel: {
+    signups: number;
+    joinedPool: number;
+    madePick: number;
+    joinedRate: number;
+    pickRateOfJoiners: number;
+    pickRateOfSignups: number;
+  };
+  corporateFunnel: {
+    inquiries: number;
+    respondedInquiries: number;
+    organizationsActive: number;
+    corporatePools: number;
+    invitesTotal: number;
+    invitesSent: number;
+    invitesActivated: number;
+    invitesExpired: number;
+    invitesFailed: number;
+    responseRate: number;
+    activationRate: number;
+  };
+  topAcquisition: { source: string; medium: string; count: number }[];
+  organicReferrals: {
+    totalReferred: number;
+    topReferrers: { userId: string; displayName: string; referralCount: number }[];
+  };
+  recentInquiries: {
+    createdAtUtc: string;
+    companyName: string;
+    contactEmail: string;
+    country: string | null;
+    currency: string | null;
+    numberOfPools: number | null;
+    slotsPerPool: number | null;
+    responded: boolean;
+    responseLagHours: number | null;
+  }[];
+  topOrganizations: {
+    id: string;
+    name: string;
+    status: string;
+    createdAtUtc: string;
+    poolCount: number;
+    invitesTotal: number;
+    invitesActivated: number;
+    activationRate: number;
+  }[];
+  poolHealth: {
+    zombiePools: number;
+    poolsWithNoMembers: number;
+    emptyDraftsOlderThan30Days: number;
+    fullPools: number;
+  };
+  cohortRetention: {
+    cohortWeekStart: string;
+    cohortSize: number;
+    retainedW1: number;
+    retainedW2: number;
+    retainedW4: number;
+  }[];
+  paymentBreakdown: {
+    totalCheckoutsStarted: number;
+    totalCheckoutsCompleted: number;
+    totalCheckoutsFailed: number;
+    conversionRate: number;
+    byProvider: { provider: string; count: number; revenueLocalUnits: number }[];
+    byTier: { fromCapacity: number; toCapacity: number; count: number }[];
+    avgPaymentUsd: number;
+    avgPaymentCop: number;
+  };
+  operationalHealth: {
+    emailSuppressions: number;
+    failedAnalyticsEvents: number;
+    recentFeedback: { id: string; type: string; message: string; createdAtUtc: string }[];
+    auditEventsLast24h: number;
+  };
+}
+
+export async function getAdminAnalyticsDashboard(
+  forceRefresh = false,
+): Promise<AnalyticsDashboardResponse> {
+  const path = `/admin/analytics/dashboard${forceRefresh ? "?refresh=true" : ""}`;
+  return requestJson<AnalyticsDashboardResponse>(path, { method: "GET" });
+}

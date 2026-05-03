@@ -34,6 +34,7 @@ import { adminInstancesRouter } from "./adminInstances";
 import { adminSettingsRouter } from "./adminSettings";
 import { adminCorporateRouter } from "./adminCorporate";
 import { analyticsHealthRouter } from "./analyticsHealth";
+import { adminAnalyticsDashboardRouter } from "./adminAnalyticsDashboard";
 
 export const adminRouter = Router();
 
@@ -42,7 +43,12 @@ adminRouter.use("/", adminTemplatesRouter);
 adminRouter.use("/", adminInstancesRouter);
 adminRouter.use("/settings", adminSettingsRouter);
 adminRouter.use("/corporate", adminCorporateRouter);
+// Both analytics routers mount under /analytics — Express matches by
+// path so /analytics/probe goes to the health router, /analytics/dashboard
+// goes to the new dashboard router. Order matters only for path-overlap
+// which we deliberately avoid.
 adminRouter.use("/analytics", analyticsHealthRouter);
+adminRouter.use("/analytics", adminAnalyticsDashboardRouter);
 
 // ─── Helpers ─────────────────────────────────────────────────
 

@@ -122,6 +122,7 @@ export const routing = defineRouting({
     "/pools/[poolId]": "/pools/[poolId]",
     "/admin/feedback": "/admin/feedback",
     "/admin/settings/email": "/admin/settings/email",
+    "/admin/analytics": "/admin/analytics",
   },
 });
 
