@@ -47,12 +47,22 @@ export const routing = defineRouting({
       en: "/refunds",
       pt: "/reembolsos",
     },
-    // Regional SEO pages (locale-specific, handled with notFound in page)
-    "/polla-futbolera": "/polla-futbolera",
-    "/prode-deportivo": "/prode-deportivo",
-    "/penca-futbol": "/penca-futbol",
-    "/porra-deportiva": "/porra-deportiva",
-    "/football-pool": "/football-pool",
+    // Regional SEO pages — each path lives in ONE locale only.
+    //
+    // Why this is a per-locale object instead of a plain string: a string
+    // value tells next-intl "this path exists in every locale", which made
+    // the middleware emit `Link: rel="alternate"; hreflang="en|pt"` headers
+    // pointing at /en/polla-futbolera, /pt/polla-futbolera, etc. The page
+    // file calls `notFound()` for any non-supported locale, so those URLs
+    // return 404 — which created an inconsistent hreflang cluster in
+    // Search Console (Google was told the alternate exists, then got a 404
+    // when crawling it). With a single-locale entry, next-intl no longer
+    // generates the cross-locale URLs at all.
+    "/polla-futbolera": { es: "/polla-futbolera" },
+    "/prode-deportivo": { es: "/prode-deportivo" },
+    "/penca-futbol":    { es: "/penca-futbol" },
+    "/porra-deportiva": { es: "/porra-deportiva" },
+    "/football-pool":   { en: "/football-pool" },
     // Corporate
     "/empresas": {
       es: "/empresas",
