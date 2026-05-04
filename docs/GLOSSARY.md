@@ -5,7 +5,7 @@
 >
 > **Audience:** Developers, product managers, stakeholders, and new team members.
 >
-> **Last Updated:** 2026-04-19
+> **Last Updated:** 2026-05-03
 
 ---
 
@@ -60,13 +60,9 @@
 
 **Technical:** Stored in `Prediction` table with flexible `pickJson` field.
 
-**Types:**
-- **EXACT_SCORE:** Predict exact final score (e.g., 2-1)
-- **GOAL_DIFFERENCE:** Predict goal difference (e.g., +1, -2, 0)
-- **MATCH_OUTCOME:** Predict winner/draw (HOME/DRAW/AWAY)
-- **PARTIAL_SCORE:** Predict goals for one team
+**Types:** the player always submits an exact score; the engine evaluates it against multiple criteria simultaneously. The full list is in [Pick Type](#pick-type) below.
 
-**Example:** "My pick for MEX vs CAN is 2-1 (exact score)."
+**Example:** "My pick for MEX vs CAN is 2-1. The engine credits points for the exact score AND for the correct outcome AND for the goal difference, depending on the pool's preset."
 
 ---
 
@@ -137,10 +133,11 @@
 - ✅ Publish/correct results
 - ✅ Generate invite codes
 - ✅ Approve/reject join requests
-- ✅ Expel/suspend players
+- ✅ Kick or ban players
 - ❌ Nominate other co-admins
-- ❌ Delete pool
-- ❌ Remove host
+- ❌ Delete or archive the pool
+- ❌ Advance phases manually
+- ❌ Remove the host
 
 **Nomination:** Only HOST can nominate/remove co-admins.
 
@@ -168,7 +165,7 @@
 
 **Definition:** User with `PoolMember.status = ACTIVE` (can participate).
 
-**Contrast:** BANNED, SUSPENDED, or LEFT members cannot submit picks.
+**Contrast:** BANNED, LEFT, or PENDING_APPROVAL members cannot submit picks. The `PoolMemberStatus` enum has exactly these four values; there is no `SUSPENDED` state.
 
 **Example:** "This pool has 20 active members and 2 banned members."
 
@@ -243,12 +240,12 @@
 **Definition:** Configuration on a `TournamentInstance` that determines how match results are obtained.
 
 **Values:**
-- **MANUAL:** The pool host (or co-admin) manually enters match results
-- **AUTO:** Smart Sync automatically fetches results from API-Football
+- **MANUAL:** The pool host (or co-admin) manually enters match results (legacy / amateur tournaments)
+- **AUTO:** Results come from the scraper-first pipeline — picks4all-scores publishes provisional and final scores in real time, with API-Football as the ~30 min fallback. The host can only override an existing result, not publish from scratch.
 
-**Technical:** Stored as a field on the `TournamentInstance` model.
+**Technical:** Stored as a field on the `TournamentInstance` model. See ADR-052 for the scraper-first decision.
 
-**Example:** "The UCL 2025-26 instance uses AUTO mode, so results are fetched automatically via Smart Sync."
+**Example:** "The UCL 2025-26 instance uses AUTO mode, so live scores arrive via picks4all-scores and are finalised either by the scraper grace period or by API-Football."
 
 ---
 
@@ -302,17 +299,17 @@
 
 **Definition:** A secure token sent to corporate employees via email for pool activation.
 
-**Generation:** 48 bytes via `crypto.randomBytes`, encoded as hex string.
+**Generation:** `crypto.randomBytes(CRYPTO_BYTES.TOKEN = 32)` → 64-char hex string.
 
-**Expiry:** 30 days from creation.
+**Expiry:** 30 days from creation. Single-use; rotated by `POST /corporate/pools/:poolId/employees/:inviteId/resend`.
 
 **Flow:**
-1. CORPORATE_HOST uploads employee list (CSV or manual)
+1. CORPORATE_HOST adds employee emails (manual or CSV import) from the pool admin tab
 2. System generates unique activation token per employee
-3. Employee receives email with activation link (`/activar?token=...`)
+3. Employee receives email with activation link (`/activar-cuenta?token=...`)
 4. Employee sets password and joins the corporate pool
 
-**Technical:** Stored in the `CorporateInvite` model.
+**Technical:** Stored in the `CorporateInvite` model. See ADR-048 for the magic-link session-mismatch defence and ADR-050 for the resend / token-rotation flow.
 
 **Example:** "Employee received an activation token via email and used it to join the corporate pool and set their password."
 
@@ -399,11 +396,13 @@ deadlineUtc = match.kickoffUtc - pool.deadlineMinutesBeforeKickoff
 **Flow:**
 - User enters invite code
 - If `requireApproval = true`:
-  1. Creates `PoolMemberRequest` (status: PENDING)
-  2. Host/co-admin approves → Creates `PoolMember` (ACTIVE)
-  3. Host/co-admin rejects → Updates request (REJECTED) with reason
+  1. A `PoolMember` row is created with `status = PENDING_APPROVAL`
+  2. Host/co-admin approves → status flips to `ACTIVE`, records `approvedByUserId`/`approvedAtUtc`
+  3. Host/co-admin rejects → the `PoolMember` row is deleted (optional `rejectionReason`); the user can try again with a new invite
 - If `requireApproval = false`:
-  - User joins immediately
+  - User joins immediately as `ACTIVE`
+
+There is NO separate `PoolMemberRequest` table — the entire workflow uses `PoolMember.status` transitions.
 
 **Example:** "Private pool requires approval. Alice requested to join, host approved her."
 
@@ -443,18 +442,25 @@ deadlineUtc = match.kickoffUtc - pool.deadlineMinutesBeforeKickoff
 
 ### Pick Type
 
-**Definition:** Category of prediction (e.g., exact score, outcome, goal difference).
+**Definition:** A scoring criterion the engine evaluates against a player's submitted score. The player always submits an exact score; the pool's `pickTypesConfig` decides which criteria award points.
 
-**Types:**
-- **EXACT_SCORE:** Predict exact final score (e.g., 2-1)
-- **GOAL_DIFFERENCE:** Predict goal difference (e.g., +1, -2, 0)
-- **MATCH_OUTCOME:** Predict winner/draw (HOME/DRAW/AWAY)
-- **PARTIAL_SCORE:** Predict goals for one team
-- **BOTH_TEAMS_SCORE:** Both teams will score (yes/no)
-- **TOTAL_GOALS:** Over/under total goals (e.g., over 2.5)
-- **WINNING_MARGIN:** Margin of victory (+1, +2, +3+)
+**Types** (canonical list — matches `backend/src/lib/pickPresets.ts` and the scoring engine):
 
-**Example:** "My pick type is EXACT_SCORE (2-1). My friend uses OUTCOME (HOME)."
+| Type | What it evaluates |
+|------|--------------------|
+| `EXACT_SCORE` | Both home and away goals match exactly |
+| `GOAL_DIFFERENCE` | `pick.home - pick.away === result.home - result.away` |
+| `MATCH_OUTCOME_90MIN` | Same winner / draw outcome at 90 min |
+| `HOME_GOALS` | Correct number of home goals (independent of away) |
+| `AWAY_GOALS` | Correct number of away goals (independent of home) |
+| `PARTIAL_SCORE` | Exactly one of the two scores matches (XOR) |
+| `TOTAL_GOALS` | `pick.home + pick.away === result.home + result.away` |
+
+**Cumulative vs legacy:** when `HOME_GOALS` or `AWAY_GOALS` is enabled the engine sums points across all matched criteria (cumulative system). With only the legacy types it terminates on `EXACT_SCORE` if matched.
+
+**Note:** earlier versions of this glossary listed `MATCH_OUTCOME`, `BOTH_TEAMS_SCORE`, and `WINNING_MARGIN` — those names never existed in the engine. The real outcome type is `MATCH_OUTCOME_90MIN`; the others are not implemented.
+
+**Example:** "My exact pick is 2-1. In the BASIC preset only `EXACT_SCORE` scores. In CUMULATIVE I can also score `MATCH_OUTCOME_90MIN`, `HOME_GOALS`, and `GOAL_DIFFERENCE` if any of those match — points stack."
 
 ---
 
@@ -558,17 +564,97 @@ return "DRAW";
 
 ## Technical Terms
 
+### picks4all-scores
+
+**Definition:** In-house live-scoring scraper service that picks4all maintains separately. **Primary** source of live scores in AUTO-mode tournament instances.
+
+**Cadence:** `liveScoresJob` polls every 15 seconds during a match's live window. Provisional scores publish as `SCRAPER_PROVISIONAL`; after a 5-minute grace period past full time the result is finalised as `API_CONFIRMED` (the source name predates the scraper but is the canonical "final" tag).
+
+**Kill switch:** `PlatformSettings.scoresServiceEnabled` (admin-toggleable) — disables the scraper layer without redeploy.
+
+**Technical:** Client in `backend/src/services/scoresService/`; service-to-service auth via `Authorization: Bearer ${SCORES_SERVICE_API_KEY}` (NOT user JWTs). See ADR-052.
+
+---
+
 ### API-Football
 
-**Definition:** Third-party API service used for automatic match result fetching (Smart Sync).
+**Definition:** Third-party data provider (api-football.com via RapidAPI). **Fallback** layer in AUTO-mode tournament instances; activates ~30 minutes after estimated full time when picks4all-scores hasn't reported. Also seeds fixture data and powers the `/admin/instances/:id/sync` flow for one-shot syncs.
 
-**Provider:** api-football.com (via RapidAPI)
+**Usage:** When a `TournamentInstance` has `ResultSourceMode = AUTO`, `smartSyncJob` polls API-Football and only publishes results that the scraper has not already reported. Source hierarchy `HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL > HOST_PROVISIONAL > HOST_MANUAL` is enforced server-side.
 
-**Usage:** When a `TournamentInstance` has `ResultSourceMode = AUTO`, Smart Sync queries API-Football to retrieve live and final match scores.
+**Technical:** Client implementation in `backend/src/services/apiFootball/client.ts`. Smart Sync state machine in `backend/src/services/smartSync/`. See ADR-031 (original AUTO mode), ADR-032 (Smart Sync polling strategy), and ADR-052 (scraper-first reordering).
 
-**Technical:** Client implementation in `backend/src/services/apiFootball/client.ts`.
+**Example:** "When a UCL 2025-26 match starts, picks4all-scores publishes live scores every 15 s. If FT happens and the scraper hasn't sent a final, API-Football publishes the final 30 min later."
 
-**Example:** "API-Football provides live scores for the UCL 2025-26, enabling Smart Sync to auto-publish results."
+---
+
+### Polar.sh
+
+**Definition:** Merchant-of-Record payment processor used for international (USD) pool capacity upgrades. Handles taxes, compliance, and hosted checkout.
+
+**Integration:** `@polar-sh/sdk` for checkout creation; `standardwebhooks` library for signature verification on the webhook handler (`POST /payments/webhook`, mounted with `express.raw()` BEFORE the JSON body parser so the signature can be verified against the unparsed body). Idempotency at `PaymentEvent.polarEventId` UNIQUE inside the same transaction as the `PoolPayment.update` + `Pool.update`.
+
+**Pricing:** $7.99/block of 50 players, declining $0.40 every 2 blocks, minimum $4.99/block. Corporate base $49.99 for 100 players. See `backend/src/lib/pricing.ts`.
+
+**Technical:** `backend/src/services/polar/`. See ADR-044 (replaced Lemon Squeezy from ADR-036).
+
+---
+
+### Mercado Pago
+
+**Definition:** Local payment gateway used for Colombia (COP) pool capacity upgrades. The customer pays in pesos via the embedded Brick checkout; webhook IPN confirms the charge.
+
+**Integration:** `mercadopago` SDK 2.12, `Payment Brick` on the frontend, and IPN webhook (`POST /payments/mp-webhook`). Webhook validates HMAC AND timestamp drift (`MP_WEBHOOK_MAX_DRIFT_MS`, default 5 min) to defend against replay. EventId is `mp-{paymentId}-{status}` so async transitions (`pending → in_process → approved`) don't dedupe each other. See ADR-053.
+
+**Routing:** Country detection via Cloudflare's `CF-IPCountry` header — Colombia routes to MP, everywhere else to Polar.
+
+**Technical:** `backend/src/services/mercadopago/`.
+
+---
+
+### Brick (Mercado Pago Brick)
+
+**Definition:** Embedded payment UI component provided by Mercado Pago. The frontend renders Brick after calling `POST /payments/mp-checkout` to create a preference; the customer enters card / PSE / Nequi data inside Brick which submits payment data straight to MP. The platform then calls `POST /payments/mp-process` server-side to finalise.
+
+---
+
+### CF-IPCountry
+
+**Definition:** HTTP header injected by Cloudflare on every request, containing the requesting client's ISO country code. Used by `GET /payments/country` to decide whether to route the user to Polar (international USD) or Mercado Pago (Colombia COP).
+
+---
+
+### EmailSuppression
+
+**Definition:** Persistent block-list for email recipients. Populated by Resend's `email.bounced` and `email.complained` webhooks (`POST /webhooks/resend`). `sendEmail()` checks this table before hitting Resend, short-circuiting deliveries to addresses that hard-bounced or marked us as spam.
+
+**Technical:** `backend/prisma/schema.prisma` model `EmailSuppression`. See ADR-055.
+
+---
+
+### DLQ (Dead-Letter Queue)
+
+**Full Form:** Dead-Letter Queue
+
+**Definition:** Persistence layer for analytics events that exhausted in-process retries. Implemented via the `FailedAnalyticsEvent` table; drained by `capiRetryJob` on an exponential ladder. The drainer holds a Postgres advisory lock so multi-replica Railway deployments never double-send.
+
+**Sinks covered:** `META_CAPI` (Meta Conversions API) and `GA4_MP` (GA4 Measurement Protocol). See ADR-054.
+
+---
+
+### GA4 MP
+
+**Full Form:** Google Analytics 4 Measurement Protocol
+
+**Definition:** Server-side endpoint Google exposes for emitting GA4 events without going through the browser tag. Used to deduplicate Purchase events against the browser-side Pixel/GTM emission and to backstop ad-blocked or no-JS sessions. Validation calls hit `/debug/mp/collect` so test events do not pollute production reports.
+
+---
+
+### Meta CAPI
+
+**Full Form:** Meta Conversions API
+
+**Definition:** Server-to-server event ingestion for Meta Pixel. Pairs with the browser Pixel via a shared `eventId` so Meta deduplicates one conversion. The platform attaches Advanced Matching signals (`_fbp`, `_fbc`, IP, UA) captured at checkout init so async webhook emissions still match users at high EMQ.
 
 ---
 
@@ -749,15 +835,16 @@ await prisma.prediction.upsert({
 
 ### Smart Sync
 
-**Definición:** Sistema de sincronización inteligente para obtener resultados de partidos automáticamente desde API-Football.
+**Definición:** Sistema de sincronización inteligente que consulta API-Football. Hoy actúa como **fallback layer**: el sistema primario es picks4all-scores (ver entrada). Smart Sync sólo publica resultados que el scraper no haya reportado, normalmente ~30 min después del FT estimado.
 
 **Arquitectura:**
-- Cron job evalúa cada minuto qué partidos necesitan consulta
-- Máquina de estados: PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
+- `smartSyncJob` corre periódicamente (configurable via `SMART_SYNC_CRON`)
+- Solo procesa instancias con `resultSourceMode = AUTO` y `syncEnabled = true`
+- Máquina de estados por partido: PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
 - Eficiencia: 2-4 requests por partido (vs 20-30 con polling estándar)
-- Kill switch disponible (`syncEnabled`) para emergencias
+- Kill switch por instancia (`syncEnabled`) para emergencias
 
-**Técnico:** Documentado en ADR-031 y ADR-032. Implementado en `services/smartSync/`.
+**Técnico:** Documentado en ADR-031 (creación), ADR-032 (estrategia de polling) y ADR-052 (re-clasificación a fallback). Implementado en `services/smartSync/`.
 
 ---
 
@@ -779,12 +866,13 @@ await prisma.prediction.upsert({
 **Definición:** Token criptográfico de un solo uso que permite a un empleado activar su cuenta y unirse a una pool corporativa.
 
 **Especificaciones:**
-- Generado con `crypto.randomBytes(48)` → 96 caracteres hexadecimales
+- Generado con `crypto.randomBytes(CRYPTO_BYTES.TOKEN = 32)` → 64 caracteres hexadecimales
 - Vigencia: 30 días desde la creación
-- Estados: PENDING → ACTIVATED | EXPIRED
+- Estados (`CorporateInviteStatus`): PENDING → SENT → ACTIVATED, o FAILED si el envío falla
 - Enviado por email al empleado con enlace a `/activar-cuenta?token=xxx`
+- Rotable: `POST /corporate/pools/:poolId/employees/:inviteId/resend` invalida el token previo (ADR-050)
 
-**Técnico:** Almacenado en el modelo `CorporateInvite`.
+**Técnico:** Almacenado en el modelo `CorporateInvite`. Defensa de session-mismatch documentada en ADR-048.
 
 ---
 
@@ -896,7 +984,7 @@ await prisma.prediction.upsert({
 
 **Definition:** Authoritative reference for information (this documentation).
 
-**Location:** `/docs/sot/` directory
+**Location:** `docs/` directory at the repository root.
 
 ---
 
@@ -976,25 +1064,25 @@ await prisma.prediction.upsert({
 
 ---
 
-### Ban (Expulsión/Veto)
+### Ban (Expulsión)
 
-**Definition:** Permanent removal of a player from a pool (cannot rejoin).
+**Definition:** Permanent removal of a player from a pool. The user **cannot** rejoin even with a valid invite — the join flow rejects with `403 BANNED_FROM_POOL`.
 
-**Types:**
-- **Permanent:** Cannot rejoin unless reactivated by host
-- **Temporary:** Auto-reactivate after specified date
+**Effect:** `PoolMember.status` flips to `BANNED`; `bannedAt`, `bannedByUserId`, and `banReason` are recorded. Picks remain visible on the leaderboard for transparency. If `deletePicks=true` was passed, the user's predictions in this pool are also deleted.
 
-**Effect:** Picks remain visible (transparency), but cannot submit new picks.
+**Reversibility:** the schema has a `banExpiresAt` column for future temporary-ban support, but the current implementation always sets it to `null` (permanent only). To restore a banned member the host must explicitly unban (status → ACTIVE).
 
-**Example:** "Charlie was banned for violating pool rules. His picks still count."
+**Example:** "Charlie was banned for violating pool rules. His picks still count on the leaderboard."
 
 ---
 
-### Kick (Expulsar)
+### Kick (Sacar)
 
-**Definition:** Informal term for removing a player (in this platform, same as "ban").
+**Definition:** Removal of a player that DOES allow rejoining. Status flips to `LEFT` (same end state as voluntary leave); the user can join again with a fresh invite code, and previous picks are preserved on rejoin.
 
-**Note:** Platform uses "ban" (permanent) or "suspend" (temporary), not "kick."
+**Endpoint:** `POST /pools/:poolId/members/:memberId/kick`. Available to HOST and CO_ADMIN. Cannot kick self or HOST.
+
+**Contrast:** kick = soft removal (LEFT, can rejoin). Ban = hard removal (BANNED, cannot rejoin). There is no "suspend" state.
 
 ---
 
@@ -1016,9 +1104,21 @@ await prisma.prediction.upsert({
 
 **Definition:** When a HOST modifies an API-published result. Requires a mandatory reason/justification. Triggers email notification to ALL active pool members. Creates a new `PoolMatchResultVersion` with source `HOST_OVERRIDE`.
 
-### API-First Results
+### Scraper-First Results
 
-**Definition:** The principle that match results are published exclusively by the SmartSync system from API-Football. Hosts cannot publish results manually — they can only override existing API-confirmed results. Legacy instances in MANUAL mode are exempt.
+**Definition:** The current rule for AUTO-mode tournament instances. picks4all-scores publishes provisional and final scores in real time (15-second polling during live windows); API-Football's Smart Sync is the ~30-min fallback. Hosts cannot publish results from scratch — they can only override an existing confirmed result with a mandatory reason and member-wide email notification. Legacy MANUAL-mode instances are exempt.
+
+**Source hierarchy** (higher rows are never overwritten by lower ones): `HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL > HOST_PROVISIONAL > HOST_MANUAL`.
+
+See ADR-052. Supersedes the prior "API-First Results" formulation (ADR-031 / ADR-043).
+
+---
+
+### API-First Results (legacy term)
+
+**Status:** Superseded.
+
+**Definition:** Earlier formulation of the AUTO-mode rule that designated API-Football as the exclusive source. Replaced by **Scraper-First Results** above when picks4all-scores became the primary live-scoring channel. Term retained here only because older docs and ADR-031 / ADR-043 still use it.
 
 ### Mute Reminders
 

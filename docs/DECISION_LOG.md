@@ -5,7 +5,7 @@
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-03-18
+> **Last Updated:** 2026-05-03
 
 ---
 
@@ -3126,9 +3126,9 @@ useEffect(() => {
 ## ADR-031: Automatic Results via API-Football
 
 **Date:** 2026-02-04
-**Status:** Accepted
+**Status:** Superseded by ADR-052 (scraper-first re-classifies API-Football as fallback). The hybrid MANUAL/AUTO framework, the per-result `ResultSource` discriminator, and the host-override semantics described below remain in force.
 **Deciders:** Product Team, Engineering Team
-**Tags:** #api #automation #results #integration
+**Tags:** #api #automation #results #integration #superseded
 
 ### Context
 
@@ -3661,9 +3661,9 @@ Implement a **self-service MVP** with full end-to-end flow:
 ## ADR-036: Lemon Squeezy as Merchant of Record
 
 **Date:** 2026-03-01
-**Status:** Accepted (pending approval)
+**Status:** **Superseded by ADR-044.** Lemon Squeezy rejected our application; Polar.sh replaced it as MoR for international USD payments.
 **Deciders:** Product Team
-**Tags:** #payments #business
+**Tags:** #payments #business #superseded
 
 ### Context
 
@@ -3977,7 +3977,7 @@ The platform is approaching its April 1st launch. Critical security and stabilit
 
 ## ADR-043: API-First Results with Host Override
 
-**Date:** 2026-04-04 | **Status:** Accepted
+**Date:** 2026-04-04 | **Status:** Superseded by ADR-052. The host-override constraints (mandatory reason, member email, version immutability) and the "no manual publishing in AUTO mode" rule remain in force; the "results come from API-Football" framing is now "results come from the scraper-first pipeline (picks4all-scores primary, API-Football fallback)".
 
 **Context:** Hosts could publish match results manually at any time. This created data integrity risks and inconsistency with the SmartSync automatic results system.
 
@@ -4234,6 +4234,195 @@ Plus a bug in the corporate USD pricing function itself (the BE used `(target - 
 - ✅ Corporate USD checkout charges exactly what the UI promised.
 
 **Related code:** `backend/src/lib/pricing.ts` (`corporateCumulativePrice`), `backend/src/services/paymentService.ts` (5 sites), `backend/src/lib/pricing.test.ts` (regression).
+
+---
+
+## ADR-052: Scraper-first results (picks4all-scores as primary; API-Football as fallback)
+
+**Date:** 2026-05-03 | **Status:** Accepted | **Supersedes:** ADR-031, ADR-043
+
+**Context:** ADR-031 made API-Football the sole source of automatic results. Two operational facts pushed against this:
+
+1. **Latency.** API-Football publishes finals minutes-to-tens-of-minutes after FT, sometimes longer for less-covered leagues. For a real-time leaderboard during a live World Cup match this is a UX cliff — users refresh and see nothing while every other live-score site has the goal.
+2. **Cost & coverage gaps.** API-Football's free tier (100 req/day) is inadequate for production polling and the paid tier still rate-limits aggressively per league. Coverage of niche tournaments and friendlies is patchy.
+
+We built `picks4all-scores`, a separate in-house scraper service, to ingest live scores from public scoreboard sites at ~15 s cadence. Once we had it producing reliable provisional scores, the question was whether to swap it in as primary OR run it as a "first impression" UI layer with API-Football still being the source of truth for finals.
+
+**Decision:**
+
+- **picks4all-scores is the primary live-scoring channel.** `liveScoresJob` polls it every 15 s during each match's live window and publishes a `PoolMatchResultVersion` with `source = SCRAPER_PROVISIONAL` for every score change. The scraper "owns" the in-play UX.
+- **A grace period of `SCORES_GRACE_PERIOD_MS` (default 5 min) past full-time** allows the scraper to confirm its final before any finalisation. If the scraper still reports the same FT after the grace period, the result is upgraded to `API_CONFIRMED` (the source name predates the rename and is the canonical "final" tag — kept for backwards compat with downstream code that reads it).
+- **API-Football becomes a fallback layer.** `smartSyncJob` continues to run for AUTO instances, but only publishes a result if the scraper has not already produced an `API_CONFIRMED` (or higher) version. The activation window (~30 min after estimated FT) is wide enough that a working scraper renders Smart Sync a no-op for that match, while a broken scraper run still produces a final — same SLA as before, just shifted to fallback.
+- **Source hierarchy is enforced everywhere a result is written.** `HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL > HOST_PROVISIONAL > HOST_MANUAL`. Lower sources never overwrite higher ones; the `resultService` layer rejects the write rather than silently downgrading.
+- **Kill switch:** `PlatformSettings.scoresServiceEnabled` (admin toggle, default false in dev / true in prod) — disables the scraper layer without redeploy. When off, Smart Sync silently becomes the primary again.
+- **`SCRAPER_PROVISIONAL` added to `ResultSource` enum** (additive migration). All five values now coexist; older instances continue to use `HOST_MANUAL` / `HOST_PROVISIONAL` / `API_CONFIRMED` as before.
+
+**Consequences:**
+
+- ✅ Live scores arrive in seconds, not minutes — leaderboard updates feel real-time during matches.
+- ✅ API-Football quota usage drops sharply (only one fallback poll per match, vs continuous live polling).
+- ✅ Scraper outages degrade to ADR-031 behaviour — no user-visible failure.
+- ⚠️ Two layers to monitor instead of one. Mitigated by `/admin/analytics-health` probe which checks both sinks.
+- ⚠️ The `API_CONFIRMED` source name is now slightly misleading (the scraper, not API-Football, can produce it). Renaming would be a destructive enum change — left as is and clarified in this ADR + GLOSSARY.
+
+**Related code:** `backend/src/services/scoresService/`, `backend/src/jobs/liveScoresJob.ts`, `backend/src/services/resultService.ts`, `backend/src/lib/constants.ts` (`SCORES_GRACE_PERIOD_MS`), `backend/prisma/schema.prisma` (`ResultSource` enum, `PlatformSettings.scoresServiceEnabled`).
+
+---
+
+## ADR-053: Mercado Pago for Colombia (dual-gateway routing)
+
+**Date:** 2026-04-14 | **Status:** Accepted | **Extends:** ADR-044
+
+**Context:** ADR-044 closed the international payment story (Polar.sh, USD only) but explicitly deferred Colombia: "Colombian users pay in USD until local gateway is added." That deferral mattered because:
+
+1. **Conversion penalty.** Local users paying in USD incur a 6-8 % FX margin from their card issuer plus a worse psychological price perception ("this is a foreign service").
+2. **Acquirer rejection rates.** Colombian-issued debit cards have higher international-transaction rejection rates than domestic transactions; Polar's checkout sees ~15 % decline rates from CO IPs.
+3. **PSE / Nequi.** Colombia's domestic non-card rails (PSE for bank transfer, Nequi for instant pay) are unavailable through Polar but native to Mercado Pago.
+
+**Decision:**
+
+- **Dual-gateway routing** keyed on country detection. Cloudflare's `CF-IPCountry` header is the source of truth; the frontend hits `GET /payments/country` and receives `{ "gateway": "mercadopago" }` for `CO`, `{ "gateway": "polar" }` for everyone else. Server-side, `paymentService` re-validates the routing on the checkout-init call so a tampered frontend cannot force the wrong gateway.
+- **Mercado Pago integration uses the Brick component** (embedded card form) for cards, and Brick's PSE / Nequi paths for bank transfer / instant pay. Frontend POSTs Brick's submission to `/payments/mp-process`; backend confirms via `mercadopago` SDK (v2.12) and returns the canonical `PoolPayment` row.
+- **Webhook (`POST /payments/mp-webhook`)** validates two things on every request:
+  - HMAC signature against the configured secret (standard MP scheme).
+  - **Timestamp drift** against `MP_WEBHOOK_MAX_DRIFT_MS` (default 5 min). Without this an attacker who captured a single legitimate webhook (mirrored TLS, screenshots, leaked logs) could replay it indefinitely. ADR-046 documents the broader retry contract; the drift check is MP-specific because MP doesn't ship a per-event UNIQUE id strong enough to dedupe replays.
+- **Synthetic eventId is `mp-{paymentId}-{status}`** (NOT `mp-{paymentId}` as originally implemented). MP fires multiple webhooks for the same `paymentId` as the payment moves through `pending → in_process → approved`. With the original ID the FIRST webhook claimed the only `PaymentEvent` slot and every subsequent transition deduped silently — pools stayed in PENDING. The status suffix gives each transition its own slot while genuine retries of the same status still dedupe correctly.
+- **`amountCop` column on PoolPayment** stores the actual pesos charged. `amountUsd` keeps storing USD-cents (Polar-native) for cross-gateway reporting parity. ADR-051 documents the field-discipline that prevents the 40× under-report from reading the wrong column.
+- **Pricing parity:** the COP table in `pricing.ts` is computed on the same volume-discount curve as USD, anchored at `BASE_PRICE_COP = 28,500` per block of 50 with `MIN_PRICE_COP = 18,000`. Corporate base $200,000 COP for 100 employees. Server is the only source — frontend never POSTs a price.
+
+**Consequences:**
+
+- ✅ Colombian users pay in pesos through their preferred local rail.
+- ✅ Acquirer decline rate drops because issuers see a domestic transaction.
+- ✅ Replay window on MP webhooks is 5 min (was infinite).
+- ✅ Async MP transitions (`pending → in_process → approved` for PSE / Nequi) reliably reach `COMPLETED`.
+- ⚠️ Two gateways to maintain, two webhook contracts, two reconciliation flows.
+- ⚠️ Country detection is not perfect — VPN users from CO routed to Polar, EU users behind a CO VPN routed to MP. We accept the edge cases; both gateways will reject mismatched cards.
+
+**Related code:** `backend/src/services/mercadopago/`, `backend/src/routes/payments.ts` (`/mp-checkout`, `/mp-process`, `/mp-webhook`), `backend/src/services/paymentService.ts` (cross-gateway orchestration), `backend/src/lib/pricing.ts` (COP curve), `frontend-next/src/lib/api/payments.ts` (country routing), `backend/prisma/schema.prisma` (`PoolPayment.amountCop`, `mpPreferenceId`).
+
+---
+
+## ADR-054: Server-side analytics with DLQ + advisory-locked drainer
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** Picks4All emits Purchase / Lead / CompleteRegistration / Refund events to two server-side sinks: Google Analytics 4 Measurement Protocol and Meta Conversions API. Both sinks fail intermittently (~1 % baseline per request) for reasons outside our control: rate limiting at the sink, transient 5xx, regional outages, network blips. A naive in-process retry burns CPU on the request-handling thread and still loses events when the process restarts mid-retry. A naive cron-only retry has no idempotency guarantees against multiple replicas.
+
+We needed a layer that:
+1. Persists an event the moment in-process retries are exhausted, before responding to the user / webhook.
+2. Drains the persistence layer asynchronously without double-sending under multi-replica deploys.
+3. Distinguishes retryable from permanent failures so we don't burn the budget on 4xx-permanent.
+
+**Decision:**
+
+- **`FailedAnalyticsEvent` model** (additive migration). One row per failed emission; columns: `provider` (`META_CAPI` / `GA4_MP`), `eventName`, `eventId` (dedup key — `transaction_id` for Purchases, UUID otherwise), `payloadJson` (full request body, replayed verbatim), `attemptCount`, `lastError`, `lastAttemptAt`, `nextRetryAt`, `resolvedAt`.
+- **In-process retry budget = 2** (immediate + one delayed retry). On exhaustion, `sendCapiEvent` / `sendGa4Event` does `INSERT FailedAnalyticsEvent` with `attemptCount = 1`, `nextRetryAt = now() + 60s`, then returns. The user-facing path is never blocked by analytics retries.
+- **`capiRetryJob` cron** drains the queue. Each tick:
+  1. Acquires a Postgres advisory lock keyed on the job name. Multi-replica deploys grant the lock to one process; others no-op. **This is the cheapest correct primitive against double-send across replicas** — no Redis, no leader election, no app-level coordination.
+  2. `findMany WHERE resolvedAt IS NULL AND nextRetryAt <= now() ORDER BY nextRetryAt`.
+  3. Replays each `payloadJson` verbatim against the sink (same code path as the original emit so dedup at the sink works on `eventId`).
+  4. Disposition: `2xx` → `resolvedAt = now()`. `4xx` permanent (anything except `401/403/408/429`) → `resolvedAt = now()` with no further retry. Else → bump `attemptCount`, schedule `nextRetryAt = now() + min(5min * 2^attemptCount, 24h)` (capped at 8 attempts).
+  5. Releases the lock.
+- **Purge:** rows with `resolvedAt < now() - 30 days` are deleted by the same job to keep the table bounded.
+- **Compound index `[provider, nextRetryAt, resolvedAt]`** makes the drainer's main query an index scan even at scale.
+- **Diagnostic surface:** `/admin/analytics-health` (probe) returns `dlqBacklog: { unresolved, oldest }` so an operator sees buildup before customers do.
+
+**Consequences:**
+
+- ✅ Sink outages no longer cost the platform Purchases — events buffer and replay.
+- ✅ Multi-replica deploys are safe by construction (advisory lock).
+- ✅ The DLQ is a self-cleaning bounded table — no operator action needed in normal operation.
+- ⚠️ `payloadJson` contains PII fragments (email hash, IP, UA). Acceptable: same data the original POST sent to the sink, retained ≤ 30 days, never exposed to non-admin endpoints.
+- ⚠️ Sustained sink outages (>24 h) cap an event at 8 attempts. After that the row is "permanent failure" and lost. Acceptable trade-off for a marketing pixel; a financial event would need stronger guarantees.
+
+**Related code:** `backend/src/lib/ga4.ts`, `backend/src/lib/metaCapi.ts`, `backend/src/jobs/capiRetryJob.ts`, `backend/prisma/schema.prisma` (`FailedAnalyticsEvent`), `docs/guides/ANALYTICS_PIPELINE.md` (full retry ladder + dedup keys reference).
+
+---
+
+## ADR-055: Email suppression via Resend webhook
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** Resend (our outbound email provider) enforces its own block-list against hard-bounced or complained addresses, but the platform discovers a bounce / complaint only AFTER it has spent the API call. Two consequences mattered:
+
+1. **Wasted quota.** Pool invitation rollouts of 200+ employees hit Resend's per-second rate limit; 5-10 % were known-bad addresses already on Resend's suppression list. Each one consumed a request slot.
+2. **Operational opacity.** When a host asked "did Maria get her invite?" we had no easy way to answer "no, her address bounced last month" without poking Resend's dashboard.
+
+**Decision:**
+
+- **Local mirror of Resend's suppression list.** New table `EmailSuppression { email UNIQUE, reason ("bounced"|"complained"), resendId, eventData, createdAt }`.
+- **Populated by Resend webhook** (`POST /webhooks/resend`). On `email.bounced` or `email.complained` we INSERT (idempotent on `email`) and store the raw `eventData` for forensics.
+- **`sendEmail()` short-circuits before hitting Resend** when the recipient appears in `EmailSuppression`. Returns a structured `{ skipped: true, reason: "suppressed" }` result so callers can record the skip in audit logs and count it in admin metrics, but never makes the network call.
+- **Admin surface:** the analytics dashboard exposes `operationalHealth.emailSuppressions` count. Per-row inspection is available via the Resend dashboard for now (cheap; we don't need a UI for the table yet).
+
+**Consequences:**
+
+- ✅ Quota waste eliminated at the boundary — the platform never tries to email a known-dead address again.
+- ✅ "Did X get the invite?" is answerable by a single DB query.
+- ⚠️ The local mirror diverges from Resend's truth if their webhook delivery is lost. Acceptable: their dashboard remains canonical, ours is an optimisation.
+- ⚠️ A user who lands on the suppression list legitimately (bounced once due to mailbox-full) cannot un-suppress themselves through the product UI. Out-of-band: support deletes the row manually. Build a self-service "I fixed my email, retry" flow when the support volume justifies it.
+
+**Related code:** `backend/src/routes/resendWebhook.ts`, `backend/src/lib/email.ts` (suppression check), `backend/prisma/schema.prisma` (`EmailSuppression`).
+
+---
+
+## ADR-056: Organization branding edits with audit trail
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** Corporate hosts (and their co-admins) can edit their organisation's branding mid-tournament — logo, primary / secondary colours, welcome message, invitation message. These fields surface in the pool splash, the in-pool header, and the body of every invitation email sent under that organisation. Two failure modes worried us:
+
+1. **Accidental brand vandalism.** A co-admin accidentally clears the logo at 9 pm before a Saturday match; the splash goes generic for the whole pool overnight; nobody knows who did it or how to revert.
+2. **Compliance / dispute.** A host claims "we never agreed to that wording in the invite email" — we have no record of what the message was when the invite was actually sent.
+
+The audit needed to live ON the org, not on the pool, because the same brand is shared across all of an org's pools.
+
+**Decision:**
+
+- **`OrganizationBrandingAudit` model.** Append-only log of every branding edit. Columns: `organizationId`, `userId` (who), `changedAt` (when), `fieldsChanged String[]` (which fields mutated this update — `"logoBase64" | "primaryColor" | "secondaryColor" | "welcomeMessage" | "invitationMessage"`), `beforeJson` / `afterJson` (snapshots of the changed fields only — keeps each row compact and makes one-click revert trivial), `ipAddress` / `userAgent` (forensic, both nullable so missing trust-proxy doesn't block legitimate edits).
+- **`corporateBrandingService` is the only writer.** It computes the diff, builds the audit row, and persists both the org update and the audit insert in the same transaction. A successful diff is a no-op write — no audit row is created when the user submits the same value.
+- **Platform-admin edits go through `AuditEvent`, not this table.** This keeps the org-scoped log focused on host-driven changes that the host themselves should be able to inspect later.
+- **Per-org indexes** `[organizationId, changedAt]` and `[userId, changedAt]` so both per-org timelines and per-user activity drill-downs are index scans.
+
+**Consequences:**
+
+- ✅ Branding history is queryable per org with full before/after snapshots — revert is `UPDATE Organization SET ... = beforeJson`.
+- ✅ Disputes about "what did the invite email look like at time T" are answerable from the audit row covering that period.
+- ✅ Per-co-admin attribution surfaces who is editing what and how often.
+- ⚠️ `beforeJson` / `afterJson` for `logoBase64` can be a few hundred KB each. Two snapshots per logo edit. Bounded by a low edit frequency in practice; if it grows we can move to a logo-history table separate from the colour/text history.
+
+**Related code:** `backend/src/services/corporateBrandingService.ts`, `backend/prisma/schema.prisma` (`OrganizationBrandingAudit`, `Organization.primaryColor` / `secondaryColor`), `backend/src/routes/corporate.ts` (PATCH branding endpoint).
+
+---
+
+## ADR-057: Admin analytics dashboard with safeRun fault tolerance
+
+**Date:** 2026-05-03 | **Status:** Accepted
+
+**Context:** The platform owner needs a single live view of growth (signups, pools, picks, revenue), engagement (DAU, funnel, cohort retention), corporate funnel (inquiries → activations), pool health (zombies, full pools, alerts), payment breakdown, and operational health (DLQ backlog, email suppressions, recent feedback, audit volume). The pre-existing patchwork was a mix of one-off SQL queries the operator ran by hand and the `/admin/stats` endpoint which only surfaced a handful of counters.
+
+A naïve "one big endpoint that runs ~20 SQL queries" approach has a sharp failure mode: a single buggy query (a renamed column, an enum drift, a permission glitch) returns 500 and the whole dashboard goes blank. The operator can't tell what's wrong and loses the rest of the data they DO have access to.
+
+**Decision:**
+
+- **One endpoint, `GET /admin/analytics/dashboard`**, admin-gated, returns one JSON payload covering all sections.
+- **`safeRun<T>(section, fallback, fn)` wrapper** around every query bundle. If `fn` throws, the section gets `fallback` (typed defaults — empty arrays, zero counters, etc.) and `{ section, message }` is appended to the response's `errors[]` array. The whole payload remains a valid response; the failed section renders empty in the UI.
+- **In-process cache, 60-second TTL.** Live operations (post-deploy regression scan) override with `?refresh=1`. The dashboard polls at 30 s by default so most loads hit cache.
+- **Frontend renders a collapsible red banner** above the KPI grid when `errors[]` is non-empty, listing each failed section with the captured error message — the operator sees IMMEDIATELY what's broken without diving into logs.
+- **Auto-refresh with stale-fetch guard.** Polling intervals: 10 s, 30 s, 1 min, 5 min, off. A `fetchSeqRef` discards out-of-order responses so the UI is never stale-after-fresh. A 5 s ticker drives "hace Xs" relative timestamps without re-fetching.
+- **No new tables.** Every metric is a query against existing models — `User`, `Pool`, `PoolMember`, `PoolPayment`, `OrganizationInquiry`, `CorporateInvite`, `FailedAnalyticsEvent`, `BetaFeedback`, `AuditEvent`. The dashboard is purely a read surface.
+- **Type contract** lives in `frontend-next/src/lib/api/admin.ts` (`AnalyticsDashboardResponse`) — backend changes that break the shape get caught at frontend typecheck.
+
+**Consequences:**
+
+- ✅ One render of one URL gives the full health picture; no SQL knowledge required.
+- ✅ Fault isolation: a section failing doesn't take down the others.
+- ✅ Auto-refresh + low TTL keeps the dashboard live without expensive recomputation.
+- ⚠️ Roughly 20 raw SQL queries per uncached load. Cheap individually (all indexed) but the aggregate runs 50-150 ms — acceptable behind the 60 s cache.
+- ⚠️ Adding a new metric means editing both the backend (new `safeRun` block) and the frontend (new render). Acceptable cost for the stronger contract.
+
+**Related code:** `backend/src/routes/adminAnalyticsDashboard.ts` (handler + safeRun pattern), `frontend-next/src/components/AdminAnalyticsContent.tsx` (UI + auto-refresh + error banner), `frontend-next/src/lib/api/admin.ts` (`AnalyticsDashboardResponse` type).
 
 ---
 
