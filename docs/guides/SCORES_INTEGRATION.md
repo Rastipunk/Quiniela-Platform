@@ -1,6 +1,8 @@
 # Scores Integration — picks4all-scores
 
 > Live scoring system for real-time match updates.
+>
+> **Last Updated:** 2026-05-04 — see ADR-052 for the scraper-first decision.
 
 ## Architecture
 

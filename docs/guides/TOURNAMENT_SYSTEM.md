@@ -1,7 +1,7 @@
 # Tournament System
 # Picks4All
 
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-05-04
 
 ---
 
@@ -12,9 +12,9 @@
 3. [FIFA World Cup 2026 Structure](#3-fifa-world-cup-2026-structure)
 4. [Phase Advancement](#4-phase-advancement)
 5. [Placeholder System](#5-placeholder-system)
-6. [SmartSync: Automatic Results](#6-smartsync-automatic-results)
+6. [Result Sync: Scraper-first + API-Football fallback](#6-result-sync-scraper-first--api-football-fallback)
 7. [PendingPhaseSync: Knockout Fixture Discovery](#7-pendingphasesync-knockout-fixture-discovery)
-8. [API-First Results Flow](#8-api-first-results-flow)
+8. [Result Publishing Flow](#8-result-publishing-flow)
 
 ---
 
@@ -42,10 +42,10 @@ Each instance has a `resultSourceMode`:
 
 | Mode | Description |
 |------|-------------|
-| `MANUAL` | Host enters results manually |
-| `AUTO` | Results come from API-Football via SmartSync |
+| `MANUAL` | Host enters results manually (legacy / amateur tournaments). |
+| `AUTO` | Scraper-first pipeline (picks4all-scores primary, API-Football fallback ~30 min after estimated FT). The host can only override an existing result. |
 
-AUTO mode instances require `apiFootballLeagueId` and `apiFootballSeasonId` to be set.
+AUTO mode instances require `apiFootballLeagueId` and `apiFootballSeasonId` to be set so the API-Football fallback can resolve fixtures.
 
 ---
 
@@ -325,16 +325,21 @@ Once placeholders are resolved (team IDs replaced with actual teams), picks beco
 
 ---
 
-## 6. SmartSync: Automatic Results
+## 6. Result Sync: Scraper-first + API-Football fallback
 
 ### Overview
 
-SmartSync is the optimized result synchronization system that fetches results from API-Football (api-sports.io v3) with minimal API calls.
+AUTO-mode instances run two cooperating sync layers:
 
-### Architecture
+- **Layer 1 (primary): picks4all-scores.** `liveScoresJob` polls every 15 s during a match's live window. Publishes provisional scores as `SCRAPER_PROVISIONAL` and finalises as `API_CONFIRMED` after a 5-min grace period past full time. See `docs/guides/SCORES_INTEGRATION.md` and ADR-052.
+- **Layer 2 (fallback): API-Football SmartSync.** `smartSyncJob` polls API-Football and only publishes results the scraper has not already produced. Activates ~30 min after estimated full time. The kill switch is `TournamentInstance.syncEnabled`.
+
+The architecture below describes the API-Football fallback layer specifically; the scraper layer is documented in `SCORES_INTEGRATION.md`.
+
+### Architecture (API-Football fallback)
 
 ```
-Cron Job (every minute)
+Cron Job (every minute, gated by SMART_SYNC_ENABLED)
     │
     ▼
 SmartSyncJob
@@ -342,7 +347,9 @@ SmartSyncJob
     │
     ▼
 SmartSyncService.processMatchesNeedingSync()
-    │  Queries MatchSyncState for matches due for checking
+    │  Queries MatchSyncState for matches due for checking AND not yet
+    │  finalised by the scraper (skips when current version is
+    │  API_CONFIRMED or higher)
     │
     ▼
 SmartSyncService.checkMatch()
@@ -355,7 +362,7 @@ ApiFootballClient.getFixture(fixtureId)
     ▼
 SmartSyncService.publishResult()
     │  Creates PoolMatchResult + Version for ALL pools
-    │  Source: API_CONFIRMED
+    │  Source: API_CONFIRMED (upgrades any prior SCRAPER_PROVISIONAL)
     │  Triggers scoring, notifications, auto-advance
 ```
 
@@ -439,41 +446,53 @@ A `PendingPhaseSync` record is created with status `PENDING`. The phase sync job
 
 ---
 
-## 8. API-First Results Flow
+## 8. Result Publishing Flow
 
-### How Results Flow from API to Database to Pool
+### How a result reaches the database
 
-1. **SmartSync checks match** via API-Football fixture endpoint.
-2. **API returns finished status** (FT, AET, PEN) with scores.
-3. **SmartSync parses result** using `parseFixtureResult()`:
+A result lands in the DB through one of three writers:
+
+1. **`liveScoresJob` (scraper)** — primary path. Publishes `SCRAPER_PROVISIONAL` during play, upgrades to `API_CONFIRMED` after the 5-min grace period. Detailed flow in `docs/guides/SCORES_INTEGRATION.md`.
+2. **`smartSyncJob` (API-Football fallback)** — only fires when the scraper has not already produced an `API_CONFIRMED` (or higher) version, ~30 min after estimated full time.
+3. **Host override** — `PUT /pools/:poolId/results/:matchId` with mandatory `reason`. Only allowed when a prior version already exists in AUTO mode; freely allowed in MANUAL mode. Always tagged `HOST_OVERRIDE`.
+
+In every path the writer goes through the shared `resultService.publishResult()` helper, which:
+
+1. Verifies the `source` is allowed to overwrite the current version (hierarchy below). On rejection it leaves the existing version intact and surfaces a typed error to the caller.
+2. Parses the result fields:
    - `homeGoals`, `awayGoals` (full time)
    - `homeGoals90`, `awayGoals90` (regulation time, if extra time was played)
    - `homePenalties`, `awayPenalties` (if penalty shootout)
-4. **SmartSync publishes to ALL pools** linked to the instance:
-   - Creates `PoolMatchResult` header (or finds existing).
-   - Creates new `PoolMatchResultVersion` with source `API_CONFIRMED`.
-   - Sets `currentVersionId` to the new version.
-5. **Post-publish triggers** (per pool):
-   - Scoring recalculation for all members.
-   - Email notification to all active members (async).
-   - Auto-advance check for phase completion.
-   - Pool completion check.
-6. **MatchSyncState updated** to `COMPLETED`.
+3. Creates a new `PoolMatchResultVersion` with monotonic `versionNumber` and the appropriate `source`. Updates `PoolMatchResult.currentVersionId`.
+4. Writes for **every pool** linked to the instance — pools never get partial updates.
+5. Post-publish triggers per pool: scoring recalc, email notifications (async), `advancementTrigger` check for the phase, pool-completion check.
+6. Updates `MatchSyncState` to `COMPLETED` once the result is `API_CONFIRMED` or higher.
 
-### Result Source Priority
+### Source hierarchy
 
-| Source | Meaning | Can Be Overwritten? |
-|--------|---------|:-------------------:|
-| `HOST_PROVISIONAL` | Host entered a result before API confirmed | Yes, by API_CONFIRMED |
-| `API_CONFIRMED` | Official result from API-Football | Only by HOST_OVERRIDE |
-| `HOST_OVERRIDE` | Host corrected an API result (reason required) | Not by API |
-| `HOST_MANUAL` | Manual mode -- no API involvement | N/A |
+Higher rows are never overwritten by lower ones. This is the contract every writer obeys.
 
-When SmartSync finds a result:
-- If no result exists: publishes as `API_CONFIRMED`.
-- If `HOST_PROVISIONAL` exists: supersedes with `API_CONFIRMED` (new version).
-- If `HOST_OVERRIDE` exists: does NOT overwrite. SmartSync respects host overrides.
-- If `API_CONFIRMED` already exists: skips (no duplicate).
+| Source | Meaning | Overwritable by |
+|--------|---------|------------------|
+| `HOST_OVERRIDE` | Host correction (reason required, members emailed) | Nothing — terminal until another override is issued |
+| `API_CONFIRMED` | Final result, from scraper-grace-period or API-Football fallback | Only `HOST_OVERRIDE` |
+| `SCRAPER_PROVISIONAL` | Live in-play score from picks4all-scores | `API_CONFIRMED`, `HOST_OVERRIDE` |
+| `HOST_PROVISIONAL` | Host entered in AUTO mode while waiting for sync | `SCRAPER_PROVISIONAL`, `API_CONFIRMED`, `HOST_OVERRIDE` |
+| `HOST_MANUAL` | Host entered in MANUAL-mode instance | `HOST_OVERRIDE` (and other manual edits in MANUAL mode) |
+
+### Concrete decisions
+
+When the scraper finds a live score:
+- No existing result → publishes as `SCRAPER_PROVISIONAL`.
+- Existing `SCRAPER_PROVISIONAL` → replaces with new version (same source).
+- Existing `HOST_PROVISIONAL` → upgrades.
+- Existing `API_CONFIRMED` or `HOST_OVERRIDE` → skips.
+
+When `smartSyncJob` finds a finished fixture:
+- No existing result → publishes as `API_CONFIRMED`.
+- Existing `SCRAPER_PROVISIONAL` or `HOST_PROVISIONAL` → upgrades to `API_CONFIRMED`.
+- Existing `API_CONFIRMED` → skips (idempotent).
+- Existing `HOST_OVERRIDE` → never overwrites.
 
 ### Host Override Flow
 

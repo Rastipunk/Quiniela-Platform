@@ -1,5 +1,7 @@
 # Sistema de Notificaciones por Email
 
+> **Last Updated:** 2026-05-04
+
 ## Resumen
 
 El sistema de notificaciones por email permite enviar comunicaciones automáticas a los usuarios de la plataforma. Implementa una arquitectura de dos niveles:
@@ -234,6 +236,14 @@ emailVerificationTokenExpiresAt DateTime?
 - **SPF**: Configurado con `include:send.resend.com` en DNS de Cloudflare
 - **DKIM**: Clave DKIM agregada como registro DNS en Cloudflare
 
+### Suppression — Resend webhooks → `EmailSuppression` (ADR-055)
+
+Resend posts to `POST /webhooks/resend` on `email.bounced` and `email.complained` events. Each event inserts (idempotent on `email`) a row in the `EmailSuppression` table with `reason`, the originating Resend event id, and the raw payload for forensics.
+
+`sendEmail()` checks this table BEFORE calling Resend and short-circuits with `{ skipped: true, reason: "suppressed" }` for any address on the list. This saves API quota on rollouts (a 200-employee corporate invite where 5–10% of addresses already bounced never makes those network calls again) and surfaces a useful "did X get the invite?" answer via `operationalHealth.emailSuppressions` on the admin analytics dashboard.
+
+**To un-suppress** an address (legitimately fixed mailbox), delete the row directly. There is no self-service un-suppression flow yet.
+
 ### Recepción — Cloudflare Email Routing (ADR-034)
 
 **Configuración activa desde 2026-03-01:**
@@ -336,7 +346,8 @@ privacyEmail: "privacidade@picks4all.com"
 
 #### Emails Corporativos
 - **Corporate Activation**: En `corporate.ts` - Envía invitación con token de activación a empleados
-  - Token de 48 bytes, expira en 30 días
+  - Token de 32 bytes (`crypto.randomBytes(CRYPTO_BYTES.TOKEN)`) → 64 caracteres hex, expira en 30 días
+  - Rotable per-employee via `POST /corporate/pools/:poolId/employees/:inviteId/resend` (ver ADR-050)
   - Template: `getCorporateActivationTemplate` en `emailTemplates.ts`
 - **Corporate Inquiry Confirmation**: En `corporate.ts` - Confirma al solicitante que se recibió su formulario empresarial
 

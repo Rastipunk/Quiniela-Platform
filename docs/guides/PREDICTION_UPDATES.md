@@ -1,6 +1,6 @@
 # AI Prediction Update Process
 
-> **Last updated:** 2026-04-04
+> **Last updated:** 2026-05-04
 >
 > This guide documents the complete process for updating the World Cup 2026 AI predictions and notifying subscribers.
 

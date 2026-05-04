@@ -5,7 +5,7 @@
 > MUST use values from this document. Drift here is what makes GA4 reports
 > unreadable six months later.
 
-**Last updated:** 2026-04-21
+**Last updated:** 2026-05-04
 
 ---
 

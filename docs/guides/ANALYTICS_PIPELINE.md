@@ -1,5 +1,7 @@
 # Analytics pipeline
 
+> **Last Updated:** 2026-05-04 — see ADR-054 for the DLQ + advisory-lock decision.
+
 This directory owns the server-side half of the tracking stack. Browser
 events route through GTM → GA4 / Meta Pixel directly; the files here
 handle the **server-emitted** equivalents, the failure queue, and the
