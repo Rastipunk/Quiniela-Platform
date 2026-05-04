@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd";
@@ -11,6 +12,7 @@ const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
+  if (locale !== "en") notFound();
 
   setRequestLocale(locale);
   const t = await getTranslations("seo");
@@ -36,11 +38,12 @@ const relatedLinks = [
 
 export default async function FootballPoolPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
+  if (locale !== "en") notFound();
 
   setRequestLocale(locale);
   const t = await getTranslations("footballPool");
   const baseUrl = SITE_URL;
-  const localePath = locale === "es" ? "" : `/${locale}`;
+  const localePath = `/${locale}`;
 
   const articleJsonLd = {
     "@context": "https://schema.org",
