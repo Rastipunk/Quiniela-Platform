@@ -773,11 +773,13 @@ CORPORATE
   GET    /corporate/pools/:id/employees-csv-template
 
 PAYMENTS
-  POST   /payments/checkout/polar                      Init Polar (USD) checkout
-  POST   /payments/checkout/mercadopago                Init MP (COP) checkout
-  POST   /payments/webhooks/polar                      Polar webhook (signature verified)
-  POST   /payments/webhooks/mercadopago                MP IPN (signature + drift)
-  GET    /payments/country-detect                      Cloudflare-based COP/USD routing
+  POST   /payments/checkout                            Init Polar (USD) checkout
+  POST   /payments/mp-checkout                         Init MP (COP) checkout (Brick preference)
+  POST   /payments/mp-process                          Process MP Brick submission
+  GET    /payments/country                             Cloudflare-based COP/USD routing
+  GET    /payments/pool/:poolId/status                 Latest PoolPayment status (post-checkout polling)
+  POST   /payments/webhook                             Polar webhook (raw body, signature verified)
+  POST   /payments/mp-webhook                          MP IPN (HMAC + timestamp drift)
 
 ADMIN (gated by requireAdmin)
   GET    /admin/ping

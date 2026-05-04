@@ -1,6 +1,6 @@
 # API Specification — Picks4All Platform
 
-> **Last updated:** 2026-04-04
+> **Last updated:** 2026-05-03
 >
 > This document describes every REST endpoint exposed by the Express backend at `api.picks4all.com`.
 
@@ -38,6 +38,10 @@
    - [Admin — Settings](#523-admin--settings)
    - [Admin — Corporate](#524-admin--corporate)
    - [Admin — Analytics Health](#525-admin--analytics-health)
+   - [Admin — Analytics Dashboard](#526-admin--analytics-dashboard)
+   - [Payments](#527-payments)
+   - [Webhooks](#528-webhooks)
+   - [Unsubscribe](#529-unsubscribe)
 
 ---
 
@@ -55,12 +59,17 @@
 
 ## 2. Authentication
 
-Authentication uses **JWT Bearer tokens** (4-hour expiry) delivered via HTTP-only cookies.
+Authentication uses **JWT Bearer tokens** (4-hour expiry). The token can be transported either as an `Authorization: Bearer <token>` header or as an `httpOnly` cookie set by the backend on login. `requireAuth` reads the cookie first and falls back to the header.
 
-- On successful login/register, the server sets `token` and `token_exists` cookies.
-- The `token` cookie is `HttpOnly`, `Secure`, `SameSite=None`.
-- The `token_exists` cookie is readable by JavaScript (for UI state).
-- On logout, both cookies are cleared.
+On successful login/register the backend sets:
+
+| Cookie | HttpOnly | Purpose |
+|--------|:--------:|---------|
+| `p4a_token` | yes | The JWT itself. `sameSite=lax`, `Secure` in production. |
+| `p4a_logged_in` | no | UI hint flag readable from JS so the SPA knows a session exists without parsing the JWT. |
+| `p4a_admin` | no | Set only when `platformRole === "ADMIN"`. UI hint to show admin entry points. |
+
+On logout all three cookies are cleared.
 
 **JWT payload:**
 ```json
@@ -1048,6 +1057,9 @@ All admin endpoints are under `/admin` and require `platformRole === "ADMIN"`.
 |--------|------|------|-------------|
 | GET | `/admin/ping` | Admin | RBAC validation check |
 | GET | `/admin/stats` | Admin | Platform-wide statistics |
+| POST | `/admin/bootstrap-admin` | No (one-shot) | Bootstrap the first ADMIN user when the table is empty |
+| POST | `/admin/jobs/trigger-fixture-tracking` | Admin | Manually trigger the fixture-tracking cron once |
+| POST | `/admin/prediction-update` | Admin | Push an AI prediction update to subscribed users |
 | POST | `/admin/seed-wc2026` | Admin | Seed World Cup 2026 data |
 | POST | `/admin/update-ucl-r16` | Admin | Update UCL R16 draw |
 | GET | `/admin/audit/r16-late-picks` | Admin | Audit R16 late picks |
@@ -1365,3 +1377,92 @@ detail instead of lying about delivery.
   ]
 }
 ```
+
+---
+
+### 5.26 Admin — Analytics Dashboard
+
+Single platform-wide growth + health snapshot consumed by the
+`/admin/analytics` page in the SPA. Admin-gated.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/admin/analytics/dashboard` | Admin | Combined snapshot of users, pools, predictions, revenue, retention, corporate funnel, and operational health |
+
+**Query:** `?refresh=1` to bypass the 60-second in-process cache.
+
+**Response (200):** Large JSON with `generatedAtUtc`, `cacheTtlSeconds`,
+`cached`, an `errors[]` array (failed sub-queries surface here without
+taking the whole payload down) and ~20 sections including `topLine`,
+`signupsByWeek`, `poolsByWeek`, `picksByWeek`, `revenueByWeek`,
+`dailyActiveUsers`, `usersByCountry`, `poolsByStatus`, `funnel`,
+`corporateFunnel`, `topAcquisition`, `organicReferrals`, `poolHealth`,
+`cohortRetention`, `paymentBreakdown`, `operationalHealth`. The TS
+contract lives in `frontend-next/src/lib/api/admin.ts`
+(`AnalyticsDashboardResponse`).
+
+The handler wraps every query bundle in `safeRun` so a single broken
+SQL fragment cannot return 500 — the affected section falls back to
+defaults and its name is appended to `errors`.
+
+---
+
+### 5.27 Payments
+
+Pool capacity-upgrade payments. Polar (USD) for international, Mercado
+Pago (COP) for Colombia. Country detection runs at frontend time via
+the dedicated endpoint and is also derivable server-side from the
+Cloudflare `CF-IPCountry` header.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET  | `/payments/country` | No | Detects the requester's country from Cloudflare headers and returns the recommended gateway (`"polar"` for everyone except CO; `"mercadopago"` for CO). |
+| POST | `/payments/checkout` | Yes | Initiate a Polar (USD) checkout for a capacity upgrade. Returns the hosted-checkout URL. Captures Meta Advanced Matching signals (`_fbp`, `_fbc`, IP, UA) so async webhook emissions can attach them to the CAPI Purchase event. |
+| POST | `/payments/mp-checkout` | Yes | Initiate a Mercado Pago checkout (COP). Returns a Brick `preferenceId`. Idempotent: a re-entry returns the existing preference instead of creating a duplicate that would race the customer into paying twice. |
+| POST | `/payments/mp-process` | Yes | Server-side processing of a Mercado Pago Brick payment. Used by the SPA when the Brick UI submits payment data directly. |
+| GET  | `/payments/pool/:poolId/status` | Yes | Returns the latest `PoolPayment` row for the pool — used by the post-checkout polling loop on `/pago/exitoso`. |
+
+**`POST /payments/checkout` body:**
+```json
+{ "poolId": "uuid", "toCapacity": 100, "poolType": "personal" | "corporate" }
+```
+
+**Response (200):** `{ "checkoutUrl": "https://buy.polar.sh/...", "checkoutId": "..." }`
+
+**`POST /payments/mp-checkout` body:** same shape as Polar.
+
+**Response (200):** `{ "preferenceId": "...", "amountCop": 28500, "publicKey": "TEST-..." }`
+
+**Errors:** `VALIDATION_ERROR`, `FORBIDDEN` (caller is not the pool's host), `NOT_FOUND` (pool), `CONFLICT` (capacity downgrade or invalid tier), `GATEWAY_ERROR` (Polar/MP rejected the request).
+
+---
+
+### 5.28 Webhooks
+
+Async callbacks from external providers. None of these accept user JWTs
+— each verifies the provider's own signature scheme.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/payments/webhook` | Polar signature (`standardwebhooks`) | Polar webhook handler. Mounted with `express.raw()` BEFORE `express.json()` so the signature can be verified against the unparsed body. Handles `order.paid`, `order.refunded`. On `order.paid`: claims `PaymentEvent.polarEventId` UNIQUE inside the same transaction as the `PoolPayment.update` + `Pool.update` so a failure rolls back atomically and the gateway's retry can re-process. Returns 5xx on processing errors so Polar retries; 401 only on signature mismatch. |
+| POST | `/payments/mp-webhook` | MP HMAC + timestamp drift | Mercado Pago IPN handler. Validates `x-signature` HMAC and rejects events whose `webhook-timestamp` drifts beyond `MP_WEBHOOK_MAX_DRIFT_MS` (default 5 min). Synthetic event id `mp-{paymentId}-{status}` so `pending → in_process → approved` transitions don't dedupe each other. Same atomic claim + 5xx retry semantics as Polar. |
+| POST | `/webhooks/resend` | Resend signature header | Resend webhook for `email.bounced` and `email.complained` events. Inserts a row in `EmailSuppression` so future `sendEmail()` calls short-circuit before hitting Resend. |
+
+**Response on success:** 200 with empty body.
+**Response on processing error (any provider):** 5xx (triggers retry).
+**Response on signature mismatch:** 401 (terminal).
+
+---
+
+### 5.29 Unsubscribe
+
+Tokenised email unsubscribe surfaces. The token is delivered in every
+notification email's footer link and identifies the user + the
+subscription scope without requiring login.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET  | `/unsubscribe?token=...` | Token | Frontend redirect target. Resolves the token, looks up the user, and renders a confirmation page. |
+| POST | `/unsubscribe` | Token (in body) | Apply the unsubscribe action. Body `{ "token": "...", "scope": "all" \| "deadlineReminders" \| "poolInvitations" \| ... }`. Updates the corresponding `User.email*` flag and returns the new state. |
+
+**Errors:** `INVALID_TOKEN`, `TOKEN_EXPIRED` (if scoped tokens get a TTL), `UNKNOWN_SCOPE`.

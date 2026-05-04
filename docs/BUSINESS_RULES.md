@@ -1,8 +1,8 @@
 # Business Rules & Validations
 # Picks4All
 
-> **Version:** v0.7.0
-> **Last Updated:** 2026-04-04
+> **Version:** v0.6.0
+> **Last Updated:** 2026-05-03
 
 ---
 
@@ -17,7 +17,7 @@
 7. [Member Management](#7-member-management)
 8. [Corporate Pool Rules](#8-corporate-pool-rules)
 9. [Tournament Rules](#9-tournament-rules)
-10. [SmartSync Rules](#10-smartsync-rules)
+10. [Live Scoring & Sync Rules](#10-live-scoring--sync-rules)
 11. [Data Integrity Invariants](#11-data-integrity-invariants)
 12. [Referral Graph](#12-referral-graph)
 13. [Consent Mode v2 & Privacy](#13-consent-mode-v2--privacy)
@@ -35,7 +35,7 @@ These rules **MUST NEVER** be violated:
 3. **Immutability** — Critical data (published results, published template versions) is append-only.
 4. **Deadline Integrity** — Picks are locked after the deadline. No exceptions.
 5. **Single Source of Truth** — The current version is always authoritative.
-6. **API-First Results** — In AUTO mode, results come from API-Football. The host cannot publish results from scratch; they can only override an existing API-confirmed result with a mandatory reason and member notification.
+6. **Scraper-First Results** — In AUTO mode, picks4all-scores is the primary live-scoring source (15s polling), with API-Football as fallback (~30 min after estimated FT). The host cannot publish results from scratch; they can only override an existing confirmed result with a mandatory reason and member notification. Source hierarchy `HOST_OVERRIDE > API_CONFIRMED > SCRAPER_PROVISIONAL > HOST_PROVISIONAL > HOST_MANUAL` is never violated.
 
 ### 1.2 Fail-Safe / Fail-Secure
 
@@ -127,9 +127,16 @@ All rate limit values are overridable via environment variables.
 | `authLimiter` | Login, register | 10 req | 15 min |
 | `passwordResetLimiter` | Forgot/reset password | 5 req | 1 hour |
 | `verificationResendLimiter` | Resend verification | 3 req | 1 hour |
-| `corporateInviteLimiter` | Corporate invitations | 5 req | 1 hour |
+| `corporateInviteCheckLimiter` | `GET /auth/check-corporate-invite` (per IP) | 20 req | 1 min |
+| `corporateActivateLimiter` | `POST /auth/activate-corporate` (per IP) | 10 req | 15 min |
+| `corporateInquiryLimiter` | `POST /corporate/inquiry` | 5 req | 15 min |
+| `inviteSendLimiter` (per user) | `POST /corporate/pools/:id/send-invitations` and `…/employees/:inviteId/resend` | 200 sends | 1 hour |
+| `inviteSendDailyLimiter` (per user) | same as above | 1000 sends | 24 hours |
+| `poolCreateLimiter` | `POST /pools` | 10 req | 1 hour |
+| `resultPublishLimiter` | `PUT /pools/:id/results/:matchId` | 10 req | 1 min |
+| `feedbackLimiter` | `POST /feedback` | 5 req | 1 min |
 
-All return standard `RateLimit-*` headers and HTTP 429 on exceed.
+All return standard `RateLimit-*` headers and HTTP 429 on exceed. The historical `corporateInviteLimiter` (5/hour per IP, applied catch-all to `/corporate/pools/*`) was removed — see §8.4 for rationale. See `docs/API_SPEC.md §3` for env-var names per limiter.
 
 ---
 
@@ -225,8 +232,8 @@ DRAFT ──> ACTIVE ──> COMPLETED ──> ARCHIVED
 
 ### 3.5 Invite Code Rules
 
-- 12-character hex string: `crypto.randomBytes(6).toString("hex")`.
-- Collision retry: up to 5 attempts.
+- Generator: `crypto.randomBytes(CRYPTO_BYTES.POOL_INVITE_CODE = 6).toString("hex")` → 12-char hex string. Collision retry up to 5 attempts.
+- Validator (`POST /pools/join`): `z.string().min(6).max(64)` — accepts any code in that length range so legacy invites or future formats keep working. The current generator only ever produces 12-char codes; the wider validator is intentional asymmetry, not a bug.
 - Created by HOST or CO_ADMIN only; pool must be DRAFT or ACTIVE.
 - Optional `maxUses` (1-500) and `expiresAtUtc` (ISO 8601).
 - Email invitations respect target user's notification preferences.
@@ -625,7 +632,7 @@ Actions: creates `OrganizationInquiry`, sends admin notification, sends confirma
 
 **Capacity security gate:** the pool is **always** created with `maxParticipants = CORPORATE_FREE_LIMIT` regardless of the value in the request body. The wizard's requested value is treated as intent: if it exceeds the free tier, the wizard initiates checkout immediately after creation (Polar for international, Mercado Pago for Colombia) using the requested capacity as `PoolPayment.toCapacity`. On confirmed payment, `paymentService.handleOrderPaid` raises `Pool.maxParticipants` to the paid value. This cap is the only barrier preventing a malicious caller from creating a high-capacity pool by POSTing directly to the API without paying.
 
-**Corporate invite token:** 48 bytes `crypto.randomBytes`, hex (96 chars), 30-day expiry. Unique per `(poolId, email)`.
+**Corporate invite token:** `crypto.randomBytes(CRYPTO_BYTES.TOKEN = 32)` → 64-char hex string, 30-day expiry. Unique per `(poolId, email)`.
 
 ### 8.3 Corporate Activation
 
@@ -771,7 +778,9 @@ Picks are blocked on matches where either team has a placeholder prefix.
 
 ---
 
-## 10. SmartSync Rules
+## 10. Live Scoring & Sync Rules
+
+picks4all-scores (the in-house scraper) is the **primary** live-scoring channel. API-Football SmartSync is the **fallback** that fills gaps the scraper missed and finalises results. Both layers feed the same source-hierarchy enforcement in §5.2.
 
 ### 10.1 Match Sync State Machine
 
