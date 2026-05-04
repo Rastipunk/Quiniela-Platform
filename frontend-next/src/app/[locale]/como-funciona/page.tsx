@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
@@ -7,13 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { colors } from "@/lib/theme";
-import {
-  POOL_REGION_COOKIE,
-  DEFAULT_REGION,
-  isValidRegion,
-  getPoolTermParams,
-} from "@/lib/poolTerms";
-import type { PoolRegion } from "@/lib/poolTerms";
+import { DEFAULT_REGION, getPoolTermParams } from "@/lib/poolTerms";
 import { SITE_URL } from "@/lib/siteConfig";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -134,12 +127,11 @@ export default async function ComoFuncionaPage() {
   // for the regression that occurred when they were removed.
   const rawMsg: HowItWorksMessages = (await import(`@/messages/${locale}/howItWorks.json`)).default;
 
-  // Read pool region from cookie and build interpolation params
-  const cookieStore = await cookies();
-  const regionCookie = cookieStore.get(POOL_REGION_COOKIE)?.value;
-  const region: PoolRegion =
-    regionCookie && isValidRegion(regionCookie) ? regionCookie : DEFAULT_REGION;
-  const pp = getPoolTermParams(locale, region);
+  // SSR uses the canonical default region — the visitor's actual region
+  // is applied client-side by PoolTermProvider after hydration. Reading
+  // the cookie here would force this page to be dynamic and emit
+  // `Cache-Control: no-store`, which Search Console penalises.
+  const pp = getPoolTermParams(locale, DEFAULT_REGION);
 
   // Interpolate pool term placeholders into all message strings
   const msg: HowItWorksMessages = {

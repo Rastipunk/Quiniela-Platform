@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
@@ -7,13 +6,7 @@ import { FAQAccordion } from "@/components/FAQAccordion";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { RegisterButton } from "@/components/RegisterButton";
 import { colors } from "@/lib/theme";
-import {
-  POOL_REGION_COOKIE,
-  DEFAULT_REGION,
-  isValidRegion,
-  getPoolTermParams,
-} from "@/lib/poolTerms";
-import type { PoolRegion } from "@/lib/poolTerms";
+import { DEFAULT_REGION, getPoolTermParams } from "@/lib/poolTerms";
 import { SITE_URL } from "@/lib/siteConfig";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -66,12 +59,13 @@ export default async function FAQPage() {
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
 
-  // Read pool region from cookie and build interpolation params
-  const cookieStore = await cookies();
-  const regionCookie = cookieStore.get(POOL_REGION_COOKIE)?.value;
-  const region: PoolRegion =
-    regionCookie && isValidRegion(regionCookie) ? regionCookie : DEFAULT_REGION;
-  const pp = getPoolTermParams(locale, region);
+  // Build interpolation params with the default region. The visitor's
+  // actual region is applied client-side via PoolTermProvider; this SSR
+  // copy uses the canonical wording so the page renders identically for
+  // every visitor and Next.js can serve it as a static, cacheable HTML
+  // (avoiding the `Cache-Control: no-store` that previously kept Search
+  // Console from indexing this URL).
+  const pp = getPoolTermParams(locale, DEFAULT_REGION);
 
   // Interpolate pool term placeholders
   const faqMessages: FAQMessages = {

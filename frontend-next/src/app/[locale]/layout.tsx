@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 import { routing } from "@/i18n/routing";
@@ -11,8 +10,7 @@ import { AuthAnalyticsSync } from "@/components/AuthAnalyticsSync";
 import { MetaPixelPageView } from "@/components/MetaPixelPageView";
 import { AttributionCapture } from "@/components/AttributionCapture";
 import { PoolTermProvider } from "@/contexts/PoolTermContext";
-import { POOL_REGION_COOKIE, DEFAULT_REGION, isValidRegion } from "@/lib/poolTerms";
-import type { PoolRegion } from "@/lib/poolTerms";
+import { DEFAULT_REGION } from "@/lib/poolTerms";
 import { SITE_URL, SITE_NAME, WORLD_CUP_FOCUS } from "@/lib/siteConfig";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import {
@@ -160,11 +158,15 @@ export default async function LocaleLayout({
   const messages = await getMessages();
   const t = await getTranslations("jsonLd");
 
-  // Read pool region from cookie (set by middleware via CF-IPCountry)
-  const cookieStore = await cookies();
-  const regionCookie = cookieStore.get(POOL_REGION_COOKIE)?.value;
-  const region: PoolRegion =
-    regionCookie && isValidRegion(regionCookie) ? regionCookie : DEFAULT_REGION;
+  // The visitor's regional wording ("polla", "prode", etc.) is resolved
+  // client-side by PoolTermProvider after hydration — see
+  // src/contexts/PoolTermContext.tsx and /api/region. Doing it here would
+  // force every page under [locale] to render dynamically and trigger
+  // `Cache-Control: no-store`, which Search Console punishes (40 of our
+  // 49 known URLs were stuck in "Crawled - currently not indexed" until
+  // we made this layout statically renderable). The SSR HTML always shows
+  // the default ("quiniela") — Google sees a stable, cacheable page.
+  const region = DEFAULT_REGION;
 
   const gtmEnabled = isGtmEnabled();
 

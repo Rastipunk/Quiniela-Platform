@@ -2,12 +2,6 @@ import createMiddleware from "next-intl/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { routing } from "./i18n/routing";
-import {
-  POOL_REGION_COOKIE,
-  regionFromCountryCode,
-  DEFAULT_REGION,
-  isValidRegion,
-} from "./lib/poolTerms";
 
 const handleI18nRouting = createMiddleware(routing);
 
@@ -24,26 +18,26 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
-  // Step 2: i18n routing (locale detection, cookie, redirect)
-  const response = handleI18nRouting(request);
-
-  // Step 3: Pool region detection (Cloudflare CF-IPCountry → cookie)
-  // Only set the cookie if it doesn't already exist (respect first detection)
-  const existingRegion = request.cookies.get(POOL_REGION_COOKIE)?.value;
-  if (!existingRegion || !isValidRegion(existingRegion)) {
-    const countryCode = request.headers.get("cf-ipcountry") || "";
-    const region = countryCode
-      ? regionFromCountryCode(countryCode)
-      : DEFAULT_REGION;
-    response.cookies.set(POOL_REGION_COOKIE, region, {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365, // 1 year
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
-  }
-
-  return response;
+  // Step 2: i18n routing (locale detection + redirect).
+  //
+  // Pool-region detection USED to live here too — the middleware would set a
+  // `pool-region` cookie based on Cloudflare's CF-IPCountry header on every
+  // request. That had two unintended consequences:
+  //
+  //   1. Every response carried a Set-Cookie, which Next/Vercel adapters
+  //      treat as a signal that the response varies per user, downgrading
+  //      it to `Cache-Control: private, no-cache, no-store`. Combined with
+  //      the Server Components that read the cookie, this made every public
+  //      SEO page non-cacheable.
+  //   2. Search Console saw 40+ URLs in "Crawled - currently not indexed",
+  //      because Google interprets `no-store` as "this is per-user content"
+  //      and de-prioritises indexing.
+  //
+  // Region detection now happens client-side (`PoolTermProvider` calls
+  // `/api/region` once per device after hydration and persists the answer
+  // in localStorage). The middleware only handles i18n, so most public
+  // responses can be statically renderable again.
+  return handleI18nRouting(request);
 }
 
 export const config = {
