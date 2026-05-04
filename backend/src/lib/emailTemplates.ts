@@ -1831,6 +1831,125 @@ export function getNewMemberDigestTemplate({
 }
 
 // =========================================================================
+// TEMPLATE: PENDING APPROVAL DIGEST
+// =========================================================================
+// Sent to the pool host when there are PoolMember rows in PENDING_APPROVAL
+// status that they haven't acted on. Throttled at the service layer so a
+// host with stuck pending requests doesn't get the same email forever:
+// the digest is sent daily for up to 7 consecutive days while the pending
+// set stays the same; after that we go silent until the set changes.
+// =========================================================================
+
+export interface PendingApprovalDigestEmailParams {
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  pendingMembers: { name: string }[];
+  locale?: string;
+}
+
+export function getPendingApprovalDigestTemplate({
+  hostName, poolName, poolId, pendingMembers, locale = "es",
+}: PendingApprovalDigestEmailParams): string {
+  const reviewUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("pending_approval_digest", "review_pending"));
+  // Pool settings is where requireApproval can be turned off. Same pool URL,
+  // distinct utm_content so analytics surface clicks on the disclaimer link.
+  const settingsUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("pending_approval_digest", "pool_settings"));
+  const count = pendingMembers.length;
+  const safeHostName = escapeHtml(hostName);
+  const safePoolName = escapeHtml(poolName);
+
+  const i18n: Record<string, {
+    heading: string;
+    greeting: string;
+    body: string;
+    consequence: string;
+    listLabel: string;
+    helpText: string;
+    cta: string;
+    disclaimerTitle: string;
+    disclaimerBody: string;
+    disclaimerCta: string;
+    preheader: string;
+  }> = {
+    es: {
+      heading: `🔔 ${count} ${count === 1 ? "solicitud" : "solicitudes"} esperando tu aprobación`,
+      greeting: `Hola ${safeHostName},`,
+      body: `${count === 1 ? "Una persona está esperando" : `${count} personas están esperando`} a que las apruebes para entrar a tu pool <strong>${safePoolName}</strong>.`,
+      consequence: count === 1
+        ? "Mientras no la apruebes, no podrá hacer pronósticos."
+        : "Mientras no las apruebes, no podrán hacer pronósticos.",
+      listLabel: count === 1 ? "Esperando aprobación" : "Esperando aprobación",
+      helpText: "Entra al panel de tu pool, abre la pestaña de miembros y aprueba o rechaza cada solicitud.",
+      cta: count === 1 ? "Revisar solicitud" : "Revisar solicitudes",
+      disclaimerTitle: "¿No quieres aprobar manualmente?",
+      disclaimerBody: "Puedes desactivar la aprobación obligatoria en la configuración de tu pool. Las próximas personas que usen el código de invitación entrarán de inmediato sin esperar tu visto bueno.",
+      disclaimerCta: "Cambiar configuración del pool",
+      preheader: `${count} ${count === 1 ? "solicitud pendiente" : "solicitudes pendientes"} en "${safePoolName}".`,
+    },
+    en: {
+      heading: `🔔 ${count} ${count === 1 ? "request" : "requests"} waiting for your approval`,
+      greeting: `Hi ${safeHostName},`,
+      body: `${count === 1 ? "One person is waiting" : `${count} people are waiting`} for you to approve them into your pool <strong>${safePoolName}</strong>.`,
+      consequence: count === 1
+        ? "Until you approve, they can't make picks."
+        : "Until you approve them, they can't make picks.",
+      listLabel: "Awaiting approval",
+      helpText: "Open your pool's admin panel, go to the members tab and approve or reject each request.",
+      cta: count === 1 ? "Review request" : "Review requests",
+      disclaimerTitle: "Don't want to approve manually?",
+      disclaimerBody: "You can turn off mandatory approval in your pool's settings. The next people who use the invite code will join instantly without waiting for your sign-off.",
+      disclaimerCta: "Change pool settings",
+      preheader: `${count} pending ${count === 1 ? "request" : "requests"} in "${safePoolName}".`,
+    },
+    pt: {
+      heading: `🔔 ${count} ${count === 1 ? "solicitação" : "solicitações"} aguardando sua aprovação`,
+      greeting: `Olá ${safeHostName},`,
+      body: `${count === 1 ? "Uma pessoa está esperando" : `${count} pessoas estão esperando`} sua aprovação para entrar no seu bolão <strong>${safePoolName}</strong>.`,
+      consequence: count === 1
+        ? "Enquanto você não aprovar, ela não pode fazer palpites."
+        : "Enquanto você não aprovar, elas não podem fazer palpites.",
+      listLabel: "Aguardando aprovação",
+      helpText: "Entre no painel do seu bolão, abra a aba de membros e aprove ou rejeite cada solicitação.",
+      cta: count === 1 ? "Revisar solicitação" : "Revisar solicitações",
+      disclaimerTitle: "Não quer aprovar manualmente?",
+      disclaimerBody: "Você pode desativar a aprovação obrigatória nas configurações do seu bolão. As próximas pessoas que usarem o código de convite entrarão imediatamente sem aguardar sua aprovação.",
+      disclaimerCta: "Mudar configurações do bolão",
+      preheader: `${count} ${count === 1 ? "solicitação pendente" : "solicitações pendentes"} em "${safePoolName}".`,
+    },
+  };
+  const t = i18n[locale] ?? i18n.en!;
+
+  const memberListHtml = pendingMembers.map((m) =>
+    `<tr><td style="padding:8px 12px;border-bottom:1px solid #FDE68A;font-size:15px;color:${BRAND.textColor};">⏳ ${escapeHtml(m.name)}</td></tr>`
+  ).join("");
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getParagraph(`<em style="color:${BRAND.mutedColor};">${t.consequence}</em>`)}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0;border:1px solid #FCD34D;border-radius:8px;overflow:hidden;background-color:#FFFBEB;">
+      <tr><td style="padding:10px 12px;background-color:#FEF3C7;font-size:13px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.05em;">🔔 ${t.listLabel}</td></tr>
+      ${memberListHtml}
+      <tr><td style="padding:10px 12px;background-color:#FFFBEB;font-size:13px;color:#78350F;">${t.helpText}</td></tr>
+    </table>
+    ${getButton(t.cta, reviewUrl)}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:32px 0 0;padding-top:20px;border-top:1px solid #E5E7EB;">
+      <tr>
+        <td style="padding:0;font-size:13px;line-height:1.6;color:${BRAND.mutedColor};">
+          <strong style="color:${BRAND.textColor};">${t.disclaimerTitle}</strong><br/>
+          ${t.disclaimerBody}<br/>
+          <a href="${settingsUrl}" style="color:${BRAND.primaryColor};text-decoration:underline;">${t.disclaimerCta}</a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
 // TEMPLATE: PHASE COMPLETION SUMMARY
 // =========================================================================
 

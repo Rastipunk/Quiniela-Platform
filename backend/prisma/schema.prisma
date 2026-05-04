@@ -404,6 +404,28 @@ model Pool {
   // Sin esto, una ráfaga de bots intentando unirse al mismo pool generaría un email por intento.
   lastBlockedAttemptNotifiedAt DateTime?
 
+  // Pending-approval digest throttle (ADR-058 — daily reminder for hosts).
+  //
+  // The digest cron fires daily; we want to keep nagging the host while there
+  // are PENDING_APPROVAL members, but NOT forever if they ignore us. The
+  // contract:
+  //   • If the set of pending members CHANGES (someone new arrives, or one
+  //     gets resolved), reset both fields → start a fresh streak.
+  //   • If the set stays IDENTICAL for ≥ 7 calendar days, stop sending.
+  //   • A new arrival or resolution after that silent period kicks the
+  //     streak off again.
+  //
+  // `pendingDigestPendingHash` is a stable hash of the sorted PoolMember IDs
+  // that were PENDING_APPROVAL the last time we sent (or skipped) the digest.
+  // Comparing against the current hash on each tick is O(1) and avoids
+  // storing the full list per pool.
+  //
+  // `pendingDigestStreakStartAt` is the first day of the current streak —
+  // i.e. the first time we sent the digest with this exact pending set. We
+  // use it to enforce the 7-day cap.
+  pendingDigestPendingHash    String?
+  pendingDigestStreakStartAt  DateTime?
+
   members          PoolMember[]
   invites          PoolInvite[]
   corporateInvites CorporateInvite[]

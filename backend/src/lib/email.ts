@@ -28,6 +28,7 @@ import {
   getPredictionUpdateTemplate,
   getPaymentReceiptTemplate,
   getNewMemberDigestTemplate,
+  getPendingApprovalDigestTemplate,
   getPhaseCompletionSummaryTemplate,
   PasswordResetEmailParams,
   VerificationEmailParams,
@@ -1509,6 +1510,63 @@ export async function sendNewMemberDigestEmail(params: {
     return { success: true };
   } catch (err) {
     console.error("❌ Excepción al enviar new member digest:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// PENDING APPROVAL DIGEST (daily reminder for hosts with pending requests)
+// =========================================================================
+// Sent daily at the digest cron tick. Throttled at the service layer:
+// 7 consecutive days while the pending set stays the same → then silent
+// until a new request arrives or one is resolved.
+//
+// Respects User.emailNotificationsEnabled and User.emailNewMemberDigest
+// (we deliberately reuse the same opt-out as the new-member digest so the
+// host has a single switch to silence "daily summary" emails about their
+// pool).
+
+export async function sendPendingApprovalDigestEmail(params: {
+  to: string;
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  pendingMembers: { name: string }[];
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || "en";
+  const count = params.pendingMembers.length;
+  const subjects: Record<string, string> = {
+    es: `🔔 ${count} ${count === 1 ? "solicitud" : "solicitudes"} esperando tu aprobación en "${params.poolName}"`,
+    en: `🔔 ${count} ${count === 1 ? "request" : "requests"} waiting for your approval in "${params.poolName}"`,
+    pt: `🔔 ${count} ${count === 1 ? "solicitação" : "solicitações"} aguardando aprovação em "${params.poolName}"`,
+  };
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.en!,
+      html: getPendingApprovalDigestTemplate({
+        hostName: params.hostName,
+        poolName: params.poolName,
+        poolId: params.poolId,
+        pendingMembers: params.pendingMembers,
+        locale: loc,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error al enviar pending approval digest:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Pending approval digest enviado:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Excepción al enviar pending approval digest:", err);
     return { success: false, error: String(err) };
   }
 }
