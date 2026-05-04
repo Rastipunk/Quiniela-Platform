@@ -1,5 +1,7 @@
 # Technical Debt — Post-Mundial Backlog
 
+> **Last Updated:** 2026-05-04
+>
 > **Purpose:** items the deep-audit (2026-04-22) flagged as refactor-class
 > improvements that are **not shipping before the 2026 World Cup**. They
 > are tracked here so (a) nobody rediscovers them in six months, and
@@ -141,7 +143,13 @@ For each candidate: query MP's `/v1/payments/<id>` API with the row's `polarOrde
 
 ## ⚠️ Pre-existing test failures (not from this audit)
 
-12 tests fail in `pickPresets.test.ts` (`generateDynamicPresetConfig — BASIC preset dynamic generation` etc.) and `email.test.ts` (`isEmailEnabled — Platform Settings`). They were failing before the audit started and continue to fail after; my changes did not introduce nor fix them. Confirmed by checking out HEAD pre-audit and re-running. Likely related to expectations against config that drifted in earlier sprints. Surface area is unrelated to the corporate flow / payments.
+As of 2026-05-04 the backend suite reports **13 failing tests / 601 passing (614 total across 28 test files)**. The failures cluster in three places:
+
+- `lib/email.test.ts` — `isEmailEnabled` expectations against `PlatformSettings` defaults that drifted (deadline reminder default flipped, master toggle interaction).
+- `lib/pickPresets.test.ts` — `generateDynamicPresetConfig` for CUMULATIVE / BASIC presets; expected point values diverged from the engine after the cumulative-system rewrite.
+- `services/groupStandingsService.test.ts` — `upsertGroupStandingsPick` happy path; mock setup hasn't kept up with the deadline + lockedPhases enforcement added in the Wave 2 fixes.
+
+None are introduced by recent doc work; they were failing before and continue to fail. Surface area is unrelated to corporate flow / payments / scraper / analytics. Tracked here so the post-mundial cleanup pass picks them up alongside the test-coverage gap above.
 
 ---
 
@@ -150,6 +158,17 @@ For each candidate: query MP's `/v1/payments/<id>` API with the row's `polarOrde
 - Prometheus counters exposed on a `/metrics` endpoint: `events_sent_total{provider,event}`, `events_failed_total{provider,event}`, `dlq_size_gauge{provider}`, `payment_status_total{status}`.
 - Alerting: DLQ backlog > 100 for > 1h, or oldest unresolved event > 6h old. Today the `/admin/analytics-health` endpoint surfaces both numbers but nobody is polling it on a schedule.
 - Per-sink daily summary email to admin at UTC midnight.
+
+---
+
+## 🔢 `package.json` version vs CHANGELOG
+
+`backend/package.json` and `frontend-next/package.json` both report `"version": "0.6.0"`. `CHANGELOG.md` records releases up to `[0.11.0] — 2026-05-03`. The package files have not been bumped since the 0.6.0 corporate launch in March; subsequent releases land on `main` without touching `version`. Two acceptable resolutions:
+
+1. **Bump both `package.json` files to `0.11.0`** so `/health`'s reported version, the SPA's footer build tag, and the changelog all agree.
+2. **Switch to commit-SHA versioning** in `/health` and accept the package version as a static legacy field.
+
+Pick one in the post-mundial cleanup. Until then `/health` reports `v0.6.0` and that is misleading to anyone debugging.
 
 ---
 
