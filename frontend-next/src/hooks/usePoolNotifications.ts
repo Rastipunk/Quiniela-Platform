@@ -125,11 +125,14 @@ export function calculateTabBadges(notifications: PoolNotifications | null) {
     // Tab Resumen: sin badges
     resumen: 0,
 
-    // Tab Jugadores: sin badges por ahora
-    jugadores: 0,
+    // Tab Jugadores: solicitudes pendientes (mover-aquí desde Admin —
+    // es el lugar natural donde el host gestiona miembros, así no tiene
+    // que ir al tab Admin sólo para aprobar a alguien).
+    jugadores: notifications.pendingJoins,
 
-    // Tab Admin: solicitudes pendientes + fases listas
-    admin: notifications.pendingJoins + notifications.phasesReadyToAdvance.length,
+    // Tab Admin: fases listas para avanzar (lo de aprobar miembros
+    // vive ahora en Jugadores).
+    admin: notifications.phasesReadyToAdvance.length,
   };
 }
 

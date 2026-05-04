@@ -7,6 +7,7 @@ import type { PoolOverview } from "@/lib/api";
 import type { ExpulsionModalData } from "./poolTypes";
 import { MemberManagement } from "./admin/MemberManagement";
 import { ExpulsionModal } from "./admin/ExpulsionModal";
+import { PendingJoinRequests } from "./admin/PendingJoinRequests";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
 
 interface PoolPlayersTabProps {
@@ -20,11 +21,22 @@ interface PoolPlayersTabProps {
   setError: (error: string | null) => void;
   friendlyError: (e: any) => string;
   reload: () => Promise<void>;
+  userTimezone: string | null;
+  /**
+   * Pending-approval data lifted from the pool page so we can show
+   * <PendingJoinRequests/> at the top of the Players tab. The host
+   * lands here whenever the sidebar badge fires; we don't want them
+   * to also have to switch to Admin to see who's waiting.
+   */
+  pendingMembers: any[];
+  loadPendingMembers: () => Promise<void>;
+  refetchNotifications: () => void;
 }
 
 export function PoolPlayersTab({
   poolId, token, overview, isMobile,
   busyKey, setBusyKey, error, setError, friendlyError, reload,
+  userTimezone, pendingMembers, loadPendingMembers, refetchNotifications,
 }: PoolPlayersTabProps) {
   const t = useTranslations("pool");
   const [expulsionModalData, setExpulsionModalData] = useState<ExpulsionModalData | null>(null);
@@ -39,6 +51,19 @@ export function PoolPlayersTab({
       borderRadius: radii["3xl"],
       background: colors.white,
     }}>
+      {/* Pending join requests — host-only; renders nothing when there are no
+          pending members so non-host viewers and clean pools don't get a hole
+          at the top of the tab. */}
+      {overview.permissions.canManageResults && (
+        <PendingJoinRequests
+          poolId={poolId} token={token} pendingMembers={pendingMembers}
+          busyKey={busyKey} setBusyKey={setBusyKey} setError={setError}
+          friendlyError={friendlyError} userTimezone={userTimezone}
+          reload={reload} refetchNotifications={refetchNotifications}
+          loadPendingMembers={loadPendingMembers}
+        />
+      )}
+
       {/* Corporate: Excel invite flow */}
       {isCorporate && (
         <CorporateEmployeeManager

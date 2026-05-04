@@ -773,6 +773,10 @@ export default function PoolPage() {
                   poolId={poolId!} token={token} overview={overview} isMobile={isMobile}
                   busyKey={busyKey} setBusyKey={setBusyKey} error={error} setError={setError}
                   friendlyError={friendlyError} reload={load}
+                  userTimezone={userTimezone}
+                  pendingMembers={pendingMembers}
+                  loadPendingMembers={loadPendingMembers}
+                  refetchNotifications={refetchNotifications}
                 />
               )}
 
@@ -798,7 +802,6 @@ export default function PoolPage() {
                   friendlyError={friendlyError} phases={phases} getPhaseStatus={getPhaseStatus}
                   hasPhaseAdvanced={hasPhaseAdvanced} nextPhaseMap={nextPhaseMap}
                   notifications={notifications} tabBadges={tabBadges}
-                  pendingMembers={pendingMembers} loadPendingMembers={loadPendingMembers}
                 />
               )}
 

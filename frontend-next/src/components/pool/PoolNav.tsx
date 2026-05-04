@@ -273,7 +273,7 @@ export function PoolNavItems({
           {item.icon}
         </span>
         <span style={{ flex: 1, minWidth: 0 }}>{t(item.labelKey)}</span>
-        {badge > 0 && <NotificationBadge count={badge} pulse={pulseBadge} />}
+        {badge > 0 && <NotificationBadge count={badge} pulse={pulseBadge} variant="inline" />}
       </button>
     );
   }

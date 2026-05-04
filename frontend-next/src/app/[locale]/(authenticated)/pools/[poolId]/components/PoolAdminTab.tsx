@@ -8,7 +8,6 @@ import { NotificationBanner } from "@/components/NotificationBanner";
 import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
 import { AdminSettingsToggles } from "./admin/AdminSettingsToggles";
 import { PhaseStatusPanel } from "./admin/PhaseStatusPanel";
-import { PendingJoinRequests } from "./admin/PendingJoinRequests";
 
 interface PoolAdminTabProps extends PoolTabBaseProps {
   phases: PhaseData[];
@@ -17,15 +16,13 @@ interface PoolAdminTabProps extends PoolTabBaseProps {
   nextPhaseMap: Record<string, string | null>;
   notifications: any;
   tabBadges: Record<string, number>;
-  pendingMembers: any[];
-  loadPendingMembers: () => Promise<void>;
 }
 
 export function PoolAdminTab({
   poolId, token, overview, isMobile, busyKey, setBusyKey, error, setError,
   userTimezone, reload, refetchNotifications, friendlyError,
   phases, getPhaseStatus, hasPhaseAdvanced, nextPhaseMap,
-  notifications, tabBadges, pendingMembers, loadPendingMembers,
+  notifications, tabBadges,
 }: PoolAdminTabProps) {
   const t = useTranslations("pool");
 
@@ -33,18 +30,11 @@ export function PoolAdminTab({
     <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
       <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, marginBottom: 16 }}>⚙️ {t("admin.title")}</h3>
 
-      {/* Notification Banner for Admin tab */}
+      {/* Notification banner — only phase-advancement signals belong here.
+          Pending-approval was moved to the Players tab where the host
+          actually does member management. */}
       {notifications && (tabBadges.admin > 0) && (() => {
         const bannerItems: { icon: string; message: string }[] = [];
-
-        if (notifications.pendingJoins > 0) {
-          bannerItems.push({
-            icon: "👤",
-            message: notifications.pendingJoins > 1
-              ? t("admin.notifications.pendingJoinsPlural", { count: notifications.pendingJoins })
-              : t("admin.notifications.pendingJoins", { count: notifications.pendingJoins })
-          });
-        }
 
         if (notifications.phasesReadyToAdvance.length > 0) {
           bannerItems.push({
@@ -74,17 +64,6 @@ export function PoolAdminTab({
         nextPhaseMap={nextPhaseMap} busyKey={busyKey} setBusyKey={setBusyKey}
         setError={setError} friendlyError={friendlyError} reload={reload}
       />
-
-      {/* Pending Join Requests Section */}
-      {overview.permissions.canManageResults && (
-        <PendingJoinRequests
-          poolId={poolId} token={token} pendingMembers={pendingMembers}
-          busyKey={busyKey} setBusyKey={setBusyKey} setError={setError}
-          friendlyError={friendlyError} userTimezone={userTimezone}
-          reload={reload} refetchNotifications={refetchNotifications}
-          loadPendingMembers={loadPendingMembers}
-        />
-      )}
 
       {/* Archive Pool Section */}
       {overview.pool.status === "COMPLETED" && (
