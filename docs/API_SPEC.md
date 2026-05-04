@@ -152,7 +152,7 @@ Domain-specific error codes:
 
 **Response:**
 ```json
-{ "version": "v0.6.0", "commit": "abc1234", "timestamp": "2026-04-04T12:00:00.000Z" }
+{ "version": "v1.0.0", "commit": "abc1234", "timestamp": "2026-05-04T12:00:00.000Z" }
 ```
 
 ---

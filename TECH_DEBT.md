@@ -161,17 +161,6 @@ None are introduced by recent doc work; they were failing before and continue to
 
 ---
 
-## 🔢 `package.json` version vs CHANGELOG
-
-`backend/package.json` and `frontend-next/package.json` both report `"version": "0.6.0"`. `CHANGELOG.md` records releases up to `[0.11.0] — 2026-05-03`. The package files have not been bumped since the 0.6.0 corporate launch in March; subsequent releases land on `main` without touching `version`. Two acceptable resolutions:
-
-1. **Bump both `package.json` files to `0.11.0`** so `/health`'s reported version, the SPA's footer build tag, and the changelog all agree.
-2. **Switch to commit-SHA versioning** in `/health` and accept the package version as a static legacy field.
-
-Pick one in the post-mundial cleanup. Until then `/health` reports `v0.6.0` and that is misleading to anyone debugging.
-
----
-
 **Review cadence:** re-evaluate this list in the first retro after the
 World Cup final (2026-07-19). Items that are still irrelevant then can
 be deleted; items that have become urgent can be promoted to active

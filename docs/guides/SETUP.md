@@ -148,7 +148,7 @@ curl http://localhost:3000/health
 Expected response:
 
 ```json
-{ "version": "v0.6.0", "commit": "local", "timestamp": "..." }
+{ "version": "v1.0.0", "commit": "local", "timestamp": "..." }
 ```
 
 ---

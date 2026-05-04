@@ -311,7 +311,7 @@ curl https://api.picks4all.com/health
 Expected:
 
 ```json
-{ "version": "v0.6.0", "commit": "abc1234", "timestamp": "..." }
+{ "version": "v1.0.0", "commit": "abc1234", "timestamp": "..." }
 ```
 
 ---

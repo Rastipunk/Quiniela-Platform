@@ -1,8 +1,8 @@
 # Business Rules & Validations
 # Picks4All
 
-> **Version:** v0.6.0
-> **Last Updated:** 2026-05-03
+> **Version:** v1.0.0
+> **Last Updated:** 2026-05-04
 
 ---
 

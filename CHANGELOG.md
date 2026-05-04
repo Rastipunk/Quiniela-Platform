@@ -6,6 +6,32 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [1.0.0] — 2026-05-04
+
+### Production release
+
+The platform reaches **1.0** — production-stable, feature-complete for the 2026 World Cup launch, and aligned with the source-of-truth documentation. No new product features ship in this entry; the bump synchronises versioning across the codebase, the `/health` endpoint, and the changelog after a multi-week documentation audit.
+
+#### Versioning sync
+- `backend/package.json` and `frontend-next/package.json` bumped from `0.6.0` to `1.0.0`. Subsequent releases will land here as `[1.x.y]` per Keep a Changelog.
+- `BUILD_VERSION` in `backend/src/server.ts` updated to `v1.0.0`. `/health` now reports the canonical version (was stuck at `v0.6.0` despite ten releases of cumulative changes since March).
+- Documentation examples (API_SPEC, BUSINESS_RULES, DEPLOYMENT, SETUP) updated to show `v1.0.0` in `/health` snippets.
+
+#### Documentation alignment (no code changes)
+The 7-phase documentation revision that landed across `3e0bc4c → 08f2cca` is now part of 1.0:
+- CLAUDE.md, README.md, PRD.md aligned with scraper-first results, dual-gateway payments, and current admin tooling.
+- ARCHITECTURE.md and DATA_MODEL.md espejan el schema (32 modelos, 57+ migraciones), incluyendo `EmailSuppression`, `OrganizationBrandingAudit`, `FailedAnalyticsEvent`.
+- API_SPEC.md cubre los 28 routers reales (Payments, Webhooks, Unsubscribe, Analytics Dashboard documented por primera vez).
+- BUSINESS_RULES.md regla #6 corregida a "Scraper-First Results".
+- DECISION_LOG.md +6 ADRs nuevos (052 scraper-first, 053 Mercado Pago, 054 DLQ, 055 EmailSuppression, 056 OrganizationBrandingAudit, 057 admin dashboard) y 3 marcados Superseded (031, 036, 043).
+- GLOSSARY.md unificado contra `pickPresets.ts`, sin referencias a `PoolMemberRequest` (no existe), `SUSPENDED` (no existe), o `/docs/sot/` (no existe).
+- Las 6 guías de sistemas (EMAIL, SCORES, TOURNAMENT, ATTRIBUTION, ANALYTICS, PREDICTION_UPDATES) reflejan scraper-first y los flujos nuevos.
+
+#### Removed (TECH_DEBT cleanup)
+- "package.json version vs CHANGELOG" item retirado — resuelto por este bump.
+
+---
+
 ## [0.11.0] — 2026-05-03
 
 ### Deep audit — corporate flow hardening + payments correctness

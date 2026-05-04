@@ -1,6 +1,6 @@
 {
   "name": "picks4all-backend",
-  "version": "0.6.0",
+  "version": "1.0.0",
   "description": "Picks4All backend API",
   "main": "dist/server.js",
   "scripts": {

@@ -72,7 +72,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use(apiLimiter);
 
 // Health check
-const BUILD_VERSION = "v0.6.0";
+const BUILD_VERSION = "v1.0.0";
 const COMMIT_SHA = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || "local";
 
 app.get("/health", (_req, res) => {
