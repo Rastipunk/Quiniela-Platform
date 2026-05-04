@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { JsonLd } from "@/components/JsonLd";
 import { RegionalArticlePage } from "@/components/RegionalArticlePage";
@@ -9,8 +9,10 @@ import { buildPageMetadata } from "@/lib/seo";
 const PUBLISHED_AT = "2026-02-13T00:00:00Z";
 const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -32,8 +34,10 @@ const relatedLinks = [
   { key: "relatedPorra", href: "/porra-deportiva" },
 ];
 
-export default async function FootballPoolPage() {
-  const locale = await getLocale();
+export default async function FootballPoolPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("footballPool");
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;

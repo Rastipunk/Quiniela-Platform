@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Link } from "@/i18n/navigation";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -12,8 +12,10 @@ import { colors } from "@/lib/theme";
 const PUBLISHED_AT = "2026-02-13T00:00:00Z";
 const MODIFIED_AT = "2026-02-22T00:00:00Z";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -86,8 +88,10 @@ const articleStyle = {
   },
 };
 
-export default async function QueEsUnaQuinielaPage() {
-  const locale = await getLocale();
+export default async function QueEsUnaQuinielaPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   // IMPORTANT: messages/{locale}/whatIsQuiniela.json is loaded via dynamic import (not
   // registered in i18n/request.ts). DO NOT DELETE these files — see commit 27db35b
   // for the regression that occurred when they were removed.

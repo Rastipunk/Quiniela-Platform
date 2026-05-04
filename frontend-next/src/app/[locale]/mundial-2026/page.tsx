@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -44,8 +44,10 @@ const GROUP_FLAGS: Record<string, string[]> = {
 
 /* ────────────────── Metadata ────────────────── */
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -115,8 +117,10 @@ function getSubPages(locale: string): SubPage[] {
 
 /* ────────────────── Page Component ────────────────── */
 
-export default async function Mundial2026Page() {
-  const locale = await getLocale();
+export default async function Mundial2026Page({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("worldCup");
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;

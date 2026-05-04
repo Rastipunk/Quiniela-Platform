@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -11,8 +11,10 @@ import { buildPageMetadata } from "@/lib/seo";
 const PUBLISHED_AT = "2026-04-04T00:00:00Z";
 const MODIFIED_AT = "2026-04-16T00:00:00Z";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -58,8 +60,10 @@ interface HowToMessages {
   };
 }
 
-export default async function ComoHacerQuinielaPage() {
-  const locale = await getLocale();
+export default async function ComoHacerQuinielaPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const msg: HowToMessages = (
     await import(`@/messages/${locale}/worldCup.json`)
   ).default.howTo;

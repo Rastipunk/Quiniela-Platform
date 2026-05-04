@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
@@ -10,8 +10,10 @@ import { DEFAULT_REGION, getPoolTermParams } from "@/lib/poolTerms";
 import { SITE_URL } from "@/lib/siteConfig";
 import { buildPageMetadata } from "@/lib/seo";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -120,8 +122,10 @@ function StepItem({
   );
 }
 
-export default async function ComoFuncionaPage() {
-  const locale = await getLocale();
+export default async function ComoFuncionaPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   // IMPORTANT: messages/{locale}/howItWorks.json is loaded via dynamic import (not
   // registered in i18n/request.ts). DO NOT DELETE these files — see commit 27db35b
   // for the regression that occurred when they were removed.

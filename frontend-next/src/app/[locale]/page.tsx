@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { Suspense } from "react";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingContent } from "@/components/LandingContent";
 import { SITE_URL, WORLD_CUP_FOCUS } from "@/lib/siteConfig";
 import { buildPageMetadata } from "@/lib/seo";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   const useWorldCup = WORLD_CUP_FOCUS && locale === "es";
   const title = useWorldCup ? t("home.titleWorldCup") : t("home.title");
@@ -24,8 +27,10 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
-export default async function LandingPage() {
-  const locale = await getLocale();
+export default async function LandingPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("jsonLd");
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
@@ -73,7 +78,13 @@ export default async function LandingPage() {
         }}
       />
       <PublicPageWrapper>
-        <LandingContent />
+        {/* Suspense boundary required because LandingContent reads
+            useSearchParams() (e.g. ?ref=, ?utm_*=). Without it the page
+            cannot be statically prerendered, which is what made the home
+            page emit Cache-Control: no-store and stay un-indexed. */}
+        <Suspense fallback={null}>
+          <LandingContent />
+        </Suspense>
       </PublicPageWrapper>
     </>
   );

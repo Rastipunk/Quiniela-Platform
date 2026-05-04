@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -10,8 +10,10 @@ import { buildPageMetadata } from "@/lib/seo";
 
 // ── Metadata ─────────────────────────────────────────────────
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -184,8 +186,10 @@ const PHASES = [
 
 // ── Page Component ───────────────────────────────────────────
 
-export default async function CalendarioPage() {
-  const locale = await getLocale();
+export default async function CalendarioPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("worldCup.schedule");
 
   const baseUrl = SITE_URL;

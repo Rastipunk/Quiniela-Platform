@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
 import { PrivacidadContent } from "./PrivacidadContent";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { SITE_URL } from "@/lib/siteConfig";
 import { buildPageMetadata } from "@/lib/seo";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("seo");
   return buildPageMetadata({
     locale,
@@ -16,8 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
-export default async function PrivacidadPage() {
-  const locale = await getLocale();
+export default async function PrivacidadPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+
+  setRequestLocale(locale);
   const t = await getTranslations("legal");
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
