@@ -1,6 +1,6 @@
 # Testing Guide
 
-> **Last updated:** 2026-04-04
+> **Last updated:** 2026-05-04
 
 ---
 
@@ -28,26 +28,30 @@ npm run test:coverage # With coverage report
 
 ### Structure
 
-```
-backend/src/
-├── lib/
-│   ├── scoringAdvanced.test.ts     # Scoring engine (38 tests)
-│   ├── scoringBreakdown.test.ts    # Score breakdown (38 tests)
-│   ├── pickPresets.test.ts         # Preset validation (36 tests)
-│   ├── serializers.test.ts         # Data serialization (3 tests)
-│   ├── jwt.test.ts                 # Token signing/verification (7 tests)
-│   ├── password.test.ts            # Hash/verify (4 tests)
-│   └── email.test.ts               # Email client readiness (2 tests)
-├── services/
-│   ├── poolStateMachine.test.ts    # State transitions (26 tests)
-│   └── deadlineReminderService.test.ts  # Reminder logic (20 tests)
-```
+Tests live next to the source file. Categories:
 
-### Current count: 196 tests
+| Area | Examples |
+|------|----------|
+| Scoring | `scoringAdvanced.test.ts`, `scoringBreakdown.test.ts`, `pickPresets.test.ts` |
+| Auth | `jwt.test.ts`, `password.test.ts`, `authService.security.test.ts`, `authService.activateCorporate.test.ts` |
+| Email | `email.test.ts`, `emailTemplates.xss.test.ts` (XSS regression for every template) |
+| Pool flows | `poolStateMachine.test.ts`, `poolHelpers.test.ts`, `poolCapacity.test.ts`, `poolCapacity.notify.test.ts` |
+| Picks / structural | `groupStandingsService.test.ts` |
+| Tournament | `tournamentAdvancement.test.ts` |
+| Reminders | `deadlineReminderService.test.ts` |
+| Payments | `paymentService.test.ts`, `payments.test.ts` (route layer) |
+| Validation | `schemas.test.ts`, `constants.test.ts`, `fixture.test.ts` |
+| Branding | `brand.test.ts` |
+| Pricing | `pricing.test.ts` (USD/COP parity) |
+| Misc | `serializers.test.ts`, `corporateService.test.ts`, `rateLimit.test.ts` |
+
+### Current count
+
+~28 test files / ~600+ tests. Run `npm test -- --run` to see the live total.
 
 ### Adding new tests
 
-Follow the existing pattern: co-locate `*.test.ts` next to the source file. Mock Prisma with `vi.mock("../db")`.
+Follow the existing pattern: co-locate `*.test.ts` next to the source file. Mock Prisma with `vi.mock("../db")`. Integration tests that need a real DB go through `vitest.integration.config.ts` (run with `npm run test:integration`).
 
 ---
 
@@ -157,20 +161,9 @@ When adding a new public page: add it to `pages.ts` and all test suites pick it 
 
 ### New API endpoint
 
-Future: integration tests will be added in Phase 4 (see testing roadmap below).
+Route-level tests already exist (see `backend/src/routes/payments.test.ts` for the canonical pattern: mock the service layer, exercise the HTTP handler). Add a sibling `routes/<name>.test.ts` and stub `req`/`res` via Vitest mocks.
 
----
-
-## Testing Roadmap
-
-| Phase | Status | Tests |
-|-------|--------|-------|
-| 1. E2E public pages (Playwright) | Done | ~100 tests |
-| 2. E2E auth + pool flows | Planned | ~25 tests |
-| 3. Backend unit tests expansion | Planned | ~80 tests |
-| 4. Backend API integration tests | Planned | ~50 tests |
-| 5. i18n completeness validation | Planned | ~10 tests |
-| 6. Visual regression screenshots | Planned | ~15 tests |
+For tests that need real Prisma, add them to the integration config and run with `npm run test:integration`.
 
 ---
 
@@ -178,13 +171,14 @@ Future: integration tests will be added in Phase 4 (see testing roadmap below).
 
 ```bash
 # Backend
-cd backend && npm test                        # 196 unit tests
+cd backend && npm test -- --run         # All unit tests
+cd backend && npm run test:integration  # Tests that hit real Prisma
 
 # Frontend E2E (production)
-cd frontend-next && npx playwright test       # All E2E tests
+cd frontend-next && npx playwright test
 
 # Frontend E2E (local)
-cd frontend-next && BASE_URL=http://localhost:3000 npx playwright test
+cd frontend-next && BASE_URL=http://localhost:3001 npx playwright test
 
 # View report
 cd frontend-next && npx playwright show-report

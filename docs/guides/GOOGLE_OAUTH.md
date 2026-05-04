@@ -1,5 +1,7 @@
 # Google OAuth Setup Guide
 
+> **Last Updated:** 2026-05-04
+
 Esta guía explica cómo configurar Google OAuth para permitir que los usuarios inicien sesión con su cuenta de Google.
 
 ## 📋 Requisitos Previos
@@ -81,11 +83,11 @@ Revisa la información y haz clic en **"Volver al panel"**
 2. **Nombre:** `Picks4All Web Client` (o el que prefieras)
 
 3. **Orígenes de JavaScript autorizados:**
-   - Para desarrollo local: `http://localhost:3000`
+   - Para desarrollo local: `http://localhost:3001` (puerto del frontend; el backend usa 3000)
    - Para producción: `https://picks4all.com`
 
 4. **URIs de redirección autorizados:**
-   - Para desarrollo: `http://localhost:3000`
+   - Para desarrollo: `http://localhost:3001`
    - Para producción: `https://picks4all.com`
 
    > **Nota:** Google Sign In no requiere URIs de redirección específicos como `/callback`, solo el origen.
@@ -157,7 +159,7 @@ cd frontend-next
 npm run dev
 ```
 
-Ve a `http://localhost:3000` y deberías ver:
+Ve a `http://localhost:3001` (puerto del frontend) y deberías ver:
 - El formulario de login normal
 - Una línea divisoria que dice "o continúa con"
 - El **botón de Google Sign In** (azul con el logo de Google)
@@ -212,7 +214,7 @@ Para MVP, quédate en modo "Externo" con usuarios de prueba.
 **Solución:**
 1. Ve a Google Cloud Console → Credenciales
 2. Edita tu OAuth 2.0 Client ID
-3. Agrega `http://localhost:3000` a "Orígenes de JavaScript autorizados"
+3. Agrega `http://localhost:3001` a "Orígenes de JavaScript autorizados" (puerto del frontend)
 4. Guarda y espera 5 minutos para que se propague
 
 ### Error: "redirect_uri_mismatch"

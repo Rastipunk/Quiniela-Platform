@@ -1,7 +1,7 @@
 # Local Development Setup
 # Picks4All
 
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-05-04
 
 ---
 
@@ -86,13 +86,19 @@ cp .env.example .env
 
 | Variable | Purpose |
 |----------|---------|
-| `FRONTEND_URL` | Frontend origin for CORS (default: `http://localhost:3000`) |
+| `FRONTEND_URL` | Frontend origin for CORS and email links (default: `http://localhost:3001`) |
 | `PORT` | API port (default: `3000`) |
-| `GOOGLE_CLIENT_ID` | Google OAuth -- leave empty to disable |
-| `RESEND_API_KEY` | Email sending -- leave empty to skip emails |
-| `RESEND_FROM_EMAIL` | Sender address for emails |
-| `API_FOOTBALL_KEY` | Sports data API -- leave empty to disable |
-| `SMART_SYNC_ENABLED` | Set `"true"` to enable auto-result sync |
+| `GOOGLE_CLIENT_ID` | Google OAuth — leave empty to disable |
+| `RESEND_API_KEY` | Email sending via Resend — leave empty to silently skip emails |
+| `RESEND_FROM_EMAIL` | Sender address for emails (e.g. `Picks4All <noreply@picks4all.com>`) |
+| `API_FOOTBALL_KEY` | API-Football fallback layer — leave empty to disable |
+| `SMART_SYNC_ENABLED` | `"true"` to enable the API-Football fallback cron |
+| `SCORES_SERVICE_URL` / `SCORES_SERVICE_API_KEY` | picks4all-scores client (primary live-scoring layer). Leave empty to disable. |
+| `MP_ACCESS_TOKEN` / `MP_PUBLIC_KEY` / `MP_WEBHOOK_SECRET` | Mercado Pago (COP). Optional locally — checkout endpoints will return 503 without them. |
+| `POLAR_API_KEY` / `POLAR_WEBHOOK_SECRET` | Polar.sh (USD). Same. |
+| `GA4_MEASUREMENT_ID` / `GA4_API_SECRET` | Server-side GA4. `sendGa4Event` no-ops silently when unset. |
+| `META_PIXEL_ID` / `META_CAPI_ACCESS_TOKEN` | Meta CAPI. Same. |
+| `BRAND_COLORS_JSON` | Runtime brand override (backend only). |
 
 ### 3.2 Database Migration
 
@@ -159,23 +165,32 @@ npm install
 Create `.env.local`:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:3000
-NEXT_PUBLIC_SITE_URL=http://localhost:3001
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=           # Optional: Google OAuth client ID
-NEXT_PUBLIC_GA_ID=                       # Optional: Google Analytics ID
+# Required
+NEXT_PUBLIC_API_URL=http://localhost:3000          # Backend API
+NEXT_PUBLIC_SITE_URL=http://localhost:3001         # This frontend
+
+# Optional
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=                      # Google OAuth client ID
+NEXT_PUBLIC_GTM_ID=                                # Google Tag Manager (loads GA4 + consent mode)
+NEXT_PUBLIC_META_PIXEL_ID=                         # Meta Pixel id (must match backend META_PIXEL_ID)
+NEXT_PUBLIC_LIVE_POLL_INTERVAL_MS=15000            # Live-match auto-refresh
+NEXT_PUBLIC_PERSONAL_FREE_LIMIT=20                 # Free tier cap (personal)
+NEXT_PUBLIC_CORPORATE_FREE_LIMIT=2                 # Free tier cap (corporate) — match backend
+NEXT_PUBLIC_BASE_PRICE_COP=28500                   # COP base price per 50-player block
+NEXT_PUBLIC_CORPORATE_BASE_PRICE_COP=200000        # COP corporate base (100 players)
 ```
+
+The legacy `NEXT_PUBLIC_GA_ID` is no longer read — GA4 is loaded by GTM, so `NEXT_PUBLIC_GTM_ID` is what matters.
 
 ### 4.2 Start Development Server
 
-```bash
-npm run dev
-```
-
-Frontend runs on `http://localhost:3000` by default. If the backend is also on port 3000, start the frontend on a different port:
+The backend already occupies port 3000, so the frontend goes on 3001:
 
 ```bash
 PORT=3001 npm run dev
 ```
+
+Visit `http://localhost:3001`. If you launch with the default `npm run dev` (no `PORT`) you'll see a port-conflict error — either start the frontend first OR use the `PORT=3001` form above.
 
 ---
 

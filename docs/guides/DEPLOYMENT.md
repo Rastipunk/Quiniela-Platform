@@ -1,7 +1,7 @@
 # Production Deployment
 # Picks4All
 
-> **Last Updated:** 2026-04-04
+> **Last Updated:** 2026-05-04
 
 ---
 
@@ -353,13 +353,20 @@ railway run npx prisma migrate deploy  # Apply pending migrations
 
 ### Cron Jobs
 
-Three background jobs run automatically:
+Ten background jobs run automatically (all started in `server.ts`, configured via env-var cron expressions):
 
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| Smart Sync | Every minute | Polls API-Football for match results |
-| Phase Sync | Every 12 hours (08:00/20:00 UTC) | Retries pending phase configurations |
-| Deadline Reminders | Daily (12:00 UTC) | Sends pick reminders for upcoming matches |
+| Job | Default schedule | Purpose |
+|-----|------------------|---------|
+| Live Scores (`liveScoresJob`) | 15 s during match windows | **Primary** results channel — polls picks4all-scores. Gated by `PlatformSettings.scoresServiceEnabled`. |
+| Smart Sync (`smartSyncJob`) | `SMART_SYNC_CRON` (default `* * * * *`) | API-Football fallback — only publishes results the scraper hasn't already reported. |
+| Result Sync legacy (`resultSyncJob`) | inactive | Kept for backfill. |
+| Phase Sync (`phaseSyncJob`) | `PHASE_SYNC_CRON` (default `0 8,20 * * *`) | Drains the `PendingPhaseSync` queue. |
+| Deadline Reminders (`deadlineReminderJob`) | `DEADLINE_REMINDER_CRON` (default `0 12 * * *`) | Sends 48h pre-kickoff reminders (excludes muted pools). |
+| Fixture Tracking (`fixtureTrackingJob`) | `FIXTURE_TRACKING_CRON` (default `0 * * * *`) | Registers upcoming fixtures with picks4all-scores. |
+| Fixture Verification (`fixtureVerificationJob`) | `FIXTURE_VERIFY_CRON` (default `0 6 * * *`) | Re-verifies external mappings stay aligned. |
+| New-Member Digest (`newMemberDigestJob`) | `NEW_MEMBER_DIGEST_CRON` (default `0 13 * * *`) | Daily host digest of new joiners. |
+| CAPI Retry (`capiRetryJob`) | `ANALYTICS_RETRY_CRON` (default `*/5 * * * *`) | Drains the `FailedAnalyticsEvent` DLQ. Postgres advisory lock makes multi-replica deploys safe. |
+| Track Status (`trackStatusCheckerJob`) | `TRACK_STATUS_CHECK_CRON` (default `* * * * *`) | External status monitoring. |
 
 All jobs log their activity to stdout (visible in Railway logs).
 
@@ -374,9 +381,14 @@ All jobs log their activity to stdout (visible in Railway logs).
 
 | Pattern | Meaning |
 |---------|---------|
-| `[SmartSyncJob]` | Smart Sync execution |
+| `[LiveScoresJob]` | picks4all-scores polling tick |
+| `[SmartSyncJob]` | API-Football fallback execution |
 | `[PhaseSyncJob]` | Phase sync retry attempts |
 | `[DeadlineReminderJob]` | Deadline reminder processing |
+| `[NewMemberDigestJob]` | Daily new-member digest send |
+| `[FixtureTrackingJob]` / `[FixtureVerifyJob]` | Fixture registration / verification |
+| `[CapiRetryJob]` | DLQ drainer tick |
+| `[TrackStatusCheck]` | External status monitor |
 | `Server running on port` | Backend startup |
 | `Environment validation failed` | Missing required env var |
 
