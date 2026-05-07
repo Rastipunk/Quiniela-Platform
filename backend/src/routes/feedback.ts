@@ -62,10 +62,10 @@ feedbackRouter.post("/", feedbackLimiter, optionalAuth, async (req, res) => {
     },
   });
 
-  // Notificar al admin por email (fire and forget)
+  // Notify the support inbox (fire and forget)
   sendAdminNotification({
     subject: `${escapeHtml(type)}: ${escapeHtml(message.substring(0, 60))}${message.length > 60 ? "..." : ""}`,
-    type: "feedback",
+    category: "feedback",
     body: `
       <p><strong>Tipo:</strong> ${escapeHtml(type)}</p>
       <p><strong>Mensaje:</strong> ${escapeHtml(message)}</p>

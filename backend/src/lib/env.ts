@@ -17,7 +17,13 @@ const envSchema = z.object({
   // Email (optional — features degrade gracefully without it)
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
+  // Internal notification routing — one inbox per category. Each is
+  // optional and falls back to ADMIN_NOTIFICATION_EMAIL if unset, so
+  // an undeployed env var never silently drops a notification.
   ADMIN_NOTIFICATION_EMAIL: z.string().optional(),
+  SUPPORT_NOTIFICATION_EMAIL: z.string().optional(),
+  ENTERPRISE_NOTIFICATION_EMAIL: z.string().optional(),
+  SALES_NOTIFICATION_EMAIL: z.string().optional(),
 
   // Google OAuth (optional)
   GOOGLE_CLIENT_ID: z.string().optional(),

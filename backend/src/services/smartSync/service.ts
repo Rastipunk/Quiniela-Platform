@@ -857,9 +857,11 @@ export class SmartSyncService {
     try {
       const { sendAdminNotification } = await import("../../lib/email");
       await sendAdminNotification({
-        subject: `⚠️ Fixture update: ${changes.length} match(es) changed`,
-        body: `Pre-kickoff verification detected changes in upcoming fixtures:\n\n${changes.map(c => `• ${c}`).join("\n")}\n\nAll pools have been updated automatically.`,
-        type: "error",
+        subject: `Fixtures actualizados: ${changes.length} partidos cambiaron`,
+        body: `<p>Pre-kickoff verification detected changes in upcoming fixtures:</p>
+               <ul>${changes.map((c) => `<li>${c}</li>`).join("")}</ul>
+               <p>All pools have been updated automatically.</p>`,
+        category: "system_event",
       });
     } catch { /* best-effort */ }
   }

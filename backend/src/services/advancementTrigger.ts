@@ -189,9 +189,9 @@ async function executeAdvancement(
     });
 
     sendAdminNotification({
-      subject: `Phase advanced: ${completedPhaseId} → ${nextPhaseId}`,
-      body: `<p>Pool <strong>${pool.name}</strong> automatically advanced from ${completedPhaseId} to ${nextPhaseId}.</p>`,
-      type: "feedback",
+      subject: `Pool "${pool.name}" avanzó: ${completedPhaseId} → ${nextPhaseId}`,
+      body: `<p>Pool <strong>${pool.name}</strong> automatically advanced from <code>${completedPhaseId}</code> to <code>${nextPhaseId}</code>.</p>`,
+      category: "system_event",
     }).catch(() => {});
 
     // Send phase completion summary emails to all members (fire-and-forget)
@@ -215,9 +215,9 @@ async function executeAdvancement(
       errMsg
     );
     sendAdminNotification({
-      subject: `Phase advancement FAILED: ${completedPhaseId} → ${nextPhaseId}`,
-      body: `<p>Pool ${poolId} failed to advance automatically.</p><p><strong>Error:</strong> ${errMsg}</p><p>Manual intervention required.</p>`,
-      type: "error",
+      subject: `Avance de fase falló: ${completedPhaseId} → ${nextPhaseId} (pool ${poolId})`,
+      body: `<p>Pool <code>${poolId}</code> failed to advance automatically.</p><p><strong>Error:</strong> ${errMsg}</p><p>Manual intervention required.</p>`,
+      category: "error",
     }).catch(() => {});
   }
 }

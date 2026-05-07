@@ -157,7 +157,7 @@ async function runFixtureVerification(): Promise<void> {
       .join("");
 
     sendAdminNotification({
-      subject: `Kickoff drift detected: ${allDrifts.length} fixtures`,
+      subject: `Drift de kickoff detectado en ${allDrifts.length} fixtures`,
       body: `<p>The daily fixture verification job detected kickoffs that differ from our database.</p>
 <p><strong>NO automatic update was performed</strong> — review and decide manually whether to update.</p>
 <table border="1" cellpadding="6" style="border-collapse:collapse">
@@ -165,7 +165,7 @@ async function runFixtureVerification(): Promise<void> {
   ${driftRows}
 </table>
 <p>Threshold: ${DRIFT_THRESHOLD_MS / 60_000} minutes</p>`,
-      type: "error",
+      category: "error",
     }).catch((err) => {
       console.error("[FixtureVerificationJob] sendAdminNotification failed:", err instanceof Error ? err.message : String(err));
     });

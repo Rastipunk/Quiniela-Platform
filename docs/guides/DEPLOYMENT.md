@@ -75,8 +75,11 @@ The frontend service is configured in Railway's dashboard (no `railway.toml`). I
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `RESEND_API_KEY` | Resend API key | `re_xxx` |
-| `RESEND_FROM_EMAIL` | Sender email address | `Picks4All <noreply@picks4all.com>` |
-| `ADMIN_NOTIFICATION_EMAIL` | Admin alert recipient | `admin@picks4all.com` |
+| `RESEND_FROM_EMAIL` | Sender address for user-facing transactional emails | `Picks4All <noreply@picks4all.com>` |
+| `ADMIN_NOTIFICATION_EMAIL` | Inbox for `error` + `system_event` notifications + fallback if any category-specific var below is unset | `admin@picks4all.com` |
+| `SUPPORT_NOTIFICATION_EMAIL` | Inbox for `feedback` notifications (beta feedback / bug reports) | `soporte@picks4all.com` |
+| `ENTERPRISE_NOTIFICATION_EMAIL` | Inbox for `corporate_inquiry` + `corporate_pool_created` | `empresas@picks4all.com` |
+| `SALES_NOTIFICATION_EMAIL` | Inbox for `payment_completed` (also copied to admin) | `ventas@picks4all.com` |
 
 #### Google OAuth
 
@@ -392,13 +395,22 @@ All jobs log their activity to stdout (visible in Railway logs).
 | `Server running on port` | Backend startup |
 | `Environment validation failed` | Missing required env var |
 
-### Admin Notifications
+### Internal Notifications
 
-The system sends admin notification emails (to `ADMIN_NOTIFICATION_EMAIL`) for:
+The system routes operator-facing notifications to one of four mailboxes
+based on a category, so each concern lands in a dedicated Gmail label:
 
-- New corporate inquiries.
-- Phase sync resolutions and failures.
-- New user feedback submissions.
+| Category | Default inbox | Triggered by |
+|----------|---------------|--------------|
+| `feedback` | `SUPPORT_NOTIFICATION_EMAIL` | New beta feedback / bug report submitted by a user |
+| `corporate_inquiry` | `ENTERPRISE_NOTIFICATION_EMAIL` | Lead-form submission on `/empresas` |
+| `corporate_pool_created` | `ENTERPRISE_NOTIFICATION_EMAIL` | A corporate pool is created via the wizard |
+| `payment_completed` | `SALES_NOTIFICATION_EMAIL` + `ADMIN_NOTIFICATION_EMAIL` | A payment is confirmed (Polar / Mercado Pago) |
+| `system_event` | `ADMIN_NOTIFICATION_EMAIL` | Phase advanced, fixtures updated, sync resolved |
+| `error` | `ADMIN_NOTIFICATION_EMAIL` | Phase sync failed, fixture tracking job failed, etc. |
+
+Any unset category-specific env var falls back to `ADMIN_NOTIFICATION_EMAIL`,
+so an unconfigured environment never silently drops notifications.
 
 ---
 

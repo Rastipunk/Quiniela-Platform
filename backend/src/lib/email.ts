@@ -24,6 +24,7 @@ import {
   getPasswordChangedTemplate,
   getMemberRemovedTemplate,
   getCorporateInquiryConfirmationTemplate,
+  getCorporateCheckinTemplate,
   getCorporateActivationTemplate,
   getPredictionUpdateTemplate,
   getPaymentReceiptTemplate,
@@ -55,7 +56,9 @@ if (!FROM_EMAIL && apiKey) {
 const APP_NAME = process.env.APP_NAME || "Picks4All";
 const SITE_DOMAIN = process.env.SITE_DOMAIN || "picks4all.com";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
+// Internal-notification routing addresses are looked up via
+// NOTIFICATION_INBOX_ENV inside the admin notifications block below;
+// no module-level ADMIN_EMAIL constant is needed.
 
 /** Returns the ready Resend client, or null with an error message */
 function getReadyClient(): { client: Resend; from: string } | null {
@@ -807,6 +810,71 @@ export async function sendCorporateInquiryConfirmationEmail(params: {
 }
 
 // =========================================================================
+// CORPORATE CHECK-IN EMAIL (proactive outreach to corporate hosts)
+// =========================================================================
+
+/**
+ * Sends a friendly check-in email to a corporate host inviting them to
+ * reply with any questions. Always sent from + reply-to the
+ * `empresas@picks4all.com` mailbox (the only enterprise address that
+ * exists — translated locale variants like `enterprise@` are NOT real
+ * mailboxes), so any reply lands where the team can answer regardless
+ * of the recipient's language.
+ */
+export async function sendCorporateCheckinEmail(params: {
+  to: string;
+  contactName: string;
+  companyName: string;
+  poolName: string;
+  poolUrl: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const locale = params.locale || DEFAULT_LOCALE;
+  const subjects: Record<string, string> = {
+    es: `¿Cómo podemos ayudarte con ${params.poolName}? — ${APP_NAME}`,
+    en: `How can we help with ${params.poolName}? — ${APP_NAME}`,
+    pt: `Como podemos ajudar com ${params.poolName}? — ${APP_NAME}`,
+  };
+  // Single canonical enterprise mailbox — no locale variants.
+  const ENTERPRISE_MAILBOX = "empresas@picks4all.com";
+  const fromI18n: Record<string, string> = {
+    es: `${APP_NAME} Empresas <${ENTERPRISE_MAILBOX}>`,
+    en: `${APP_NAME} for Business <${ENTERPRISE_MAILBOX}>`,
+    pt: `${APP_NAME} Empresas <${ENTERPRISE_MAILBOX}>`,
+  };
+  const corporateReady = { client: ready.client, from: fromI18n[locale] ?? fromI18n.es! };
+
+  try {
+    const { data, error } = await resilientSend(corporateReady, {
+      to: params.to,
+      subject: subjects[locale] ?? subjects.es!,
+      replyTo: ENTERPRISE_MAILBOX,
+      html: getCorporateCheckinTemplate({
+        contactName: params.contactName,
+        companyName: params.companyName,
+        poolName: params.poolName,
+        poolUrl: params.poolUrl,
+        locale,
+      }),
+    });
+
+    if (error) {
+      console.error("❌ Error sending corporate check-in email:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("✅ Corporate check-in email sent:", data?.id);
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Exception sending corporate check-in email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
 // CORPORATE ACTIVATION EMAIL
 // =========================================================================
 
@@ -890,48 +958,107 @@ export async function sendCorporateActivationEmail(params: {
 }
 
 // =========================================================================
-// ADMIN NOTIFICATIONS
+// INTERNAL NOTIFICATIONS — routed by category to a dedicated mailbox
 // =========================================================================
 
 /**
- * Envía una notificación interna al admin.
- * Usado para: feedback/bugs, corporate inquiries, errores críticos.
+ * Categories of internal (operator-facing) notifications. Each category
+ * routes to a specific Gmail inbox so the team can scan a single label
+ * for everything of one kind. See CATEGORY_ROUTING below for the
+ * inbox assignments.
+ */
+export type AdminCategory =
+  | "feedback"               // Beta feedback / bug reports from users
+  | "corporate_inquiry"      // Lead form submission from /empresas
+  | "corporate_pool_created" // A corporate pool was created via the wizard
+  | "payment_completed"      // A payment was confirmed (Polar / MP)
+  | "system_event"           // Successful system event (phase advanced, sync OK)
+  | "error";                 // Real technical error (job failed, sync rejected)
+
+interface CategoryRoute {
+  // Names of inboxes this notification copies to. Each name is resolved
+  // to an email address via NOTIFICATION_INBOX_ENV at send time. When
+  // a category lists multiple inboxes (like payment_completed), the
+  // notification is sent to all of them in a single Resend call.
+  inboxes: ReadonlyArray<"admin" | "support" | "enterprise" | "sales">;
+  // Visual prefix on the subject line. Lets you scan the inbox without
+  // opening anything.
+  emoji: string;
+  // Short label included next to the emoji in the subject and in the
+  // email body header.
+  label: string;
+}
+
+const CATEGORY_ROUTING: Record<AdminCategory, CategoryRoute> = {
+  feedback:               { inboxes: ["support"],            emoji: "💬", label: "Feedback" },
+  corporate_inquiry:      { inboxes: ["enterprise"],         emoji: "📩", label: "Cotización corporativa" },
+  corporate_pool_created: { inboxes: ["enterprise"],         emoji: "🏢", label: "Pool corporativa creada" },
+  payment_completed:      { inboxes: ["sales", "admin"],     emoji: "💰", label: "Pago confirmado" },
+  system_event:           { inboxes: ["admin"],              emoji: "ℹ️", label: "Evento del sistema" },
+  error:                  { inboxes: ["admin"],              emoji: "🚨", label: "Error" },
+};
+
+// Maps a logical inbox name to the env var that holds its destination
+// address. Each falls back to ADMIN_NOTIFICATION_EMAIL so an unset
+// var never silently drops a notification.
+const NOTIFICATION_INBOX_ENV: Record<CategoryRoute["inboxes"][number], string | undefined> = {
+  admin:      process.env.ADMIN_NOTIFICATION_EMAIL,
+  support:    process.env.SUPPORT_NOTIFICATION_EMAIL,
+  enterprise: process.env.ENTERPRISE_NOTIFICATION_EMAIL,
+  sales:      process.env.SALES_NOTIFICATION_EMAIL,
+};
+
+function resolveInboxAddresses(inboxes: CategoryRoute["inboxes"]): string[] {
+  const fallback = NOTIFICATION_INBOX_ENV.admin;
+  const resolved = new Set<string>();
+  for (const inbox of inboxes) {
+    const address = NOTIFICATION_INBOX_ENV[inbox] ?? fallback;
+    if (address) resolved.add(address);
+  }
+  return Array.from(resolved);
+}
+
+/**
+ * Sends an internal notification to one or more team mailboxes based
+ * on its category. The category drives both the destination inbox(es)
+ * and the visual style (emoji + label) of the email.
  */
 export async function sendAdminNotification(params: {
   subject: string;
   body: string;
-  type: "feedback" | "corporate_inquiry" | "error";
+  category: AdminCategory;
 }): Promise<{ success: boolean; error?: string }> {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
-  if (!ADMIN_EMAIL) {
-    console.warn("⚠️  ADMIN_NOTIFICATION_EMAIL no configurada. Notificación omitida.");
-    return { success: false, error: "ADMIN_NOTIFICATION_EMAIL not configured" };
+
+  const route = CATEGORY_ROUTING[params.category];
+  const recipients = resolveInboxAddresses(route.inboxes);
+  if (recipients.length === 0) {
+    console.warn(
+      `⚠️  No notification inbox resolved for category "${params.category}" ` +
+        `(neither category-specific env nor ADMIN_NOTIFICATION_EMAIL set). Skipping.`,
+    );
+    return { success: false, error: "No notification inbox configured" };
   }
 
-  const typeLabels: Record<string, string> = {
-    feedback: "💬 Feedback",
-    corporate_inquiry: "🏢 Corporate Inquiry",
-    error: "🚨 Error",
-  };
-
-  const label = typeLabels[params.type] || params.type;
+  const headerLabel = `${route.emoji} ${route.label}`;
+  const subjectLabel = `[${route.emoji}] ${route.label}`;
 
   try {
     const { data, error } = await resilientSend(
-      { ...ready, from: ready.from.replace(APP_NAME, `${APP_NAME} Admin`) },
+      { ...ready, from: ready.from.replace(APP_NAME, `${APP_NAME} Notify`) },
       {
-        to: ADMIN_EMAIL!,
-        subject: `[${label}] ${params.subject}`,
+        to: recipients,
+        subject: `${subjectLabel} — ${params.subject}`,
         html: `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-            <h2 style="color:#1F2937;border-bottom:2px solid ${BRAND.primary};padding-bottom:8px;">${label}</h2>
+            <h2 style="color:#1F2937;border-bottom:2px solid ${BRAND.primary};padding-bottom:8px;">${headerLabel}</h2>
             <div style="color:#374151;font-size:15px;line-height:1.6;">
               ${params.body}
             </div>
             <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
             <p style="color:#9CA3AF;font-size:12px;">
-              ${APP_NAME} Admin Notification &middot; ${new Date().toISOString()}
+              ${APP_NAME} internal notification &middot; ${new Date().toISOString()}
             </p>
           </div>
         `,
@@ -939,14 +1066,17 @@ export async function sendAdminNotification(params: {
     );
 
     if (error) {
-      console.error("❌ Error al enviar notificación admin:", error);
+      console.error(`❌ Error sending notification (${params.category}):`, error);
       return { success: false, error: error.message };
     }
 
-    console.log(`✅ Admin notification enviada (${params.type}):`, data?.id);
+    console.log(
+      `✅ Notification sent [${params.category} → ${recipients.join(", ")}]:`,
+      data?.id,
+    );
     return { success: true };
   } catch (err) {
-    console.error("❌ Excepción al enviar notificación admin:", err);
+    console.error(`❌ Exception sending notification (${params.category}):`, err);
     return { success: false, error: String(err) };
   }
 }

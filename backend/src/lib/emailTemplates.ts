@@ -35,30 +35,24 @@ const BRAND = {
 // Email domain — all contact addresses derive from this
 const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || "picks4all.com";
 
-// Emails de soporte por locale
-export const SUPPORT_EMAILS: Record<string, string> = {
-  es: `soporte@${EMAIL_DOMAIN}`,
-  en: `support@${EMAIL_DOMAIN}`,
-  pt: `suporte@${EMAIL_DOMAIN}`,
-};
+// Canonical contact mailboxes — Spanish-only by deliberate choice. The
+// EN/PT variants (`support@`, `enterprise@`, `privacy@`, `suporte@`,
+// `privacidade@`) remain configured as Cloudflare aliases so any old
+// reference still delivers, but the website + email bodies always show
+// the Spanish address. One mailbox per concern keeps inbox routing
+// simple and avoids the bug-class where one of three locale variants
+// gets forgotten when a new mail flow is added.
+export const SUPPORT_EMAIL = `soporte@${EMAIL_DOMAIN}`;
+export const PRIVACY_EMAIL = `privacidad@${EMAIL_DOMAIN}`;
+export const ENTERPRISE_EMAIL = `empresas@${EMAIL_DOMAIN}`;
 
-// Emails de privacidad por locale
-export const PRIVACY_EMAILS: Record<string, string> = {
-  es: `privacidad@${EMAIL_DOMAIN}`,
-  en: `privacy@${EMAIL_DOMAIN}`,
-  pt: `privacidade@${EMAIL_DOMAIN}`,
-};
-
-// Emails de empresas por locale
-export const ENTERPRISE_EMAILS: Record<string, string> = {
-  es: `empresas@${EMAIL_DOMAIN}`,
-  en: `enterprise@${EMAIL_DOMAIN}`,
-  pt: `empresas@${EMAIL_DOMAIN}`,
-};
-
-/** Obtener email de soporte según locale */
-export function getSupportEmail(locale: string = "es"): string {
-  return SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
+/**
+ * Returns the canonical support address. `locale` is accepted for
+ * backward compatibility with older call sites but ignored — every
+ * locale resolves to the same Spanish mailbox.
+ */
+export function getSupportEmail(_locale: string = "es"): string {
+  return SUPPORT_EMAIL;
 }
 
 // =========================================================================
@@ -761,6 +755,108 @@ export function getPoolCompletedTemplate({
 }
 
 // =========================================================================
+// TEMPLATE: CORPORATE CHECK-IN (proactive outreach to corporate hosts)
+// =========================================================================
+
+export interface CorporateCheckinEmailParams {
+  contactName: string;
+  companyName: string;
+  poolName: string;
+  poolUrl: string;
+  locale?: string;
+}
+
+export function getCorporateCheckinTemplate({
+  contactName,
+  companyName,
+  poolName,
+  poolUrl,
+  locale = "es",
+}: CorporateCheckinEmailParams): string {
+  // Single canonical enterprise mailbox — locale variants like
+  // `enterprise@` / `empresa@` are NOT real mailboxes, replies must
+  // always be directed to `empresas@picks4all.com`.
+  const enterpriseEmail = "empresas@picks4all.com";
+
+  // Both contactName and companyName originate from data submitted by
+  // corporate hosts during pool creation. Escape on render to prevent
+  // injected HTML from rendering inside an email signed by our domain
+  // (consistent with the inquiry-confirmation template above).
+  const safeContactName = escapeHtml(contactName);
+  const safeCompanyName = escapeHtml(companyName);
+  const safePoolName = escapeHtml(poolName);
+
+  const i18n: Record<
+    string,
+    {
+      heading: string;
+      greeting: string;
+      body: string;
+      summaryLabel: string;
+      offerHeading: string;
+      offer: string;
+      ctaLabel: string;
+      replyHint: string;
+      sign: string;
+      preheader: string;
+    }
+  > = {
+    es: {
+      heading: `¡Bienvenidos a ${BRAND.name} Empresas!`,
+      greeting: `Hola ${safeContactName},`,
+      body: `Nos alegra muchísimo verte explorando ${BRAND.name} para <strong>${safeCompanyName}</strong>. Sabemos que organizar una polla corporativa para tu equipo merece sentirse fácil, y queremos asegurarnos de que tengas todo lo que necesitas para que <strong>${safePoolName}</strong> sea un éxito.`,
+      summaryLabel: `Tu pool corporativa: <strong>${safePoolName}</strong>`,
+      offerHeading: "¿En qué te podemos ayudar?",
+      offer: `Si tienes cualquier duda — sobre invitar a tu equipo, configurar el branding de tu empresa, ampliar la capacidad de la pool o cualquier otra cosa — <strong>simplemente responde a este correo</strong> y nuestro equipo te atenderá personalmente.`,
+      ctaLabel: "Ir a mi pool",
+      replyHint: `También puedes escribirnos directamente a <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
+      sign: `Un saludo,<br>El equipo de ${BRAND.name}`,
+      preheader: `Estamos aquí para ayudarte con ${safePoolName}. Responde este correo si necesitas asesoría.`,
+    },
+    en: {
+      heading: `Welcome to ${BRAND.name} for Business!`,
+      greeting: `Hi ${safeContactName},`,
+      body: `We're really glad to see you exploring ${BRAND.name} for <strong>${safeCompanyName}</strong>. We know setting up a corporate pool for your team deserves to feel effortless, and we want to make sure you have everything you need to make <strong>${safePoolName}</strong> a success.`,
+      summaryLabel: `Your corporate pool: <strong>${safePoolName}</strong>`,
+      offerHeading: "How can we help?",
+      offer: `If you have any questions — about inviting your team, configuring your company's branding, expanding the pool's capacity or anything else — <strong>simply reply to this email</strong> and our team will get back to you personally.`,
+      ctaLabel: "Go to my pool",
+      replyHint: `You can also reach us directly at <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
+      sign: `Best,<br>The ${BRAND.name} team`,
+      preheader: `We're here to help with ${safePoolName}. Reply to this email if you need assistance.`,
+    },
+    pt: {
+      heading: `Bem-vindos ao ${BRAND.name} Empresas!`,
+      greeting: `Olá ${safeContactName},`,
+      body: `Ficamos muito felizes em ver você explorando o ${BRAND.name} para <strong>${safeCompanyName}</strong>. Sabemos que organizar um bolão corporativo para a sua equipe merece ser fácil, e queremos garantir que você tenha tudo de que precisa para que <strong>${safePoolName}</strong> seja um sucesso.`,
+      summaryLabel: `Seu bolão corporativo: <strong>${safePoolName}</strong>`,
+      offerHeading: "Como podemos ajudar?",
+      offer: `Se tiver qualquer dúvida — sobre convidar a sua equipe, configurar a identidade visual da empresa, ampliar a capacidade do bolão ou qualquer outra coisa — <strong>basta responder a este e-mail</strong> e nossa equipe entrará em contato pessoalmente.`,
+      ctaLabel: "Ir para o meu bolão",
+      replyHint: `Você também pode escrever diretamente para <a href="mailto:${enterpriseEmail}" style="color:${BRAND.primaryColor};">${enterpriseEmail}</a>.`,
+      sign: `Um abraço,<br>A equipe ${BRAND.name}`,
+      preheader: `Estamos aqui para ajudar com ${safePoolName}. Responda a este e-mail se precisar.`,
+    },
+  };
+
+  const t = i18n[locale] ?? i18n.es!;
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    ${getHighlightBox(`<p style="margin:0;font-size:16px;color:${BRAND.textColor};">${t.summaryLabel}</p>`)}
+    <h3 style="margin:24px 0 12px;font-size:18px;font-weight:700;color:${BRAND.textColor};">${t.offerHeading}</h3>
+    ${getParagraph(t.offer)}
+    ${getButton(t.ctaLabel, poolUrl)}
+    <p style="margin:24px 0 0;font-size:14px;color:${BRAND.mutedColor};">${t.replyHint}</p>
+    <p style="margin:24px 0 0;font-size:16px;color:${BRAND.textColor};">${t.sign}</p>
+  `;
+
+  return getEmailWrapper(content, t.preheader, locale);
+}
+
+// =========================================================================
 // TEMPLATE: CORPORATE INQUIRY CONFIRMATION
 // =========================================================================
 
@@ -775,7 +871,7 @@ export function getCorporateInquiryConfirmationTemplate({
   companyName,
   locale = "es",
 }: CorporateInquiryConfirmationParams): string {
-  const enterpriseEmail = ENTERPRISE_EMAILS[locale] ?? ENTERPRISE_EMAILS.es!;
+  const enterpriseEmail = ENTERPRISE_EMAIL;
   const enterpriseUrl = appendUtm(`${BRAND.baseUrl}/${locale === "en" ? "en/enterprise" : locale === "pt" ? "pt/empresas" : "empresas"}`, emailUtm("corporate_inquiry"));
 
   // XSS defence — this is a PUBLIC endpoint, an attacker can submit any
@@ -892,7 +988,7 @@ export function getCorporateActivationTemplate({
   primaryColor,
   secondaryColor,
 }: CorporateActivationEmailParams): string {
-  const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
+  const supportEmail = SUPPORT_EMAIL;
   const { heroGradient, ctaGradient } = resolveCorporateGradients(primaryColor, secondaryColor);
 
   // XSS defence — companyName, poolName, employeeName are all host-controlled
@@ -1625,7 +1721,7 @@ export interface PasswordChangedEmailParams {
 export function getPasswordChangedTemplate({ displayName, locale = "es" }: PasswordChangedEmailParams): string {
   // XSS defence — user-controlled.
   const safeDisplayName = escapeHtml(displayName);
-  const supportEmail = SUPPORT_EMAILS[locale] ?? SUPPORT_EMAILS.es!;
+  const supportEmail = SUPPORT_EMAIL;
 
   const i18n: Record<string, {
     heading: string; greeting: string; body: string;

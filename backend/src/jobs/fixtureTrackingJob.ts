@@ -230,9 +230,9 @@ async function runFixtureTracking(): Promise<void> {
         .map((r) => `<li>Fixture ${r.fixtureId} (${r.internalId || "unknown"}): ${r.reason}</li>`)
         .join("");
       sendAdminNotification({
-        subject: `Fixtures rejected by scores service (${rejectedDetails.length})`,
+        subject: `Scores service rechazó ${rejectedDetails.length} fixtures`,
         body: `<p>The following fixtures were rejected by picks4all-scores and will NOT be tracked:</p><ul>${rejectedList}</ul><p>Investigate why and re-track them manually if needed.</p>`,
-        type: "error",
+        category: "error",
       }).catch((err) => {
         console.error("[FixtureTrackingJob] sendAdminNotification failed:", err instanceof Error ? err.message : String(err));
       });
@@ -243,9 +243,9 @@ async function runFixtureTracking(): Promise<void> {
 
     // Notify admin on tracking failure
     sendAdminNotification({
-      subject: "Fixture tracking failed",
+      subject: "Fixture tracking job falló",
       body: `<p>The fixture tracking job failed to register fixtures with picks4all-scores.</p><p><strong>Error:</strong> ${errMsg}</p><p>Check the scores service health and retry manually if needed.</p>`,
-      type: "error",
+      category: "error",
     }).catch((err) => {
       // Fire-and-forget — we do NOT want a notification failure to
       // rethrow into the job error handler it is reporting on. But we

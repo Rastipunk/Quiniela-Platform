@@ -1088,9 +1088,13 @@ export async function tryAdvancePhaseFromApi(
     try {
       const { sendAdminNotification } = await import("../lib/email");
       await sendAdminNotification({
-        subject: `Phase Sync: ${nextPhase.toUpperCase()} configured`,
-        body: `Phase ${completedPhase.toUpperCase()} completed. ${nextPhase.toUpperCase()} (${apiRoundName}) has been automatically configured from API-Football.\n\nMatches updated: ${result.summary?.matchesUpdated}\nPools updated: ${result.summary?.poolsUpdated}`,
-        type: "error",
+        subject: `Phase sync configurada: ${nextPhase.toUpperCase()}`,
+        body: `<p>Phase ${completedPhase.toUpperCase()} completed. ${nextPhase.toUpperCase()} (${apiRoundName}) has been automatically configured from API-Football.</p>
+               <ul>
+                 <li>Matches updated: ${result.summary?.matchesUpdated}</li>
+                 <li>Pools updated: ${result.summary?.poolsUpdated}</li>
+               </ul>`,
+        category: "system_event",
       });
     } catch { /* notification is best-effort */ }
   } else {
@@ -1117,9 +1121,11 @@ export async function tryAdvancePhaseFromApi(
     try {
       const { sendAdminNotification } = await import("../lib/email");
       await sendAdminNotification({
-        subject: `Phase Sync: ${nextPhase.toUpperCase()} pendiente`,
-        body: `Phase ${completedPhase.toUpperCase()} completed but ${nextPhase.toUpperCase()} (${apiRoundName}) is not yet available in API-Football.\n\nReason: ${result.message}\n\nThe system will retry every 12 hours automatically.`,
-        type: "error",
+        subject: `Phase sync pendiente: ${nextPhase.toUpperCase()}`,
+        body: `<p>Phase ${completedPhase.toUpperCase()} completed but ${nextPhase.toUpperCase()} (${apiRoundName}) is not yet available in API-Football.</p>
+               <p><strong>Reason:</strong> ${result.message}</p>
+               <p>The system will retry every 12 hours automatically.</p>`,
+        category: "system_event",
       });
     } catch { /* notification is best-effort */ }
   }

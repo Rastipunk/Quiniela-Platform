@@ -229,8 +229,8 @@ export async function submitInquiry(data: SubmitInquiryInput): Promise<SubmitInq
   }
 
   fireAndForget("admin notification (inquiry)", sendAdminNotification({
-    subject: `${escapeHtml(companyName)} — ${escapeHtml(contactName)}`,
-    type: "corporate_inquiry",
+    subject: `${escapeHtml(companyName)} (${escapeHtml(contactName)})`,
+    category: "corporate_inquiry",
     body: `
       <p><strong>Empresa:</strong> ${escapeHtml(companyName)}</p>
       <p><strong>Contacto:</strong> ${escapeHtml(contactName)} &lt;${escapeHtml(contactEmail)}&gt;</p>
@@ -388,12 +388,12 @@ export async function createCorporatePool(
 
   // Admin notification (fire and forget)
   fireAndForget("admin notification (pool created)", sendAdminNotification({
-    subject: `Nueva pool corporativa: ${companyName}`,
-    type: "corporate_inquiry",
+    subject: `"${poolName}" — ${companyName}`,
+    category: "corporate_pool_created",
     body: `
-      <p><strong>Empresa:</strong> ${companyName}</p>
-      <p><strong>Creado por:</strong> ${user?.displayName || "—"} &lt;${user?.email || "—"}&gt;</p>
-      <p><strong>Pool:</strong> ${poolName}</p>
+      <p><strong>Empresa:</strong> ${escapeHtml(companyName)}</p>
+      <p><strong>Pool:</strong> "${escapeHtml(poolName)}"</p>
+      <p><strong>Creado por:</strong> ${escapeHtml(user?.displayName || "—")} &lt;${escapeHtml(user?.email || "—")}&gt;</p>
       <p><strong>Empleados pendientes:</strong> ${result.pendingInvites}</p>
     `,
   }));

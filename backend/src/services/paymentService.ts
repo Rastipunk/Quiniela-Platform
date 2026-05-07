@@ -398,11 +398,47 @@ export async function handleOrderPaid(payload: {
     },
   }));
 
-  fireAndForget("admin:payment-completed", sendAdminNotification({
-    subject: `Payment completed: pool capacity ${metadata.fromCapacity} → ${metadata.toCapacity}`,
-    body: `<p>Pool <strong>${metadata.poolId}</strong> expanded to ${metadata.toCapacity} participants.</p><p>Type: ${metadata.poolType}</p>`,
-    type: "feedback",
-  }));
+  fireAndForget(
+    "admin:payment-completed",
+    (async () => {
+      const [pool, user] = await Promise.all([
+        prisma.pool.findUnique({
+          where: { id: metadata.poolId! },
+          select: { name: true },
+        }),
+        metadata.userId
+          ? prisma.user.findUnique({
+              where: { id: metadata.userId },
+              select: { displayName: true, email: true },
+            })
+          : null,
+      ]);
+      const poolName = pool?.name || metadata.poolId!;
+      const buyer = user
+        ? `${user.displayName} <${user.email}>`
+        : "(usuario desconocido)";
+      const usdAmount = `$${(payment.amountUsd / 100).toFixed(2)} USD`;
+      const copAmount = payment.amountCop
+        ? `${payment.amountCop.toLocaleString("es-CO")} COP`
+        : null;
+      const amountStr = copAmount ? `${copAmount} (${usdAmount})` : usdAmount;
+      // This handler is the Polar `order.paid` webhook entry point —
+      // MP completions go through a different handler elsewhere — so the
+      // gateway is always Polar here. We derive it from `mpPreferenceId`
+      // anyway to stay correct if the routing ever changes.
+      const gateway = payment.mpPreferenceId ? "Mercado Pago" : "Polar";
+      return sendAdminNotification({
+        subject: `${buyer} — pool "${poolName}" ${metadata.fromCapacity}→${metadata.toCapacity} (${amountStr})`,
+        body:
+          `<p><strong>Pool:</strong> "${poolName}" (${metadata.poolType})</p>` +
+          `<p><strong>Comprador:</strong> ${buyer}</p>` +
+          `<p><strong>Capacidad:</strong> ${metadata.fromCapacity} → ${metadata.toCapacity} participantes</p>` +
+          `<p><strong>Monto:</strong> ${amountStr}</p>` +
+          `<p><strong>Pasarela:</strong> ${gateway} · payment id <code>${payment.id}</code></p>`,
+        category: "payment_completed",
+      });
+    })(),
+  );
 
   if (metadata.userId && metaEventId) {
     // metaEventId was generated and persisted INSIDE the atomic tx above —

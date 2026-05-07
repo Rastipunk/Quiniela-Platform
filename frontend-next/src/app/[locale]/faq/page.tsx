@@ -43,12 +43,12 @@ function interpolate(text: string, params: Record<string, string>): string {
   return text.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? `{${key}}`);
 }
 
+// Single canonical support mailbox shown across all locales. EN/PT
+// variants (`support@`, `suporte@`) remain configured as Cloudflare
+// aliases that forward to the same inbox, so any old reference still
+// delivers — but the website always shows the Spanish address.
 const EMAIL_DOMAIN = process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "picks4all.com";
-const SUPPORT_EMAILS: Record<string, string> = {
-  es: `soporte@${EMAIL_DOMAIN}`,
-  en: `support@${EMAIL_DOMAIN}`,
-  pt: `suporte@${EMAIL_DOMAIN}`,
-};
+const SUPPORT_EMAIL = `soporte@${EMAIL_DOMAIN}`;
 
 export default async function FAQPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -59,7 +59,7 @@ export default async function FAQPage({ params }: { params: Promise<{ locale: st
   // from typed loading. DO NOT DELETE these files — see commit 27db35b for the
   // regression that occurred when they were removed.
   const rawFaqMessages: FAQMessages = (await import(`@/messages/${locale}/faq.json`)).default;
-  const supportEmail = SUPPORT_EMAILS[locale] || SUPPORT_EMAILS.es;
+  const supportEmail = SUPPORT_EMAIL;
   const baseUrl = SITE_URL;
   const localePath = locale === "es" ? "" : `/${locale}`;
 

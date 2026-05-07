@@ -60,9 +60,14 @@ async function runPhaseSyncCheck(): Promise<void> {
 
         try {
           await sendAdminNotification({
-            subject: `Phase Sync resuelto: ${record.nextPhase.toUpperCase()}`,
-            body: `${record.apiRoundName} para ${record.tournamentInstance.name} fue configurado automáticamente desde API-Football.\n\nMatches: ${result.summary?.matchesUpdated}\nPools actualizados: ${result.summary?.poolsUpdated}\nIntentos totales: ${record.attempts + 1}`,
-            type: "error",
+            subject: `Phase sync resuelto: ${record.nextPhase.toUpperCase()} (${record.tournamentInstance.name})`,
+            body: `<p>${record.apiRoundName} para <strong>${record.tournamentInstance.name}</strong> fue configurado automáticamente desde API-Football.</p>
+                   <ul>
+                     <li>Matches: ${result.summary?.matchesUpdated}</li>
+                     <li>Pools actualizados: ${result.summary?.poolsUpdated}</li>
+                     <li>Intentos totales: ${record.attempts + 1}</li>
+                   </ul>`,
+            category: "system_event",
           });
         } catch { /* best-effort */ }
       } else {
@@ -84,9 +89,11 @@ async function runPhaseSyncCheck(): Promise<void> {
 
           try {
             await sendAdminNotification({
-              subject: `Phase Sync FALLIDO: ${record.nextPhase.toUpperCase()}`,
-              body: `No se pudo configurar ${record.apiRoundName} para ${record.tournamentInstance.name} después de ${newAttempts} intentos.\n\nÚltimo error: ${result.message}\n\nSe requiere intervención manual.`,
-              type: "error",
+              subject: `Phase sync falló: ${record.nextPhase.toUpperCase()} (${record.tournamentInstance.name})`,
+              body: `<p>No se pudo configurar ${record.apiRoundName} para <strong>${record.tournamentInstance.name}</strong> después de ${newAttempts} intentos.</p>
+                     <p><strong>Último error:</strong> ${result.message}</p>
+                     <p>Se requiere intervención manual.</p>`,
+              category: "error",
             });
           } catch { /* best-effort */ }
         } else {

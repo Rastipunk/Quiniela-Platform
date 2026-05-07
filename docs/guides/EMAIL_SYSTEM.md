@@ -351,11 +351,27 @@ privacyEmail: "privacidade@picks4all.com"
   - Template: `getCorporateActivationTemplate` en `emailTemplates.ts`
 - **Corporate Inquiry Confirmation**: En `corporate.ts` - Confirma al solicitante que se recibió su formulario empresarial
 
-#### Notificaciones Admin
-- **Admin Notification**: `sendAdminNotification()` en `email.ts`
-  - Se usa en `feedback.ts` para notificar al admin cuando se recibe nuevo feedback de usuarios
-  - Se usa en `advancementTrigger.ts` para notificar avances automáticos de fase
-  - Envía a la dirección configurada en `ADMIN_NOTIFICATION_EMAIL`
+#### Notificaciones Internas (operator-facing)
+- **`sendAdminNotification(category, subject, body)`** en `email.ts`
+  - Cada llamada declara una **categoría** (`AdminCategory`) que determina la bandeja destino.
+  - Las direcciones se resuelven vía env vars con fallback a `ADMIN_NOTIFICATION_EMAIL`.
+  - Cada categoría tiene su propio emoji y label en el asunto, así puedes
+    escanear la bandeja sin abrir nada.
+
+| Categoría | Bandeja | Emoji | Disparado por |
+|-----------|---------|-------|----------------|
+| `feedback` | `SUPPORT_NOTIFICATION_EMAIL` | 💬 | `feedback.ts` (BUG/SUGGESTION del formulario beta) |
+| `corporate_inquiry` | `ENTERPRISE_NOTIFICATION_EMAIL` | 📩 | `corporateService.ts` (formulario `/empresas`) |
+| `corporate_pool_created` | `ENTERPRISE_NOTIFICATION_EMAIL` | 🏢 | `corporateService.ts` (wizard de pool corporativa) |
+| `payment_completed` | `SALES_NOTIFICATION_EMAIL` + `ADMIN_NOTIFICATION_EMAIL` | 💰 | `paymentService.ts` (webhook Polar) |
+| `system_event` | `ADMIN_NOTIFICATION_EMAIL` | ℹ️ | Avances de fase, sync resuelto, fixtures actualizados |
+| `error` | `ADMIN_NOTIFICATION_EMAIL` | 🚨 | Jobs caídos, sync fallido, fixtures rechazados |
+
+> **Routing en Gmail:** las cuatro direcciones (`soporte@`, `empresas@`,
+> `ventas@`, `admin@`) son aliases en Cloudflare Email Routing que
+> reenvían a la misma bandeja personal. Los filtros de Gmail
+> (`to:soporte@picks4all.com → label:Picks4All/Soporte`, etc.)
+> distribuyen automáticamente cada categoría a su carpeta.
 
 ## Auditoría
 

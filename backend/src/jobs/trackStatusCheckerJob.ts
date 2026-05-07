@@ -175,9 +175,9 @@ async function runTrackStatusCheck(): Promise<void> {
         )
         .join("");
       sendAdminNotification({
-        subject: `Track status check: ${newAlerts.length} problem fixtures`,
+        subject: `Track status: ${newAlerts.length} fixtures con problemas`,
         body: `<p>The pre-match track status check found fixtures that are not properly tracked:</p><ul>${rows}</ul><p>UNTRACKED fixtures were automatically re-tracked. NO_SOURCES means the scraper has the fixture registered but no source is reporting data yet (problem if kickoff is &lt; 5 min away).</p>`,
-        type: "error",
+        category: "error",
       }).catch(() => {});
     }
   } catch (err) {
