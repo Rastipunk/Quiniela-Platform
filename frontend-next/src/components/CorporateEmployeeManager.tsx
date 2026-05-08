@@ -372,11 +372,52 @@ export function CorporateEmployeeManager({
         </div>
       )}
 
-      {/* Add emails */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: "#4c1d95" }}>
-          {t("addTitle")}
+      {/* ────────────────────────────────────────────────────────────
+          STEP 1 — Add to list. Numbered header + hint that explicitly
+          states adding does NOT send anything yet, so the host can't
+          mistake "Agregar a la lista" for "I'm done now". The button
+          label was renamed to match: "Agregar a la lista".
+       ──────────────────────────────────────────────────────────── */}
+      <section
+        style={{
+          marginBottom: 16,
+          padding: 14,
+          background: "white",
+          borderRadius: 10,
+          border: "1px solid #ddd6fe",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <span
+            style={{
+              flexShrink: 0,
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              background: colors.purple,
+              color: "white",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+            aria-hidden="true"
+          >
+            1
+          </span>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.4 }}>
+              {t("step1Label")}
+            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#4c1d95" }}>
+              {t("step1Title")}
+            </span>
+          </div>
         </div>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "#5b21b6", lineHeight: 1.45 }}>
+          {t.rich("step1Hint", { b: (chunks) => <b>{chunks}</b> })}
+        </p>
         <textarea
           value={emailsText}
           onChange={(e) => setEmailsText(e.target.value)}
@@ -458,7 +499,7 @@ export function CorporateEmployeeManager({
             {downloadingTemplate ? t("downloading") : `\u{1F4E5} ${t("excelTemplate")}`}
           </button>
         </div>
-      </div>
+      </section>
 
       {/* Inline message */}
       {message && (
@@ -491,30 +532,140 @@ export function CorporateEmployeeManager({
         return null;
       })()}
 
-      {/* Send invitations button */}
-      {summary && summary.pending > 0 && (
-        <button
-          onClick={handleSendInvitations}
-          disabled={busy === "sending"}
-          style={{
-            width: "100%",
-            padding: 12,
-            borderRadius: 8,
-            border: "none",
-            background: colors.purple,
-            color: "white",
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: "pointer",
-            marginBottom: 16,
-            opacity: busy === "sending" ? 0.7 : 1,
-          }}
-        >
-          {busy === "sending"
-            ? t("sending")
-            : `${t("sendInvitations")} (${summary.pending})`}
-        </button>
-      )}
+      {/* ────────────────────────────────────────────────────────────
+          STEP 2 — Send invitation emails. Always rendered (not just
+          when pending > 0) so the operator sees both halves of the flow
+          from the moment they land on the screen and never thinks the
+          job is finished after Step 1. State-driven content:
+            · pending > 0      → amber "waiting" banner + big send button
+            · total === 0      → muted hint to add emails first
+            · pending === 0    → green confirmation that everything is sent
+       ──────────────────────────────────────────────────────────── */}
+      {(() => {
+        const pending = summary?.pending ?? 0;
+        const total = summary?.total ?? 0;
+        const isWaiting = pending > 0;
+        const isEmpty = total === 0;
+        const containerBorder = isWaiting
+          ? "1.5px solid #f59e0b"
+          : isEmpty
+            ? "1px dashed #c4b5fd"
+            : "1px solid #a7f3d0";
+        const containerBg = isWaiting ? "#fffbeb" : isEmpty ? "white" : "#f0fdf4";
+        return (
+          <section
+            style={{
+              marginBottom: 16,
+              padding: 14,
+              background: containerBg,
+              borderRadius: 10,
+              border: containerBorder,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span
+                style={{
+                  flexShrink: 0,
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: isWaiting ? "#f59e0b" : isEmpty ? colors.borderMedium : "#10b981",
+                  color: "white",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 14,
+                  fontWeight: 700,
+                }}
+                aria-hidden="true"
+              >
+                2
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: isWaiting ? "#92400e" : isEmpty ? colors.textLighter : "#065f46",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  {t("step2Label")}
+                </span>
+                <span
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: isWaiting ? "#92400e" : isEmpty ? colors.textDark : "#065f46",
+                  }}
+                >
+                  {t("step2Title")}
+                </span>
+              </div>
+            </div>
+
+            {isWaiting ? (
+              <>
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    background: "#fef3c7",
+                    border: "1px solid #fcd34d",
+                    fontSize: 13,
+                    color: "#92400e",
+                    lineHeight: 1.5,
+                    marginBottom: 12,
+                  }}
+                >
+                  <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 14 }}>
+                    {"⚠️ "}
+                    {t("step2WaitingTitle", { count: pending })}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    {t.rich("step2WaitingBody", { b: (chunks) => <b>{chunks}</b> })}
+                  </p>
+                </div>
+                <button
+                  onClick={handleSendInvitations}
+                  disabled={busy === "sending"}
+                  style={{
+                    width: "100%",
+                    padding: 14,
+                    borderRadius: 8,
+                    border: "none",
+                    background: colors.purple,
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: busy === "sending" ? "not-allowed" : "pointer",
+                    opacity: busy === "sending" ? 0.7 : 1,
+                  }}
+                >
+                  {busy === "sending"
+                    ? t("sending")
+                    : `\u{1F4E7} ${t("sendInvitationsCount", { count: pending })}`}
+                </button>
+              </>
+            ) : isEmpty ? (
+              <p style={{ margin: 0, fontSize: 13, color: colors.textLight, lineHeight: 1.5 }}>
+                {t("step2Empty")}
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#065f46" }}>
+                  {"✅ "}
+                  {t("step2AllSent")}
+                </p>
+                <p style={{ margin: 0, fontSize: 13, color: "#047857", lineHeight: 1.5 }}>
+                  {t("step2AllSentBody")}
+                </p>
+              </>
+            )}
+          </section>
+        );
+      })()}
 
       {/* List header */}
       {summary && summary.total > 0 && (
