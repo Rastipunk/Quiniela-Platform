@@ -22,6 +22,7 @@ export function EnterpriseLandingContent() {
   const { params: poolParams } = usePoolTerm();
 
   const [quoteOpen, setQuoteOpen] = useState(false);
+  const [quoteCardHovered, setQuoteCardHovered] = useState(false);
 
   const handleCta = () => {
     trackEvent("corporate_inquiry", { authenticated: isAuthenticated });
@@ -159,17 +160,27 @@ export function EnterpriseLandingContent() {
           </div>
           {/* Tertiary path: companies that need a formal quote.
               Two-line card — visible enough to invite the click without
-              competing with the primary CTA above. Self-service stays
-              visually dominant via the white solid button. */}
+              competing with the primary CTA above. Hover state is driven
+              by React state instead of styled-jsx because globals.css has
+              a `button { background: var(--primary); }` rule that races
+              with styled-jsx scoping during hydration and made the card
+              flash white before hover took effect. */}
           <button
             type="button"
             onClick={handleQuoteOpen}
-            className="quote-hint-card"
+            onMouseEnter={() => setQuoteCardHovered(true)}
+            onMouseLeave={() => setQuoteCardHovered(false)}
+            onFocus={() => setQuoteCardHovered(true)}
+            onBlur={() => setQuoteCardHovered(false)}
             style={{
               marginTop: 28,
-              background: "rgba(255,255,255,0.08)",
+              background: quoteCardHovered
+                ? "rgba(255,255,255,0.18)"
+                : "rgba(255,255,255,0.10)",
               color: "white",
-              border: "1.5px solid rgba(255,255,255,0.35)",
+              border: `1.5px solid ${
+                quoteCardHovered ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.4)"
+              }`,
               borderRadius: 12,
               padding: isMobile ? "14px 18px" : "16px 24px",
               cursor: "pointer",
@@ -185,6 +196,7 @@ export function EnterpriseLandingContent() {
               style={{
                 fontSize: isMobile ? "0.95rem" : "1rem",
                 fontWeight: 700,
+                color: "white",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
@@ -198,7 +210,7 @@ export function EnterpriseLandingContent() {
             <span
               style={{
                 fontSize: isMobile ? "0.8rem" : "0.85rem",
-                color: "rgba(255,255,255,0.75)",
+                color: "rgba(255,255,255,0.8)",
                 fontWeight: 400,
                 lineHeight: 1.4,
               }}
@@ -207,16 +219,6 @@ export function EnterpriseLandingContent() {
             </span>
           </button>
         </div>
-        <style jsx>{`
-          .quote-hint-card:hover {
-            background: rgba(255, 255, 255, 0.14) !important;
-            border-color: rgba(255, 255, 255, 0.55) !important;
-          }
-          .quote-hint-card:focus-visible {
-            outline: 2px solid rgba(255, 255, 255, 0.7);
-            outline-offset: 2px;
-          }
-        `}</style>
       </section>
 
       {/* Benefits */}
