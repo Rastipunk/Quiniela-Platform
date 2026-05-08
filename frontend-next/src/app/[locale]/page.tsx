@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { LandingContent } from "@/components/LandingContent";
+import { LandingContentSSR } from "@/components/LandingContentSSR";
 import { SITE_URL, WORLD_CUP_FOCUS } from "@/lib/siteConfig";
 import { buildPageMetadata } from "@/lib/seo";
 
@@ -81,8 +82,12 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         {/* Suspense boundary required because LandingContent reads
             useSearchParams() (e.g. ?ref=, ?utm_*=). Without it the page
             cannot be statically prerendered, which is what made the home
-            page emit Cache-Control: no-store and stay un-indexed. */}
-        <Suspense fallback={null}>
+            page emit Cache-Control: no-store and stay un-indexed.
+            The fallback renders the full SEO content server-side so the
+            initial HTML (which Google indexes) has all the headings,
+            paragraphs, feature copy and pricing — even though the
+            interactive client component takes over on hydration. */}
+        <Suspense fallback={<LandingContentSSR locale={locale} />}>
           <LandingContent />
         </Suspense>
       </PublicPageWrapper>
