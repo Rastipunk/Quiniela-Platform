@@ -2,6 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+// Used for cross-locale links to single-locale pages (e.g. ES-only
+// regional landing pages, EN-only football-pool). next-intl's `Link`
+// auto-prefixes with the current/explicit locale, which produced URLs
+// like `/es/polla-futbolera` even though the canonical is `/polla-
+// futbolera` — that costs a 307 redirect on every internal click and
+// muddies Google's view of which URL is canonical. Next.js's plain
+// `Link` renders the href verbatim while keeping prefetch + client
+// navigation.
+import NextLink from "next/link";
 import { BrandIsotipo } from "./BrandLogo";
 import { openCookieConsent } from "./CookieConsent";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
@@ -212,11 +221,17 @@ export function Footer() {
           >
             {t("whatIsQuiniela")}
           </Link>
-          {/* Regional pages are ES-only (see /[locale]/{polla|prode|penca|porra}/page.tsx).
-              Force locale="es" so EN/PT users don't land on a 404 from the footer. */}
-          <Link
+          {/* Regional pages are single-locale (see /[locale]/{polla|prode|
+              penca|porra|football-pool}/page.tsx — each calls notFound()
+              for non-supported locales). We use NextLink with the canonical
+              URL so the rendered href matches the canonical declared on
+              the target page (no `/es/...` prefix for ES, explicit `/en/...`
+              for football-pool). The same URL works for every visiting
+              locale: the page is single-locale on purpose, and Google
+              indexes that single canonical instead of seeing redirect
+              chains through `/es/...` variants. */}
+          <NextLink
             href="/polla-futbolera"
-            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -224,10 +239,9 @@ export function Footer() {
             }}
           >
             {t("pollaFutbolera")}
-          </Link>
-          <Link
+          </NextLink>
+          <NextLink
             href="/prode-deportivo"
-            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -235,10 +249,9 @@ export function Footer() {
             }}
           >
             {t("prodeDeportivo")}
-          </Link>
-          <Link
+          </NextLink>
+          <NextLink
             href="/penca-futbol"
-            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -246,10 +259,9 @@ export function Footer() {
             }}
           >
             {t("pencaFutbol")}
-          </Link>
-          <Link
+          </NextLink>
+          <NextLink
             href="/porra-deportiva"
-            locale="es"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -257,9 +269,9 @@ export function Footer() {
             }}
           >
             {t("porraDeportiva")}
-          </Link>
-          <Link
-            href="/football-pool"
+          </NextLink>
+          <NextLink
+            href="/en/football-pool"
             style={{
               fontSize: 13,
               color: "var(--muted)",
@@ -267,7 +279,7 @@ export function Footer() {
             }}
           >
             {t("footballPool")}
-          </Link>
+          </NextLink>
           <Link
             href="/empresas"
             style={{

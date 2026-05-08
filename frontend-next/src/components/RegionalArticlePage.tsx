@@ -1,7 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+// `relatedLinks` cross-reference single-locale pages (the regional
+// `/polla-futbolera`, `/prode-deportivo`, `/en/football-pool` set).
+// Using next-intl's locale-aware Link auto-prefixed with the current
+// locale, producing URLs that 404 on the target (`/pt/polla-futbolera`)
+// or pointlessly redirect (`/es/polla-futbolera` → `/polla-futbolera`).
+// Plain Next.js Link emits the canonical href verbatim while keeping
+// prefetch + client-side navigation.
+import NextLink from "next/link";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { RegisterButton } from "@/components/RegisterButton";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -276,8 +283,8 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
             >
               {relatedLinks.map((link) => (
                 <li key={link.key}>
-                  <Link
-                    href={link.href as unknown as "/"}
+                  <NextLink
+                    href={link.href}
                     style={{
                       color: "#667eea",
                       textDecoration: "none",
@@ -286,7 +293,7 @@ export function RegionalArticlePage({ namespace, relatedLinks }: RegionalArticle
                     }}
                   >
                     {t(link.key)}
-                  </Link>
+                  </NextLink>
                 </li>
               ))}
             </ul>

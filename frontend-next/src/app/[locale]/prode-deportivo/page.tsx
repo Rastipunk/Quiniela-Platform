@@ -35,7 +35,7 @@ const relatedLinks = [
   { key: "relatedPolla", href: "/polla-futbolera" },
   { key: "relatedPenca", href: "/penca-futbol" },
   { key: "relatedPorra", href: "/porra-deportiva" },
-  { key: "relatedFootballPool", href: "/football-pool" },
+  { key: "relatedFootballPool", href: "/en/football-pool" },
 ];
 
 export default async function ProdeDeportivoPage({ params }: { params: Promise<{ locale: string }> }) {

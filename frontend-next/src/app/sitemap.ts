@@ -20,9 +20,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = SITE_URL;
   const ogImage = `${baseUrl}/opengraph-image`;
 
-  // Bump these dates when the underlying content changes. Group by lifecycle.
-  const recentlyUpdated = new Date("2026-04-22");
-  const stable = new Date("2026-04-04");
+  // Bump these dates when the underlying content OR SEO surface changes.
+  // Group by lifecycle so updates stay surgical.
+  //
+  // 2026-05-08: bumped after the SEO recovery work
+  //   (fixed `Set-Cookie` on public responses + canonical-matching
+  //   internal links) — signals to Google that the page experience
+  //   changed and warrants a re-crawl, helping recover from the post-
+  //   Apr-15 deindex period.
+  const recentlyUpdated = new Date("2026-05-08");
+  const stable = new Date("2026-05-08");
   const legal = new Date("2026-02-22");
 
   /** Alternates for all 3 locales with their localized paths. */

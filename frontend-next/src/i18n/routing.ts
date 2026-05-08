@@ -4,6 +4,15 @@ export const routing = defineRouting({
   locales: ["es", "en", "pt"],
   defaultLocale: "es",
   localePrefix: "as-needed",
+  // Disable next-intl's automatic NEXT_LOCALE cookie write. With this
+  // off, every public SSG response stops carrying `Set-Cookie` — Google
+  // treats `Set-Cookie` + `Cache-Control: public, s-maxage=...` as
+  // contradictory signals ("personalised response that's also publicly
+  // cacheable?") and downgrades indexing priority. Detection still
+  // works via URL prefix and Accept-Language; for users who explicitly
+  // switch language, `LanguageSelector.tsx` writes the cookie itself
+  // so the preference persists across sessions.
+  localeCookie: false,
   pathnames: {
     "/": "/",
     "/invite": "/invite",
