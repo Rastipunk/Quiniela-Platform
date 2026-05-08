@@ -308,10 +308,11 @@
     },
     "hero": {
       "title": "Corporate sports {pluralUpper} for your company",
-      "subtitle": "Create, pay, and start in 10 minutes. No calls, no waiting. If you need a formal quote or company invoice, you can request one here.",
+      "subtitle": "Create, pay, and start in 10 minutes. No calls, no waiting. If you need a formal quote, you can request one here.",
       "cta": "Create corporate pool",
       "secondaryCta": "Learn more",
-      "quoteHint": "Need a formal quote or invoice? Request one here"
+      "quoteHint": "Request a formal quote",
+      "quoteHintSubtitle": "Get a tailored proposal in 24–48h by email"
     },
     "benefits": {
       "title": "Why choose Picks4All for your company",

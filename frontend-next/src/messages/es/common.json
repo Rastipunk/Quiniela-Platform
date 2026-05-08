@@ -308,10 +308,11 @@
     },
     "hero": {
       "title": "{pluralUpper} {adjPlural} para tu empresa",
-      "subtitle": "Crea, paga y empieza en 10 minutos. Sin llamadas ni esperas. Si necesitas cotización formal o factura empresarial, también puedes solicitarla aquí.",
+      "subtitle": "Crea, paga y empieza en 10 minutos. Sin llamadas ni esperas. Si necesitas una cotización formal, también puedes solicitarla aquí.",
       "cta": "Crear pool corporativo",
       "secondaryCta": "Conoce más",
-      "quoteHint": "¿Necesitas factura formal o cotización? Solicítala aquí"
+      "quoteHint": "Solicitar cotización formal",
+      "quoteHintSubtitle": "Recibe propuesta personalizada en 24–48h por email"
     },
     "benefits": {
       "title": "Por qué elegir Picks4All para tu empresa",

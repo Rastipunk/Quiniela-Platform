@@ -158,25 +158,65 @@ export function EnterpriseLandingContent() {
             </a>
           </div>
           {/* Tertiary path: companies that need a formal quote.
-              Subdued styling so self-service stays visually dominant. */}
+              Two-line card — visible enough to invite the click without
+              competing with the primary CTA above. Self-service stays
+              visually dominant via the white solid button. */}
           <button
             type="button"
             onClick={handleQuoteOpen}
+            className="quote-hint-card"
             style={{
-              marginTop: 20,
-              background: "transparent",
-              color: "rgba(255,255,255,0.85)",
-              border: "none",
-              fontSize: 14,
-              fontWeight: 500,
+              marginTop: 28,
+              background: "rgba(255,255,255,0.08)",
+              color: "white",
+              border: "1.5px solid rgba(255,255,255,0.35)",
+              borderRadius: 12,
+              padding: isMobile ? "14px 18px" : "16px 24px",
               cursor: "pointer",
-              textDecoration: "underline",
-              padding: 4,
+              textAlign: "left",
+              display: "inline-flex",
+              flexDirection: "column",
+              gap: 4,
+              maxWidth: isMobile ? "100%" : 360,
+              transition: "background 0.15s ease, border-color 0.15s ease",
             }}
           >
-            {t("hero.quoteHint")}
+            <span
+              style={{
+                fontSize: isMobile ? "0.95rem" : "1rem",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {t("hero.quoteHint")}
+              <span aria-hidden="true" style={{ fontSize: "1.05em" }}>
+                →
+              </span>
+            </span>
+            <span
+              style={{
+                fontSize: isMobile ? "0.8rem" : "0.85rem",
+                color: "rgba(255,255,255,0.75)",
+                fontWeight: 400,
+                lineHeight: 1.4,
+              }}
+            >
+              {t("hero.quoteHintSubtitle")}
+            </span>
           </button>
         </div>
+        <style jsx>{`
+          .quote-hint-card:hover {
+            background: rgba(255, 255, 255, 0.14) !important;
+            border-color: rgba(255, 255, 255, 0.55) !important;
+          }
+          .quote-hint-card:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.7);
+            outline-offset: 2px;
+          }
+        `}</style>
       </section>
 
       {/* Benefits */}

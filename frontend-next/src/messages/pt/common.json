@@ -308,10 +308,11 @@
     },
     "hero": {
       "title": "{pluralUpper} corporativos para sua empresa",
-      "subtitle": "Crie, pague e comece em 10 minutos. Sem ligações nem esperas. Se precisar de cotação formal ou nota fiscal, também pode solicitar aqui.",
+      "subtitle": "Crie, pague e comece em 10 minutos. Sem ligações nem esperas. Se precisar de uma cotação formal, também pode solicitar aqui.",
       "cta": "Criar bolão corporativo",
       "secondaryCta": "Saiba mais",
-      "quoteHint": "Precisa de cotação formal ou nota fiscal? Solicite aqui"
+      "quoteHint": "Solicitar cotação formal",
+      "quoteHintSubtitle": "Receba proposta personalizada em 24–48h por e-mail"
     },
     "benefits": {
       "title": "Por que escolher o Picks4All para sua empresa",
