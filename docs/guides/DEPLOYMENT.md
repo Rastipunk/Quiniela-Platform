@@ -75,7 +75,7 @@ The frontend service is configured in Railway's dashboard (no `railway.toml`). I
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `RESEND_API_KEY` | Resend API key | `re_xxx` |
-| `RESEND_FROM_EMAIL` | Sender address for user-facing transactional emails | `Picks4All <noreply@picks4all.com>` |
+| `RESEND_FROM_EMAIL` | Sender address for user-facing transactional emails. Use a real, monitored mailbox — `noreply@`-style addresses are flagged by Resend Insights and penalised by Gmail/Outlook for trust. The default Reply-To is `soporte@<EMAIL_DOMAIN>` for support-bound mail; `sendPaymentReceiptEmail` overrides to `ventas@`, corporate-checkin to `empresas@`. | `hola@picks4all.com` |
 | `ADMIN_NOTIFICATION_EMAIL` | Inbox for `error` + `system_event` notifications + fallback if any category-specific var below is unset | `admin@picks4all.com` |
 | `SUPPORT_NOTIFICATION_EMAIL` | Inbox for `feedback` notifications (beta feedback / bug reports) | `soporte@picks4all.com` |
 | `ENTERPRISE_NOTIFICATION_EMAIL` | Inbox for `corporate_inquiry` + `corporate_pool_created` | `empresas@picks4all.com` |

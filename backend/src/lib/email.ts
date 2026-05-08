@@ -56,9 +56,21 @@ if (!FROM_EMAIL && apiKey) {
 const APP_NAME = process.env.APP_NAME || "Picks4All";
 const SITE_DOMAIN = process.env.SITE_DOMAIN || "picks4all.com";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-// Internal-notification routing addresses are looked up via
-// NOTIFICATION_INBOX_ENV inside the admin notifications block below;
-// no module-level ADMIN_EMAIL constant is needed.
+
+// Default Reply-To for user-facing transactional emails. The FROM is
+// `hola@picks4all.com` (a real, monitored mailbox), but a recipient
+// who hits "Reply" on a welcome / pool-invite / deadline-reminder
+// almost always wants help — route them to the support inbox so the
+// team sees these alongside other support tickets. Specific email
+// types (payment receipts, corporate, etc.) override this with their
+// own Reply-To downstream.
+//
+// Resend Insights flagged the previous `noreply@` FROM because Gmail/
+// Outlook penalise senders that signal "no two-way communication" and
+// because users with a complaint resort to marking spam instead of
+// replying — both hit deliverability. Switching to a real address
+// (and a sane Reply-To) is the canonical fix.
+const DEFAULT_REPLY_TO = `soporte@${process.env.EMAIL_DOMAIN || SITE_DOMAIN}`;
 
 /** Returns the ready Resend client, or null with an error message */
 function getReadyClient(): { client: Resend; from: string } | null {
@@ -74,7 +86,15 @@ function getReadyClient(): { client: Resend; from: string } | null {
  */
 async function resilientSend(
   ready: { client: Resend; from: string },
-  payload: Omit<Parameters<Resend["emails"]["send"]>[0], "from"> & { skipSuppressionCheck?: boolean },
+  payload: Omit<Parameters<Resend["emails"]["send"]>[0], "from"> & {
+    skipSuppressionCheck?: boolean;
+    // Pass `null` to opt out of the default Reply-To injection (used by
+    // internal admin notifications, where the team replying to itself
+    // makes no sense). Any other value, including `undefined`, gets
+    // the default Reply-To — keeping the contract that user-facing
+    // emails always have a real reachable Reply-To.
+    skipDefaultReplyTo?: boolean;
+  },
 ): Promise<{ data: { id: string } | null; error: { message: string } | null }> {
   // Check suppression list (bounced/complained addresses)
   if (!payload.skipSuppressionCheck) {
@@ -86,7 +106,16 @@ async function resilientSend(
       }
     }
   }
-  const { skipSuppressionCheck: _, ...sendPayload } = payload;
+  const { skipSuppressionCheck: _, skipDefaultReplyTo, replyTo, ...rest } = payload;
+
+  // Apply the default Reply-To unless the caller explicitly opted out
+  // (admin notifications) or provided their own (corporate / sales).
+  const effectiveReplyTo =
+    skipDefaultReplyTo ? undefined : replyTo ?? DEFAULT_REPLY_TO;
+
+  const sendPayload = effectiveReplyTo
+    ? { ...rest, replyTo: effectiveReplyTo }
+    : rest;
 
   try {
     const result = await withRetry("email-send", async () => {
@@ -1050,6 +1079,11 @@ export async function sendAdminNotification(params: {
       {
         to: recipients,
         subject: `${subjectLabel} — ${params.subject}`,
+        // Internal notification — recipient is the team's own inbox.
+        // Replying to oneself is meaningless; opt out of the user-
+        // facing default Reply-To injection so the operator's reply
+        // goes nowhere unexpected.
+        skipDefaultReplyTo: true,
         html: `
           <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
             <h2 style="color:#1F2937;border-bottom:2px solid ${BRAND.primary};padding-bottom:8px;">${headerLabel}</h2>
@@ -1437,6 +1471,9 @@ export async function sendPaymentReceiptEmail(params: {
     const { data, error } = await resilientSend(ready, {
       to: params.to,
       subject: subjects[loc] ?? subjects.en!,
+      // Receipts are billing artefacts — questions about them belong
+      // with the sales/billing inbox, not generic support.
+      replyTo: `ventas@${process.env.EMAIL_DOMAIN || SITE_DOMAIN}`,
       html: getPaymentReceiptTemplate(templateParams),
     });
 
