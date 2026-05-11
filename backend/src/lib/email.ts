@@ -1374,6 +1374,143 @@ export async function sendResultOverrideNotification(params: {
 }
 
 // =========================================================================
+// GROUP STANDINGS OVERRIDE NOTIFICATION
+// =========================================================================
+
+export async function sendGroupStandingsOverrideNotification(params: {
+  to: string;
+  userId: string;
+  memberName: string;
+  poolName: string;
+  poolId: string;
+  groupId: string;
+  previousStandings: string[];
+  newStandings: string[];
+  reason: string;
+  hostName: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || DEFAULT_LOCALE;
+
+  // Group display name per locale. `groupId` is the raw identifier (e.g. "A").
+  const groupLabels: Record<string, string> = {
+    es: `Grupo ${params.groupId}`,
+    en: `Group ${params.groupId}`,
+    pt: `Grupo ${params.groupId}`,
+  };
+  const groupName = groupLabels[loc] ?? groupLabels.es!;
+
+  const subjects: Record<string, string> = {
+    es: `⚠️ Tabla del ${groupName} modificada en "${params.poolName}"`,
+    en: `⚠️ ${groupName} standings modified in "${params.poolName}"`,
+    pt: `⚠️ Classificação do ${groupName} modificada em "${params.poolName}"`,
+  };
+
+  const headings: Record<string, string> = {
+    es: "Tabla de posiciones modificada por el organizador",
+    en: "Standings modified by the organizer",
+    pt: "Classificação modificada pelo organizador",
+  };
+
+  const messages: Record<string, string> = {
+    es: `El organizador <strong>${params.hostName}</strong> ha modificado la tabla de posiciones del <strong>${groupName}</strong> en la pool <strong>"${params.poolName}"</strong>.`,
+    en: `The organizer <strong>${params.hostName}</strong> has modified the standings for <strong>${groupName}</strong> in the pool <strong>"${params.poolName}"</strong>.`,
+    pt: `O organizador <strong>${params.hostName}</strong> modificou a classificação do <strong>${groupName}</strong> no bolão <strong>"${params.poolName}"</strong>.`,
+  };
+
+  const reasonLabels: Record<string, string> = {
+    es: "Razón del cambio",
+    en: "Reason for change",
+    pt: "Motivo da alteração",
+  };
+
+  const beforeLabels: Record<string, string> = { es: "Antes", en: "Before", pt: "Antes" };
+  const afterLabels: Record<string, string> = { es: "Después", en: "After", pt: "Depois" };
+
+  const ctas: Record<string, string> = {
+    es: "Ver pool",
+    en: "View pool",
+    pt: "Ver bolão",
+  };
+
+  const poolUrl = appendUtm(`${FRONTEND_URL}/pools/${params.poolId}`, emailUtm("group_standings_override"));
+
+  function renderList(teams: string[], color: string): string {
+    return teams
+      .map((name, i) => `<div style="font-size:13px;color:${color};padding:2px 0;">${i + 1}. ${name}</div>`)
+      .join("");
+  }
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="padding:20px;background:${BRAND.gradient};border-radius:12px 12px 0 0;text-align:center;">
+            <span style="font-size:40px;">⚠️</span>
+          </div>
+          <div style="padding:24px;background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+            <h2 style="color:#DC2626;margin:0 0 16px;font-size:18px;">${headings[loc] ?? headings.es}</h2>
+            <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;">${messages[loc] ?? messages.es}</p>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 16px;border-collapse:collapse;">
+              <tr>
+                <td style="width:50%;vertical-align:top;padding-right:8px;">
+                  <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;">
+                    <div style="color:#991b1b;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;">${beforeLabels[loc] ?? beforeLabels.es}</div>
+                    ${renderList(params.previousStandings, "#991b1b")}
+                  </div>
+                </td>
+                <td style="width:50%;vertical-align:top;padding-left:8px;">
+                  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;">
+                    <div style="color:#166534;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;">${afterLabels[loc] ?? afterLabels.es}</div>
+                    ${renderList(params.newStandings, "#166534")}
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:0 0 16px;">
+              <div style="color:#991b1b;font-size:13px;font-weight:600;margin-bottom:4px;">${reasonLabels[loc] ?? reasonLabels.es}:</div>
+              <div style="color:#374151;font-size:14px;font-style:italic;">"${params.reason}"</div>
+            </div>
+
+            <p style="color:${BRAND.textMuted};font-size:13px;line-height:1.5;margin:0 0 20px;">
+              ${loc === "es" ? "Los puntos del leaderboard se recalcularán automáticamente." :
+                loc === "en" ? "Leaderboard points will be recalculated automatically." :
+                "Os pontos do ranking serão recalculados automaticamente."}
+            </p>
+
+            <div style="text-align:center;">
+              <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:${BRAND.primary};color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
+                ${ctas[loc] ?? ctas.es}
+              </a>
+            </div>
+          </div>
+          <p style="color:#9CA3AF;font-size:12px;text-align:center;margin-top:16px;">
+            ${APP_NAME} &middot; ${SITE_DOMAIN}
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("❌ Error group standings override notification:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Exception group standings override notification:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
 // PREDICTION UPDATE EMAIL
 // =========================================================================
 

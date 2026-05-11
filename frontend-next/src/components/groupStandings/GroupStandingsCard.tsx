@@ -1,8 +1,10 @@
 "use client";
 
 // Componente unificado para GROUP_STANDINGS
-// HOST: Ingresa resultados de 6 partidos -> genera posiciones automaticamente
-// PLAYER: Arrastra equipos para predecir orden -> ve resultado oficial cuando este
+// HOST: Ingresa resultados de partidos -> genera posiciones automaticamente.
+//       Si la tabla generada no coincide con la realidad (p.ej. fair play
+//       en FIFA), puede sobrescribirla manualmente arrastrando equipos.
+// PLAYER: Arrastra equipos para predecir orden -> ve resultado oficial cuando esté.
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
@@ -13,6 +15,7 @@ import {
   getGroupStandingsResult,
   getGroupMatchResults,
   generateGroupStandings,
+  publishGroupStandingsResult,
   upsertResult,
   getGroupBreakdown,
   type GroupSingleBreakdown,
@@ -73,13 +76,17 @@ export function GroupStandingsCard({
   const [savingMatch, setSavingMatch] = useState<string | null>(null);
   const [generatingStandings, setGeneratingStandings] = useState(false);
 
+  // HOST override state (drag-and-drop manual override of an already-published table)
+  const [isOverriding, setIsOverriding] = useState(false);
+  const [overrideOrder, setOverrideOrder] = useState<string[]>([]);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [savingOverride, setSavingOverride] = useState(false);
+
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showMatchDetails, setShowMatchDetails] = useState(false);
-  const [isEditingMatches, setIsEditingMatches] = useState(false);
-  const [errataReason, setErrataReason] = useState("");
 
   // Breakdown modal state
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -164,8 +171,9 @@ export function GroupStandingsCard({
     }
   }
 
-  // Save match result (HOST)
-  async function handleSaveMatchResult(matchId: string, reason?: string) {
+  // Save match result (HOST). Initial entry only — modificar marcadores
+  // ya cerrados se hace desde el flujo de overrides de partidos, no aquí.
+  async function handleSaveMatchResult(matchId: string) {
     const state = matchResults.get(matchId);
     if (!state) return;
 
@@ -177,21 +185,11 @@ export function GroupStandingsCard({
       return;
     }
 
-    const needsReason = state.existsInDb;
-    if (needsReason && !reason?.trim()) {
-      setError(t("groupStandings.reasonRequired"));
-      return;
-    }
-
     try {
       setSavingMatch(matchId);
       setError(null);
 
-      await upsertResult(token, poolId, matchId, {
-        homeGoals,
-        awayGoals,
-        reason: needsReason ? reason : undefined,
-      });
+      await upsertResult(token, poolId, matchId, { homeGoals, awayGoals });
 
       setMatchResults((prev) => {
         const newMap = new Map(prev);
@@ -218,9 +216,7 @@ export function GroupStandingsCard({
       const { result, standings } = await generateGroupStandings(token, poolId, phaseId, groupId);
       setOfficialResult(result.teamIds);
       setOfficialStandings(standings);
-      setIsEditingMatches(false);
-      setErrataReason("");
-      setSuccessMessage(officialResult ? t("groupStandings.standingsUpdated") : t("groupStandings.standingsGenerated"));
+      setSuccessMessage(t("groupStandings.standingsGenerated"));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
     } catch (err: any) {
@@ -230,18 +226,50 @@ export function GroupStandingsCard({
     }
   }
 
-  // Entrar en modo edicion de partidos (errata flow)
-  function handleEnterEditMode() {
-    setIsEditingMatches(true);
+  // Entrar en modo override drag-and-drop. Solo disponible cuando ya
+  // hay tabla oficial publicada y todos los partidos están cerrados.
+  function handleEnterOverride() {
+    if (!officialResult) return;
+    setOverrideOrder([...officialResult]);
+    setOverrideReason("");
+    setIsOverriding(true);
     setShowMatchDetails(false);
-    setErrataReason("");
   }
 
-  // Cancelar edicion de partidos
-  function handleCancelEdit() {
-    setIsEditingMatches(false);
-    setErrataReason("");
-    loadData();
+  function handleCancelOverride() {
+    setIsOverriding(false);
+    setOverrideOrder([]);
+    setOverrideReason("");
+  }
+
+  // Guardar override: PUT al endpoint de results, dispara email a todos.
+  async function handleSaveOverride() {
+    if (!overrideReason.trim()) {
+      setError(t("groupStandings.reasonRequired"));
+      return;
+    }
+    if (overrideOrder.length !== teams.length) return;
+
+    try {
+      setSavingOverride(true);
+      setError(null);
+
+      await publishGroupStandingsResult(
+        token, poolId, phaseId, groupId,
+        overrideOrder, overrideReason.trim(),
+      );
+
+      setOfficialResult(overrideOrder);
+      setIsOverriding(false);
+      setOverrideReason("");
+      setSuccessMessage(t("groupStandings.overrideSuccess"));
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      setError(err?.message || t("groupStandings.errorOverride"));
+    } finally {
+      setSavingOverride(false);
+    }
   }
 
   // Cargar breakdown de puntos
@@ -276,6 +304,19 @@ export function GroupStandingsCard({
     );
   }
 
+  // Visual treatment for the player's "saved" state: green border on the
+  // column, banner across the top, "Edit prediction" button — designed
+  // so the user can tell at a glance whether their pick is locked in.
+  const showPickSavedTreatment = playerPickSaved && !isEditingPick;
+  const pickColumnStyle: React.CSSProperties = showPickSavedTreatment
+    ? {
+        border: "2px solid #16a34a",
+        borderRadius: 10,
+        padding: isMobile ? "0.75rem" : "0.85rem",
+        background: "#f9fdfb",
+      }
+    : {};
+
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: colors.white }}>
       {/* Header */}
@@ -285,9 +326,9 @@ export function GroupStandingsCard({
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "1.5rem" }}>
 
         {/* LEFT: Player Pick */}
-        <div>
+        <div style={pickColumnStyle}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: colors.textLighter }}>
-            {t("groupStandings.yourPrediction")} {playerPickSaved && !isEditingPick && <span style={{ color: colors.successAlt }}>✓</span>}
+            {t("groupStandings.yourPrediction")}
           </div>
 
           {isEditingPick ? (
@@ -324,6 +365,22 @@ export function GroupStandingsCard({
             </>
           ) : (
             <>
+              {/* Saved-state banner */}
+              <div
+                style={{
+                  background: "#dcfce7",
+                  border: "1px solid #bbf7d0",
+                  color: "#166534",
+                  padding: isMobile ? "0.55rem 0.75rem" : "0.45rem 0.65rem",
+                  borderRadius: 6,
+                  fontSize: isMobile ? 13 : 12,
+                  fontWeight: 600,
+                  marginBottom: "0.75rem",
+                  textAlign: "center",
+                }}
+              >
+                {t("groupStandings.pickSavedBanner")}
+              </div>
               <StaticTeamList teams={teams} orderedTeamIds={playerPick} isMobile={isMobile} />
               {!isLocked && (
                 <button
@@ -343,25 +400,113 @@ export function GroupStandingsCard({
                     ...mobileInteractiveStyles.tapHighlight,
                   }}
                 >
-                  {t("groupStandings.edit")}
+                  {t("groupStandings.editPick")}
                 </button>
               )}
             </>
           )}
         </div>
 
-        {/* RIGHT: Official Result or HOST Match Input */}
+        {/* RIGHT: Official Result, HOST Match Input, or HOST Override */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: colors.textLighter }}>
-            {t("groupStandings.officialResult")} {officialResult && <span style={{ color: colors.warning }}>★</span>}
+            {t("groupStandings.officialResult")} {officialResult && !isOverriding && <span style={{ color: colors.warning }}>★</span>}
           </div>
 
-          {officialResult && !isEditingMatches ? (
-            // Show official standings
+          {isOverriding ? (
+            // HOST: Manual drag-and-drop override of the published table.
+            <div
+              style={{
+                border: "2px solid #f59e0b",
+                borderRadius: 10,
+                padding: isMobile ? "0.75rem" : "0.85rem",
+                background: "#fffbeb",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: "0.25rem" }}>
+                {t("groupStandings.overrideTitle")}
+              </div>
+              <div style={{ fontSize: 12, color: "#78350f", marginBottom: "0.75rem", lineHeight: 1.4 }}>
+                {t("groupStandings.overrideDesc")}
+              </div>
+              <DraggableTeamList
+                teams={teams}
+                orderedTeamIds={overrideOrder}
+                onOrderChange={setOverrideOrder}
+                disabled={savingOverride}
+                isMobile={isMobile}
+              />
+              <label style={{ display: "block", fontSize: isMobile ? 13 : 12, color: "#78350f", fontWeight: 600, marginTop: "0.75rem", marginBottom: "0.25rem" }}>
+                {t("groupStandings.overrideReasonLabel")}
+              </label>
+              <input
+                type="text"
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder={t("groupStandings.overrideReasonPlaceholder")}
+                disabled={savingOverride}
+                style={{
+                  width: "100%",
+                  padding: isMobile ? "0.6rem" : "0.45rem",
+                  fontSize: isMobile ? 14 : 12,
+                  border: "1px solid #fcd34d",
+                  borderRadius: 6,
+                  background: "#fffbeb",
+                  minHeight: TOUCH_TARGET.minimum,
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ fontSize: 11, color: "#92400e", marginTop: "0.4rem", fontStyle: "italic" }}>
+                ⚠️ {t("groupStandings.overrideWarning")}
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+                <button
+                  onClick={handleCancelOverride}
+                  disabled={savingOverride}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? "12px 16px" : "0.6rem",
+                    fontSize: isMobile ? 14 : 13,
+                    fontWeight: 600,
+                    background: colors.bgLight,
+                    color: colors.textDark,
+                    border: "1px solid #d1d5db",
+                    borderRadius: 8,
+                    cursor: savingOverride ? "not-allowed" : "pointer",
+                    minHeight: TOUCH_TARGET.minimum,
+                    ...mobileInteractiveStyles.tapHighlight,
+                  }}
+                >
+                  {t("groupStandings.cancel")}
+                </button>
+                <button
+                  onClick={handleSaveOverride}
+                  disabled={savingOverride || !overrideReason.trim()}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? "12px 16px" : "0.6rem",
+                    fontSize: isMobile ? 14 : 13,
+                    fontWeight: 700,
+                    background: savingOverride || !overrideReason.trim() ? colors.borderMedium : "#d97706",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 8,
+                    cursor: savingOverride || !overrideReason.trim() ? "not-allowed" : "pointer",
+                    minHeight: TOUCH_TARGET.minimum,
+                    opacity: !overrideReason.trim() ? 0.6 : 1,
+                    ...mobileInteractiveStyles.tapHighlight,
+                  }}
+                >
+                  {savingOverride ? t("groupStandings.overrideSaving") : t("groupStandings.overrideSaveBtn")}
+                </button>
+              </div>
+            </div>
+          ) : officialResult ? (
+            // Tabla oficial publicada
             <>
               <StaticTeamList teams={teams} orderedTeamIds={officialResult} isOfficial isMobile={isMobile} />
               {isHost && (
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
                   <button
                     onClick={() => setShowMatchDetails(!showMatchDetails)}
                     style={{
@@ -379,48 +524,47 @@ export function GroupStandingsCard({
                   >
                     {showMatchDetails ? t("groupStandings.hideMatches") : t("groupStandings.showMatches")}
                   </button>
-                  <button
-                    onClick={handleEnterEditMode}
-                    style={{
-                      flex: 1,
-                      padding: isMobile ? "10px 12px" : "0.4rem",
-                      fontSize: isMobile ? 13 : 12,
-                      background: colors.warningBgAmber,
-                      color: colors.warningDarker,
-                      border: "1px solid #fcd34d",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      minHeight: TOUCH_TARGET.minimum,
-                      ...mobileInteractiveStyles.tapHighlight,
-                    }}
-                  >
-                    {t("groupStandings.editMatches")}
-                  </button>
+                  {allMatchesSaved && (
+                    <button
+                      onClick={handleEnterOverride}
+                      style={{
+                        flex: 1,
+                        padding: isMobile ? "10px 12px" : "0.4rem",
+                        fontSize: isMobile ? 13 : 12,
+                        fontWeight: 600,
+                        background: colors.warningBgAmber,
+                        color: colors.warningDarker,
+                        border: "1px solid #fcd34d",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        minHeight: TOUCH_TARGET.minimum,
+                        ...mobileInteractiveStyles.tapHighlight,
+                      }}
+                    >
+                      {t("groupStandings.overrideBtn")}
+                    </button>
+                  )}
                 </div>
               )}
             </>
           ) : isHost ? (
-            // HOST: Input match results (initial o editing mode)
+            // HOST sin tabla todavía: ingresa marcadores para generar
             <MatchInputForm
               matches={matches}
               teamMap={teamMap}
               matchResults={matchResults}
               savingMatch={savingMatch}
-              errataReason={errataReason}
-              setErrataReason={setErrataReason}
               allMatchesSaved={allMatchesSaved}
               generatingStandings={generatingStandings}
-              officialResult={officialResult}
               savedMatchCount={savedMatchCount}
               onSaveMatchResult={handleSaveMatchResult}
               onUpdateMatchResult={updateMatchResult}
               onGenerateStandings={handleGenerateStandings}
-              onCancelEdit={handleCancelEdit}
               isMobile={isMobile}
               t={t}
             />
           ) : (
-            // PLAYER: Show pending message
+            // PLAYER sin tabla: mensaje de espera
             <div style={{ padding: "2rem 1rem", textAlign: "center", background: colors.bgLighter, borderRadius: 8, color: colors.textLighter, fontSize: 13 }}>
               {t("groupStandings.pendingPublish")}
             </div>
@@ -429,7 +573,7 @@ export function GroupStandingsCard({
       </div>
 
       {/* Show match details for HOST after standings generated */}
-      {isHost && showMatchDetails && officialResult && !isEditingMatches && (
+      {isHost && showMatchDetails && officialResult && !isOverriding && (
         <div style={{ marginTop: "1rem", padding: "0.75rem", background: colors.bgLighter, borderRadius: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: "0.75rem", color: colors.textLighter }}>
             {t("groupStandings.matchResultsTitle")}
@@ -454,7 +598,6 @@ export function GroupStandingsCard({
                     borderRadius: 6,
                   }}
                 >
-                  {/* Equipo local */}
                   <div style={{ flex: 1, textAlign: "right", paddingRight: "0.75rem" }}>
                     <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
                       {homeTeam?.name || t("groupStandings.unknownTeam")}
@@ -466,7 +609,6 @@ export function GroupStandingsCard({
                     )}
                   </div>
 
-                  {/* Marcador */}
                   <div style={{
                     display: "flex",
                     alignItems: "center",
@@ -482,7 +624,6 @@ export function GroupStandingsCard({
                     <span style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>{awayGoals}</span>
                   </div>
 
-                  {/* Equipo visitante */}
                   <div style={{ flex: 1, textAlign: "left", paddingLeft: "0.75rem" }}>
                     <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
                       {awayTeam?.name || t("groupStandings.unknownTeam")}
@@ -501,7 +642,7 @@ export function GroupStandingsCard({
       )}
 
       {/* Breakdown button - show when there's official result */}
-      {officialResult && (
+      {officialResult && !isOverriding && (
         <div style={{ marginTop: "1rem", textAlign: "center" }}>
           <button
             onClick={handleShowBreakdown}

@@ -23,6 +23,11 @@ import {
   generateGroupStandings,
   getGroupMatchResults,
 } from "../services/groupStandingsService";
+import { prisma } from "../db";
+import { fireAndForget } from "../lib/asyncHelpers";
+import { extractTeams } from "../lib/fixture";
+import { countryToLocale } from "../lib/constants";
+import { sendGroupStandingsOverrideNotification } from "../lib/email";
 
 export const groupStandingsRouter = Router();
 
@@ -122,10 +127,60 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
   }
 
   try {
-    const result = await publishGroupStandingsResult(
+    const { result, isErrata, previousTeamIds } = await publishGroupStandingsResult(
       req.auth!.userId, poolId, phaseId, groupId,
       parsed.data.teamIds, parsed.data.reason, auditCtx(req),
     );
+
+    // Override of an existing standings table: notify ALL active members.
+    // Mirrors the match-result HOST_OVERRIDE notification pattern.
+    if (isErrata && parsed.data.reason && previousTeamIds) {
+      const pool = await prisma.pool.findUnique({
+        where: { id: poolId },
+        include: { tournamentInstance: true },
+      });
+      if (pool) {
+        const teams = extractTeams(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
+        const teamNameById = new Map(teams.map((t: any) => [t.id, t.name as string]));
+        const toName = (id: string) => teamNameById.get(id) ?? id;
+
+        const host = await prisma.user.findUnique({
+          where: { id: req.auth!.userId },
+          select: { displayName: true, username: true },
+        });
+        const hostName = host?.displayName || host?.username || "Host";
+
+        const members = await prisma.poolMember.findMany({
+          where: { poolId, status: "ACTIVE" },
+          include: {
+            user: {
+              select: {
+                id: true, email: true, displayName: true,
+                country: true, emailNotificationsEnabled: true,
+              },
+            },
+          },
+        });
+
+        for (const member of members) {
+          if (!member.user.emailNotificationsEnabled) continue;
+          fireAndForget("group-standings-override-email", sendGroupStandingsOverrideNotification({
+            to: member.user.email,
+            userId: member.user.id,
+            memberName: member.user.displayName || "Jugador",
+            poolName: pool.name,
+            poolId,
+            groupId,
+            previousStandings: previousTeamIds.map(toName),
+            newStandings: parsed.data.teamIds.map(toName),
+            reason: parsed.data.reason,
+            hostName,
+            locale: countryToLocale(member.user.country),
+          }));
+        }
+      }
+    }
+
     return sendData(res, result);
   } catch (err) {
     return handleServiceError(res, err);

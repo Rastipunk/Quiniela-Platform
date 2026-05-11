@@ -204,7 +204,11 @@ export async function publishGroupStandingsResult(
     userAgent: ctx.userAgent,
   }));
 
-  return result;
+  return {
+    result,
+    isErrata,
+    previousTeamIds: (existingResult?.teamIds as string[] | undefined) ?? null,
+  };
 }
 
 /** Get official result for a specific group. */

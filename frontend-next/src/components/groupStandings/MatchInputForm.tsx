@@ -10,16 +10,12 @@ interface MatchInputFormProps {
   teamMap: Map<string, Team>;
   matchResults: Map<string, { homeGoals: string; awayGoals: string; saved: boolean; existsInDb: boolean }>;
   savingMatch: string | null;
-  errataReason: string;
-  setErrataReason: (v: string) => void;
   allMatchesSaved: boolean;
   generatingStandings: boolean;
-  officialResult: string[] | null;
   savedMatchCount: number;
-  onSaveMatchResult: (matchId: string, reason?: string) => void;
+  onSaveMatchResult: (matchId: string) => void;
   onUpdateMatchResult: (matchId: string, field: "homeGoals" | "awayGoals", value: string) => void;
   onGenerateStandings: () => void;
-  onCancelEdit: () => void;
   isMobile: boolean;
   t: any;
 }
@@ -29,35 +25,17 @@ export function MatchInputForm({
   teamMap,
   matchResults,
   savingMatch,
-  errataReason,
-  setErrataReason,
   allMatchesSaved,
   generatingStandings,
-  officialResult,
   savedMatchCount,
   onSaveMatchResult,
   onUpdateMatchResult,
   onGenerateStandings,
-  onCancelEdit,
   isMobile,
   t,
 }: MatchInputFormProps) {
   return (
     <div>
-      {officialResult && (
-        <div style={{
-          marginBottom: "0.75rem",
-          padding: "0.5rem",
-          background: colors.warningBgAmber,
-          border: "1px solid #fcd34d",
-          borderRadius: 6,
-          fontSize: 11,
-          color: colors.warningDarker
-        }}>
-          <strong>{t("groupStandings.correctionMode")}</strong> {t("groupStandings.correctionModeDesc")}
-        </div>
-      )}
-
       <div style={{ fontSize: 11, color: colors.textLighter, marginBottom: "0.5rem" }}>
         {t("groupStandings.matchesCount", { saved: savedMatchCount, total: matches.length })}
       </div>
@@ -68,8 +46,6 @@ export function MatchInputForm({
           const homeTeam = teamMap.get(match.homeTeamId);
           const awayTeam = teamMap.get(match.awayTeamId);
           const isSaving = savingMatch === match.id;
-          // Necesita reason si el resultado ya existe en la DB
-          const needsReason = state.existsInDb;
 
           return (
             <div
@@ -111,9 +87,8 @@ export function MatchInputForm({
                 {awayTeam?.code || awayTeam?.name?.slice(0, 3).toUpperCase()}
               </span>
               <button
-                onClick={() => onSaveMatchResult(match.id, needsReason ? errataReason : undefined)}
-                disabled={isSaving || !state.homeGoals || !state.awayGoals || (needsReason && !errataReason.trim())}
-                title={needsReason && !errataReason.trim() ? t("groupStandings.needsReasonTooltip") : undefined}
+                onClick={() => onSaveMatchResult(match.id)}
+                disabled={isSaving || !state.homeGoals || !state.awayGoals}
                 style={{
                   padding: isMobile ? "0.4rem 0.6rem" : "0.15rem 0.3rem",
                   fontSize: isMobile ? 13 : 10,
@@ -122,10 +97,9 @@ export function MatchInputForm({
                   color: "white",
                   border: "none",
                   borderRadius: 4,
-                  cursor: isSaving || !state.homeGoals || !state.awayGoals || (needsReason && !errataReason.trim()) ? "not-allowed" : "pointer",
+                  cursor: isSaving || !state.homeGoals || !state.awayGoals ? "not-allowed" : "pointer",
                   minWidth: isMobile ? 40 : 32,
                   minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
-                  opacity: (needsReason && !errataReason.trim()) ? 0.5 : 1,
                   flexShrink: 0,
                   ...mobileInteractiveStyles.tapHighlight,
                 }}
@@ -137,52 +111,8 @@ export function MatchInputForm({
         })}
       </div>
 
-      {/* Campo de razon para errata (solo cuando hay partidos que ya existen en DB) */}
-      {Array.from(matchResults.values()).some(s => s.existsInDb) && (
-        <div style={{ marginTop: "0.75rem" }}>
-          <label style={{ display: "block", fontSize: isMobile ? 13 : 11, color: colors.textLighter, marginBottom: "0.25rem" }}>
-            {t("groupStandings.correctionReasonLabel")}
-          </label>
-          <input
-            type="text"
-            value={errataReason}
-            onChange={(e) => setErrataReason(e.target.value)}
-            placeholder={t("groupStandings.correctionReasonPlaceholder")}
-            style={{
-              width: "100%",
-              padding: isMobile ? "0.6rem" : "0.4rem",
-              fontSize: isMobile ? 14 : 12,
-              border: "1px solid #fcd34d",
-              borderRadius: 6,
-              background: colors.warningBgLight,
-              minHeight: TOUCH_TARGET.minimum,
-            }}
-          />
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
-        {officialResult && (
-          <button
-            onClick={onCancelEdit}
-            style={{
-              flex: 1,
-              padding: isMobile ? "12px 16px" : "0.6rem",
-              fontSize: isMobile ? 15 : 13,
-              fontWeight: 600,
-              background: colors.bgLight,
-              color: colors.textDark,
-              border: "1px solid #d1d5db",
-              borderRadius: 8,
-              cursor: "pointer",
-              minHeight: TOUCH_TARGET.minimum,
-              ...mobileInteractiveStyles.tapHighlight,
-            }}
-          >
-            {t("groupStandings.cancel")}
-          </button>
-        )}
-        {allMatchesSaved && (
+      {allMatchesSaved && (
+        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
           <button
             onClick={onGenerateStandings}
             disabled={generatingStandings}
@@ -200,10 +130,10 @@ export function MatchInputForm({
               ...mobileInteractiveStyles.tapHighlight,
             }}
           >
-            {generatingStandings ? t("groupStandings.generating") : officialResult ? t("groupStandings.regenerateStandings") : t("groupStandings.generateStandings")}
+            {generatingStandings ? t("groupStandings.generating") : t("groupStandings.generateStandings")}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
