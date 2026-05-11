@@ -212,6 +212,22 @@
       "success": "Pool archivado exitosamente",
       "error": "Error al archivar pool"
     },
+    "rules": {
+      "title": "Administrar Reglas",
+      "modalTitle": "Editar reglas de puntuación",
+      "customPreset": "Personalizado",
+      "phasesCount": "fases configuradas",
+      "draftHint": "La pool está en borrador. Puedes cambiar el preset o ajustar las reglas. Al guardar, los nuevos miembros que se unan jugarán con estas reglas.",
+      "lockedTitle": "Reglas bloqueadas",
+      "lockedExplanation": "Para modificar las reglas, no debe haber miembros activos distintos del host (jugadores y co-admins). Al remover al último miembro, la pool volverá automáticamente a borrador y podrás editar.",
+      "editButton": "Editar reglas",
+      "saveButton": "Guardar cambios",
+      "saving": "Guardando...",
+      "cancel": "Cancelar",
+      "confirmSave": "¿Aplicar estas reglas a la pool? Los nuevos miembros que se unan jugarán bajo estas reglas.",
+      "saveSuccess": "Reglas actualizadas correctamente",
+      "errorNoConfig": "Debes elegir un preset y configurar al menos una fase antes de guardar"
+    },
     "hostInfo": {
       "title": "Información para el Host",
       "tip1": "Las fases se avanzan automáticamente cuando todos los partidos tienen resultado (si auto-advance está habilitado)",
@@ -439,7 +455,9 @@
     "banning": "Baneando...",
     "banSuccess": "{name} ha sido baneado permanentemente",
     "banError": "Error al banear miembro",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "revertConfirm": "Al remover a {name} ya no quedarán jugadores activos en la pool. La pool volverá a borrador, todas las predicciones se eliminarán y podrás editar las reglas. ¿Continuar?",
+    "revertSuccess": "{name} fue removido. La pool volvió a borrador y puedes editar las reglas."
   },
 
   "rules": {

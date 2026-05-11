@@ -2,8 +2,17 @@
 
 import { useTranslations } from "next-intl";
 import { kickMember, banMember } from "@/lib/api";
+import { isApiError } from "@/lib/apiError";
 import type { ExpulsionModalData } from "../poolTypes";
 import { colors, radii, zIndex, shadows, fontSize, fontWeight, spacing, modalOverlayDarkStyle } from "@/lib/theme";
+
+// When the backend reports that this kick/ban will be the one that empties
+// the pool of non-host members, it returns 409 REVERT_PENDING_CONFIRMATION.
+// We surface that to the host with a confirm dialog and retry with the
+// `confirmRevert: true` flag so the auto-revert ACTIVE → DRAFT (and the
+// deletion of every player prediction) is an informed choice, not a
+// surprise.
+const REVERT_PENDING_CODE = "REVERT_PENDING_CONFIRMATION";
 
 export interface ExpulsionModalProps {
   data: ExpulsionModalData;
@@ -49,8 +58,25 @@ export function ExpulsionModal({ data, onClose, poolId, token, busyKey, setBusyK
                   await reload();
                   onClose();
                   alert(`✅ ${t("expulsion.kickSuccess", { name: data.memberName })}`);
-                } catch (err: any) {
-                  setError(friendlyError(err));
+                } catch (err: unknown) {
+                  // First call refused because removing this member would
+                  // revert the pool. Ask the host to confirm and retry.
+                  if (isApiError(err) && err.status === 409 && err.code === REVERT_PENDING_CODE) {
+                    const ok = window.confirm(t("expulsion.revertConfirm", { name: data.memberName }));
+                    if (ok) {
+                      try {
+                        await kickMember(token, poolId, data.memberId, reason, true);
+                        await reload();
+                        onClose();
+                        alert(`✅ ${t("expulsion.revertSuccess", { name: data.memberName })}`);
+                        return;
+                      } catch (retryErr: any) {
+                        setError(friendlyError(retryErr));
+                      }
+                    }
+                  } else {
+                    setError(friendlyError(err));
+                  }
                 } finally {
                   setBusyKey(null);
                 }
@@ -110,8 +136,23 @@ export function ExpulsionModal({ data, onClose, poolId, token, busyKey, setBusyK
                   await reload();
                   onClose();
                   alert(`✅ ${t("expulsion.banSuccess", { name: data.memberName })}`);
-                } catch (err: any) {
-                  setError(friendlyError(err));
+                } catch (err: unknown) {
+                  if (isApiError(err) && err.status === 409 && err.code === REVERT_PENDING_CODE) {
+                    const ok = window.confirm(t("expulsion.revertConfirm", { name: data.memberName }));
+                    if (ok) {
+                      try {
+                        await banMember(token, poolId, data.memberId, reason, deletePicks, true);
+                        await reload();
+                        onClose();
+                        alert(`✅ ${t("expulsion.revertSuccess", { name: data.memberName })}`);
+                        return;
+                      } catch (retryErr: any) {
+                        setError(friendlyError(retryErr));
+                      }
+                    }
+                  } else {
+                    setError(friendlyError(err));
+                  }
                 } finally {
                   setBusyKey(null);
                 }

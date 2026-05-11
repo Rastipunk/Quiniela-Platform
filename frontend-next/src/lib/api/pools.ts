@@ -142,6 +142,22 @@ export async function archivePool(token: string, poolId: string): Promise<{ succ
   return requestJson<{ success: boolean }>(`/pools/${poolId}/archive`, { method: "POST" });
 }
 
+// "Administrar reglas" — host can replace the pool's scoring config while
+// the pool is in DRAFT. The body shape mirrors the create-pool endpoint:
+// either a preset key string ("BASIC" | "SIMPLE" | "CUMULATIVE") that
+// the backend expands against the instance's real phases, or a
+// fully-detailed PoolPickTypesConfig the validator will check.
+export async function updatePoolScoringConfig(
+  token: string,
+  poolId: string,
+  pickTypesConfig: unknown,
+): Promise<{ pool: { id: string; pickTypesConfig: unknown } }> {
+  return requestJson(
+    `/pools/${poolId}/scoring-config`,
+    { method: "PATCH", body: JSON.stringify({ pickTypesConfig }) },
+  );
+}
+
 // Member management
 export async function promoteMemberToCoAdmin(token: string, poolId: string, memberId: string): Promise<any> {
   return requestJson<any>(`/pools/${poolId}/members/${memberId}/promote`, { method: "POST" });
@@ -163,12 +179,35 @@ export async function rejectMember(token: string, poolId: string, memberId: stri
   return requestJson<any>(`/pools/${poolId}/members/${memberId}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
 }
 
-export async function kickMember(token: string, poolId: string, memberId: string, reason?: string): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/kick`, { method: "POST", body: JSON.stringify({ reason }) });
+// `confirmRevert` acknowledges that removing the last non-host member
+// will auto-revert the pool to DRAFT (deleting all player predictions).
+// Without it, the backend returns 409 REVERT_PENDING_CONFIRMATION so
+// the UI can show a warning dialog before retrying.
+export async function kickMember(
+  token: string,
+  poolId: string,
+  memberId: string,
+  reason?: string,
+  confirmRevert?: boolean,
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/kick`,
+    { method: "POST", body: JSON.stringify({ reason, confirmRevert }) },
+  );
 }
 
-export async function banMember(token: string, poolId: string, memberId: string, reason: string, deletePicks: boolean): Promise<any> {
-  return requestJson<any>(`/pools/${poolId}/members/${memberId}/ban`, { method: "POST", body: JSON.stringify({ reason, deletePicks }) });
+export async function banMember(
+  token: string,
+  poolId: string,
+  memberId: string,
+  reason: string,
+  deletePicks: boolean,
+  confirmRevert?: boolean,
+): Promise<any> {
+  return requestJson<any>(
+    `/pools/${poolId}/members/${memberId}/ban`,
+    { method: "POST", body: JSON.stringify({ reason, deletePicks, confirmRevert }) },
+  );
 }
 
 export async function setScoringOverride(token: string, poolId: string, matchId: string, scoringEnabled: boolean, reason?: string): Promise<any> {

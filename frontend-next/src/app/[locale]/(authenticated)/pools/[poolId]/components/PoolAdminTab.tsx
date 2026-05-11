@@ -7,6 +7,7 @@ import { archivePool } from "@/lib/api";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
 import { AdminSettingsToggles } from "./admin/AdminSettingsToggles";
+import { ManageRulesPanel } from "./admin/ManageRulesPanel";
 import { PhaseStatusPanel } from "./admin/PhaseStatusPanel";
 
 interface PoolAdminTabProps extends PoolTabBaseProps {
@@ -56,6 +57,13 @@ export function PoolAdminTab({
         poolId={poolId} token={token} overview={overview} phases={phases}
         busyKey={busyKey} setBusyKey={setBusyKey} setError={setError}
         friendlyError={friendlyError} reload={reload}
+      />
+
+      {/* Host-only — edit scoring rules. Editor opens only in DRAFT;
+          other states show a locked banner explaining how to unlock. */}
+      <ManageRulesPanel
+        poolId={poolId} token={token} overview={overview}
+        setError={setError} friendlyError={friendlyError} reload={reload}
       />
 
       <PhaseStatusPanel

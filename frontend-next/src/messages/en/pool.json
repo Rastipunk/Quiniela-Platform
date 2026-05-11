@@ -212,6 +212,22 @@
       "success": "Pool archived successfully",
       "error": "Error archiving pool"
     },
+    "rules": {
+      "title": "Manage Scoring Rules",
+      "modalTitle": "Edit scoring rules",
+      "customPreset": "Custom",
+      "phasesCount": "phases configured",
+      "draftHint": "The pool is in draft. You can change the preset or fine-tune the rules. New members who join will play under the saved rules.",
+      "lockedTitle": "Rules locked",
+      "lockedExplanation": "To edit the rules, there must be no active members other than the host (players and co-admins). When the last non-host member is removed, the pool will automatically revert to draft and unlock the editor.",
+      "editButton": "Edit rules",
+      "saveButton": "Save changes",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "confirmSave": "Apply these rules to the pool? New members who join will play under these rules.",
+      "saveSuccess": "Rules updated successfully",
+      "errorNoConfig": "Pick a preset and configure at least one phase before saving"
+    },
     "hostInfo": {
       "title": "Host Information",
       "tip1": "Phases advance automatically when all matches have results (if auto-advance is enabled)",
@@ -439,7 +455,9 @@
     "banning": "Banning...",
     "banSuccess": "{name} has been permanently banned",
     "banError": "Error banning member",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "revertConfirm": "Removing {name} will leave no active players in the pool. The pool will revert to draft, all predictions will be deleted, and you'll be able to edit the rules. Continue?",
+    "revertSuccess": "{name} was removed. The pool reverted to draft and you can now edit the rules."
   },
 
   "rules": {

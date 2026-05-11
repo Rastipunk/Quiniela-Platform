@@ -212,6 +212,22 @@
       "success": "Pool arquivado com sucesso",
       "error": "Erro ao arquivar pool"
     },
+    "rules": {
+      "title": "Gerenciar Regras",
+      "modalTitle": "Editar regras de pontuação",
+      "customPreset": "Personalizado",
+      "phasesCount": "fases configuradas",
+      "draftHint": "O bolão está em rascunho. Você pode mudar o preset ou ajustar as regras. Ao salvar, os novos membros que entrarem jogarão com estas regras.",
+      "lockedTitle": "Regras bloqueadas",
+      "lockedExplanation": "Para modificar as regras, não pode haver membros ativos além do host (jogadores e co-admins). Ao remover o último membro, o bolão voltará automaticamente para rascunho e o editor será desbloqueado.",
+      "editButton": "Editar regras",
+      "saveButton": "Salvar alterações",
+      "saving": "Salvando...",
+      "cancel": "Cancelar",
+      "confirmSave": "Aplicar estas regras ao bolão? Os novos membros que entrarem jogarão sob estas regras.",
+      "saveSuccess": "Regras atualizadas com sucesso",
+      "errorNoConfig": "Escolha um preset e configure pelo menos uma fase antes de salvar"
+    },
     "hostInfo": {
       "title": "Informações para o Host",
       "tip1": "As fases avançam automaticamente quando todos os jogos têm resultado (se o avanço automático estiver habilitado)",
@@ -439,7 +455,9 @@
     "banning": "Banindo...",
     "banSuccess": "{name} foi banido permanentemente",
     "banError": "Erro ao banir membro",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "revertConfirm": "Ao remover {name} não restarão jogadores ativos no bolão. O bolão voltará para rascunho, todas as previsões serão apagadas e você poderá editar as regras. Continuar?",
+    "revertSuccess": "{name} foi removido. O bolão voltou para rascunho e você pode editar as regras."
   },
 
   "rules": {
