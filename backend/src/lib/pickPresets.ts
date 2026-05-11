@@ -13,13 +13,16 @@ const DEFAULT_MULTIPLIERS: Record<string, number> = {
   finals: 4.0,
 };
 
-// Progressive knockout points for SIMPLE preset
+// Progressive knockout points for SIMPLE preset. Values mirror the
+// Predictor's per-phase multipliers (×1.5, ×2.0, ×2.5, ×3.0, ×4.0)
+// applied to the group-phase base of 10. The Final at 40 (×4.0)
+// preserves the "Final = biggest swing of the tournament" feel.
 const KNOCKOUT_POINTS: Record<string, number> = {
-  round_of_32: 10,
-  round_of_16: 15,
-  quarter_finals: 20,
-  semi_finals: 25,
-  finals: 30,
+  round_of_32: 15,
+  round_of_16: 20,
+  quarter_finals: 25,
+  semi_finals: 30,
+  finals: 40,
 };
 
 function makeBasicTypes(points: number) {
@@ -133,7 +136,7 @@ const SIMPLE_CONFIG: PoolPickTypesConfig = [
     requiresScore: false,
     structuralPicks: {
       type: "KNOCKOUT_WINNER",
-      config: { pointsPerCorrectAdvance: 10 },
+      config: { pointsPerCorrectAdvance: 15 },
     },
   },
   {
@@ -142,7 +145,7 @@ const SIMPLE_CONFIG: PoolPickTypesConfig = [
     requiresScore: false,
     structuralPicks: {
       type: "KNOCKOUT_WINNER",
-      config: { pointsPerCorrectAdvance: 15 },
+      config: { pointsPerCorrectAdvance: 20 },
     },
   },
   {
@@ -151,7 +154,7 @@ const SIMPLE_CONFIG: PoolPickTypesConfig = [
     requiresScore: false,
     structuralPicks: {
       type: "KNOCKOUT_WINNER",
-      config: { pointsPerCorrectAdvance: 20 },
+      config: { pointsPerCorrectAdvance: 25 },
     },
   },
   {
@@ -160,7 +163,7 @@ const SIMPLE_CONFIG: PoolPickTypesConfig = [
     requiresScore: false,
     structuralPicks: {
       type: "KNOCKOUT_WINNER",
-      config: { pointsPerCorrectAdvance: 25 },
+      config: { pointsPerCorrectAdvance: 30 },
     },
   },
   {
@@ -169,7 +172,7 @@ const SIMPLE_CONFIG: PoolPickTypesConfig = [
     requiresScore: false,
     structuralPicks: {
       type: "KNOCKOUT_WINNER",
-      config: { pointsPerCorrectAdvance: 30 },
+      config: { pointsPerCorrectAdvance: 40 },
     },
   },
 ];

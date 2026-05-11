@@ -7,6 +7,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -71,8 +72,21 @@ export function DraggableTeamList({
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const orderedTeams = orderedTeamIds.map((id) => teamMap.get(id)!).filter(Boolean);
 
+  // Three sensors so reorder works equivalently on every input device:
+  //   · PointerSensor with a 5px distance constraint — desktop mouse drag,
+  //     the distance threshold filters accidental clicks.
+  //   · TouchSensor with a 200ms press-and-hold delay — without this,
+  //     iOS Safari and most Android browsers steal the touch for native
+  //     scrolling instead of starting the drag, which is why reordering
+  //     was completely broken on mobile.
+  //   · KeyboardSensor for accessibility (space + arrows).
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -113,7 +127,19 @@ function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; 
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={{
+        ...style,
+        // Disable the browser's native touch gestures (pan/zoom) on the
+        // draggable row so the TouchSensor's press-and-hold activation
+        // gets clean events. Without this, iOS especially will hijack
+        // touches to scroll the page even when the user is mid-drag.
+        touchAction: disabled ? "auto" : "none",
+      }}
+      {...attributes}
+      {...listeners}
+    >
       <div
         style={{
           display: "flex",
@@ -131,7 +157,22 @@ function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; 
         <span style={{ fontSize: 16, width: 24 }}>{MEDALS[position]}</span>
         <span style={{ fontSize: isMobile ? 13 : 12, color: colors.textLighter, width: 20 }}>{position + 1}.</span>
         <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: colors.text, flex: 1 }}>{team.name}</span>
-        {!disabled && <span style={{ color: colors.textLighter, fontSize: isMobile ? 18 : 14 }}>⋮⋮</span>}
+        {!disabled && (
+          // Drag handle indicator. Larger + bolder on mobile so the
+          // affordance is obvious (press-and-hold to reorder).
+          <span
+            aria-hidden="true"
+            style={{
+              color: colors.textMuted,
+              fontSize: isMobile ? 22 : 14,
+              fontWeight: isMobile ? 700 : 400,
+              padding: isMobile ? "4px 8px" : 0,
+              userSelect: "none",
+            }}
+          >
+            ⋮⋮
+          </span>
+        )}
       </div>
     </div>
   );

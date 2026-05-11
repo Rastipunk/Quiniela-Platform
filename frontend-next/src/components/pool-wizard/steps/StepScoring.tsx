@@ -143,10 +143,14 @@ function generatePresetConfig(
     }));
   }
 
-  // SIMPLE — progressive knockout points
+  // SIMPLE — base value is 10 pts (groups). Knockout phases derive from
+  // the base via the same per-phase multipliers the Predictor uses
+  // (×1.5, ×2.0, ×2.5, ×3.0, ×4.0 for R32 → Final). When the wizard
+  // applies scaling these become the visible default points; the host
+  // can still override per-phase from the advanced UI.
   const knockoutPointsMap: Record<string, number> = {
-    round_of_32: 10, round_of_16: 15, quarter_finals: 20,
-    semi_finals: 25, finals: 30,
+    round_of_32: 15, round_of_16: 20, quarter_finals: 25,
+    semi_finals: 30, finals: 40,
   };
 
   return phases.map((phase): PhasePickConfig => ({
@@ -347,6 +351,7 @@ function PhaseSection({
   isCustom,
   isMobile,
   onUpdatePhase,
+  recommendedStructural,
 }: {
   phase: PhasePickConfig;
   phaseIndex: number;
@@ -356,6 +361,18 @@ function PhaseSection({
   isCustom: boolean;
   isMobile: boolean;
   onUpdatePhase: (index: number, updated: PhasePickConfig) => void;
+  // Suggested values for the SIMPLE / Estratega structural fields,
+  // already pre-multiplied by the active per-phase multiplier. Used
+  // as the "Sugerido: X" badge target — when the host modifies the
+  // input the badge appears with this value and is clickable to
+  // restore. For CUSTOM / score-based presets the caller can pass
+  // undefined and the section falls back to its prior hardcoded
+  // recommendations.
+  recommendedStructural?: {
+    pointsPerExactPosition: number;
+    bonusPerfectGroup: number;
+    pointsPerCorrectAdvance: number;
+  };
 }) {
   const isGroup = !phase.requiresScore && phase.structuralPicks?.type === "GROUP_STANDINGS";
   const isKnockoutStructural = !phase.requiresScore && phase.structuralPicks?.type === "KNOCKOUT_WINNER";
@@ -721,7 +738,7 @@ function PhaseSection({
                 value={(phase.structuralPicks.config as GroupStandingsConfig).pointsPerExactPosition ?? 10}
                 onChange={(v) => handleStructuralChange("pointsPerExactPosition", v)}
                 isCustom={isCustom}
-                recommended={10}
+                recommended={recommendedStructural?.pointsPerExactPosition ?? 10}
                 isMobile={isMobile}
               />
               <StructuralInput
@@ -730,7 +747,7 @@ function PhaseSection({
                 value={(phase.structuralPicks.config as GroupStandingsConfig).bonusPerfectGroup ?? 20}
                 onChange={(v) => handleStructuralChange("bonusPerfectGroup", v)}
                 isCustom={isCustom}
-                recommended={20}
+                recommended={recommendedStructural?.bonusPerfectGroup ?? 20}
                 isMobile={isMobile}
               />
             </div>
@@ -744,7 +761,7 @@ function PhaseSection({
               value={(phase.structuralPicks.config as KnockoutWinnerConfig).pointsPerCorrectAdvance ?? 15}
               onChange={(v) => handleStructuralChange("pointsPerCorrectAdvance", v)}
               isCustom={isCustom}
-              recommended={15}
+              recommended={recommendedStructural?.pointsPerCorrectAdvance ?? 15}
               isMobile={isMobile}
             />
           )}
@@ -809,17 +826,28 @@ function StructuralInput({
         justifyContent: isMobile ? "flex-end" : undefined,
       }}>
         {showRecBadge && (
-          <span style={{
-            fontSize: fontSize.xs,
-            color: colors.warningDarker,
-            background: colors.warningBgAmber,
-            padding: "2px 6px",
-            borderRadius: radii.sm,
-            fontWeight: fontWeight.medium,
-            whiteSpace: "nowrap" as const,
-          }}>
+          // Click to restore the suggested value. Clickable badge gives
+          // the host a fast "oops, undo my change" affordance without
+          // forcing them to retype the number.
+          <button
+            type="button"
+            onClick={() => onChange(recommended)}
+            title={`Restaurar al valor sugerido (${recommended})`}
+            style={{
+              fontSize: fontSize.xs,
+              color: colors.warningDarker,
+              background: colors.warningBgAmber,
+              padding: "2px 8px",
+              borderRadius: radii.sm,
+              fontWeight: fontWeight.medium,
+              whiteSpace: "nowrap" as const,
+              border: `1px solid ${colors.warningBorderLight}`,
+              cursor: "pointer",
+              lineHeight: 1.4,
+            }}
+          >
             Sugerido: {recommended}
-          </span>
+          </button>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <input
@@ -1233,8 +1261,9 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
         </div>
       )}
 
-      {/* Extra time status */}
-      {(() => {
+      {/* Extra time status — hidden for SIMPLE because the Estratega
+          doesn't use the score itself, it uses the resolved advancer. */}
+      {isScoreBased && (() => {
         const etEnabled = scoringConfig.some(
           (p) => p.phaseId !== "group_stage" && !p.phaseId.includes("group") && p.includeExtraTime
         );
@@ -1443,8 +1472,21 @@ export function StepScoring() {
     return m;
   });
 
-  // Store base points (from first phase) when scaling is first enabled
+  // Store base points (from first phase) when scaling is first enabled.
+  // Used only by score-based presets (CUMULATIVE / CUSTOM). For SIMPLE
+  // the per-criterion base lives in `structuralBase` below because its
+  // first phase carries structural picks, not matchPicks.
   const [basePoints, setBasePoints] = useState<number[]>([]);
+
+  // Base values for the SIMPLE preset's structural picks. The Estratega
+  // applies the same per-phase multipliers the Predictor uses (×1, ×1.5,
+  // ×2, ×2.5, ×3, ×4) on top of these. Group stage uses both the
+  // per-position points and the perfect-group bonus; knockout phases
+  // multiply `pointsPerCorrectAdvance`. Values are read every time the
+  // multiplier changes so the rendered config = base × multiplier.
+  const SIMPLE_BASE_POINTS_PER_POSITION = 10;
+  const SIMPLE_BASE_PERFECT_GROUP_BONUS = 20;
+  const SIMPLE_BASE_POINTS_PER_ADVANCE = 10;
 
   const isCustom = scoringStyle === "CUSTOM";
   const isScoreBased = scoringStyle === "CUMULATIVE" || scoringStyle === "BASIC" || scoringStyle === "CUSTOM";
@@ -1455,24 +1497,69 @@ export function StepScoring() {
 
   const activePreset = PRESETS.find(p => p.key === scoringStyle);
 
-  // Apply scaling with current multipliers
+  // Apply scaling with current multipliers. Handles both score-based
+  // presets (where `base` is the per-criterion array of matchPicks
+  // points from the first phase) and the SIMPLE / Estratega preset
+  // (where each structural picks block is rescaled from the hardcoded
+  // base constants above).
   const applyScaling = useCallback((multipliers: Record<string, number>, base: number[]) => {
-    if (base.length === 0) return;
     const newConfig = scoringConfig.map((phase) => {
-      if (!phase.matchPicks) return phase;
       const mult = multipliers[phase.phaseId] ?? 1.0;
-      return {
-        ...phase,
-        matchPicks: {
-          ...phase.matchPicks,
-          types: phase.matchPicks.types.map((t, ti) => ({
-            ...t,
-            points: Math.round((base[ti] ?? t.points) * mult),
-          })),
-        },
-      };
+
+      // Score-based phases: scale every matchPicks criterion off the
+      // base captured at preset selection time.
+      if (phase.matchPicks && base.length > 0) {
+        return {
+          ...phase,
+          matchPicks: {
+            ...phase.matchPicks,
+            types: phase.matchPicks.types.map((t, ti) => ({
+              ...t,
+              points: Math.round((base[ti] ?? t.points) * mult),
+            })),
+          },
+        };
+      }
+
+      // SIMPLE / Estratega: scale the structural picks fields against
+      // the canonical Estratega base constants.
+      if (phase.structuralPicks?.type === "GROUP_STANDINGS") {
+        const cfg = phase.structuralPicks.config as Record<string, unknown> & {
+          pointsPerExactPosition?: number;
+          bonusPerfectGroup?: number;
+        };
+        return {
+          ...phase,
+          structuralPicks: {
+            ...phase.structuralPicks,
+            config: {
+              ...cfg,
+              pointsPerExactPosition: Math.round(SIMPLE_BASE_POINTS_PER_POSITION * mult),
+              bonusPerfectGroup: Math.round(SIMPLE_BASE_PERFECT_GROUP_BONUS * mult),
+            },
+          },
+        };
+      }
+      if (phase.structuralPicks?.type === "KNOCKOUT_WINNER") {
+        const cfg = phase.structuralPicks.config as Record<string, unknown> & {
+          pointsPerCorrectAdvance?: number;
+        };
+        return {
+          ...phase,
+          structuralPicks: {
+            ...phase.structuralPicks,
+            config: {
+              ...cfg,
+              pointsPerCorrectAdvance: Math.round(SIMPLE_BASE_POINTS_PER_ADVANCE * mult),
+            },
+          },
+        };
+      }
+
+      return phase;
     });
     dispatch({ type: "UPDATE_SCORING_CONFIG", config: newConfig });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoringConfig, dispatch]);
 
   // Toggle scaling on/off
@@ -1538,23 +1625,63 @@ export function StepScoring() {
     config.forEach(p => { mults[p.phaseId] = getDefaultMultiplier(p.phaseId); });
     setPhaseMultipliers(mults);
 
-    // Apply scaling to the generated config
-    const scaledConfig = config.map(phase => {
-      if (!phase.matchPicks) return phase;
+    // Apply scaling to the generated config — handles both score-based
+    // (matchPicks scaled off `bp`) and SIMPLE (structural picks scaled
+    // off the canonical Estratega base constants).
+    const scaledConfig = config.map((phase) => {
       const mult = mults[phase.phaseId] ?? 1;
-      return {
-        ...phase,
-        matchPicks: {
-          ...phase.matchPicks,
-          types: phase.matchPicks.types.map((t, ti) => ({
-            ...t,
-            points: Math.round((bp[ti] ?? t.points) * mult),
-          })),
-        },
-      };
+
+      if (phase.matchPicks) {
+        return {
+          ...phase,
+          matchPicks: {
+            ...phase.matchPicks,
+            types: phase.matchPicks.types.map((t, ti) => ({
+              ...t,
+              points: Math.round((bp[ti] ?? t.points) * mult),
+            })),
+          },
+        };
+      }
+
+      if (phase.structuralPicks?.type === "GROUP_STANDINGS") {
+        const cfg = phase.structuralPicks.config as Record<string, unknown> & {
+          pointsPerExactPosition?: number;
+          bonusPerfectGroup?: number;
+        };
+        return {
+          ...phase,
+          structuralPicks: {
+            ...phase.structuralPicks,
+            config: {
+              ...cfg,
+              pointsPerExactPosition: Math.round(SIMPLE_BASE_POINTS_PER_POSITION * mult),
+              bonusPerfectGroup: Math.round(SIMPLE_BASE_PERFECT_GROUP_BONUS * mult),
+            },
+          },
+        };
+      }
+      if (phase.structuralPicks?.type === "KNOCKOUT_WINNER") {
+        const cfg = phase.structuralPicks.config as Record<string, unknown> & {
+          pointsPerCorrectAdvance?: number;
+        };
+        return {
+          ...phase,
+          structuralPicks: {
+            ...phase.structuralPicks,
+            config: {
+              ...cfg,
+              pointsPerCorrectAdvance: Math.round(SIMPLE_BASE_POINTS_PER_ADVANCE * mult),
+            },
+          },
+        };
+      }
+
+      return phase;
     });
 
     dispatch({ type: "SET_SCORING", style: key, config: scaledConfig });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instancePhases, dispatch]);
 
   // Handle going back to preset selection
@@ -1740,8 +1867,11 @@ export function StepScoring() {
 
           {(isCustom || showAdvanced) && (<>
 
-        {/* Scaling toggle */}
-        {isScoreBased && scoringConfig.length > 1 && (
+        {/* Scaling toggle — also available for SIMPLE / Estratega so the
+            host can dial knockout-phase weight up or down. The Estratega's
+            base values multiply against the same per-phase factors the
+            Predictor uses (×1, ×1.5, ×2, ×2.5, ×3, ×4). */}
+        {(isScoreBased || isSimple) && scoringConfig.length > 1 && (
           <div style={{
             padding: `${spacing.md}px ${spacing.lg}px`,
             borderBottom: `1px solid ${colors.borderLight}`,
@@ -1931,8 +2061,12 @@ export function StepScoring() {
           </div>
         )}
 
-        {/* Extra time toggle */}
-        {knockoutPhases.length > 0 && (
+        {/* Extra time toggle — only meaningful when scoring depends on
+            the match score. The SIMPLE / Estratega preset derives the
+            advancer from the final result directly (90' goals, ET goals,
+            penalties resolved by the scraper), so an "include extra time"
+            switch has no effect there and is hidden to avoid confusion. */}
+        {!isSimple && knockoutPhases.length > 0 && (
           isCustom ? (
             <ExtraTimeSection
               knockoutPhases={knockoutPhases}
@@ -1997,19 +2131,34 @@ export function StepScoring() {
               </div>
             </div>
 
-            {scoringConfig.map((phase, i) => (
-              <PhaseSection
-                key={phase.phaseId}
-                phase={phase}
-                phaseIndex={i}
-                isOpen={!!openPhases[i]}
-                onToggle={() => togglePhase(i)}
-                isScoreBased={isScoreBased && phase.requiresScore}
-                isCustom={isCustom}
-                isMobile={isMobile}
-                onUpdatePhase={handleUpdatePhase}
-              />
-            ))}
+            {scoringConfig.map((phase, i) => {
+              const mult = scalingEnabled
+                ? (phaseMultipliers[phase.phaseId] ?? getDefaultMultiplier(phase.phaseId))
+                : 1;
+              // Suggested values for structural-pick fields. For SIMPLE we
+              // multiply the canonical Estratega base by the current
+              // phase multiplier so the badge accurately reflects "what
+              // this phase would be if you hadn't touched it".
+              const recommendedStructural = {
+                pointsPerExactPosition: Math.round(SIMPLE_BASE_POINTS_PER_POSITION * mult),
+                bonusPerfectGroup: Math.round(SIMPLE_BASE_PERFECT_GROUP_BONUS * mult),
+                pointsPerCorrectAdvance: Math.round(SIMPLE_BASE_POINTS_PER_ADVANCE * mult),
+              };
+              return (
+                <PhaseSection
+                  key={phase.phaseId}
+                  phase={phase}
+                  phaseIndex={i}
+                  isOpen={!!openPhases[i]}
+                  onToggle={() => togglePhase(i)}
+                  isScoreBased={isScoreBased && phase.requiresScore}
+                  isCustom={isCustom}
+                  isMobile={isMobile}
+                  onUpdatePhase={handleUpdatePhase}
+                  recommendedStructural={recommendedStructural}
+                />
+              );
+            })}
           </div>
         )}
 
