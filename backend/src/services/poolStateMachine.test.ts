@@ -12,10 +12,19 @@ vi.mock("../db", () => ({
     },
     poolMember: {
       findMany: vi.fn(),
+      count: vi.fn(),
     },
     prediction: {
       findMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
+    structuralPrediction: {
+      deleteMany: vi.fn(),
+    },
+    groupStandingsPrediction: {
+      deleteMany: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -25,6 +34,16 @@ vi.mock("../lib/audit", () => ({
 
 vi.mock("../lib/email", () => ({
   sendPoolCompletedEmail: vi.fn(),
+  sendPoolRevertedToDraftEmail: vi.fn(),
+  batchSendEmails: vi.fn(),
+}));
+
+vi.mock("../lib/asyncHelpers", () => ({
+  fireAndForget: vi.fn((_name: string, p: Promise<unknown>) => p),
+}));
+
+vi.mock("../lib/constants", () => ({
+  countryToLocale: vi.fn(() => "es"),
 }));
 
 vi.mock("../lib/fixture", () => ({
@@ -39,10 +58,13 @@ import {
   transitionToActive,
   transitionToCompleted,
   transitionToArchived,
+  revertPoolToDraft,
+  wouldCauseRevert,
   canJoinPool,
   canMakePicks,
   canPublishResults,
   canEditPoolSettings,
+  canEditScoringConfig,
   canCreateInvites,
 } from "./poolStateMachine";
 
@@ -248,5 +270,119 @@ describe("transitionToArchived", () => {
     (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     await expect(transitionToArchived("pool-x", "user-1")).rejects.toThrow("Pool not found");
+  });
+});
+
+// ─── canEditScoringConfig ──────────────────────────────────────
+
+describe("canEditScoringConfig", () => {
+  it("allows scoring edits only in DRAFT", () => {
+    expect(canEditScoringConfig("DRAFT")).toBe(true);
+    expect(canEditScoringConfig("ACTIVE")).toBe(false);
+    expect(canEditScoringConfig("COMPLETED")).toBe(false);
+    expect(canEditScoringConfig("ARCHIVED")).toBe(false);
+  });
+});
+
+// ─── wouldCauseRevert ──────────────────────────────────────────
+
+describe("wouldCauseRevert", () => {
+  it("returns false when pool is not ACTIVE", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "DRAFT" });
+    const result = await wouldCauseRevert("pool-1", "member-1");
+    expect(result).toBe(false);
+    expect(prisma.poolMember.count).not.toHaveBeenCalled();
+  });
+
+  it("returns false when other PLAYER/CO_ADMIN remain", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "ACTIVE" });
+    (prisma.poolMember.count as ReturnType<typeof vi.fn>).mockResolvedValue(2);
+    expect(await wouldCauseRevert("pool-1", "member-x")).toBe(false);
+  });
+
+  it("returns true when removing the last PLAYER/CO_ADMIN", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "ACTIVE" });
+    (prisma.poolMember.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+    expect(await wouldCauseRevert("pool-1", "member-x")).toBe(true);
+  });
+
+  it("excludes the target member from the count", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "ACTIVE" });
+    (prisma.poolMember.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+    await wouldCauseRevert("pool-1", "member-being-kicked");
+    expect(prisma.poolMember.count).toHaveBeenCalledWith({
+      where: {
+        poolId: "pool-1",
+        status: "ACTIVE",
+        role: { in: ["PLAYER", "CO_ADMIN"] },
+        NOT: { id: "member-being-kicked" },
+      },
+    });
+  });
+});
+
+// ─── revertPoolToDraft ─────────────────────────────────────────
+
+describe("revertPoolToDraft", () => {
+  it("is a no-op when pool is not ACTIVE", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "pool-1",
+      status: "DRAFT",
+      name: "Test",
+      createdByUser: null,
+    });
+    await revertPoolToDraft("pool-1", "user-1", "reason");
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.pool.update).not.toHaveBeenCalled();
+  });
+
+  it("deletes player predictions and transitions ACTIVE → DRAFT", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "pool-1",
+      status: "ACTIVE",
+      name: "Test Pool",
+      createdByUser: { id: "host-1", email: "host@example.com", displayName: "Host", country: "CO" },
+    });
+
+    // Mock the transaction to invoke the callback with a fake tx client
+    // that mirrors the calls we want to verify.
+    const txMock = {
+      prediction: { deleteMany: vi.fn().mockResolvedValue({ count: 12 }) },
+      structuralPrediction: { deleteMany: vi.fn().mockResolvedValue({ count: 3 }) },
+      groupStandingsPrediction: { deleteMany: vi.fn().mockResolvedValue({ count: 5 }) },
+      pool: { update: vi.fn().mockResolvedValue({}) },
+    };
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      async (cb: (tx: typeof txMock) => Promise<void>) => { await cb(txMock); }
+    );
+    (writeAuditEvent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    await revertPoolToDraft("pool-1", "user-1", "last member left");
+
+    expect(txMock.prediction.deleteMany).toHaveBeenCalledWith({ where: { poolId: "pool-1" } });
+    expect(txMock.structuralPrediction.deleteMany).toHaveBeenCalledWith({ where: { poolId: "pool-1" } });
+    expect(txMock.groupStandingsPrediction.deleteMany).toHaveBeenCalledWith({ where: { poolId: "pool-1" } });
+    expect(txMock.pool.update).toHaveBeenCalledWith({
+      where: { id: "pool-1" },
+      data: { status: "DRAFT" },
+    });
+    expect(writeAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "POOL_STATUS_CHANGED",
+        dataJson: expect.objectContaining({
+          from: "ACTIVE",
+          to: "DRAFT",
+          reason: "last member left",
+          deletedPredictions: 12,
+          deletedStructural: 3,
+          deletedGroupStandings: 5,
+        }),
+      })
+    );
+  });
+
+  it("throws when pool not found", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    await expect(revertPoolToDraft("pool-x", "u", "r")).rejects.toThrow("Pool not found");
   });
 });

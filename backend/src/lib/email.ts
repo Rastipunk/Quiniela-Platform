@@ -1819,6 +1819,95 @@ export async function sendNewMemberDigestEmail(params: {
 }
 
 // =========================================================================
+// POOL REVERTED TO DRAFT NOTIFICATION (host-only)
+// =========================================================================
+// Sent to the pool creator when the last non-host member is removed and
+// the pool auto-reverts ACTIVE → DRAFT. Lets the host know the scoring
+// rules editor is now unlocked and links them to the admin panel.
+
+export async function sendPoolRevertedToDraftEmail(params: {
+  to: string;
+  userId: string;
+  displayName: string;
+  poolName: string;
+  poolId: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || DEFAULT_LOCALE;
+  const subjects: Record<string, string> = {
+    es: `📝 Tu pool "${params.poolName}" volvió a borrador`,
+    en: `📝 Your pool "${params.poolName}" reverted to draft`,
+    pt: `📝 Seu bolão "${params.poolName}" voltou para rascunho`,
+  };
+
+  const headings: Record<string, string> = {
+    es: "Pool en borrador",
+    en: "Pool back to draft",
+    pt: "Bolão em rascunho",
+  };
+
+  const messages: Record<string, string> = {
+    es: `Tu pool <strong>"${params.poolName}"</strong> volvió al estado de borrador porque no quedan miembros activos distintos a ti. Aprovecha para ajustar las reglas de puntaje si lo deseas y vuelve a invitar a los participantes.`,
+    en: `Your pool <strong>"${params.poolName}"</strong> reverted to draft because there are no active members left besides you. You can now adjust the scoring rules if you wish and invite players again.`,
+    pt: `Seu bolão <strong>"${params.poolName}"</strong> voltou para o rascunho porque não restam membros ativos além de você. Aproveite para ajustar as regras de pontuação se quiser e convide os participantes novamente.`,
+  };
+
+  const ctas: Record<string, string> = {
+    es: "Administrar pool",
+    en: "Manage pool",
+    pt: "Administrar bolão",
+  };
+
+  const noteAboutData: Record<string, string> = {
+    es: "Los marcadores publicados se conservan, pero las predicciones de los jugadores que se fueron fueron eliminadas.",
+    en: "Match results are preserved, but predictions from players who left have been removed.",
+    pt: "Os resultados publicados são preservados, mas as previsões dos jogadores que saíram foram removidas.",
+  };
+
+  const poolUrl = appendUtm(`${FRONTEND_URL}/pools/${params.poolId}`, emailUtm("pool_reverted_to_draft"));
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="padding:20px;background:${BRAND.gradient};border-radius:12px 12px 0 0;text-align:center;">
+            <span style="font-size:40px;">📝</span>
+          </div>
+          <div style="padding:24px;background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+            <h2 style="color:${BRAND.text};margin:0 0 16px;font-size:18px;">${headings[loc] ?? headings.es}</h2>
+            <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;">${messages[loc] ?? messages.es}</p>
+            <p style="color:${BRAND.textMuted};font-size:13px;line-height:1.5;margin:0 0 20px;">${noteAboutData[loc] ?? noteAboutData.es}</p>
+            <div style="text-align:center;">
+              <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:${BRAND.primary};color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
+                ${ctas[loc] ?? ctas.es}
+              </a>
+            </div>
+          </div>
+          <p style="color:#9CA3AF;font-size:12px;text-align:center;margin-top:16px;">
+            ${APP_NAME} &middot; ${SITE_DOMAIN}
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("❌ Error pool reverted to draft email:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Exception pool reverted to draft email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
 // PENDING APPROVAL DIGEST (daily reminder for hosts with pending requests)
 // =========================================================================
 // Sent daily at the digest cron tick. Throttled at the service layer:

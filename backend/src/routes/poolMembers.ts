@@ -59,11 +59,18 @@ const rejectMemberSchema = z.object({
 
 const kickMemberSchema = z.object({
   reason: z.string().optional(),
+  // Set true to acknowledge that this kick will revert ACTIVE → DRAFT
+  // when the target is the last non-host member. Backend returns 409
+  // REVERT_PENDING_CONFIRMATION on the first call so the client can
+  // surface the warning, then retry with this flag set.
+  confirmRevert: z.boolean().optional(),
 });
 
 const banMemberSchema = z.object({
   reason: z.string().min(1, "Reason is required"),
   deletePicks: z.boolean().optional(),
+  // Same semantics as kickMemberSchema.confirmRevert.
+  confirmRevert: z.boolean().optional(),
 });
 
 const promoteMemberSchema = z.object({
@@ -138,7 +145,13 @@ poolMembersRouter.post("/:poolId/members/:memberId/kick", async (req, res) => {
 
   try {
     const result = await kickMember(
-      { actorUserId: req.auth!.userId, poolId, memberId, reason: parsed.data.reason },
+      {
+        actorUserId: req.auth!.userId,
+        poolId,
+        memberId,
+        reason: parsed.data.reason,
+        confirmRevert: parsed.data.confirmRevert,
+      },
       auditCtx(req),
     );
     return sendOk(res, result);
@@ -177,6 +190,7 @@ poolMembersRouter.post("/:poolId/members/:memberId/ban", async (req, res) => {
         memberId,
         reason: parsed.data.reason,
         deletePicks: parsed.data.deletePicks,
+        confirmRevert: parsed.data.confirmRevert,
       },
       auditCtx(req),
     );

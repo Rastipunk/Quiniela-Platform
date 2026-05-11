@@ -11,7 +11,7 @@
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { requirePoolAdmin, isPoolOwner, NON_LEAVABLE_ROLES } from "../lib/roles";
-import { transitionToActive } from "./poolStateMachine";
+import { transitionToActive, revertPoolToDraft, wouldCauseRevert } from "./poolStateMachine";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendMemberRemovedEmail } from "../lib/email";
 import { countryToLocale } from "../lib/constants";
@@ -64,6 +64,10 @@ export type KickMemberInput = {
   poolId: string;
   memberId: string;
   reason?: string;
+  // True when the client (after seeing the REVERT_PENDING_CONFIRMATION
+  // warning) confirms it's OK that this kick will revert the pool to
+  // DRAFT and drop all player predictions.
+  confirmRevert?: boolean;
 };
 
 export type LeaveMemberInput = {
@@ -77,6 +81,9 @@ export type BanMemberInput = {
   memberId: string;
   reason: string;
   deletePicks?: boolean;
+  // True when the client confirms it's OK that this ban will revert
+  // the pool to DRAFT (same semantics as KickMemberInput.confirmRevert).
+  confirmRevert?: boolean;
 };
 
 export type BanMemberResult = {
@@ -279,8 +286,8 @@ export async function rejectMember(
 export async function kickMember(
   data: KickMemberInput,
   ctx: AuditContext,
-): Promise<{ message: string }> {
-  const { actorUserId, poolId, memberId, reason } = data;
+): Promise<{ message: string; revertedToDraft?: boolean }> {
+  const { actorUserId, poolId, memberId, reason, confirmRevert } = data;
 
   const isHostOrCoAdmin = await requirePoolAdmin(actorUserId, poolId);
   if (!isHostOrCoAdmin) throw new ServiceError("FORBIDDEN", 403);
@@ -311,6 +318,17 @@ export async function kickMember(
 
   if (member.userId === pool?.createdByUserId) {
     throw new ServiceError("VALIDATION_ERROR", 400, { message: "Cannot kick the pool creator" });
+  }
+
+  // Detect whether this kick will leave the pool with no non-host
+  // members. If so, the operation auto-reverts ACTIVE → DRAFT and
+  // drops all player predictions. We require explicit confirmation
+  // from the client first so a destructive side effect isn't silent.
+  const willRevert = await wouldCauseRevert(poolId, memberId);
+  if (willRevert && !confirmRevert) {
+    throw new ServiceError("REVERT_PENDING_CONFIRMATION", 409, {
+      message: "Removing this member will leave the pool with no active members other than the host, which will revert the pool to draft and delete all player predictions. Confirm to proceed.",
+    });
   }
 
   // Set member to LEFT
@@ -348,6 +366,13 @@ export async function kickMember(
     }));
   }
 
+  // Trigger the revert AFTER the kick has been persisted so the
+  // counting inside revertPoolToDraft sees the final state.
+  if (willRevert) {
+    await revertPoolToDraft(poolId, actorUserId, "Last non-host member kicked");
+    return { message: "Member kicked and pool reverted to draft", revertedToDraft: true };
+  }
+
   return { message: "Member kicked successfully" };
 }
 
@@ -356,7 +381,7 @@ export async function kickMember(
 export async function leaveMember(
   data: LeaveMemberInput,
   ctx: AuditContext,
-): Promise<{ message: string }> {
+): Promise<{ message: string; revertedToDraft?: boolean }> {
   const { userId, poolId } = data;
 
   // Find active membership
@@ -371,6 +396,13 @@ export async function leaveMember(
   if ((NON_LEAVABLE_ROLES as readonly string[]).includes(member.role)) {
     throw new ServiceError("FORBIDDEN", 403, { message: "Hosts cannot leave their own pool" });
   }
+
+  // Check whether this voluntary leave will revert the pool.
+  // Unlike kick/ban, leaving does NOT require explicit confirmation:
+  // a player has the right to leave at any time, and the revert is a
+  // consequence the host must accept. The host receives an email
+  // explaining what happened.
+  const willRevert = await wouldCauseRevert(poolId, member.id);
 
   // Set status to LEFT
   await prisma.poolMember.update({
@@ -404,6 +436,11 @@ export async function leaveMember(
     }],
   }));
 
+  if (willRevert) {
+    await revertPoolToDraft(poolId, userId, "Last non-host member left voluntarily");
+    return { message: "Left pool successfully (pool reverted to draft)", revertedToDraft: true };
+  }
+
   return { message: "Left pool successfully" };
 }
 
@@ -413,7 +450,7 @@ export async function banMember(
   data: BanMemberInput,
   ctx: AuditContext,
 ): Promise<BanMemberResult> {
-  const { actorUserId, poolId, memberId, reason, deletePicks } = data;
+  const { actorUserId, poolId, memberId, reason, deletePicks, confirmRevert } = data;
 
   const isHostOrCoAdmin = await requirePoolAdmin(actorUserId, poolId);
   if (!isHostOrCoAdmin) throw new ServiceError("FORBIDDEN", 403);
@@ -444,6 +481,14 @@ export async function banMember(
 
   if (member.userId === pool?.createdByUserId) {
     throw new ServiceError("VALIDATION_ERROR", 400, { message: "Cannot ban the pool creator" });
+  }
+
+  // Same revert-warning contract as kickMember.
+  const willRevert = await wouldCauseRevert(poolId, memberId);
+  if (willRevert && !confirmRevert) {
+    throw new ServiceError("REVERT_PENDING_CONFIRMATION", 409, {
+      message: "Banning this member will leave the pool with no active members other than the host, which will revert the pool to draft and delete all player predictions. Confirm to proceed.",
+    });
   }
 
   // Atomic operation: delete picks (if requested) + ban member
@@ -496,10 +541,17 @@ export async function banMember(
     }));
   }
 
+  // Trigger the revert AFTER the ban is persisted (same pattern as kickMember).
+  if (willRevert) {
+    await revertPoolToDraft(poolId, actorUserId, "Last non-host member banned");
+  }
+
   return {
-    message: deletePicks
-      ? `Member permanently banned and ${picksDeleted} picks deleted`
-      : "Member permanently banned",
+    message: willRevert
+      ? "Member permanently banned and pool reverted to draft"
+      : deletePicks
+        ? `Member permanently banned and ${picksDeleted} picks deleted`
+        : "Member permanently banned",
     picksDeleted: deletePicks ? picksDeleted : undefined,
   };
 }

@@ -4,15 +4,39 @@
  * Maneja las transiciones de estado del pool y validaciones.
  *
  * Estados: DRAFT → ACTIVE → COMPLETED → ARCHIVED
+ *
+ * ACTIVE → DRAFT (revert) is allowed when the last non-host member
+ * leaves/is removed, so the host can re-edit the scoring rules. The
+ * revert deletes player predictions (their picks are no longer
+ * meaningful) but preserves match results and overrides (those are
+ * tournament data, not player data).
  */
 
+import type { PoolMemberRole } from "@prisma/client";
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
-import { sendPoolCompletedEmail, batchSendEmails } from "../lib/email";
+import {
+  sendPoolCompletedEmail,
+  sendPoolRevertedToDraftEmail,
+  batchSendEmails,
+} from "../lib/email";
 import { countryToLocale } from "../lib/constants";
 import { extractMatches, typed, type PickJson } from "../lib/fixture";
+import { fireAndForget } from "../lib/asyncHelpers";
 
 export type PoolStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
+
+/**
+ * Roles whose ACTIVE membership keeps the pool in ACTIVE state.
+ * If none of these remain, the pool can revert to DRAFT.
+ *
+ * HOST and CORPORATE_HOST are NOT in this list — the host alone is
+ * not enough to keep the pool "in play". CO_ADMIN IS in the list:
+ * even if there are no PLAYERs yet, an active CO_ADMIN means there
+ * is staff actively administering, and the host must demote/kick
+ * them explicitly before reverting.
+ */
+const ROLES_THAT_KEEP_POOL_ACTIVE: PoolMemberRole[] = ["PLAYER", "CO_ADMIN"];
 
 /**
  * Transición DRAFT → ACTIVE
@@ -318,6 +342,116 @@ export async function transitionToArchived(poolId: string, actorUserId: string) 
 }
 
 /**
+ * Transición ACTIVE → DRAFT (revert)
+ *
+ * Trigger: el último miembro no-host (PLAYER o CO_ADMIN) fue removido.
+ * Side effects:
+ *   - Borra Prediction, StructuralPrediction, GroupStandingsPrediction
+ *     (las picks de jugadores que se fueron ya no son significativas).
+ *   - Conserva PoolMatchResult/Version y PoolMatchOverride (data del
+ *     torneo, no de los players).
+ *   - Email al host con CTA al panel de "Administrar reglas".
+ *
+ * Esta función es idempotente: si la pool ya está en DRAFT o el cleanup
+ * ya corrió, no hace nada y no lanza error.
+ */
+export async function revertPoolToDraft(
+  poolId: string,
+  actorUserId: string,
+  reason: string,
+) {
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: {
+      id: true,
+      status: true,
+      name: true,
+      createdByUser: { select: { id: true, email: true, displayName: true, country: true } },
+    },
+  });
+
+  if (!pool) throw new Error("Pool not found");
+  if (pool.status !== "ACTIVE") return; // idempotent — only ACTIVE can revert
+
+  let deletedPredictions = 0;
+  let deletedStructural = 0;
+  let deletedGroupStandings = 0;
+
+  await prisma.$transaction(async (tx) => {
+    const d1 = await tx.prediction.deleteMany({ where: { poolId } });
+    const d2 = await tx.structuralPrediction.deleteMany({ where: { poolId } });
+    const d3 = await tx.groupStandingsPrediction.deleteMany({ where: { poolId } });
+    deletedPredictions = d1.count;
+    deletedStructural = d2.count;
+    deletedGroupStandings = d3.count;
+
+    await tx.pool.update({
+      where: { id: poolId },
+      data: { status: "DRAFT" },
+    });
+  });
+
+  await writeAuditEvent({
+    actorUserId,
+    action: "POOL_STATUS_CHANGED",
+    entityType: "Pool",
+    entityId: poolId,
+    poolId,
+    dataJson: {
+      from: "ACTIVE",
+      to: "DRAFT",
+      reason,
+      deletedPredictions,
+      deletedStructural,
+      deletedGroupStandings,
+    },
+  });
+
+  // Notify the host so they know the rules editor is now unlocked.
+  if (pool.createdByUser?.email) {
+    fireAndForget(
+      "pool-reverted-email",
+      sendPoolRevertedToDraftEmail({
+        to: pool.createdByUser.email,
+        userId: pool.createdByUser.id,
+        displayName: pool.createdByUser.displayName,
+        poolName: pool.name,
+        poolId,
+        locale: countryToLocale(pool.createdByUser.country),
+      }),
+    );
+  }
+}
+
+/**
+ * Returns true when removing/leaving `excludingMemberId` would leave
+ * the pool without any ACTIVE PLAYER/CO_ADMIN. The pool must be in
+ * ACTIVE state for revert to be possible. Used by member ops to
+ * decide whether to ask for `confirmRevert` and whether to actually
+ * trigger the revert after the op.
+ */
+export async function wouldCauseRevert(
+  poolId: string,
+  excludingMemberId: string,
+): Promise<boolean> {
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: { status: true },
+  });
+  if (!pool || pool.status !== "ACTIVE") return false;
+
+  const remaining = await prisma.poolMember.count({
+    where: {
+      poolId,
+      status: "ACTIVE",
+      role: { in: ROLES_THAT_KEEP_POOL_ACTIVE },
+      NOT: { id: excludingMemberId },
+    },
+  });
+  return remaining === 0;
+}
+
+/**
  * Validaciones por estado
  */
 
@@ -339,6 +473,15 @@ export function canPublishResults(poolStatus: string): boolean {
 
 export function canEditPoolSettings(poolStatus: string): boolean {
   // Solo se pueden editar configuraciones en DRAFT
+  return poolStatus === "DRAFT";
+}
+
+/**
+ * Scoring rules can only be edited while the pool is DRAFT — same
+ * constraint as other settings, exposed under a more specific name
+ * so the "Administrar reglas" endpoint can read clearly.
+ */
+export function canEditScoringConfig(poolStatus: string): boolean {
   return poolStatus === "DRAFT";
 }
 
