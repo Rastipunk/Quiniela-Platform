@@ -20,6 +20,7 @@ import {
   setScoringOverride,
   advancePhase,
   updatePoolSettings,
+  updatePoolScoringConfig,
   setPhaselock,
   archivePool,
   getMatchPickBreakdown,
@@ -28,6 +29,7 @@ import {
   getPlayerSummary,
   getPoolNotifications,
 } from "../services/poolAdminService";
+import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
 import { ServiceError } from "../services/authService";
 import type { AuditContext } from "../services/authService";
 
@@ -78,6 +80,16 @@ const updatePoolSettingsSchema = z.object({
 const lockPhaseSchema = z.object({
   phaseId: z.string().min(1),
   locked: z.boolean(),
+});
+
+// Mirrors the create-pool schema for `pickTypesConfig` — a preset key
+// string or a fully-detailed config array. The service handles the
+// preset-expansion and validation just like the creation path does.
+const updateScoringConfigSchema = z.object({
+  pickTypesConfig: z.union([
+    z.enum(["BASIC", "SIMPLE", "CUMULATIVE"]),
+    PoolPickTypesConfigSchema,
+  ]),
 });
 
 // ─── Routes ──────────────────────────────────────────────────
@@ -131,6 +143,28 @@ poolAdminRouter.patch("/:poolId/settings", async (req, res) => {
       req.auth!.userId,
       req.params.poolId,
       parsed.data,
+      auditCtx(req),
+    );
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// PATCH /pools/:poolId/scoring-config — "Administrar reglas"
+// Only allowed while the pool is in DRAFT (canEditScoringConfig).
+// Triggers 409 CONFLICT if called on an ACTIVE/COMPLETED/ARCHIVED pool.
+poolAdminRouter.patch("/:poolId/scoring-config", async (req, res) => {
+  const parsed = updateScoringConfigSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+
+  try {
+    const result = await updatePoolScoringConfig(
+      req.auth!.userId,
+      req.params.poolId,
+      parsed.data.pickTypesConfig,
       auditCtx(req),
     );
     return sendOk(res, result);

@@ -18,7 +18,10 @@ import {
   advanceKnockoutPhase,
   validateGroupStageComplete,
 } from "./instanceAdvancement";
-import { transitionToArchived } from "./poolStateMachine";
+import { transitionToArchived, canEditScoringConfig } from "./poolStateMachine";
+import { generateDynamicPresetConfig, getPresetByKey } from "../lib/pickPresets";
+import { validatePoolPickTypesConfig } from "../validation/pickConfig";
+import type { PoolPickTypesConfig } from "../types/pickConfig";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
 import {
   generateMatchPickBreakdown,
@@ -287,6 +290,106 @@ export async function updatePoolSettings(
       autoAdvanceEnabled: updatedPool.autoAdvanceEnabled,
       requireApproval: updatedPool.requireApproval,
       pickTypesConfig: updatedPool.pickTypesConfig,
+    },
+  };
+}
+
+// ─── Update Scoring Config (Administrar reglas) ──────────────
+
+/**
+ * Replaces the pool's `pickTypesConfig` (scoring rules).
+ *
+ * Authorization: HOST / CO_ADMIN / CORPORATE_HOST.
+ * State guard:   pool must be in DRAFT (per canEditScoringConfig).
+ *
+ * The input is the same shape the pool-creation endpoint accepts:
+ *   - a preset key string ("BASIC" | "SIMPLE" | "CUMULATIVE") → expanded
+ *     to a dynamic config using the instance's real phases.
+ *   - a fully-detailed PoolPickTypesConfig array → validated and saved.
+ *
+ * The audit trail captures both the old and the new config so any
+ * post-hoc dispute about scoring can be reconstructed.
+ */
+export async function updatePoolScoringConfig(
+  userId: string,
+  poolId: string,
+  pickTypesConfig: string | PoolPickTypesConfig,
+  ctx: AuditContext,
+) {
+  const isAdmin = await requirePoolAdmin(userId, poolId);
+  if (!isAdmin) throw new ServiceError("FORBIDDEN", 403);
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: {
+      id: true,
+      status: true,
+      pickTypesConfig: true,
+      tournamentInstance: { select: { dataJson: true } },
+    },
+  });
+  if (!pool) throw new ServiceError("NOT_FOUND", 404);
+
+  if (!canEditScoringConfig(pool.status)) {
+    throw new ServiceError("CONFLICT", 409, {
+      message: "Scoring config can only be edited while the pool is in DRAFT",
+      currentStatus: pool.status,
+    });
+  }
+
+  // Process the incoming config the same way pool creation does: a
+  // preset key gets expanded against the instance's real phases; a
+  // detailed array is validated for structural correctness.
+  let finalPickTypesConfig: PoolPickTypesConfig;
+
+  if (typeof pickTypesConfig === "string") {
+    const instancePhases = extractPhases(pool.tournamentInstance.dataJson);
+    const dynamic = instancePhases.length > 0
+      ? generateDynamicPresetConfig(pickTypesConfig, instancePhases)
+      : null;
+    if (dynamic) {
+      finalPickTypesConfig = dynamic;
+    } else {
+      const preset = getPresetByKey(pickTypesConfig);
+      if (!preset) {
+        throw new ServiceError("VALIDATION_ERROR", 400, { message: `Invalid preset key: ${pickTypesConfig}` });
+      }
+      finalPickTypesConfig = preset.config;
+    }
+  } else {
+    const validation = validatePoolPickTypesConfig(pickTypesConfig);
+    if (!validation.valid) {
+      throw new ServiceError("VALIDATION_ERROR", 400, {
+        message: "Invalid pick types configuration",
+        errors: validation.errors,
+      });
+    }
+    finalPickTypesConfig = pickTypesConfig;
+  }
+
+  const updated = await prisma.pool.update({
+    where: { id: poolId },
+    data: { pickTypesConfig: finalPickTypesConfig as Prisma.InputJsonValue },
+  });
+
+  fireAndForget("audit:pool-rules-changed", writeAuditEvent({
+    action: "POOL_RULES_CHANGED",
+    actorUserId: userId,
+    poolId,
+    entityType: "Pool",
+    entityId: poolId,
+    dataJson: {
+      from: pool.pickTypesConfig,
+      to: finalPickTypesConfig,
+    },
+    ip: ctx.ip,
+    userAgent: ctx.userAgent,
+  }));
+
+  return {
+    pool: {
+      id: updated.id,
+      pickTypesConfig: updated.pickTypesConfig,
     },
   };
 }
