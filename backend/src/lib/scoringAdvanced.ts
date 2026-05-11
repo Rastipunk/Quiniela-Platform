@@ -127,6 +127,35 @@ export function scoreMatchPick(
       if (matched) totalPoints += totalGoalsType.points;
     }
 
+    // 6. EXACT_SCORE — additive bonus in cumulative mode. The wizard
+    // exposes this criterion alongside HOME/AWAY/etc., so silently
+    // skipping it here drops the bonus the host configured. We evaluate
+    // it but DO NOT short-circuit (unlike legacy), so the user keeps
+    // accumulated points from other matched criteria.
+    const exactScoreType = enabledTypes.find((t) => t.key === "EXACT_SCORE");
+    if (exactScoreType) {
+      const matched = evaluateExactScore(pick, result);
+      evaluations.push({
+        matchPickType: "EXACT_SCORE",
+        points: matched ? exactScoreType.points : 0,
+        matched,
+      });
+      if (matched) totalPoints += exactScoreType.points;
+    }
+
+    // 7. PARTIAL_SCORE — XOR (one side matches, not both). Additive in
+    // cumulative mode for the same reason as EXACT_SCORE above.
+    const partialScoreType = enabledTypes.find((t) => t.key === "PARTIAL_SCORE");
+    if (partialScoreType) {
+      const matched = evaluatePartialScore(pick, result);
+      evaluations.push({
+        matchPickType: "PARTIAL_SCORE",
+        points: matched ? partialScoreType.points : 0,
+        matched,
+      });
+      if (matched) totalPoints += partialScoreType.points;
+    }
+
     return {
       matchId: "", // Se llena desde el llamador
       totalPoints,

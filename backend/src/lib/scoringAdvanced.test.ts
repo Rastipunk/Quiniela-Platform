@@ -264,6 +264,75 @@ describe("scoreMatchPick - CUMULATIVE system", () => {
       expect(result.totalPoints).toBe(8);
     });
   });
+
+  // ── CUSTOM hybrid: HOME/AWAY + EXACT_SCORE + PARTIAL_SCORE ──
+  // Previously the cumulative branch silently ignored EXACT_SCORE
+  // and PARTIAL_SCORE — the wizard exposed them as toggleable in
+  // CUSTOM but the backend dropped their points without warning.
+  describe("CUMULATIVE with EXACT_SCORE and PARTIAL_SCORE enabled", () => {
+    function customConfig(): PhasePickConfig {
+      return {
+        phaseId: "custom",
+        phaseName: "Custom",
+        requiresScore: true,
+        matchPicks: {
+          types: [
+            { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 10 },
+            { key: "HOME_GOALS", enabled: true, points: 4 },
+            { key: "AWAY_GOALS", enabled: true, points: 4 },
+            { key: "GOAL_DIFFERENCE", enabled: true, points: 2 },
+            { key: "EXACT_SCORE", enabled: true, points: 15 },
+            { key: "PARTIAL_SCORE", enabled: true, points: 3 },
+            { key: "TOTAL_GOALS", enabled: false, points: 0 },
+          ],
+        },
+      };
+    }
+
+    it("awards EXACT_SCORE bonus when prediction matches exactly (regression for Bug 1)", () => {
+      // 2-1 vs 2-1: outcome + home + away + diff + exact (NOT partial — XOR fails when both match)
+      const result = scoreMatchPick(
+        { homeGoals: 2, awayGoals: 1 },
+        { homeGoals: 2, awayGoals: 1 },
+        customConfig()
+      );
+      expect(result.totalPoints).toBe(10 + 4 + 4 + 2 + 15); // 35
+      const exact = result.evaluations.find((e) => e.matchPickType === "EXACT_SCORE");
+      expect(exact?.matched).toBe(true);
+      expect(exact?.points).toBe(15);
+      const partial = result.evaluations.find((e) => e.matchPickType === "PARTIAL_SCORE");
+      expect(partial?.matched).toBe(false);
+    });
+
+    it("awards PARTIAL_SCORE when only one side matches", () => {
+      // Pick 2-1, Result 2-3: home matches (2=2), away doesn't (1≠3)
+      // outcome: pick=HOME (2>1), result=AWAY (2<3) → miss
+      // diff: 1 vs -1 → miss
+      // exact: miss
+      // partial: home match XOR away match = true
+      const result = scoreMatchPick(
+        { homeGoals: 2, awayGoals: 1 },
+        { homeGoals: 2, awayGoals: 3 },
+        customConfig()
+      );
+      // home(4) + partial(3) = 7
+      expect(result.totalPoints).toBe(4 + 3);
+      const partial = result.evaluations.find((e) => e.matchPickType === "PARTIAL_SCORE");
+      expect(partial?.matched).toBe(true);
+      expect(partial?.points).toBe(3);
+    });
+
+    it("does NOT short-circuit on EXACT_SCORE in cumulative mode", () => {
+      // Confirms exact-score is additive, unlike legacy mode where it terminates.
+      // 1-1 vs 1-1: outcome(DRAW=DRAW) + home + away + diff + exact (no partial, XOR)
+      const result = scoreMatchPick(
+        { homeGoals: 1, awayGoals: 1 },
+        { homeGoals: 1, awayGoals: 1 },
+        customConfig()
+      );
+      expect(result.totalPoints).toBe(10 + 4 + 4 + 2 + 15); // 35, not 15
+    });
+  });
 });
 
 // ==================== LEGACY SCORING ====================
