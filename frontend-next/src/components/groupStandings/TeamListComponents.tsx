@@ -106,7 +106,19 @@ export function DraggableTeamList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={orderedTeams.map((t) => t.id)} strategy={verticalListSortingStrategy} disabled={disabled}>
-        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "0.5rem" : "0.35rem" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: isMobile ? "0.5rem" : "0.35rem",
+            // Right-side scroll gutter on mobile: the rows have
+            // touchAction: none so a finger inside the row blocks
+            // page scroll. This gutter leaves a sliver at the right
+            // edge that is NOT a sortable item, so swiping there
+            // scrolls the page normally.
+            paddingRight: isMobile ? 28 : 0,
+          }}
+        >
           {orderedTeams.map((team, index) => (
             <SortableTeamItem key={team.id} team={team} position={index} disabled={disabled} isMobile={isMobile} />
           ))}
@@ -120,8 +132,12 @@ export function DraggableTeamList({
 function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; position: number; disabled: boolean; isMobile?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: team.id, disabled });
 
+  // CSS.Translate (translation-only) instead of CSS.Transform avoids
+  // the brief scaleX/scaleY snap that dnd-kit applies when the drop
+  // animation finishes — the row was visibly "jumping" up before
+  // settling because of that scale component.
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
