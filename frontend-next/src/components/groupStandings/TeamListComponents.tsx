@@ -98,9 +98,13 @@ export function DraggableTeamList({
     const newIndex = orderedTeams.findIndex((item) => item.id === over.id);
     const newOrder = arrayMove(orderedTeams, oldIndex, newIndex);
 
-    setTimeout(() => {
-      onOrderChange(newOrder.map((t) => t.id));
-    }, 0);
+    // Update synchronously. A previous setTimeout(..., 0) here was the
+    // root cause of the visible "snap back" on drop: the array update
+    // arrived one tick late, so dnd-kit animated transform back to (0,0)
+    // FROM the original DOM position before React moved the row to its
+    // new index. Calling onOrderChange in the same frame as isDragging
+    // flips to false makes the transform reset a no-op visually.
+    onOrderChange(newOrder.map((t) => t.id));
   }
 
   return (
@@ -130,12 +134,20 @@ export function DraggableTeamList({
 
 // Sortable team item
 function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; position: number; disabled: boolean; isMobile?: boolean }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: team.id, disabled });
+  // Snappier transition (160ms vs. the 250ms default) so siblings
+  // rearranging during drag feel responsive instead of "weighty".
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: team.id,
+    disabled,
+    transition: {
+      duration: 160,
+      easing: "cubic-bezier(0.2, 0, 0, 1)",
+    },
+  });
 
   // CSS.Translate (translation-only) instead of CSS.Transform avoids
   // the brief scaleX/scaleY snap that dnd-kit applies when the drop
-  // animation finishes — the row was visibly "jumping" up before
-  // settling because of that scale component.
+  // animation finishes.
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
