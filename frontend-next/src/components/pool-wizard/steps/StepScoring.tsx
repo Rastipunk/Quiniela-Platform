@@ -352,6 +352,7 @@ function PhaseSection({
   isMobile,
   onUpdatePhase,
   recommendedStructural,
+  scalingEnabled,
 }: {
   phase: PhasePickConfig;
   phaseIndex: number;
@@ -373,6 +374,11 @@ function PhaseSection({
     bonusPerfectGroup: number;
     pointsPerCorrectAdvance: number;
   };
+  // When scaling is ON, per-phase point inputs are read-only — the
+  // values are derived from `base × multiplier` and would be
+  // overwritten on the next multiplier change anyway. The host must
+  // disable scaling to edit phase-by-phase.
+  scalingEnabled: boolean;
 }) {
   const isGroup = !phase.requiresScore && phase.structuralPicks?.type === "GROUP_STANDINGS";
   const isKnockoutStructural = !phase.requiresScore && phase.structuralPicks?.type === "KNOCKOUT_WINNER";
@@ -492,6 +498,29 @@ function PhaseSection({
           flexDirection: "column",
           gap: spacing.md,
         }}>
+          {/* Scaling-locked banner — explains to the host why the inputs
+              below are read-only when "Puntos progresivos" is active. */}
+          {scalingEnabled && (
+            <div style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: spacing.sm,
+              padding: `${spacing.sm}px ${spacing.md}px`,
+              background: colors.infoBgLight,
+              border: `1px solid ${colors.infoBorder}`,
+              borderRadius: radii.lg,
+              fontSize: fontSize.xs,
+              color: colors.infoDarker,
+              lineHeight: 1.4,
+            }}>
+              <span style={{ fontSize: 14, lineHeight: 1 }}>🔒</span>
+              <span>
+                Valores calculados automáticamente desde la base por multiplicador.
+                Desactiva <strong>Puntos progresivos</strong> arriba para editar fase por fase.
+              </span>
+            </div>
+          )}
+
           {/* ── CUSTOM: Pick type selector (Marcadores vs Posiciones) ── */}
           {isCustom && (
             <div style={{
@@ -683,7 +712,7 @@ function PhaseSection({
                     width: isMobile ? "100%" : undefined,
                     justifyContent: isMobile ? "flex-end" : undefined,
                   }}>
-                    {showRecBadge && (
+                    {showRecBadge && !scalingEnabled && (
                       <span style={{
                         fontSize: fontSize.xs,
                         color: colors.warningDarker,
@@ -707,7 +736,8 @@ function PhaseSection({
                         max={999}
                         value={t.points}
                         onChange={(e) => handlePointsChange(t.key, parseInt(e.target.value) || 0)}
-                        disabled={false}
+                        disabled={scalingEnabled}
+                        title={scalingEnabled ? "Desactiva 'Puntos progresivos' para editar manualmente" : undefined}
                         style={{
                           width: 60,
                           padding: `${spacing.xs}px ${spacing.sm}px`,
@@ -716,9 +746,10 @@ function PhaseSection({
                           fontSize: fontSize.base,
                           fontWeight: fontWeight.semibold,
                           textAlign: "center" as const,
-                          color: colors.text,
-                          background: colors.white,
+                          color: scalingEnabled ? colors.textMuted : colors.text,
+                          background: scalingEnabled ? colors.bgLighter : colors.white,
                           outline: "none",
+                          cursor: scalingEnabled ? "not-allowed" : "text",
                         }}
                       />
                       <span style={{
@@ -746,6 +777,7 @@ function PhaseSection({
                 isCustom={isCustom}
                 recommended={recommendedStructural?.pointsPerExactPosition ?? 10}
                 isMobile={isMobile}
+                scalingEnabled={scalingEnabled}
               />
               <StructuralInput
                 label="Bonus grupo perfecto"
@@ -755,6 +787,7 @@ function PhaseSection({
                 isCustom={isCustom}
                 recommended={recommendedStructural?.bonusPerfectGroup ?? 20}
                 isMobile={isMobile}
+                scalingEnabled={scalingEnabled}
               />
             </div>
           )}
@@ -769,6 +802,7 @@ function PhaseSection({
               isCustom={isCustom}
               recommended={recommendedStructural?.pointsPerCorrectAdvance ?? 15}
               isMobile={isMobile}
+              scalingEnabled={scalingEnabled}
             />
           )}
         </div>
@@ -787,6 +821,7 @@ function StructuralInput({
   isCustom,
   recommended,
   isMobile,
+  scalingEnabled,
 }: {
   label: string;
   description: string;
@@ -795,8 +830,12 @@ function StructuralInput({
   isCustom: boolean;
   recommended: number;
   isMobile: boolean;
+  // When scaling is active the value is derived from base × multiplier,
+  // so the input is read-only and the "Sugerido" restore-badge is hidden
+  // (it would conflict with the auto-derived value).
+  scalingEnabled: boolean;
 }) {
-  const showRecBadge = value !== recommended;
+  const showRecBadge = value !== recommended && !scalingEnabled;
 
   return (
     <div style={{
@@ -862,7 +901,8 @@ function StructuralInput({
             max={999}
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-            disabled={false}
+            disabled={scalingEnabled}
+            title={scalingEnabled ? "Desactiva 'Puntos progresivos' para editar manualmente" : undefined}
             style={{
               width: 60,
               padding: `${spacing.xs}px ${spacing.sm}px`,
@@ -871,9 +911,10 @@ function StructuralInput({
               fontSize: fontSize.base,
               fontWeight: fontWeight.semibold,
               textAlign: "center" as const,
-              color: colors.text,
-              background: colors.white,
+              color: scalingEnabled ? colors.textMuted : colors.text,
+              background: scalingEnabled ? colors.bgLighter : colors.white,
               outline: "none",
+              cursor: scalingEnabled ? "not-allowed" : "text",
             }}
           />
           <span style={{
@@ -2169,6 +2210,7 @@ export function StepScoring() {
                   isMobile={isMobile}
                   onUpdatePhase={handleUpdatePhase}
                   recommendedStructural={recommendedStructural}
+                  scalingEnabled={scalingEnabled}
                 />
               );
             })}
