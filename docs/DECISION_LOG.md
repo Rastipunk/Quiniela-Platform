@@ -4426,4 +4426,42 @@ A naïve "one big endpoint that runs ~20 SQL queries" approach has a sharp failu
 
 ---
 
+## ADR-058: Editable scoring rules with auto-revert ACTIVE → DRAFT
+
+**Date:** 2026-05-11 | **Status:** Accepted
+
+**Context:** Hosts who invited people who never accepted, or whose players all left, were stuck — pool sat in ACTIVE with stale rules and no path back to editable. CLAUDE.md §6.3 said scoring config could not change once the pool had ACTIVE members, which was the right invariant for an in-flight pool but over-applied to pools where the only remaining member was the host. Two real production reports (`cocholo@gmail.com`, `german.lopezbellomo@gmail.com`) surfaced this from feedback emails.
+
+We needed an "Administrar reglas" host panel without breaking the original invariant for active pools where players are mid-tournament.
+
+**Decision:**
+
+- **Refine the invariant.** Scoring config remains immutable while *any* ACTIVE member with role `PLAYER` or `CO_ADMIN` exists. The host (HOST / CORPORATE_HOST) is considered staff and alone doesn't justify locking the editor. CLAUDE.md §6.3 updated to match.
+- **New transition `revertPoolToDraft(poolId, actorUserId, reason)` in `poolStateMachine.ts`.** Idempotent (no-op when pool is not ACTIVE). Inside one transaction:
+  - Deletes `Prediction`, `StructuralPrediction`, `GroupStandingsPrediction` (player data, no longer meaningful with old members gone).
+  - Updates `Pool.status = "DRAFT"`.
+  - Preserves `PoolMatchResult` + versions + overrides (tournament data, not player data).
+  - Audit `POOL_STATUS_CHANGED { from: "ACTIVE", to: "DRAFT", deletedPredictions, deletedStructural, deletedGroupStandings }`.
+  - Sends `sendPoolRevertedToDraftEmail` to the pool creator so they know the editor is unlocked.
+- **Helper `wouldCauseRevert(poolId, excludingMemberId)`** that counts ACTIVE non-host members ignoring the one we're about to remove. Used by `kickMember` / `banMember` / `leaveMember`.
+- **Two confirmation paths:**
+  - `kickMember` / `banMember` require `confirmRevert: true` in the body when the op will trigger a revert. Without it, the backend returns 409 `REVERT_PENDING_CONFIRMATION`. The frontend `ExpulsionModal` catches that, shows `window.confirm` describing the consequences (pool → DRAFT, all predictions deleted, match results preserved), and retries with the flag.
+  - `leaveMember` does NOT require confirmation. A player has the right to leave at any time. The revert (and the resulting host email) is the consequence the host must accept.
+- **Backend endpoint `PATCH /pools/:poolId/scoring-config`** (in `routes/poolAdmin.ts` → `updatePoolScoringConfig` in `poolAdminService.ts`). Accepts the same shape as pool creation: a preset key string (`BASIC` / `SIMPLE` / `CUMULATIVE`) which the service expands against the instance's real phases, or a fully-detailed `PoolPickTypesConfig` validated structurally. State-gated by `canEditScoringConfig(poolStatus)` which is `DRAFT`-only. Audit `POOL_RULES_CHANGED { from, to }` captures the full diff.
+- **Frontend reuses the wizard's editor.** `StepScoring` got split: `components/scoring-editor/ScoringEditor.tsx` is now a container-agnostic, props-driven component (`scoringStyle`, `scoringConfig`, `instancePhases`, `onSetScoring`, `onUpdateScoringConfig`). `StepScoring.tsx` is a thin wizard wrapper. The new `ManageRulesPanel` inside `PoolAdminTab` mounts the same editor in a modal and PATCHes the new endpoint.
+- **Eligible roles to keep the pool ACTIVE: `PLAYER` + `CO_ADMIN`.** If the host has only CO_ADMINs left and no players, the pool stays ACTIVE — the host must demote or kick them first. This is a deliberately stricter interpretation: CO_ADMIN is administrative staff, but removing all the actual gameplay (PLAYERs) is still the trigger.
+
+**Consequences:**
+
+- ✅ Hosts can recover stalled pools without contacting support or recreating from scratch.
+- ✅ The revert is informed (confirm dialog) and reversible-by-construction (the host can always invite players again, the pool goes back to ACTIVE on first PLAYER approval).
+- ✅ Tournament results survive the revert, so re-activating a pool with new players doesn't lose the host's work entering scores.
+- ⚠️ Player predictions are deleted at revert time. Acceptable because the predicting players already left, but documented in the host email so they understand.
+- ⚠️ A volatile pool (members joining and leaving repeatedly) could thrash ACTIVE ↔ DRAFT. Each transition is audited and the host gets an email each time, so the noise is observable. Not optimizing for this case until we see it in production.
+- ⚠️ The original CLAUDE.md §6.3 phrasing ("after pool has ACTIVE members") over-locked the editor when only the host remained. The new wording is precise — ADR-058 is the authoritative statement.
+
+**Related code:** `backend/src/services/poolStateMachine.ts` (`revertPoolToDraft`, `wouldCauseRevert`, `canEditScoringConfig`), `backend/src/services/poolMemberService.ts` (`kickMember` / `banMember` / `leaveMember` with confirmRevert), `backend/src/services/poolAdminService.ts` (`updatePoolScoringConfig`), `backend/src/routes/poolAdmin.ts` (PATCH route), `backend/src/lib/email.ts` (`sendPoolRevertedToDraftEmail`), `frontend-next/src/components/scoring-editor/ScoringEditor.tsx` (standalone editor), `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/admin/ManageRulesPanel.tsx` (host panel), `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/admin/ExpulsionModal.tsx` (409 retry dialog).
+
+---
+
 **END OF DOCUMENT**

@@ -201,7 +201,7 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 
 1. **Deadline enforcement:** User cannot edit picks if `isLocked=true` (kickoff - deadline minutes reached).
 2. **Result versioning:** Every result change creates a new version. Corrections require `reason`. All versions are immutable.
-3. **Pool rules immutability:** Scoring configuration cannot change after pool has ACTIVE members.
+3. **Pool rules immutability:** Scoring configuration cannot change while the pool has ACTIVE members other than HOST/CORPORATE_HOST. The host edits rules via the "Administrar reglas" panel in DRAFT state (canEditScoringConfig). When the last PLAYER/CO_ADMIN is removed (kick / ban / voluntary leave) the pool auto-reverts ACTIVE → DRAFT, all player predictions are deleted, but PoolMatchResults and overrides are preserved (revertPoolToDraft). Kick/ban require explicit confirmation (409 REVERT_PENDING_CONFIRMATION) before triggering the revert. See ADR-049.
 4. **Leave pool:** Only PLAYER can leave (not HOST/CORPORATE_HOST). Status → LEFT, points preserved, read-only mode.
 5. **Template immutability:** Published TournamentTemplateVersions are frozen snapshots.
 6. **Pool independence:** Each pool has its own `fixtureSnapshot`. Advancing phases in one pool does not affect others.
