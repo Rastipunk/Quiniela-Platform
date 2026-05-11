@@ -552,10 +552,16 @@ function PhaseSection({
                 onClick={() => {
                   if (!phase.requiresScore) return; // already selected
                   const isGroupPhase = phase.phaseId.includes("group") || phase.phaseName.toLowerCase().includes("grupo");
+                  // Strip `includeExtraTime` when switching to structural:
+                  // the structural scoring engines (GROUP_STANDINGS and
+                  // KNOCKOUT_WINNER) derive the advancer directly from the
+                  // final winner including penalties, so an ET-vs-90' toggle
+                  // has no effect and just clutters the persisted config.
                   const updated: PhasePickConfig = {
                     ...phase,
                     requiresScore: false,
                     matchPicks: undefined,
+                    includeExtraTime: undefined,
                     structuralPicks: isGroupPhase
                       ? { type: "GROUP_STANDINGS", config: { pointsPerExactPosition: 10, bonusPerfectGroup: 20, includeGlobalQualifiers: false } }
                       : { type: "KNOCKOUT_WINNER", config: { pointsPerCorrectAdvance: 15 } },
@@ -2062,14 +2068,17 @@ export function StepScoring() {
         )}
 
         {/* Extra time toggle — only meaningful when scoring depends on
-            the match score. The SIMPLE / Estratega preset derives the
-            advancer from the final result directly (90' goals, ET goals,
-            penalties resolved by the scraper), so an "include extra time"
-            switch has no effect there and is hidden to avoid confusion. */}
-        {!isSimple && knockoutPhases.length > 0 && (
-          isCustom ? (
+            the match score. SIMPLE / Estratega derives the advancer from
+            the final winner (incl. penalties) directly, and any knockout
+            phase set to structural in CUSTOM does the same. So the toggle
+            is hidden unless at least one knockout phase actually uses
+            matchPicks. */}
+        {(() => {
+          const scoreBasedKnockouts = knockoutPhases.filter((p) => p.requiresScore);
+          if (isSimple || scoreBasedKnockouts.length === 0) return null;
+          return isCustom ? (
             <ExtraTimeSection
-              knockoutPhases={knockoutPhases}
+              knockoutPhases={scoreBasedKnockouts}
               scoringConfig={scoringConfig}
               dispatch={dispatch}
               isCustom={true}
@@ -2095,21 +2104,25 @@ export function StepScoring() {
                 </div>
               </div>
               <ToggleSwitch
-                checked={knockoutPhases.some((p) => p.includeExtraTime)}
+                checked={scoreBasedKnockouts.some((p) => p.includeExtraTime)}
                 onChange={() => {
-                  const newValue = !knockoutPhases.some((p) => p.includeExtraTime);
-                  const updated = scoringConfig.map((p) =>
-                    p.phaseId !== "group_stage" && !p.phaseId.includes("group")
-                      ? { ...p, includeExtraTime: newValue }
-                      : p
-                  );
+                  const newValue = !scoreBasedKnockouts.some((p) => p.includeExtraTime);
+                  // Only flip ET for score-based knockouts; structural
+                  // phases keep includeExtraTime=undefined (it does
+                  // nothing for them anyway).
+                  const updated = scoringConfig.map((p) => {
+                    const isGroupPhase = p.phaseId === "group_stage" || p.phaseId.includes("group");
+                    if (isGroupPhase) return p;
+                    if (!p.requiresScore) return p;
+                    return { ...p, includeExtraTime: newValue };
+                  });
                   dispatch({ type: "UPDATE_SCORING_CONFIG", config: updated });
                 }}
                 size="small"
               />
             </div>
-          )
-        )}
+          );
+        })()}
 
         {/* Phase sections */}
         {(
