@@ -882,6 +882,14 @@ export async function getPlayerSummary(
 
   for (const [phaseId, phaseMatches] of phaseGroups) {
     const phaseConfig = pickTypesConfig?.find((p) => p.phaseId === phaseId);
+
+    // Structural phases (GROUP_STANDINGS / KNOCKOUT_WINNER) belong in
+    // `structuralBreakdown` below, not in `phases[]`. Including them
+    // here causes the frontend to render an empty "Sin predicción"
+    // accordion for the same phase the structural view already covers
+    // — visible in MIXED pools, harmless but ugly in pure STRUCTURAL.
+    if (phaseConfig?.structuralPicks) continue;
+
     const phaseData = phasesFromData.find((p) => p.id === phaseId);
     const phaseName = phaseData?.name ?? phaseId;
 
@@ -1215,6 +1223,7 @@ export async function getPlayerSummary(
     phases: Array<{
       phaseId: string;
       phaseName: string;
+      phaseOrder: number;
       phaseType: "GROUP_STANDINGS" | "KNOCKOUT_WINNER";
       points: number;
       positionsCorrect?: number;
@@ -1280,6 +1289,7 @@ export async function getPlayerSummary(
       phases: detail.phases.map((p) => ({
         ...p,
         phaseName: phaseNameById.get(p.phaseId) ?? p.phaseId,
+        phaseOrder: phaseOrder.get(p.phaseId) ?? 999,
       })),
       groups: detail.groups.map((g) => {
         const kickoff = earliestKickoffByGroup.get(`${g.phaseId}::${g.groupId}`);

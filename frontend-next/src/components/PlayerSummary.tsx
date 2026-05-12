@@ -11,7 +11,7 @@ import { getToken } from "../lib/auth";
 import { TeamFlag } from "./TeamFlag";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 import { colors } from "@/lib/theme";
-import { StructuralBreakdownView } from "./PlayerSummaryStructural";
+import { StructuralPhaseSection } from "./PlayerSummaryStructural";
 
 type PlayerSummaryProps = {
   poolId: string;
@@ -416,17 +416,35 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
     return null;
   }
 
-  // Calcular estadísticas totales (modo SCORE)
+  // Score-side totals (used by the "Scored" + "Effectiveness" cards
+  // and by the per-match grid). For pools that have any structural
+  // phase configured, the backend strips structural phases from
+  // `data.phases` so these aggregates only reflect score phases.
   const totalScored = data.phases.reduce((sum, p) => sum + p.scoredCount, 0);
   const totalMaxPoints = data.phases.reduce((sum, p) => sum + p.maxPossiblePoints, 0);
 
-  // Estratega detection. Backend sets `presetMode`. The two structural
-  // stat cards replace "Scored matches" + "Effectiveness %" (both are
-  // meaningless in Estratega since no match has a "score earned").
-  const isStructural = data.presetMode === "STRUCTURAL";
-  const isMixed = data.presetMode === "MIXED";
   const structuralStats = data.player.structuralStats;
   const structuralBreakdown = data.structuralBreakdown;
+
+  // Card-3 / Card-4 selection rule: show the structural-style cards
+  // when the pool has at least one GROUP_STANDINGS phase (the common
+  // signal that "positions correct" / "perfect groups" carry weight).
+  // Pure SCORE pools and the rare structural-knockout-only setup fall
+  // through to "Scored matches" / "Effectiveness %", which still
+  // describes the bulk of how the user earned points.
+  const showStructuralCards = (structuralStats?.totalGroups ?? 0) > 0;
+
+  // Build a unified, fixture-ordered list of phase sections so MIXED
+  // pools render score and structural phases in tournament sequence
+  // instead of "all score then all structural" at the bottom.
+  type PhaseSectionItem =
+    | { kind: "SCORE"; phaseId: string; phaseOrder: number; phase: PlayerSummaryPhase }
+    | { kind: "STRUCTURAL"; phaseId: string; phaseOrder: number; aggregate: NonNullable<typeof structuralBreakdown>["phases"][number] };
+
+  const phaseItems: PhaseSectionItem[] = [
+    ...data.phases.map((p) => ({ kind: "SCORE" as const, phaseId: p.phaseId, phaseOrder: p.phaseOrder, phase: p })),
+    ...(structuralBreakdown?.phases ?? []).map((a) => ({ kind: "STRUCTURAL" as const, phaseId: a.phaseId, phaseOrder: a.phaseOrder, aggregate: a })),
+  ].sort((a, b) => a.phaseOrder - b.phaseOrder);
 
   return (
     <div style={{ maxWidth: isMobile ? "100%" : 900, margin: "0 auto", padding: isMobile ? "0 4px" : 0 }}>
@@ -483,7 +501,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.successDark }}>{data.player.totalPoints}</div>
           <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.pointsLabel")}</div>
         </div>
-        {isStructural && structuralStats ? (
+        {showStructuralCards && structuralStats ? (
           <>
             <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.warningBg, borderRadius: 8, textAlign: "center" }}>
               <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.warningDark }}>
@@ -531,45 +549,52 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
         </div>
       )}
 
-      {/* Fases — Estratega usa StructuralBreakdownView (lado-a-lado de
-          posiciones / ganadores), score-based usa el acordeón clásico
-          con la grilla pick vs result. Pools MIXED muestran ambos. */}
-      {isStructural && structuralBreakdown ? (
-        <StructuralBreakdownView
-          breakdown={structuralBreakdown}
-          initialPhase={initialPhase}
-          tournamentKey={tournamentKey}
-          isMobile={isMobile}
-        />
+      {/* Fases — unified rendering in fixture order. Each phase
+          renders either as a score-based accordion (PhaseSection with
+          pick/result grid) or a structural section (positions or
+          knockout winners), based on how the host configured THAT
+          phase. MIXED pools interleave both kinds naturally. */}
+      <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: colors.textDark }}>
+        {t("playerSummaryView.phaseBreakdown")}
+      </h3>
+      {phaseItems.length === 0 ? (
+        <div style={{ padding: isMobile ? 20 : 40, textAlign: "center", color: colors.textMuted }}>
+          {t("playerSummaryView.noMatchesVisible")}
+        </div>
       ) : (
-        <>
-          <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: colors.textDark }}>{t("playerSummaryView.phaseBreakdown")}</h3>
-          {data.phases.length === 0 ? (
-            <div style={{ padding: isMobile ? 20 : 40, textAlign: "center", color: colors.textMuted }}>
-              {t("playerSummaryView.noMatchesVisible")}
-            </div>
-          ) : (
-            data.phases.map((phase, idx) => (
+        phaseItems.map((item, idx) => {
+          if (item.kind === "SCORE") {
+            return (
               <PhaseSection
-                key={phase.phaseId}
-                phase={phase}
+                key={item.phaseId}
+                phase={item.phase}
                 tournamentKey={tournamentKey}
-                defaultExpanded={initialPhase ? phase.phaseId === initialPhase : idx === 0}
+                defaultExpanded={initialPhase ? item.phaseId === initialPhase : idx === 0}
                 isMobile={isMobile}
               />
-            ))
-          )}
-          {isMixed && structuralBreakdown && (
-            <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${colors.borderMedium}` }}>
-              <StructuralBreakdownView
-                breakdown={structuralBreakdown}
-                initialPhase={initialPhase}
-                tournamentKey={tournamentKey}
-                isMobile={isMobile}
-              />
-            </div>
-          )}
-        </>
+            );
+          }
+          return (
+            <StructuralPhaseSection
+              key={item.phaseId}
+              phaseId={item.phaseId}
+              phaseName={item.aggregate.phaseName}
+              phaseType={item.aggregate.phaseType}
+              points={item.aggregate.points}
+              positionsCorrect={item.aggregate.positionsCorrect}
+              positionsTotal={item.aggregate.positionsTotal}
+              perfectGroups={item.aggregate.perfectGroups}
+              totalGroups={item.aggregate.totalGroups}
+              winnersCorrect={item.aggregate.winnersCorrect}
+              totalMatches={item.aggregate.totalMatches}
+              groups={structuralBreakdown?.groups ?? []}
+              knockoutMatches={structuralBreakdown?.knockoutMatches ?? []}
+              defaultExpanded={initialPhase ? item.phaseId === initialPhase : idx === 0}
+              tournamentKey={tournamentKey}
+              isMobile={isMobile}
+            />
+          );
+        })
       )}
 
       {/* Botón cerrar si es modal */}

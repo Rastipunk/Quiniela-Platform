@@ -230,6 +230,9 @@ export type StructuralKnockoutDetail = {
 export type StructuralPhaseAggregate = {
   phaseId: string;
   phaseName: string;
+  /** Fixture order — same numeric space as PlayerSummaryPhase.phaseOrder so
+   *  the two arrays can be merged and rendered in tournament sequence. */
+  phaseOrder: number;
   phaseType: "GROUP_STANDINGS" | "KNOCKOUT_WINNER";
   points: number;
   positionsCorrect?: number;

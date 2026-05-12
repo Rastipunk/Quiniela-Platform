@@ -14,7 +14,6 @@ import { colors } from "@/lib/theme";
 import { TeamFlag } from "./TeamFlag";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 import type {
-  StructuralBreakdownDetail,
   StructuralGroupDetail,
   StructuralKnockoutDetail,
 } from "../lib/api/scoring";
@@ -366,54 +365,3 @@ function EmptyMsg({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── Top-level renderer: walks every phase in the structural breakdown ──
-
-type StructuralBreakdownViewProps = {
-  breakdown: StructuralBreakdownDetail;
-  initialPhase?: string;
-  tournamentKey: string;
-  isMobile: boolean;
-};
-
-export function StructuralBreakdownView({
-  breakdown,
-  initialPhase,
-  tournamentKey,
-  isMobile,
-}: StructuralBreakdownViewProps) {
-  const t = useTranslations("pool.playerSummaryView");
-
-  if (!breakdown.phases || breakdown.phases.length === 0) {
-    return (
-      <EmptyMsg>{t("noStructuralPhases")}</EmptyMsg>
-    );
-  }
-
-  return (
-    <>
-      <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: colors.textDark }}>
-        {t("phaseBreakdown")}
-      </h3>
-      {breakdown.phases.map((phase, idx) => (
-        <StructuralPhaseSection
-          key={phase.phaseId}
-          phaseId={phase.phaseId}
-          phaseName={phase.phaseName}
-          phaseType={phase.phaseType}
-          points={phase.points}
-          positionsCorrect={phase.positionsCorrect}
-          positionsTotal={phase.positionsTotal}
-          perfectGroups={phase.perfectGroups}
-          totalGroups={phase.totalGroups}
-          winnersCorrect={phase.winnersCorrect}
-          totalMatches={phase.totalMatches}
-          groups={breakdown.groups}
-          knockoutMatches={breakdown.knockoutMatches}
-          defaultExpanded={initialPhase ? phase.phaseId === initialPhase : idx === 0}
-          tournamentKey={tournamentKey}
-          isMobile={isMobile}
-        />
-      ))}
-    </>
-  );
-}

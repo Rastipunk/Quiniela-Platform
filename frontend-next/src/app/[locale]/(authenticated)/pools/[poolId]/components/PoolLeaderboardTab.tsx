@@ -37,17 +37,35 @@ export function PoolLeaderboardTab({
   const myRank = myRow?.rank;
   const leaderPoints = allRows[0]?.points ?? 0;
   const phases = overview.leaderboard.phases || [];
-  // Estratega = every configured phase is structural. The backend sets
-  // `presetMode` on the leaderboard payload; we fall back to inspecting
-  // `pickTypesConfig` for older payloads. When true, phase cells show
-  // both points and the structural counter (perfect groups / winners).
-  const presetMode = overview.leaderboard.presetMode
-    ?? (Array.isArray(overview.pool.pickTypesConfig)
-      && overview.pool.pickTypesConfig.length > 0
-      && overview.pool.pickTypesConfig.every((p) => p?.structuralPicks)
-        ? "STRUCTURAL"
-        : "SCORE");
-  const isStructural = presetMode === "STRUCTURAL";
+  // Per-phase type detection. Each phase column in the leaderboard
+  // decides its own rendering based on how the host configured THAT
+  // phase, so MIXED pools (some structural, some score) show the right
+  // counter (or no counter) on a per-cell basis. We read pickTypesConfig
+  // straight from the pool — it is the source of truth.
+  const phaseTypeByPhaseId = useMemo(() => {
+    const map = new Map<string, "STRUCTURAL_GROUP" | "STRUCTURAL_KNOCKOUT" | "SCORE">();
+    const cfg = overview.pool.pickTypesConfig;
+    if (Array.isArray(cfg)) {
+      for (const phase of cfg) {
+        if (!phase) continue;
+        if (phase.structuralPicks?.type === "GROUP_STANDINGS") {
+          map.set(phase.phaseId, "STRUCTURAL_GROUP");
+        } else if (phase.structuralPicks?.type === "KNOCKOUT_WINNER") {
+          map.set(phase.phaseId, "STRUCTURAL_KNOCKOUT");
+        } else {
+          map.set(phase.phaseId, "SCORE");
+        }
+      }
+    }
+    return map;
+  }, [overview.pool.pickTypesConfig]);
+  // Pool has at least one structural phase? Drives the "X/Y posiciones
+  // · Z grupos perfectos" summary line under the player name (still
+  // useful in MIXED pools that have structural groups).
+  const hasAnyStructural = useMemo(
+    () => Array.from(phaseTypeByPhaseId.values()).some((t) => t !== "SCORE"),
+    [phaseTypeByPhaseId],
+  );
 
   const isHostOrAdmin = ["HOST", "CO_ADMIN", "CORPORATE_HOST"].includes(overview.myMembership?.role ?? "");
 
@@ -122,7 +140,7 @@ export function PoolLeaderboardTab({
           onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{r.displayName}</div>
-          {isStructural && r.structuralStats && (
+          {hasAnyStructural && r.structuralStats && r.structuralStats.positionsTotal > 0 && (
             <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
               {t("leaderboard.structuralSummary", {
                 positionsCorrect: r.structuralStats.positionsCorrect,
@@ -160,38 +178,39 @@ export function PoolLeaderboardTab({
         {phases.map((phaseId: string) => {
           const phasePoints = r.pointsByPhase?.[phaseId] ?? 0;
           const hasPoints = phasePoints > 0;
-          // Estratega counter for this phase: perfect-groups badge for
-          // group_stage, "X/Y winners hit" for knockout phases. Counters
-          // render even when phasePoints is 0, so a "0 · 0/16" cell still
-          // conveys "they predicted but got nothing right" vs the dash
-          // shown in score mode for "nothing happened yet".
+          // Per-phase counter, driven by this phase's configured type
+          // (not by the overall pool mode). A MIXED pool with a
+          // structural group_stage and score knockouts shows "X★" on the
+          // group column and a bare number on the knockout columns —
+          // each correctly describing how that phase is being scored.
+          const phaseType = phaseTypeByPhaseId.get(phaseId);
           let counter: string | null = null;
           let counterTitle: string | null = null;
-          if (isStructural && r.structuralStats) {
+          if (phaseType === "STRUCTURAL_GROUP" && r.structuralStats) {
             const s = r.structuralStats;
-            if (phaseId === "group_stage") {
-              counter = `${s.perfectGroups}★`;
-              counterTitle = t("leaderboard.tooltipGroupStage", {
-                positionsCorrect: s.positionsCorrect,
-                positionsTotal: s.positionsTotal,
-                perfectGroups: s.perfectGroups,
-                totalGroups: s.totalGroups,
+            counter = `${s.perfectGroups}★`;
+            counterTitle = t("leaderboard.tooltipGroupStage", {
+              positionsCorrect: s.positionsCorrect,
+              positionsTotal: s.positionsTotal,
+              perfectGroups: s.perfectGroups,
+              totalGroups: s.totalGroups,
+            });
+          } else if (phaseType === "STRUCTURAL_KNOCKOUT" && r.structuralStats) {
+            const k = r.structuralStats.winnersByPhase?.[phaseId];
+            if (k && k.total > 0) {
+              counter = `${k.correct}/${k.total}`;
+              counterTitle = t("leaderboard.tooltipKnockout", {
+                correct: k.correct,
+                total: k.total,
               });
-            } else {
-              const k = s.winnersByPhase?.[phaseId];
-              if (k && k.total > 0) {
-                counter = `${k.correct}/${k.total}`;
-                counterTitle = t("leaderboard.tooltipKnockout", {
-                  correct: k.correct,
-                  total: k.total,
-                });
-              }
             }
           }
-          // For Estratega, render the cell as soon as the phase has any
-          // structural footprint (counter present) so users see "0 · 0/16"
-          // instead of a dash before any matches are decided.
-          const showCell = hasPoints || (isStructural && counter !== null);
+          // For structural phases, render the cell as soon as the phase
+          // has a counter (so "0 · 0/16" shows even before any match is
+          // decided). Score phases keep the original "show dash until
+          // points exist" behavior.
+          const isStructuralPhase = phaseType === "STRUCTURAL_GROUP" || phaseType === "STRUCTURAL_KNOCKOUT";
+          const showCell = hasPoints || (isStructuralPhase && counter !== null);
           const cellTitle = showCell
             ? counterTitle ?? t("leaderboard.viewPhaseDetail", { phase: formatPhaseFullName(phaseId, t) })
             : t("leaderboard.noPointsYet");
@@ -205,7 +224,7 @@ export function PoolLeaderboardTab({
                 color: hasPoints ? colors.textDark : colors.disabled,
                 cursor: showCell ? "pointer" : "default",
                 transition: "background 0.15s ease",
-                minWidth: isStructural ? 62 : undefined,
+                minWidth: isStructuralPhase ? 62 : undefined,
               }}
               onMouseEnter={(e) => { if (showCell) e.currentTarget.style.background = colors.infoBgLight; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
@@ -310,7 +329,8 @@ export function PoolLeaderboardTab({
               formatPhaseFullName={(phaseId: string) => formatPhaseFullName(phaseId, t)}
               pinnedRow={showPinnedRow ? myRow : undefined}
               pinnedLabel={t("leaderboard.yourPosition")}
-              presetMode={presetMode}
+              phaseTypeByPhaseId={phaseTypeByPhaseId}
+              hasAnyStructural={hasAnyStructural}
             />
             <PaginationControls
               page={safePage} totalPages={totalPages}

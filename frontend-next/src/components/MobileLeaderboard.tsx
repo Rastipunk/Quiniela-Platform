@@ -27,6 +27,8 @@ type LeaderboardRow = {
   structuralStats?: LeaderboardStructuralStats;
 };
 
+type PhaseType = "STRUCTURAL_GROUP" | "STRUCTURAL_KNOCKOUT" | "SCORE";
+
 type MobileLeaderboardProps = {
   rows: LeaderboardRow[];
   phases: string[];
@@ -36,8 +38,10 @@ type MobileLeaderboardProps = {
   /** Pinned current-user row shown at top when they're not on the current page */
   pinnedRow?: LeaderboardRow;
   pinnedLabel?: string;
-  /** When "STRUCTURAL", phase chips show counters and a structural summary line renders. */
-  presetMode?: "STRUCTURAL" | "SCORE" | "MIXED";
+  /** Per-phase scoring type — drives whether each chip shows a structural counter. */
+  phaseTypeByPhaseId?: Map<string, PhaseType>;
+  /** True when at least one phase is structural — toggles the summary line under the name. */
+  hasAnyStructural?: boolean;
 };
 
 export function MobileLeaderboard({
@@ -48,11 +52,11 @@ export function MobileLeaderboard({
   formatPhaseFullName,
   pinnedRow,
   pinnedLabel,
-  presetMode,
+  phaseTypeByPhaseId,
+  hasAnyStructural,
 }: MobileLeaderboardProps) {
   const t = useTranslations("pool");
   const leaderPoints = rows[0]?.points ?? 0;
-  const isStructural = presetMode === "STRUCTURAL";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -169,7 +173,7 @@ export function MobileLeaderboard({
                 >
                   {r.displayName}
                 </div>
-                {isStructural && r.structuralStats && (
+                {hasAnyStructural && r.structuralStats && r.structuralStats.positionsTotal > 0 && (
                   <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
                     {t("leaderboard.structuralSummary", {
                       positionsCorrect: r.structuralStats.positionsCorrect,
@@ -266,21 +270,20 @@ export function MobileLeaderboard({
                 {phases.map((phaseId) => {
                   const phasePoints = r.pointsByPhase?.[phaseId] ?? 0;
                   const hasPoints = phasePoints > 0;
-                  // Estratega counter chip for this phase (under the
-                  // points number): "X★" for group_stage, "X/Y" winners
-                  // for knockouts. Visible even before points accrue so
-                  // the user sees progress on the structural picks.
+                  // Per-phase counter chip (under the points number),
+                  // driven by THIS phase's configured type — so MIXED
+                  // pools show "X★" only on structural groups and
+                  // "X/Y" only on structural knockouts.
+                  const phaseType = phaseTypeByPhaseId?.get(phaseId);
                   let counter: string | null = null;
-                  if (isStructural && r.structuralStats) {
-                    const s = r.structuralStats;
-                    if (phaseId === "group_stage") {
-                      counter = `${s.perfectGroups}★`;
-                    } else {
-                      const k = s.winnersByPhase?.[phaseId];
-                      if (k && k.total > 0) counter = `${k.correct}/${k.total}`;
-                    }
+                  if (phaseType === "STRUCTURAL_GROUP" && r.structuralStats) {
+                    counter = `${r.structuralStats.perfectGroups}★`;
+                  } else if (phaseType === "STRUCTURAL_KNOCKOUT" && r.structuralStats) {
+                    const k = r.structuralStats.winnersByPhase?.[phaseId];
+                    if (k && k.total > 0) counter = `${k.correct}/${k.total}`;
                   }
-                  const showChip = hasPoints || (isStructural && counter !== null);
+                  const isStructuralPhase = phaseType === "STRUCTURAL_GROUP" || phaseType === "STRUCTURAL_KNOCKOUT";
+                  const showChip = hasPoints || (isStructuralPhase && counter !== null);
 
                   return (
                     <button
@@ -303,7 +306,7 @@ export function MobileLeaderboard({
                         borderRadius: 8,
                         cursor: showChip ? "pointer" : "default",
                         opacity: showChip ? 1 : 0.5,
-                        minWidth: isStructural ? 58 : 50,
+                        minWidth: isStructuralPhase ? 58 : 50,
                         flexShrink: 0,
                         ...mobileInteractiveStyles.tapHighlight,
                       }}
