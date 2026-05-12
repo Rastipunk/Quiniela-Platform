@@ -186,6 +186,18 @@ export async function publishResult(data: PublishResultInput, ctx: AuditContext)
     userAgent: ctx.userAgent ?? null,
   }));
 
+  // Auto-publish structural results (Estratega) if the host override
+  // affects a structural phase. The score-based path is a no-op
+  // (autoPublishStructuralResults bails when requiresScore !== false).
+  // Lazy import to keep the existing module-graph dependency direction
+  // consistent with the advancement trigger below.
+  fireAndForget(
+    "auto-publish-structural-after-publish",
+    import("./structuralAutoPublish").then((m) =>
+      m.autoPublishStructuralResults(poolId, matchId)
+    )
+  );
+
   // Trigger automatic phase advancement check (delayed)
   fireAndForget(
     "advancement-trigger-after-publish",

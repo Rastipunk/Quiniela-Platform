@@ -18,6 +18,7 @@ import { FINISHED_STATUSES } from "../services/apiFootball/types";
 import { SCORES } from "../lib/constants";
 import { checkAndTriggerAdvancement } from "../services/advancementTrigger";
 import { transitionToCompleted } from "../services/poolStateMachine";
+import { autoPublishStructuralResults } from "../services/structuralAutoPublish";
 
 // ============================================================================
 // Configuration
@@ -491,6 +492,18 @@ async function finalizeResult(
     `[LiveScoresJob] Finalized ${entry.internalMatchId} ` +
       `(pool ${poolId}): ${cv.homeGoals}-${cv.awayGoals} → API_CONFIRMED ` +
       `[grace period complete]`
+  );
+
+  // Auto-publish structural results (Estratega): if this pool's
+  // phase is GROUP_STANDINGS and the group is now complete, derive
+  // the FIFA table and upsert GroupStandingsResult. If KNOCKOUT_WINNER,
+  // merge the winnerId into StructuralPhaseResult.matches[]. No-op
+  // for score-based presets. Runs BEFORE the advancement trigger so
+  // validateCanAutoAdvance sees the freshly-published structural
+  // result when the 10-minute window elapses.
+  fireAndForget(
+    "LiveScoresJob:auto-publish-structural",
+    autoPublishStructuralResults(poolId, entry.internalMatchId),
   );
 
   // Check if this completes the phase and trigger advancement
