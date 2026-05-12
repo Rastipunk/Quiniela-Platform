@@ -8,6 +8,14 @@ import { colors } from "@/lib/theme";
 import { useTranslations } from "next-intl";
 import { mobileInteractiveStyles } from "../hooks/useIsMobile";
 
+type LeaderboardStructuralStats = {
+  positionsCorrect: number;
+  positionsTotal: number;
+  perfectGroups: number;
+  totalGroups: number;
+  winnersByPhase: Record<string, { correct: number; total: number }>;
+};
+
 type LeaderboardRow = {
   userId: string;
   displayName: string;
@@ -16,6 +24,7 @@ type LeaderboardRow = {
   points: number;
   rank: number;
   pointsByPhase?: Record<string, number>;
+  structuralStats?: LeaderboardStructuralStats;
 };
 
 type MobileLeaderboardProps = {
@@ -27,6 +36,8 @@ type MobileLeaderboardProps = {
   /** Pinned current-user row shown at top when they're not on the current page */
   pinnedRow?: LeaderboardRow;
   pinnedLabel?: string;
+  /** When "STRUCTURAL", phase chips show counters and a structural summary line renders. */
+  presetMode?: "STRUCTURAL" | "SCORE" | "MIXED";
 };
 
 export function MobileLeaderboard({
@@ -37,9 +48,11 @@ export function MobileLeaderboard({
   formatPhaseFullName,
   pinnedRow,
   pinnedLabel,
+  presetMode,
 }: MobileLeaderboardProps) {
   const t = useTranslations("pool");
   const leaderPoints = rows[0]?.points ?? 0;
+  const isStructural = presetMode === "STRUCTURAL";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -156,6 +169,15 @@ export function MobileLeaderboard({
                 >
                   {r.displayName}
                 </div>
+                {isStructural && r.structuralStats && (
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
+                    {t("leaderboard.structuralSummary", {
+                      positionsCorrect: r.structuralStats.positionsCorrect,
+                      positionsTotal: r.structuralStats.positionsTotal,
+                      perfectGroups: r.structuralStats.perfectGroups,
+                    })}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {r.role === "HOST" && (
                     <span
@@ -244,17 +266,32 @@ export function MobileLeaderboard({
                 {phases.map((phaseId) => {
                   const phasePoints = r.pointsByPhase?.[phaseId] ?? 0;
                   const hasPoints = phasePoints > 0;
+                  // Estratega counter chip for this phase (under the
+                  // points number): "X★" for group_stage, "X/Y" winners
+                  // for knockouts. Visible even before points accrue so
+                  // the user sees progress on the structural picks.
+                  let counter: string | null = null;
+                  if (isStructural && r.structuralStats) {
+                    const s = r.structuralStats;
+                    if (phaseId === "group_stage") {
+                      counter = `${s.perfectGroups}★`;
+                    } else {
+                      const k = s.winnersByPhase?.[phaseId];
+                      if (k && k.total > 0) counter = `${k.correct}/${k.total}`;
+                    }
+                  }
+                  const showChip = hasPoints || (isStructural && counter !== null);
 
                   return (
                     <button
                       key={phaseId}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (hasPoints) {
+                        if (showChip) {
                           onPlayerClick(r.userId, r.displayName, phaseId);
                         }
                       }}
-                      disabled={!hasPoints}
+                      disabled={!showChip}
                       title={formatPhaseFullName(phaseId)}
                       style={{
                         display: "flex",
@@ -264,9 +301,9 @@ export function MobileLeaderboard({
                         background: hasPoints ? "#f8fbff" : colors.bgLight,
                         border: hasPoints ? "1px solid #007bff30" : "1px solid #e0e0e0",
                         borderRadius: 8,
-                        cursor: hasPoints ? "pointer" : "default",
-                        opacity: hasPoints ? 1 : 0.5,
-                        minWidth: 50,
+                        cursor: showChip ? "pointer" : "default",
+                        opacity: showChip ? 1 : 0.5,
+                        minWidth: isStructural ? 58 : 50,
                         flexShrink: 0,
                         ...mobileInteractiveStyles.tapHighlight,
                       }}
@@ -288,8 +325,13 @@ export function MobileLeaderboard({
                           color: hasPoints ? colors.brand : colors.disabled,
                         }}
                       >
-                        {hasPoints ? phasePoints : "-"}
+                        {showChip ? phasePoints : "-"}
                       </span>
+                      {counter && (
+                        <span style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>
+                          {counter}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

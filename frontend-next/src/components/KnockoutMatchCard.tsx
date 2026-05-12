@@ -316,6 +316,16 @@ export function KnockoutMatchCard({
               <div style={{ fontSize: 12, color: "#78350f", marginBottom: "0.75rem", lineHeight: 1.4 }}>
                 {t("knockoutCard.overrideDesc")}
               </div>
+              {isLocked && (
+                <div style={{
+                  fontSize: 12, color: "#7f1d1d", background: "#fee2e2",
+                  border: "1px solid #fecaca", borderRadius: 6,
+                  padding: "0.6rem 0.75rem", marginBottom: "0.75rem", lineHeight: 1.4,
+                  fontWeight: 600,
+                }}>
+                  ⚠️ {t("knockoutCard.overridePostAdvanceWarning")}
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "0.75rem" }}>
                 <TeamPickButton
                   team={homeTeam}
@@ -426,7 +436,12 @@ export function KnockoutMatchCard({
                   </div>
                 )}
               </div>
-              {isHost && publishedTeam && !isLocked && (
+              {/* Override stays available to host even after the phase
+                  has advanced (isLocked=true). Backend re-runs
+                  autoPublishStructuralResults to recompute the bracket
+                  so downstream rounds stay consistent. The modal shows
+                  an explicit warning when isLocked. */}
+              {isHost && publishedTeam && (
                 <button
                   onClick={handleEnterOverride}
                   style={{

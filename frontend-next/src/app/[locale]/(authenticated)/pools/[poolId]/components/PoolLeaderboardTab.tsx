@@ -37,6 +37,17 @@ export function PoolLeaderboardTab({
   const myRank = myRow?.rank;
   const leaderPoints = allRows[0]?.points ?? 0;
   const phases = overview.leaderboard.phases || [];
+  // Estratega = every configured phase is structural. The backend sets
+  // `presetMode` on the leaderboard payload; we fall back to inspecting
+  // `pickTypesConfig` for older payloads. When true, phase cells show
+  // both points and the structural counter (perfect groups / winners).
+  const presetMode = overview.leaderboard.presetMode
+    ?? (Array.isArray(overview.pool.pickTypesConfig)
+      && overview.pool.pickTypesConfig.length > 0
+      && overview.pool.pickTypesConfig.every((p) => p?.structuralPicks)
+        ? "STRUCTURAL"
+        : "SCORE");
+  const isStructural = presetMode === "STRUCTURAL";
 
   const isHostOrAdmin = ["HOST", "CO_ADMIN", "CORPORATE_HOST"].includes(overview.myMembership?.role ?? "");
 
@@ -111,6 +122,15 @@ export function PoolLeaderboardTab({
           onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
         >
           <div style={{ fontWeight: 600, marginBottom: 4 }}>{r.displayName}</div>
+          {isStructural && r.structuralStats && (
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
+              {t("leaderboard.structuralSummary", {
+                positionsCorrect: r.structuralStats.positionsCorrect,
+                positionsTotal: r.structuralStats.positionsTotal,
+                perfectGroups: r.structuralStats.perfectGroups,
+              })}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 4 }}>
             {r.role === "HOST" && (
               <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "#007bff20", border: "1px solid #007bff", color: colors.brand, fontWeight: 600 }}>
@@ -140,22 +160,67 @@ export function PoolLeaderboardTab({
         {phases.map((phaseId: string) => {
           const phasePoints = r.pointsByPhase?.[phaseId] ?? 0;
           const hasPoints = phasePoints > 0;
+          // Estratega counter for this phase: perfect-groups badge for
+          // group_stage, "X/Y winners hit" for knockout phases. Counters
+          // render even when phasePoints is 0, so a "0 · 0/16" cell still
+          // conveys "they predicted but got nothing right" vs the dash
+          // shown in score mode for "nothing happened yet".
+          let counter: string | null = null;
+          let counterTitle: string | null = null;
+          if (isStructural && r.structuralStats) {
+            const s = r.structuralStats;
+            if (phaseId === "group_stage") {
+              counter = `${s.perfectGroups}★`;
+              counterTitle = t("leaderboard.tooltipGroupStage", {
+                positionsCorrect: s.positionsCorrect,
+                positionsTotal: s.positionsTotal,
+                perfectGroups: s.perfectGroups,
+                totalGroups: s.totalGroups,
+              });
+            } else {
+              const k = s.winnersByPhase?.[phaseId];
+              if (k && k.total > 0) {
+                counter = `${k.correct}/${k.total}`;
+                counterTitle = t("leaderboard.tooltipKnockout", {
+                  correct: k.correct,
+                  total: k.total,
+                });
+              }
+            }
+          }
+          // For Estratega, render the cell as soon as the phase has any
+          // structural footprint (counter present) so users see "0 · 0/16"
+          // instead of a dash before any matches are decided.
+          const showCell = hasPoints || (isStructural && counter !== null);
+          const cellTitle = showCell
+            ? counterTitle ?? t("leaderboard.viewPhaseDetail", { phase: formatPhaseFullName(phaseId, t) })
+            : t("leaderboard.noPointsYet");
           return (
             <td
               key={phaseId}
-              onClick={() => { if (hasPoints) setPlayerSummaryModal({ userId: r.userId, displayName: r.displayName, initialPhase: phaseId }); }}
+              onClick={() => { if (showCell) setPlayerSummaryModal({ userId: r.userId, displayName: r.displayName, initialPhase: phaseId }); }}
               style={{
                 padding: "10px 6px", textAlign: "center", fontSize: 13,
                 fontWeight: hasPoints ? 600 : 400,
                 color: hasPoints ? colors.textDark : colors.disabled,
-                cursor: hasPoints ? "pointer" : "default",
+                cursor: showCell ? "pointer" : "default",
                 transition: "background 0.15s ease",
+                minWidth: isStructural ? 62 : undefined,
               }}
-              onMouseEnter={(e) => { if (hasPoints) e.currentTarget.style.background = colors.infoBgLight; }}
+              onMouseEnter={(e) => { if (showCell) e.currentTarget.style.background = colors.infoBgLight; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              title={hasPoints ? t("leaderboard.viewPhaseDetail", { phase: formatPhaseFullName(phaseId, t) }) : t("leaderboard.noPointsYet")}
+              title={cellTitle}
             >
-              {hasPoints ? phasePoints : "-"}
+              {showCell ? (
+                <>
+                  <div>{phasePoints}</div>
+                  {counter && (
+                    <div style={{ fontSize: 10, color: colors.textMuted, fontWeight: 500, marginTop: 2 }}>
+                      {counter}
+                    </div>
+                  )}
+                </>
+              ) : "-"}
             </td>
           );
         })}
@@ -245,6 +310,7 @@ export function PoolLeaderboardTab({
               formatPhaseFullName={(phaseId: string) => formatPhaseFullName(phaseId, t)}
               pinnedRow={showPinnedRow ? myRow : undefined}
               pinnedLabel={t("leaderboard.yourPosition")}
+              presetMode={presetMode}
             />
             <PaginationControls
               page={safePage} totalPages={totalPages}

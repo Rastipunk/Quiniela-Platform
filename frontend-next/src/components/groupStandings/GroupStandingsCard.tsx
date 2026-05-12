@@ -329,6 +329,16 @@ export function GroupStandingsCard({
               <div style={{ fontSize: 12, color: "#78350f", marginBottom: "0.75rem", lineHeight: 1.4 }}>
                 {t("groupStandings.overrideDesc")}
               </div>
+              {isLocked && (
+                <div style={{
+                  fontSize: 12, color: "#7f1d1d", background: "#fee2e2",
+                  border: "1px solid #fecaca", borderRadius: 6,
+                  padding: "0.6rem 0.75rem", marginBottom: "0.75rem", lineHeight: 1.4,
+                  fontWeight: 600,
+                }}>
+                  ⚠️ {t("groupStandings.overridePostAdvanceWarning")}
+                </div>
+              )}
               <DraggableTeamList
                 teams={teams}
                 orderedTeamIds={overrideOrder}
@@ -412,7 +422,13 @@ export function GroupStandingsCard({
                 publishedReason={stats.publishedReason}
                 isMobile={isMobile}
               />
-              {isHost && officialPublished && !isLocked && (
+              {/* Override stays available to the host even after the phase
+                  has advanced (isLocked=true). This is intentional: an
+                  errata may surface after the bracket was drawn, and the
+                  backend re-runs autoPublishStructuralResults so downstream
+                  phases stay consistent. The modal shows an extra warning
+                  when isLocked to signal the bracket may shift. */}
+              {isHost && officialPublished && (
                 <button
                   onClick={handleEnterOverride}
                   style={{

@@ -18,7 +18,7 @@ import {
   type StructuralPickJson,
 } from "../lib/fixture";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
-import { scoreUserStructuralPicks } from "./structuralScoring";
+import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
 import type { PhasePickConfig } from "../types/pickConfig";
 import { ServiceError } from "./authService";
@@ -311,6 +311,64 @@ export async function getPoolOverview(
     if (!phaseOrder.includes(m.phaseId)) phaseOrder.push(m.phaseId);
   }
 
+  // Build the structural universe once — group ids per GROUP_STANDINGS phase
+  // and match ids per KNOCKOUT_WINNER phase. The breakdown helper uses these
+  // to emit a row even when a user did not predict / a result is not yet
+  // published, so the UI can show "Sin pick" / "Por jugar" placeholders
+  // instead of dropping the row entirely.
+  const knockoutMatchUniverse: Array<{ phaseId: string; matchId: string }> = [];
+  const groupUniverse: Array<{ phaseId: string; groupId: string }> = [];
+  if (pickTypesConfig) {
+    for (const phaseConfig of pickTypesConfig) {
+      const sp = phaseConfig.structuralPicks;
+      if (!sp) continue;
+      if (sp.type === "GROUP_STANDINGS") {
+        const seen = new Set<string>();
+        for (const mm of matches) {
+          if (mm.phaseId !== phaseConfig.phaseId) continue;
+          const gid = mm.groupId;
+          if (!gid || seen.has(gid)) continue;
+          seen.add(gid);
+          groupUniverse.push({ phaseId: phaseConfig.phaseId, groupId: gid });
+        }
+      } else if (sp.type === "KNOCKOUT_WINNER") {
+        for (const mm of matches) {
+          if (mm.phaseId === phaseConfig.phaseId) {
+            knockoutMatchUniverse.push({ phaseId: phaseConfig.phaseId, matchId: mm.id });
+          }
+        }
+      }
+    }
+  }
+
+  // Pool-level preset mode (used by the frontend to switch leaderboard /
+  // PlayerSummary into Estratega rendering when every configured phase is
+  // structural).
+  let structuralPhaseCount = 0;
+  let scorePhaseCount = 0;
+  if (pickTypesConfig) {
+    for (const phaseConfig of pickTypesConfig) {
+      if (phaseConfig.structuralPicks) structuralPhaseCount += 1;
+      if (phaseConfig.requiresScore && phaseConfig.matchPicks) scorePhaseCount += 1;
+    }
+  }
+  const presetMode: "STRUCTURAL" | "SCORE" | "MIXED" =
+    structuralPhaseCount > 0 && scorePhaseCount === 0
+      ? "STRUCTURAL"
+      : structuralPhaseCount === 0 && scorePhaseCount > 0
+        ? "SCORE"
+        : structuralPhaseCount > 0 && scorePhaseCount > 0
+          ? "MIXED"
+          : "SCORE"; // legacy pools with no pickTypesConfig fall back to score-based
+
+  const emptyStructuralStats: StructuralStatsSummary = {
+    positionsCorrect: 0,
+    positionsTotal: 0,
+    perfectGroups: 0,
+    totalGroups: 0,
+    winnersByPhase: {},
+  };
+
   const scoringErrors: Array<{ userId: string; error: string }> = [];
 
   const leaderboardRows = members.map((m) => {
@@ -416,22 +474,35 @@ export async function getPoolOverview(
       }
     }
 
-    // Structural points
+    // Structural points — desagregated by phase + summarized for the
+    // leaderboard. The aggregated total is added to `points`, and each
+    // phase's contribution lands in `pointsByPhase` (previously these
+    // were lumped together at the row total, producing 0 in every phase
+    // column for Estratega pools).
     let structuralPoints = 0;
+    let structuralStats: StructuralStatsSummary = emptyStructuralStats;
 
-    if (pool.pickTypesConfig && Array.isArray(pool.pickTypesConfig) && structuralResults.length > 0) {
+    if (pickTypesConfig && pickTypesConfig.length > 0) {
       const userStructuralPicks = structuralPicksByUser.get(m.userId) || [];
-      if (userStructuralPicks.length > 0) {
-        try {
-          structuralPoints = scoreUserStructuralPicks(
-            userStructuralPicks,
-            structuralResults,
-            pool.pickTypesConfig as PhasePickConfig[],
-          );
-        } catch (err) {
-          console.error(`[SCORING_ERROR] Structural points failed for user ${m.userId} in pool ${pool.id}:`, err instanceof Error ? err.message : err);
-          scoringErrors.push({ userId: m.userId, error: err instanceof Error ? err.message : "Unknown scoring error" });
+      try {
+        const breakdown = computeStructuralBreakdown(
+          userStructuralPicks,
+          structuralResults,
+          pickTypesConfig,
+          knockoutMatchUniverse,
+          groupUniverse,
+        );
+        structuralPoints = breakdown.totalPoints;
+        structuralStats = summarizeStructural(breakdown);
+        for (const [phaseId, pts] of Object.entries(breakdown.pointsByPhase)) {
+          pointsByPhase[phaseId] = (pointsByPhase[phaseId] ?? 0) + pts;
         }
+      } catch (err) {
+        console.error(
+          `[SCORING_ERROR] Structural points failed for user ${m.userId} in pool ${pool.id}:`,
+          err instanceof Error ? err.message : err,
+        );
+        scoringErrors.push({ userId: m.userId, error: err instanceof Error ? err.message : "Unknown scoring error" });
       }
     }
 
@@ -445,6 +516,7 @@ export async function getPoolOverview(
       points: points + structuralPoints,
       matchPickPoints: points,
       structuralPickPoints: structuralPoints,
+      structuralStats,
       pointsByPhase,
       scoredMatches,
       joinedAtUtc: m.joinedAtUtc,
@@ -526,6 +598,7 @@ export async function getPoolOverview(
       },
       verbose: leaderboardVerbose,
       phases: phaseOrder,
+      presetMode,
       rows: leaderboardRows.map((r, idx) => ({
         rank: idx + 1,
         userId: r.userId,
@@ -535,6 +608,9 @@ export async function getPoolOverview(
         role: r.role,
         memberStatus: r.memberStatus,
         points: r.points,
+        matchPickPoints: r.matchPickPoints,
+        structuralPickPoints: r.structuralPickPoints,
+        structuralStats: r.structuralStats,
         pointsByPhase: r.pointsByPhase,
         scoredMatches: r.scoredMatches,
         joinedAtUtc: r.joinedAtUtc,

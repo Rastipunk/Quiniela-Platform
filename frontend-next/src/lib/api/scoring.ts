@@ -184,6 +184,70 @@ export type PlayerSummaryPhase = {
   matches: PlayerSummaryMatch[];
 };
 
+// ── Structural breakdown (Estratega) ──────────────────────────────────
+// `pointsByPhase` aggregates and per-row counts for the leaderboard.
+export type StructuralStatsSummary = {
+  positionsCorrect: number;
+  positionsTotal: number;
+  perfectGroups: number;
+  totalGroups: number;
+  winnersByPhase: Record<string, { correct: number; total: number }>;
+};
+
+// Per-group row in the PlayerSummary modal. When `isPredictionVisible`
+// is false (opponent + deadline not passed), `predictedTeamIds` is `[]`
+// and `positionsCorrect`/`isPerfect` are zeroed by the backend.
+export type StructuralGroupDetail = {
+  phaseId: string;
+  phaseName: string;
+  groupId: string;
+  groupName: string;
+  predictedTeamIds: string[];
+  actualTeamIds: string[] | null;
+  positionsCorrect: number;
+  positionsTotal: number;
+  isPerfect: boolean;
+  points: number;
+  isPredictionVisible: boolean;
+  deadlineUtc: string | null;
+};
+
+export type StructuralKnockoutDetail = {
+  phaseId: string;
+  phaseName: string;
+  matchId: string;
+  homeTeam: { id: string; name: string | null; code: string | null };
+  awayTeam: { id: string; name: string | null; code: string | null };
+  kickoffUtc: string;
+  deadlineUtc: string;
+  predictedWinnerId: string | null;
+  actualWinnerId: string | null;
+  isCorrect: boolean;
+  points: number;
+  isPredictionVisible: boolean;
+};
+
+export type StructuralPhaseAggregate = {
+  phaseId: string;
+  phaseName: string;
+  phaseType: "GROUP_STANDINGS" | "KNOCKOUT_WINNER";
+  points: number;
+  positionsCorrect?: number;
+  positionsTotal?: number;
+  perfectGroups?: number;
+  totalGroups?: number;
+  winnersCorrect?: number;
+  totalMatches?: number;
+};
+
+export type StructuralBreakdownDetail = {
+  phases: StructuralPhaseAggregate[];
+  groups: StructuralGroupDetail[];
+  knockoutMatches: StructuralKnockoutDetail[];
+};
+
+export type PresetMode = "STRUCTURAL" | "SCORE" | "MIXED";
+
 export type PlayerSummaryResponse = {
   player: {
     userId: string;
@@ -191,10 +255,15 @@ export type PlayerSummaryResponse = {
     role: string;
     rank: number;
     totalPoints: number;
+    matchPickPoints?: number;
+    structuralPickPoints?: number;
+    structuralStats?: StructuralStatsSummary;
     joinedAtUtc: string;
   };
   isViewingSelf: boolean;
+  presetMode?: PresetMode;
   phases: PlayerSummaryPhase[];
+  structuralBreakdown?: StructuralBreakdownDetail;
 };
 
 export async function getPlayerSummary(token: string, poolId: string, userId: string): Promise<PlayerSummaryResponse> {

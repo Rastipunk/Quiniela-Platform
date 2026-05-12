@@ -28,6 +28,7 @@ import {
   generateGroupStandingsBreakdown,
   generateKnockoutWinnerBreakdown,
 } from "../lib/scoringBreakdown";
+import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
 import {
   extractMatches,
@@ -1015,15 +1016,111 @@ export async function getPlayerSummary(
 
   phases.sort((a, b) => a.phaseOrder - b.phaseOrder);
 
-  // Compute rank
+  // ── Preset mode + structural universe ────────────────────────────────
+  let presetMode: "STRUCTURAL" | "SCORE" | "MIXED" = "SCORE";
+  const knockoutMatchUniverse: Array<{ phaseId: string; matchId: string }> = [];
+  const groupUniverse: Array<{ phaseId: string; groupId: string }> = [];
+  if (pickTypesConfig && pickTypesConfig.length > 0) {
+    let structuralPhaseCount = 0;
+    let scorePhaseCount = 0;
+    for (const phaseConfig of pickTypesConfig) {
+      if (phaseConfig.structuralPicks) structuralPhaseCount += 1;
+      if (phaseConfig.requiresScore && phaseConfig.matchPicks) scorePhaseCount += 1;
+    }
+    presetMode =
+      structuralPhaseCount > 0 && scorePhaseCount === 0
+        ? "STRUCTURAL"
+        : structuralPhaseCount === 0 && scorePhaseCount > 0
+          ? "SCORE"
+          : structuralPhaseCount > 0 && scorePhaseCount > 0
+            ? "MIXED"
+            : "SCORE";
+
+    for (const phaseConfig of pickTypesConfig) {
+      const sp = phaseConfig.structuralPicks;
+      if (!sp) continue;
+      if (sp.type === "GROUP_STANDINGS") {
+        const seen = new Set<string>();
+        for (const mm of matches) {
+          if (mm.phaseId !== phaseConfig.phaseId) continue;
+          const gid = mm.groupId;
+          if (!gid || seen.has(gid)) continue;
+          seen.add(gid);
+          groupUniverse.push({ phaseId: phaseConfig.phaseId, groupId: gid });
+        }
+      } else if (sp.type === "KNOCKOUT_WINNER") {
+        for (const mm of matches) {
+          if (mm.phaseId === phaseConfig.phaseId) {
+            knockoutMatchUniverse.push({ phaseId: phaseConfig.phaseId, matchId: mm.id });
+          }
+        }
+      }
+    }
+  }
+
+  // Load every member's structural picks once + the pool's structural
+  // results once. We use this both to rank every member (including the
+  // target) and to render the target's detailed breakdown below.
+  const [allStructPicks, allGroupPicks, allStructResults, allGroupResults] = await Promise.all([
+    prisma.structuralPrediction.findMany({ where: { poolId } }),
+    prisma.groupStandingsPrediction.findMany({ where: { poolId } }),
+    prisma.structuralPhaseResult.findMany({ where: { poolId } }),
+    prisma.groupStandingsResult.findMany({ where: { poolId } }),
+  ]);
+
+  // Index structural picks by user for fast per-member lookup.
+  const structuralPicksByUserId = new Map<
+    string,
+    Array<{ phaseId: string; pickJson: { groups?: Array<{ groupId: string; teamIds: string[] }>; matches?: Array<{ matchId: string; winnerId: string }> } }>
+  >();
+  for (const sp of allStructPicks) {
+    const arr = structuralPicksByUserId.get(sp.userId) ?? [];
+    arr.push({ phaseId: sp.phaseId, pickJson: typed<StructuralPickJson>(sp.pickJson) });
+    structuralPicksByUserId.set(sp.userId, arr);
+  }
+  for (const gp of allGroupPicks) {
+    const arr = structuralPicksByUserId.get(gp.userId) ?? [];
+    let entry = arr.find((p) => p.phaseId === gp.phaseId);
+    if (!entry) {
+      entry = { phaseId: gp.phaseId, pickJson: { groups: [] } };
+      arr.push(entry);
+    }
+    if (!entry.pickJson.groups) entry.pickJson.groups = [];
+    entry.pickJson.groups.push({ groupId: gp.groupId, teamIds: gp.teamIds });
+    structuralPicksByUserId.set(gp.userId, arr);
+  }
+
+  // Build the unified pool-wide structural results once.
+  const poolStructuralResults: Array<{
+    phaseId: string;
+    resultJson: { groups?: Array<{ groupId: string; teamIds: string[] }>; matches?: Array<{ matchId: string; winnerId: string }> };
+  }> = [];
+  for (const sr of allStructResults) {
+    poolStructuralResults.push({ phaseId: sr.phaseId, resultJson: typed<StructuralPickJson>(sr.resultJson) });
+  }
+  for (const gr of allGroupResults) {
+    let entry = poolStructuralResults.find((r) => r.phaseId === gr.phaseId);
+    if (!entry) {
+      entry = { phaseId: gr.phaseId, resultJson: { groups: [] } };
+      poolStructuralResults.push(entry);
+    }
+    if (!entry.resultJson.groups) entry.resultJson.groups = [];
+    entry.resultJson.groups.push({ groupId: gr.groupId, teamIds: gr.teamIds });
+  }
+
+  // Compute rank using score-pick points + structural-pick points so
+  // Estratega pools (where every score-pick total is 0) rank correctly.
   const allMembers = await prisma.poolMember.findMany({
     where: { poolId, status: "ACTIVE" },
     include: { user: { select: { id: true, email: true, username: true, displayName: true, platformRole: true } } },
   });
 
-  const memberPoints: Array<{ userId: string; points: number; joinedAt: Date }> = [];
+  type MemberPointTotals = { userId: string; matchPoints: number; structuralPoints: number; points: number; joinedAt: Date };
+  const memberPoints: MemberPointTotals[] = [];
+  let targetStructuralBreakdownRaw: ReturnType<typeof computeStructuralBreakdown> | null = null;
+
   for (const member of allMembers) {
-    let totalPoints = 0;
+    let matchPoints = 0;
     const memberPicks = await prisma.prediction.findMany({
       where: { poolId, userId: member.userId },
     });
@@ -1046,12 +1143,9 @@ export async function getPlayerSummary(
             resultForScoring,
             phaseConfig,
           );
-          totalPoints += scoring.totalPoints;
+          matchPoints += scoring.totalPoints;
         } catch (err) {
-          // Do NOT re-throw: we want the loop to keep scoring the rest
-          // of this member's picks even if one throws (malformed pick,
-          // bad phaseConfig). But DO log with enough context to debug
-          // — the previous silent catch hid real scoring bugs.
+          // Keep scoring the rest of this member's picks if one throws.
           console.error(
             `[poolAdminService] scoreMatchPick failed pool=${poolId} user=${member.userId} match=${match.id}:`,
             err instanceof Error ? err.message : String(err),
@@ -1067,11 +1161,176 @@ export async function getPlayerSummary(
         const pickOutcome = pick.type === "SCORE" ? outcomeFromScore(pick.homeGoals!, pick.awayGoals!) : pick.outcome;
         const outcomeCorrect = pickOutcome === actualOutcome;
         const exact = pick.type === "SCORE" && pick.homeGoals === scoringResult.homeGoals && pick.awayGoals === scoringResult.awayGoals;
-        totalPoints += (outcomeCorrect ? preset.outcomePoints : 0) + (exact && preset.allowScorePick ? preset.exactScoreBonus : 0);
+        matchPoints += (outcomeCorrect ? preset.outcomePoints : 0) + (exact && preset.allowScorePick ? preset.exactScoreBonus : 0);
       }
     }
 
-    memberPoints.push({ userId: member.userId, points: totalPoints, joinedAt: member.joinedAtUtc });
+    // Structural points for ranking AND (for the target user) for the
+    // detailed per-group / per-match breakdown returned below.
+    let structuralPoints = 0;
+    if (pickTypesConfig && pickTypesConfig.length > 0) {
+      const memberStructPicks = structuralPicksByUserId.get(member.userId) ?? [];
+      try {
+        const memberBreakdown = computeStructuralBreakdown(
+          memberStructPicks,
+          poolStructuralResults,
+          pickTypesConfig,
+          knockoutMatchUniverse,
+          groupUniverse,
+        );
+        structuralPoints = memberBreakdown.totalPoints;
+        if (member.userId === targetUserId) {
+          targetStructuralBreakdownRaw = memberBreakdown;
+        }
+      } catch (err) {
+        console.error(
+          `[poolAdminService] structural rank failed pool=${poolId} user=${member.userId}:`,
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+
+    memberPoints.push({
+      userId: member.userId,
+      matchPoints,
+      structuralPoints,
+      points: matchPoints + structuralPoints,
+      joinedAt: member.joinedAtUtc,
+    });
+  }
+
+  // ── Target user's structural detail with deadline visibility ──────────
+  // For opponents (not self), strip the predicted picks when the relevant
+  // deadline has not yet passed. Result data stays visible (public once
+  // published). Group deadline = earliest kickoff in the group; knockout
+  // deadline = the match's own kickoff. Both shifted by deadlineMinutes.
+  let playerStructuralStats: StructuralStatsSummary = {
+    positionsCorrect: 0,
+    positionsTotal: 0,
+    perfectGroups: 0,
+    totalGroups: 0,
+    winnersByPhase: {},
+  };
+  let structuralBreakdownDetail: {
+    phases: Array<{
+      phaseId: string;
+      phaseName: string;
+      phaseType: "GROUP_STANDINGS" | "KNOCKOUT_WINNER";
+      points: number;
+      positionsCorrect?: number;
+      positionsTotal?: number;
+      perfectGroups?: number;
+      totalGroups?: number;
+      winnersCorrect?: number;
+      totalMatches?: number;
+    }>;
+    groups: Array<{
+      phaseId: string;
+      phaseName: string;
+      groupId: string;
+      groupName: string;
+      predictedTeamIds: string[];
+      actualTeamIds: string[] | null;
+      positionsCorrect: number;
+      positionsTotal: number;
+      isPerfect: boolean;
+      points: number;
+      isPredictionVisible: boolean;
+      deadlineUtc: string | null;
+    }>;
+    knockoutMatches: Array<{
+      phaseId: string;
+      phaseName: string;
+      matchId: string;
+      homeTeam: { id: string; name: string | null; code: string | null };
+      awayTeam: { id: string; name: string | null; code: string | null };
+      kickoffUtc: string;
+      deadlineUtc: string;
+      predictedWinnerId: string | null;
+      actualWinnerId: string | null;
+      isCorrect: boolean;
+      points: number;
+      isPredictionVisible: boolean;
+    }>;
+  } = { phases: [], groups: [], knockoutMatches: [] };
+
+  if (targetStructuralBreakdownRaw) {
+    const detail = targetStructuralBreakdownRaw;
+    playerStructuralStats = summarizeStructural(detail);
+
+    const earliestKickoffByGroup = new Map<string, Date>();
+    for (const mm of matches) {
+      if (!mm.groupId) continue;
+      const key = `${mm.phaseId}::${mm.groupId}`;
+      const k = new Date(mm.kickoffUtc);
+      const existing = earliestKickoffByGroup.get(key);
+      if (!existing || k < existing) earliestKickoffByGroup.set(key, k);
+    }
+    const knockoutKickoffByMatch = new Map<string, Date>();
+    for (const mm of matches) {
+      knockoutKickoffByMatch.set(mm.id, new Date(mm.kickoffUtc));
+    }
+
+    // Phase name lookup (from fixture, falls back to phaseId).
+    const phaseNameById = new Map<string, string>(phasesFromData.map((p) => [p.id, p.name ?? p.id]));
+    // Match index for knockout enrichment.
+    const matchById = new Map(matches.map((mm) => [mm.id, mm]));
+
+    structuralBreakdownDetail = {
+      phases: detail.phases.map((p) => ({
+        ...p,
+        phaseName: phaseNameById.get(p.phaseId) ?? p.phaseId,
+      })),
+      groups: detail.groups.map((g) => {
+        const kickoff = earliestKickoffByGroup.get(`${g.phaseId}::${g.groupId}`);
+        const deadline = kickoff ? new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000) : null;
+        const isPredictionVisible = isViewingSelf || (deadline ? now >= deadline : true);
+        return {
+          phaseId: g.phaseId,
+          phaseName: phaseNameById.get(g.phaseId) ?? g.phaseId,
+          groupId: g.groupId,
+          groupName: `Grupo ${g.groupId}`, // simple convention — frontend may override via i18n
+          predictedTeamIds: isPredictionVisible ? g.predictedTeamIds : [],
+          actualTeamIds: g.actualTeamIds,
+          positionsCorrect: isPredictionVisible ? g.positionsCorrect : 0,
+          positionsTotal: g.positionsTotal,
+          isPerfect: isPredictionVisible ? g.isPerfect : false,
+          points: g.points,
+          isPredictionVisible,
+          deadlineUtc: deadline ? deadline.toISOString() : null,
+        };
+      }),
+      knockoutMatches: detail.knockoutMatches.map((km) => {
+        const fixtureMatch = matchById.get(km.matchId);
+        const kickoff = knockoutKickoffByMatch.get(km.matchId);
+        const deadline = kickoff ? new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000) : null;
+        const isPredictionVisible = isViewingSelf || (deadline ? now >= deadline : true);
+        const home = fixtureMatch ? teamById.get(fixtureMatch.homeTeamId) : null;
+        const away = fixtureMatch ? teamById.get(fixtureMatch.awayTeamId) : null;
+        return {
+          phaseId: km.phaseId,
+          phaseName: phaseNameById.get(km.phaseId) ?? km.phaseId,
+          matchId: km.matchId,
+          homeTeam: {
+            id: fixtureMatch?.homeTeamId ?? "",
+            name: home?.name ?? null,
+            code: home?.code ?? null,
+          },
+          awayTeam: {
+            id: fixtureMatch?.awayTeamId ?? "",
+            name: away?.name ?? null,
+            code: away?.code ?? null,
+          },
+          kickoffUtc: fixtureMatch?.kickoffUtc ?? "",
+          deadlineUtc: deadline ? deadline.toISOString() : "",
+          predictedWinnerId: isPredictionVisible ? km.predictedWinnerId : null,
+          actualWinnerId: km.actualWinnerId,
+          isCorrect: isPredictionVisible ? km.isCorrect : false,
+          points: km.points,
+          isPredictionVisible,
+        };
+      }),
+    };
   }
 
   memberPoints.sort((a, b) => {
@@ -1080,7 +1339,10 @@ export async function getPlayerSummary(
   });
 
   const targetRank = memberPoints.findIndex((m) => m.userId === targetUserId) + 1;
-  const targetPoints = memberPoints.find((m) => m.userId === targetUserId)?.points ?? 0;
+  const targetRow = memberPoints.find((m) => m.userId === targetUserId);
+  const targetMatchPoints = targetRow?.matchPoints ?? 0;
+  const targetStructuralPoints = targetRow?.structuralPoints ?? 0;
+  const targetTotalPoints = targetRow?.points ?? 0;
 
   return {
     player: {
@@ -1088,11 +1350,16 @@ export async function getPlayerSummary(
       displayName: targetMembership.user.displayName,
       role: targetMembership.role,
       rank: targetRank,
-      totalPoints: targetPoints,
+      totalPoints: targetTotalPoints,
+      matchPickPoints: targetMatchPoints,
+      structuralPickPoints: targetStructuralPoints,
+      structuralStats: playerStructuralStats,
       joinedAtUtc: targetMembership.joinedAtUtc,
     },
     isViewingSelf,
+    presetMode,
     phases,
+    structuralBreakdown: structuralBreakdownDetail,
   };
 }
 

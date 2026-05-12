@@ -11,6 +11,7 @@ import { getToken } from "../lib/auth";
 import { TeamFlag } from "./TeamFlag";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 import { colors } from "@/lib/theme";
+import { StructuralBreakdownView } from "./PlayerSummaryStructural";
 
 type PlayerSummaryProps = {
   poolId: string;
@@ -385,8 +386,9 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
         }
         const result = await getPlayerSummary(token, poolId, userId);
         setData(result);
-      } catch (err: any) {
-        setError(err.message ?? t("playerSummaryView.errorLoading"));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : t("playerSummaryView.errorLoading");
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -414,9 +416,17 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
     return null;
   }
 
-  // Calcular estadísticas totales
+  // Calcular estadísticas totales (modo SCORE)
   const totalScored = data.phases.reduce((sum, p) => sum + p.scoredCount, 0);
   const totalMaxPoints = data.phases.reduce((sum, p) => sum + p.maxPossiblePoints, 0);
+
+  // Estratega detection. Backend sets `presetMode`. The two structural
+  // stat cards replace "Scored matches" + "Effectiveness %" (both are
+  // meaningless in Estratega since no match has a "score earned").
+  const isStructural = data.presetMode === "STRUCTURAL";
+  const isMixed = data.presetMode === "MIXED";
+  const structuralStats = data.player.structuralStats;
+  const structuralBreakdown = data.structuralBreakdown;
 
   return (
     <div style={{ maxWidth: isMobile ? "100%" : 900, margin: "0 auto", padding: isMobile ? "0 4px" : 0 }}>
@@ -473,16 +483,35 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
           <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.successDark }}>{data.player.totalPoints}</div>
           <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.pointsLabel")}</div>
         </div>
-        <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.warningBg, borderRadius: 8, textAlign: "center" }}>
-          <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.warningDark }}>{totalScored}</div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.scored")}</div>
-        </div>
-        <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.errorBgAlt, borderRadius: 8, textAlign: "center" }}>
-          <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.errorDarkest }}>
-            {totalMaxPoints > 0 ? Math.round((data.player.totalPoints / totalMaxPoints) * 100) : 0}%
-          </div>
-          <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.effectiveness")}</div>
-        </div>
+        {isStructural && structuralStats ? (
+          <>
+            <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.warningBg, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.warningDark }}>
+                {structuralStats.positionsCorrect}<span style={{ fontSize: isMobile ? 13 : 16, color: colors.textMuted, fontWeight: 500 }}>/{structuralStats.positionsTotal}</span>
+              </div>
+              <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.positionsCorrect")}</div>
+            </div>
+            <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.errorBgAlt, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.errorDarkest }}>
+                {structuralStats.perfectGroups}<span style={{ fontSize: isMobile ? 13 : 16, color: colors.textMuted, fontWeight: 500 }}>/{structuralStats.totalGroups}</span>
+              </div>
+              <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.perfectGroupsLabel")}</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.warningBg, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.warningDark }}>{totalScored}</div>
+              <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.scored")}</div>
+            </div>
+            <div style={{ padding: isMobile ? 12 : 16, backgroundColor: colors.errorBgAlt, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: colors.errorDarkest }}>
+                {totalMaxPoints > 0 ? Math.round((data.player.totalPoints / totalMaxPoints) * 100) : 0}%
+              </div>
+              <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>{t("playerSummaryView.effectiveness")}</div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Nota para otros jugadores */}
@@ -502,22 +531,45 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
         </div>
       )}
 
-      {/* Fases */}
-      <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: colors.textDark }}>{t("playerSummaryView.phaseBreakdown")}</h3>
-      {data.phases.length === 0 ? (
-        <div style={{ padding: isMobile ? 20 : 40, textAlign: "center", color: colors.textMuted }}>
-          {t("playerSummaryView.noMatchesVisible")}
-        </div>
+      {/* Fases — Estratega usa StructuralBreakdownView (lado-a-lado de
+          posiciones / ganadores), score-based usa el acordeón clásico
+          con la grilla pick vs result. Pools MIXED muestran ambos. */}
+      {isStructural && structuralBreakdown ? (
+        <StructuralBreakdownView
+          breakdown={structuralBreakdown}
+          initialPhase={initialPhase}
+          tournamentKey={tournamentKey}
+          isMobile={isMobile}
+        />
       ) : (
-        data.phases.map((phase, idx) => (
-          <PhaseSection
-            key={phase.phaseId}
-            phase={phase}
-            tournamentKey={tournamentKey}
-            defaultExpanded={initialPhase ? phase.phaseId === initialPhase : idx === 0}
-            isMobile={isMobile}
-          />
-        ))
+        <>
+          <h3 style={{ fontSize: isMobile ? 16 : 18, marginBottom: 16, color: colors.textDark }}>{t("playerSummaryView.phaseBreakdown")}</h3>
+          {data.phases.length === 0 ? (
+            <div style={{ padding: isMobile ? 20 : 40, textAlign: "center", color: colors.textMuted }}>
+              {t("playerSummaryView.noMatchesVisible")}
+            </div>
+          ) : (
+            data.phases.map((phase, idx) => (
+              <PhaseSection
+                key={phase.phaseId}
+                phase={phase}
+                tournamentKey={tournamentKey}
+                defaultExpanded={initialPhase ? phase.phaseId === initialPhase : idx === 0}
+                isMobile={isMobile}
+              />
+            ))
+          )}
+          {isMixed && structuralBreakdown && (
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${colors.borderMedium}` }}>
+              <StructuralBreakdownView
+                breakdown={structuralBreakdown}
+                initialPhase={initialPhase}
+                tournamentKey={tournamentKey}
+                isMobile={isMobile}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* Botón cerrar si es modal */}

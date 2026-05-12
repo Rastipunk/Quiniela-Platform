@@ -170,6 +170,18 @@ export interface ScoringPreset {
   allowScorePick: boolean;
 }
 
+/**
+ * Aggregated structural-pick counters per leaderboard row. Always present
+ * for SIMPLE / Estratega pools; zeroed for score-only pools.
+ */
+export interface LeaderboardStructuralStats {
+  positionsCorrect: number;
+  positionsTotal: number;
+  perfectGroups: number;
+  totalGroups: number;
+  winnersByPhase: Record<string, { correct: number; total: number }>;
+}
+
 export interface LeaderboardRow {
   rank: number;
   userId: string;
@@ -179,17 +191,31 @@ export interface LeaderboardRow {
   role: string;
   memberStatus: string;
   points: number;
+  /** Points coming exclusively from match-score predictions. */
+  matchPickPoints?: number;
+  /** Points coming exclusively from structural (Estratega) predictions. */
+  structuralPickPoints?: number;
+  structuralStats?: LeaderboardStructuralStats;
   pointsByPhase: Record<string, number>;
   scoredMatches: number;
   joinedAtUtc: string;
   breakdown?: unknown[];
 }
 
+/**
+ * STRUCTURAL = every configured phase is Estratega (no score predictions).
+ * SCORE = every configured phase requires scores.
+ * MIXED = both kinds of phases present in the same pool (rare).
+ */
+export type PoolPresetMode = "STRUCTURAL" | "SCORE" | "MIXED";
+
 export interface PoolLeaderboard {
   scoring: ScoringConfig;
   scoringPreset: ScoringPreset;
   verbose: boolean;
   phases: string[];
+  /** Indicates which leaderboard rendering the frontend should pick. */
+  presetMode?: PoolPresetMode;
   rows: LeaderboardRow[];
 }
 

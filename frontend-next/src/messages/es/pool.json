@@ -401,7 +401,10 @@
     "exporting": "Exportando...",
     "searchPlaceholder": "Buscar jugador...",
     "yourPosition": "Tu posición",
-    "noResults": "No se encontraron resultados"
+    "noResults": "No se encontraron resultados",
+    "structuralSummary": "{positionsCorrect}/{positionsTotal} posiciones · {perfectGroups} grupos perfectos",
+    "tooltipGroupStage": "{positionsCorrect}/{positionsTotal} posiciones correctas · {perfectGroups}/{totalGroups} grupos perfectos",
+    "tooltipKnockout": "{correct} de {total} ganadores acertados"
   },
 
   "players": {
@@ -646,7 +649,25 @@
     "statusScored": "Puntuado",
     "statusNoPick": "Sin predicción",
     "statusPendingResult": "Esperando resultado",
-    "statusLocked": "Bloqueado"
+    "statusLocked": "Bloqueado",
+    "positionsCorrect": "Posiciones acertadas",
+    "perfectGroupsLabel": "Grupos perfectos",
+    "perfectGroup": "Perfecto",
+    "positionsHit": "{correct}/{total} posiciones",
+    "predictionHidden": "Predicción aún oculta",
+    "headerPos": "Pos",
+    "headerYourPrediction": "Tu predicción",
+    "headerActual": "Resultado",
+    "noPick": "Sin pick",
+    "notDecidedYet": "Por definir",
+    "matchUpcoming": "Por jugar",
+    "yourPick": "Tu pick",
+    "winner": "Ganador",
+    "phaseSubtitleGroups": "{positionsCorrect}/{positionsTotal} posiciones · {perfectGroups}/{totalGroups} grupos perfectos",
+    "phaseSubtitleKnockout": "{correct}/{total} ganadores acertados",
+    "noGroups": "Sin grupos en esta fase",
+    "noKnockoutMatches": "Sin partidos en esta fase",
+    "noStructuralPhases": "Esta pool aún no tiene fases con picks estructurales"
   },
 
   "mobileLeaderboard": {
@@ -813,6 +834,7 @@
     "overrideTitle": "Sobrescribir tabla de posiciones",
     "overrideDesc": "Arrastra los equipos al orden correcto. Esta acción reemplazará la tabla actual.",
     "overrideWarning": "Se notificará por correo a todos los miembros del pool.",
+    "overridePostAdvanceWarning": "Esta fase ya avanzó. Cambiar la tabla puede modificar el bracket: el sistema recalculará los enfrentamientos siguientes y notificará a todos.",
     "overrideReasonLabel": "Razón del cambio (obligatorio)",
     "overrideReasonPlaceholder": "Ej: La FIFA aplicó fair play como desempate...",
     "overrideSaveBtn": "Guardar y notificar",
@@ -855,6 +877,7 @@
     "overrideReasonPlaceholder": "Ej: El equipo X fue descalificado por...",
     "overrideReasonRequired": "Debes proporcionar una razón para sobrescribir el ganador",
     "overrideWarning": "Se enviará un correo a todos los miembros del pool con la razón.",
+    "overridePostAdvanceWarning": "Esta fase ya avanzó. Cambiar el ganador puede modificar el bracket: el sistema recalculará los enfrentamientos siguientes y notificará a todos.",
     "overrideSaveBtn": "Guardar y notificar",
     "overrideSuccess": "Ganador actualizado y notificación enviada",
     "cancel": "Cancelar"

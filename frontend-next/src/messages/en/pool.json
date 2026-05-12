@@ -401,7 +401,10 @@
     "exporting": "Exporting...",
     "searchPlaceholder": "Search player...",
     "yourPosition": "Your position",
-    "noResults": "No results found"
+    "noResults": "No results found",
+    "structuralSummary": "{positionsCorrect}/{positionsTotal} positions · {perfectGroups} perfect groups",
+    "tooltipGroupStage": "{positionsCorrect}/{positionsTotal} correct positions · {perfectGroups}/{totalGroups} perfect groups",
+    "tooltipKnockout": "{correct} of {total} winners predicted"
   },
 
   "players": {
@@ -646,7 +649,25 @@
     "statusScored": "Scored",
     "statusNoPick": "No pick",
     "statusPendingResult": "Awaiting result",
-    "statusLocked": "Locked"
+    "statusLocked": "Locked",
+    "positionsCorrect": "Positions correct",
+    "perfectGroupsLabel": "Perfect groups",
+    "perfectGroup": "Perfect",
+    "positionsHit": "{correct}/{total} positions",
+    "predictionHidden": "Prediction still hidden",
+    "headerPos": "Pos",
+    "headerYourPrediction": "Your prediction",
+    "headerActual": "Actual",
+    "noPick": "No pick",
+    "notDecidedYet": "To be decided",
+    "matchUpcoming": "Upcoming",
+    "yourPick": "Your pick",
+    "winner": "Winner",
+    "phaseSubtitleGroups": "{positionsCorrect}/{positionsTotal} positions · {perfectGroups}/{totalGroups} perfect groups",
+    "phaseSubtitleKnockout": "{correct}/{total} winners predicted",
+    "noGroups": "No groups in this phase",
+    "noKnockoutMatches": "No matches in this phase",
+    "noStructuralPhases": "This pool has no structural-pick phases yet"
   },
 
   "mobileLeaderboard": {
@@ -813,6 +834,7 @@
     "overrideTitle": "Override standings table",
     "overrideDesc": "Drag teams into the correct order. This will replace the current standings.",
     "overrideWarning": "All pool members will be notified by email.",
+    "overridePostAdvanceWarning": "This phase has already advanced. Changing the standings may shift the bracket: downstream matchups will be recomputed and everyone will be notified.",
     "overrideReasonLabel": "Reason for change (required)",
     "overrideReasonPlaceholder": "E.g.: FIFA applied fair play as tiebreaker...",
     "overrideSaveBtn": "Save and notify",
@@ -855,6 +877,7 @@
     "overrideReasonPlaceholder": "E.g. Team X was disqualified because...",
     "overrideReasonRequired": "A reason is required to override the winner",
     "overrideWarning": "All pool members will be emailed with the reason.",
+    "overridePostAdvanceWarning": "This phase has already advanced. Changing the winner may shift the bracket: downstream matchups will be recomputed and everyone will be notified.",
     "overrideSaveBtn": "Save and notify",
     "overrideSuccess": "Winner updated and notification sent",
     "cancel": "Cancel"

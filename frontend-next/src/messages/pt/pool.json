@@ -401,7 +401,10 @@
     "exporting": "Exportando...",
     "searchPlaceholder": "Buscar jogador...",
     "yourPosition": "Sua posição",
-    "noResults": "Nenhum resultado encontrado"
+    "noResults": "Nenhum resultado encontrado",
+    "structuralSummary": "{positionsCorrect}/{positionsTotal} posições · {perfectGroups} grupos perfeitos",
+    "tooltipGroupStage": "{positionsCorrect}/{positionsTotal} posições corretas · {perfectGroups}/{totalGroups} grupos perfeitos",
+    "tooltipKnockout": "{correct} de {total} vencedores acertados"
   },
 
   "players": {
@@ -646,7 +649,25 @@
     "statusScored": "Pontuado",
     "statusNoPick": "Sem palpite",
     "statusPendingResult": "Aguardando resultado",
-    "statusLocked": "Bloqueado"
+    "statusLocked": "Bloqueado",
+    "positionsCorrect": "Posições acertadas",
+    "perfectGroupsLabel": "Grupos perfeitos",
+    "perfectGroup": "Perfeito",
+    "positionsHit": "{correct}/{total} posições",
+    "predictionHidden": "Palpite ainda oculto",
+    "headerPos": "Pos",
+    "headerYourPrediction": "Seu palpite",
+    "headerActual": "Resultado",
+    "noPick": "Sem palpite",
+    "notDecidedYet": "A definir",
+    "matchUpcoming": "Por jogar",
+    "yourPick": "Seu palpite",
+    "winner": "Vencedor",
+    "phaseSubtitleGroups": "{positionsCorrect}/{positionsTotal} posições · {perfectGroups}/{totalGroups} grupos perfeitos",
+    "phaseSubtitleKnockout": "{correct}/{total} vencedores acertados",
+    "noGroups": "Sem grupos nesta fase",
+    "noKnockoutMatches": "Sem partidas nesta fase",
+    "noStructuralPhases": "Este bolão ainda não tem fases com palpites estruturais"
   },
 
   "mobileLeaderboard": {
@@ -813,6 +834,7 @@
     "overrideTitle": "Sobrescrever classificação",
     "overrideDesc": "Arraste os times para a ordem correta. Isso substituirá a classificação atual.",
     "overrideWarning": "Todos os membros do bolão serão notificados por email.",
+    "overridePostAdvanceWarning": "Esta fase já avançou. Alterar a classificação pode mudar o chaveamento: os confrontos seguintes serão recalculados e todos serão notificados.",
     "overrideReasonLabel": "Motivo da alteração (obrigatório)",
     "overrideReasonPlaceholder": "Ex: A FIFA aplicou fair play como critério de desempate...",
     "overrideSaveBtn": "Salvar e notificar",
@@ -855,6 +877,7 @@
     "overrideReasonPlaceholder": "Ex: O time X foi desclassificado porque...",
     "overrideReasonRequired": "É necessário um motivo para sobrescrever o vencedor",
     "overrideWarning": "Todos os membros do bolão serão notificados por e-mail com o motivo.",
+    "overridePostAdvanceWarning": "Esta fase já avançou. Alterar o vencedor pode mudar o chaveamento: os confrontos seguintes serão recalculados e todos serão notificados.",
     "overrideSaveBtn": "Salvar e notificar",
     "overrideSuccess": "Vencedor atualizado e notificação enviada",
     "cancel": "Cancelar"
