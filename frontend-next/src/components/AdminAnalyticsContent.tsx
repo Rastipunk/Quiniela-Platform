@@ -527,12 +527,18 @@ export default function AdminAnalyticsContent() {
       </Section>
 
       {/* Acquisition */}
-      <Section title="📡 Adquisición" subtitle="Source / medium UTM y referidos orgánicos">
+      <Section title="📡 Adquisición" subtitle="Source / medium UTM, conversión por canal, referidos orgánicos">
         <AcquisitionSection
           topAcquisition={data.topAcquisition}
+          acquisitionFunnel={data.acquisitionFunnel}
           referrals={data.organicReferrals}
           isMobile={isMobile}
         />
+      </Section>
+
+      {/* Cohort activation (signup → first pick within 14 days) */}
+      <Section title="⚡ Activación por cohorte" subtitle="% de signups de cada semana que hicieron al menos un pick en sus primeros 14 días">
+        <CohortActivationSection data={data.cohortActivation} isMobile={isMobile} />
       </Section>
 
       {/* Cohort retention */}
@@ -1357,8 +1363,22 @@ function RevenueSection({
             value={payment.totalCheckoutsFailed}
             bad={payment.totalCheckoutsFailed > 0}
           />
-          <div style={{ marginTop: spacing.sm, fontSize: fontSize.xs, color: colors.textMuted }}>
+          <FunnelRow
+            label="Abandonados (>24h en PENDING)"
+            value={payment.staleAbandonedCount}
+            bad={payment.staleAbandonedCount > 0}
+            sub="usuarios que iniciaron pero nunca pagaron"
+          />
+          <div style={{ marginTop: spacing.sm, fontSize: fontSize.xs, color: colors.textMuted, lineHeight: 1.6 }}>
             Avg pago USD: {fmtUsd(payment.avgPaymentUsd)} · Avg pago COP: {fmtCop(payment.avgPaymentCop)}
+            {payment.avgTimeToPaymentMinutes !== null && (
+              <>
+                <br/>
+                Tiempo medio checkout → pago: {payment.avgTimeToPaymentMinutes < 60
+                  ? `${Math.round(payment.avgTimeToPaymentMinutes)} min`
+                  : `${(payment.avgTimeToPaymentMinutes / 60).toFixed(1)} h`}
+              </>
+            )}
           </div>
         </div>
       </Card>
@@ -1387,10 +1407,12 @@ function RevenueSection({
 
 function AcquisitionSection({
   topAcquisition,
+  acquisitionFunnel,
   referrals,
   isMobile,
 }: {
   topAcquisition: AnalyticsDashboardResponse["topAcquisition"];
+  acquisitionFunnel: AnalyticsDashboardResponse["acquisitionFunnel"];
   referrals: AnalyticsDashboardResponse["organicReferrals"];
   isMobile: boolean;
 }) {
@@ -1414,7 +1436,76 @@ function AcquisitionSection({
           rows={referrals.topReferrers.map((r) => [r.displayName, fmtInt(r.referralCount)])}
         />
       </Card>
+      <Card title="Funnel por canal" subtitle="Cuál convierte mejor: signups → pool joined → made pick" isMobile={isMobile} span={2}>
+        <Table
+          headers={["Source × Medium", "Signups", "Joined", "Picked", "Pick rate"]}
+          rows={acquisitionFunnel.map((a) => [
+            <span key="ch" style={{ fontWeight: fontWeight.semibold }}>
+              {a.source} <span style={{ color: colors.textMuted }}>×</span> {a.medium}
+            </span>,
+            fmtInt(a.signups),
+            fmtInt(a.joinedPool),
+            fmtInt(a.madePick),
+            <span
+              key="r"
+              style={{
+                color: a.pickRate >= 0.3 ? PALETTE.success : a.pickRate >= 0.1 ? PALETTE.warning : PALETTE.error,
+                fontWeight: fontWeight.semibold,
+              }}
+            >
+              {fmtPct(a.pickRate)}
+            </span>,
+          ])}
+        />
+      </Card>
     </div>
+  );
+}
+
+function CohortActivationSection({
+  data,
+  isMobile,
+}: {
+  data: AnalyticsDashboardResponse["cohortActivation"];
+  isMobile: boolean;
+}) {
+  // The picked-within-14d rate is the single most actionable metric: it
+  // tells you whether the cohort that just signed up is finding its way
+  // to a pick. We render it boldly + colour-code the percentage.
+  const formatRate = (rate: number, inProgress: boolean): React.ReactNode => {
+    if (inProgress) return <span style={{ color: colors.textMuted }}>⏳ en curso</span>;
+    return (
+      <span
+        style={{
+          color: rate >= 0.4 ? PALETTE.success : rate >= 0.15 ? PALETTE.warning : PALETTE.error,
+          fontWeight: fontWeight.semibold,
+        }}
+      >
+        {fmtPct(rate)}
+      </span>
+    );
+  };
+  return (
+    <Card isMobile={isMobile}>
+      <Table
+        headers={[
+          "Cohorte (semana)",
+          "Tamaño",
+          "Joined ≤14d",
+          "% joined",
+          "Picked ≤14d",
+          "% activated",
+        ]}
+        rows={data.map((c) => [
+          c.cohortWeekStart,
+          fmtInt(c.cohortSize),
+          fmtInt(c.joinedWithin2w),
+          formatRate(c.joinedRate, c.inProgress),
+          fmtInt(c.pickedWithin2w),
+          formatRate(c.pickedRate, c.inProgress),
+        ])}
+      />
+    </Card>
   );
 }
 
@@ -1635,7 +1726,9 @@ function Table({
   rows,
 }: {
   headers: string[];
-  rows: (string | number | null | undefined)[][];
+  // Allow ReactNode so cells can carry inline emphasis (coloured pct
+  // chips, badges) instead of being limited to flat strings/numbers.
+  rows: React.ReactNode[][];
 }) {
   if (rows.length === 0) {
     return (

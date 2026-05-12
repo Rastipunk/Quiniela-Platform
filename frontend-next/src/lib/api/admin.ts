@@ -192,6 +192,23 @@ export interface AnalyticsDashboardResponse {
     activationRate: number;
   };
   topAcquisition: { source: string; medium: string; count: number }[];
+  acquisitionFunnel: {
+    source: string;
+    medium: string;
+    signups: number;
+    joinedPool: number;
+    madePick: number;
+    pickRate: number;
+  }[];
+  cohortActivation: {
+    cohortWeekStart: string;
+    cohortSize: number;
+    joinedWithin2w: number;
+    pickedWithin2w: number;
+    joinedRate: number;
+    pickedRate: number;
+    inProgress: boolean;
+  }[];
   organicReferrals: {
     totalReferred: number;
     topReferrers: { userId: string; displayName: string; referralCount: number }[];
@@ -242,6 +259,9 @@ export interface AnalyticsDashboardResponse {
     byTier: { fromCapacity: number; toCapacity: number; count: number }[];
     avgPaymentUsd: number;
     avgPaymentCop: number;
+    byStatus: { status: string; count: number }[];
+    staleAbandonedCount: number;
+    avgTimeToPaymentMinutes: number | null;
   };
   operationalHealth: {
     emailSuppressions: number;

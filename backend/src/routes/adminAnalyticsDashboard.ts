@@ -61,6 +61,8 @@ interface DashboardPayload {
   funnel: ActivationFunnel;
   corporateFunnel: CorporateFunnel;
   topAcquisition: AcquisitionRow[];
+  acquisitionFunnel: AcquisitionFunnelRow[];
+  cohortActivation: CohortActivationRow[];
   organicReferrals: { totalReferred: number; topReferrers: TopReferrer[] };
   recentInquiries: InquiryRow[];
   topOrganizations: OrgRow[];
@@ -190,6 +192,37 @@ interface AcquisitionRow {
   medium: string;
   count: number;
 }
+
+/**
+ * Per-channel activation funnel. Tells the manager not just "how many
+ * users does each channel send us" but "how many of those actually
+ * activated". A 1000-user channel with 5% activation may be worse than
+ * a 200-user channel with 40% activation.
+ */
+interface AcquisitionFunnelRow {
+  source: string;
+  medium: string;
+  signups: number;
+  joinedPool: number;
+  madePick: number;
+  pickRate: number;
+}
+
+/**
+ * Per-cohort onboarding velocity. cohortActivationW2 = the % of users
+ * who signed up that week and made at least one pick within their first
+ * 14 days. This is the single number to optimize the signup → first-pick
+ * flow against.
+ */
+interface CohortActivationRow {
+  cohortWeekStart: string;
+  cohortSize: number;
+  joinedWithin2w: number;
+  pickedWithin2w: number;
+  joinedRate: number;
+  pickedRate: number;
+  inProgress: boolean;
+}
 interface TopReferrer {
   userId: string;
   displayName: string;
@@ -247,6 +280,23 @@ interface PaymentBreakdown {
   byTier: { fromCapacity: number; toCapacity: number; count: number }[];
   avgPaymentUsd: number;
   avgPaymentCop: number;
+  /**
+   * Per-status snapshot: lets the manager see where in the checkout
+   * flow the leak is. The pre-fix dashboard only reported COMPLETED +
+   * FAILED counts; abandoned checkouts (PENDING with no follow-up)
+   * looked the same as users still mid-flow.
+   */
+  byStatus: { status: string; count: number }[];
+  /**
+   * PENDING checkouts older than 24h that never reached COMPLETED.
+   * Single number: the size of the silent abandonment leak.
+   */
+  staleAbandonedCount: number;
+  /**
+   * Average minutes from PENDING (createdAtUtc) to COMPLETED
+   * (paidAtUtc). High values flag slow conversion / friction.
+   */
+  avgTimeToPaymentMinutes: number | null;
 }
 interface OperationalHealth {
   emailSuppressions: number;
@@ -344,6 +394,9 @@ const DEFAULT_PAYMENT: PaymentBreakdown = {
   byTier: [],
   avgPaymentUsd: 0,
   avgPaymentCop: 0,
+  byStatus: [],
+  staleAbandonedCount: 0,
+  avgTimeToPaymentMinutes: null,
 };
 
 const DEFAULT_OPERATIONAL: OperationalHealth = {
@@ -884,6 +937,142 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     },
   );
 
+  // ── Acquisition funnel (channel → activation) ───────────
+  // For each top source/medium combo, cross-reference with PoolMember
+  // and the unified pick tables. The pickRate tells the manager which
+  // channels actually convert, not just which deliver volume.
+  const acquisitionFunnel = await safeRun<AcquisitionFunnelRow[]>("acquisitionFunnel", [], async () => {
+    const rows = await prisma.$queryRaw<
+      {
+        source: string | null;
+        medium: string | null;
+        signups: bigint;
+        joined: bigint;
+        picked: bigint;
+      }[]
+    >`
+      WITH top_sources AS (
+        SELECT "acquisitionSource", "acquisitionMedium", COUNT(*) AS n
+        FROM "User"
+        WHERE "acquisitionSource" IS NOT NULL OR "acquisitionMedium" IS NOT NULL
+        GROUP BY "acquisitionSource", "acquisitionMedium"
+        ORDER BY n DESC
+        LIMIT 10
+      ),
+      all_picks AS (
+        SELECT DISTINCT "userId" AS u FROM "Prediction"
+        UNION
+        SELECT DISTINCT "userId" FROM "StructuralPrediction"
+        UNION
+        SELECT DISTINCT "userId" FROM "GroupStandingsPrediction"
+      ),
+      joined_users AS (
+        SELECT DISTINCT "userId" AS u FROM "PoolMember" WHERE status IN ('ACTIVE', 'LEFT')
+      )
+      SELECT
+        t."acquisitionSource" AS source,
+        t."acquisitionMedium" AS medium,
+        COUNT(DISTINCT u.id)::bigint AS signups,
+        COUNT(DISTINCT j.u)::bigint AS joined,
+        COUNT(DISTINCT ap.u)::bigint AS picked
+      FROM top_sources t
+      LEFT JOIN "User" u
+        ON COALESCE(u."acquisitionSource", '') = COALESCE(t."acquisitionSource", '')
+       AND COALESCE(u."acquisitionMedium", '') = COALESCE(t."acquisitionMedium", '')
+      LEFT JOIN joined_users j ON j.u = u.id
+      LEFT JOIN all_picks ap ON ap.u = u.id
+      GROUP BY t."acquisitionSource", t."acquisitionMedium", t.n
+      ORDER BY t.n DESC
+    `;
+    return rows.map((r) => {
+      const signups = Number(r.signups);
+      const picked = Number(r.picked);
+      return {
+        source: r.source ?? "(none)",
+        medium: r.medium ?? "(none)",
+        signups,
+        joinedPool: Number(r.joined),
+        madePick: picked,
+        pickRate: signups > 0 ? picked / signups : 0,
+      };
+    });
+  });
+
+  // ── Cohort activation (signup → first pick within 14 days) ─
+  // The activation funnel from §funnel is lifetime-only; this version
+  // is what tells you whether THIS WEEK's signups are activating. Last
+  // 8 cohorts. `inProgress` flags cohorts <14d old (their 2-week window
+  // hasn't closed yet).
+  const cohortActivation = await safeRun<CohortActivationRow[]>("cohortActivation", [], async () => {
+    const since = new Date(now.getTime() - 8 * 7 * 86_400_000);
+    const rows = await prisma.$queryRaw<
+      {
+        cohort_week: Date;
+        cohort_size: bigint;
+        joined: bigint;
+        picked: bigint;
+      }[]
+    >`
+      WITH all_picks AS (
+        SELECT "userId", "createdAtUtc" FROM "Prediction"
+        UNION ALL
+        SELECT "userId", "createdAtUtc" FROM "StructuralPrediction"
+        UNION ALL
+        SELECT "userId", "createdAtUtc" FROM "GroupStandingsPrediction"
+      ),
+      cohorts AS (
+        SELECT id AS user_id,
+               "createdAtUtc" AS signup_at,
+               date_trunc('week', "createdAtUtc") AS cohort_week
+        FROM "User"
+        WHERE "createdAtUtc" >= ${since}
+      )
+      SELECT c.cohort_week,
+             COUNT(DISTINCT c.user_id)::bigint AS cohort_size,
+             COUNT(DISTINCT c.user_id) FILTER (
+               WHERE EXISTS (
+                 SELECT 1 FROM "PoolMember" pm
+                 WHERE pm."userId" = c.user_id
+                 AND pm."joinedAtUtc" >= c.signup_at
+                 AND pm."joinedAtUtc" < c.signup_at + INTERVAL '14 days'
+                 AND pm.status IN ('ACTIVE', 'LEFT')
+               )
+             )::bigint AS joined,
+             COUNT(DISTINCT c.user_id) FILTER (
+               WHERE EXISTS (
+                 SELECT 1 FROM all_picks p
+                 WHERE p."userId" = c.user_id
+                 AND p."createdAtUtc" >= c.signup_at
+                 AND p."createdAtUtc" < c.signup_at + INTERVAL '14 days'
+               )
+             )::bigint AS picked
+      FROM cohorts c
+      GROUP BY c.cohort_week
+      ORDER BY c.cohort_week
+    `;
+    return rows.map((r) => {
+      const cohortStart = r.cohort_week.getTime();
+      const cohortAgeMs = now.getTime() - cohortStart;
+      const cohortSize = Number(r.cohort_size);
+      const joined = Number(r.joined);
+      const picked = Number(r.picked);
+      return {
+        cohortWeekStart: isoDate(r.cohort_week),
+        cohortSize,
+        joinedWithin2w: joined,
+        pickedWithin2w: picked,
+        joinedRate: cohortSize > 0 ? joined / cohortSize : 0,
+        pickedRate: cohortSize > 0 ? picked / cohortSize : 0,
+        // The 14-day window is "from each user's signup", so when the
+        // COHORT_WEEK is <7d old, the latest signups in it haven't had
+        // their full 14 days; we mark the whole cohort as in-progress
+        // until the cohort_week is at least 14d in the past (so even the
+        // user who signed up at the END of the week has lived 14 days).
+        inProgress: cohortAgeMs < 14 * 86_400_000,
+      };
+    });
+  });
+
   // ── Acquisition + referrals ────────────────────────────
   const topAcquisition = await safeRun<AcquisitionRow[]>("topAcquisition", [], async () => {
     const rows = await prisma.$queryRaw<
@@ -1152,7 +1341,8 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     "paymentBreakdown",
     DEFAULT_PAYMENT,
     async () => {
-      const [statusCounts, byProviderRaw, byTierRaw, avgRaw] = await Promise.all([
+      const day1Ago = new Date(now.getTime() - 86_400_000);
+      const [statusCounts, byProviderRaw, byTierRaw, avgRaw, staleRaw, timeToPaymentRaw] = await Promise.all([
         prisma.poolPayment.groupBy({ by: ["status"], _count: { _all: true } }),
         prisma.$queryRaw<
           { provider: string; currency: string; count: bigint; revenue: bigint }[]
@@ -1191,6 +1381,19 @@ async function buildDashboardData(): Promise<DashboardPayload> {
                  AVG("amountCop")::float AS avg_cop
           FROM "PoolPayment" WHERE status = 'COMPLETED'
         `,
+        // Stale = PENDING for >24h with no follow-up. The user opened a
+        // checkout, didn't pay, didn't get a webhook. Real money lost to
+        // friction; deserves its own KPI.
+        prisma.poolPayment.count({
+          where: { status: "PENDING", "createdAtUtc": { lt: day1Ago } },
+        }),
+        // Avg minutes from createdAtUtc → paidAtUtc for completed payments.
+        // High values flag slow / confusing checkout flow.
+        prisma.$queryRaw<{ avg_minutes: number | null }[]>`
+          SELECT AVG(EXTRACT(EPOCH FROM ("paidAtUtc" - "createdAtUtc")) / 60)::float AS avg_minutes
+          FROM "PoolPayment"
+          WHERE status = 'COMPLETED' AND "paidAtUtc" IS NOT NULL
+        `,
       ]);
 
       const totals = statusCounts.reduce(
@@ -1219,6 +1422,11 @@ async function buildDashboardData(): Promise<DashboardPayload> {
         })),
         avgPaymentUsd: Number(avgRaw[0]?.avg_usd ?? 0),
         avgPaymentCop: Number(avgRaw[0]?.avg_cop ?? 0),
+        byStatus: statusCounts.map((g) => ({ status: g.status, count: g._count._all })),
+        staleAbandonedCount: staleRaw,
+        avgTimeToPaymentMinutes: timeToPaymentRaw[0]?.avg_minutes !== null && timeToPaymentRaw[0]?.avg_minutes !== undefined
+          ? Number(timeToPaymentRaw[0].avg_minutes)
+          : null,
       };
     },
   );
@@ -1279,6 +1487,8 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     funnel,
     corporateFunnel,
     topAcquisition,
+    acquisitionFunnel,
+    cohortActivation,
     organicReferrals,
     recentInquiries,
     topOrganizations,
