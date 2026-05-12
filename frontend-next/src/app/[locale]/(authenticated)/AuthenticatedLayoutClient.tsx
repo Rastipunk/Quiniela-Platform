@@ -5,6 +5,7 @@ import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
 import { PoolNavRootProvider } from "@/components/pool/PoolNav";
+import { LocalePreferenceGate } from "@/components/LocalePreferenceGate";
 
 export function AuthenticatedLayoutClient({
   children,
@@ -23,6 +24,9 @@ export function AuthenticatedLayoutClient({
           <main id="main-content" style={{ flex: 1 }}>{children}</main>
           <Footer />
         </div>
+        {/* First-login locale-preference modal. Renders only when the
+            user has `needsLocalePrompt=true`; otherwise mounts to nothing. */}
+        <LocalePreferenceGate />
       </PoolNavRootProvider>
     </AuthGuard>
   );

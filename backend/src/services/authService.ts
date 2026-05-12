@@ -188,12 +188,19 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
     dataJson: { email: user.email }, ip: ctx.ip, userAgent: ctx.userAgent,
   }));
 
-  fireAndForget("verification email", sendVerificationEmail({
-    to: user.email, displayName: user.displayName, verificationToken: emailVerificationToken,
-  }));
-  // Activation-funnel telemetry. Without this step, every signup looks
-  // identical in analytics — we can't distinguish users who got a
-  // deliverable email from those who bounced (bad address, spam filter).
+  // Verification email is intentionally deferred until the user
+  // completes the first-login locale-preference modal — see
+  // userProfile.ts POST /me/locale-preference. The modal fires the
+  // mail in the locale they chose, so the very first message we send
+  // lands in their language. Edge case: a user who abandons the modal
+  // never receives the mail; they can re-login (modal re-appears) or
+  // hit the "resend verification" endpoint (sendVerificationAgain),
+  // which uses resolveUserLocale and routes through the same template.
+  //
+  // Telemetry stays here so the funnel still measures
+  // "registration → verification email fired" — even though the
+  // actual send happens after locale-preference, conceptually the
+  // signup event remains the trigger.
   fireAndForget("ga4mp:email_verification_sent", sendGa4Event({
     userId: user.id,
     events: [{ name: "email_verification_sent", params: { method: "email" } }],

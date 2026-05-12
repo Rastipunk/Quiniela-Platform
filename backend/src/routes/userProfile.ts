@@ -4,7 +4,9 @@ import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { sendData, sendOk, sendBadRequest, sendNotFound } from "../lib/apiResponse";
-import { USER_RULES } from "../lib/constants";
+import { USER_RULES, SUPPORTED_LOCALES, type SupportedLocale } from "../lib/constants";
+import { sendVerificationEmail } from "../lib/email";
+import { fireAndForget } from "../lib/asyncHelpers";
 
 export const userProfileRouter = Router();
 
@@ -55,6 +57,9 @@ userProfileRouter.get("/me/profile", async (req, res) => {
       createdAtUtc: true,
       updatedAtUtc: true,
       googleId: true, // Para saber si es cuenta Google
+      locale: true,
+      requestedLocale: true,
+      localePromptCompletedAt: true,
     },
   });
 
@@ -82,8 +87,115 @@ userProfileRouter.get("/me/profile", async (req, res) => {
       createdAtUtc: user.createdAtUtc,
       updatedAtUtc: user.updatedAtUtc,
       isGoogleAccount: !!user.googleId,
+      locale: user.locale,
+      requestedLocale: user.requestedLocale,
+      // Frontend gate for the first-login modal. True until the user
+      // confirms their language preference via POST /me/locale-preference.
+      needsLocalePrompt: user.localePromptCompletedAt === null,
     },
   });
+});
+
+// =========================================================================
+// LOCALE PREFERENCE (first-login modal)
+// =========================================================================
+// `locale` is required (we won't accept null — the modal forces a choice).
+// `country` is optional. `requestedLocale` is an unsupported ISO 639-1 code
+// the user speaks; saved for product analytics, never used for render.
+
+const localePreferenceSchema = z.object({
+  locale: z.enum(SUPPORTED_LOCALES),
+  country: z.string().length(2).regex(/^[A-Za-z]{2}$/).optional().nullable(),
+  // ISO 639-1 (2 chars) or 639-3 (3 chars). 8 chars max in DB to leave
+  // room for hyphenated regional codes ("pt-BR", "zh-CN") in the future
+  // without another migration. We accept letters + hyphen.
+  requestedLocale: z.string().regex(/^[a-zA-Z-]{2,8}$/).optional().nullable(),
+});
+
+userProfileRouter.post("/me/locale-preference", async (req, res) => {
+  const userId = req.auth!.userId;
+  const parsed = localePreferenceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.issues });
+  }
+
+  const data = parsed.data;
+  const now = new Date();
+
+  // Snapshot pre-update for the verification-email side-effect: only
+  // send the verification mail when the user hadn't completed the prompt
+  // before AND their email isn't yet verified AND they have a pending
+  // token. This delivers the welcome/verification mail in the locale
+  // they just chose, instead of the platform default that fired at
+  // signup-time.
+  const before = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      displayName: true,
+      emailVerified: true,
+      emailVerificationToken: true,
+      localePromptCompletedAt: true,
+    },
+  });
+  if (!before) return sendNotFound(res, "USER_NOT_FOUND");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      locale: data.locale,
+      country: data.country ? data.country.toUpperCase() : undefined,
+      requestedLocale: data.requestedLocale ? data.requestedLocale.toLowerCase() : undefined,
+      localePromptCompletedAt: now,
+    },
+  });
+
+  fireAndForget("audit:locale-preference", writeAuditEvent({
+    actorUserId: userId,
+    action: "LOCALE_PREFERENCE_SET",
+    entityType: "User",
+    entityId: userId,
+    dataJson: {
+      locale: data.locale,
+      country: data.country ?? null,
+      requestedLocale: data.requestedLocale ?? null,
+      firstTime: before.localePromptCompletedAt === null,
+    },
+    ip: req.ip ?? null,
+    userAgent: req.get("user-agent") ?? null,
+  }));
+
+  // Deferred verification email: fires here, in the locale the user
+  // just chose, so the first mail they receive isn't in the platform
+  // default. Only when this was a first-time completion AND the email
+  // is still pending verification AND a token already exists.
+  if (
+    before.localePromptCompletedAt === null &&
+    !before.emailVerified &&
+    before.emailVerificationToken
+  ) {
+    fireAndForget("locale-prompt: deferred verification email", sendVerificationEmail({
+      to: before.email,
+      displayName: before.displayName,
+      verificationToken: before.emailVerificationToken,
+      locale: data.locale,
+    }));
+  }
+
+  return sendOk(res, { locale: data.locale });
+});
+
+// =========================================================================
+// COUNTRY DETECTION (helper for the locale-preference modal)
+// =========================================================================
+// The modal pre-fills the country dropdown from this signal so the user
+// only confirms instead of scrolling through 200+ options. Best-effort:
+// returns null if Cloudflare didn't tag the request, never blocks.
+
+userProfileRouter.get("/me/detect-country", (req, res) => {
+  const raw = req.headers["cf-ipcountry"];
+  const country = typeof raw === "string" && /^[A-Z]{2}$/.test(raw) ? raw : null;
+  return sendData(res, { country });
 });
 
 // PATCH /users/me/profile
