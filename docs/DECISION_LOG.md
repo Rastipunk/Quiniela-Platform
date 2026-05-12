@@ -4464,4 +4464,45 @@ We needed an "Administrar reglas" host panel without breaking the original invar
 
 ---
 
+## ADR-059: Estratega is 100% scraper-driven; host only intervenes for overrides
+
+**Date:** 2026-05-11 | **Status:** Accepted
+
+**Context:** The original Estratega (SIMPLE preset) host UX asked the host to enter match scores so the system could compute the group table and derive knockout winners — but Estratega's whole point is that *marcadores* don't matter, only positions and who advances. The score-entry form was vestigial and confused hosts. Earlier this session we briefly tried letting the host publish the table / winners by drag-and-drop, but the right model is the one the score-based presets already use: the scraper is the source of truth and the host only intervenes to correct mistakes.
+
+**Decision:**
+
+- **Auto-publication from the scraper-fed pipeline.** `liveScoresJob.finalizeResult()` (and `resultService.publishResult()` for host overrides of a `PoolMatchResult`) now call `autoPublishStructuralResults(poolId, matchId)`. For Estratega phases:
+  - **GROUP_STANDINGS**: when every match in the group has a `PoolMatchResult.currentVersion`, run `calculateGroupStandings()` (FIFA tiebreakers: points → GD → GF → H2H → fair play) and upsert `GroupStandingsResult` with the resulting team order.
+  - **KNOCKOUT_WINNER**: derive winner from the match's `currentVersion` (`homeGoals` vs `awayGoals`, penalty fallback if tied) and merge `{matchId, winnerId}` into `StructuralPhaseResult.resultJson.matches[]`.
+  - Idempotent: re-running on already-published structural results that haven't changed is a no-op (Prisma `upsert` + array-equal short-circuit).
+  - Audit: `GROUP_STANDINGS_AUTO_PUBLISHED` / `GROUP_STANDINGS_AUTO_RECOMPUTED`, `KNOCKOUT_WINNER_AUTO_PUBLISHED` / `KNOCKOUT_WINNER_AUTO_RECOMPUTED`. SYSTEM actor.
+  - **No emails.** The scraper is authoritative — notifications are reserved for host overrides.
+
+- **Host UI shows real data, not editable fields.**
+  - `GroupStandingsCard` (right column) renders the new reusable `ClassicStandingsTable` component (Pos / Equipo / PJ / G / E / P / GF / GC / DG / Pts). Empty / partial / complete states render from the same component. When the host publishes an override that diverges from the scraper-derived natural order, the table follows `publishedTeamIds` and surfaces a "★ Sobrescrita por el organizador" badge with the reason as tooltip.
+  - `KnockoutMatchCard` (right column) shows the final score (with penalty line if applicable) and the winner badge, exactly like the player view. No score / penalty inputs. The host gets a "Sobrescribir ganador" button only when a winner is already published.
+  - Data wiring: new `GET /pools/.../group-standings-stats/.../...` endpoint returns the live FIFA-table computed from current `PoolMatchResult`s plus the published team order (if any), so the card renders in one round-trip. Knockouts: `StructuralPicksManager` loads `StructuralPhaseResult.matches[]` and threads each `winnerId` into the matching `KnockoutMatchCard` via the new `publishedWinnerId` prop.
+
+- **Override flows remain manual + audited + emailed.**
+  - Groups: `PUT /pools/.../group-standings-results/.../...` with `teamIds` + `reason`. Sends `sendGroupStandingsOverrideNotification` to every active member.
+  - Knockouts: `PUT /pools/.../structural-results/:phaseId/match/:matchId` with `winnerId` + `reason`. Sends `sendKnockoutWinnerOverrideNotification`. Backend returns 400 `REASON_REQUIRED_FOR_OVERRIDE` if the host tries to change an already-published winner without a reason; the frontend prompts and retries.
+  - The `PoolMatchResult` itself is NOT touched by a knockout override — the override only writes to `StructuralPhaseResult`. This is intentional: the scraper's score is the ground truth of "what happened on the field", and the host's override is "who actually advanced". The card shows both (real score + winner badge) so the divergence is transparent.
+
+- **Multi-leg knockouts deferred.** Champions League ida+vuelta is not supported on Estratega in this iteration — `advanceTwoLeggedPhase` still derives aggregate winners from match scores, and a per-leg `publishKnockoutMatchWinner` doesn't compose cleanly with that semantics. Mundial Sub-20 / WC2026 / Libertadores single-match knockouts work.
+
+- **Cancelled / abandoned matches.** If a match never reaches `API_CONFIRMED`, `autoPublishStructuralResults` never fires for it and the group / round stays unpublished. Workaround for now: host edits via the existing override path once the situation is resolved. TODO: surface a "publicar manualmente" admin fallback button if this becomes a real operational problem.
+
+**Consequences:**
+
+- ✅ Hosts in Estratega don't have to type anything during normal pool operation. Tournament progress is visible the moment the scraper confirms a match.
+- ✅ Players see the classic FIFA-style table fill in row-by-row as matches finalise, instead of an "empty until host clicks Generate" placeholder.
+- ✅ Single shared truth: `GroupStandingsResult` / `StructuralPhaseResult` is the only thing the leaderboard / advancement pipeline reads. UI reflects that.
+- ⚠️ For best-thirds qualifier tournaments (WC2026), in case of a host override of the standings, the system has no way to recompute the third-place cross-group ranking from a manual order — the auto path takes care of the normal case, the override path is a documented escape hatch.
+- ⚠️ Auto-recomputations are silent (no email). If a scraper errata cascades into recomputing the group table, players see the change on next load. This is consistent with how PoolMatchResult overrides already work in score-based presets (only HOST_OVERRIDE notifies).
+
+**Related code:** `backend/src/services/structuralAutoPublish.ts` (the trigger function), `backend/src/jobs/liveScoresJob.ts` (hook after `finalizeResult`), `backend/src/services/resultService.ts` (hook after `publishResult`), `backend/src/services/groupStandingsService.ts` (`getGroupStandingsStats`), `backend/src/routes/groupStandings.ts` (new GET endpoint), `backend/src/routes/structuralResults.ts` (`PUT .../match/:matchId` from ADR-058 — same endpoint, also used by the auto-publish path indirectly), `frontend-next/src/components/groupStandings/ClassicStandingsTable.tsx` (new table component), `frontend-next/src/components/groupStandings/GroupStandingsCard.tsx` (refactor), `frontend-next/src/components/KnockoutMatchCard.tsx` (refactor), `frontend-next/src/components/StructuralPicksManager.tsx` (publishedWinners wiring).
+
+---
+
 **END OF DOCUMENT**

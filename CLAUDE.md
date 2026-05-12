@@ -206,6 +206,7 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 5. **Template immutability:** Published TournamentTemplateVersions are frozen snapshots.
 6. **Pool independence:** Each pool has its own `fixtureSnapshot`. Advancing phases in one pool does not affect others.
 7. **Scraper-first results:** In AUTO mode, picks4all-scores is the primary source (15s polling during matches). API-Football is fallback only (30min after estimated FT). Host can only override existing results.
+8. **Estratega is fully automatic:** In SIMPLE preset pools, `autoPublishStructuralResults` derives `GroupStandingsResult` (FIFA tiebreakers) and `StructuralPhaseResult.matches[].winnerId` (penalty fallback) directly from scraper-confirmed `PoolMatchResult` data. Host never publishes manually — only overrides existing publications via the dedicated PUT endpoints (mandatory reason + email-everyone). See ADR-059.
 
 ---
 
