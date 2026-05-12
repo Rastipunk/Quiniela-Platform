@@ -64,6 +64,7 @@ export async function validateGroupStageComplete(instanceId: string, poolId?: st
 }> {
   // Si poolId está presente, usar fixtureSnapshot del pool; sino usar instance.dataJson
   let data: TemplateData;
+  let poolForStructuralCheck: { pickTypesConfig: unknown } | null = null;
 
   if (poolId) {
     const pool = await prisma.pool.findUnique({
@@ -76,6 +77,7 @@ export async function validateGroupStageComplete(instanceId: string, poolId?: st
     }
 
     data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as TemplateData;
+    poolForStructuralCheck = pool;
   } else {
     const instance = await prisma.tournamentInstance.findUnique({
       where: { id: instanceId },
@@ -96,7 +98,7 @@ export async function validateGroupStageComplete(instanceId: string, poolId?: st
   if (!targetPoolId) {
     const pools = await prisma.pool.findMany({
       where: { tournamentInstanceId: instanceId },
-      select: { id: true },
+      select: { id: true, pickTypesConfig: true },
     });
 
     if (pools.length === 0) {
@@ -108,9 +110,46 @@ export async function validateGroupStageComplete(instanceId: string, poolId?: st
     }
 
     targetPoolId = pools[0]!.id;
+    poolForStructuralCheck = pools[0]!;
   }
 
-  // Obtener resultados publicados (usando poolMatchResult + currentVersion)
+  // Detect structural-grupos mode (Estratega): the host publishes a
+  // GroupStandingsResult per group instead of populating per-match
+  // PoolMatchResults. In that mode "complete" = every group has a
+  // GroupStandingsResult published.
+  const phaseConfigs = (poolForStructuralCheck?.pickTypesConfig ?? []) as Array<{
+    phaseId: string;
+    requiresScore?: boolean;
+    structuralPicks?: { type: string };
+  }>;
+  const groupPhaseConfig = phaseConfigs.find((p) => p.phaseId === "group_stage");
+  const isStructuralGroups =
+    groupPhaseConfig?.requiresScore === false &&
+    groupPhaseConfig.structuralPicks?.type === "GROUP_STANDINGS";
+
+  if (isStructuralGroups) {
+    const groupIds = Array.from(
+      new Set(groupMatches.map((m) => m.groupId).filter((g): g is string => !!g)),
+    );
+    const groupResults = await prisma.groupStandingsResult.findMany({
+      where: { poolId: targetPoolId, phaseId: "group_stage", groupId: { in: groupIds } },
+      select: { groupId: true },
+    });
+    const publishedGroupIds = new Set(groupResults.map((r) => r.groupId));
+    const missingGroupIds = groupIds.filter((g) => !publishedGroupIds.has(g));
+    // For consumer compatibility we report missingMatches as the union
+    // of all matches whose group has not been published.
+    const missingMatches = groupMatches
+      .filter((m) => m.groupId && missingGroupIds.includes(m.groupId))
+      .map((m) => m.id);
+
+    return {
+      isComplete: missingGroupIds.length === 0,
+      missingMatches,
+    };
+  }
+
+  // Score-based path: keep the original PoolMatchResult check.
   const allResults = await prisma.poolMatchResult.findMany({
     where: {
       poolId: targetPoolId,
@@ -121,7 +160,6 @@ export async function validateGroupStageComplete(instanceId: string, poolId?: st
     },
   });
 
-  // Verificar que todos los resultados tengan currentVersion
   const matchesWithResults = new Set();
   for (const r of allResults) {
     if (r.currentVersion) {
@@ -148,6 +186,7 @@ export async function calculateAllGroupStandings(
 ): Promise<Map<string, TeamStanding[]>> {
   // Si poolId está presente, usar fixtureSnapshot del pool; sino usar instance.dataJson
   let data: TemplateData;
+  let poolForStructuralCheck: { id: string; pickTypesConfig: unknown } | null = null;
 
   if (poolId) {
     const pool = await prisma.pool.findUnique({
@@ -160,6 +199,7 @@ export async function calculateAllGroupStandings(
     }
 
     data = (pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson) as TemplateData;
+    poolForStructuralCheck = pool;
   } else {
     const instance = await prisma.tournamentInstance.findUnique({
       where: { id: instanceId },
@@ -183,7 +223,7 @@ export async function calculateAllGroupStandings(
   if (!targetPoolId) {
     const pools = await prisma.pool.findMany({
       where: { tournamentInstanceId: instanceId },
-      select: { id: true },
+      select: { id: true, pickTypesConfig: true },
     });
 
     if (pools.length === 0) {
@@ -191,8 +231,64 @@ export async function calculateAllGroupStandings(
     }
 
     targetPoolId = pools[0]!.id;
+    poolForStructuralCheck = pools[0]!;
   }
 
+  // Detect structural-grupos: in Estratega the host publishes the
+  // final standings by drag-and-drop. There are no scores to compute,
+  // so we read GroupStandingsResult.teamIds directly and synthesize
+  // TeamStanding rows with position information (the only field
+  // determineQualifiers needs for winners/runners-up). Stats like
+  // points, goalDifference, goalsFor are zero — best-thirds ranking
+  // in Estratega falls back to alphabetical groupId order, which is
+  // an accepted limitation for tournaments using "best thirds" gates.
+  const phaseConfigs = (poolForStructuralCheck?.pickTypesConfig ?? []) as Array<{
+    phaseId: string;
+    requiresScore?: boolean;
+    structuralPicks?: { type: string };
+  }>;
+  const groupPhaseConfig = phaseConfigs.find((p) => p.phaseId === "group_stage");
+  const isStructuralGroups =
+    groupPhaseConfig?.requiresScore === false &&
+    groupPhaseConfig.structuralPicks?.type === "GROUP_STANDINGS";
+
+  const allStandings = new Map<string, TeamStanding[]>();
+
+  if (isStructuralGroups) {
+    const groupResults = await prisma.groupStandingsResult.findMany({
+      where: { poolId: targetPoolId, phaseId: "group_stage" },
+      select: { groupId: true, teamIds: true },
+    });
+    const teamIdsByGroup = new Map<string, string[]>(
+      groupResults.map((r) => [r.groupId, r.teamIds as string[]]),
+    );
+
+    for (const groupId of groups) {
+      if (!groupId) continue;
+      const ordered = teamIdsByGroup.get(groupId);
+      if (!ordered) {
+        throw new Error(`Grupo ${groupId} no tiene tabla publicada (Estratega)`);
+      }
+      const standings: TeamStanding[] = ordered.map((teamId, idx) => ({
+        teamId,
+        groupId,
+        position: idx + 1,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDifference: 0,
+        points: 0,
+      }));
+      allStandings.set(groupId, standings);
+    }
+
+    return allStandings;
+  }
+
+  // Score-based path: original computation from match scores.
   const results = await prisma.poolMatchResult.findMany({
     where: {
       poolId: targetPoolId,
@@ -203,7 +299,6 @@ export async function calculateAllGroupStandings(
     },
   });
 
-  // Construir mapa de resultados usando currentVersion
   const resultsMap = new Map();
   for (const r of results) {
     if (r.currentVersion) {
@@ -215,16 +310,11 @@ export async function calculateAllGroupStandings(
     }
   }
 
-  // Calcular standings por grupo
-  const allStandings = new Map<string, TeamStanding[]>();
-
   for (const groupId of groups) {
     if (!groupId) continue;
 
-    // Equipos del grupo
     const teamIds = data.teams.filter((t) => t.groupId === groupId).map((t) => t.id);
 
-    // Partidos del grupo con resultados
     const groupMatchesData = data.matches
       .filter((m) => m.groupId === groupId)
       .map((m) => {
@@ -241,7 +331,6 @@ export async function calculateAllGroupStandings(
         };
       });
 
-    // Calcular standings
     const standings = calculateGroupStandings(groupId, teamIds, groupMatchesData);
     allStandings.set(groupId, standings);
   }
@@ -439,77 +528,118 @@ export async function advanceKnockoutPhase(
   // 2. targetPoolId es el poolId recibido
   const targetPoolId = poolId;
 
-  // 3. Obtener resultados de la fase actual
-  const allResults = await prisma.poolMatchResult.findMany({
-    where: {
-      poolId: targetPoolId,
-      matchId: { in: currentPhaseMatches.map((m) => m.id) },
-    },
-    include: {
-      currentVersion: true,
-    },
-  });
+  // 3. Determinar la fuente de winners según el modo de la fase.
+  //
+  //    Score-based phase (matchPicks): derive winners from
+  //    PoolMatchResult.currentVersion (goals + penalties).
+  //
+  //    Structural KNOCKOUT_WINNER phase (Estratega): read winners
+  //    directly from StructuralPhaseResult.resultJson.matches[]. No
+  //    PoolMatchResult exists for those matches.
+  const phaseConfigs = (pool.pickTypesConfig ?? []) as Array<{
+    phaseId: string;
+    requiresScore?: boolean;
+    structuralPicks?: { type: string };
+  }>;
+  const currentPhaseConfig = phaseConfigs.find((p) => p.phaseId === currentPhaseId);
+  const isStructuralKnockout =
+    currentPhaseConfig?.requiresScore === false &&
+    currentPhaseConfig.structuralPicks?.type === "KNOCKOUT_WINNER";
 
-  const results = allResults
-    .filter((r) => r.currentVersion !== null)
-    .map((r) => ({
-      matchId: r.matchId,
-      homeGoals: r.currentVersion!.homeGoals,
-      awayGoals: r.currentVersion!.awayGoals,
-      homePenalties: r.currentVersion!.homePenalties,
-      awayPenalties: r.currentVersion!.awayPenalties,
-    }));
-
-  // 4. Validar que todos los partidos tengan resultado
-  if (results.length !== currentPhaseMatches.length) {
-    throw new Error(
-      `Fase ${currentPhaseId} incompleta. ${results.length}/${currentPhaseMatches.length} partidos con resultado`
-    );
-  }
-
-  // 5. Determinar ganadores y perdedores
+  // knockoutResults is what step 6/7 below need: matchId → {winnerId, loserId}.
   const knockoutResults = new Map<string, { winnerId: string; loserId: string }>();
 
-  for (const result of results) {
-    const match = currentPhaseMatches.find((m) => m.id === result.matchId);
-    if (!match) continue;
+  if (isStructuralKnockout) {
+    const sr = await prisma.structuralPhaseResult.findUnique({
+      where: { poolId_phaseId: { poolId: targetPoolId, phaseId: currentPhaseId } },
+      select: { resultJson: true },
+    });
+    const winners =
+      ((sr?.resultJson as { matches?: Array<{ matchId: string; winnerId: string }> } | null)
+        ?.matches) ?? [];
+    const winnerByMatch = new Map(winners.map((w) => [w.matchId, w.winnerId]));
 
-    let winnerId: string;
-    let loserId: string;
-
-    if (result.homeGoals > result.awayGoals) {
-      winnerId = match.homeTeamId;
-      loserId = match.awayTeamId;
-    } else if (result.awayGoals > result.homeGoals) {
-      winnerId = match.awayTeamId;
-      loserId = match.homeTeamId;
-    } else {
-      // Empate en tiempo regular → usar penalties
-      if (
-        result.homePenalties !== null &&
-        result.homePenalties !== undefined &&
-        result.awayPenalties !== null &&
-        result.awayPenalties !== undefined
-      ) {
-        if (result.homePenalties > result.awayPenalties) {
-          winnerId = match.homeTeamId;
-          loserId = match.awayTeamId;
-        } else if (result.awayPenalties > result.homePenalties) {
-          winnerId = match.awayTeamId;
-          loserId = match.homeTeamId;
-        } else {
-          throw new Error(
-            `Partido ${result.matchId} terminó empatado en penales. Los penalties no pueden ser iguales.`
-          );
-        }
-      } else {
-        throw new Error(
-          `Partido ${result.matchId} terminó en empate en tiempo regular pero no tiene penalties definidos.`
-        );
-      }
+    if (winnerByMatch.size !== currentPhaseMatches.length) {
+      throw new Error(
+        `Fase ${currentPhaseId} estructural incompleta. ${winnerByMatch.size}/${currentPhaseMatches.length} partidos con ganador publicado`,
+      );
     }
 
-    knockoutResults.set(match.id, { winnerId, loserId });
+    for (const match of currentPhaseMatches) {
+      const winnerId = winnerByMatch.get(match.id);
+      if (!winnerId) continue;
+      const loserId = winnerId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
+      knockoutResults.set(match.id, { winnerId, loserId });
+    }
+  } else {
+    // Score-based: original path.
+    const allResults = await prisma.poolMatchResult.findMany({
+      where: {
+        poolId: targetPoolId,
+        matchId: { in: currentPhaseMatches.map((m) => m.id) },
+      },
+      include: {
+        currentVersion: true,
+      },
+    });
+
+    const results = allResults
+      .filter((r) => r.currentVersion !== null)
+      .map((r) => ({
+        matchId: r.matchId,
+        homeGoals: r.currentVersion!.homeGoals,
+        awayGoals: r.currentVersion!.awayGoals,
+        homePenalties: r.currentVersion!.homePenalties,
+        awayPenalties: r.currentVersion!.awayPenalties,
+      }));
+
+    if (results.length !== currentPhaseMatches.length) {
+      throw new Error(
+        `Fase ${currentPhaseId} incompleta. ${results.length}/${currentPhaseMatches.length} partidos con resultado`,
+      );
+    }
+
+    for (const result of results) {
+      const match = currentPhaseMatches.find((m) => m.id === result.matchId);
+      if (!match) continue;
+
+      let winnerId: string;
+      let loserId: string;
+
+      if (result.homeGoals > result.awayGoals) {
+        winnerId = match.homeTeamId;
+        loserId = match.awayTeamId;
+      } else if (result.awayGoals > result.homeGoals) {
+        winnerId = match.awayTeamId;
+        loserId = match.homeTeamId;
+      } else {
+        // Empate en tiempo regular → usar penalties
+        if (
+          result.homePenalties !== null &&
+          result.homePenalties !== undefined &&
+          result.awayPenalties !== null &&
+          result.awayPenalties !== undefined
+        ) {
+          if (result.homePenalties > result.awayPenalties) {
+            winnerId = match.homeTeamId;
+            loserId = match.awayTeamId;
+          } else if (result.awayPenalties > result.homePenalties) {
+            winnerId = match.awayTeamId;
+            loserId = match.homeTeamId;
+          } else {
+            throw new Error(
+              `Partido ${result.matchId} terminó empatado en penales. Los penalties no pueden ser iguales.`
+            );
+          }
+        } else {
+          throw new Error(
+            `Partido ${result.matchId} terminó en empate en tiempo regular pero no tiene penalties definidos.`
+          );
+        }
+      }
+
+      knockoutResults.set(match.id, { winnerId, loserId });
+    }
   }
 
   // 6. Obtener partidos de la siguiente fase
@@ -865,7 +995,43 @@ export async function validateCanAutoAdvance(
     };
   }
 
-  // 3. Verificar que todos los partidos tengan resultado
+  // 3. Verificar que la fase esté completa.
+  //
+  // The "complete" signal depends on the scoring mode of THIS phase:
+  //
+  //   - Score-based (matchPicks): a PoolMatchResult.currentVersion per
+  //     match. This is what the score-based presets (Predictor / BASIC
+  //     / CUSTOM-marcador) already populate as the host enters scores.
+  //
+  //   - Structural GROUP_STANDINGS (Estratega-grupos): a
+  //     GroupStandingsResult per group in this phase. In Estratega the
+  //     host publishes the standings directly via drag-and-drop, no
+  //     PoolMatchResult ever exists for those games.
+  //
+  //   - Structural KNOCKOUT_WINNER (Estratega-knockouts): a single
+  //     StructuralPhaseResult for the phase, whose resultJson.matches[]
+  //     contains a winnerId for every match.
+  //
+  // We pick the right check by looking at the phase's pickTypesConfig
+  // entry on the pool itself.
+  const poolWithConfig = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: { pickTypesConfig: true },
+  });
+  const phaseConfigs = (poolWithConfig?.pickTypesConfig ?? []) as Array<{
+    phaseId: string;
+    requiresScore?: boolean;
+    structuralPicks?: { type: string };
+  }>;
+  const phaseConfig = phaseConfigs.find((p) => p.phaseId === phaseId);
+  const structuralType =
+    phaseConfig?.requiresScore === false
+      ? phaseConfig.structuralPicks?.type ?? null
+      : null;
+
+  // Used by the score-based completion check below AND by the recent-errata
+  // check (only score-based phases have erratas — structural results don't
+  // have a versions[] history yet, so they bypass the errata rule).
   const results = await prisma.poolMatchResult.findMany({
     where: {
       poolId,
@@ -880,19 +1046,68 @@ export async function validateCanAutoAdvance(
     },
   });
 
-  // 3a. Verificar que todos los partidos tengan currentVersion
-  const matchesWithResults = results.filter((r) => r.currentVersion !== null);
-  if (matchesWithResults.length !== phaseMatches.length) {
-    return {
-      canAdvance: false,
-      blockType: "INCOMPLETE",
-      reason: `Fase ${phaseId} incompleta. ${matchesWithResults.length}/${phaseMatches.length} partidos con resultado`,
-      details: {
-        missingMatches: phaseMatches.filter(
-          (m) => !matchesWithResults.some((r) => r.matchId === m.id)
-        ).map((m) => m.id),
-      },
-    };
+  if (structuralType === "GROUP_STANDINGS") {
+    // Phase completes when every group in the phase has a
+    // GroupStandingsResult published.
+    const groupIds = Array.from(
+      new Set(phaseMatches.map((m) => m.groupId).filter((g): g is string => !!g)),
+    );
+    if (groupIds.length === 0) {
+      return {
+        canAdvance: false,
+        blockType: "INCOMPLETE",
+        reason: `Fase ${phaseId} estructural por grupos pero no hay groupIds en los partidos`,
+      };
+    }
+    const groupResults = await prisma.groupStandingsResult.findMany({
+      where: { poolId, phaseId, groupId: { in: groupIds } },
+      select: { groupId: true },
+    });
+    if (groupResults.length < groupIds.length) {
+      const missing = groupIds.filter(
+        (g) => !groupResults.some((r) => r.groupId === g),
+      );
+      return {
+        canAdvance: false,
+        blockType: "INCOMPLETE",
+        reason: `Fase ${phaseId} estructural incompleta. ${groupResults.length}/${groupIds.length} grupos con tabla publicada`,
+        details: { missingGroups: missing },
+      };
+    }
+  } else if (structuralType === "KNOCKOUT_WINNER") {
+    // Phase completes when StructuralPhaseResult.resultJson.matches[]
+    // has a winnerId for every match in the phase.
+    const sr = await prisma.structuralPhaseResult.findUnique({
+      where: { poolId_phaseId: { poolId, phaseId } },
+      select: { resultJson: true },
+    });
+    const winners = ((sr?.resultJson as { matches?: Array<{ matchId: string; winnerId: string }> } | null)
+      ?.matches) ?? [];
+    const winnerByMatchId = new Map(winners.map((w) => [w.matchId, w.winnerId]));
+    const missing = phaseMatches.filter((m) => !winnerByMatchId.get(m.id));
+    if (missing.length > 0) {
+      return {
+        canAdvance: false,
+        blockType: "INCOMPLETE",
+        reason: `Fase ${phaseId} estructural incompleta. ${phaseMatches.length - missing.length}/${phaseMatches.length} partidos con ganador publicado`,
+        details: { missingMatches: missing.map((m) => m.id) },
+      };
+    }
+  } else {
+    // Score-based phase — original check on PoolMatchResult.
+    const matchesWithResults = results.filter((r) => r.currentVersion !== null);
+    if (matchesWithResults.length !== phaseMatches.length) {
+      return {
+        canAdvance: false,
+        blockType: "INCOMPLETE",
+        reason: `Fase ${phaseId} incompleta. ${matchesWithResults.length}/${phaseMatches.length} partidos con resultado`,
+        details: {
+          missingMatches: phaseMatches.filter(
+            (m) => !matchesWithResults.some((r) => r.matchId === m.id)
+          ).map((m) => m.id),
+        },
+      };
+    }
   }
 
   // 4. Verificar si hay erratas recientes (versión > 1 en últimas 24h)
