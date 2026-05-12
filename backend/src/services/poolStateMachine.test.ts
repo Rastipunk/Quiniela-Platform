@@ -44,6 +44,7 @@ vi.mock("../lib/asyncHelpers", () => ({
 
 vi.mock("../lib/constants", () => ({
   countryToLocale: vi.fn(() => "es"),
+  resolveUserLocale: vi.fn(() => "es"),
 }));
 
 vi.mock("../lib/fixture", () => ({

@@ -20,7 +20,7 @@ import {
   sendPoolRevertedToDraftEmail,
   batchSendEmails,
 } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import { extractMatches, typed, type PickJson } from "../lib/fixture";
 import { fireAndForget } from "../lib/asyncHelpers";
 
@@ -271,7 +271,7 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
           totalParticipants: sortedMembers.length,
           totalPoints: item.member.points,
           exactScores: userExactScores.get(item.member.userId) ?? 0,
-          locale: countryToLocale(item.member.user.country),
+          locale: resolveUserLocale(item.member.user),
         }),
       );
       console.log(`📧 Pool completed emails for ${poolId}: ${sent} sent, ${failed} failed`);
@@ -446,7 +446,7 @@ export async function revertPoolToDraft(
         displayName: pool.createdByUser.displayName,
         poolName: pool.name,
         poolId,
-        locale: countryToLocale(pool.createdByUser.country),
+        locale: resolveUserLocale(pool.createdByUser),
       }),
     );
   }

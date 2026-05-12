@@ -10,7 +10,7 @@ import { extractPhases, extractMatches, extractTeams } from "../lib/fixture";
 import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendKnockoutWinnerOverrideNotification } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import { validateCanAutoAdvance, advanceKnockoutPhase } from "../services/instanceAdvancement";
 
 export const structuralResultsRouter = Router();
@@ -277,7 +277,7 @@ structuralResultsRouter.put(
             newWinnerName,
             reason,
             hostName,
-            locale: countryToLocale(member.user.country),
+            locale: resolveUserLocale(member.user),
           }),
         );
       }

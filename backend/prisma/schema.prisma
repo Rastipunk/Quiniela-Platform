@@ -105,6 +105,23 @@ model User {
   predictionUpdates Boolean @default(false) // Subscribed to AI prediction update emails
 
   // =========================================================================
+  // COMMUNICATION LOCALE
+  // `locale` is the user's EXPLICIT choice from the first-login modal.
+  // NULL means "not chosen yet" — `resolveUserLocale` will then derive
+  // from country (Spanish-first, English only for confirmed anglophone
+  // territories). Once the user picks a value via the modal, that value
+  // takes ABSOLUTE precedence over any inferred signal. The
+  // `localePromptCompletedAt` timestamp gates whether the modal still
+  // appears (audit + analytics; the locale value itself is what the
+  // helper consults). `requestedLocale` records an ISO 639-1 code the
+  // user speaks but we don't yet support (analytics-only).
+  // =========================================================================
+
+  locale                  String?   @db.VarChar(2)
+  requestedLocale         String?   @db.VarChar(8)
+  localePromptCompletedAt DateTime?
+
+  // =========================================================================
   // MARKETING ATTRIBUTION (first-touch)
   // Comentario en español: atribución del canal que trajo al usuario.
   // Se escribe UNA sola vez en el signup (first-touch). No se sobrescribe

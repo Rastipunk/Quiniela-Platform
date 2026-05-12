@@ -10,7 +10,7 @@
 
 import { prisma } from "../db";
 import { sendDeadlineReminderEmail, isEmailEnabled } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 
 // =========================================================================
 // TIPOS
@@ -286,7 +286,7 @@ export async function processDeadlineReminders(
         return deadline < nearest ? deadline : nearest;
       }, new Date(getKickoff(firstMatch)!));
 
-      const userLocale = countryToLocale(user.country);
+      const userLocale = resolveUserLocale(user);
       const deadlineFormatted = formatDeadlineTime(nearestDeadline, pool.timeZone, userLocale);
 
       // Preparar detalle

@@ -32,7 +32,7 @@ import {
   sendNewMemberDigestEmail,
   sendPendingApprovalDigestEmail,
 } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 
 // Pools in these states never receive any digest. ARCHIVED hides them
 // completely; COMPLETED means picks no longer matter so chasing approvals
@@ -128,7 +128,7 @@ export async function processNewMemberDigest(): Promise<DigestResult> {
         poolId,
         newMembers,
         currentTotal: totalMembers,
-        locale: countryToLocale(host.user.country),
+        locale: resolveUserLocale(host.user),
       });
 
       if (result.success) emailsSent++;
@@ -274,7 +274,7 @@ export async function processPendingApprovalDigest(): Promise<DigestResult> {
         poolName: pool.name,
         poolId,
         pendingMembers: entries.map((e) => ({ name: e.name })),
-        locale: countryToLocale(host.user.country),
+        locale: resolveUserLocale(host.user),
       });
 
       if (result.success) {

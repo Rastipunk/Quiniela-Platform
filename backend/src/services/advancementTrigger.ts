@@ -15,7 +15,7 @@
  */
 
 import { prisma } from "../db";
-import { ADVANCEMENT, PHASE_DISPLAY_NAMES, countryToLocale } from "../lib/constants";
+import { ADVANCEMENT, PHASE_DISPLAY_NAMES, resolveUserLocale } from "../lib/constants";
 import { advanceToRoundOf32, advanceKnockoutPhase } from "./instanceAdvancement";
 import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification, sendPhaseCompletionSummaryEmail, batchSendEmails } from "../lib/email";
@@ -321,7 +321,7 @@ async function sendPhaseCompletionNotifications(
 
     const emailItems = sortedMembers.map((member, idx) => ({ member, rank: idx + 1 }));
     const { sent, failed } = await batchSendEmails(emailItems, (item) => {
-      const locale = countryToLocale(item.member.user.country);
+      const locale = resolveUserLocale(item.member.user);
       const phaseName = phaseNames?.[locale] ?? phaseNames?.en ?? completedPhaseId;
       return sendPhaseCompletionSummaryEmail({
         to: item.member.user.email,

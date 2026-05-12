@@ -23,7 +23,7 @@ import { verifyGoogleToken } from "../lib/googleAuth";
 import { transitionToActive } from "./poolStateMachine";
 import { ensurePoolCapacity, checkAndNotifyCapacityThresholds, notifyHostOfBlockedAttempt } from "../lib/poolCapacity";
 import { CURRENT_LEGAL_VERSIONS } from "../routes/legal";
-import { TOKEN_EXPIRY_MS, CRYPTO_BYTES, countryToLocale } from "../lib/constants";
+import { TOKEN_EXPIRY_MS, CRYPTO_BYTES, resolveUserLocale } from "../lib/constants";
 import { serializeUser } from "../lib/serializers";
 import type { SerializedUser } from "../lib/serializers";
 import { fireAndForget } from "../lib/asyncHelpers";
@@ -304,7 +304,7 @@ export async function requestPasswordReset(email: string, ctx: AuditContext): Pr
 
   const emailResult = await sendPasswordResetEmail({
     to: user.email, username: user.username, resetToken,
-    locale: countryToLocale(user.country),
+    locale: resolveUserLocale(user),
   });
 
   if (!emailResult.success) {
@@ -344,7 +344,7 @@ export async function resetPassword(token: string, newPassword: string, ctx: Aud
   fireAndForget("password-changed-email", sendPasswordChangedEmail({
     to: user.email,
     displayName: user.displayName,
-    locale: countryToLocale(user.country),
+    locale: resolveUserLocale(user),
   }));
 }
 
@@ -537,7 +537,7 @@ export async function verifyEmail(token: string, ctx: AuditContext): Promise<Ver
 
   fireAndForget("welcome email", sendWelcomeEmail({
     to: user.email, userId: user.id, displayName: user.displayName,
-    locale: countryToLocale(user.country),
+    locale: resolveUserLocale(user),
   }));
 
   // Activation-funnel telemetry. Pairing `email_verification_sent` with
@@ -810,7 +810,7 @@ export async function resendVerification(userId: string, ctx: AuditContext): Pro
 
   const emailResult = await sendVerificationEmail({
     to: user.email, displayName: user.displayName, verificationToken,
-    locale: countryToLocale(user.country),
+    locale: resolveUserLocale(user),
   });
 
   if (!emailResult.success) {

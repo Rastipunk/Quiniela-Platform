@@ -16,7 +16,7 @@ import { prisma } from "../db";
 import { ServiceError } from "./authService";
 import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification, sendPaymentReceiptEmail } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendCapiEvent } from "../lib/metaCapi";
 import { sendGa4Event } from "../lib/ga4";
@@ -539,7 +539,7 @@ export async function handleOrderPaid(payload: {
         fromCapacity: metadata.fromCapacity!,
         toCapacity: metadata.toCapacity!,
         paidAt: new Date(),
-        locale: countryToLocale(user.country),
+        locale: resolveUserLocale(user),
       });
     })());
   }
@@ -1279,7 +1279,7 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
         fromCapacity: payment.fromCapacity,
         toCapacity: payment.toCapacity,
         paidAt: new Date(),
-        locale: countryToLocale(user.country),
+        locale: resolveUserLocale(user),
       });
     })());
   } else if (mpPayment.status === "rejected" || mpPayment.status === "cancelled") {

@@ -3,7 +3,7 @@ import { prisma } from "../db";
 import { fireAndForget } from "./asyncHelpers";
 import { writeAuditEvent } from "./audit";
 import { sendBlockedJoinAttemptEmail, sendCapacityWarningEmail, sendPoolFullNotificationEmail } from "./email";
-import { CAPACITY, countryToLocale } from "./constants";
+import { CAPACITY, resolveUserLocale } from "./constants";
 import { HOST_NOTIFICATION_ROLES } from "./roles";
 
 /**
@@ -301,6 +301,6 @@ async function findHostForNotification(poolId: string): Promise<HostNotification
   return {
     email: member.user.email,
     displayName: member.user.displayName || "Host",
-    locale: countryToLocale(member.user.country),
+    locale: resolveUserLocale(member.user),
   };
 }

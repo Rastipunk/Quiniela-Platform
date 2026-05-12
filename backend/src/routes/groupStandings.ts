@@ -27,7 +27,7 @@ import {
 import { prisma } from "../db";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { extractTeams } from "../lib/fixture";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import { sendGroupStandingsOverrideNotification } from "../lib/email";
 
 export const groupStandingsRouter = Router();
@@ -176,7 +176,7 @@ groupStandingsRouter.put("/:poolId/group-standings-results/:phaseId/:groupId", a
             newStandings: parsed.data.teamIds.map(toName),
             reason: parsed.data.reason,
             hostName,
-            locale: countryToLocale(member.user.country),
+            locale: resolveUserLocale(member.user),
           }));
         }
       }

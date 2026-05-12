@@ -11,7 +11,7 @@ import {
 } from "../services/poolStateMachine";
 import { sendPoolInvitationEmail } from "../lib/email";
 import { ensurePoolCapacity, checkAndNotifyCapacityThresholds, notifyHostOfBlockedAttempt } from "../lib/poolCapacity";
-import { TOKEN_EXPIRY_MS, countryToLocale } from "../lib/constants";
+import { TOKEN_EXPIRY_MS, resolveUserLocale } from "../lib/constants";
 import { poolJoinLimiter } from "../middleware/rateLimit";
 import { sendOk, sendCreated, sendBadRequest, sendForbidden, sendNotFound, sendConflict, sendInternal } from "../lib/apiResponse";
 import { fireAndForget } from "../lib/asyncHelpers";
@@ -127,7 +127,7 @@ poolInvitesRouter.post("/:poolId/send-invite-email", async (req, res) => {
     poolName: pool.name,
     inviteCode,
     poolDescription: pool.description ?? undefined,
-    locale: countryToLocale(targetUser?.country),
+    locale: resolveUserLocale(targetUser ?? {}),
   });
 
   if (!emailResult.success && !emailResult.skipped) {

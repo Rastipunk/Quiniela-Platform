@@ -21,7 +21,7 @@ import {
   sendNewMemberDigestEmail,
   sendPhaseCompletionSummaryEmail,
 } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import {
   processDeadlineReminders,
   getDeadlineReminderStats,
@@ -232,7 +232,7 @@ router.post("/email/test", async (req: AuthenticatedRequest, res: Response) => {
     });
 
     // Allow locale override via query param for testing (e.g. ?locale=en)
-    const locale = (req.query.locale as string) || countryToLocale(adminUser?.country);
+    const locale = (req.query.locale as string) || resolveUserLocale(adminUser ?? {});
 
     let result;
     const testPoolName = "Quiniela Mundial 2026 (PRUEBA)";

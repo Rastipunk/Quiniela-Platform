@@ -11,7 +11,7 @@
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { sendResultPublishedEmail, batchSendEmails } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import { getScoringPreset } from "../lib/scoringPresets";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
 import type { PhasePickConfig } from "../types/pickConfig";
@@ -368,7 +368,7 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
         pointsEarned: item.pointsEarned,
         currentRank: item.rank,
         totalParticipants: sortedMembers.length,
-        locale: countryToLocale(item.member.user.country),
+        locale: resolveUserLocale(item.member.user),
       }),
     );
   } catch (emailError) {

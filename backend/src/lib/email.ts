@@ -5,7 +5,7 @@ export { escapeHtml } from "./htmlSafe";
 
 import { Resend } from "resend";
 import { prisma } from "../db";
-import { SUPPORTED_LOCALES, DEFAULT_LOCALE, countryToLocale, type SupportedLocale } from "./constants";
+import { SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveUserLocale, type SupportedLocale } from "./constants";
 import { BRAND } from "./brand";
 import { generateUnsubscribeToken, buildUnsubscribeUrl } from "./unsubscribe";
 import { appendUtm, emailUtm } from "./utm";
@@ -134,12 +134,12 @@ async function resilientSend(
 // =========================================================================
 
 export async function getUserLocale(userId?: string): Promise<SupportedLocale> {
-  if (!userId) return "en";
+  if (!userId) return DEFAULT_LOCALE;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { country: true },
+    select: { locale: true, country: true },
   });
-  return countryToLocale(user?.country);
+  return resolveUserLocale(user ?? {});
 }
 
 async function isSuppressed(email: string): Promise<boolean> {
@@ -360,7 +360,7 @@ export async function sendPasswordResetEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const resetUrl = appendUtm(`${FRONTEND_URL}/reset-password?token=${params.resetToken}`, emailUtm("password_reset"));
 
   const subjects: Record<string, string> = {
@@ -405,7 +405,7 @@ export async function sendVerificationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const verificationUrl = appendUtm(`${FRONTEND_URL}/verify-email?token=${params.verificationToken}`, emailUtm("email_verification"));
 
   const subjects: Record<string, string> = {
@@ -457,7 +457,7 @@ export async function sendWelcomeEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `¡Bienvenido a ${APP_NAME}!`,
     en: `Welcome to ${APP_NAME}!`,
@@ -519,7 +519,7 @@ export async function sendPoolInvitationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `${params.inviterName} te invitó a "${params.poolName}"`,
     en: `${params.inviterName} invited you to "${params.poolName}"`,
@@ -582,7 +582,7 @@ export async function sendDeadlineReminderEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const n = params.matchesCount;
   const subjects: Record<string, string> = {
     es: `⏰ ${n} partido${n > 1 ? "s" : ""} sin pronóstico en "${params.poolName}"`,
@@ -650,7 +650,7 @@ export async function sendResultPublishedEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `📊 Resultado: ${params.matchDescription} (${params.result}) — ${params.pointsEarned} pts`,
     en: `📊 Result: ${params.matchDescription} (${params.result}) — ${params.pointsEarned} pts`,
@@ -719,7 +719,7 @@ export async function sendPoolCompletedEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   let subjectEmoji = "🏁";
   if (params.finalRank === 1) subjectEmoji = "🏆";
   else if (params.finalRank === 2) subjectEmoji = "🥈";
@@ -1129,7 +1129,7 @@ export async function sendPoolFullNotificationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `Tu pool "${params.poolName}" está lleno`,
     en: `Your pool "${params.poolName}" is full`,
@@ -1177,7 +1177,7 @@ export async function sendCapacityWarningEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `Tu pool "${params.poolName}" está casi lleno (${params.currentMembers}/${params.maxParticipants})`,
     en: `Your pool "${params.poolName}" is almost full (${params.currentMembers}/${params.maxParticipants})`,
@@ -1228,7 +1228,7 @@ export async function sendBlockedJoinAttemptEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `Alguien intentó unirse a "${params.poolName}" pero está lleno`,
     en: `Someone tried to join "${params.poolName}" but it's full`,
@@ -1582,7 +1582,7 @@ export async function sendPaymentReceiptEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `Comprobante de pago — ${APP_NAME}`,
     en: `Payment receipt — ${APP_NAME}`,
@@ -1644,7 +1644,7 @@ export async function sendNewMemberNotificationEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `👋 ${params.memberName} se unió a "${params.poolName}"`,
     en: `👋 ${params.memberName} joined "${params.poolName}"`,
@@ -1691,7 +1691,7 @@ export async function sendPasswordChangedEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `🔒 Contraseña cambiada — ${APP_NAME}`,
     en: `🔒 Password changed — ${APP_NAME}`,
@@ -1733,7 +1733,7 @@ export async function sendMemberRemovedEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const isBan = params.type === "banned";
   const subjects: Record<string, string> = {
     es: isBan ? `⛔ Expulsado de "${params.poolName}"` : `Removido de "${params.poolName}"`,
@@ -1783,7 +1783,7 @@ export async function sendNewMemberDigestEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const count = params.newMembers.length;
   const subjects: Record<string, string> = {
     es: `👥 ${count} ${count === 1 ? "nuevo miembro" : "nuevos miembros"} en "${params.poolName}"`,
@@ -2044,7 +2044,7 @@ export async function sendPendingApprovalDigestEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const count = params.pendingMembers.length;
   const subjects: Record<string, string> = {
     es: `🔔 ${count} ${count === 1 ? "solicitud" : "solicitudes"} esperando tu aprobación en "${params.poolName}"`,
@@ -2107,7 +2107,7 @@ export async function sendPhaseCompletionSummaryEmail(params: {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
 
-  const loc = params.locale || "en";
+  const loc = params.locale || DEFAULT_LOCALE;
   const subjects: Record<string, string> = {
     es: `📊 Fase completada: ${params.phaseName} — Tu posición: #${params.userRank}`,
     en: `📊 Phase completed: ${params.phaseName} — Your position: #${params.userRank}`,

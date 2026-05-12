@@ -14,7 +14,7 @@ import { requirePoolAdmin, isPoolOwner, NON_LEAVABLE_ROLES } from "../lib/roles"
 import { transitionToActive, revertPoolToDraft, wouldCauseRevert } from "./poolStateMachine";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendMemberRemovedEmail } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import { sendGa4Event } from "../lib/ga4";
 import { ServiceError, type AuditContext } from "./authService";
 
@@ -362,7 +362,7 @@ export async function kickMember(
       poolName: pool.name,
       reason: reason || undefined,
       type: "kicked",
-      locale: countryToLocale(member.user.country),
+      locale: resolveUserLocale(member.user),
     }));
   }
 
@@ -537,7 +537,7 @@ export async function banMember(
       poolName: pool.name,
       reason,
       type: "banned",
-      locale: countryToLocale(member.user.country),
+      locale: resolveUserLocale(member.user),
     }));
   }
 

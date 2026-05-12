@@ -71,20 +71,75 @@ export const SUPPORTED_LOCALES = ["es", "en", "pt"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: SupportedLocale = "es";
 
+// Countries where we send communications in Spanish or Portuguese.
+// Anything NOT in this map falls through to a third branch that decides
+// EN (explicitly anglophone) vs DEFAULT_LOCALE (unknown).
 const COUNTRY_TO_LOCALE: Record<string, SupportedLocale> = {
   // LATAM → Spanish
   MX: "es", GT: "es", HN: "es", SV: "es", NI: "es", CR: "es", PA: "es",
   CO: "es", VE: "es", EC: "es", PE: "es", BO: "es", PY: "es", CL: "es",
   AR: "es", UY: "es", CU: "es", DO: "es", PR: "es",
-  // Spain
+  // Spain + Equatorial Guinea
   ES: "es", GQ: "es",
   // Portuguese-speaking
   BR: "pt", PT: "pt", AO: "pt", MZ: "pt", CV: "pt",
 };
 
+// Anglophone-majority countries: when we can confirm the user is in one
+// of these we DO want to send EN. Without this allow-list, prior to the
+// fix any null/unknown country defaulted to EN — which delivered ~93%
+// of automatic emails in English to a >95% Spanish-speaking user base.
+const ANGLOPHONE_COUNTRIES = new Set<string>([
+  "US", "GB", "CA", "AU", "NZ", "IE", "ZA",
+  "JM", "TT", "BS", "BB", "BZ", "GY",
+]);
+
+/**
+ * Resolves the email/UI locale from an ISO 3166-1 alpha-2 country code.
+ *
+ * Returns:
+ *   - "es" for any LATAM/Spain country in the map (or NULL/unknown,
+ *     matching `DEFAULT_LOCALE` — the platform is Spanish-first).
+ *   - "pt" for Brazil/Portugal/lusophone Africa.
+ *   - "en" ONLY for countries explicitly listed as anglophone — we never
+ *     guess EN from absence of data.
+ */
 export function countryToLocale(countryCode?: string | null): SupportedLocale {
-  if (!countryCode) return "en";
-  return COUNTRY_TO_LOCALE[countryCode.toUpperCase()] ?? "en";
+  if (!countryCode) return DEFAULT_LOCALE;
+  const c = countryCode.toUpperCase();
+  if (COUNTRY_TO_LOCALE[c]) return COUNTRY_TO_LOCALE[c];
+  if (ANGLOPHONE_COUNTRIES.has(c)) return "en";
+  return DEFAULT_LOCALE;
+}
+
+/**
+ * Single source of truth for "which locale do we send to this user?".
+ *
+ * Strict hierarchy (top wins):
+ *   1. `user.locale` — the EXPLICIT user choice captured by the
+ *      first-login modal. Absolute priority. If set to a supported
+ *      value, no other signal can override it.
+ *   2. `countryToLocale(user.country)` — derived from the user's
+ *      country when no explicit choice exists yet. Returns "es" for
+ *      LATAM/Spain, "pt" for lusophone Africa+Brazil, "en" only for
+ *      explicit anglophone countries, and "es" otherwise.
+ *   3. `DEFAULT_LOCALE` ("es") — the safety net inside countryToLocale.
+ *
+ * A NULL `user.locale` means "user has not picked yet" — the modal
+ * captures it, and from that moment onward step 1 dominates.
+ */
+export function resolveUserLocale(user: {
+  locale?: string | null;
+  country?: string | null;
+}): SupportedLocale {
+  const userLocale = user.locale?.toLowerCase();
+  if (
+    userLocale &&
+    (SUPPORTED_LOCALES as readonly string[]).includes(userLocale)
+  ) {
+    return userLocale as SupportedLocale;
+  }
+  return countryToLocale(user.country);
 }
 
 // ── User profile rules ───────────────────────────────────────

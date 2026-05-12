@@ -21,7 +21,7 @@ import {
   getLeaderboard,
 } from "../services/resultService";
 import { sendResultOverrideNotification } from "../lib/email";
-import { countryToLocale } from "../lib/constants";
+import { resolveUserLocale } from "../lib/constants";
 import { extractTeams } from "../lib/fixture";
 import { ServiceError, type AuditContext } from "../services/authService";
 
@@ -145,7 +145,7 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
           newResult,
           reason: parsed.data.reason,
           hostName,
-          locale: countryToLocale(member.user.country),
+          locale: resolveUserLocale(member.user),
         }));
       }
     } else {
