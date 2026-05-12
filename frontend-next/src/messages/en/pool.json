@@ -774,6 +774,8 @@
     "generating": "Generating...",
     "generateStandings": "Generate standings",
     "pendingPublish": "Pending publication",
+    "publishStandings": "Publish official standings",
+    "hostInitialHint": "Drag the teams to build the group's official standings. Once published, all players will see it.",
     "matchResultsTitle": "Match results",
     "unknownTeam": "Unknown",
     "viewBreakdown": "View points breakdown",

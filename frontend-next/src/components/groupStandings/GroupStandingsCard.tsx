@@ -1,10 +1,14 @@
 "use client";
 
-// Componente unificado para GROUP_STANDINGS
-// HOST: Ingresa resultados de partidos -> genera posiciones automaticamente.
-//       Si la tabla generada no coincide con la realidad (p.ej. fair play
-//       en FIFA), puede sobrescribirla manualmente arrastrando equipos.
-// PLAYER: Arrastra equipos para predecir orden -> ve resultado oficial cuando esté.
+// Componente unificado para GROUP_STANDINGS (modo Estratega).
+//
+// HOST sin tabla todavía → arma la tabla con drag-and-drop (misma UI que
+//   el jugador) y la publica. NO ingresa marcadores: en este modo no
+//   importan, solo el orden final.
+// HOST con tabla publicada → puede "Sobrescribir tabla" (drag-and-drop
+//   con razón obligatoria + notificación a todos los miembros).
+// PLAYER → arma su predicción con drag-and-drop. Ve resultado oficial
+//   cuando el host lo publique.
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
@@ -13,17 +17,13 @@ import {
   saveGroupStandingsPick,
   getGroupStandingsPick,
   getGroupStandingsResult,
-  getGroupMatchResults,
-  generateGroupStandings,
   publishGroupStandingsResult,
-  upsertResult,
   getGroupBreakdown,
   type GroupSingleBreakdown,
 } from "../../lib/api";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../../hooks/useIsMobile";
 import type { Team, Match, TeamStanding } from "./types";
 import { BreakdownModal } from "./BreakdownModal";
-import { MatchInputForm } from "./MatchInputForm";
 import { StaticTeamList, DraggableTeamList } from "./TeamListComponents";
 
 export type { Team, Match, TeamStanding };
@@ -46,12 +46,10 @@ export function GroupStandingsCard({
   groupId,
   groupName,
   teams,
-  matches,
   token,
   isHost,
   isLocked,
 }: GroupStandingsCardProps) {
-  const teamMap = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const isMobile = useIsMobile();
   const t = useTranslations("pool");
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,15 +66,14 @@ export function GroupStandingsCard({
 
   // Official result state
   const [officialResult, setOfficialResult] = useState<string[] | null>(null);
-  // officialStandings se usa para debug/log pero no se renderiza directamente
-  const [, setOfficialStandings] = useState<TeamStanding[] | null>(null);
 
-  // HOST match results state
-  const [matchResults, setMatchResults] = useState<Map<string, { homeGoals: string; awayGoals: string; saved: boolean; existsInDb: boolean }>>(new Map());
-  const [savingMatch, setSavingMatch] = useState<string | null>(null);
-  const [generatingStandings, setGeneratingStandings] = useState(false);
+  // HOST initial-publish state — host's draft order before the table is
+  // published for the first time. Used only when there's no officialResult
+  // yet. Once published, the override flow takes over.
+  const [hostInitialOrder, setHostInitialOrder] = useState<string[]>([]);
+  const [savingInitial, setSavingInitial] = useState(false);
 
-  // HOST override state (drag-and-drop manual override of an already-published table)
+  // HOST override state (drag-and-drop override of an already-published table)
   const [isOverriding, setIsOverriding] = useState(false);
   const [overrideOrder, setOverrideOrder] = useState<string[]>([]);
   const [overrideReason, setOverrideReason] = useState("");
@@ -86,7 +83,6 @@ export function GroupStandingsCard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [showMatchDetails, setShowMatchDetails] = useState(false);
 
   // Breakdown modal state
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -96,6 +92,7 @@ export function GroupStandingsCard({
   // Load data on mount
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poolId, phaseId, groupId]);
 
   async function loadData() {
@@ -103,7 +100,6 @@ export function GroupStandingsCard({
       setLoading(true);
       setError(null);
 
-      // Load player pick
       const { prediction } = await getGroupStandingsPick(token, poolId, phaseId, groupId);
       if (prediction?.teamIds) {
         setPlayerPick(prediction.teamIds);
@@ -115,27 +111,13 @@ export function GroupStandingsCard({
         setIsEditingPick(true);
       }
 
-      // Load official result
       const { result } = await getGroupStandingsResult(token, poolId, phaseId, groupId);
       if (result?.teamIds) {
         setOfficialResult(result.teamIds);
-      }
-
-      // If HOST, load match results
-      if (isHost) {
-        const matchData = await getGroupMatchResults(token, poolId, groupId);
-        const newMatchResults = new Map<string, { homeGoals: string; awayGoals: string; saved: boolean; existsInDb: boolean }>();
-
-        for (const match of matches) {
-          const existing = matchData.results[match.id];
-          newMatchResults.set(match.id, {
-            homeGoals: existing ? String(existing.homeGoals) : "",
-            awayGoals: existing ? String(existing.awayGoals) : "",
-            saved: !!existing,
-            existsInDb: !!existing,
-          });
-        }
-        setMatchResults(newMatchResults);
+      } else if (isHost) {
+        // Seed the host's draft with the teams in default order so the
+        // drag-and-drop has something to render before they touch it.
+        setHostInitialOrder(teams.map((t) => t.id));
       }
     } catch (err: any) {
       setError(err?.message || t("groupStandings.errorLoading"));
@@ -143,15 +125,6 @@ export function GroupStandingsCard({
       setLoading(false);
     }
   }
-
-  // Count saved matches
-  const savedMatchCount = useMemo(() => {
-    let count = 0;
-    matchResults.forEach((v) => { if (v.saved) count++; });
-    return count;
-  }, [matchResults]);
-
-  const allMatchesSaved = savedMatchCount === matches.length;
 
   // Save player pick
   async function handleSavePlayerPick() {
@@ -171,69 +144,36 @@ export function GroupStandingsCard({
     }
   }
 
-  // Save match result (HOST). Initial entry only — modificar marcadores
-  // ya cerrados se hace desde el flujo de overrides de partidos, no aquí.
-  async function handleSaveMatchResult(matchId: string) {
-    const state = matchResults.get(matchId);
-    if (!state) return;
-
-    const homeGoals = parseInt(state.homeGoals);
-    const awayGoals = parseInt(state.awayGoals);
-
-    if (isNaN(homeGoals) || isNaN(awayGoals) || homeGoals < 0 || awayGoals < 0) {
-      setError(t("invalidScore"));
-      return;
-    }
-
+  // HOST: publish the initial official table.
+  // No reason required — this is the first publication, not an errata.
+  async function handlePublishInitialResult() {
+    if (hostInitialOrder.length !== teams.length) return;
     try {
-      setSavingMatch(matchId);
+      setSavingInitial(true);
       setError(null);
 
-      await upsertResult(token, poolId, matchId, { homeGoals, awayGoals });
+      await publishGroupStandingsResult(
+        token, poolId, phaseId, groupId,
+        hostInitialOrder,
+      );
 
-      setMatchResults((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(matchId, { ...state, saved: true, existsInDb: true });
-        return newMap;
-      });
-
-      setSuccessMessage(t("groupStandings.resultSaved"));
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 1500);
-    } catch (err: any) {
-      setError(err?.message || t("groupStandings.errorSavingResult"));
-    } finally {
-      setSavingMatch(null);
-    }
-  }
-
-  // Generate standings from match results (HOST)
-  async function handleGenerateStandings() {
-    try {
-      setGeneratingStandings(true);
-      setError(null);
-
-      const { result, standings } = await generateGroupStandings(token, poolId, phaseId, groupId);
-      setOfficialResult(result.teamIds);
-      setOfficialStandings(standings);
+      setOfficialResult(hostInitialOrder);
       setSuccessMessage(t("groupStandings.standingsGenerated"));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
     } catch (err: any) {
       setError(err?.message || t("groupStandings.errorGenerating"));
     } finally {
-      setGeneratingStandings(false);
+      setSavingInitial(false);
     }
   }
 
-  // Entrar en modo override drag-and-drop. Solo disponible cuando ya
-  // hay tabla oficial publicada y todos los partidos están cerrados.
+  // HOST: enter drag-and-drop override of the already-published table.
   function handleEnterOverride() {
     if (!officialResult) return;
     setOverrideOrder([...officialResult]);
     setOverrideReason("");
     setIsOverriding(true);
-    setShowMatchDetails(false);
   }
 
   function handleCancelOverride() {
@@ -242,7 +182,6 @@ export function GroupStandingsCard({
     setOverrideReason("");
   }
 
-  // Guardar override: PUT al endpoint de results, dispara email a todos.
   async function handleSaveOverride() {
     if (!overrideReason.trim()) {
       setError(t("groupStandings.reasonRequired"));
@@ -272,7 +211,6 @@ export function GroupStandingsCard({
     }
   }
 
-  // Cargar breakdown de puntos
   async function handleShowBreakdown() {
     try {
       setLoadingBreakdown(true);
@@ -287,15 +225,6 @@ export function GroupStandingsCard({
     }
   }
 
-  function updateMatchResult(matchId: string, field: "homeGoals" | "awayGoals", value: string) {
-    setMatchResults((prev) => {
-      const newMap = new Map(prev);
-      const current = newMap.get(matchId) || { homeGoals: "", awayGoals: "", saved: false, existsInDb: false };
-      newMap.set(matchId, { ...current, [field]: value, saved: false });
-      return newMap;
-    });
-  }
-
   if (loading) {
     return (
       <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: colors.white, textAlign: "center" }}>
@@ -304,9 +233,6 @@ export function GroupStandingsCard({
     );
   }
 
-  // Visual treatment for the player's "saved" state: green border on the
-  // column, banner across the top, "Edit prediction" button — designed
-  // so the user can tell at a glance whether their pick is locked in.
   const showPickSavedTreatment = playerPickSaved && !isEditingPick;
   const pickColumnStyle: React.CSSProperties = showPickSavedTreatment
     ? {
@@ -365,7 +291,6 @@ export function GroupStandingsCard({
             </>
           ) : (
             <>
-              {/* Saved-state banner */}
               <div
                 style={{
                   background: "#dcfce7",
@@ -407,14 +332,14 @@ export function GroupStandingsCard({
           )}
         </div>
 
-        {/* RIGHT: Official Result, HOST Match Input, or HOST Override */}
+        {/* RIGHT: Official Result, HOST initial publish, or HOST Override */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: colors.textLighter }}>
             {t("groupStandings.officialResult")} {officialResult && !isOverriding && <span style={{ color: colors.warning }}>★</span>}
           </div>
 
           {isOverriding ? (
-            // HOST: Manual drag-and-drop override of the published table.
+            // HOST: drag-and-drop override of an already-published table.
             <div
               style={{
                 border: "2px solid #f59e0b",
@@ -502,67 +427,66 @@ export function GroupStandingsCard({
               </div>
             </div>
           ) : officialResult ? (
-            // Tabla oficial publicada
+            // Tabla oficial ya publicada
             <>
               <StaticTeamList teams={teams} orderedTeamIds={officialResult} isOfficial isMobile={isMobile} />
               {isHost && (
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
+                <div style={{ marginTop: "0.5rem" }}>
                   <button
-                    onClick={() => setShowMatchDetails(!showMatchDetails)}
+                    onClick={handleEnterOverride}
                     style={{
-                      flex: 1,
-                      padding: isMobile ? "10px 12px" : "0.4rem",
-                      fontSize: isMobile ? 13 : 12,
-                      background: colors.bgLight,
-                      color: colors.textDark,
-                      border: "1px solid #d1d5db",
-                      borderRadius: 6,
+                      width: "100%",
+                      padding: isMobile ? "12px 16px" : "0.6rem",
+                      fontSize: isMobile ? 14 : 13,
+                      fontWeight: 600,
+                      background: colors.warningBgAmber,
+                      color: colors.warningDarker,
+                      border: "1px solid #fcd34d",
+                      borderRadius: 8,
                       cursor: "pointer",
                       minHeight: TOUCH_TARGET.minimum,
                       ...mobileInteractiveStyles.tapHighlight,
                     }}
                   >
-                    {showMatchDetails ? t("groupStandings.hideMatches") : t("groupStandings.showMatches")}
+                    {t("groupStandings.overrideBtn")}
                   </button>
-                  {allMatchesSaved && (
-                    <button
-                      onClick={handleEnterOverride}
-                      style={{
-                        flex: 1,
-                        padding: isMobile ? "10px 12px" : "0.4rem",
-                        fontSize: isMobile ? 13 : 12,
-                        fontWeight: 600,
-                        background: colors.warningBgAmber,
-                        color: colors.warningDarker,
-                        border: "1px solid #fcd34d",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        minHeight: TOUCH_TARGET.minimum,
-                        ...mobileInteractiveStyles.tapHighlight,
-                      }}
-                    >
-                      {t("groupStandings.overrideBtn")}
-                    </button>
-                  )}
                 </div>
               )}
             </>
           ) : isHost ? (
-            // HOST sin tabla todavía: ingresa marcadores para generar
-            <MatchInputForm
-              matches={matches}
-              teamMap={teamMap}
-              matchResults={matchResults}
-              savingMatch={savingMatch}
-              allMatchesSaved={allMatchesSaved}
-              generatingStandings={generatingStandings}
-              savedMatchCount={savedMatchCount}
-              onSaveMatchResult={handleSaveMatchResult}
-              onUpdateMatchResult={updateMatchResult}
-              onGenerateStandings={handleGenerateStandings}
-              isMobile={isMobile}
-              t={t}
-            />
+            // HOST sin tabla todavía: arma la tabla y la publica con drag-and-drop.
+            <>
+              <DraggableTeamList
+                teams={teams}
+                orderedTeamIds={hostInitialOrder}
+                onOrderChange={setHostInitialOrder}
+                disabled={savingInitial}
+                isMobile={isMobile}
+              />
+              <div style={{ fontSize: 11, color: colors.textLighter, marginTop: "0.5rem", fontStyle: "italic" }}>
+                {t("groupStandings.hostInitialHint")}
+              </div>
+              <button
+                onClick={handlePublishInitialResult}
+                disabled={savingInitial || hostInitialOrder.length !== teams.length}
+                style={{
+                  width: "100%",
+                  marginTop: "0.5rem",
+                  padding: isMobile ? "12px 20px" : "0.6rem",
+                  fontSize: isMobile ? 15 : 13,
+                  fontWeight: 600,
+                  background: savingInitial ? colors.borderMedium : colors.brand,
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: savingInitial ? "not-allowed" : "pointer",
+                  minHeight: TOUCH_TARGET.minimum,
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {savingInitial ? t("groupStandings.saving") : t("groupStandings.publishStandings")}
+              </button>
+            </>
           ) : (
             // PLAYER sin tabla: mensaje de espera
             <div style={{ padding: "2rem 1rem", textAlign: "center", background: colors.bgLighter, borderRadius: 8, color: colors.textLighter, fontSize: 13 }}>
@@ -571,75 +495,6 @@ export function GroupStandingsCard({
           )}
         </div>
       </div>
-
-      {/* Show match details for HOST after standings generated */}
-      {isHost && showMatchDetails && officialResult && !isOverriding && (
-        <div style={{ marginTop: "1rem", padding: "0.75rem", background: colors.bgLighter, borderRadius: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: "0.75rem", color: colors.textLighter }}>
-            {t("groupStandings.matchResultsTitle")}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {matches.map((match) => {
-              const state = matchResults.get(match.id);
-              const homeTeam = teamMap.get(match.homeTeamId);
-              const awayTeam = teamMap.get(match.awayTeamId);
-              const homeGoals = state?.homeGoals ?? "?";
-              const awayGoals = state?.awayGoals ?? "?";
-
-              return (
-                <div
-                  key={match.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "0.5rem 0.75rem",
-                    background: colors.white,
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 6,
-                  }}
-                >
-                  <div style={{ flex: 1, textAlign: "right", paddingRight: "0.75rem" }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
-                      {homeTeam?.name || t("groupStandings.unknownTeam")}
-                    </span>
-                    {homeTeam?.code && (
-                      <span style={{ fontSize: 10, color: colors.textLighter, marginLeft: "0.25rem" }}>
-                        ({homeTeam.code})
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    padding: "0.25rem 0.75rem",
-                    background: colors.bgLight,
-                    borderRadius: 4,
-                    minWidth: 70,
-                    justifyContent: "center",
-                  }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>{homeGoals}</span>
-                    <span style={{ fontSize: 12, color: colors.textLighter }}>-</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: colors.text }}>{awayGoals}</span>
-                  </div>
-
-                  <div style={{ flex: 1, textAlign: "left", paddingLeft: "0.75rem" }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
-                      {awayTeam?.name || t("groupStandings.unknownTeam")}
-                    </span>
-                    {awayTeam?.code && (
-                      <span style={{ fontSize: 10, color: colors.textLighter, marginLeft: "0.25rem" }}>
-                        ({awayTeam.code})
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Breakdown button - show when there's official result */}
       {officialResult && !isOverriding && (

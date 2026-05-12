@@ -774,6 +774,8 @@
     "generating": "Gerando...",
     "generateStandings": "Gerar posições",
     "pendingPublish": "Pendente de publicação",
+    "publishStandings": "Publicar classificação oficial",
+    "hostInitialHint": "Arraste os times para montar a classificação oficial do grupo. Ao publicar, será visível para todos os jogadores.",
     "matchResultsTitle": "Resultados dos jogos",
     "unknownTeam": "Desconhecido",
     "viewBreakdown": "Ver detalhamento de pontos",
