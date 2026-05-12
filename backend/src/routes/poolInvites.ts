@@ -232,10 +232,14 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
       });
     } else if (existing.status === "PENDING_APPROVAL") {
       // Ya tiene una solicitud pendiente
-      return { poolId: invite.poolId, status: "PENDING_APPROVAL" };
+      return { poolId: invite.poolId, status: "PENDING_APPROVAL", alreadyMember: true };
     } else {
-      // Ya es miembro activo o baneado
-      return { poolId: invite.poolId, status: existing.status };
+      // Ya es miembro activo o baneado — devolvemos el estado existente
+      // pero marcamos alreadyMember para que afuera NO escribamos un
+      // POOL_JOINED espurio ni dispararemos un transitionToActive falso
+      // (ej. host clickeando su propia invite). Ver incidente
+      // cocholo@gmail.com / "Mundial en familia".
+      return { poolId: invite.poolId, status: existing.status, alreadyMember: true };
     }
 
     // Atomic conditional increment — Postgres serialises UPDATEs on
@@ -279,7 +283,7 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
       }
     }
 
-    return { poolId: invite.poolId, status: initialStatus, referrerUserId };
+    return { poolId: invite.poolId, status: initialStatus, referrerUserId, alreadyMember: false };
   });
   } catch (err: any) {
     if (err.message === "BANNED_FROM_POOL") {
@@ -313,7 +317,20 @@ poolInvitesRouter.post("/join", poolJoinLimiter, async (req, res) => {
     throw err; // Re-throw if it's another error
   }
 
-  // Auditoría según el status inicial
+  // Auditoría según el status inicial. We skip both audit + analytics
+  // when `alreadyMember` is true — the user re-clicked an invite they
+  // already redeemed (or clicked their own as host) and no actual join
+  // happened, so writing POOL_JOINED would pollute the audit trail.
+  if (joined.alreadyMember) {
+    return sendOk(res, {
+      poolId: joined.poolId,
+      status: joined.status,
+      message: joined.status === "PENDING_APPROVAL"
+        ? "You already have a pending join request for this pool."
+        : "You are already a member of this pool."
+    });
+  }
+
   if (joined.status === "PENDING_APPROVAL") {
     await writeAuditEvent({
       actorUserId: req.auth!.userId,

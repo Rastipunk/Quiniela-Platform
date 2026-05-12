@@ -41,8 +41,18 @@ const ROLES_THAT_KEEP_POOL_ACTIVE: PoolMemberRole[] = ["PLAYER", "CO_ADMIN"];
 /**
  * Transición DRAFT → ACTIVE
  *
- * Trigger: Cuando el primer PLAYER se une al pool
- * Condiciones: Pool debe estar en DRAFT
+ * Trigger: Cuando el primer PLAYER/CO_ADMIN se une al pool.
+ *
+ * Pre-condition: the pool MUST have at least one ACTIVE member with role
+ * PLAYER or CO_ADMIN. Without this guard, any flow that calls this
+ * function "optimistically" (e.g. a host clicking their own invite link
+ * via [poolInvites.ts], or a corporate activation by a user who is
+ * already a member) silently flips DRAFT→ACTIVE without a real player
+ * present — and the pool gets stuck because the revert trigger fires
+ * only when the *last* non-host member leaves, which never happens if
+ * none was ever added. This guard makes the transition idempotent and
+ * truthful for every caller. See incident: cocholo@gmail.com /
+ * "Mundial en familia" (pool d17c0223).
  */
 export async function transitionToActive(poolId: string, actorUserId: string) {
   const pool = await prisma.pool.findUnique({
@@ -58,6 +68,18 @@ export async function transitionToActive(poolId: string, actorUserId: string) {
     // Ya está en ACTIVE o posterior, no hacer nada
     return;
   }
+
+  // Guard: only transition when at least one PLAYER/CO_ADMIN is actually
+  // ACTIVE on the pool. Callers writing the new PoolMember row inside a
+  // transaction must commit it before invoking this function.
+  const activeNonHost = await prisma.poolMember.count({
+    where: {
+      poolId,
+      status: "ACTIVE",
+      role: { in: ROLES_THAT_KEEP_POOL_ACTIVE },
+    },
+  });
+  if (activeNonHost === 0) return;
 
   // Transición a ACTIVE
   await prisma.pool.update({

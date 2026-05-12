@@ -140,8 +140,9 @@ describe("canCreateInvites", () => {
 // ─── transitionToActive ────────────────────────────────────────
 
 describe("transitionToActive", () => {
-  it("transitions DRAFT → ACTIVE", async () => {
+  it("transitions DRAFT → ACTIVE when an ACTIVE non-host exists", async () => {
     (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "DRAFT" });
+    (prisma.poolMember.count as ReturnType<typeof vi.fn>).mockResolvedValue(1);
     (prisma.pool.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
     (writeAuditEvent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
@@ -157,6 +158,18 @@ describe("transitionToActive", () => {
         dataJson: expect.objectContaining({ from: "DRAFT", to: "ACTIVE" }),
       })
     );
+  });
+
+  it("does NOT transition when DRAFT pool has zero ACTIVE PLAYER/CO_ADMIN", async () => {
+    // Regression: host clicking their own invite link, or corporate
+    // re-activation by an existing member, should not flip DRAFT→ACTIVE.
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "DRAFT" });
+    (prisma.poolMember.count as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+
+    await transitionToActive("pool-1", "user-1");
+
+    expect(prisma.pool.update).not.toHaveBeenCalled();
+    expect(writeAuditEvent).not.toHaveBeenCalled();
   });
 
   it("does nothing if pool is already ACTIVE", async () => {
