@@ -24,3 +24,43 @@ export async function generateGroupStandings(token: string, poolId: string, phas
 export async function getGroupMatchResults(token: string, poolId: string, groupId: string): Promise<{ matches: any[]; results: Record<string, any>; completedCount: number; totalCount: number }> {
   return requestJson<{ matches: any[]; results: Record<string, any>; completedCount: number; totalCount: number }>(`/pools/${poolId}/group-match-results/${groupId}`, { method: "GET" });
 }
+
+export type TeamStandingRow = {
+  teamId: string;
+  groupId: string;
+  position: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+};
+
+export type GroupStandingsStats = {
+  standings: TeamStandingRow[];
+  completedMatches: number;
+  totalMatches: number;
+  publishedTeamIds: string[] | null;
+  publishedAtUtc: string | null;
+  publishedVersion: number | null;
+  publishedReason: string | null;
+};
+
+// Live classic-table stats. Used by the ClassicStandingsTable to render
+// the FIFA-style view (Pos / PJ / G / E / P / GF / GC / DG / Pts) and
+// detect divergence between live-computed order and the host-published
+// order when a manual override was performed.
+export async function getGroupStandingsStats(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  groupId: string,
+): Promise<GroupStandingsStats> {
+  return requestJson<GroupStandingsStats>(
+    `/pools/${poolId}/group-standings-stats/${phaseId}/${groupId}`,
+    { method: "GET" },
+  );
+}
