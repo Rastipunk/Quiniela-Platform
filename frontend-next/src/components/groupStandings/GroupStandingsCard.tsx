@@ -1,14 +1,23 @@
 "use client";
 
-// Componente unificado para GROUP_STANDINGS (modo Estratega).
+// GROUP_STANDINGS card (Estratega mode).
 //
-// HOST sin tabla todavía → arma la tabla con drag-and-drop (misma UI que
-//   el jugador) y la publica. NO ingresa marcadores: en este modo no
-//   importan, solo el orden final.
-// HOST con tabla publicada → puede "Sobrescribir tabla" (drag-and-drop
-//   con razón obligatoria + notificación a todos los miembros).
-// PLAYER → arma su predicción con drag-and-drop. Ve resultado oficial
-//   cuando el host lo publique.
+// Source of truth for the official table is the scraper-fed pipeline:
+//   1. liveScoresJob writes PoolMatchResult for every match.
+//   2. autoPublishStructuralResults (backend) recomputes the group
+//      table and upserts GroupStandingsResult whenever the last match
+//      of the group is confirmed.
+//
+// The host never publishes the table manually. The host CAN, in case
+// of a scraper error or fair-play tiebreaker the calculator can't
+// know about, override the published order via drag-and-drop +
+// mandatory reason — that flow is preserved unchanged from the
+// previous iteration.
+//
+// PLAYER → drags teams to predict the order.
+// HOST   → same view as the player, plus a "Sobrescribir tabla"
+//          button that appears only when an official table has been
+//          published.
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
@@ -16,15 +25,17 @@ import { colors } from "@/lib/theme";
 import {
   saveGroupStandingsPick,
   getGroupStandingsPick,
-  getGroupStandingsResult,
+  getGroupStandingsStats,
   publishGroupStandingsResult,
   getGroupBreakdown,
   type GroupSingleBreakdown,
+  type GroupStandingsStats,
 } from "../../lib/api";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../../hooks/useIsMobile";
 import type { Team, Match, TeamStanding } from "./types";
 import { BreakdownModal } from "./BreakdownModal";
 import { StaticTeamList, DraggableTeamList } from "./TeamListComponents";
+import { ClassicStandingsTable } from "./ClassicStandingsTable";
 
 export type { Team, Match, TeamStanding };
 
@@ -64,16 +75,10 @@ export function GroupStandingsCard({
   const [isEditingPick, setIsEditingPick] = useState(false);
   const [savingPick, setSavingPick] = useState(false);
 
-  // Official result state
-  const [officialResult, setOfficialResult] = useState<string[] | null>(null);
+  // Live + published stats coming from the new backend endpoint.
+  const [stats, setStats] = useState<GroupStandingsStats | null>(null);
 
-  // HOST initial-publish state — host's draft order before the table is
-  // published for the first time. Used only when there's no officialResult
-  // yet. Once published, the override flow takes over.
-  const [hostInitialOrder, setHostInitialOrder] = useState<string[]>([]);
-  const [savingInitial, setSavingInitial] = useState(false);
-
-  // HOST override state (drag-and-drop override of an already-published table)
+  // HOST override state (drag-and-drop over a published table)
   const [isOverriding, setIsOverriding] = useState(false);
   const [overrideOrder, setOverrideOrder] = useState<string[]>([]);
   const [overrideReason, setOverrideReason] = useState("");
@@ -84,12 +89,11 @@ export function GroupStandingsCard({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Breakdown modal state
+  // Breakdown modal
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [breakdownData, setBreakdownData] = useState<GroupSingleBreakdown | null>(null);
   const [loadingBreakdown, setLoadingBreakdown] = useState(false);
 
-  // Load data on mount
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,14 +115,8 @@ export function GroupStandingsCard({
         setIsEditingPick(true);
       }
 
-      const { result } = await getGroupStandingsResult(token, poolId, phaseId, groupId);
-      if (result?.teamIds) {
-        setOfficialResult(result.teamIds);
-      } else if (isHost) {
-        // Seed the host's draft with the teams in default order so the
-        // drag-and-drop has something to render before they touch it.
-        setHostInitialOrder(teams.map((t) => t.id));
-      }
+      const liveStats = await getGroupStandingsStats(token, poolId, phaseId, groupId);
+      setStats(liveStats);
     } catch (err: any) {
       setError(err?.message || t("groupStandings.errorLoading"));
     } finally {
@@ -126,7 +124,6 @@ export function GroupStandingsCard({
     }
   }
 
-  // Save player pick
   async function handleSavePlayerPick() {
     try {
       setSavingPick(true);
@@ -144,34 +141,9 @@ export function GroupStandingsCard({
     }
   }
 
-  // HOST: publish the initial official table.
-  // No reason required — this is the first publication, not an errata.
-  async function handlePublishInitialResult() {
-    if (hostInitialOrder.length !== teams.length) return;
-    try {
-      setSavingInitial(true);
-      setError(null);
-
-      await publishGroupStandingsResult(
-        token, poolId, phaseId, groupId,
-        hostInitialOrder,
-      );
-
-      setOfficialResult(hostInitialOrder);
-      setSuccessMessage(t("groupStandings.standingsGenerated"));
-      if (successTimerRef.current) clearTimeout(successTimerRef.current);
-      successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
-    } catch (err: any) {
-      setError(err?.message || t("groupStandings.errorGenerating"));
-    } finally {
-      setSavingInitial(false);
-    }
-  }
-
-  // HOST: enter drag-and-drop override of the already-published table.
   function handleEnterOverride() {
-    if (!officialResult) return;
-    setOverrideOrder([...officialResult]);
+    if (!stats?.publishedTeamIds) return;
+    setOverrideOrder([...stats.publishedTeamIds]);
     setOverrideReason("");
     setIsOverriding(true);
   }
@@ -198,12 +170,15 @@ export function GroupStandingsCard({
         overrideOrder, overrideReason.trim(),
       );
 
-      setOfficialResult(overrideOrder);
       setIsOverriding(false);
       setOverrideReason("");
       setSuccessMessage(t("groupStandings.overrideSuccess"));
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccessMessage(null), 3000);
+
+      // Refresh stats so the table picks up the new publishedTeamIds.
+      const liveStats = await getGroupStandingsStats(token, poolId, phaseId, groupId);
+      setStats(liveStats);
     } catch (err: any) {
       setError(err?.message || t("groupStandings.errorOverride"));
     } finally {
@@ -233,6 +208,7 @@ export function GroupStandingsCard({
     );
   }
 
+  const officialPublished = !!stats?.publishedTeamIds;
   const showPickSavedTreatment = playerPickSaved && !isEditingPick;
   const pickColumnStyle: React.CSSProperties = showPickSavedTreatment
     ? {
@@ -245,10 +221,8 @@ export function GroupStandingsCard({
 
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: isMobile ? "1rem" : "1.25rem", background: colors.white }}>
-      {/* Header */}
       <h3 style={{ margin: "0 0 1rem 0", fontSize: 16, fontWeight: 700, color: colors.text }}>{groupName}</h3>
 
-      {/* Two column layout */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "1.5rem" }}>
 
         {/* LEFT: Player Pick */}
@@ -332,14 +306,15 @@ export function GroupStandingsCard({
           )}
         </div>
 
-        {/* RIGHT: Official Result, HOST initial publish, or HOST Override */}
+        {/* RIGHT: Classic standings table (live + published) or Override */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: colors.textLighter }}>
-            {t("groupStandings.officialResult")} {officialResult && !isOverriding && <span style={{ color: colors.warning }}>★</span>}
+            {t("groupStandings.officialResult")}
+            {officialPublished && !isOverriding && <span style={{ color: colors.warning }}> ★</span>}
           </div>
 
           {isOverriding ? (
-            // HOST: drag-and-drop override of an already-published table.
+            // HOST drag-and-drop override of a published table.
             <div
               style={{
                 border: "2px solid #f59e0b",
@@ -426,69 +401,40 @@ export function GroupStandingsCard({
                 </button>
               </div>
             </div>
-          ) : officialResult ? (
-            // Tabla oficial ya publicada
+          ) : stats ? (
             <>
-              <StaticTeamList teams={teams} orderedTeamIds={officialResult} isOfficial isMobile={isMobile} />
-              {isHost && (
-                <div style={{ marginTop: "0.5rem" }}>
-                  <button
-                    onClick={handleEnterOverride}
-                    style={{
-                      width: "100%",
-                      padding: isMobile ? "12px 16px" : "0.6rem",
-                      fontSize: isMobile ? 14 : 13,
-                      fontWeight: 600,
-                      background: colors.warningBgAmber,
-                      color: colors.warningDarker,
-                      border: "1px solid #fcd34d",
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      minHeight: TOUCH_TARGET.minimum,
-                      ...mobileInteractiveStyles.tapHighlight,
-                    }}
-                  >
-                    {t("groupStandings.overrideBtn")}
-                  </button>
-                </div>
-              )}
-            </>
-          ) : isHost ? (
-            // HOST sin tabla todavía: arma la tabla y la publica con drag-and-drop.
-            <>
-              <DraggableTeamList
+              <ClassicStandingsTable
                 teams={teams}
-                orderedTeamIds={hostInitialOrder}
-                onOrderChange={setHostInitialOrder}
-                disabled={savingInitial}
+                standings={stats.standings}
+                completedMatches={stats.completedMatches}
+                totalMatches={stats.totalMatches}
+                publishedOrder={stats.publishedTeamIds}
+                publishedReason={stats.publishedReason}
                 isMobile={isMobile}
               />
-              <div style={{ fontSize: 11, color: colors.textLighter, marginTop: "0.5rem", fontStyle: "italic" }}>
-                {t("groupStandings.hostInitialHint")}
-              </div>
-              <button
-                onClick={handlePublishInitialResult}
-                disabled={savingInitial || hostInitialOrder.length !== teams.length}
-                style={{
-                  width: "100%",
-                  marginTop: "0.5rem",
-                  padding: isMobile ? "12px 20px" : "0.6rem",
-                  fontSize: isMobile ? 15 : 13,
-                  fontWeight: 600,
-                  background: savingInitial ? colors.borderMedium : colors.brand,
-                  color: "white",
-                  border: "none",
-                  borderRadius: 8,
-                  cursor: savingInitial ? "not-allowed" : "pointer",
-                  minHeight: TOUCH_TARGET.minimum,
-                  ...mobileInteractiveStyles.tapHighlight,
-                }}
-              >
-                {savingInitial ? t("groupStandings.saving") : t("groupStandings.publishStandings")}
-              </button>
+              {isHost && officialPublished && !isLocked && (
+                <button
+                  onClick={handleEnterOverride}
+                  style={{
+                    width: "100%",
+                    marginTop: "0.75rem",
+                    padding: isMobile ? "12px 16px" : "0.6rem",
+                    fontSize: isMobile ? 14 : 13,
+                    fontWeight: 600,
+                    background: colors.warningBgAmber,
+                    color: colors.warningDarker,
+                    border: "1px solid #fcd34d",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    minHeight: TOUCH_TARGET.minimum,
+                    ...mobileInteractiveStyles.tapHighlight,
+                  }}
+                >
+                  {t("groupStandings.overrideBtn")}
+                </button>
+              )}
             </>
           ) : (
-            // PLAYER sin tabla: mensaje de espera
             <div style={{ padding: "2rem 1rem", textAlign: "center", background: colors.bgLighter, borderRadius: 8, color: colors.textLighter, fontSize: 13 }}>
               {t("groupStandings.pendingPublish")}
             </div>
@@ -496,8 +442,8 @@ export function GroupStandingsCard({
         </div>
       </div>
 
-      {/* Breakdown button - show when there's official result */}
-      {officialResult && !isOverriding && (
+      {/* Breakdown button */}
+      {officialPublished && !isOverriding && (
         <div style={{ marginTop: "1rem", textAlign: "center" }}>
           <button
             onClick={handleShowBreakdown}
@@ -521,7 +467,6 @@ export function GroupStandingsCard({
         </div>
       )}
 
-      {/* Messages */}
       {error && (
         <div style={{ marginTop: "1rem", padding: "0.6rem", background: colors.errorBg, border: "1px solid #fecaca", borderRadius: 6, color: colors.error, fontSize: 12 }}>
           {error}
@@ -533,7 +478,6 @@ export function GroupStandingsCard({
         </div>
       )}
 
-      {/* Breakdown Modal */}
       {showBreakdown && (
         <BreakdownModal
           groupName={groupName}
