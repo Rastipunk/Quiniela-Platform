@@ -10,7 +10,7 @@
  * "access denied" state.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -461,26 +461,27 @@ export default function AdminAnalyticsContent() {
         <SectionErrorsBanner errors={data.errors} />
       )}
 
-      {/* Top-line KPIs (with WoW deltas where deltable) */}
-      <TopLineSection topLine={data.topLine} weekAgo={data.topLineWeekAgo} isMobile={isMobile} />
+      {/* Section nav (sticky chips for jumping to a section) */}
+      <SectionNav isMobile={isMobile} />
 
-      {/* Locale distribution (post-modal split + completion rate) */}
-      <Section title="🌐 Distribución de idioma" subtitle="Idioma elegido en el modal de primer login + cuántos siguen pendientes">
+      {/* Top-line KPIs (with WoW deltas where deltable) */}
+      <section id="topline" style={{ scrollMarginTop: 72 }}>
+        <TopLineSection topLine={data.topLine} weekAgo={data.topLineWeekAgo} isMobile={isMobile} />
+      </section>
+
+      <Section id="locale" title="🌐 Distribución de idioma" subtitle="Idioma elegido en el modal de primer login + cuántos siguen pendientes">
         <LocaleDistributionSection data={data.localeDistribution} isMobile={isMobile} />
       </Section>
 
-      {/* User growth */}
-      <Section title="📈 Crecimiento de usuarios" subtitle="Signups por semana, últimas 12 semanas">
+      <Section id="users" title="📈 Crecimiento de usuarios" subtitle="Signups por semana, últimas 12 semanas">
         <SignupsChart data={data.signupsByWeek} isMobile={isMobile} />
       </Section>
 
-      {/* Pool growth */}
-      <Section title="🏆 Crecimiento de pools" subtitle="Pools creadas por semana, split personal vs corporativo">
+      <Section id="pools" title="🏆 Crecimiento de pools" subtitle="Pools creadas por semana, split personal vs corporativo">
         <PoolsChart data={data.poolsByWeek} isMobile={isMobile} />
       </Section>
 
-      {/* Engagement: DAU + funnel */}
-      <Section title="🎯 Engagement" subtitle="Usuarios activos, picks por semana, funnel de activación">
+      <Section id="engagement" title="🎯 Engagement" subtitle="Usuarios activos, picks por semana, funnel de activación">
         <EngagementSection
           dailyActive={data.dailyActiveUsers}
           picksByWeek={data.picksByWeek}
@@ -489,13 +490,11 @@ export default function AdminAnalyticsContent() {
         />
       </Section>
 
-      {/* Geography */}
-      <Section title="🌎 Geografía" subtitle="Top 20 países por número de usuarios">
+      <Section id="geo" title="🌎 Geografía" subtitle="Top 20 países por número de usuarios">
         <GeographySection data={data.usersByCountry} isMobile={isMobile} />
       </Section>
 
-      {/* Pool health */}
-      <Section title="🩺 Salud de pools" subtitle="Status, tamaño, alertas">
+      <Section id="health" title="🩺 Salud de pools" subtitle="Status, tamaño, alertas">
         <PoolHealthSection
           byStatus={data.poolsByStatus}
           sizes={data.poolSizeDistribution}
@@ -505,8 +504,7 @@ export default function AdminAnalyticsContent() {
         />
       </Section>
 
-      {/* Corporate funnel */}
-      <Section title="🏢 Funnel corporativo" subtitle="Inquiries → activaciones">
+      <Section id="corporate" title="🏢 Funnel corporativo" subtitle="Inquiries → activaciones">
         <CorporateSection
           funnel={data.corporateFunnel}
           orgs={data.topOrganizations}
@@ -515,8 +513,7 @@ export default function AdminAnalyticsContent() {
         />
       </Section>
 
-      {/* Revenue */}
-      <Section title="💰 Revenue" subtitle="Pagos completados por semana, breakdown por proveedor y tier">
+      <Section id="revenue" title="💰 Revenue" subtitle="Pagos completados por semana, breakdown por proveedor y tier">
         <RevenueSection
           weekly={data.revenueByWeek}
           payment={data.paymentBreakdown}
@@ -526,8 +523,7 @@ export default function AdminAnalyticsContent() {
         />
       </Section>
 
-      {/* Acquisition */}
-      <Section title="📡 Adquisición" subtitle="Source / medium UTM, conversión por canal, referidos orgánicos">
+      <Section id="acquisition" title="📡 Adquisición" subtitle="Source / medium UTM, conversión por canal, referidos orgánicos">
         <AcquisitionSection
           topAcquisition={data.topAcquisition}
           acquisitionFunnel={data.acquisitionFunnel}
@@ -536,28 +532,23 @@ export default function AdminAnalyticsContent() {
         />
       </Section>
 
-      {/* Cohort activation (signup → first pick within 14 days) */}
-      <Section title="⚡ Activación por cohorte" subtitle="% de signups de cada semana que hicieron al menos un pick en sus primeros 14 días">
+      <Section id="activation" title="⚡ Activación por cohorte" subtitle="% de signups de cada semana que hicieron al menos un pick en sus primeros 14 días">
         <CohortActivationSection data={data.cohortActivation} isMobile={isMobile} />
       </Section>
 
-      {/* Engagement signals */}
-      <Section title="🌟 Quién está usando Picks4All" subtitle="Top jugadores (30d), hosts más activos, tournaments con más actividad">
+      <Section id="who" title="🌟 Quién está usando Picks4All" subtitle="Top jugadores (30d), hosts más activos, tournaments con más actividad">
         <EngagementSignalsSection data={data.engagementSignals} isMobile={isMobile} />
       </Section>
 
-      {/* Communications health */}
-      <Section title="📬 Comunicación con usuarios" subtitle="Modal de idioma, deliverability de email, feedback recibido">
+      <Section id="comms" title="📬 Comunicación con usuarios" subtitle="Modal de idioma, deliverability de email, feedback recibido">
         <CommunicationsSection data={data.communicationsHealth} isMobile={isMobile} />
       </Section>
 
-      {/* Cohort retention */}
-      <Section title="🔄 Retención por cohorte" subtitle="% de signups que volvieron a hacer un pick en W1, W2 y W4">
+      <Section id="retention" title="🔄 Retención por cohorte" subtitle="% de signups que volvieron a hacer un pick en W1, W2 y W4">
         <CohortSection data={data.cohortRetention} isMobile={isMobile} />
       </Section>
 
-      {/* Operational */}
-      <Section title="🔧 Salud operacional" subtitle="Errores, suppressions, feedback reciente">
+      <Section id="ops" title="🔧 Salud operacional" subtitle="Errores, suppressions, feedback reciente">
         <OperationalSection data={data.operationalHealth} isMobile={isMobile} />
       </Section>
 
@@ -574,6 +565,78 @@ export default function AdminAnalyticsContent() {
         {data.cacheTtlSeconds}s {data.cached ? "· (cache hit)" : "· (fresh)"}
       </div>
     </div>
+  );
+}
+
+// ─── Sticky section nav (table-of-contents chips) ──────────
+
+const SECTION_NAV: Array<{ id: string; label: string }> = [
+  { id: "topline", label: "📊 KPIs" },
+  { id: "locale", label: "🌐 Idioma" },
+  { id: "users", label: "📈 Usuarios" },
+  { id: "pools", label: "🏆 Pools" },
+  { id: "engagement", label: "🎯 Engagement" },
+  { id: "geo", label: "🌎 Geografía" },
+  { id: "health", label: "🩺 Salud pools" },
+  { id: "corporate", label: "🏢 Corporate" },
+  { id: "revenue", label: "💰 Revenue" },
+  { id: "acquisition", label: "📡 Adquisición" },
+  { id: "activation", label: "⚡ Activación" },
+  { id: "who", label: "🌟 Quién usa" },
+  { id: "comms", label: "📬 Comunicación" },
+  { id: "retention", label: "🔄 Retención" },
+  { id: "ops", label: "🔧 Operacional" },
+];
+
+function SectionNav({ isMobile }: { isMobile: boolean }) {
+  return (
+    <nav
+      aria-label="Saltar a sección"
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+        background: `${colors.white}EE`,
+        backdropFilter: "blur(10px)",
+        margin: isMobile ? `0 -${spacing.md}px` : `0 -${spacing.xl}px`,
+        padding: `${spacing.sm}px ${isMobile ? spacing.md : spacing.xl}px`,
+        borderBottom: `1px solid ${colors.borderLight}`,
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      <div style={{ display: "flex", gap: spacing.xs, flexWrap: isMobile ? "nowrap" : "wrap" }}>
+        {SECTION_NAV.map((s) => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            style={{
+              flexShrink: 0,
+              padding: "6px 10px",
+              borderRadius: radii.pill,
+              border: `1px solid ${colors.borderLight}`,
+              background: colors.white,
+              color: colors.text,
+              fontSize: fontSize.xs,
+              fontWeight: fontWeight.semibold,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+              transition: "background 0.15s, border-color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${PALETTE.primary}10`;
+              e.currentTarget.style.borderColor = PALETTE.primary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = colors.white;
+              e.currentTarget.style.borderColor = colors.borderLight;
+            }}
+          >
+            {s.label}
+          </a>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -863,16 +926,21 @@ function TopLineSection({
 // ─── Section wrapper ────────────────────────────────────────
 
 function Section({
+  id,
   title,
   subtitle,
   children,
 }: {
+  id?: string;
   title: string;
   subtitle?: string;
   children: React.ReactNode;
 }) {
+  // `id` lets the sticky section-nav scroll-anchor each section. The
+  // small scroll-margin offsets the sticky bar height so the title
+  // isn't hidden under it when jumping in.
   return (
-    <section>
+    <section id={id} style={{ scrollMarginTop: 72 }}>
       <SectionHeader title={title} subtitle={subtitle} />
       {children}
     </section>
