@@ -541,6 +541,11 @@ export default function AdminAnalyticsContent() {
         <CohortActivationSection data={data.cohortActivation} isMobile={isMobile} />
       </Section>
 
+      {/* Engagement signals */}
+      <Section title="🌟 Quién está usando Picks4All" subtitle="Top jugadores (30d), hosts más activos, tournaments con más actividad">
+        <EngagementSignalsSection data={data.engagementSignals} isMobile={isMobile} />
+      </Section>
+
       {/* Communications health */}
       <Section title="📬 Comunicación con usuarios" subtitle="Modal de idioma, deliverability de email, feedback recibido">
         <CommunicationsSection data={data.communicationsHealth} isMobile={isMobile} />
@@ -1511,6 +1516,90 @@ function CohortActivationSection({
         ])}
       />
     </Card>
+  );
+}
+
+function EngagementSignalsSection({
+  data,
+  isMobile,
+}: {
+  data: AnalyticsDashboardResponse["engagementSignals"];
+  isMobile: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+        gap: spacing.md,
+      }}
+    >
+      <Card title="Top jugadores (últimos 30 días)" subtitle="Más picks hechos en cualquier tipo de pool" isMobile={isMobile}>
+        {data.topPlayers30d.length === 0 ? (
+          <div style={{ fontSize: fontSize.sm, color: colors.textMuted, padding: spacing.lg, textAlign: "center" }}>
+            Sin picks en 30 días.
+          </div>
+        ) : (
+          <Table
+            headers={["Jugador", "Picks", "Pools"]}
+            rows={data.topPlayers30d.map((p) => [
+              p.displayName,
+              fmtInt(p.pickCount),
+              fmtInt(p.poolCount),
+            ])}
+          />
+        )}
+      </Card>
+
+      <Card title="Top hosts" subtitle="Por miembros activos acumulados en sus pools" isMobile={isMobile}>
+        {data.topHosts.length === 0 ? (
+          <div style={{ fontSize: fontSize.sm, color: colors.textMuted, padding: spacing.lg, textAlign: "center" }}>
+            Sin hosts con miembros activos.
+          </div>
+        ) : (
+          <Table
+            headers={["Host", "Pools creadas", "Activas", "Miembros activos"]}
+            rows={data.topHosts.map((h) => [
+              h.displayName,
+              fmtInt(h.poolsCreated),
+              fmtInt(h.activePools),
+              fmtInt(h.totalActiveMembers),
+            ])}
+          />
+        )}
+      </Card>
+
+      <Card
+        title="Engagement por torneo"
+        subtitle="Pools, miembros activos, picks totales y jugadores únicos"
+        isMobile={isMobile}
+        span={2}
+      >
+        {data.tournamentEngagement.length === 0 ? (
+          <div style={{ fontSize: fontSize.sm, color: colors.textMuted, padding: spacing.lg, textAlign: "center" }}>
+            Sin torneos con datos.
+          </div>
+        ) : (
+          <Table
+            headers={["Torneo", "Pools", "Miembros activos", "Picks", "Jugadores únicos"]}
+            rows={data.tournamentEngagement.map((t) => [
+              <span key="n" style={{ fontWeight: fontWeight.semibold }}>
+                {t.tournamentName}
+                {t.templateKey && (
+                  <span style={{ color: colors.textLight, fontWeight: fontWeight.normal, marginLeft: 8, fontSize: fontSize.xs }}>
+                    {t.templateKey}
+                  </span>
+                )}
+              </span>,
+              fmtInt(t.poolCount),
+              fmtInt(t.totalActiveMembers),
+              fmtInt(t.totalPicks),
+              fmtInt(t.uniquePickers),
+            ])}
+          />
+        )}
+      </Card>
+    </div>
   );
 }
 

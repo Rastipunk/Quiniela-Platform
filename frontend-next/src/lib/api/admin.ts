@@ -250,6 +250,29 @@ export interface AnalyticsDashboardResponse {
     inProgressW2: boolean;
     inProgressW4: boolean;
   }[];
+  engagementSignals: {
+    topPlayers30d: {
+      userId: string;
+      displayName: string;
+      pickCount: number;
+      poolCount: number;
+    }[];
+    topHosts: {
+      userId: string;
+      displayName: string;
+      poolsCreated: number;
+      activePools: number;
+      totalActiveMembers: number;
+    }[];
+    tournamentEngagement: {
+      tournamentName: string;
+      templateKey: string | null;
+      poolCount: number;
+      totalActiveMembers: number;
+      totalPicks: number;
+      uniquePickers: number;
+    }[];
+  };
   communicationsHealth: {
     localePromptCompletionsDaily: { day: string; count: number }[];
     localePromptCompletionRate: number;

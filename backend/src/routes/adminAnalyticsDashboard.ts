@@ -71,6 +71,7 @@ interface DashboardPayload {
   paymentBreakdown: PaymentBreakdown;
   operationalHealth: OperationalHealth;
   communicationsHealth: CommunicationsHealth;
+  engagementSignals: EngagementSignals;
 }
 
 interface TopLineWeekAgo {
@@ -311,6 +312,45 @@ interface OperationalHealth {
  * users and the signal we get back from them. Mostly trend-oriented
  * because absolute counters are already in operationalHealth.
  */
+/**
+ * Engagement signals — who's actively using the platform, which
+ * hosts run the busiest pools, and which tournaments capture the most
+ * activity. These rows surface "what's working" so the team can
+ * support / replicate it.
+ */
+interface TopPlayerRow {
+  userId: string;
+  displayName: string;
+  pickCount: number;
+  poolCount: number;
+}
+
+interface TopHostRow {
+  userId: string;
+  displayName: string;
+  poolsCreated: number;
+  activePools: number;
+  totalActiveMembers: number;
+}
+
+interface TournamentEngagementRow {
+  tournamentName: string;
+  templateKey: string | null;
+  poolCount: number;
+  totalActiveMembers: number;
+  totalPicks: number;
+  uniquePickers: number;
+}
+
+interface EngagementSignals {
+  /** Top 10 by total picks made in the last 30 days (any table). */
+  topPlayers30d: TopPlayerRow[];
+  /** Top 10 hosts by total active members across their pools. */
+  topHosts: TopHostRow[];
+  /** Per-tournament engagement, sorted by total picks. */
+  tournamentEngagement: TournamentEngagementRow[];
+}
+
 interface CommunicationsHealth {
   /** Daily completions of the first-login locale-preference modal,
    *  last 30 days. Captures the modal's pickup velocity. */
@@ -423,6 +463,12 @@ const DEFAULT_OPERATIONAL: OperationalHealth = {
   failedAnalyticsEvents: 0,
   recentFeedback: [],
   auditEventsLast24h: 0,
+};
+
+const DEFAULT_ENGAGEMENT: EngagementSignals = {
+  topPlayers30d: [],
+  topHosts: [],
+  tournamentEngagement: [],
 };
 
 const DEFAULT_COMMUNICATIONS: CommunicationsHealth = {
@@ -1561,6 +1607,127 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     },
   );
 
+  // ── Engagement signals (top players, hosts, tournaments) ─
+  const engagementSignals = await safeRun<EngagementSignals>(
+    "engagementSignals",
+    DEFAULT_ENGAGEMENT,
+    async () => {
+      const [topPlayers, topHosts, tournamentEng] = await Promise.all([
+        // Top players by total picks (any table) in last 30d. poolCount =
+        // how many distinct pools they're picking in — a "spreads across
+        // multiple pools" engagement signal.
+        prisma.$queryRaw<
+          { user_id: string; display_name: string; pick_count: bigint; pool_count: bigint }[]
+        >`
+          WITH all_picks AS (
+            SELECT "userId", "poolId" FROM "Prediction" WHERE "createdAtUtc" >= ${day30Ago}
+            UNION ALL
+            SELECT "userId", "poolId" FROM "StructuralPrediction" WHERE "createdAtUtc" >= ${day30Ago}
+            UNION ALL
+            SELECT "userId", "poolId" FROM "GroupStandingsPrediction" WHERE "createdAtUtc" >= ${day30Ago}
+          )
+          SELECT u.id AS user_id,
+                 u."displayName" AS display_name,
+                 COUNT(*)::bigint AS pick_count,
+                 COUNT(DISTINCT ap."poolId")::bigint AS pool_count
+          FROM all_picks ap
+          JOIN "User" u ON u.id = ap."userId"
+          GROUP BY u.id, u."displayName"
+          ORDER BY pick_count DESC
+          LIMIT 10
+        `,
+        // Top hosts by total active members across all the pools they
+        // created. Captures "who's organising the busiest groups".
+        prisma.$queryRaw<
+          {
+            user_id: string;
+            display_name: string;
+            pools_created: bigint;
+            active_pools: bigint;
+            total_members: bigint;
+          }[]
+        >`
+          SELECT u.id AS user_id,
+                 u."displayName" AS display_name,
+                 COUNT(DISTINCT p.id)::bigint AS pools_created,
+                 COUNT(DISTINCT p.id) FILTER (WHERE p.status = 'ACTIVE')::bigint AS active_pools,
+                 COALESCE(SUM(mc.c), 0)::bigint AS total_members
+          FROM "User" u
+          INNER JOIN "Pool" p ON p."createdByUserId" = u.id
+          LEFT JOIN (
+            SELECT "poolId", COUNT(*)::int AS c
+            FROM "PoolMember" WHERE status = 'ACTIVE'
+            GROUP BY "poolId"
+          ) mc ON mc."poolId" = p.id
+          GROUP BY u.id, u."displayName"
+          ORDER BY total_members DESC, pools_created DESC
+          LIMIT 10
+        `,
+        // Tournament engagement: pools/members/picks per tournament
+        // instance. Lets the team see which tournaments are alive
+        // (e.g. WC2026 vs old UCL) and prioritise tooling work.
+        prisma.$queryRaw<
+          {
+            tournament_name: string;
+            template_key: string | null;
+            pool_count: bigint;
+            total_active_members: bigint;
+            total_picks: bigint;
+            unique_pickers: bigint;
+          }[]
+        >`
+          WITH all_picks AS (
+            SELECT "userId", "poolId" FROM "Prediction"
+            UNION ALL
+            SELECT "userId", "poolId" FROM "StructuralPrediction"
+            UNION ALL
+            SELECT "userId", "poolId" FROM "GroupStandingsPrediction"
+          )
+          SELECT ti.name AS tournament_name,
+                 ti."templateKey" AS template_key,
+                 COUNT(DISTINCT p.id)::bigint AS pool_count,
+                 COALESCE(SUM(mc.c), 0)::bigint AS total_active_members,
+                 COUNT(ap.*)::bigint AS total_picks,
+                 COUNT(DISTINCT ap."userId")::bigint AS unique_pickers
+          FROM "TournamentInstance" ti
+          LEFT JOIN "Pool" p ON p."tournamentInstanceId" = ti.id
+          LEFT JOIN (
+            SELECT "poolId", COUNT(*)::int AS c
+            FROM "PoolMember" WHERE status = 'ACTIVE'
+            GROUP BY "poolId"
+          ) mc ON mc."poolId" = p.id
+          LEFT JOIN all_picks ap ON ap."poolId" = p.id
+          GROUP BY ti.id, ti.name, ti."templateKey"
+          ORDER BY total_picks DESC NULLS LAST
+          LIMIT 15
+        `,
+      ]);
+      return {
+        topPlayers30d: topPlayers.map((r) => ({
+          userId: r.user_id,
+          displayName: r.display_name,
+          pickCount: Number(r.pick_count),
+          poolCount: Number(r.pool_count),
+        })),
+        topHosts: topHosts.map((r) => ({
+          userId: r.user_id,
+          displayName: r.display_name,
+          poolsCreated: Number(r.pools_created),
+          activePools: Number(r.active_pools),
+          totalActiveMembers: Number(r.total_members),
+        })),
+        tournamentEngagement: tournamentEng.map((r) => ({
+          tournamentName: r.tournament_name,
+          templateKey: r.template_key,
+          poolCount: Number(r.pool_count),
+          totalActiveMembers: Number(r.total_active_members),
+          totalPicks: Number(r.total_picks),
+          uniquePickers: Number(r.unique_pickers),
+        })),
+      };
+    },
+  );
+
   return {
     generatedAtUtc: now.toISOString(),
     cacheTtlSeconds: CACHE_TTL_MS / 1000,
@@ -1590,6 +1757,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     paymentBreakdown,
     operationalHealth,
     communicationsHealth,
+    engagementSignals,
   };
 }
 
