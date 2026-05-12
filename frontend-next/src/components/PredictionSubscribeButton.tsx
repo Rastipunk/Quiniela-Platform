@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { getToken } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { trackMetaCustomEvent } from "@/lib/metaPixel";
@@ -17,6 +17,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
  */
 export function PredictionSubscribeButton() {
   const t = useTranslations("worldCup");
+  const locale = useLocale();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,8 +50,12 @@ export function PredictionSubscribeButton() {
   const handleToggle = async () => {
     const token = getToken();
     if (!token) {
-      // Redirect to login with return URL
-      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      // Redirect to login preserving the current locale prefix so the
+      // user stays in their chosen language. Pre-fix this used a bare
+      // "/login?..." which sent EN/PT users to the Spanish login page.
+      const localePrefix = locale === "es" ? "" : `/${locale}`;
+      const returnPath = encodeURIComponent(window.location.pathname);
+      window.location.href = `${localePrefix}/login?redirect=${returnPath}`;
       return;
     }
 

@@ -94,6 +94,43 @@ function filterHreflangLinkHeader(
   return filtered.join(", ");
 }
 
+// Paths where a NEXT_LOCALE cookie is allowed to override the URL-based
+// locale detection. All of these have a UNIFORM mapping across locales
+// (the same path exists at /en/X, /pt/X and /X), so prepending the
+// cookie's locale to the path always resolves to a real route.
+//
+// Translated routes like /crear-pool ↔ /create-pool ↔ /criar-pool are
+// intentionally NOT in this list — next-intl can't serve /en/crear-pool
+// (it expects /en/create-pool), so prepending the locale would 404.
+// Locale-aware `Link`s from `@/i18n/navigation` handle those paths
+// correctly; this guard is the safety net for non-aware navigations
+// (raw `<a href>`, `window.location.href = "/..."`, etc.).
+const COOKIE_REDIRECT_PREFIXES = [
+  // Authenticated app
+  "/dashboard",
+  "/profile",
+  "/pools",
+  "/admin",
+  "/pago",
+  // Public auth flows
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
+
+function pathMatchesCookieRedirect(path: string): boolean {
+  return COOKIE_REDIRECT_PREFIXES.some(
+    (p) => path === p || path.startsWith(p + "/"),
+  );
+}
+
+function pathStartsWithLocale(path: string): boolean {
+  return routing.locales.some(
+    (l) => path === `/${l}` || path.startsWith(`/${l}/`),
+  );
+}
+
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
 
@@ -105,6 +142,32 @@ export function proxy(request: NextRequest) {
       `https://${nonWwwHost}`,
     );
     return NextResponse.redirect(url, 301);
+  }
+
+  // Step 1b: cookie-aware sticky locale.
+  // When the user explicitly chose a non-default locale (via the language
+  // switcher or the first-login modal, both of which write NEXT_LOCALE),
+  // honour that choice on any non-prefixed authenticated path. Without
+  // this, a raw `/dashboard` hit served the Spanish version even for an
+  // English-cookied user — the "language reverts" bug.
+  //
+  // We only READ the cookie (no Set-Cookie on the response), so the SEO
+  // cacheability documented in i18n/routing.ts stays intact: bots have
+  // no cookie and continue to land on the default-locale URL.
+  const path = request.nextUrl.pathname;
+  if (!pathStartsWithLocale(path) && pathMatchesCookieRedirect(path)) {
+    const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
+    if (
+      cookieLocale &&
+      cookieLocale !== routing.defaultLocale &&
+      (routing.locales as readonly string[]).includes(cookieLocale)
+    ) {
+      const target = new URL(
+        `/${cookieLocale}${path}${request.nextUrl.search}`,
+        request.nextUrl.origin,
+      );
+      return NextResponse.redirect(target, 307);
+    }
   }
 
   // Step 2: i18n routing (locale detection + redirect).
