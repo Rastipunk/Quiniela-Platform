@@ -28,14 +28,18 @@ import { PRESETS, type PresetInfo } from "./presets";
 // ── Constants ─────────────────────────────────────────────────
 
 
-const CRITERION_META: Record<MatchPickTypeKey, { label: string; description: string; recGroup: number; recKnockout: number }> = {
-  MATCH_OUTCOME_90MIN: { label: "Resultado", description: "Acertar ganador o empate", recGroup: 10, recKnockout: 10 },
-  HOME_GOALS:          { label: "Goles Local", description: "Acertar goles del equipo local", recGroup: 4, recKnockout: 4 },
-  AWAY_GOALS:          { label: "Goles Visitante", description: "Acertar goles del equipo visitante", recGroup: 4, recKnockout: 4 },
-  GOAL_DIFFERENCE:     { label: "Diferencia de goles", description: "Acertar la diferencia entre ambos", recGroup: 2, recKnockout: 2 },
-  EXACT_SCORE:         { label: "Marcador Exacto", description: "Bonus por acertar ambos marcadores", recGroup: 0, recKnockout: 0 },
-  TOTAL_GOALS:         { label: "Total de Goles", description: "Acertar la suma total de goles", recGroup: 0, recKnockout: 0 },
-  PARTIAL_SCORE:       { label: "Marcador Parcial", description: "Acertar uno de los dos marcadores", recGroup: 0, recKnockout: 0 },
+// Recommended point values per criterion. Display copy lives in
+// messages/{locale}/poolWizard.json under `scoring.criteria.*` and
+// `scoring.criteriaDesc.*` — keep this table to numbers only so the
+// component can never leak Spanish labels into the EN/PT UIs.
+const CRITERION_META: Record<MatchPickTypeKey, { recGroup: number; recKnockout: number }> = {
+  MATCH_OUTCOME_90MIN: { recGroup: 10, recKnockout: 10 },
+  HOME_GOALS:          { recGroup: 4,  recKnockout: 4  },
+  AWAY_GOALS:          { recGroup: 4,  recKnockout: 4  },
+  GOAL_DIFFERENCE:     { recGroup: 2,  recKnockout: 2  },
+  EXACT_SCORE:         { recGroup: 0,  recKnockout: 0  },
+  TOTAL_GOALS:         { recGroup: 0,  recKnockout: 0  },
+  PARTIAL_SCORE:       { recGroup: 0,  recKnockout: 0  },
 };
 
 // ── Preset Config Generator ──────────────────────────────────
@@ -125,7 +129,7 @@ function generatePresetConfig(
 
 // ── Score Calculation Helpers ─────────────────────────────────
 
-type CalcResult = { key: MatchPickTypeKey; label: string; hit: boolean; points: number };
+type CalcResult = { key: MatchPickTypeKey; hit: boolean; points: number };
 
 function calculateScore(
   realHome: number,
@@ -138,7 +142,6 @@ function calculateScore(
 
   for (const t of enabledTypes) {
     if (!t.enabled || t.points <= 0) continue;
-    const meta = CRITERION_META[t.key];
     let hit = false;
 
     switch (t.key) {
@@ -168,7 +171,7 @@ function calculateScore(
         break;
     }
 
-    results.push({ key: t.key, label: meta.label, hit, points: hit ? t.points : 0 });
+    results.push({ key: t.key, hit, points: hit ? t.points : 0 });
   }
 
   return results;
@@ -186,6 +189,15 @@ function PresetCard({
   onSelect: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const tWizard = useTranslations("poolWizard");
+  // next-intl's `t` type doesn't allow runtime-computed keys at compile
+  // time. Cast to `(key: string) => string` so we can build the path
+  // from `preset.key`. The keys are exhaustive and stable.
+  const tDyn = tWizard as unknown as (key: string) => string;
+  const name = tDyn(`scoring.presets.${preset.key}.name`);
+  const tagline = tDyn(`scoring.presets.${preset.key}.tagline`);
+  const description = tDyn(`scoring.presets.${preset.key}.description`);
+  const example = tDyn(`scoring.presets.${preset.key}.example`);
 
   return (
     <button
@@ -225,7 +237,7 @@ function PresetCard({
           letterSpacing: 0.5,
           boxShadow: `0 2px 8px ${colors.brand}44`,
         }}>
-          {preset.tagline}
+          {tagline}
         </div>
       )}
 
@@ -243,7 +255,7 @@ function PresetCard({
             color: preset.color,
             lineHeight: 1.2,
           }}>
-            {preset.name}
+            {name}
           </div>
           {!preset.recommended && (
             <div style={{
@@ -254,7 +266,7 @@ function PresetCard({
               letterSpacing: 0.5,
               marginTop: 2,
             }}>
-              {preset.tagline}
+              {tagline}
             </div>
           )}
         </div>
@@ -267,7 +279,7 @@ function PresetCard({
         color: colors.textDark,
         lineHeight: 1.5,
       }}>
-        {preset.description}
+        {description}
       </p>
 
       {/* Example box */}
@@ -281,7 +293,7 @@ function PresetCard({
         fontFamily: "monospace",
         lineHeight: 1.6,
       }}>
-        {preset.example}
+        {example}
       </div>
     </button>
   );
@@ -327,6 +339,8 @@ function PhaseSection({
   // disable scaling to edit phase-by-phase.
   scalingEnabled: boolean;
 }) {
+  const t = useTranslations("poolWizard");
+  const tDyn = t as unknown as (key: string) => string;
   const isGroup = !phase.requiresScore && phase.structuralPicks?.type === "GROUP_STANDINGS";
   const isKnockoutStructural = !phase.requiresScore && phase.structuralPicks?.type === "KNOCKOUT_WINNER";
   const phaseIsKnockout = !isGroup;
@@ -422,7 +436,7 @@ function PhaseSection({
               color: colors.brand,
               fontWeight: fontWeight.semibold,
             }}>
-              {activeCriteria} criterios · {totalPoints}pts max
+              {t("scoring.phaseHeader", { count: activeCriteria, points: totalPoints })}
             </span>
           )}
         </div>
@@ -462,8 +476,9 @@ function PhaseSection({
             }}>
               <span style={{ fontSize: 14, lineHeight: 1 }}>🔒</span>
               <span>
-                Valores calculados automáticamente desde la base por multiplicador.
-                Desactiva <strong>Puntos progresivos</strong> arriba para editar fase por fase.
+                {t.rich("scoring.autoScalingPhaseHelp", {
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                })}
               </span>
             </div>
           )}
@@ -516,10 +531,10 @@ function PhaseSection({
                   fontWeight: phase.requiresScore ? fontWeight.bold : fontWeight.medium,
                   color: phase.requiresScore ? colors.brand : colors.textDark,
                 }}>
-                  Marcadores
+                  {t("scoring.toggleScoresLabel")}
                 </div>
                 <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>
-                  Predicen el resultado de cada partido
+                  {t("scoring.toggleScoresDesc")}
                 </div>
               </button>
 
@@ -563,34 +578,34 @@ function PhaseSection({
                   fontWeight: !phase.requiresScore ? fontWeight.bold : fontWeight.medium,
                   color: !phase.requiresScore ? colors.brand : colors.textDark,
                 }}>
-                  Posiciones
+                  {t("scoring.togglePositionsLabel")}
                 </div>
                 <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>
-                  {isGroup ? "Ordenan equipos en el grupo" : "Eligen quién avanza"}
+                  {isGroup ? t("scoring.togglePositionsGroupDesc") : t("scoring.togglePositionsKnockoutDesc")}
                 </div>
               </button>
             </div>
           )}
 
           {/* Score-based criteria rows */}
-          {isScoreBased && phase.matchPicks?.types.map((t) => {
-            const meta = CRITERION_META[t.key];
+          {isScoreBased && phase.matchPicks?.types.map((criterion) => {
+            const meta = CRITERION_META[criterion.key];
             const recommended = phaseIsKnockout ? meta.recKnockout : meta.recGroup;
-            const showRecBadge = t.enabled && t.points > 0 && recommended > 0 && t.points !== recommended;
+            const showRecBadge = criterion.enabled && criterion.points > 0 && recommended > 0 && criterion.points !== recommended;
 
             return (
               <div
-                key={t.key}
+                key={criterion.key}
                 style={{
                   display: "flex",
                   alignItems: isMobile ? "flex-start" : "center",
                   flexDirection: isMobile ? "column" : "row",
                   gap: isMobile ? spacing.sm : spacing.md,
                   padding: `${spacing.sm}px ${spacing.md}px`,
-                  background: t.enabled ? colors.white : colors.bgLighter,
-                  border: `1px solid ${t.enabled ? colors.borderLight : colors.borderLighter}`,
+                  background: criterion.enabled ? colors.white : colors.bgLighter,
+                  border: `1px solid ${criterion.enabled ? colors.borderLight : colors.borderLighter}`,
                   borderRadius: radii.lg,
-                  opacity: t.enabled ? 1 : 0.6,
+                  opacity: criterion.enabled ? 1 : 0.6,
                   transition: "all 0.2s ease",
                 }}
               >
@@ -605,13 +620,13 @@ function PhaseSection({
                   {/* Toggle switch */}
                   {isCustom && (
                     <div
-                      onClick={() => handleToggleCriterion(t.key)}
+                      onClick={() => handleToggleCriterion(criterion.key)}
                       style={{
                         position: "relative",
                         width: 40,
                         height: 22,
                         borderRadius: radii.pill,
-                        background: t.enabled ? colors.brand : colors.disabled,
+                        background: criterion.enabled ? colors.brand : colors.disabled,
                         cursor: "pointer",
                         transition: "background 0.2s ease",
                         flexShrink: 0,
@@ -620,7 +635,7 @@ function PhaseSection({
                       <div style={{
                         position: "absolute",
                         top: 2,
-                        left: t.enabled ? 20 : 2,
+                        left: criterion.enabled ? 20 : 2,
                         width: 18,
                         height: 18,
                         borderRadius: "50%",
@@ -638,20 +653,20 @@ function PhaseSection({
                       color: colors.text,
                       lineHeight: 1.3,
                     }}>
-                      {meta.label}
+                      {tDyn(`scoring.criteria.${criterion.key}`)}
                     </div>
                     <div style={{
                       fontSize: fontSize.sm,
                       color: colors.textMuted,
                       lineHeight: 1.4,
                     }}>
-                      {meta.description}
+                      {tDyn(`scoring.criteriaDesc.${criterion.key}`)}
                     </div>
                   </div>
                 </div>
 
                 {/* Points input + recommended badge */}
-                {t.enabled && (
+                {criterion.enabled && (
                   <div style={{
                     display: "flex",
                     alignItems: "center",
@@ -669,7 +684,7 @@ function PhaseSection({
                         fontWeight: fontWeight.medium,
                         whiteSpace: "nowrap" as const,
                       }}>
-                        Sugerido: {recommended}
+                        {t("scoring.suggested", { value: recommended })}
                       </span>
                     )}
                     <div style={{
@@ -681,10 +696,10 @@ function PhaseSection({
                         type="number"
                         min={0}
                         max={999}
-                        value={t.points}
-                        onChange={(e) => handlePointsChange(t.key, parseInt(e.target.value) || 0)}
+                        value={criterion.points}
+                        onChange={(e) => handlePointsChange(criterion.key, parseInt(e.target.value) || 0)}
                         disabled={scalingEnabled}
-                        title={scalingEnabled ? "Desactiva 'Puntos progresivos' para editar manualmente" : undefined}
+                        title={scalingEnabled ? t("scoring.scalingLockedTooltip") : undefined}
                         style={{
                           width: 60,
                           padding: `${spacing.xs}px ${spacing.sm}px`,
@@ -717,8 +732,8 @@ function PhaseSection({
           {isGroup && phase.structuralPicks && (
             <div style={{ display: "flex", flexDirection: "column", gap: spacing.md }}>
               <StructuralInput
-                label="Puntos por posicion exacta"
-                description="Puntos por cada equipo que ubiques en su posicion correcta"
+                label={t("scoring.structural.exactPositionLabel")}
+                description={t("scoring.structural.exactPositionDesc")}
                 value={(phase.structuralPicks.config as GroupStandingsConfig).pointsPerExactPosition ?? 10}
                 onChange={(v) => handleStructuralChange("pointsPerExactPosition", v)}
                 isCustom={isCustom}
@@ -727,8 +742,8 @@ function PhaseSection({
                 scalingEnabled={scalingEnabled}
               />
               <StructuralInput
-                label="Bonus grupo perfecto"
-                description="Bonus extra si aciertas las 4 posiciones del grupo"
+                label={t("scoring.structural.perfectGroupLabel")}
+                description={t("scoring.structural.perfectGroupDesc")}
                 value={(phase.structuralPicks.config as GroupStandingsConfig).bonusPerfectGroup ?? 20}
                 onChange={(v) => handleStructuralChange("bonusPerfectGroup", v)}
                 isCustom={isCustom}
@@ -742,8 +757,8 @@ function PhaseSection({
           {/* Structural picks: KNOCKOUT_WINNER */}
           {isKnockoutStructural && phase.structuralPicks && (
             <StructuralInput
-              label="Puntos por acierto"
-              description="Puntos por acertar que equipo avanza en esta ronda"
+              label={t("scoring.structural.correctAdvanceLabel")}
+              description={t("scoring.structural.correctAdvanceDesc")}
               value={(phase.structuralPicks.config as KnockoutWinnerConfig).pointsPerCorrectAdvance ?? 15}
               onChange={(v) => handleStructuralChange("pointsPerCorrectAdvance", v)}
               isCustom={isCustom}
@@ -782,6 +797,7 @@ function StructuralInput({
   // (it would conflict with the auto-derived value).
   scalingEnabled: boolean;
 }) {
+  const t = useTranslations("poolWizard");
   const showRecBadge = value !== recommended && !scalingEnabled;
 
   return (
@@ -838,7 +854,7 @@ function StructuralInput({
               lineHeight: 1.4,
             }}
           >
-            Sugerido: {recommended}
+            {t("scoring.suggested", { value: recommended })}
           </button>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -849,7 +865,7 @@ function StructuralInput({
             value={value}
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
             disabled={scalingEnabled}
-            title={scalingEnabled ? "Desactiva 'Puntos progresivos' para editar manualmente" : undefined}
+            title={scalingEnabled ? t("scoring.scalingLockedTooltip") : undefined}
             style={{
               width: 60,
               padding: `${spacing.xs}px ${spacing.sm}px`,
@@ -886,6 +902,8 @@ function ExampleCalculator({
   scoringConfig: PoolPickTypesConfig;
   isMobile: boolean;
 }) {
+  const t = useTranslations("poolWizard");
+  const tDyn = t as unknown as (key: string) => string;
   const [realHome, setRealHome] = useState(2);
   const [realAway, setRealAway] = useState(1);
   const [predHome, setPredHome] = useState(3);
@@ -928,7 +946,7 @@ function ExampleCalculator({
           fontWeight: fontWeight.bold,
           color: colors.text,
         }}>
-          Calculadora de Ejemplo
+          {t("scoring.exampleCalculator")}
         </span>
       </div>
 
@@ -1051,7 +1069,7 @@ function ExampleCalculator({
                   fontWeight: fontWeight.medium,
                   color: r.hit ? colors.successDarker : colors.errorDark,
                 }}>
-                  {r.label}
+                  {tDyn(`scoring.criteria.${r.key}`)}
                 </span>
               </div>
               <span style={{
@@ -1177,7 +1195,7 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
               <thead>
                 <tr>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: colors.textMuted, fontWeight: 600, borderBottom: `2px solid ${colors.borderLight}` }}>
-                    {t("scoring.criterionHeader", { defaultMessage: "Criterio" })}
+                    {t("scoring.criterionHeader")}
                   </th>
                   {scoringConfig.filter(p => p.matchPicks).map((phase) => (
                     <th key={phase.phaseId} style={{
@@ -1458,6 +1476,10 @@ export function ScoringEditor({
 }: ScoringEditorProps) {
   const isMobile = useIsMobile();
   const t = useTranslations("poolWizard");
+  // Runtime-keyed lookup (next-intl doesn't allow computed keys at the
+  // type level). Used to resolve `scoring.presets.${preset.key}.name`
+  // etc. — the keys are exhaustive and stable.
+  const tDyn = t as unknown as (key: string) => string;
 
   // Track which phase sections are open
   const [openPhases, setOpenPhases] = useState<Record<number, boolean>>({ 0: true });
@@ -1768,11 +1790,7 @@ export function ScoringEditor({
             color: colors.infoDarker,
             lineHeight: 1.5,
           }}>
-            {t("scoring.tip", {
-              defaultMessage:
-                "Si es tu primera vez, te recomendamos \"Predictor\". " +
-                "Premia conocimiento parcial y mantiene a todos competitivos hasta el final.",
-            })}
+            {t("scoring.tip")}
           </p>
         </div>
       </div>
@@ -1809,14 +1827,16 @@ export function ScoringEditor({
                 fontWeight: fontWeight.bold,
                 color: activePreset?.color ?? colors.text,
               }}>
-                Estilo: {activePreset?.name}
+                {t("scoring.currentStyle", {
+                  style: activePreset ? tDyn(`scoring.presets.${activePreset.key}.name`) : "",
+                })}
               </span>
               {!isCustom && (
                 <div style={{
                   fontSize: fontSize.xs,
                   color: colors.textMuted,
                 }}>
-                  Los valores vienen preconfigurados. Cambia a Personalizado para editar.
+                  {t("scoring.lockedConfigHint")}
                 </div>
               )}
             </div>
@@ -1914,7 +1934,7 @@ export function ScoringEditor({
                     fontWeight: fontWeight.bold,
                     color: colors.text,
                   }}>
-                    Puntos progresivos
+                    {t("scoring.progressivePointsLabel")}
                   </span>
                 </div>
                 <div style={{
@@ -1923,8 +1943,8 @@ export function ScoringEditor({
                   lineHeight: 1.5,
                 }}>
                   {scalingEnabled
-                    ? "Los puntos de cada fase se multiplican respecto a los valores de grupo. Ajusta los multiplicadores a tu gusto."
-                    : "Activar para que los puntos valgan más en fases avanzadas. Ideal para premiar las predicciones más difíciles."
+                    ? t("scoring.progressivePointsOnDesc")
+                    : t("scoring.progressivePointsOffDesc")
                   }
                 </div>
               </div>
@@ -1966,7 +1986,7 @@ export function ScoringEditor({
                       cursor: "pointer",
                     }}
                   >
-                    ↺ Restaurar recomendados
+                    {t("scoring.restoreRecommended")}
                   </button>
                 )}
                 {scoringConfig.map((p) => {
@@ -2047,7 +2067,7 @@ export function ScoringEditor({
                             color: mult > 1 ? colors.brand : colors.textMuted,
                             cursor: isModified ? "pointer" : "default",
                           }}
-                          title={isModified ? `Sugerido: ×${suggested}` : undefined}
+                          title={isModified ? t("scoring.suggestedMultiplier", { value: suggested }) : undefined}
                           onClick={isModified ? () => handleMultiplierChange(p.phaseId, suggested) : undefined}
                         >
                           ×{mult}
@@ -2148,10 +2168,10 @@ export function ScoringEditor({
               <span style={{ fontSize: 18 }}>⚙️</span>
               <div>
                 <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.bold, color: colors.text }}>
-                  Configuración por fase
+                  {t("scoring.phaseConfigTitle")}
                 </div>
                 <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
-                  {scoringConfig.length} fases
+                  {t("scoring.phaseCount", { count: scoringConfig.length })}
                 </div>
               </div>
             </div>
@@ -2219,7 +2239,7 @@ export function ScoringEditor({
                 fontWeight: fontWeight.bold,
                 color: colors.warningDarker,
               }}>
-                Modo Estratega
+                {t("scoring.strategistModeLabel")}
               </span>
             </div>
             <p style={{
@@ -2228,9 +2248,7 @@ export function ScoringEditor({
               color: colors.warningDark,
               lineHeight: 1.6,
             }}>
-              En este modo no se pronostican marcadores. En fase de grupos ordenas los equipos de cada grupo
-              y en eliminatorias solo eliges quien avanza. Es mas rapido de completar y requiere menos
-              mantenimiento por parte del administrador.
+              {t("scoring.strategistModeDescription")}
             </p>
           </div>
         )}

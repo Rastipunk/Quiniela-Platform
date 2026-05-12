@@ -7,16 +7,9 @@ import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import type { WizardStep } from "@/types/poolWizard";
 
-// ── Scoring style display names ───────────────────────────
-const SCORING_LABELS: Record<string, string> = {
-  CUMULATIVE: "Acumulativo",
-  BASIC: "Basico",
-  SIMPLE: "Simple",
-  CUSTOM: "Personalizado",
-};
-
 export function StepSummary() {
   const t = useTranslations("poolWizard");
+  const tDyn = t as unknown as (key: string) => string;
   const isMobile = useIsMobile();
   const { state, goToStep } = useWizard();
 
@@ -99,7 +92,7 @@ export function StepSummary() {
             flexShrink: 0,
           }}
         >
-          {t("summary.edit", { defaultMessage: "Editar" })}
+          {t("summary.edit")}
         </button>
       </div>
     );
@@ -107,10 +100,8 @@ export function StepSummary() {
 
   return (
     <PoolWizardStepContainer
-      title={t("summary.title", { defaultMessage: "Resumen de tu pool" })}
-      subtitle={t("summary.subtitle", {
-        defaultMessage: "Revisa la configuracion antes de crear tu pool.",
-      })}
+      title={t("summary.title")}
+      subtitle={t("summary.subtitle")}
       icon="&#x2705;"
     >
       {/* Error display */}
@@ -133,7 +124,7 @@ export function StepSummary() {
       {/* Company info — corporate only */}
       {isCorporate && (
         <SummarySection
-          label={t("summary.company", { defaultMessage: "Empresa" })}
+          label={t("summary.company")}
           value={state.companyName}
           step="COMPANY_INFO"
         />
@@ -141,14 +132,14 @@ export function StepSummary() {
 
       {/* Tournament */}
       <SummarySection
-        label={t("summary.tournament", { defaultMessage: "Torneo" })}
+        label={t("summary.tournament")}
         value={state.instanceName || "—"}
         step="TOURNAMENT"
       />
 
       {/* Pool name + description */}
       <SummarySection
-        label={t("summary.poolName", { defaultMessage: "Nombre del pool" })}
+        label={t("summary.poolName")}
         value={
           <div>
             <div>{state.poolName}</div>
@@ -171,12 +162,12 @@ export function StepSummary() {
 
       {/* Scoring */}
       <SummarySection
-        label={t("summary.scoring", { defaultMessage: "Puntuacion" })}
+        label={t("summary.scoring")}
         value={
           <div>
             <div>
               {state.scoringStyle
-                ? SCORING_LABELS[state.scoringStyle] || state.scoringStyle
+                ? tDyn(`scoring.presets.${state.scoringStyle}.name`)
                 : "—"}
             </div>
             {uniqueTypes.length > 0 && (
@@ -187,10 +178,7 @@ export function StepSummary() {
                   marginTop: 2,
                 }}
               >
-                {t("summary.pickTypes", {
-                  defaultMessage: "{count} criterios activos",
-                  count: uniqueTypes.length,
-                })}
+                {t("summary.pickTypes", { count: uniqueTypes.length })}
               </div>
             )}
             {hasAutoScaling && (
@@ -201,9 +189,7 @@ export function StepSummary() {
                   marginTop: 2,
                 }}
               >
-                {t("summary.scalingEnabled", {
-                  defaultMessage: "Escalado por fase activado",
-                })}
+                {t("summary.scalingEnabled")}
               </div>
             )}
             {extraTimePhases.length > 0 && (
@@ -214,9 +200,7 @@ export function StepSummary() {
                   marginTop: 2,
                 }}
               >
-                {t("summary.extraTime", {
-                  defaultMessage: "Tiempo extra en:",
-                })}{" "}
+                {t("summary.extraTime")}{" "}
                 {extraTimePhases.join(", ")}
               </div>
             )}
@@ -228,9 +212,8 @@ export function StepSummary() {
 
       {/* Deadline */}
       <SummarySection
-        label={t("summary.deadline", { defaultMessage: "Cierre de picks" })}
+        label={t("summary.deadline")}
         value={t("summary.deadlineValue", {
-          defaultMessage: "{minutes} minutos antes del partido",
           minutes: state.deadlineMinutesBeforeKickoff,
         })}
         step="NAME_DETAILS"
@@ -239,9 +222,7 @@ export function StepSummary() {
       {/* Company details — corporate only */}
       {isCorporate && state.welcomeMessage && (
         <SummarySection
-          label={t("summary.welcomeMessage", {
-            defaultMessage: "Mensaje de bienvenida",
-          })}
+          label={t("summary.welcomeMessage")}
           value={
             <span
               style={{
@@ -274,10 +255,7 @@ export function StepSummary() {
           textAlign: "center",
         }}
       >
-        {t("summary.note", {
-          defaultMessage:
-            "Las reglas del pool no se pueden cambiar despues de crearlo.",
-        })}
+        {t("summary.note")}
       </div>
     </PoolWizardStepContainer>
   );

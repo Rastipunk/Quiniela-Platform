@@ -46,6 +46,7 @@ const StepSummary = lazy(
 
 // ── Loading fallback ────────────────────────────────────────
 function StepLoader() {
+  const t = useTranslations("poolWizard");
   return (
     <div
       style={{
@@ -57,7 +58,7 @@ function StepLoader() {
         fontSize: fontSize.lg,
       }}
     >
-      Cargando...
+      {t("stepLoading")}
     </div>
   );
 }
@@ -253,7 +254,7 @@ function WizardInner() {
           }
         }
       } else {
-        message = "Error al crear el pool";
+        message = t("errorCreatingPool");
       }
       dispatch({ type: "SET_FIELD", field: "error", value: message });
     } finally {

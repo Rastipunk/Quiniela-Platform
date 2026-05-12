@@ -3,6 +3,8 @@
   "pageSubtitle": "Configura tu pool paso a paso",
   "checkoutFailedFallback": "Seu bolão foi criado, mas não conseguimos iniciar o pagamento. Você será levado ao seu bolão — pela aba de admin pode tentar ampliar a capacidade novamente.",
   "backToDashboard": "← Voltar aos meus pools",
+  "stepLoading": "Carregando...",
+  "errorCreatingPool": "Erro ao criar o pool",
 
   "tournamentTitle": "Qual torneio você vai jogar?",
   "tournamentSubtitle": "Selecione o torneio para seu pool de palpites",
@@ -93,9 +95,18 @@
       "1440": "1 dia antes"
     },
     "recommended": "Recomendado",
+    "customDeadlineLabel": "Ou personalizar:",
+    "deadlineUnits": {
+      "min": "minutos",
+      "hr": "horas",
+      "day": "dias"
+    },
+    "deadlineBefore": "antes",
     "timezone": "Fuso horário",
     "timezoneHelp": "Detectado automaticamente. Os horários das partidas serão exibidos neste fuso.",
     "timezoneEdit": "Alterar",
+    "timezoneDetectedSuffix": "(detectado)",
+    "timezoneDetectedArrow": "← detectado",
     "requireApproval": "Requer aprovação para entrar",
     "requireApprovalDesc": "Os jogadores devem aguardar sua aprovação para participar do pool."
   },
@@ -183,7 +194,48 @@
       "EXACT_SCORE": "Placar exato",
       "TOTAL_GOALS": "Total de gols",
       "PARTIAL_SCORE": "Placar parcial"
-    }
+    },
+
+    "criteriaDesc": {
+      "MATCH_OUTCOME_90MIN": "Acertar o vencedor ou empate",
+      "HOME_GOALS": "Acertar os gols do mandante",
+      "AWAY_GOALS": "Acertar os gols do visitante",
+      "GOAL_DIFFERENCE": "Acertar a diferença de gols",
+      "EXACT_SCORE": "Bônus por acertar os dois placares",
+      "TOTAL_GOALS": "Acertar o total de gols da partida",
+      "PARTIAL_SCORE": "Acertar um dos dois placares"
+    },
+
+    "toggleScoresLabel": "Placares",
+    "toggleScoresDesc": "Predizem o placar de cada jogo",
+    "togglePositionsLabel": "Posições",
+    "togglePositionsGroupDesc": "Ordenam times dentro do grupo",
+    "togglePositionsKnockoutDesc": "Escolhem quem avança",
+
+    "autoScalingPhaseHelp": "Valores calculados automaticamente a partir da base pelo multiplicador.\nDesative <strong>Pontos progressivos</strong> acima para editar fase a fase.",
+    "lockedConfigHint": "Os valores estão pré-configurados. Mude para Personalizado para editar.",
+    "strategistModeLabel": "Modo Estrategista",
+    "strategistModeDescription": "Neste modo não se preveem placares. Na fase de grupos você ordena os times de cada grupo e nas eliminatórias apenas escolhe quem avança. É mais rápido de preencher e exige menos manutenção do administrador.",
+    "exampleCalculator": "Calculadora de exemplo",
+    "scalingLockedTooltip": "Desative \"Pontos progressivos\" para editar manualmente",
+    "phaseConfigTitle": "Configuração por fase",
+    "phaseCount": "{count, plural, one {# fase} other {# fases}}",
+    "suggested": "Sugerido: {value}",
+    "suggestedMultiplier": "Sugerido: ×{value}",
+    "structural": {
+      "exactPositionLabel": "Pontos por posição exata",
+      "exactPositionDesc": "Pontos por cada time que você colocar em sua posição correta",
+      "perfectGroupLabel": "Bônus de grupo perfeito",
+      "perfectGroupDesc": "Bônus extra se você acertar as 4 posições do grupo",
+      "correctAdvanceLabel": "Pontos por acerto",
+      "correctAdvanceDesc": "Pontos por acertar qual time avança nesta rodada"
+    },
+    "phaseHeader": "{count} critérios · {points}pts máx",
+    "progressivePointsLabel": "Pontos progressivos",
+    "progressivePointsOnDesc": "Os pontos de cada fase são multiplicados em relação aos valores da fase de grupos. Ajuste os multiplicadores ao seu gosto.",
+    "progressivePointsOffDesc": "Ative para que os pontos valham mais nas fases avançadas. Ideal para premiar as previsões mais difíceis.",
+    "restoreRecommended": "↺ Restaurar recomendados",
+    "criterionHeader": "Critério"
   },
 
   "advancedRules": {

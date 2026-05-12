@@ -167,7 +167,7 @@ export function StepNameDetails() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {t(opt.labelKey, { defaultMessage: opt.labelKey })}
+                  {t(opt.labelKey)}
                   {opt.recommended && (
                     <span style={{
                       fontSize: fontSize.xs,
@@ -195,7 +195,7 @@ export function StepNameDetails() {
             marginTop: spacing.md,
           }}>
             <span style={{ fontSize: fontSize.sm, color: colors.textMuted, whiteSpace: "nowrap" }}>
-              O personalizar:
+              {t("nameDetails.customDeadlineLabel")}
             </span>
             <input
               type="number"
@@ -247,12 +247,12 @@ export function StepNameDetails() {
                 cursor: "pointer",
               }}
             >
-              <option value="min">minutos</option>
-              <option value="hr">horas</option>
-              <option value="day">días</option>
+              <option value="min">{t("nameDetails.deadlineUnits.min")}</option>
+              <option value="hr">{t("nameDetails.deadlineUnits.hr")}</option>
+              <option value="day">{t("nameDetails.deadlineUnits.day")}</option>
             </select>
             <span style={{ fontSize: fontSize.sm, color: colors.textMuted, whiteSpace: "nowrap" }}>
-              antes
+              {t("nameDetails.deadlineBefore")}
             </span>
           </div>
         </WizardSubStep>
@@ -276,12 +276,12 @@ export function StepNameDetails() {
             {/* Auto-detected option if not in common list */}
             {!COMMON_TIMEZONES.some(tz => tz.value === (state.timeZone || detectedTimezone)) && (
               <option value={state.timeZone || detectedTimezone}>
-                {state.timeZone || detectedTimezone} (detectada)
+                {state.timeZone || detectedTimezone} {t("nameDetails.timezoneDetectedSuffix")}
               </option>
             )}
             {COMMON_TIMEZONES.map(tz => (
               <option key={tz.value} value={tz.value}>
-                {tz.label}{tz.value === detectedTimezone ? " ← detectada" : ""}
+                {tz.label}{tz.value === detectedTimezone ? ` ${t("nameDetails.timezoneDetectedArrow")}` : ""}
               </option>
             ))}
           </select>

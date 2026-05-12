@@ -63,6 +63,7 @@ export function ManageRulesPanel({
   poolId, token, overview, setError, friendlyError, reload,
 }: ManageRulesPanelProps) {
   const t = useTranslations("pool");
+  const tPresets = useTranslations("poolWizard.scoring.presets");
   const isMobile = useIsMobile();
 
   if (!overview.permissions.canManageResults) return null;
@@ -143,7 +144,7 @@ export function ManageRulesPanel({
             fontWeight: fontWeight.bold,
             color: activePreset?.color ?? colors.text,
           }}>
-            {activePreset?.name ?? t("admin.rules.customPreset")}
+            {activePreset ? tPresets(`${activePreset.key}.name`) : t("admin.rules.customPreset")}
           </div>
           <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
             {currentConfig.length} {t("admin.rules.phasesCount")}

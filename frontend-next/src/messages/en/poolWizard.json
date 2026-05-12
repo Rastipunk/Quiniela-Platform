@@ -3,6 +3,8 @@
   "pageSubtitle": "Set up your pool step by step",
   "checkoutFailedFallback": "Your pool was created, but we couldn't start the payment. You'll be taken to your pool — from the admin tab you can retry expanding capacity.",
   "backToDashboard": "← Back to my pools",
+  "stepLoading": "Loading...",
+  "errorCreatingPool": "Error creating the pool",
 
   "tournamentTitle": "Which tournament will you play?",
   "tournamentSubtitle": "Select the tournament for your prediction pool",
@@ -93,9 +95,18 @@
       "1440": "1 day before"
     },
     "recommended": "Recommended",
+    "customDeadlineLabel": "Or custom:",
+    "deadlineUnits": {
+      "min": "minutes",
+      "hr": "hours",
+      "day": "days"
+    },
+    "deadlineBefore": "before",
     "timezone": "Time zone",
     "timezoneHelp": "Detected automatically. Match times will be displayed in this time zone.",
     "timezoneEdit": "Change",
+    "timezoneDetectedSuffix": "(detected)",
+    "timezoneDetectedArrow": "← detected",
     "requireApproval": "Require approval to join",
     "requireApprovalDesc": "Players must wait for your approval to join the pool."
   },
@@ -183,7 +194,48 @@
       "EXACT_SCORE": "Exact score",
       "TOTAL_GOALS": "Total goals",
       "PARTIAL_SCORE": "Partial score"
-    }
+    },
+
+    "criteriaDesc": {
+      "MATCH_OUTCOME_90MIN": "Pick the winner or draw",
+      "HOME_GOALS": "Pick the home team's goals",
+      "AWAY_GOALS": "Pick the away team's goals",
+      "GOAL_DIFFERENCE": "Pick the goal difference",
+      "EXACT_SCORE": "Bonus for picking both scores",
+      "TOTAL_GOALS": "Pick the total goals in the match",
+      "PARTIAL_SCORE": "Pick one of the two scores"
+    },
+
+    "toggleScoresLabel": "Scores",
+    "toggleScoresDesc": "Predict the result of each match",
+    "togglePositionsLabel": "Standings",
+    "togglePositionsGroupDesc": "Order teams within the group",
+    "togglePositionsKnockoutDesc": "Pick who advances",
+
+    "autoScalingPhaseHelp": "Values computed automatically from the base via the multiplier.\nTurn off <strong>Progressive points</strong> above to edit phase by phase.",
+    "lockedConfigHint": "Values are preconfigured. Switch to Custom to edit.",
+    "strategistModeLabel": "Strategist mode",
+    "strategistModeDescription": "In this mode you don't predict scores. In the group stage you order the teams in each group, and in knockouts you only pick who advances. It's faster to complete and requires less maintenance from the host.",
+    "exampleCalculator": "Example calculator",
+    "scalingLockedTooltip": "Turn off \"Progressive points\" to edit manually",
+    "phaseConfigTitle": "Per-phase configuration",
+    "phaseCount": "{count, plural, one {# phase} other {# phases}}",
+    "suggested": "Suggested: {value}",
+    "suggestedMultiplier": "Suggested: ×{value}",
+    "structural": {
+      "exactPositionLabel": "Points per exact position",
+      "exactPositionDesc": "Points for each team you place in its correct position",
+      "perfectGroupLabel": "Perfect-group bonus",
+      "perfectGroupDesc": "Extra bonus if you nail all 4 positions in the group",
+      "correctAdvanceLabel": "Points per correct pick",
+      "correctAdvanceDesc": "Points for picking which team advances in this round"
+    },
+    "phaseHeader": "{count} criteria · {points}pts max",
+    "progressivePointsLabel": "Progressive points",
+    "progressivePointsOnDesc": "Each phase's points are multiplied relative to the group-stage values. Tune the multipliers to your taste.",
+    "progressivePointsOffDesc": "Turn on so points are worth more in later phases. Great for rewarding the harder picks.",
+    "restoreRecommended": "↺ Restore recommended",
+    "criterionHeader": "Criterion"
   },
 
   "advancedRules": {
