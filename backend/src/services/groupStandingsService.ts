@@ -204,10 +204,85 @@ export async function publishGroupStandingsResult(
     userAgent: ctx.userAgent,
   }));
 
+  // Auto-advance check: if every group in this phase now has a
+  // published GroupStandingsResult, try to advance to the next phase.
+  // The same pattern lives inside generateGroupStandings; we replicate
+  // it here so the Estratega drag-and-drop publish path (which never
+  // touches PoolMatchResult) still triggers automatic R32 advancement.
+  let autoAdvanceResult: {
+    advanced: true;
+    phase: "round_of_32";
+    winnersCount: number;
+    runnersUpCount: number;
+    bestThirdsCount: number;
+  } | null = null;
+  try {
+    const poolWithInstance = await prisma.pool.findUnique({
+      where: { id: poolId },
+      include: { tournamentInstance: true },
+    });
+    if (poolWithInstance) {
+      const fixture = parseFixtureData(
+        poolWithInstance.fixtureSnapshot ?? poolWithInstance.tournamentInstance.dataJson,
+      );
+      const allGroupsInPhase = new Set<string>();
+      fixture.matches?.forEach((m) => {
+        if (m.groupId && (!m.phaseId || m.phaseId === phaseId)) {
+          allGroupsInPhase.add(m.groupId);
+        }
+      });
+
+      const publishedGroups = await prisma.groupStandingsResult.findMany({
+        where: { poolId, phaseId },
+        select: { groupId: true },
+      });
+
+      if (publishedGroups.length === allGroupsInPhase.size && allGroupsInPhase.size > 0) {
+        const validation = await validateCanAutoAdvance(
+          poolWithInstance.tournamentInstance.id,
+          phaseId,
+          poolId,
+        );
+        if (validation.canAdvance) {
+          const advResult = await advanceToRoundOf32(
+            poolWithInstance.tournamentInstance.id,
+            poolId,
+          );
+          autoAdvanceResult = {
+            advanced: true,
+            phase: "round_of_32",
+            winnersCount: advResult.winners.size,
+            runnersUpCount: advResult.runnersUp.size,
+            bestThirdsCount: advResult.bestThirds.length,
+          };
+
+          fireAndForget("audit:auto-advance-r32-from-publish", writeAuditEvent({
+            actorUserId: userId,
+            action: "TOURNAMENT_AUTO_ADVANCED_TO_R32",
+            entityType: "TournamentInstance",
+            entityId: poolWithInstance.tournamentInstance.id,
+            dataJson: {
+              triggeredBy: "GROUP_STANDINGS_PUBLISHED",
+              groupId,
+              ...autoAdvanceResult,
+            },
+            ip: ctx.ip,
+            userAgent: ctx.userAgent,
+          }));
+        }
+      }
+    }
+  } catch (autoErr) {
+    // Don't bubble: the publish itself succeeded. Auto-advance is
+    // best-effort and can be retried (or done manually) later.
+    console.error("[AUTO-ADVANCE ERROR after publishGroupStandingsResult]", autoErr);
+  }
+
   return {
     result,
     isErrata,
     previousTeamIds: (existingResult?.teamIds as string[] | undefined) ?? null,
+    autoAdvance: autoAdvanceResult,
   };
 }
 

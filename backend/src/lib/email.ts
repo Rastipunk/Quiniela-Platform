@@ -1819,6 +1819,120 @@ export async function sendNewMemberDigestEmail(params: {
 }
 
 // =========================================================================
+// KNOCKOUT WINNER OVERRIDE NOTIFICATION
+// =========================================================================
+// Sent when the host changes who advanced in a knockout match (e.g. "ya
+// se había publicado que Argentina avanzaba, pero realmente fue Francia").
+// Mirrors the group-standings override email — mandatory reason, listed
+// in both ES/EN/PT, sent to every active member.
+
+export async function sendKnockoutWinnerOverrideNotification(params: {
+  to: string;
+  userId: string;
+  memberName: string;
+  poolName: string;
+  poolId: string;
+  matchDescription: string; // "Argentina vs Francia"
+  previousWinnerName: string;
+  newWinnerName: string;
+  reason: string;
+  hostName: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || DEFAULT_LOCALE;
+
+  const subjects: Record<string, string> = {
+    es: `⚠️ Cambio de avance en "${params.poolName}"`,
+    en: `⚠️ Advancement changed in "${params.poolName}"`,
+    pt: `⚠️ Mudança de avanço em "${params.poolName}"`,
+  };
+
+  const headings: Record<string, string> = {
+    es: "Equipo que avanza modificado por el organizador",
+    en: "Advancing team changed by the organizer",
+    pt: "Time que avança modificado pelo organizador",
+  };
+
+  const messages: Record<string, string> = {
+    es: `El organizador <strong>${params.hostName}</strong> modificó quién avanza en el partido <strong>${params.matchDescription}</strong> de la pool <strong>"${params.poolName}"</strong>.`,
+    en: `The organizer <strong>${params.hostName}</strong> changed who advances from <strong>${params.matchDescription}</strong> in the pool <strong>"${params.poolName}"</strong>.`,
+    pt: `O organizador <strong>${params.hostName}</strong> modificou quem avança no jogo <strong>${params.matchDescription}</strong> no bolão <strong>"${params.poolName}"</strong>.`,
+  };
+
+  const reasonLabels: Record<string, string> = {
+    es: "Razón del cambio",
+    en: "Reason for change",
+    pt: "Motivo da alteração",
+  };
+
+  const beforeLabels: Record<string, string> = { es: "Antes", en: "Before", pt: "Antes" };
+  const afterLabels: Record<string, string> = { es: "Ahora", en: "Now", pt: "Agora" };
+
+  const ctas: Record<string, string> = {
+    es: "Ver pool",
+    en: "View pool",
+    pt: "Ver bolão",
+  };
+
+  const poolUrl = appendUtm(`${FRONTEND_URL}/pools/${params.poolId}`, emailUtm("knockout_winner_override"));
+
+  try {
+    const { data, error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="padding:20px;background:${BRAND.gradient};border-radius:12px 12px 0 0;text-align:center;">
+            <span style="font-size:40px;">⚠️</span>
+          </div>
+          <div style="padding:24px;background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+            <h2 style="color:#DC2626;margin:0 0 16px;font-size:18px;">${headings[loc] ?? headings.es}</h2>
+            <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 16px;">${messages[loc] ?? messages.es}</p>
+
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:0 0 16px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <span style="color:#991b1b;font-weight:600;">❌ ${beforeLabels[loc]}: ${params.previousWinnerName}</span>
+                <span style="color:#166534;font-weight:600;">✅ ${afterLabels[loc]}: ${params.newWinnerName}</span>
+              </div>
+              <div style="color:#991b1b;font-size:13px;font-weight:600;margin-bottom:4px;">${reasonLabels[loc] ?? reasonLabels.es}:</div>
+              <div style="color:#374151;font-size:14px;font-style:italic;">"${params.reason}"</div>
+            </div>
+
+            <p style="color:${BRAND.textMuted};font-size:13px;line-height:1.5;margin:0 0 20px;">
+              ${loc === "es" ? "Los puntos del leaderboard se recalcularán automáticamente." :
+                loc === "en" ? "Leaderboard points will be recalculated automatically." :
+                "Os pontos do ranking serão recalculados automaticamente."}
+            </p>
+
+            <div style="text-align:center;">
+              <a href="${poolUrl}" style="display:inline-block;padding:12px 28px;background:${BRAND.primary};color:white;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;">
+                ${ctas[loc] ?? ctas.es}
+              </a>
+            </div>
+          </div>
+          <p style="color:#9CA3AF;font-size:12px;text-align:center;margin-top:16px;">
+            ${APP_NAME} &middot; ${SITE_DOMAIN}
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("❌ Error knockout winner override notification:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Exception knockout winner override notification:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
 // POOL REVERTED TO DRAFT NOTIFICATION (host-only)
 // =========================================================================
 // Sent to the pool creator when the last non-host member is removed and
