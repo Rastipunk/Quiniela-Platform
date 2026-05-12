@@ -372,7 +372,10 @@ export async function transitionToArchived(poolId: string, actorUserId: string) 
  *     (las picks de jugadores que se fueron ya no son significativas).
  *   - Conserva PoolMatchResult/Version y PoolMatchOverride (data del
  *     torneo, no de los players).
- *   - Email al host con CTA al panel de "Administrar reglas".
+ *   - Email al host con CTA al panel de "Administrar reglas" (opt-out
+ *     via `options.sendNotification = false`, used by the orphaned-pools
+ *     rescue migration where we want to silently revert state and
+ *     coordinate the host-facing message separately).
  *
  * Esta función es idempotente: si la pool ya está en DRAFT o el cleanup
  * ya corrió, no hace nada y no lanza error.
@@ -381,7 +384,9 @@ export async function revertPoolToDraft(
   poolId: string,
   actorUserId: string,
   reason: string,
+  options: { sendNotification?: boolean } = {},
 ) {
+  const { sendNotification = true } = options;
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     select: {
@@ -430,7 +435,9 @@ export async function revertPoolToDraft(
   });
 
   // Notify the host so they know the rules editor is now unlocked.
-  if (pool.createdByUser?.email) {
+  // Skipped when sendNotification=false (orphan rescue migration where
+  // we coordinate the message separately).
+  if (sendNotification && pool.createdByUser?.email) {
     fireAndForget(
       "pool-reverted-email",
       sendPoolRevertedToDraftEmail({
