@@ -199,12 +199,18 @@ function KpiCard({
   hint,
   accent,
   isMobile,
+  delta,
+  deltaSuffix,
 }: {
   label: string;
   value: string;
   hint?: string;
   accent?: string;
   isMobile: boolean;
+  /** Week-over-week change (absolute number). Null = not computable. */
+  delta?: number | null;
+  /** Optional unit shown after the delta number ("USD", "COP", etc.). */
+  deltaSuffix?: string;
 }) {
   return (
     <div
@@ -263,6 +269,37 @@ function KpiCard({
           }}
         >
           {hint}
+        </div>
+      )}
+      {delta !== undefined && delta !== null && (
+        <div
+          style={{
+            marginTop: spacing.xs,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "2px 8px",
+            borderRadius: radii.pill,
+            fontSize: fontSize.xs,
+            fontWeight: fontWeight.semibold,
+            color: delta > 0
+              ? PALETTE.success
+              : delta < 0
+                ? PALETTE.error
+                : colors.textMuted,
+            background: delta > 0
+              ? `${PALETTE.success}15`
+              : delta < 0
+                ? `${PALETTE.error}15`
+                : `${colors.textMuted}15`,
+          }}
+          title="Cambio vs. hace 7 días"
+        >
+          <span>{delta > 0 ? "▲" : delta < 0 ? "▼" : "·"}</span>
+          <span>
+            {delta > 0 ? "+" : ""}{deltaSuffix === "USD" ? fmtUsd(delta) : deltaSuffix === "COP" ? fmtCop(delta) : fmtInt(delta)}
+            <span style={{ color: colors.textMuted, marginLeft: 4, fontWeight: fontWeight.normal }}>esta semana</span>
+          </span>
         </div>
       )}
     </div>
@@ -424,8 +461,13 @@ export default function AdminAnalyticsContent() {
         <SectionErrorsBanner errors={data.errors} />
       )}
 
-      {/* Top-line KPIs */}
-      <TopLineSection topLine={data.topLine} isMobile={isMobile} />
+      {/* Top-line KPIs (with WoW deltas where deltable) */}
+      <TopLineSection topLine={data.topLine} weekAgo={data.topLineWeekAgo} isMobile={isMobile} />
+
+      {/* Locale distribution (post-modal split + completion rate) */}
+      <Section title="🌐 Distribución de idioma" subtitle="Idioma elegido en el modal de primer login + cuántos siguen pendientes">
+        <LocaleDistributionSection data={data.localeDistribution} isMobile={isMobile} />
+      </Section>
 
       {/* User growth */}
       <Section title="📈 Crecimiento de usuarios" subtitle="Signups por semana, últimas 12 semanas">
@@ -700,71 +742,88 @@ function DashboardHeader({
 
 function TopLineSection({
   topLine,
+  weekAgo,
   isMobile,
 }: {
   topLine: AnalyticsDashboardResponse["topLine"];
+  weekAgo: AnalyticsDashboardResponse["topLineWeekAgo"];
   isMobile: boolean;
 }) {
-  const kpis: { label: string; value: string; hint?: string; accent?: string }[] = [
+  // Δ is the absolute movement from the snapshot 7 days ago. We render it
+  // as a chip on the card. NULL means "not deltable" (point-in-time fields
+  // like draftPools / pendingApprovalMembers that we don't snapshot).
+  const kpis: { label: string; value: string; hint?: string; accent?: string; delta?: number | null; deltaSuffix?: string }[] = [
     {
       label: "Usuarios totales",
       value: fmtInt(topLine.totalUsers),
       hint: `${fmtInt(topLine.verifiedUsers)} verificados (${fmtPct(topLine.verifiedUsers / Math.max(1, topLine.totalUsers))})`,
       accent: PALETTE.primary,
+      delta: topLine.totalUsers - (weekAgo?.totalUsers ?? topLine.totalUsers),
     },
     {
       label: "Activos 7d",
       value: fmtInt(topLine.activeUsers7d),
       hint: `${fmtInt(topLine.activeUsers30d)} activos 30d`,
       accent: PALETTE.success,
+      delta: topLine.activeUsers7d - (weekAgo?.activeUsers7d ?? topLine.activeUsers7d),
     },
     {
       label: "Pools totales",
       value: fmtInt(topLine.totalPools),
       hint: `${fmtInt(topLine.activePools)} activas · ${fmtInt(topLine.completedPools)} completadas`,
       accent: PALETTE.info,
+      delta: topLine.totalPools - (weekAgo?.totalPools ?? topLine.totalPools),
     },
     {
       label: "Pools personales",
       value: fmtInt(topLine.personalPools),
       hint: `${fmtInt(topLine.corporatePools)} corporativas`,
       accent: PALETTE.purple,
+      delta: null,
     },
     {
       label: "Organizaciones",
       value: fmtInt(topLine.totalOrganizations),
       hint: `${fmtInt(topLine.pendingInquiries)} inquiries sin responder`,
       accent: PALETTE.warning,
+      delta: null,
     },
     {
       label: "Invitaciones activadas",
       value: `${fmtInt(topLine.activatedInvites)} / ${fmtInt(topLine.totalCorporateInvites)}`,
       hint: fmtPct(topLine.inviteActivationRate),
       accent: PALETTE.successAlt,
+      delta: topLine.activatedInvites - (weekAgo?.activatedInvites ?? topLine.activatedInvites),
     },
     {
       label: "Revenue USD",
       value: fmtUsd(topLine.totalRevenueUsd),
       hint: "histórico, pagos completados",
       accent: PALETTE.success,
+      delta: topLine.totalRevenueUsd - (weekAgo?.totalRevenueUsd ?? topLine.totalRevenueUsd),
+      deltaSuffix: "USD",
     },
     {
       label: "Revenue COP",
       value: fmtCop(topLine.totalRevenueCop),
       hint: "histórico, pagos completados",
       accent: PALETTE.success,
+      delta: topLine.totalRevenueCop - (weekAgo?.totalRevenueCop ?? topLine.totalRevenueCop),
+      deltaSuffix: "COP",
     },
     {
       label: "Picks totales",
       value: fmtInt(topLine.totalPicks ?? topLine.totalMatchPicks + topLine.totalStructuralPicks + (topLine.totalGroupStandingsPicks ?? 0)),
       hint: `${fmtInt(topLine.totalMatchPicks)} marcador · ${fmtInt((topLine.totalGroupStandingsPicks ?? 0))} grupos · ${fmtInt(topLine.totalStructuralPicks)} eliminatoria`,
       accent: PALETTE.primaryLight,
+      delta: (topLine.totalPicks ?? 0) - (weekAgo?.totalPicks ?? 0),
     },
     {
       label: "Pendientes de aprobar",
       value: fmtInt(topLine.pendingApprovalMembers),
       hint: "miembros esperando OK del host",
       accent: PALETTE.warning,
+      delta: null,
     },
   ];
 
@@ -1366,24 +1425,147 @@ function CohortSection({
   data: AnalyticsDashboardResponse["cohortRetention"];
   isMobile: boolean;
 }) {
+  // Renders "en curso" for buckets whose measurement window has not closed
+  // for that cohort — a 5-day-old cohort cannot have W1 retention yet, so
+  // showing "0 (0%)" would mislead. The backend marks each bucket with an
+  // `inProgressW*` boolean.
+  const formatCell = (
+    inProgress: boolean,
+    retained: number,
+    cohortSize: number,
+  ): string => {
+    if (inProgress) return "⏳ en curso";
+    if (cohortSize === 0) return "—";
+    const pct = retained / cohortSize;
+    return `${fmtInt(retained)} (${fmtPct(pct)})`;
+  };
+
   return (
     <Card isMobile={isMobile}>
       <Table
         headers={["Cohorte (semana)", "Tamaño", "W1 retornaron", "W2 retornaron", "W4 retornaron"]}
-        rows={data.map((c) => {
-          const w1Pct = c.cohortSize > 0 ? c.retainedW1 / c.cohortSize : 0;
-          const w2Pct = c.cohortSize > 0 ? c.retainedW2 / c.cohortSize : 0;
-          const w4Pct = c.cohortSize > 0 ? c.retainedW4 / c.cohortSize : 0;
-          return [
-            c.cohortWeekStart,
-            fmtInt(c.cohortSize),
-            `${fmtInt(c.retainedW1)} (${fmtPct(w1Pct)})`,
-            `${fmtInt(c.retainedW2)} (${fmtPct(w2Pct)})`,
-            `${fmtInt(c.retainedW4)} (${fmtPct(w4Pct)})`,
-          ];
-        })}
+        rows={data.map((c) => [
+          c.cohortWeekStart,
+          fmtInt(c.cohortSize),
+          formatCell(c.inProgressW1, c.retainedW1, c.cohortSize),
+          formatCell(c.inProgressW2, c.retainedW2, c.cohortSize),
+          formatCell(c.inProgressW4, c.retainedW4, c.cohortSize),
+        ])}
       />
     </Card>
+  );
+}
+
+// ─── Locale distribution (post first-login modal) ───────────
+
+function LocaleDistributionSection({
+  data,
+  isMobile,
+}: {
+  data: AnalyticsDashboardResponse["localeDistribution"];
+  isMobile: boolean;
+}) {
+  // Labels map. "pending" is special — those users haven't answered the
+  // first-login modal yet. Helps the team gauge modal completion velocity.
+  const LABELS: Record<string, { name: string; color: string }> = {
+    es: { name: "Español", color: PALETTE.primary },
+    en: { name: "English", color: PALETTE.info },
+    pt: { name: "Português", color: PALETTE.success },
+    pending: { name: "Pendiente (modal sin completar)", color: PALETTE.warning },
+  };
+
+  const total = data.reduce((s, r) => s + r.count, 0);
+  const completed = data.filter((r) => r.locale !== "pending").reduce((s, r) => s + r.count, 0);
+  const completionRate = total > 0 ? completed / total : 0;
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 2fr) minmax(0, 1fr)",
+        gap: spacing.md,
+      }}
+    >
+      <Card title="Idioma elegido por usuarios" isMobile={isMobile}>
+        <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
+          {data.map((row) => {
+            const meta = LABELS[row.locale] ?? { name: row.locale, color: colors.textMuted };
+            return (
+              <div key={row.locale}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: fontSize.sm,
+                    marginBottom: 4,
+                  }}
+                >
+                  <span style={{ fontWeight: fontWeight.semibold }}>{meta.name}</span>
+                  <span style={{ color: colors.textMuted }}>
+                    {fmtInt(row.count)} ({fmtPct(row.pct)})
+                  </span>
+                </div>
+                <div
+                  style={{
+                    width: "100%",
+                    height: 8,
+                    background: colors.borderLight,
+                    borderRadius: radii.pill,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${row.pct * 100}%`,
+                      height: "100%",
+                      background: meta.color,
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+      <Card title="Modal de primer login" isMobile={isMobile}>
+        <div style={{ display: "flex", flexDirection: "column", gap: spacing.sm }}>
+          <div>
+            <div style={{ fontSize: fontSize.xs, color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Tasa de completación
+            </div>
+            <div
+              style={{
+                fontSize: fontSize["3xl"],
+                fontWeight: fontWeight.extrabold,
+                color: completionRate >= 0.5 ? PALETTE.success : PALETTE.warning,
+              }}
+            >
+              {fmtPct(completionRate)}
+            </div>
+            <div style={{ fontSize: fontSize.xs, color: colors.textLight }}>
+              {fmtInt(completed)} de {fmtInt(total)} usuarios respondieron
+            </div>
+          </div>
+          {completionRate < 1 && (
+            <div
+              style={{
+                marginTop: spacing.sm,
+                padding: spacing.sm,
+                borderRadius: radii.md,
+                background: `${PALETTE.warning}10`,
+                borderLeft: `3px solid ${PALETTE.warning}`,
+                fontSize: fontSize.xs,
+                color: colors.textMuted,
+                lineHeight: 1.5,
+              }}
+            >
+              Los usuarios pendientes verán el modal en su próximo login. Hasta entonces, sus correos siguen la cascada por país (default español).
+            </div>
+          )}
+        </div>
+      </Card>
+    </div>
   );
 }
 

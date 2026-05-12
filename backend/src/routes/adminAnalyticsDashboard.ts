@@ -34,6 +34,14 @@ interface DashboardPayload {
   cacheTtlSeconds: number;
   errors: { section: string; message: string }[];
   topLine: TopLineKPIs;
+  /**
+   * Subset of TopLineKPIs captured 7 days ago for the same field
+   * definitions. Frontend computes Δ inline so a single payload covers
+   * "where we are" + "how we moved this week". Fields that depend on
+   * point-in-time state we don't snapshot (pendingApprovalMembers,
+   * draftPools, etc.) are intentionally omitted.
+   */
+  topLineWeekAgo: TopLineWeekAgo;
   signupsByWeek: WeeklySignups[];
   poolsByWeek: WeeklyPools[];
   picksByWeek: WeeklyPicks[];
@@ -43,6 +51,13 @@ interface DashboardPayload {
   poolsByStatus: { status: string; count: number }[];
   poolsByTournament: TournamentRow[];
   poolSizeDistribution: { range: string; count: number }[];
+  /**
+   * Per-locale user counts plus the "pending modal" bucket (User.locale
+   * is null until the first-login locale prompt is submitted). Drives
+   * the new locale-distribution panel that surfaces modal completion
+   * rate as a side effect.
+   */
+  localeDistribution: LocaleRow[];
   funnel: ActivationFunnel;
   corporateFunnel: CorporateFunnel;
   topAcquisition: AcquisitionRow[];
@@ -53,6 +68,27 @@ interface DashboardPayload {
   cohortRetention: CohortRow[];
   paymentBreakdown: PaymentBreakdown;
   operationalHealth: OperationalHealth;
+}
+
+interface TopLineWeekAgo {
+  totalUsers: number;
+  verifiedUsers: number;
+  googleSignups: number;
+  activeUsers7d: number;
+  totalPools: number;
+  activePools: number;
+  totalPicks: number;
+  totalRevenueUsd: number;
+  totalRevenueCop: number;
+  totalCorporateInvites: number;
+  activatedInvites: number;
+}
+
+interface LocaleRow {
+  /** "es" | "en" | "pt" | "pending" (modal not completed) */
+  locale: string;
+  count: number;
+  pct: number;
 }
 
 interface TopLineKPIs {
@@ -192,6 +228,15 @@ interface CohortRow {
   retainedW1: number;
   retainedW2: number;
   retainedW4: number;
+  /**
+   * Marker for retention buckets whose measurement window has not yet
+   * closed for this cohort. e.g. a 5-day-old cohort cannot have a
+   * legitimate W4 retention value (it has not lived through week 4).
+   * The frontend renders these as "en curso" instead of "0%".
+   */
+  inProgressW1: boolean;
+  inProgressW2: boolean;
+  inProgressW4: boolean;
 }
 interface PaymentBreakdown {
   totalCheckoutsStarted: number;
@@ -308,6 +353,20 @@ const DEFAULT_OPERATIONAL: OperationalHealth = {
   auditEventsLast24h: 0,
 };
 
+const DEFAULT_WEEK_AGO: TopLineWeekAgo = {
+  totalUsers: 0,
+  verifiedUsers: 0,
+  googleSignups: 0,
+  activeUsers7d: 0,
+  totalPools: 0,
+  activePools: 0,
+  totalPicks: 0,
+  totalRevenueUsd: 0,
+  totalRevenueCop: 0,
+  totalCorporateInvites: 0,
+  activatedInvites: 0,
+};
+
 // ─── Builder ────────────────────────────────────────────────
 
 async function buildDashboardData(): Promise<DashboardPayload> {
@@ -416,6 +475,95 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       totalGroupStandingsPicks,
       totalPicks: totalMatchPicks + totalStructuralPicks + totalGroupStandingsPicks,
     };
+  });
+
+  // ── Top-line snapshot 7 days ago (for Δ vs current) ────
+  // Each query mirrors a top-line metric but with the time clock rolled
+  // back one week. Frontend computes the delta inline. Only cumulative /
+  // windowed metrics are included — point-in-time fields like
+  // pendingApprovalMembers don't have a meaningful "last week" value
+  // without per-day snapshots, so they're left out on purpose.
+  const topLineWeekAgo = await safeRun<TopLineWeekAgo>("topLineWeekAgo", DEFAULT_WEEK_AGO, async () => {
+    const day14Ago = new Date(now.getTime() - 14 * 86_400_000);
+    const [
+      totalUsersBefore,
+      verifiedUsersBefore,
+      googleSignupsBefore,
+      activeUsers7dBefore,
+      poolsBefore,
+      activePoolsBefore,
+      matchPicksBefore,
+      structuralPicksBefore,
+      groupStandingsPicksBefore,
+      revenueUsdBefore,
+      revenueCopBefore,
+      corporateInvitesBefore,
+      activatedInvitesBefore,
+    ] = await Promise.all([
+      prisma.user.count({ where: { createdAtUtc: { lt: day7Ago } } }),
+      prisma.user.count({ where: { emailVerified: true, createdAtUtc: { lt: day7Ago } } }),
+      prisma.user.count({ where: { googleId: { not: null }, createdAtUtc: { lt: day7Ago } } }),
+      // "Active in the 7-day window ending one week ago" = picks in [day14Ago, day7Ago)
+      prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(DISTINCT u)::bigint AS count FROM (
+          SELECT "userId" AS u FROM "Prediction"
+            WHERE "createdAtUtc" >= ${day14Ago} AND "createdAtUtc" < ${day7Ago}
+          UNION
+          SELECT "userId" FROM "StructuralPrediction"
+            WHERE "createdAtUtc" >= ${day14Ago} AND "createdAtUtc" < ${day7Ago}
+          UNION
+          SELECT "userId" FROM "GroupStandingsPrediction"
+            WHERE "createdAtUtc" >= ${day14Ago} AND "createdAtUtc" < ${day7Ago}
+        ) ap
+      `,
+      prisma.pool.count({ where: { createdAtUtc: { lt: day7Ago } } }),
+      prisma.pool.count({ where: { status: "ACTIVE", createdAtUtc: { lt: day7Ago } } }),
+      prisma.prediction.count({ where: { createdAtUtc: { lt: day7Ago } } }),
+      prisma.structuralPrediction.count({ where: { createdAtUtc: { lt: day7Ago } } }),
+      prisma.groupStandingsPrediction.count({ where: { createdAtUtc: { lt: day7Ago } } }),
+      prisma.poolPayment.aggregate({
+        where: { status: "COMPLETED", paidAtUtc: { lt: day7Ago } },
+        _sum: { amountUsd: true },
+      }),
+      prisma.poolPayment.aggregate({
+        where: { status: "COMPLETED", paidAtUtc: { lt: day7Ago } },
+        _sum: { amountCop: true },
+      }),
+      prisma.corporateInvite.count({ where: { createdAtUtc: { lt: day7Ago } } }),
+      prisma.corporateInvite.count({ where: { activatedAt: { lt: day7Ago }, status: "ACTIVATED" } }),
+    ]);
+    return {
+      totalUsers: totalUsersBefore,
+      verifiedUsers: verifiedUsersBefore,
+      googleSignups: googleSignupsBefore,
+      activeUsers7d: Number(activeUsers7dBefore[0]?.count ?? 0),
+      totalPools: poolsBefore,
+      activePools: activePoolsBefore,
+      totalPicks: matchPicksBefore + structuralPicksBefore + groupStandingsPicksBefore,
+      totalRevenueUsd: revenueUsdBefore._sum.amountUsd ?? 0,
+      totalRevenueCop: revenueCopBefore._sum.amountCop ?? 0,
+      totalCorporateInvites: corporateInvitesBefore,
+      activatedInvites: activatedInvitesBefore,
+    };
+  });
+
+  // ── Locale distribution ─────────────────────────────────
+  // Tracks both the chosen-language split AND the modal completion
+  // rate (the count of `pending` is the population that still owes a
+  // response to the first-login locale prompt).
+  const localeDistribution = await safeRun<LocaleRow[]>("localeDistribution", [], async () => {
+    const rows = await prisma.$queryRaw<{ locale: string | null; count: bigint }[]>`
+      SELECT locale, COUNT(*)::bigint AS count
+      FROM "User"
+      GROUP BY locale
+      ORDER BY count DESC
+    `;
+    const total = rows.reduce((s, r) => s + Number(r.count), 0);
+    return rows.map((r) => ({
+      locale: r.locale ?? "pending",
+      count: Number(r.count),
+      pct: total > 0 ? Number(r.count) / total : 0,
+    }));
   });
 
   // ── Time series — last 12 weeks ────────────────────────
@@ -973,13 +1121,30 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       GROUP BY c.cohort_week
       ORDER BY c.cohort_week
     `;
-    return rows.map((r) => ({
-      cohortWeekStart: isoDate(r.cohort_week),
-      cohortSize: Number(r.cohort_size),
-      retainedW1: Number(r.retained_w1),
-      retainedW2: Number(r.retained_w2),
-      retainedW4: Number(r.retained_w4),
-    }));
+    // For each retention bucket we mark "in progress" when the cohort's
+    // age is shorter than the bucket's start. A cohort created 5 days
+    // ago cannot have a W1 retention (W1 starts day 7); rendering "0%"
+    // would be misleading vs. "no data yet". The frontend renders the
+    // in-progress cells as "en curso" / "—".
+    return rows.map((r) => {
+      const cohortStart = r.cohort_week.getTime();
+      const cohortAgeMs = now.getTime() - cohortStart;
+      const D = 86_400_000;
+      return {
+        cohortWeekStart: isoDate(r.cohort_week),
+        cohortSize: Number(r.cohort_size),
+        retainedW1: Number(r.retained_w1),
+        retainedW2: Number(r.retained_w2),
+        retainedW4: Number(r.retained_w4),
+        // W1 measures (cohort_week + 7d, cohort_week + 14d). Closed once
+        // cohortAge >= 14d. Same logic for W2 (closed at 21d) and W4
+        // (closed at 35d). Strict `<` so a cohort exactly at 14d shows
+        // its (just-closed) W1 number, not "en curso".
+        inProgressW1: cohortAgeMs < 14 * D,
+        inProgressW2: cohortAgeMs < 21 * D,
+        inProgressW4: cohortAgeMs < 35 * D,
+      };
+    });
   });
 
   // ── Payment breakdown ──────────────────────────────────
@@ -1100,6 +1265,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     cacheTtlSeconds: CACHE_TTL_MS / 1000,
     errors: [...errors],
     topLine,
+    topLineWeekAgo,
     signupsByWeek,
     poolsByWeek,
     picksByWeek,
@@ -1109,6 +1275,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     poolsByStatus,
     poolsByTournament,
     poolSizeDistribution,
+    localeDistribution,
     funnel,
     corporateFunnel,
     topAcquisition,

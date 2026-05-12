@@ -133,11 +133,34 @@ export interface AnalyticsTopLineKPIs {
   totalPicks: number;
 }
 
+export interface AnalyticsTopLineWeekAgo {
+  totalUsers: number;
+  verifiedUsers: number;
+  googleSignups: number;
+  activeUsers7d: number;
+  totalPools: number;
+  activePools: number;
+  totalPicks: number;
+  totalRevenueUsd: number;
+  totalRevenueCop: number;
+  totalCorporateInvites: number;
+  activatedInvites: number;
+}
+
+export interface AnalyticsLocaleRow {
+  /** "es" | "en" | "pt" | "pending" */
+  locale: string;
+  count: number;
+  pct: number;
+}
+
 export interface AnalyticsDashboardResponse {
   generatedAtUtc: string;
   cacheTtlSeconds: number;
   cached: boolean;
   topLine: AnalyticsTopLineKPIs;
+  topLineWeekAgo: AnalyticsTopLineWeekAgo;
+  localeDistribution: AnalyticsLocaleRow[];
   signupsByWeek: { weekStart: string; total: number; verified: number; google: number; referred: number }[];
   poolsByWeek: { weekStart: string; total: number; personal: number; corporate: number }[];
   picksByWeek: { weekStart: string; matchPicks: number; structuralPicks: number; groupStandingsPicks: number }[];
@@ -206,6 +229,9 @@ export interface AnalyticsDashboardResponse {
     retainedW1: number;
     retainedW2: number;
     retainedW4: number;
+    inProgressW1: boolean;
+    inProgressW2: boolean;
+    inProgressW4: boolean;
   }[];
   paymentBreakdown: {
     totalCheckoutsStarted: number;
