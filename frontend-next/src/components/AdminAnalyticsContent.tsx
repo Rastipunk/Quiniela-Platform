@@ -755,9 +755,9 @@ function TopLineSection({
       accent: PALETTE.success,
     },
     {
-      label: "Match picks",
-      value: fmtInt(topLine.totalMatchPicks),
-      hint: `${fmtInt(topLine.totalStructuralPicks)} structural picks`,
+      label: "Picks totales",
+      value: fmtInt(topLine.totalPicks ?? topLine.totalMatchPicks + topLine.totalStructuralPicks + (topLine.totalGroupStandingsPicks ?? 0)),
+      hint: `${fmtInt(topLine.totalMatchPicks)} marcador · ${fmtInt((topLine.totalGroupStandingsPicks ?? 0))} grupos · ${fmtInt(topLine.totalStructuralPicks)} eliminatoria`,
       accent: PALETTE.primaryLight,
     },
     {
@@ -931,8 +931,9 @@ function EngagementSection({
             <YAxis tick={{ fontSize: 10 }} />
             <Tooltip />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="matchPicks" fill={PALETTE.primary} name="Match" />
-            <Bar dataKey="structuralPicks" fill={PALETTE.purple} name="Structural" />
+            <Bar dataKey="matchPicks" fill={PALETTE.primary} name="Marcador" stackId="picks" />
+            <Bar dataKey="groupStandingsPicks" fill={PALETTE.success} name="Grupos (Estratega)" stackId="picks" />
+            <Bar dataKey="structuralPicks" fill={PALETTE.purple} name="Eliminatoria (Estratega)" stackId="picks" />
           </BarChart>
         </ResponsiveContainer>
       </Card>

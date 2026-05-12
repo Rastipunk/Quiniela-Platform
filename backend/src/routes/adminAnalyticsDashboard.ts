@@ -80,6 +80,11 @@ interface TopLineKPIs {
   pendingApprovalMembers: number;
   totalMatchPicks: number;
   totalStructuralPicks: number;
+  /** Estratega-mode group standing predictions (the most common Estratega
+   *  pick type). Was missing pre-fix, biasing every "pick volume" KPI down. */
+  totalGroupStandingsPicks: number;
+  /** Sum of all three pick tables — the single number that reflects engagement. */
+  totalPicks: number;
 }
 
 interface WeeklySignups {
@@ -99,6 +104,7 @@ interface WeeklyPicks {
   weekStart: string;
   matchPicks: number;
   structuralPicks: number;
+  groupStandingsPicks: number;
 }
 interface WeeklyRevenue {
   weekStart: string;
@@ -250,6 +256,8 @@ const DEFAULT_TOP_LINE: TopLineKPIs = {
   pendingApprovalMembers: 0,
   totalMatchPicks: 0,
   totalStructuralPicks: 0,
+  totalGroupStandingsPicks: 0,
+  totalPicks: 0,
 };
 
 const DEFAULT_FUNNEL: ActivationFunnel = {
@@ -324,6 +332,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       inviteStatusCounts,
       totalMatchPicks,
       totalStructuralPicks,
+      totalGroupStandingsPicks,
       pendingApprovalCount,
       activeUsers7dRows,
       activeUsers30dRows,
@@ -342,14 +351,28 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       prisma.corporateInvite.groupBy({ by: ["status"], _count: { _all: true } }),
       prisma.prediction.count(),
       prisma.structuralPrediction.count(),
+      prisma.groupStandingsPrediction.count(),
       prisma.poolMember.count({ where: { status: "PENDING_APPROVAL" } }),
+      // Active users = anyone who made ANY pick in the window. Pre-fix
+      // this only counted "Prediction" (match picks), ignoring Estratega
+      // users entirely — biasing both KPIs ~37% low at audit time.
       prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(DISTINCT "userId")::bigint AS count
-        FROM "Prediction" WHERE "createdAtUtc" >= ${day7Ago}
+        SELECT COUNT(DISTINCT u)::bigint AS count FROM (
+          SELECT "userId" AS u FROM "Prediction" WHERE "createdAtUtc" >= ${day7Ago}
+          UNION
+          SELECT "userId" FROM "StructuralPrediction" WHERE "createdAtUtc" >= ${day7Ago}
+          UNION
+          SELECT "userId" FROM "GroupStandingsPrediction" WHERE "createdAtUtc" >= ${day7Ago}
+        ) all_picks
       `,
       prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(DISTINCT "userId")::bigint AS count
-        FROM "Prediction" WHERE "createdAtUtc" >= ${day30Ago}
+        SELECT COUNT(DISTINCT u)::bigint AS count FROM (
+          SELECT "userId" AS u FROM "Prediction" WHERE "createdAtUtc" >= ${day30Ago}
+          UNION
+          SELECT "userId" FROM "StructuralPrediction" WHERE "createdAtUtc" >= ${day30Ago}
+          UNION
+          SELECT "userId" FROM "GroupStandingsPrediction" WHERE "createdAtUtc" >= ${day30Ago}
+        ) all_picks
       `,
       prisma.poolPayment.aggregate({
         where: { status: "COMPLETED" },
@@ -390,6 +413,8 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       pendingApprovalMembers: pendingApprovalCount,
       totalMatchPicks,
       totalStructuralPicks,
+      totalGroupStandingsPicks,
+      totalPicks: totalMatchPicks + totalStructuralPicks + totalGroupStandingsPicks,
     };
   });
 
@@ -439,8 +464,14 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   const picksByWeek = await safeRun<WeeklyPicks[]>("picksByWeek", [], async () => {
+    // Three pick tables share the same time-axis. We collect a row per
+    // week from each table, full-outer-join into a single timeline so
+    // gaps in any single series don't drop the week. Pre-fix this only
+    // tracked Prediction + StructuralPrediction — Estratega's main pick
+    // type (GroupStandingsPrediction) was completely invisible on the
+    // chart, which is misleading once Estratega pools grow.
     const rows = await prisma.$queryRaw<
-      { week_start: Date; match_picks: bigint; structural_picks: bigint }[]
+      { week_start: Date; match_picks: bigint; structural_picks: bigint; group_standings_picks: bigint }[]
     >`
       WITH match_p AS (
         SELECT date_trunc('week', "createdAtUtc") AS week_start, COUNT(*)::bigint AS c
@@ -453,18 +484,33 @@ async function buildDashboardData(): Promise<DashboardPayload> {
         FROM "StructuralPrediction"
         WHERE "createdAtUtc" >= ${day90Ago}
         GROUP BY week_start
+      ),
+      group_p AS (
+        SELECT date_trunc('week', "createdAtUtc") AS week_start, COUNT(*)::bigint AS c
+        FROM "GroupStandingsPrediction"
+        WHERE "createdAtUtc" >= ${day90Ago}
+        GROUP BY week_start
+      ),
+      weeks AS (
+        SELECT week_start FROM match_p
+        UNION SELECT week_start FROM struct_p
+        UNION SELECT week_start FROM group_p
       )
-      SELECT COALESCE(m.week_start, s.week_start) AS week_start,
+      SELECT w.week_start,
              COALESCE(m.c, 0) AS match_picks,
-             COALESCE(s.c, 0) AS structural_picks
-      FROM match_p m
-      FULL OUTER JOIN struct_p s ON m.week_start = s.week_start
-      ORDER BY week_start
+             COALESCE(s.c, 0) AS structural_picks,
+             COALESCE(g.c, 0) AS group_standings_picks
+      FROM weeks w
+      LEFT JOIN match_p  m ON m.week_start = w.week_start
+      LEFT JOIN struct_p s ON s.week_start = w.week_start
+      LEFT JOIN group_p  g ON g.week_start = w.week_start
+      ORDER BY w.week_start
     `;
     return rows.map((r) => ({
       weekStart: isoDate(r.week_start),
       matchPicks: Number(r.match_picks),
       structuralPicks: Number(r.structural_picks),
+      groupStandingsPicks: Number(r.group_standings_picks),
     }));
   });
 
@@ -491,14 +537,24 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   const dailyActiveUsers = await safeRun<DailyActive[]>("dailyActiveUsers", [], async () => {
+    // Unified across all three pick tables — see picksByWeek note.
     const rows = await prisma.$queryRaw<
       { day: Date; unique_users: bigint; picks_count: bigint }[]
     >`
+      WITH all_picks AS (
+        SELECT "userId", "createdAtUtc" FROM "Prediction"
+          WHERE "createdAtUtc" >= ${day30Ago}
+        UNION ALL
+        SELECT "userId", "createdAtUtc" FROM "StructuralPrediction"
+          WHERE "createdAtUtc" >= ${day30Ago}
+        UNION ALL
+        SELECT "userId", "createdAtUtc" FROM "GroupStandingsPrediction"
+          WHERE "createdAtUtc" >= ${day30Ago}
+      )
       SELECT date_trunc('day', "createdAtUtc") AS day,
              COUNT(DISTINCT "userId")::bigint AS unique_users,
              COUNT(*)::bigint AS picks_count
-      FROM "Prediction"
-      WHERE "createdAtUtc" >= ${day30Ago}
+      FROM all_picks
       GROUP BY day
       ORDER BY day
     `;
@@ -601,8 +657,17 @@ async function buildDashboardData(): Promise<DashboardPayload> {
         SELECT COUNT(DISTINCT "userId")::bigint AS count
         FROM "PoolMember" WHERE status IN ('ACTIVE', 'LEFT')
       `,
+      // "Made pick" = ANY pick across all three tables. Pre-fix this
+      // only counted Prediction (match picks), so any Estratega-only
+      // user counted as "joined but never engaged" — wrong.
       prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(DISTINCT "userId")::bigint AS count FROM "Prediction"
+        SELECT COUNT(DISTINCT u)::bigint AS count FROM (
+          SELECT "userId" AS u FROM "Prediction"
+          UNION
+          SELECT "userId" FROM "StructuralPrediction"
+          UNION
+          SELECT "userId" FROM "GroupStandingsPrediction"
+        ) all_picks
       `,
       prisma.user.count(),
     ]);
@@ -803,14 +868,26 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   // ── Pool health checks ─────────────────────────────────
   const poolHealth = await safeRun<PoolHealth>("poolHealth", DEFAULT_POOL_HEALTH, async () => {
     const [zombiePools, poolsWithNoMembers, oldEmptyDrafts, fullPools] = await Promise.all([
+      // Zombie = ACTIVE pool with zero picks across ALL pick tables.
+      // Pre-fix this checked only Prediction; an Estratega pool whose
+      // members all made structural picks looked like a zombie.
       prisma.$queryRaw<{ count: bigint }[]>`
         SELECT COUNT(*)::bigint AS count FROM "Pool" p
         WHERE p.status = 'ACTIVE'
         AND NOT EXISTS (SELECT 1 FROM "Prediction" pr WHERE pr."poolId" = p.id)
+        AND NOT EXISTS (SELECT 1 FROM "StructuralPrediction" sp WHERE sp."poolId" = p.id)
+        AND NOT EXISTS (SELECT 1 FROM "GroupStandingsPrediction" gp WHERE gp."poolId" = p.id)
       `,
+      // Orphan = ACTIVE pool with zero non-host members. After the
+      // poolStateMachine guard + rescue migration this should stay at
+      // 0; if it ever climbs the auto-revert wired in
+      // poolStateMachine.transitionToActive failed somehow. Pre-fix
+      // this included DRAFT/ARCHIVED pools too, hitting 76 pure-noise
+      // even when the meaningful number was 0.
       prisma.$queryRaw<{ count: bigint }[]>`
         SELECT COUNT(*)::bigint AS count FROM "Pool" p
-        WHERE NOT EXISTS (
+        WHERE p.status = 'ACTIVE'
+        AND NOT EXISTS (
           SELECT 1 FROM "PoolMember" pm
           WHERE pm."poolId" = p.id AND pm.status = 'ACTIVE'
           AND pm.role NOT IN ('HOST', 'CORPORATE_HOST')
@@ -840,6 +917,10 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   // ── Cohort retention (last 8 weeks) ────────────────────
   const cohortRetention = await safeRun<CohortRow[]>("cohortRetention", [], async () => {
     const since = new Date(now.getTime() - 8 * 7 * 86_400_000);
+    // Single `all_picks` CTE unifies the three pick tables so retention
+    // counts Estratega activity the same as score-based picks. Without
+    // this, an Estratega-heavy cohort (all picks land in Group/Structural
+    // tables) shows fake 0% retention.
     const rows = await prisma.$queryRaw<
       {
         cohort_week: Date;
@@ -849,7 +930,14 @@ async function buildDashboardData(): Promise<DashboardPayload> {
         retained_w4: bigint;
       }[]
     >`
-      WITH cohorts AS (
+      WITH all_picks AS (
+        SELECT "userId", "createdAtUtc" FROM "Prediction"
+        UNION ALL
+        SELECT "userId", "createdAtUtc" FROM "StructuralPrediction"
+        UNION ALL
+        SELECT "userId", "createdAtUtc" FROM "GroupStandingsPrediction"
+      ),
+      cohorts AS (
         SELECT id AS user_id,
                date_trunc('week', "createdAtUtc") AS cohort_week
         FROM "User"
@@ -859,7 +947,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
              COUNT(DISTINCT c.user_id)::bigint AS cohort_size,
              COUNT(DISTINCT c.user_id) FILTER (
                WHERE EXISTS (
-                 SELECT 1 FROM "Prediction" p
+                 SELECT 1 FROM all_picks p
                  WHERE p."userId" = c.user_id
                  AND p."createdAtUtc" >= c.cohort_week + INTERVAL '7 days'
                  AND p."createdAtUtc" < c.cohort_week + INTERVAL '14 days'
@@ -867,7 +955,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
              )::bigint AS retained_w1,
              COUNT(DISTINCT c.user_id) FILTER (
                WHERE EXISTS (
-                 SELECT 1 FROM "Prediction" p
+                 SELECT 1 FROM all_picks p
                  WHERE p."userId" = c.user_id
                  AND p."createdAtUtc" >= c.cohort_week + INTERVAL '14 days'
                  AND p."createdAtUtc" < c.cohort_week + INTERVAL '21 days'
@@ -875,7 +963,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
              )::bigint AS retained_w2,
              COUNT(DISTINCT c.user_id) FILTER (
                WHERE EXISTS (
-                 SELECT 1 FROM "Prediction" p
+                 SELECT 1 FROM all_picks p
                  WHERE p."userId" = c.user_id
                  AND p."createdAtUtc" >= c.cohort_week + INTERVAL '28 days'
                  AND p."createdAtUtc" < c.cohort_week + INTERVAL '35 days'

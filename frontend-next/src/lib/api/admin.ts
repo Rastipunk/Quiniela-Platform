@@ -125,6 +125,12 @@ export interface AnalyticsTopLineKPIs {
   pendingApprovalMembers: number;
   totalMatchPicks: number;
   totalStructuralPicks: number;
+  /** Estratega group-ordering picks. Reported separately from
+   *  totalStructuralPicks (knockout winners) because hosts' UX
+   *  treats them as distinct. */
+  totalGroupStandingsPicks: number;
+  /** Sum of all three pick tables — the single engagement signal. */
+  totalPicks: number;
 }
 
 export interface AnalyticsDashboardResponse {
@@ -134,7 +140,7 @@ export interface AnalyticsDashboardResponse {
   topLine: AnalyticsTopLineKPIs;
   signupsByWeek: { weekStart: string; total: number; verified: number; google: number; referred: number }[];
   poolsByWeek: { weekStart: string; total: number; personal: number; corporate: number }[];
-  picksByWeek: { weekStart: string; matchPicks: number; structuralPicks: number }[];
+  picksByWeek: { weekStart: string; matchPicks: number; structuralPicks: number; groupStandingsPicks: number }[];
   revenueByWeek: { weekStart: string; paidPaymentsCount: number; revenueUsdMinor: number; revenueCop: number }[];
   dailyActiveUsers: { day: string; uniqueActiveUsers: number; picksCount: number }[];
   usersByCountry: { country: string; count: number; pct: number }[];
