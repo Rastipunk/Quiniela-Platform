@@ -508,6 +508,97 @@ export async function generateGroupStandings(
   };
 }
 
+// ─── Group Standings Stats (read-only, partial OK) ──────────
+
+/**
+ * Returns the classic-table stats for a group (Pos / PJ / G / E / P / GF / GC / DG / Pts)
+ * computed live from PoolMatchResult.currentVersion. Unlike generateGroupStandings,
+ * this is read-only (no upsert, no audit), accessible by any active pool member,
+ * and tolerates partial data — matches without a published result are skipped
+ * so the frontend can render a "Tabla parcial" view as the group progresses.
+ *
+ * Also returns the officially-published team order (if any) so the frontend
+ * can distinguish "calculated from current scores" from "what the host
+ * actually published" (they can differ if the host overrode the table).
+ */
+export async function getGroupStandingsStats(
+  userId: string,
+  poolId: string,
+  phaseId: string,
+  groupId: string,
+) {
+  const isMember = await requireActivePoolMember(userId, poolId);
+  if (!isMember) throw new ServiceError("FORBIDDEN", 403);
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    include: { tournamentInstance: true },
+  });
+  if (!pool) throw new ServiceError("NOT_FOUND", 404);
+
+  const data = parseFixtureData(pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson);
+  const groupMatches = data.matches.filter((m) => m.groupId === groupId);
+  const groupTeamIds = data.teams
+    .filter((t) => t.groupId === groupId)
+    .map((t) => t.id);
+
+  if (groupMatches.length === 0 || groupTeamIds.length === 0) {
+    throw new ServiceError("NOT_FOUND", 404, { message: "Group not found in fixture" });
+  }
+
+  const results = await prisma.poolMatchResult.findMany({
+    where: { poolId, matchId: { in: groupMatches.map((m) => m.id) } },
+    include: { currentVersion: true },
+  });
+
+  const finalised = results.filter((r) => r.currentVersion);
+  const standingsInput = finalised
+    .map((r) => {
+      const m = groupMatches.find((gm) => gm.id === r.matchId);
+      if (!m) return null;
+      return {
+        matchId: r.matchId,
+        homeTeamId: m.homeTeamId,
+        awayTeamId: m.awayTeamId,
+        homeGoals: r.currentVersion!.homeGoals90 ?? r.currentVersion!.homeGoals,
+        awayGoals: r.currentVersion!.awayGoals90 ?? r.currentVersion!.awayGoals,
+      };
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null);
+
+  // Lazy import to avoid pulling tournamentAdvancement into the
+  // groupStandingsService dependency closure at module load time.
+  const { calculateGroupStandings } = await import("./tournamentAdvancement");
+  const standings =
+    standingsInput.length > 0
+      ? calculateGroupStandings(groupId, groupTeamIds, standingsInput)
+      : // No matches finalised yet — synthesize empty rows preserving the
+        // fixture's natural team order so the frontend can render the table
+        // skeleton with team names + zeroes.
+        groupTeamIds.map((teamId, idx) => ({
+          teamId,
+          groupId,
+          position: idx + 1,
+          played: 0, won: 0, drawn: 0, lost: 0,
+          goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0,
+        }));
+
+  const officialResult = await prisma.groupStandingsResult.findUnique({
+    where: { poolId_phaseId_groupId: { poolId, phaseId, groupId } },
+    select: { teamIds: true, publishedAtUtc: true, version: true, reason: true },
+  });
+
+  return {
+    standings,
+    completedMatches: finalised.length,
+    totalMatches: groupMatches.length,
+    publishedTeamIds: (officialResult?.teamIds as string[] | null) ?? null,
+    publishedAtUtc: officialResult?.publishedAtUtc ?? null,
+    publishedVersion: officialResult?.version ?? null,
+    publishedReason: officialResult?.reason ?? null,
+  };
+}
+
 // ─── Group Match Results ─────────────────────────────────────
 
 /** Get match results for a specific group. */

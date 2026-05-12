@@ -22,6 +22,7 @@ import {
   getGroupStandingsResultsByPhase,
   generateGroupStandings,
   getGroupMatchResults,
+  getGroupStandingsStats,
 } from "../services/groupStandingsService";
 import { prisma } from "../db";
 import { fireAndForget } from "../lib/asyncHelpers";
@@ -212,6 +213,25 @@ groupStandingsRouter.get("/:poolId/group-standings-results/:phaseId", async (req
     return handleServiceError(res, err);
   }
 });
+
+// GET /pools/:poolId/group-standings-stats/:phaseId/:groupId
+// Devuelve la tabla clásica calculada en vivo desde los marcadores
+// actuales (Pos / PJ / G / E / P / GF / GC / DG / Pts). Tolera datos
+// parciales — se llena conforme van terminando los partidos. También
+// incluye el orden oficial publicado (si existe) para que el frontend
+// pueda mostrar la diferencia si el host hizo un override.
+groupStandingsRouter.get(
+  "/:poolId/group-standings-stats/:phaseId/:groupId",
+  async (req, res) => {
+    const { poolId, phaseId, groupId } = req.params;
+    try {
+      const data = await getGroupStandingsStats(req.auth!.userId, poolId, phaseId, groupId);
+      return sendData(res, data);
+    } catch (err) {
+      return handleServiceError(res, err);
+    }
+  },
+);
 
 // ─── Generate Standings from Match Results ───────────────────
 
