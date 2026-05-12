@@ -846,7 +846,18 @@
     "updateResult": "Update result",
     "publishResult": "Publish result",
     "pendingResult": "Pending result",
-    "advancesBadge": "advances"
+    "advancesBadge": "advances",
+    "pendingScraperResult": "Pending. Will publish automatically when the match ends.",
+    "overrideBtn": "Override winner",
+    "overrideTitle": "Override advancing team",
+    "overrideDesc": "Pick the correct team and explain why. All pool players will be notified.",
+    "overrideReasonLabel": "Reason for change (required)",
+    "overrideReasonPlaceholder": "E.g. Team X was disqualified because...",
+    "overrideReasonRequired": "A reason is required to override the winner",
+    "overrideWarning": "All pool members will be emailed with the reason.",
+    "overrideSaveBtn": "Save and notify",
+    "overrideSuccess": "Winner updated and notification sent",
+    "cancel": "Cancel"
   },
 
   "join": {

@@ -846,7 +846,18 @@
     "updateResult": "Actualizar resultado",
     "publishResult": "Publicar resultado",
     "pendingResult": "Pendiente de resultado",
-    "advancesBadge": "avanza"
+    "advancesBadge": "avanza",
+    "pendingScraperResult": "Pendiente. Se publicará automáticamente cuando termine el partido.",
+    "overrideBtn": "Sobrescribir ganador",
+    "overrideTitle": "Sobrescribir equipo que avanza",
+    "overrideDesc": "Elige el equipo correcto y explica el motivo. Se notificará a todos los jugadores del pool.",
+    "overrideReasonLabel": "Razón del cambio (obligatorio)",
+    "overrideReasonPlaceholder": "Ej: El equipo X fue descalificado por...",
+    "overrideReasonRequired": "Debes proporcionar una razón para sobrescribir el ganador",
+    "overrideWarning": "Se enviará un correo a todos los miembros del pool con la razón.",
+    "overrideSaveBtn": "Guardar y notificar",
+    "overrideSuccess": "Ganador actualizado y notificación enviada",
+    "cancel": "Cancelar"
   },
 
   "join": {

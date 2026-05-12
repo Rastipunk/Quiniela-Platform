@@ -106,6 +106,12 @@ export function StructuralPicksManager({
   // Estado para KNOCKOUT_WINNER
   const [knockoutPicks, setKnockoutPicks] = useState<Map<string, string>>(new Map());
 
+  // Winners published in StructuralPhaseResult.matches[] for this phase.
+  // Populated by the scraper-driven autoPublishStructuralResults pipeline
+  // (or by a host override via PUT structural-results/.../match/...).
+  // The KnockoutMatchCard uses it to show the winner badge + override button.
+  const [publishedWinners, setPublishedWinners] = useState<Map<string, string>>(new Map());
+
   // Cargar datos iniciales
   useEffect(() => {
     async function loadPickData() {
@@ -113,14 +119,20 @@ export function StructuralPicksManager({
         setLoading(true);
         setError(null);
 
-        // Para KNOCKOUT phases, los resultados de partidos vienen como prop (matchResults)
-        // Solo necesitamos cargar los picks del usuario
         if (phaseType === "KNOCKOUT") {
-          // Cargar picks del usuario (no structural results, porque knockout usa Result de partidos)
-          const { pick } = await getStructuralPick(token, poolId, phaseId);
-          if (pick) {
-            loadPickData_internal(pick);
-          }
+          // Load both the user's pick and the published winners. Estratega
+          // no longer derives the winner from PoolMatchResult on the
+          // frontend — StructuralPhaseResult is the source of truth for
+          // "who advances".
+          const [pickRes, resultRes] = await Promise.all([
+            getStructuralPick(token, poolId, phaseId),
+            getStructuralResult(token, poolId, phaseId),
+          ]);
+          if (pickRes.pick) loadPickData_internal(pickRes.pick);
+          const winnersFromResult =
+            (resultRes.result?.resultJson as { matches?: Array<{ matchId: string; winnerId: string }> } | undefined)
+              ?.matches ?? [];
+          setPublishedWinners(new Map(winnersFromResult.map((w) => [w.matchId, w.winnerId])));
           setLoading(false);
           return;
         }
@@ -343,8 +355,17 @@ export function StructuralPicksManager({
                 isHost={isHost}
                 isLocked={isLocked}
                 existingResult={existingResult || null}
+                publishedWinnerId={publishedWinners.get(match.id) ?? null}
                 existingPick={knockoutPicks.get(match.id) || null}
                 onResultSaved={() => {
+                  // After an override, refetch the structural result so
+                  // the published winner map reflects the new state.
+                  void getStructuralResult(token, poolId, phaseId).then((r) => {
+                    const winners =
+                      (r.result?.resultJson as { matches?: Array<{ matchId: string; winnerId: string }> } | undefined)
+                        ?.matches ?? [];
+                    setPublishedWinners(new Map(winners.map((w) => [w.matchId, w.winnerId])));
+                  });
                   onDataChanged?.();
                 }}
                 onPickSaved={() => {

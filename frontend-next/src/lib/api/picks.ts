@@ -80,3 +80,21 @@ export async function getStructuralResult(token: string, poolId: string, phaseId
 export async function listStructuralResults(token: string, poolId: string): Promise<{ results: StructuralRecord[] }> {
   return requestJson<{ results: StructuralRecord[] }>(`/pools/${poolId}/structural-results`, { method: "GET" });
 }
+
+// Publish (or override) the winner of a single knockout match in Estratega.
+// First call without `reason` if no winner is published yet for the match.
+// If the server returns 400 REASON_REQUIRED_FOR_OVERRIDE the caller must
+// surface the override dialog, collect a reason, and retry with it set —
+// the override path also triggers the email-everyone notification.
+export async function publishKnockoutMatchWinner(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  matchId: string,
+  body: { winnerId: string; reason?: string },
+): Promise<{ result: unknown; isOverride: boolean; autoAdvance: unknown }> {
+  return requestJson(
+    `/pools/${poolId}/structural-results/${phaseId}/match/${matchId}`,
+    { method: "PUT", body: JSON.stringify(body) },
+  );
+}

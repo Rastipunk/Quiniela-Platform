@@ -846,7 +846,18 @@
     "updateResult": "Atualizar resultado",
     "publishResult": "Publicar resultado",
     "pendingResult": "Aguardando resultado",
-    "advancesBadge": "avança"
+    "advancesBadge": "avança",
+    "pendingScraperResult": "Pendente. Será publicado automaticamente quando o jogo terminar.",
+    "overrideBtn": "Sobrescrever vencedor",
+    "overrideTitle": "Sobrescrever time que avança",
+    "overrideDesc": "Escolha o time correto e explique o motivo. Todos os jogadores do bolão serão notificados.",
+    "overrideReasonLabel": "Motivo da alteração (obrigatório)",
+    "overrideReasonPlaceholder": "Ex: O time X foi desclassificado porque...",
+    "overrideReasonRequired": "É necessário um motivo para sobrescrever o vencedor",
+    "overrideWarning": "Todos os membros do bolão serão notificados por e-mail com o motivo.",
+    "overrideSaveBtn": "Salvar e notificar",
+    "overrideSuccess": "Vencedor atualizado e notificação enviada",
+    "cancel": "Cancelar"
   },
 
   "join": {
