@@ -70,6 +70,7 @@ interface DashboardPayload {
   cohortRetention: CohortRow[];
   paymentBreakdown: PaymentBreakdown;
   operationalHealth: OperationalHealth;
+  communicationsHealth: CommunicationsHealth;
 }
 
 interface TopLineWeekAgo {
@@ -305,6 +306,24 @@ interface OperationalHealth {
   auditEventsLast24h: number;
 }
 
+/**
+ * Communications health — focused on the channels we use to reach
+ * users and the signal we get back from them. Mostly trend-oriented
+ * because absolute counters are already in operationalHealth.
+ */
+interface CommunicationsHealth {
+  /** Daily completions of the first-login locale-preference modal,
+   *  last 30 days. Captures the modal's pickup velocity. */
+  localePromptCompletionsDaily: { day: string; count: number }[];
+  /** % of users who have submitted the modal (over all users). */
+  localePromptCompletionRate: number;
+  /** Weekly new EmailSuppression rows (last 12 weeks). A spike is the
+   *  earliest visible signal of a deliverability incident. */
+  emailSuppressionsByWeek: { weekStart: string; count: number }[];
+  /** Weekly BetaFeedback split by type — flags quality regression. */
+  feedbackByWeek: { weekStart: string; bug: number; feature: number; other: number }[];
+}
+
 // ─── Section runner ─────────────────────────────────────────
 
 const errors: { section: string; message: string }[] = [];
@@ -404,6 +423,13 @@ const DEFAULT_OPERATIONAL: OperationalHealth = {
   failedAnalyticsEvents: 0,
   recentFeedback: [],
   auditEventsLast24h: 0,
+};
+
+const DEFAULT_COMMUNICATIONS: CommunicationsHealth = {
+  localePromptCompletionsDaily: [],
+  localePromptCompletionRate: 0,
+  emailSuppressionsByWeek: [],
+  feedbackByWeek: [],
 };
 
 const DEFAULT_WEEK_AGO: TopLineWeekAgo = {
@@ -1468,6 +1494,73 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     },
   );
 
+  // ── Communications health ──────────────────────────────
+  const communicationsHealth = await safeRun<CommunicationsHealth>(
+    "communicationsHealth",
+    DEFAULT_COMMUNICATIONS,
+    async () => {
+      const [modalCompletionsDaily, modalCompletedTotal, totalUsersAll, suppressionsWeekly, feedbackWeekly] =
+        await Promise.all([
+          // Each "LOCALE_PREFERENCE_SET" audit event = one modal completion.
+          prisma.$queryRaw<{ day: Date; c: bigint }[]>`
+            SELECT date_trunc('day', "createdAtUtc") AS day,
+                   COUNT(*)::bigint AS c
+            FROM "AuditEvent"
+            WHERE action = 'LOCALE_PREFERENCE_SET'
+            AND "createdAtUtc" >= ${day30Ago}
+            GROUP BY day
+            ORDER BY day
+          `,
+          prisma.user.count({ where: { localePromptCompletedAt: { not: null } } }),
+          prisma.user.count(),
+          prisma.$queryRaw<{ week_start: Date; c: bigint }[]>`
+            SELECT date_trunc('week', "createdAt") AS week_start,
+                   COUNT(*)::bigint AS c
+            FROM "EmailSuppression"
+            WHERE "createdAt" >= ${day90Ago}
+            GROUP BY week_start
+            ORDER BY week_start
+          `,
+          prisma.$queryRaw<{ week_start: Date; type: string; c: bigint }[]>`
+            SELECT date_trunc('week', "createdAtUtc") AS week_start,
+                   type::text AS type,
+                   COUNT(*)::bigint AS c
+            FROM "BetaFeedback"
+            WHERE "createdAtUtc" >= ${day90Ago}
+            GROUP BY week_start, type
+            ORDER BY week_start
+          `,
+        ]);
+
+      // Pivot feedback rows into one row per week with BUG/FEATURE/OTHER columns.
+      const feedbackMap = new Map<string, { bug: number; feature: number; other: number }>();
+      for (const r of feedbackWeekly) {
+        const wk = isoDate(r.week_start);
+        const cur = feedbackMap.get(wk) ?? { bug: 0, feature: 0, other: 0 };
+        const n = Number(r.c);
+        if (r.type === "BUG") cur.bug += n;
+        else if (r.type === "FEATURE") cur.feature += n;
+        else cur.other += n;
+        feedbackMap.set(wk, cur);
+      }
+
+      return {
+        localePromptCompletionsDaily: modalCompletionsDaily.map((r) => ({
+          day: isoDate(r.day),
+          count: Number(r.c),
+        })),
+        localePromptCompletionRate: totalUsersAll > 0 ? modalCompletedTotal / totalUsersAll : 0,
+        emailSuppressionsByWeek: suppressionsWeekly.map((r) => ({
+          weekStart: isoDate(r.week_start),
+          count: Number(r.c),
+        })),
+        feedbackByWeek: Array.from(feedbackMap.entries())
+          .map(([weekStart, counts]) => ({ weekStart, ...counts }))
+          .sort((a, b) => a.weekStart.localeCompare(b.weekStart)),
+      };
+    },
+  );
+
   return {
     generatedAtUtc: now.toISOString(),
     cacheTtlSeconds: CACHE_TTL_MS / 1000,
@@ -1496,6 +1589,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     cohortRetention,
     paymentBreakdown,
     operationalHealth,
+    communicationsHealth,
   };
 }
 

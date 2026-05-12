@@ -250,6 +250,12 @@ export interface AnalyticsDashboardResponse {
     inProgressW2: boolean;
     inProgressW4: boolean;
   }[];
+  communicationsHealth: {
+    localePromptCompletionsDaily: { day: string; count: number }[];
+    localePromptCompletionRate: number;
+    emailSuppressionsByWeek: { weekStart: string; count: number }[];
+    feedbackByWeek: { weekStart: string; bug: number; feature: number; other: number }[];
+  };
   paymentBreakdown: {
     totalCheckoutsStarted: number;
     totalCheckoutsCompleted: number;

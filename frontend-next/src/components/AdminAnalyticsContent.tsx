@@ -541,6 +541,11 @@ export default function AdminAnalyticsContent() {
         <CohortActivationSection data={data.cohortActivation} isMobile={isMobile} />
       </Section>
 
+      {/* Communications health */}
+      <Section title="📬 Comunicación con usuarios" subtitle="Modal de idioma, deliverability de email, feedback recibido">
+        <CommunicationsSection data={data.communicationsHealth} isMobile={isMobile} />
+      </Section>
+
       {/* Cohort retention */}
       <Section title="🔄 Retención por cohorte" subtitle="% de signups que volvieron a hacer un pick en W1, W2 y W4">
         <CohortSection data={data.cohortRetention} isMobile={isMobile} />
@@ -1506,6 +1511,117 @@ function CohortActivationSection({
         ])}
       />
     </Card>
+  );
+}
+
+function CommunicationsSection({
+  data,
+  isMobile,
+}: {
+  data: AnalyticsDashboardResponse["communicationsHealth"];
+  isMobile: boolean;
+}) {
+  // Stack feedback into a chart-friendly shape; recharts wants the
+  // category columns flat at the top level of each datum.
+  const totalSuppressions7d = data.emailSuppressionsByWeek
+    .slice(-1)
+    .reduce((s, w) => s + w.count, 0);
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+        gap: spacing.md,
+      }}
+    >
+      <Card title="Tasa de completación del modal" subtitle="Usuarios que han elegido idioma vs total" isMobile={isMobile}>
+        <div
+          style={{
+            fontSize: fontSize["4xl"],
+            fontWeight: fontWeight.extrabold,
+            color:
+              data.localePromptCompletionRate >= 0.5
+                ? PALETTE.success
+                : data.localePromptCompletionRate >= 0.2
+                  ? PALETTE.warning
+                  : PALETTE.error,
+            lineHeight: 1.1,
+          }}
+        >
+          {fmtPct(data.localePromptCompletionRate)}
+        </div>
+        <div style={{ marginTop: spacing.sm, fontSize: fontSize.xs, color: colors.textMuted }}>
+          {data.localePromptCompletionsDaily.length === 0
+            ? "Aún no hay completaciones registradas en 30 días."
+            : `${fmtInt(data.localePromptCompletionsDaily.reduce((s, d) => s + d.count, 0))} usuarios completaron el modal en los últimos 30 días.`}
+        </div>
+      </Card>
+
+      <Card title="Completaciones del modal por día" subtitle="Últimos 30 días" isMobile={isMobile}>
+        {data.localePromptCompletionsDaily.length === 0 ? (
+          <div style={{ fontSize: fontSize.sm, color: colors.textMuted, padding: spacing.lg, textAlign: "center" }}>
+            Aún no hay datos.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={data.localePromptCompletionsDaily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
+              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="count" fill={PALETTE.primary} name="Completaciones" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
+
+      <Card
+        title="Email suppressions por semana"
+        subtitle={
+          totalSuppressions7d > 5
+            ? "⚠ Spike detectado — revisar deliverability"
+            : "Bounces + complaints (Resend)"
+        }
+        isMobile={isMobile}
+      >
+        {data.emailSuppressionsByWeek.length === 0 ? (
+          <div style={{ fontSize: fontSize.sm, color: PALETTE.success, padding: spacing.lg, textAlign: "center" }}>
+            ✓ Cero suppressions en 12 semanas.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={data.emailSuppressionsByWeek} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
+              <XAxis dataKey="weekStart" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="count" fill={PALETTE.error} name="Suppressions" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
+
+      <Card title="Feedback por semana" subtitle="BUG · FEATURE · OTROS, últimas 12 semanas" isMobile={isMobile}>
+        {data.feedbackByWeek.length === 0 ? (
+          <div style={{ fontSize: fontSize.sm, color: colors.textMuted, padding: spacing.lg, textAlign: "center" }}>
+            Sin feedback en 12 semanas.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={data.feedbackByWeek} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={PALETTE.border} />
+              <XAxis dataKey="weekStart" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="bug" stackId="fb" fill={PALETTE.error} name="Bug" />
+              <Bar dataKey="feature" stackId="fb" fill={PALETTE.info} name="Feature" />
+              <Bar dataKey="other" stackId="fb" fill={PALETTE.muted} name="Otros" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
+    </div>
   );
 }
 
