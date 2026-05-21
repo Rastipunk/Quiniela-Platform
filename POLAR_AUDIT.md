@@ -433,7 +433,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Pass `cancelUrl` into Polar's checkout create call. Verify Polar's SDK supports it (`@polar-sh/sdk` v0.47 docs).
 
 ### F-3: Polar `checkout.updated` webhook only acts on `expired`/`failed`
-- **Status:** 🟧 IN PROGRESS — schema ready in Commit 1 (`20260519_extend_payment_observability`); webhook persistence logic comes in Commit 2
+- **Status:** 🟩 FIXED in `f3c1e24` (2026-05-21) — `handleCheckoutUpdated` rewritten to persist EVERY delivery as a PaymentEvent audit row, maps Polar terminal statuses (expired/canceled/failed) to the new enum values, leaves non-terminal (open/processing/confirmed) as audit-only.
 - **Severity:** high
 - **Where:** `backend/src/services/paymentService.ts:676–713` (`handleCheckoutUpdated`)
 - **Behavior:** Polar emits `checkout.updated` on every state transition (`open` → `processing` → `confirmed` → `succeeded` → `expired` → `failed`). Our handler only branches on `expired` and `failed`. **Every other transition is silently dropped — no `PaymentEvent` row written, no log entry beyond `console.log("Unhandled webhook event")` at the route level.**
@@ -510,7 +510,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Either (a) frontend fetches pricing from backend (extra hop, but single source of truth), or (b) extract a shared TypeScript package + monorepo workspace. Defer to post-mundial.
 
 ### F-13: No backend route to report "client side payment error"
-- **Status:** 🟧 IN PROGRESS — schema ready in Commit 1 (PaymentEvent.source supports CLIENT origin); endpoint comes in Commit 2
+- **Status:** 🟧 IN PROGRESS — backend endpoint `POST /payments/attempts/:paymentId/event` shipped in `f3c1e24` (2026-05-21) with `recordClientEvent` service helper enforcing ownership; frontend beacons (REDIRECT_INITIATED, USER_CANCELLED, CLIENT_ERROR) come in Commits 5 + 6.
 - **Severity:** high (observability)
 - **Where:** missing endpoint. There's no POST `/payments/client-event` (or similar) that the frontend can hit when something fails *after* the backend created the checkout but before the user reached Polar.
 - **Impact:** All client-side failures (redirect blocked, page unload, network drop after PoolPayment INSERT) are invisible to us.
@@ -525,7 +525,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Hourly cron: for every PoolPayment in PENDING > 1 hour old, call `getCheckoutSession(polarCheckoutId)`. If Polar says expired/failed → mark FAILED. If Polar says succeeded → process as if webhook arrived (the webhook handler is already idempotent). If Polar says still open and >24h old → mark as `EXPIRED`/`ABANDONED` ourselves.
 
 ### F-15: `PaymentStatus` enum lacks `ABANDONED` / `EXPIRED` / `CANCELLED`
-- **Status:** 🟩 FIXED in Commit 1 (`20260519_extend_payment_observability` migration — adds `INITIATED`, `ABANDONED`, `EXPIRED`, `CANCELLED` values). Producers in subsequent commits.
+- **Status:** 🟩 FIXED in `cc9c315` (2026-05-21) — migration `20260519_extend_payment_observability` adds `INITIATED`, `ABANDONED`, `EXPIRED`, `CANCELLED` to the enum and is applied + verified in production. Producers in subsequent commits.
 - **Severity:** medium
 - **Where:** `backend/prisma/schema.prisma:1204–1209`
 - **Behavior:** A user closes tab without paying = stays PENDING forever. Polar checkout expires (24h) = no automatic transition.
@@ -547,14 +547,14 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Fire `POST /payments/attempts/:paymentId/event` with type=`USER_CANCELLED`. Emit GA4 `payment_cancelled`. Show a one-click "retry" CTA back to the capacity tab.
 
 ### F-18: Webhook handler returns 200 on unrecognized event type
-- **Status:** 🟧 IN PROGRESS — implicitly fixed by F-3 (Commit 2 will persist every webhook regardless of type)
+- **Status:** 🟩 FIXED in `f3c1e24` (2026-05-21) — `recordUnhandledPolarEvent` writes an audit row for any webhook type the dedicated handlers don't recognize. Returns 200 (no retry) but leaves a forensic trail.
 - **Severity:** low
 - **Where:** `backend/src/routes/payments.ts:336–344` — unknown event types are logged with `console.log` and the route returns 200.
 - **Impact:** If Polar adds a new event type that should matter (e.g. `customer.refund_pending`), we silently miss it and Polar marks the delivery as successful.
 - **Fix:** Persist `PaymentEvent` rows for ALL recognized & unrecognized events (F-3 covers this) so we have a record. Continue returning 200 so Polar doesn't retry, but operator can grep the table for unknown event types and triage.
 
 ### F-19: Webhook `webhook-id` / `webhook-timestamp` headers not logged
-- **Status:** 🟧 IN PROGRESS — columns added in Commit 1; population logic in Commit 2
+- **Status:** 🟩 FIXED in `f3c1e24` (2026-05-21) — route handler parses both headers into a `WebhookContext` threaded through every handler; every PaymentEvent row written from a webhook now records the headers; route also logs them on receipt.
 - **Severity:** low
 - **Where:** `backend/src/routes/payments.ts:321–344` does not log the Polar webhook delivery ID.
 - **Impact:** If you need to ask Polar "did you send me event X at time Y?" you cannot correlate to their internal logs.
