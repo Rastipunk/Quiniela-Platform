@@ -12,6 +12,7 @@ import type {
   MatchPickType,
   MatchPickTypeKey,
 } from "../types/pickConfig";
+import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 type PhaseType = "GROUP" | "KNOCKOUT" | string;
 
@@ -164,7 +165,7 @@ export function PhaseConfigStep({
           }}
         >
           <span style={{ fontWeight: "bold", fontSize: isMobile ? "1rem" : "1.125rem" }}>
-            {currentPhase.phaseName}
+            {formatPhaseFullName(currentPhase.phaseId, tp)}
           </span>
           <span style={{ color: colors.textMuted, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
             {currentPhaseIndex + 1}/{phases.length}

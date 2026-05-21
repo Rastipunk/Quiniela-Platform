@@ -6,9 +6,11 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import type { WizardStep } from "@/types/poolWizard";
+import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 export function StepSummary() {
   const t = useTranslations("poolWizard");
+  const tp = useTranslations("pool");
   const tDyn = t as unknown as (key: string) => string;
   const isMobile = useIsMobile();
   const { state, goToStep } = useWizard();
@@ -27,7 +29,7 @@ export function StepSummary() {
 
   const extraTimePhases = state.scoringConfig
     .filter((p) => p.includeExtraTime)
-    .map((p) => p.phaseName);
+    .map((p) => formatPhaseFullName(p.phaseId, tp));
 
   // ── Section row component ───────────────────────────────
 

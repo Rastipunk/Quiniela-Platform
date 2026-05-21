@@ -24,6 +24,7 @@ import type { PickConfigPresetKey } from "@/types/pickConfig";
 import type { InstancePhase } from "@/types/poolWizard";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { PRESETS, type PresetInfo } from "./presets";
+import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -340,6 +341,7 @@ function PhaseSection({
   scalingEnabled: boolean;
 }) {
   const t = useTranslations("poolWizard");
+  const tp = useTranslations("pool");
   const tDyn = t as unknown as (key: string) => string;
   const isGroup = !phase.requiresScore && phase.structuralPicks?.type === "GROUP_STANDINGS";
   const isKnockoutStructural = !phase.requiresScore && phase.structuralPicks?.type === "KNOCKOUT_WINNER";
@@ -425,7 +427,7 @@ function PhaseSection({
             fontWeight: fontWeight.semibold,
             color: colors.text,
           }}>
-            {phase.phaseName}
+            {formatPhaseFullName(phase.phaseId, tp)}
           </span>
           {isScoreBased && (
             <span style={{
@@ -542,7 +544,7 @@ function PhaseSection({
                 type="button"
                 onClick={() => {
                   if (!phase.requiresScore) return; // already selected
-                  const isGroupPhase = phase.phaseId.includes("group") || phase.phaseName.toLowerCase().includes("grupo");
+                  const isGroupPhase = phase.phaseId.includes("group");
                   // Strip `includeExtraTime` when switching to structural:
                   // the structural scoring engines (GROUP_STANDINGS and
                   // KNOCKOUT_WINNER) derive the advancer directly from the
@@ -903,6 +905,7 @@ function ExampleCalculator({
   isMobile: boolean;
 }) {
   const t = useTranslations("poolWizard");
+  const tp = useTranslations("pool");
   const tDyn = t as unknown as (key: string) => string;
   const [realHome, setRealHome] = useState(2);
   const [realAway, setRealAway] = useState(1);
@@ -973,7 +976,7 @@ function ExampleCalculator({
                 cursor: "pointer",
               }}
             >
-              {p.phaseName}
+              {formatPhaseFullName(p.phaseId, tp)}
             </button>
           ))}
         </div>
@@ -1159,6 +1162,7 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
   isMobile: boolean;
 }) {
   const t = useTranslations("poolWizard");
+  const tp = useTranslations("pool");
 
   // Get enabled criteria keys from first score-based phase
   const firstScorePhase = scoringConfig.find((p) => p.matchPicks);
@@ -1204,7 +1208,7 @@ function PresetSummary({ scoringConfig, scoringStyle, isScoreBased, scalingEnabl
                       borderBottom: `2px solid ${colors.borderLight}`,
                       whiteSpace: "nowrap",
                     }}>
-                      {phaseLabel(phase.phaseName)}
+                      {phaseLabel(formatPhaseFullName(phase.phaseId, tp))}
                     </th>
                   ))}
                 </tr>
@@ -1321,6 +1325,7 @@ function ExtraTimeSection({ knockoutPhases, scoringConfig, onUpdateScoringConfig
   isMobile: boolean;
 }) {
   const t = useTranslations("poolWizard");
+  const tp = useTranslations("pool");
   const [expanded, setExpanded] = useState(false);
 
   function toggleExtraTime(phaseId: string) {
@@ -1417,7 +1422,7 @@ function ExtraTimeSection({ knockoutPhases, scoringConfig, onUpdateScoringConfig
           }}>
             <div>
               <span style={{ fontSize: fontSize.base, fontWeight: fontWeight.medium, color: colors.textDark }}>
-                {phase.phaseName}
+                {formatPhaseFullName(phase.phaseId, tp)}
               </span>
               {!phase.includeExtraTime && (
                 <span style={{
@@ -1476,6 +1481,7 @@ export function ScoringEditor({
 }: ScoringEditorProps) {
   const isMobile = useIsMobile();
   const t = useTranslations("poolWizard");
+  const tp = useTranslations("pool");
   // Runtime-keyed lookup (next-intl doesn't allow computed keys at the
   // type level). Used to resolve `scoring.presets.${preset.key}.name`
   // etc. — the keys are exhaustive and stable.
@@ -2026,7 +2032,7 @@ export function ScoringEditor({
                         position: "relative",
                         zIndex: 1,
                       }}>
-                        {p.phaseName}
+                        {formatPhaseFullName(p.phaseId, tp)}
                       </span>
 
                       {/* Stepper controls */}

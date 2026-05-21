@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { PhaseConfigStep } from "./PhaseConfigStep";
 import { getInstancePhases, type InstancePhase } from "../lib/api";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 import type {
   WizardState,
   PoolPickTypesConfig,
@@ -695,7 +696,7 @@ function CustomConfigSummary({ configuration, isMobile }: CustomConfigSummaryPro
           }}
         >
           <h4 style={{ margin: "0 0 0.5rem 0", fontSize: isMobile ? "0.85rem" : "1rem" }}>
-            {index + 1}. {phase.phaseName}
+            {index + 1}. {formatPhaseFullName(phase.phaseId, tp)}
           </h4>
 
           {phase.requiresScore && phase.matchPicks ? (
@@ -751,7 +752,7 @@ function RulesPreview({ configuration, isMobile }: RulesPreviewProps) {
           }}
         >
           <h4 style={{ margin: "0 0 0.25rem 0", fontSize: isMobile ? "0.85rem" : "1rem" }}>
-            🏆 {phase.phaseName.toUpperCase()}
+            🏆 {formatPhaseFullName(phase.phaseId, tp).toUpperCase()}
           </h4>
 
           {phase.requiresScore && phase.matchPicks ? (

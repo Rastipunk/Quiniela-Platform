@@ -7,9 +7,11 @@ import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import { WizardSubStep } from "../WizardSubStep";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 export function StepAdvancedRules() {
   const t = useTranslations("poolWizard");
+  const tp = useTranslations("pool");
   const isMobile = useIsMobile();
   const { state, dispatch } = useWizard();
 
@@ -117,7 +119,7 @@ export function StepAdvancedRules() {
                     fontWeight: fontWeight.medium,
                     color: colors.textDark,
                   }}>
-                    {phase.phaseName}
+                    {formatPhaseFullName(phase.phaseId, tp)}
                   </span>
                   {!phase.includeExtraTime && (
                     <span style={badgeStyle}>
@@ -129,7 +131,7 @@ export function StepAdvancedRules() {
                   checked={!!phase.includeExtraTime}
                   onChange={() => toggleExtraTime(phase.phaseId)}
                   activeColor={colors.successAlt}
-                  ariaLabel={`Toggle extra time for ${phase.phaseName}`}
+                  ariaLabel={`Toggle extra time for ${formatPhaseFullName(phase.phaseId, tp)}`}
                 />
               </div>
             ))}
