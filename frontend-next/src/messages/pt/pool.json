@@ -327,7 +327,8 @@
     "suggestedGroup": "Grupo sugerido",
     "all": "Todos",
     "group": "Grupo {name}",
-    "others": "Outros"
+    "others": "Outros",
+    "matchesCount": "{count, plural, one {# jogo} other {# jogos}}"
   },
 
   "pendingPhase": {

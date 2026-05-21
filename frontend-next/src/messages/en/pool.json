@@ -327,7 +327,8 @@
     "suggestedGroup": "Suggested group",
     "all": "All",
     "group": "Group {name}",
-    "others": "Others"
+    "others": "Others",
+    "matchesCount": "{count, plural, one {# match} other {# matches}}"
   },
 
   "pendingPhase": {

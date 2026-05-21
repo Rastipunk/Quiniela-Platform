@@ -361,7 +361,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               >
                 <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14, color: colors.textDark, listStyle: "none", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span>{g === "SIN_GRUPO" ? t("filters.others") : t("filters.group", { name: g })}</span>
-                  <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>{matchesByGroup[g]?.length ?? 0} partidos</span>
+                  <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>{t("filters.matchesCount", { count: matchesByGroup[g]?.length ?? 0 })}</span>
                 </summary>
                 {matchList}
               </details>
