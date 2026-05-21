@@ -242,7 +242,7 @@ Static fallback dictionary. The `country` field is single-locale (Spanish only).
 - **(B)** is preferred — additive, no migration, decouples display from data shape.
 
 ### F-6: `frontend-next/src/data/teamFlags.ts` has `country` only in Spanish
-- **Status:** 🟥 PENDING (lower priority than F-5; same outcome — country name in Spanish)
+- **Status:** 🟩 FIXED in `6568c6d` (2026-05-22) — aligned with the F-5 catalog rather than restructured per-locale. Added an optional `code` field (FIFA 3-letter) to `TeamFlagData` and populated all 48 WC2026 entries. `TeamFlag.tsx` now resolves the display name via `teams.{code}` from the F-5 catalog, with `flag.country` as a Spanish fallback. UCL clubs keep `country` only (their names are locale-independent). Also dropped the dead `|| getCountryName(...)` fallback from PickComponents/ResultComponents, and switched MatchCard to `getTeamName`.
 - **Severity:** low — this is a fallback dictionary only.
 - **Where:** `frontend-next/src/data/teamFlags.ts`
 - **Fix proposal:** restructure to `country: { es, en, pt }`. Or merge into the new `messages/{locale}/teams.json` from F-5.
