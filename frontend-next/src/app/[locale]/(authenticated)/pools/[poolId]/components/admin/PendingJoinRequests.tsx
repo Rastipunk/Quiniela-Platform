@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { approveMember, rejectMember } from "@/lib/api";
 import { fmtUtc } from "../poolHelpers";
 import { colors, fontSize, fontWeight, radii, spacing } from "@/lib/theme";
@@ -25,6 +25,7 @@ export function PendingJoinRequests({
   userTimezone, reload, refetchNotifications, loadPendingMembers,
 }: PendingJoinRequestsProps) {
   const t = useTranslations("pool");
+  const locale = useLocale();
 
   if (pendingMembers.length === 0) return null;
 
@@ -60,7 +61,7 @@ export function PendingJoinRequests({
                 @{member.username} • {member.email}
               </div>
               <div style={{ fontSize: fontSize.sm, color: colors.textLight, marginTop: 4 }}>
-                {t("admin.pendingRequests.requestedAt")}: {fmtUtc(member.requestedAt, userTimezone)}
+                {t("admin.pendingRequests.requestedAt")}: {fmtUtc(member.requestedAt, userTimezone, locale)}
               </div>
             </div>
 

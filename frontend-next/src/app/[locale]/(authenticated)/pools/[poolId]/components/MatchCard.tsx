@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { getTeamFlag, getCountryName } from "@/data/teamFlags";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import type { PoolOverview, PoolMatchCard } from "@/lib/poolTypes";
@@ -39,6 +39,10 @@ export function MatchCard({
   onToggleScoring,
 }: MatchCardProps) {
   const t = useTranslations("pool");
+  // Locale captured so `fmtUtc` can render dates with the user's month
+  // abbreviation + AM/PM convention. Pre-fix `fmtUtc` always defaulted
+  // to `"es"`, leaking "11 jun 2026" into EN/PT UIs (I18N_AUDIT F-2).
+  const locale = useLocale();
   const isHost = overview.permissions.canManageResults;
   const tournamentKey = overview.tournamentInstance.templateKey ?? "wc_2026_sandbox";
 
@@ -207,10 +211,10 @@ export function MatchCard({
       {/* Match Info: kickoff + deadline */}
       <div style={{ color: colors.textMuted, fontSize: 12, marginBottom: 12, paddingLeft: 4, display: "flex", flexDirection: "column", gap: 2 }}>
         <div>
-          {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone)}
+          {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone, locale)}
         </div>
         <div style={{ color: m.isLocked ? colors.textLight : "#c0392b" }}>
-          {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone)}
+          {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone, locale)}
         </div>
       </div>
 

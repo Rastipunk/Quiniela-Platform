@@ -1,8 +1,19 @@
 import { useTranslations } from "next-intl";
 import { formatMatchDateTime } from "@/lib/timezone";
 
-export function fmtUtc(iso: string, userTimezone: string | null = null) {
-  return formatMatchDateTime(iso, userTimezone);
+/**
+ * Format a UTC ISO timestamp into the user's locale + timezone. The
+ * locale argument is required for non-Spanish UI; without it the
+ * underlying `formatMatchDateTime` falls back to `"es"` and EN/PT
+ * users see Spanish month abbreviations like "11 jun 2026" — see
+ * I18N_AUDIT.md F-2.
+ *
+ * Call sites are expected to read locale from next-intl's
+ * `useLocale()` (already a Client Component since the pool zone is
+ * client-rendered) and pass it through.
+ */
+export function fmtUtc(iso: string, userTimezone: string | null = null, locale: string = "es") {
+  return formatMatchDateTime(iso, userTimezone, locale);
 }
 
 export function norm(s: string) {
