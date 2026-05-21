@@ -275,9 +275,13 @@ export async function handleOrderPaid(payload: {
   const eventType = payload.type || "order.paid";
 
   // 1. Cheap idempotency pre-check (avoids opening a tx for known duplicates).
-  // Not a correctness boundary — the real lock is the UNIQUE constraint
-  // claimed inside the transaction below.
-  const existing = await prisma.paymentEvent.findUnique({
+  // Not a correctness boundary — the real lock is the partial unique index
+  // `PaymentEvent_polarEventId_unique_when_set` (UNIQUE WHERE polarEventId
+  // IS NOT NULL), claimed inside the transaction below. findFirst here
+  // because Prisma doesn't recognise partial unique indexes as findUnique
+  // targets, but the partial index guarantees ≤1 row per non-null value
+  // so this is functionally equivalent.
+  const existing = await prisma.paymentEvent.findFirst({
     where: { polarEventId: eventId },
   });
   if (existing) {
@@ -567,8 +571,9 @@ export async function handleOrderRefunded(payload: {
   const eventId = payload.data.id;
   const eventType = payload.type || "order.refunded";
 
-  // Cheap pre-check (real lock is the UNIQUE constraint inside the tx below).
-  const existing = await prisma.paymentEvent.findUnique({
+  // Cheap pre-check (real lock is the partial unique index inside the tx
+  // below — see note on findFirst in handleOrderPaid above).
+  const existing = await prisma.paymentEvent.findFirst({
     where: { polarEventId: eventId },
   });
   if (existing) return;
@@ -1116,8 +1121,9 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   // still dedupe correctly.
   const eventId = `mp-${paymentMpId}-${mpPayment.status}`;
 
-  // Cheap pre-check (real lock is the UNIQUE constraint inside each branch's tx).
-  const existing = await prisma.paymentEvent.findUnique({
+  // Cheap pre-check (real lock is the partial unique index inside each
+  // branch's tx — see note on findFirst in handleOrderPaid).
+  const existing = await prisma.paymentEvent.findFirst({
     where: { polarEventId: eventId },
   });
   if (existing) return;

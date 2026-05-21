@@ -6,7 +6,10 @@ import { prisma } from "../db";
 vi.mock("../db", () => ({
   prisma: {
     paymentEvent: {
-      findUnique: vi.fn(),
+      // findFirst replaced findUnique after the 20260519 migration made
+      // polarEventId nullable (partial unique index in DB, see PaymentEvent
+      // model docstring + ADR-060).
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
     poolPayment: {
@@ -121,7 +124,7 @@ beforeEach(() => {
 
 describe("handleOrderPaid", () => {
   it("expands capacity for a new event with valid metadata", async () => {
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.paymentEvent.create as any).mockResolvedValue({});
     (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     (prisma.poolPayment.update as any).mockResolvedValue({});
@@ -152,7 +155,7 @@ describe("handleOrderPaid", () => {
   });
 
   it("skips duplicate event (idempotency via findUnique)", async () => {
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue({ id: "existing" });
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue({ id: "existing" });
 
     await handleOrderPaid(orderPaidPayload());
 
@@ -165,7 +168,7 @@ describe("handleOrderPaid", () => {
     // webhook that also passed the cheap pre-check will lose the race at the
     // UNIQUE constraint, the tx rolls back atomically (no payment/pool update
     // happens), and we silently skip.
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     const prismaError = new Error("Unique constraint failed");
     (prismaError as any).code = "P2002";
@@ -182,7 +185,7 @@ describe("handleOrderPaid", () => {
     // a tx failure left the idempotency slot persisted, blocking retries.
     // Now all three writes go through the same tx — verify the create call
     // is mocked through the $transaction passthrough.
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.paymentEvent.create as any).mockResolvedValue({});
     (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     (prisma.poolPayment.update as any).mockResolvedValue({});
@@ -209,7 +212,7 @@ describe("handleOrderPaid", () => {
   });
 
   it("skips when payment is already COMPLETED", async () => {
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.paymentEvent.create as any).mockResolvedValue({});
     (prisma.poolPayment.findUnique as any).mockResolvedValue({
       ...MOCK_PAYMENT,
@@ -222,7 +225,7 @@ describe("handleOrderPaid", () => {
   });
 
   it("returns without crash when metadata is missing poolId", async () => {
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.paymentEvent.create as any).mockResolvedValue({});
 
     await handleOrderPaid(orderPaidPayload({ metadata: {} }));
@@ -231,7 +234,7 @@ describe("handleOrderPaid", () => {
   });
 
   it("returns without crash when checkoutId is missing", async () => {
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.paymentEvent.create as any).mockResolvedValue({});
 
     const payload = orderPaidPayload({ metadata: { poolId: "pool-aaa", toCapacity: 50 } });
@@ -247,7 +250,7 @@ describe("handleOrderPaid", () => {
     // dropped the event from its queue and the customer's payment was lost
     // when the webhook beat the row commit. Now we throw so the route returns
     // 5xx and Polar retries — the row will exist on the second attempt.
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.poolPayment.findUnique as any).mockResolvedValue(null);
 
     await expect(handleOrderPaid(orderPaidPayload())).rejects.toThrow(
@@ -266,7 +269,7 @@ describe("handleOrderRefunded — retryable not-found", () => {
     // PoolPayment row isn't yet committed (or the checkoutId is malformed
     // in transit), throw to trigger retry rather than silently dropping
     // the refund signal.
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.poolPayment.findUnique as any).mockResolvedValue(null);
 
     await expect(
@@ -531,7 +534,7 @@ describe("handleMpWebhook", () => {
       status: "approved",
       external_reference: "P4A-pool-aaa-12345",
     });
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.paymentEvent.create as any).mockResolvedValue({});
     (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     (prisma.poolPayment.update as any).mockResolvedValue({});
@@ -566,7 +569,7 @@ describe("handleMpWebhook", () => {
       status: "approved",
       external_reference: "P4A-pool-aaa-12345",
     });
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     const prismaError = new Error("Unique constraint failed");
     (prismaError as any).code = "P2002";
@@ -587,7 +590,7 @@ describe("handleMpWebhook", () => {
       status: "approved",
       external_reference: "P4A-pool-aaa-12345",
     });
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.paymentEvent.create as any).mockResolvedValue({});
     (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     (prisma.poolPayment.update as any).mockResolvedValue({});
@@ -596,7 +599,7 @@ describe("handleMpWebhook", () => {
 
     await handleMpWebhook("mp-payment-999");
 
-    expect(prisma.paymentEvent.findUnique).toHaveBeenCalledWith({
+    expect(prisma.paymentEvent.findFirst).toHaveBeenCalledWith({
       where: { polarEventId: "mp-mp-payment-999-approved" },
     });
     expect(prisma.paymentEvent.create).toHaveBeenCalledWith(
@@ -621,7 +624,7 @@ describe("handleMpWebhook", () => {
       status: "pending",
       external_reference: "P4A-pool-aaa-12345",
     });
-    (prisma.paymentEvent.findUnique as any).mockResolvedValueOnce(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValueOnce(null);
     (prisma.paymentEvent.create as any).mockResolvedValueOnce({});
     (prisma.poolPayment.findUnique as any).mockResolvedValueOnce({
       ...MOCK_PAYMENT,
@@ -642,7 +645,7 @@ describe("handleMpWebhook", () => {
     // Critical: the find for the new eventId returns null even though the
     // pending eventId is "stored". With the old single-key scheme this would
     // have hit the existing row and returned without doing anything.
-    (prisma.paymentEvent.findUnique as any).mockResolvedValueOnce(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValueOnce(null);
     (prisma.paymentEvent.create as any).mockResolvedValueOnce({});
     (prisma.poolPayment.findUnique as any).mockResolvedValueOnce(MOCK_PAYMENT);
     (prisma.poolPayment.update as any).mockResolvedValueOnce({});
@@ -651,7 +654,7 @@ describe("handleMpWebhook", () => {
 
     await handleMpWebhook("mp-payment-777");
 
-    expect(prisma.paymentEvent.findUnique).toHaveBeenLastCalledWith({
+    expect(prisma.paymentEvent.findFirst).toHaveBeenLastCalledWith({
       where: { polarEventId: "mp-mp-payment-777-approved" },
     });
     expect(prisma.poolPayment.update).toHaveBeenCalledWith(
@@ -671,7 +674,7 @@ describe("handleMpWebhook", () => {
       status: "approved",
       external_reference: "P4A-orphan-reference",
     });
-    (prisma.paymentEvent.findUnique as any).mockResolvedValue(null);
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.poolPayment.findUnique as any).mockResolvedValue(null);
 
     await expect(handleMpWebhook("mp-payment-orphan")).rejects.toThrow(
