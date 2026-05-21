@@ -248,8 +248,9 @@ Static fallback dictionary. The `country` field is single-locale (Spanish only).
 - **Fix proposal:** restructure to `country: { es, en, pt }`. Or merge into the new `messages/{locale}/teams.json` from F-5.
 
 ### F-7: `TournamentInstance.name`, `template.name`, `dataJson.meta.name` are single-locale
-- **Status:** 🟥 PENDING (low priority since current strings happen to be English-coincidental)
+- **Status:** 🟩 FIXED in `ce340be` (2026-05-22) — Option A (display catalog, no DB migration). Added `messages/{es,en,pt}/tournaments.json` keyed by `TournamentTemplate.key` (2 entries: `wc_2026_sandbox`, `ucl-2025`). Registered the `tournaments` namespace. `getTournamentName(templateKey, fallbackName, t)` in `poolHelpers.ts` resolves the catalog with fallback to the stored `TournamentInstance.name` for templates not yet seeded. Backend `/me/pools` now surfaces `templateKey` via a `template: { select: { key: true } }` join so the dashboard `PoolCard` has the same discriminator the pool overview already exposed. Display sites updated: pool page subtitle, `PoolRulesTab` tournament name, dashboard `PoolCard` tournament label. The `pool_viewed` analytics event keeps the canonical `instance.name` so GA metrics don't split across locales.
 - **Severity:** low — `"World Cup 2026"`, `"UEFA Champions League 2025-26"` work as proper nouns in EN; suboptimal in PT (`"Copa do Mundo 2026"`).
+- **Where:** `dataJson.meta.name`, `tournamentInstance.name` displayed across pool/dashboard surfaces.
 - **Fix proposal:** add a `displayNameI18n` Json column to TournamentTemplate (and propagate to the instance via dataJson clone). Frontend uses it with locale fallback to `name`. Defer until F-1..F-6 are done; the current strings don't grossly mislead the user.
 
 ### F-8: `dataJson.matches[].venue` — proper nouns mostly safe
