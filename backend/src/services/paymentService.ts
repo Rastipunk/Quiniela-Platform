@@ -37,8 +37,29 @@ import {
   getMpPublicKey,
   createPreference as mpCreatePreference,
 } from "./mercadopago/client";
+import { Prisma } from "@prisma/client";
+import {
+  PAYMENT_EVENT_SOURCE,
+  CLIENT_EVENT_TYPES,
+  type ClientEventType,
+} from "../lib/paymentEvents";
 
 // ── Helpers ────────────────────────────────────────────────────
+
+/**
+ * Webhook delivery metadata, captured at receipt and threaded through
+ * the handler chain so every `PaymentEvent` row we write can record
+ * which Polar delivery it came from (F-19). Headers are optional —
+ * legacy callers (tests, retry loops) may omit them.
+ */
+export interface WebhookContext {
+  /** Polar `webhook-id` header — Polar's delivery ID, useful for
+   *  cross-referencing with Polar's dashboard log. */
+  webhookId?: string;
+  /** Polar `webhook-timestamp` header — ms or s epoch, parsed to Date
+   *  at the route boundary so handlers receive a typed value. */
+  webhookTimestamp?: Date;
+}
 
 /**
  * Resolves the COP value to report on a Purchase event for a Mercado Pago
@@ -261,16 +282,24 @@ export async function initiateCheckout(
 /**
  * Process an order.paid webhook from Polar.
  * Idempotent: duplicate events are skipped silently.
+ *
+ * @param payload  Verified webhook body from Polar.
+ * @param ctx      Delivery metadata threaded through from the route
+ *                 boundary so the audit row (PaymentEvent) can record
+ *                 which delivery it came from.
  */
-export async function handleOrderPaid(payload: {
-  data: {
-    id: string;
-    checkout_id?: string | null;
-    metadata?: Record<string, unknown>;
-    total_amount?: number;
-  };
-  type: string;
-}): Promise<void> {
+export async function handleOrderPaid(
+  payload: {
+    data: {
+      id: string;
+      checkout_id?: string | null;
+      metadata?: Record<string, unknown>;
+      total_amount?: number;
+    };
+    type: string;
+  },
+  ctx: WebhookContext = {},
+): Promise<void> {
   const eventId = payload.data.id;
   const eventType = payload.type || "order.paid";
 
@@ -340,16 +369,20 @@ export async function handleOrderPaid(payload: {
   const paidAt = new Date();
 
   // 5. Atomic claim + state changes. PaymentEvent.create is now INSIDE the
-  // tx so the UNIQUE-constraint slot only stays committed if the rest of the
-  // writes succeed. If anything throws, the slot rolls back and Polar's retry
-  // (which our 5xx response triggers — see fix in routes/payments.ts) gets
-  // a fresh shot at processing.
+  // tx so the partial-unique-index slot only stays committed if the rest
+  // of the writes succeed. If anything throws, the slot rolls back and
+  // Polar's retry (which our 5xx response triggers — see route handler)
+  // gets a fresh shot at processing.
   try {
     await prisma.$transaction(async (tx) => {
       await tx.paymentEvent.create({
         data: {
+          source: PAYMENT_EVENT_SOURCE.POLAR_WEBHOOK,
           polarEventId: eventId,
+          poolPaymentId: payment.id,
           eventType,
+          webhookId: ctx.webhookId,
+          webhookTimestamp: ctx.webhookTimestamp,
           payloadJson: JSON.parse(JSON.stringify(payload)),
         },
       });
@@ -559,15 +592,18 @@ export async function handleOrderPaid(payload: {
  * could evict members who have already joined; a manual host flow would
  * be required for that. We only reverse the revenue accounting.
  */
-export async function handleOrderRefunded(payload: {
-  data: {
-    id: string;
-    checkout_id?: string | null;
-    metadata?: Record<string, unknown>;
-    total_amount?: number;
-  };
-  type: string;
-}): Promise<void> {
+export async function handleOrderRefunded(
+  payload: {
+    data: {
+      id: string;
+      checkout_id?: string | null;
+      metadata?: Record<string, unknown>;
+      total_amount?: number;
+    };
+    type: string;
+  },
+  ctx: WebhookContext = {},
+): Promise<void> {
   const eventId = payload.data.id;
   const eventType = payload.type || "order.refunded";
 
@@ -598,15 +634,19 @@ export async function handleOrderRefunded(payload: {
   }
 
   // Atomic claim + state change. PaymentEvent.create is INSIDE the tx so the
-  // UNIQUE-constraint slot only stays committed if the REFUNDED update
+  // partial-unique-index slot only stays committed if the REFUNDED update
   // succeeds. If anything throws, the slot rolls back and Polar's retry
   // (triggered by our 5xx) gets a fresh shot.
   try {
     await prisma.$transaction(async (tx) => {
       await tx.paymentEvent.create({
         data: {
+          source: PAYMENT_EVENT_SOURCE.POLAR_WEBHOOK,
           polarEventId: eventId,
+          poolPaymentId: payment.id,
           eventType,
+          webhookId: ctx.webhookId,
+          webhookTimestamp: ctx.webhookTimestamp,
           payloadJson: JSON.parse(JSON.stringify(payload)),
         },
       });
@@ -676,45 +716,239 @@ export async function handleOrderRefunded(payload: {
 }
 
 /**
- * Process a checkout.updated webhook (for detecting expired/failed checkouts).
+ * Process a `checkout.updated` webhook from Polar.
+ *
+ * Pre-20260519 this handler only acted on `expired` / `failed` and dropped
+ * every other status on the floor, leaving us blind to "user reached
+ * checkout", "user submitted payment, awaiting processor", "user
+ * cancelled at the Polar page", etc. — see POLAR_AUDIT.md F-3.
+ *
+ * Now we persist EVERY checkout.updated delivery as a PaymentEvent,
+ * map known terminal states (`expired`, `failed`, `canceled`, `succeeded`)
+ * to the corresponding PaymentStatus, and leave non-terminal transitions
+ * (`open`, `processing`, `confirmed`) as audit-only rows.
+ *
+ * Idempotent: each delivery has its own `payload.data.id` per Polar's
+ * webhook contract, so the partial unique index on `polarEventId` keeps
+ * duplicate deliveries from re-writing PoolPayment state.
  */
-export async function handleCheckoutUpdated(payload: {
-  data: {
-    id: string;
-    status?: string;
-  };
-  type: string;
-}): Promise<void> {
+export async function handleCheckoutUpdated(
+  payload: {
+    data: {
+      id: string;
+      status?: string;
+    };
+    type: string;
+  },
+  ctx: WebhookContext = {},
+): Promise<void> {
   const checkoutId = payload.data.id;
-  const checkoutStatus = payload.data.status;
+  const checkoutStatus = (payload.data.status ?? "").toLowerCase();
+  const eventId = payload.data.id; // Polar reuses the checkout id as the event id for checkout.updated; fine as the idempotency key since each transition gets a separate webhook delivery with a distinct webhook-id header (captured in ctx).
 
-  if (checkoutStatus === "expired" || checkoutStatus === "failed") {
-    const payment = await prisma.poolPayment.findUnique({
-      where: { polarCheckoutId: checkoutId },
-    });
+  // 1. Cheap idempotency pre-check.
+  const existingEvent = await prisma.paymentEvent.findFirst({
+    where: { polarEventId: eventId, eventType: payload.type || "checkout.updated" },
+  });
+  if (existingEvent) {
+    console.log(`[PaymentService] Duplicate checkout.updated ${eventId} (${checkoutStatus}), skipping`);
+    return;
+  }
 
-    if (payment && payment.status === "PENDING") {
-      await prisma.poolPayment.update({
-        where: { id: payment.id },
-        data: { status: "FAILED" },
+  // 2. Match to a PoolPayment (may be null for racing deliveries
+  // pre-INITIATED rollout — graceful degradation).
+  const payment = await prisma.poolPayment.findUnique({
+    where: { polarCheckoutId: checkoutId },
+  });
+
+  // 3. Decide target PaymentStatus, if any.
+  // `expired` / `failed` / `canceled` are terminal Polar states we map
+  // onto our enum. `succeeded` is intermediate (the order.paid webhook
+  // does the actual COMPLETED transition); we still audit-log it so the
+  // funnel report can count "reached succeeded but no order.paid arrived".
+  // `open` / `processing` / `confirmed` are non-terminal — audit only.
+  let nextStatus: "EXPIRED" | "CANCELLED" | "FAILED" | null = null;
+  if (payment && (payment.status === "PENDING" || payment.status === "INITIATED")) {
+    if (checkoutStatus === "expired") nextStatus = "EXPIRED";
+    else if (checkoutStatus === "canceled" || checkoutStatus === "cancelled") nextStatus = "CANCELLED";
+    else if (checkoutStatus === "failed") nextStatus = "FAILED";
+  }
+
+  // 4. Write the audit row + maybe transition status atomically.
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentEvent.create({
+        data: {
+          source: PAYMENT_EVENT_SOURCE.POLAR_WEBHOOK,
+          polarEventId: eventId,
+          poolPaymentId: payment?.id ?? null,
+          eventType: payload.type || "checkout.updated",
+          webhookId: ctx.webhookId,
+          webhookTimestamp: ctx.webhookTimestamp,
+          payloadJson: JSON.parse(JSON.stringify(payload)),
+        },
       });
-      console.log(`[PaymentService] Checkout ${checkoutId} ${checkoutStatus}, payment marked FAILED`);
+      if (payment && nextStatus) {
+        await tx.poolPayment.update({
+          where: { id: payment.id },
+          data: { status: nextStatus },
+        });
+      }
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      console.log(`[PaymentService] Race-condition duplicate checkout.updated ${eventId}, skipping`);
+      return;
+    }
+    throw err;
+  }
+
+  if (nextStatus) {
+    console.log(`[PaymentService] Checkout ${checkoutId} ${checkoutStatus} → payment ${payment!.id} marked ${nextStatus}`);
+    // Funnel analytics: only emit payment_failed once per transition.
+    if (nextStatus === "FAILED" || nextStatus === "EXPIRED" || nextStatus === "CANCELLED") {
       fireAndForget("ga4mp:payment_failed-polar", sendGa4Event({
-        userId: payment.userId,
+        userId: payment!.userId,
         events: [{
           name: "payment_failed",
           params: {
-            transaction_id: payment.polarCheckoutId,
+            transaction_id: payment!.polarCheckoutId,
             affiliation: "Polar",
             currency: "USD",
-            value: payment.amountUsd / 100,
+            value: payment!.amountUsd / 100,
             reason: checkoutStatus,
             payment_method: "polar",
           },
         }],
       }));
     }
+  } else {
+    console.log(`[PaymentService] Checkout ${checkoutId} status=${checkoutStatus} — audit row written, no state transition`);
   }
+}
+
+/**
+ * Persist a Polar webhook event that has no dedicated business-logic
+ * handler (e.g. `customer.created`, `subscription.updated`, or any
+ * future event type Polar adds). Writing the row guarantees the audit
+ * trail promised by `PaymentEvent`'s docstring: every webhook we
+ * receive leaves a trace, even if we don't act on it.
+ *
+ * Idempotent via the partial unique index on polarEventId. Returns
+ * silently on duplicate events.
+ */
+export async function recordUnhandledPolarEvent(
+  payload: { type: string; data: { id?: string;[key: string]: unknown } },
+  ctx: WebhookContext = {},
+): Promise<void> {
+  const eventId = (payload.data?.id as string | undefined) ?? undefined;
+  if (!eventId) {
+    // No event id means we can't dedupe. Persist with NULL polarEventId
+    // (allowed by the partial unique index) and a synthetic eventType
+    // suffix so a re-delivery would dedupe via row identity (timestamp
+    // collision is the only realistic re-write path here).
+    console.warn(`[PaymentService] Unhandled Polar event with no id, persisting without dedup key: ${payload.type}`);
+  }
+
+  // checkout_id present on most checkout.* events; orders carry it
+  // explicitly too. Worth a lookup so the audit row links to the
+  // PoolPayment.
+  const checkoutId =
+    (payload.data?.checkout_id as string | null | undefined) ??
+    (payload.type.startsWith("checkout.") ? (payload.data?.id as string | undefined) : undefined);
+  const payment = checkoutId
+    ? await prisma.poolPayment.findUnique({ where: { polarCheckoutId: checkoutId } })
+    : null;
+
+  // Idempotency pre-check (only when we have an eventId).
+  if (eventId) {
+    const existing = await prisma.paymentEvent.findFirst({
+      where: { polarEventId: eventId, eventType: payload.type },
+    });
+    if (existing) {
+      console.log(`[PaymentService] Duplicate unhandled event ${payload.type}/${eventId}, skipping`);
+      return;
+    }
+  }
+
+  try {
+    await prisma.paymentEvent.create({
+      data: {
+        source: PAYMENT_EVENT_SOURCE.POLAR_WEBHOOK,
+        polarEventId: eventId ?? null,
+        poolPaymentId: payment?.id ?? null,
+        eventType: payload.type,
+        webhookId: ctx.webhookId,
+        webhookTimestamp: ctx.webhookTimestamp,
+        payloadJson: JSON.parse(JSON.stringify(payload)),
+      },
+    });
+    console.log(`[PaymentService] Recorded unhandled Polar event: ${payload.type}${eventId ? ` (id=${eventId})` : ""}`);
+  } catch (err: any) {
+    // P2002 = partial unique index collision. Race with a duplicate
+    // delivery; safe to skip silently.
+    if (err?.code === "P2002") return;
+    throw err;
+  }
+}
+
+// ── Client-side event recording ────────────────────────────────
+
+export interface RecordClientEventInput {
+  /** Authenticated user — must match the PoolPayment's userId. */
+  userId: string;
+  /** PoolPayment being reported on. Ownership is enforced before writing. */
+  poolPaymentId: string;
+  /** One of CLIENT_EVENT_TYPES — REDIRECT_INITIATED, REDIRECT_FAILED,
+   *  USER_CANCELLED, CLIENT_ERROR. */
+  eventType: ClientEventType;
+  /** Optional structured detail — error message, retry count, browser
+   *  metadata, anything the frontend wants persisted for forensics. */
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Record a client-side event for a payment attempt. The browser POSTs to
+ * `/payments/attempts/:paymentId/event` and the route calls this.
+ *
+ * Authorization contract: the call MUST verify that `userId` owns the
+ * `poolPaymentId` before persisting. We enforce that here as the last
+ * line of defence — even if the route handler is bypassed, no event is
+ * written for someone else's payment.
+ *
+ * Idempotency: client events have no gateway event ID, so polarEventId
+ * is null. A frontend can safely re-emit the same event (e.g. after a
+ * page reload during the redirect lifecycle) — each becomes a distinct
+ * row, which is the desired forensic behavior. If we ever need to
+ * deduplicate on a client-provided key, add an optional `clientEventId`
+ * and a partial unique index on it.
+ */
+export async function recordClientEvent(input: RecordClientEventInput): Promise<void> {
+  if (!CLIENT_EVENT_TYPES.includes(input.eventType)) {
+    throw new ServiceError("INVALID_EVENT_TYPE", 400, { eventType: input.eventType });
+  }
+
+  const payment = await prisma.poolPayment.findUnique({
+    where: { id: input.poolPaymentId },
+    select: { id: true, userId: true },
+  });
+  if (!payment) throw new ServiceError("NOT_FOUND", 404);
+  if (payment.userId !== input.userId) {
+    // Cross-user write attempt. Refuse without leaking that the
+    // payment exists.
+    throw new ServiceError("FORBIDDEN", 403);
+  }
+
+  await prisma.paymentEvent.create({
+    data: {
+      source: PAYMENT_EVENT_SOURCE.CLIENT,
+      // No gateway event ID; partial unique index permits NULL here.
+      polarEventId: null,
+      poolPaymentId: payment.id,
+      eventType: input.eventType,
+      payloadJson: (input.details ?? {}) as Prisma.InputJsonValue,
+    },
+  });
 }
 
 // ── Status Queries ─────────────────────────────────────────────
@@ -1154,7 +1388,9 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   // atomic with the actual state change. If a branch tx rolls back, the
   // slot rolls back with it and MP's retry can re-process cleanly.
   const eventCreateData = {
+    source: PAYMENT_EVENT_SOURCE.MP_WEBHOOK,
     polarEventId: eventId,
+    poolPaymentId: payment.id,
     eventType: "mp.payment.updated",
     payloadJson: { id: paymentMpId, status: mpPayment.status, reference },
   };

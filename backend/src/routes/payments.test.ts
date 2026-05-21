@@ -9,6 +9,13 @@ vi.mock("../services/paymentService", () => ({
   handleOrderRefunded: vi.fn().mockResolvedValue(undefined),
   handleCheckoutUpdated: vi.fn().mockResolvedValue(undefined),
   handleMpWebhook: vi.fn().mockResolvedValue(undefined),
+  // Added post-20260519 — used by the route's unhandled-event fallthrough
+  // (F-3 / F-18 fix). Stubbed because no test in this file exercises it.
+  recordUnhandledPolarEvent: vi.fn().mockResolvedValue(undefined),
+  // Used by the new POST /payments/attempts/:paymentId/event endpoint
+  // (F-13). Stubbed for the same reason — endpoint behaviour is tested
+  // by integration; this file covers the webhook signature path.
+  recordClientEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Bring the mocked handlers into scope so individual tests can re-mock them

@@ -52,8 +52,12 @@ import {
   handleCheckoutUpdated,
   handleMpWebhook,
   getPaymentStatus,
+  recordUnhandledPolarEvent,
+  recordClientEvent,
+  type WebhookContext,
 } from "../services/paymentService";
 import { isMercadoPagoConfigured } from "../services/mercadopago/client";
+import { CLIENT_EVENT_TYPES } from "../lib/paymentEvents";
 
 // ── JSON routes (require auth) ─────────────────────────────────
 
@@ -184,6 +188,71 @@ paymentsRouter.post("/mp-process", requireAuth, async (req: Request, res: Respon
     return sendInternal(res, "MP_PROCESS_FAILED");
   }
 });
+
+// POST /payments/attempts/:paymentId/event — Client beacon for the
+// checkout-attempt lifecycle (redirect started/failed, user cancelled,
+// client-side error). See POLAR_AUDIT.md F-13 and lib/paymentEvents.ts
+// for the event-type taxonomy.
+//
+// Authorization: requireAuth + ownership check inside recordClientEvent
+// (the service refuses to write events for someone else's payment).
+//
+// Idempotency: client events are intentionally NOT deduplicated — each
+// is a forensic row. If a frontend retries the same beacon (page reload
+// during redirect), each becomes its own row. That's the desired
+// behavior for "what did the browser actually do?" forensics.
+const clientEventSchema = z.object({
+  // Match the union we expose to the browser. Keeping it as an enum at
+  // the route layer means a malformed value 400s before reaching the
+  // service, which is cheaper than the service's runtime check.
+  eventType: z.enum(CLIENT_EVENT_TYPES as unknown as [string, ...string[]]),
+  // Free-form bag for whatever the browser wants to persist. Cap the
+  // size to avoid pathological payloads filling the audit log.
+  details: z.record(z.string(), z.unknown()).optional(),
+});
+
+paymentsRouter.post(
+  "/attempts/:paymentId/event",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    // Validate the path param shape before touching the DB. Express types
+    // params as `string | string[]` in some configurations; coerce.
+    const rawPaymentId = req.params.paymentId;
+    const paymentId = typeof rawPaymentId === "string" ? rawPaymentId : "";
+    if (!paymentId || !/^[0-9a-f-]{36}$/i.test(paymentId)) {
+      return sendBadRequest(res, "INVALID_PAYMENT_ID");
+    }
+
+    const parsed = clientEventSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+    }
+
+    try {
+      await recordClientEvent({
+        userId: req.auth!.userId,
+        poolPaymentId: paymentId,
+        eventType: parsed.data.eventType as (typeof CLIENT_EVENT_TYPES)[number],
+        details: parsed.data.details,
+      });
+      // 202 because the side-effect (audit row written) is the whole
+      // point of the call; the response carries no useful body.
+      return res.status(202).json({ recorded: true });
+    } catch (err) {
+      if (err instanceof ServiceError) {
+        const send =
+          {
+            400: sendBadRequest,
+            403: sendForbidden,
+            404: sendNotFound,
+          }[err.statusHint] ?? sendInternal;
+        return send(res, err.code, err.extra);
+      }
+      console.error("[Payments] client-event error:", err instanceof Error ? err.message : String(err));
+      return sendInternal(res, "CLIENT_EVENT_FAILED");
+    }
+  },
+);
 
 // GET /payments/pool/:poolId/status — Get latest payment status for a pool
 paymentsRouter.get("/pool/:poolId/status", requireAuth, async (req: Request, res: Response) => {
@@ -332,15 +401,35 @@ export function createWebhookHandler() {
         data: Record<string, unknown>;
       };
 
-      // Route to the correct handler based on event type
+      // Capture delivery metadata so every PaymentEvent row we write
+      // for this webhook records the Polar delivery it came from (F-19).
+      // webhook-timestamp is an ISO string per standardwebhooks spec.
+      const webhookTimestampRaw = headers["webhook-timestamp"];
+      const parsedTs = webhookTimestampRaw ? new Date(webhookTimestampRaw) : undefined;
+      const ctx: WebhookContext = {
+        webhookId: headers["webhook-id"] || undefined,
+        webhookTimestamp:
+          parsedTs && !isNaN(parsedTs.getTime()) ? parsedTs : undefined,
+      };
+      // Log header metadata so failed deliveries can be correlated with
+      // Polar's dashboard log without grepping payloads.
+      console.log(
+        `[Payments] Polar webhook received: type=${payload.type} webhook-id=${ctx.webhookId ?? "-"} webhook-timestamp=${webhookTimestampRaw ?? "-"}`,
+      );
+
+      // Route to the correct handler. EVERY known type writes a
+      // PaymentEvent atomically with its state change (handler-internal).
+      // Unhandled types fall through to recordUnhandledPolarEvent so we
+      // still leave an audit trail — the immutable audit log promise in
+      // PaymentEvent's docstring (F-3 + F-18 fix).
       if (payload.type === "order.paid") {
-        await handleOrderPaid(payload as Parameters<typeof handleOrderPaid>[0]);
+        await handleOrderPaid(payload as Parameters<typeof handleOrderPaid>[0], ctx);
       } else if (payload.type === "order.refunded" || payload.type === "order.canceled") {
-        await handleOrderRefunded(payload as Parameters<typeof handleOrderRefunded>[0]);
+        await handleOrderRefunded(payload as Parameters<typeof handleOrderRefunded>[0], ctx);
       } else if (payload.type === "checkout.updated") {
-        await handleCheckoutUpdated(payload as Parameters<typeof handleCheckoutUpdated>[0]);
+        await handleCheckoutUpdated(payload as Parameters<typeof handleCheckoutUpdated>[0], ctx);
       } else {
-        console.log("[Payments] Unhandled webhook event:", payload.type);
+        await recordUnhandledPolarEvent(payload, ctx);
       }
 
       res.status(200).json({ received: true });

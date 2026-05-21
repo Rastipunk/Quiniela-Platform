@@ -282,9 +282,18 @@ describe("handleOrderRefunded — retryable not-found", () => {
 });
 
 describe("handleCheckoutUpdated", () => {
-  it("marks payment as FAILED when checkout expires", async () => {
+  // Post-20260519: every checkout.updated delivery writes a PaymentEvent
+  // audit row. Terminal Polar statuses (expired/canceled/failed) also
+  // transition PoolPayment.status — but to the corresponding new enum
+  // value (EXPIRED / CANCELLED / FAILED), not the legacy "FAILED for
+  // everything" behavior the pre-fix tests expected.
+
+  it("marks payment as EXPIRED when checkout expires", async () => {
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
     (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
     (prisma.poolPayment.update as any).mockResolvedValue({});
+    (prisma.paymentEvent.create as any).mockResolvedValue({});
+    (prisma.$transaction as any).mockImplementation((cb: any) => cb(prisma));
 
     await handleCheckoutUpdated({
       type: "checkout.updated",
@@ -293,18 +302,66 @@ describe("handleCheckoutUpdated", () => {
 
     expect(prisma.poolPayment.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { status: "FAILED" },
+        data: { status: "EXPIRED" },
+      }),
+    );
+    // Audit row written too.
+    expect(prisma.paymentEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          source: "POLAR_WEBHOOK",
+          eventType: "checkout.updated",
+        }),
       }),
     );
   });
 
-  it("does nothing when checkout status is not expired/failed", async () => {
+  it("marks payment as CANCELLED when checkout is canceled", async () => {
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
+    (prisma.poolPayment.update as any).mockResolvedValue({});
+    (prisma.paymentEvent.create as any).mockResolvedValue({});
+    (prisma.$transaction as any).mockImplementation((cb: any) => cb(prisma));
+
+    await handleCheckoutUpdated({
+      type: "checkout.updated",
+      data: { id: "chk_polar_456", status: "canceled" },
+    });
+
+    expect(prisma.poolPayment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: "CANCELLED" },
+      }),
+    );
+  });
+
+  it("writes an audit row but does NOT transition status for non-terminal updates", async () => {
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue(null);
+    (prisma.poolPayment.findUnique as any).mockResolvedValue(MOCK_PAYMENT);
+    (prisma.poolPayment.update as any).mockResolvedValue({});
+    (prisma.paymentEvent.create as any).mockResolvedValue({});
+    (prisma.$transaction as any).mockImplementation((cb: any) => cb(prisma));
+
     await handleCheckoutUpdated({
       type: "checkout.updated",
       data: { id: "chk_polar_456", status: "confirmed" },
     });
 
-    expect(prisma.poolPayment.findUnique).not.toHaveBeenCalled();
+    // Audit row written, no status change.
+    expect(prisma.paymentEvent.create).toHaveBeenCalledTimes(1);
+    expect(prisma.poolPayment.update).not.toHaveBeenCalled();
+  });
+
+  it("skips duplicate deliveries (idempotency pre-check)", async () => {
+    (prisma.paymentEvent.findFirst as any).mockResolvedValue({ id: "existing" });
+
+    await handleCheckoutUpdated({
+      type: "checkout.updated",
+      data: { id: "chk_polar_456", status: "expired" },
+    });
+
+    expect(prisma.paymentEvent.create).not.toHaveBeenCalled();
+    expect(prisma.poolPayment.update).not.toHaveBeenCalled();
   });
 });
 
