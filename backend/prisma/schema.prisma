@@ -1233,8 +1233,14 @@ model PoolPayment {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  // Polar identifiers for idempotency and reconciliation
-  polarCheckoutId String  @unique // Checkout session ID from Polar
+  // Polar identifiers for idempotency and reconciliation.
+  // polarCheckoutId is nullable to support the INITIATED state: the row
+  // is written BEFORE we call Polar so a gateway-side failure still
+  // leaves a trail. Once Polar accepts, this is updated to the real
+  // checkout ID and status flips to PENDING. Uniqueness is enforced by
+  // the partial unique index `PoolPayment_polarCheckoutId_unique_when_set`
+  // (UNIQUE WHERE polarCheckoutId IS NOT NULL) — see migration 20260521.
+  polarCheckoutId String? // populated after Polar accepts the checkout; NULL while INITIATED
   polarOrderId    String? @unique // Order ID set by webhook on confirmation
 
   status    PaymentStatus @default(PENDING)

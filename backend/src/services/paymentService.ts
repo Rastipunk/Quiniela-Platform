@@ -41,6 +41,7 @@ import { Prisma } from "@prisma/client";
 import {
   PAYMENT_EVENT_SOURCE,
   CLIENT_EVENT_TYPES,
+  SERVER_EVENT_TYPE,
   type ClientEventType,
 } from "../lib/paymentEvents";
 
@@ -182,14 +183,26 @@ export async function initiateCheckout(
   }
   const amountCents = usdToCents(amountUsd);
 
-  // 4. Check for existing PENDING checkout (idempotency)
+  // 4. Idempotency check (F-5). Scoped to the SAME user + same pool +
+  // same target capacity + status=PENDING. Without the userId filter,
+  // a CO_ADMIN re-initiating the upgrade would receive the URL created
+  // for a different HOST — wrong email pre-filled, wrong receipt, wrong
+  // CAPI attribution.
   const existingPayment = await prisma.poolPayment.findFirst({
-    where: { poolId, status: "PENDING", toCapacity: targetCapacity },
+    where: {
+      poolId,
+      userId,
+      status: "PENDING",
+      toCapacity: targetCapacity,
+    },
     orderBy: { createdAtUtc: "desc" },
   });
 
-  if (existingPayment) {
-    // Return existing checkout URL (reconstruct from Polar)
+  if (existingPayment && existingPayment.polarCheckoutId) {
+    // Same user, same intent, currently active — return the existing
+    // checkout URL. Try to re-fetch from Polar to confirm it's still
+    // open; if Polar rejects (expired, deleted), we'll fall through
+    // and create a fresh INITIATED row below.
     try {
       const { getCheckoutSession } = await import("./polar/client");
       const session = await getCheckoutSession(existingPayment.polarCheckoutId);
@@ -200,8 +213,13 @@ export async function initiateCheckout(
           amountUsd,
         };
       }
-    } catch {
-      // Existing checkout may have expired — create a new one below
+    } catch (err) {
+      // Polar returned an error fetching the existing checkout.
+      // The reconciler (F-14) will sweep the stale row separately.
+      console.warn(
+        `[PaymentService] Existing checkout ${existingPayment.polarCheckoutId} no longer fetchable — creating new attempt:`,
+        err instanceof Error ? err.message : String(err),
+      );
     }
   }
 
@@ -218,7 +236,36 @@ export async function initiateCheckout(
   const successUrl = `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`;
   const cancelUrl = `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}`;
 
-  // 7. Create Polar checkout
+  // 7. INSERT the PoolPayment in INITIATED state BEFORE calling Polar
+  // (F-4). This is the keystone of the audit trail: if Polar's API
+  // rejects the create, network drops, or any failure happens before
+  // we get a checkout URL back, the row still exists. Pre-fix, the
+  // INSERT happened AFTER the Polar call so a gateway-side failure
+  // vanished entirely — exactly the case Abril's "no me anda la
+  // página" report fell into.
+  const payment = await prisma.poolPayment.create({
+    data: {
+      poolId,
+      userId,
+      polarCheckoutId: null, // populated post-Polar-success below
+      status: "INITIATED",
+      amountUsd: amountCents,
+      currency: "usd",
+      fromCapacity: currentCapacity,
+      toCapacity: targetCapacity,
+      poolType,
+      // Persist Meta Advanced Matching signals so the async order.paid
+      // webhook can emit a CAPI Purchase with full EMQ quality.
+      metaFbp: input.metaFbp,
+      metaFbc: input.metaFbc,
+      clientIpAddress: input.clientIpAddress,
+      clientUserAgent: input.clientUserAgent,
+    },
+  });
+
+  // 8. Call Polar to create the actual checkout session. Failures must
+  // not leave the row dangling — we transition to FAILED with an audit
+  // STATUS_TRANSITION event and re-throw so the route returns 5xx.
   const checkoutParams: CreateCheckoutParams = {
     amountCents,
     customerEmail: user.email,
@@ -234,30 +281,77 @@ export async function initiateCheckout(
     },
   };
 
-  const { checkoutId, checkoutUrl } = await polarCreateCheckout(checkoutParams);
+  let checkoutId: string;
+  let checkoutUrl: string;
+  try {
+    const result = await polarCreateCheckout(checkoutParams);
+    checkoutId = result.checkoutId;
+    checkoutUrl = result.checkoutUrl;
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[PaymentService] Polar create failed for payment ${payment.id}: ${errorMsg}`);
 
-  // 8. Create PoolPayment record
-  const payment = await prisma.poolPayment.create({
-    data: {
-      poolId,
-      userId,
-      polarCheckoutId: checkoutId,
-      status: "PENDING",
-      amountUsd: amountCents, // stored in cents for precision
-      currency: "usd",
-      fromCapacity: currentCapacity,
-      toCapacity: targetCapacity,
-      poolType,
-      // Persist Meta Advanced Matching signals so the async order.paid
-      // webhook can emit a CAPI Purchase with full EMQ quality.
-      metaFbp: input.metaFbp,
-      metaFbc: input.metaFbc,
-      clientIpAddress: input.clientIpAddress,
-      clientUserAgent: input.clientUserAgent,
-    },
+    // Best-effort transition to FAILED + audit. If the DB is the thing
+    // that's down too (very rare race), the row stays INITIATED and the
+    // reconciler will resolve it. We do NOT swallow the original Polar
+    // error — re-throwing surfaces a 5xx to the route handler.
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.poolPayment.update({
+          where: { id: payment.id },
+          data: { status: "FAILED" },
+        });
+        await tx.paymentEvent.create({
+          data: {
+            source: PAYMENT_EVENT_SOURCE.SERVER,
+            poolPaymentId: payment.id,
+            eventType: SERVER_EVENT_TYPE.STATUS_TRANSITION,
+            payloadJson: {
+              from: "INITIATED",
+              to: "FAILED",
+              reason: "polar_create_failed",
+              error: errorMsg.slice(0, 1000),
+            },
+          },
+        });
+      });
+    } catch (markErr) {
+      console.error(
+        `[PaymentService] Failed to mark payment ${payment.id} as FAILED after Polar error:`,
+        markErr instanceof Error ? markErr.message : String(markErr),
+      );
+    }
+    throw err;
+  }
+
+  // 9. Polar accepted — transition to PENDING with the real checkoutId.
+  // Atomic with the audit event so a tx failure leaves no half-state.
+  await prisma.$transaction(async (tx) => {
+    await tx.poolPayment.update({
+      where: { id: payment.id },
+      data: {
+        status: "PENDING",
+        polarCheckoutId: checkoutId,
+      },
+    });
+    await tx.paymentEvent.create({
+      data: {
+        source: PAYMENT_EVENT_SOURCE.SERVER,
+        poolPaymentId: payment.id,
+        eventType: SERVER_EVENT_TYPE.STATUS_TRANSITION,
+        payloadJson: {
+          from: "INITIATED",
+          to: "PENDING",
+          reason: "polar_checkout_created",
+          polarCheckoutId: checkoutId,
+        },
+      },
+    });
   });
 
-  // 9. Audit
+  // 10. Audit (the long-form audit-log entry — unchanged behaviour
+  //     except the SERVER STATUS_TRANSITION above is now the
+  //     authoritative event for funnel analytics).
   fireAndForget("audit:checkout-created", writeAuditEvent({
     actorUserId: userId,
     action: "PAYMENT_CHECKOUT_CREATED",
@@ -338,8 +432,10 @@ export async function handleOrderPaid(
     return;
   }
 
-  // 3. Find the PoolPayment by checkout ID.
-  const payment = await prisma.poolPayment.findUnique({
+  // 3. Find the PoolPayment by checkout ID. findFirst (not findUnique)
+  // because polarCheckoutId is partial-unique-when-set after the
+  // 20260521 migration; the index still guarantees ≤1 row per value.
+  const payment = await prisma.poolPayment.findFirst({
     where: { polarCheckoutId: checkoutId },
   });
 
@@ -616,7 +712,7 @@ export async function handleOrderRefunded(
 
   const checkoutId = payload.data.checkout_id;
   const payment = checkoutId
-    ? await prisma.poolPayment.findUnique({ where: { polarCheckoutId: checkoutId } })
+    ? await prisma.poolPayment.findFirst({ where: { polarCheckoutId: checkoutId } })
     : null;
 
   if (!payment) {
@@ -756,8 +852,9 @@ export async function handleCheckoutUpdated(
   }
 
   // 2. Match to a PoolPayment (may be null for racing deliveries
-  // pre-INITIATED rollout — graceful degradation).
-  const payment = await prisma.poolPayment.findUnique({
+  // pre-INITIATED rollout — graceful degradation). findFirst because
+  // polarCheckoutId is partial-unique-when-set after 20260521.
+  const payment = await prisma.poolPayment.findFirst({
     where: { polarCheckoutId: checkoutId },
   });
 
@@ -857,7 +954,7 @@ export async function recordUnhandledPolarEvent(
     (payload.data?.checkout_id as string | null | undefined) ??
     (payload.type.startsWith("checkout.") ? (payload.data?.id as string | undefined) : undefined);
   const payment = checkoutId
-    ? await prisma.poolPayment.findUnique({ where: { polarCheckoutId: checkoutId } })
+    ? await prisma.poolPayment.findFirst({ where: { polarCheckoutId: checkoutId } })
     : null;
 
   // Idempotency pre-check (only when we have an eventId).
@@ -1049,16 +1146,23 @@ export async function initiateMpCheckout(
 
   const amountUsd = calculateUpgradePrice(poolType, currentCapacity, targetCapacity);
 
-  // Idempotency: re-entry (host double-click, page reload mid-flow) for the
-  // SAME pool+target+currency must NOT spawn a second PoolPayment + MP
-  // preference. A second preference would let the customer accidentally pay
-  // twice (e.g. by reopening an old tab). Mirrors the Polar version above.
+  // Idempotency (F-5). Same userId + same pool + same target + currently
+  // PENDING + currency=cop. The userId guard prevents a CO_ADMIN from
+  // receiving a HOST's pre-created MP preference — wrong amount could be
+  // pre-filled on the Brick if the previous attempt had a different
+  // target capacity at the time of creation.
   const existingPayment = await prisma.poolPayment.findFirst({
-    where: { poolId, status: "PENDING", toCapacity: targetCapacity, currency: "cop" },
+    where: {
+      poolId,
+      userId,
+      status: "PENDING",
+      toCapacity: targetCapacity,
+      currency: "cop",
+    },
     orderBy: { createdAtUtc: "desc" },
   });
 
-  if (existingPayment?.mpPreferenceId) {
+  if (existingPayment?.mpPreferenceId && existingPayment.polarCheckoutId) {
     console.log(`[Payments] Reusing existing MP preference ${existingPayment.mpPreferenceId} for payment ${existingPayment.id}`);
     return {
       publicKey: getMpPublicKey(),
@@ -1070,6 +1174,9 @@ export async function initiateMpCheckout(
     };
   }
 
+  // Our own stable identifier — kept in `polarCheckoutId` (the column
+  // doubles as gateway-reference for MP rows; see F-8 in POLAR_AUDIT
+  // for the rename plan).
   const reference = `P4A-${poolId.slice(0, 8)}-${Date.now()}`;
 
   // Build URLs for preference
@@ -1077,49 +1184,104 @@ export async function initiateMpCheckout(
   const backendUrl = process.env.BACKEND_URL || "https://api.picks4all.com";
   const localePath = input.locale && input.locale !== "es" ? `/${input.locale}` : "";
 
-  // Create MP preference (required for Payment Brick initialization)
-  console.log("[Payments] Creating MP preference:", { reference, amountCop, notificationUrl: `${backendUrl}/payments/mp-webhook` });
-  const preference = await mpCreatePreference({
-    title: `Picks4All — Pool upgrade (${currentCapacity} → ${targetCapacity} players)`,
-    unitPrice: amountCop,
-    quantity: 1,
-    externalReference: reference,
-    notificationUrl: `${backendUrl}/payments/mp-webhook`,
-    backUrls: {
-      success: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
-      failure: `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}`,
-      pending: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
-    },
-  });
-  console.log("[Payments] MP preference created:", { preferenceId: preference.preferenceId, publicKey: getMpPublicKey() ? "SET" : "MISSING" });
-
+  // 1. INSERT the PoolPayment row in INITIATED state BEFORE calling MP
+  // (F-4 symmetric with Polar). If MP rejects the preference create, the
+  // row stays around long enough for the FAILED transition below to
+  // record the cause — instead of vanishing into "we never tried".
   const payment = await prisma.poolPayment.create({
     data: {
       poolId,
       userId,
-      polarCheckoutId: reference,
-      // Persist the MP preference so the idempotency guard above can reuse it
-      // on a subsequent re-entry — without this column the re-entry guard
-      // would always have to re-create the preference, defeating the point.
-      mpPreferenceId: preference.preferenceId,
-      status: "PENDING",
+      polarCheckoutId: reference, // our reference is stable from the start; MP only adds the preferenceId after its create call
+      mpPreferenceId: null,        // populated after MP accepts
+      status: "INITIATED",
       amountUsd: usdToCents(amountUsd),
-      // Real pesos paid — used later for accurate Purchase event value.
-      // Storing it explicitly avoids reconstructing it from `amountUsd`
-      // (which is a lossy USD-cents approximation that would report
-      // ~40x less revenue than the customer actually paid).
       amountCop,
       currency: "cop",
       fromCapacity: currentCapacity,
       toCapacity: targetCapacity,
       poolType,
-      // Meta Advanced Matching for the IPN webhook path (see Polar init
-      // note above — same rationale).
       metaFbp: input.metaFbp,
       metaFbc: input.metaFbc,
       clientIpAddress: input.clientIpAddress,
       clientUserAgent: input.clientUserAgent,
     },
+  });
+
+  // 2. Create MP preference. Failure path mirrors the Polar handler:
+  // transition to FAILED with an audit event, then re-throw.
+  console.log("[Payments] Creating MP preference:", { reference, amountCop, notificationUrl: `${backendUrl}/payments/mp-webhook` });
+  let preference: { preferenceId: string };
+  try {
+    preference = await mpCreatePreference({
+      title: `Picks4All — Pool upgrade (${currentCapacity} → ${targetCapacity} players)`,
+      unitPrice: amountCop,
+      quantity: 1,
+      externalReference: reference,
+      notificationUrl: `${backendUrl}/payments/mp-webhook`,
+      backUrls: {
+        success: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
+        failure: `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}`,
+        pending: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
+      },
+    });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[PaymentService] MP create failed for payment ${payment.id}: ${errorMsg}`);
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.poolPayment.update({
+          where: { id: payment.id },
+          data: { status: "FAILED" },
+        });
+        await tx.paymentEvent.create({
+          data: {
+            source: PAYMENT_EVENT_SOURCE.SERVER,
+            poolPaymentId: payment.id,
+            eventType: SERVER_EVENT_TYPE.STATUS_TRANSITION,
+            payloadJson: {
+              from: "INITIATED",
+              to: "FAILED",
+              reason: "mp_preference_create_failed",
+              error: errorMsg.slice(0, 1000),
+            },
+          },
+        });
+      });
+    } catch (markErr) {
+      console.error(
+        `[PaymentService] Failed to mark payment ${payment.id} as FAILED after MP error:`,
+        markErr instanceof Error ? markErr.message : String(markErr),
+      );
+    }
+    throw err;
+  }
+  console.log("[Payments] MP preference created:", { preferenceId: preference.preferenceId, publicKey: getMpPublicKey() ? "SET" : "MISSING" });
+
+  // 3. MP accepted — transition to PENDING + persist preferenceId. Atomic
+  // with the audit event so a tx failure leaves no half-state.
+  await prisma.$transaction(async (tx) => {
+    await tx.poolPayment.update({
+      where: { id: payment.id },
+      data: {
+        status: "PENDING",
+        mpPreferenceId: preference.preferenceId,
+      },
+    });
+    await tx.paymentEvent.create({
+      data: {
+        source: PAYMENT_EVENT_SOURCE.SERVER,
+        poolPaymentId: payment.id,
+        eventType: SERVER_EVENT_TYPE.STATUS_TRANSITION,
+        payloadJson: {
+          from: "INITIATED",
+          to: "PENDING",
+          reason: "mp_preference_created",
+          mpPreferenceId: preference.preferenceId,
+          reference,
+        },
+      },
+    });
   });
 
   fireAndForget("audit:mp-checkout-created", writeAuditEvent({
@@ -1362,7 +1524,9 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   });
   if (existing) return;
 
-  const payment = await prisma.poolPayment.findUnique({
+  // findFirst because polarCheckoutId is partial-unique-when-set after
+  // the 20260521 migration; ≤1 row per value still guaranteed.
+  const payment = await prisma.poolPayment.findFirst({
     where: { polarCheckoutId: reference },
   });
   if (!payment) {

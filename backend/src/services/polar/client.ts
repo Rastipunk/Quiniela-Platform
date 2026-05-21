@@ -83,6 +83,12 @@ export async function createCheckout(params: CreateCheckoutParams): Promise<Chec
     },
     customerEmail: params.customerEmail,
     successUrl: params.successUrl,
+    // Polar's SDK calls this `returnUrl` ("when set, a back button will be
+    // shown in the checkout to return to this URL") — semantically the
+    // cancel/back URL. Without it, users who back out of Polar's page
+    // land on polar.sh's default, not picks4all.com/pago/cancelado, and
+    // we lose the cancel-tracking signal entirely (F-2).
+    returnUrl: params.cancelUrl,
     metadata: params.metadata as unknown as Record<string, string>,
     ...(params.locale ? { locale: params.locale } : {}),
   });
