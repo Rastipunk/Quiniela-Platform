@@ -533,14 +533,14 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Add `ABANDONED` (we decided to give up on it) and optionally `EXPIRED` (Polar told us it's dead) to the enum. Migration. The reconciliation job in F-14 is the writer.
 
 ### F-16: `PoolCapacityTab` does not emit GA4 funnel events
-- **Status:** 🟥 PENDING — to be fixed in Commit 6
+- **Status:** 🟩 FIXED in `b4678fa` (2026-05-21) — `handleExpand` now fires `trackBeginCheckout` + `trackMetaEvent("InitiateCheckout")` for both MP and Polar branches, mirroring the wizard's payload shape so funnel reports aggregate cleanly.
 - **Severity:** medium (analytics)
 - **Where:** `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolCapacityTab.tsx:147–174` does NOT call `trackBeginCheckout` or `trackMetaEvent("InitiateCheckout")`. The wizard `PoolCreationWizard.tsx:155-204` DOES.
 - **Impact:** GA4 funnel undercounts checkouts initiated from the admin tab. We don't know how many existing hosts try to expand vs how many give up at the wizard step.
 - **Fix:** Mirror the wizard's tracking calls in PoolCapacityTab.handleExpand.
 
 ### F-17: `pago/cancelado` is a static page — no signal sent to backend
-- **Status:** 🟧 IN PROGRESS — backend endpoint (F-13) ships in Commit 2; cancelado page wired in Commit 6
+- **Status:** 🟩 FIXED in `b4678fa` (2026-05-21) — page fires `reportPaymentAttemptEvent(paymentId, USER_CANCELLED)` + GA4 `payment_cancelled` event on mount (useRef-guarded for strict-mode safety). Both Polar `cancelUrl` and MP `backUrls.failure` now carry `&paymentId={id}` so the beacon attaches to the correct PoolPayment.
 - **Severity:** medium
 - **Where:** `frontend-next/src/app/[locale]/pago/cancelado/page.tsx`
 - **Behavior:** Page shows "you cancelled" copy. No fetch, no analytics, no backend POST. Combined with F-2 (Polar doesn't redirect here anyway), this page receives only MP cancels and even then does nothing.
