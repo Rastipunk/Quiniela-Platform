@@ -6,6 +6,7 @@
 import { useTranslations } from "next-intl";
 import { colors } from "@/lib/theme";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
+import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 interface StructuralConfig {
   lockDateTime: string;
@@ -99,7 +100,7 @@ export function PickRulesDisplay({
               {index + 1}
             </span>
             <h4 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: colors.brand }}>
-              {(phase.phaseName || (() => { const key = `phasesLong.${phase.phaseId}`; try { return tDynamic(key); } catch { return phase.phaseId.replace(/_/g, " "); } })() || `${t("phase")} ${index + 1}`).toUpperCase()}
+              {(formatPhaseFullName(phase.phaseId, t) || phase.phaseName || `${t("phase")} ${index + 1}`).toUpperCase()}
             </h4>
           </div>
 

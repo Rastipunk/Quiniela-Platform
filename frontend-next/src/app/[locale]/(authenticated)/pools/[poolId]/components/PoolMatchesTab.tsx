@@ -304,7 +304,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
           <StructuralPicksManager
             poolId={poolId!}
             phaseId={activePhase!}
-            phaseName={activePhaseData.name}
+            phaseName={formatPhaseFullName(activePhase!, t)}
             phaseType={activePhaseData.type as "GROUP" | "KNOCKOUT"}
             phaseConfig={activePhaseConfig as any}
             tournamentData={overview.tournamentInstance.dataJson}
@@ -315,7 +315,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
             onDataChanged={() => reload()}
             onShowBreakdown={() => setBreakdownModalData({
               phaseId: activePhase!,
-              phaseTitle: t("breakdown.phaseTitle", { name: activePhaseData.name }),
+              phaseTitle: t("breakdown.phaseTitle", { name: formatPhaseFullName(activePhase!, t) }),
             })}
           />
         </div>

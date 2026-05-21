@@ -12,6 +12,7 @@ import { TeamFlag } from "./TeamFlag";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
 import { colors } from "@/lib/theme";
 import { StructuralPhaseSection } from "./PlayerSummaryStructural";
+import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 type PlayerSummaryProps = {
   poolId: string;
@@ -297,7 +298,7 @@ function PhaseSection({ phase, tournamentKey, defaultExpanded, isMobile }: { pha
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12 }}>
           <span style={{ fontSize: isMobile ? 14 : 18 }}>{expanded ? "▼" : "▶"}</span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: isMobile ? 14 : 16 }}>{phase.phaseName}</div>
+            <div style={{ fontWeight: 600, fontSize: isMobile ? 14 : 16 }}>{formatPhaseFullName(phase.phaseId, t)}</div>
             <div style={{ fontSize: isMobile ? 11 : 12, color: colors.textMuted }}>
               {t("playerSummaryView.scoredOfTotal", { scored: phase.scoredCount, total: phase.matchCount })}
             </div>
@@ -578,7 +579,7 @@ export function PlayerSummary({ poolId, userId, tournamentKey = "wc_2026_sandbox
             <StructuralPhaseSection
               key={item.phaseId}
               phaseId={item.phaseId}
-              phaseName={item.aggregate.phaseName}
+              phaseName={formatPhaseFullName(item.phaseId, t)}
               phaseType={item.aggregate.phaseType}
               points={item.aggregate.points}
               positionsCorrect={item.aggregate.positionsCorrect}
