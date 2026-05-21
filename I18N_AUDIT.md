@@ -222,7 +222,10 @@ Static fallback dictionary. The `country` field is single-locale (Spanish only).
 - **Fix proposal:** `<span>{t("filters.matchesCount", { count: n })}</span>` with new i18n key in all 3 locales: ES `"{count, plural, one {# partido} other {# partidos}}"`, EN `"{count, plural, one {# match} other {# matches}}"`, PT `"{count, plural, one {# jogo} other {# jogos}}"`.
 
 ### F-4: `TournamentInstance.dataJson.phases[].name` is single-locale → fed verbatim by some callers
-- **Status:** 🟥 PENDING
+- **Status:** 🟩 FIXED in `c2a2e1f` + `d869b2f` (2026-05-22) — display-side translation across the entire pool authenticated zone, wizard, and ScoringEditor. Every component that renders a phase name now calls `formatPhaseFullName(phaseId, t)` against the trilingual `phasesLong.{phaseId}` catalog (which was already in place). The persisted Spanish `pickTypesConfig.phaseName` is kept as-is for backward compat — it is no longer the display source. `HowToPlayContent.tsx` was a false positive: it already builds phase entries from `t("allMatches.semiFinals")` etc.
+  - Commit 1 (`c2a2e1f`): pool authenticated zone — PoolMatchesTab, PickRulesDisplay, PlayerSummary.
+  - Commit 2 (`d869b2f`): wizard + scoring editor — PoolConfigWizard, PhaseConfigStep, ScoringEditor (6 sites), StepAdvancedRules, StepSummary.
+  - Bonus: dropped a dead Spanish substring check (`phaseName.toLowerCase().includes("grupo")`) that would have misclassified EN/PT pools' group phases anyway.
 - **Severity:** medium — surfaces wherever a caller uses `phase.name` directly instead of `formatPhaseFullName(phase.id, t)`.
 - **Where (verified):** 
   - `frontend-next/src/app/[locale]/como-se-juega/HowToPlayContent.tsx:622,635` — but that's a static landing-style page; may already be locale-rooted.
