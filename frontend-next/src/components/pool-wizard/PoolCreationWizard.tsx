@@ -22,6 +22,7 @@ import { refreshUserProperties } from "@/lib/authAnalytics";
 import { trackMetaCustomEvent, trackMetaEvent } from "@/lib/metaPixel";
 import { trackBeginCheckout } from "@/lib/ecommerce";
 import { createCheckout, createMpCheckout, getPaymentCountry } from "@/lib/api/payments";
+import { reportPaymentAttemptEvent } from "@/lib/api/paymentAttemptEvent";
 import { PERSONAL_FREE_LIMIT, CORPORATE_FREE_LIMIT } from "@/lib/pricing";
 
 // ── Dynamic step imports (code-split each step) ────────────
@@ -183,7 +184,22 @@ function WizardInner() {
               poolType,
             });
             const localePrefix = locale === "es" ? "" : `/${locale}`;
-            window.location.href = `${localePrefix}/pago/checkout?${params.toString()}`;
+            const mpRedirectUrl = `${localePrefix}/pago/checkout?${params.toString()}`;
+            // F-13: beacon BEFORE the redirect so the backend has a
+            // breadcrumb even if the browser navigation fails.
+            void reportPaymentAttemptEvent(mpData.paymentId, {
+              eventType: "REDIRECT_INITIATED",
+              details: { gateway: "MP", url: mpRedirectUrl },
+            });
+            try {
+              window.location.href = mpRedirectUrl;
+            } catch (redirectErr) {
+              void reportPaymentAttemptEvent(mpData.paymentId, {
+                eventType: "REDIRECT_FAILED",
+                details: { gateway: "MP", error: String(redirectErr) },
+              });
+              throw redirectErr;
+            }
             return;
           } else {
             // Polar redirect (International/USD)
@@ -202,21 +218,35 @@ function WizardInner() {
               currency: "USD",
               value: checkout.amountUsd,
             });
-            window.location.href = checkout.checkoutUrl;
+            void reportPaymentAttemptEvent(checkout.paymentId, {
+              eventType: "REDIRECT_INITIATED",
+              details: { gateway: "POLAR", url: checkout.checkoutUrl },
+            });
+            try {
+              window.location.href = checkout.checkoutUrl;
+            } catch (redirectErr) {
+              void reportPaymentAttemptEvent(checkout.paymentId, {
+                eventType: "REDIRECT_FAILED",
+                details: { gateway: "POLAR", error: String(redirectErr) },
+              });
+              throw redirectErr;
+            }
             return;
           }
         } catch (checkoutErr) {
           // The pool DID get created (security gate caps it at the free
           // tier until payment confirms via webhook). But the checkout
-          // didn't start, so the host needs to know — otherwise they land
-          // on a pool with 2-cap thinking the price they saw was applied.
-          // Surfacing here via alert(): not the prettiest UX but
-          // GUARANTEES the host sees something. The pool admin tab has
-          // a CapacitySelector with mode="expansion" so they can retry.
+          // didn't start. Pre-F-1 we surfaced this via `window.alert` —
+          // works but is a poor UX (modal blocking, non-stylable). Now
+          // we dispatch to the wizard's existing error banner which is
+          // styled and accessible, and the pool admin tab carries a
+          // mode="expansion" CapacitySelector for retry.
           console.error("[Wizard] Checkout creation failed:", checkoutErr);
-          if (typeof window !== "undefined") {
-            window.alert(t("checkoutFailedFallback"));
-          }
+          dispatch({
+            type: "SET_FIELD",
+            field: "error",
+            value: t("checkoutFailedFallback"),
+          });
         }
       }
 

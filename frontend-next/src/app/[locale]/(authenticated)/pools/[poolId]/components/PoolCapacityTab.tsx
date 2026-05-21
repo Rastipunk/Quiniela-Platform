@@ -8,6 +8,7 @@ import {
   createMpCheckout,
   getPaymentCountry,
 } from "@/lib/api/payments";
+import { reportPaymentAttemptEvent } from "@/lib/api/paymentAttemptEvent";
 import {
   getTierForCustomCount,
   getTierForCustomCountUsd,
@@ -139,6 +140,9 @@ function ExpandCapacitySection({
   const [selectedCapacity, setSelectedCapacity] = useState(currentCapacity);
   const [busy, setBusy] = useState(false);
   const [country, setCountry] = useState("US");
+  // F-1: surface failures explicitly. The pre-fix behaviour was a silent
+  // console.error + spinner off — Abril's "no me anda la página" case.
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     getPaymentCountry().then(setCountry).catch(() => {});
@@ -147,10 +151,11 @@ function ExpandCapacitySection({
   const handleExpand = async () => {
     if (selectedCapacity <= currentCapacity) return;
     setBusy(true);
+    setErrorMsg(null);
     try {
       const country = await getPaymentCountry();
       if (country === "CO") {
-        // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick
+        // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick.
         const mpData = await createMpCheckout(poolId, selectedCapacity);
         const params = new URLSearchParams({
           publicKey: mpData.publicKey || "",
@@ -161,14 +166,51 @@ function ExpandCapacitySection({
           poolId,
         });
         const localePrefix = locale === "es" ? "" : `/${locale}`;
-        window.location.href = `${localePrefix}/pago/checkout?${params.toString()}`;
+        const url = `${localePrefix}/pago/checkout?${params.toString()}`;
+        // F-13: beacon BEFORE the redirect so the backend has a row
+        // even if the browser navigation fails (CSP, popup blocker).
+        // Fire-and-forget — never block the redirect on this.
+        void reportPaymentAttemptEvent(mpData.paymentId, {
+          eventType: "REDIRECT_INITIATED",
+          details: { gateway: "MP", url },
+        });
+        try {
+          window.location.href = url;
+        } catch (redirectErr) {
+          void reportPaymentAttemptEvent(mpData.paymentId, {
+            eventType: "REDIRECT_FAILED",
+            details: { gateway: "MP", error: String(redirectErr) },
+          });
+          throw redirectErr;
+        }
       } else {
-        // Polar redirect (International)
+        // Polar redirect (international/USD).
         const result = await createCheckout(poolId, selectedCapacity);
-        window.location.href = result.checkoutUrl;
+        void reportPaymentAttemptEvent(result.paymentId, {
+          eventType: "REDIRECT_INITIATED",
+          details: { gateway: "POLAR", url: result.checkoutUrl },
+        });
+        try {
+          window.location.href = result.checkoutUrl;
+        } catch (redirectErr) {
+          void reportPaymentAttemptEvent(result.paymentId, {
+            eventType: "REDIRECT_FAILED",
+            details: { gateway: "POLAR", error: String(redirectErr) },
+          });
+          throw redirectErr;
+        }
       }
     } catch (err) {
       console.error("Expand checkout failed:", err);
+      // Surface the failure to the user instead of just clearing the
+      // spinner (F-1). The backend already has an INITIATED/FAILED row
+      // from initiateCheckout's failure path (Commit 3), so there's no
+      // need to beacon "CLIENT_ERROR" here — that audit trail exists.
+      setErrorMsg(
+        err instanceof Error && err.message
+          ? err.message
+          : t("checkout.checkoutFailed"),
+      );
       setBusy(false);
     }
   };
@@ -183,6 +225,30 @@ function ExpandCapacitySection({
         mode="expansion"
         currency={country === "CO" ? "COP" : "USD"}
       />
+      {errorMsg && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 12,
+            padding: "12px 16px",
+            borderRadius: 10,
+            background: colors.errorBg,
+            border: `1px solid ${colors.errorBorder}`,
+            color: colors.error,
+            fontSize: 14,
+            lineHeight: 1.5,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>{t("checkout.errorTitle")}</div>
+          <div>{errorMsg}</div>
+          <div style={{ fontSize: 13, color: colors.textMuted }}>
+            {t("checkout.errorHint")}
+          </div>
+        </div>
+      )}
       {selectedCapacity > currentCapacity && (
         <button
           onClick={handleExpand}
@@ -204,23 +270,25 @@ function ExpandCapacitySection({
         >
           {busy
             ? t("checkout.processing")
-            : (() => {
-                const cur: Currency = country === "CO" ? "COP" : "USD";
-                const getTier =
-                  cur === "USD"
-                    ? getTierForCustomCountUsd
-                    : getTierForCustomCount;
-                const tier = getTier(poolType as PricingPoolType, selectedCapacity);
-                const fromTier = getTier(
-                  poolType as PricingPoolType,
-                  currentCapacity,
-                );
-                const upgradePrice = tier.totalPrice - fromTier.totalPrice;
-                return t("expand.expandButton", {
-                  capacity: selectedCapacity,
-                  price: formatPrice(upgradePrice, cur),
-                });
-              })()}
+            : errorMsg
+              ? t("checkout.retry")
+              : (() => {
+                  const cur: Currency = country === "CO" ? "COP" : "USD";
+                  const getTier =
+                    cur === "USD"
+                      ? getTierForCustomCountUsd
+                      : getTierForCustomCount;
+                  const tier = getTier(poolType as PricingPoolType, selectedCapacity);
+                  const fromTier = getTier(
+                    poolType as PricingPoolType,
+                    currentCapacity,
+                  );
+                  const upgradePrice = tier.totalPrice - fromTier.totalPrice;
+                  return t("expand.expandButton", {
+                    capacity: selectedCapacity,
+                    price: formatPrice(upgradePrice, cur),
+                  });
+                })()}
         </button>
       )}
     </div>

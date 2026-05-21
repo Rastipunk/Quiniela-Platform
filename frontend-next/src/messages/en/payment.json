@@ -23,7 +23,11 @@
     "processing": "Processing...",
     "free": "Free",
     "perBlock": "per block of 50",
-    "paymentRequired": "Payment required"
+    "paymentRequired": "Payment required",
+    "errorTitle": "We couldn't start the payment",
+    "errorHint": "If the problem persists, email support@picks4all.com and we'll process it for you manually.",
+    "retry": "Retry payment",
+    "checkoutFailed": "Something went wrong connecting to the payment gateway. Please try again."
   },
   "rejected": {
     "generic": "Payment was declined. Try a different payment method.",
