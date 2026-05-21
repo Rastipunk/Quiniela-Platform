@@ -4505,4 +4505,50 @@ We needed an "Administrar reglas" host panel without breaking the original invar
 
 ---
 
+## ADR-060: Payment funnel observability — INITIATED state, every-event audit log, reconciler
+
+**Date:** 2026-05-21 | **Status:** Accepted
+
+**Context:** Abril Alonso (abrilalonso123@gmail.com) reported "no me anda la página" trying to upgrade her pool. Diagnosis surfaced **20 findings** across the Polar payment flow — see `POLAR_AUDIT.md` for the full audit + per-finding status tracker. The critical defects fell into four buckets:
+
+1. **Silent failures.** `PoolCapacityTab.handleExpand`'s catch was `console.error + setBusy(false)` — the user saw the spinner disappear with no error message. Abril's case verbatim.
+2. **Black-box gateway interactions.** `PoolPayment` rows were INSERTed only AFTER Polar accepted the create. Any failure before that (Polar 5xx, network, rate limit) left ZERO trace.
+3. **Webhook log only persisted `order.paid`.** Every other Polar delivery (`checkout.updated open/processing/expired/failed`, future event types) was dropped. Production had exactly 1 PaymentEvent row. The "immutable audit log of every webhook event" promise in the schema docstring was a lie.
+4. **No reconciliation.** PoolPayment rows that went PENDING and never received a webhook stayed that way forever — 8 zombies, the oldest +28 days old, sat in the funnel skewing every report.
+
+**Decision:** Six-commit hardening cycle. Every change auditable in `POLAR_AUDIT.md` against its numbered finding (F-1 … F-20).
+
+- **Lifecycle states (F-15):** `PaymentStatus` enum extended with `INITIATED`, `ABANDONED`, `EXPIRED`, `CANCELLED`. Distinct semantics, distinct funnel buckets.
+- **Universal audit log (F-3 + F-18 + F-19):** `PaymentEvent` extended with `source` (POLAR_WEBHOOK / MP_WEBHOOK / CLIENT / RECONCILER / SERVER), `poolPaymentId` (FK), `webhookId` / `webhookTimestamp`. `polarEventId` made nullable with a partial unique index (UNIQUE WHERE polarEventId IS NOT NULL) so non-gateway sources coexist while idempotency on gateway events remains intact. `handleCheckoutUpdated` rewritten to persist EVERY delivery; `recordUnhandledPolarEvent` audits any webhook type without a dedicated handler.
+- **Client beacons (F-13):** New endpoint `POST /payments/attempts/:paymentId/event` (auth + ownership-checked). `reportPaymentAttemptEvent(paymentId, eventType)` fires REDIRECT_INITIATED before `window.location.href`, REDIRECT_FAILED in the inner catch, USER_CANCELLED from `/pago/cancelado`. Fire-and-forget so beacon failures never stall the user.
+- **INSERT-before-gateway (F-4):** Both `initiateCheckout` (Polar) and `initiateMpCheckout` (MP) INSERT in `INITIATED` BEFORE the gateway call. Success → atomic transition to PENDING + populate gateway IDs + SERVER `STATUS_TRANSITION` audit. Failure → atomic transition to FAILED + audit + re-throw. The row's existence is a function of "user clicked Pay", not "gateway accepted".
+- **cancelUrl + ownership-scoped idempotency (F-2 + F-5):** Verified against `@polar-sh/sdk` v0.47 types: Polar's cancel hook is `returnUrl` (the SDK has NO `cancelUrl` field). Idempotency `findFirst` now scopes by `userId` so a CO_ADMIN re-initiating can't be handed the HOST's pre-created URL (wrong customer email, wrong CAPI attribution).
+- **Reconciliation job (F-14):** `paymentReconcileJob` runs every 30 min (configurable `RECONCILE_CRON`), multi-instance-safe via Postgres advisory_xact_lock, early-exits on idle. `reconcileStalePayment` queries Polar and maps response to RESCUED / EXPIRED / FAILED_FROM_GATEWAY / ABANDONED_GATEWAY_404 / ABANDONED_LOCAL_TIMEOUT / NOOP. RESCUED emails admin — no auto-complete because replaying CAPI / GA4 / receipt-email side effects unsafely is worse than asking a human.
+- **Visible failure UX (F-1):** PoolCapacityTab catches set a typed `errorMsg` state rendered as a styled inline alert (errorTitle / errorHint / Reintentar). PoolCreationWizard's `window.alert` replaced with the existing inline error banner. i18n keys added in es/en/pt.
+- **Funnel events from every entry point (F-16 + F-17):** PoolCapacityTab emits `begin_checkout` + `InitiateCheckout` (was wizard-only). `/pago/cancelado` fires GA4 `payment_cancelled` + USER_CANCELLED beacon. Both gateway cancel URLs carry `&paymentId={id}` so the beacon attributes to the right attempt.
+
+**Migrations (additive-only, zero-downtime):**
+- `20260519_extend_payment_observability` — PaymentEvent extension + 4 new enum values.
+- `20260521_pool_payment_initiated_state` — `polarCheckoutId` nullable + partial unique index.
+
+**Consequences:**
+
+- ✅ Full funnel observability. PaymentEvent records `click → INITIATED → gateway accepts → REDIRECT_INITIATED → gateway webhook(s) → USER_CANCELLED` for every attempt. Funnel queries on `(source, eventType, createdAtUtc)` (composite index) are cheap.
+- ✅ Silent failures eliminated. Every catch surfaces an actionable banner.
+- ✅ The 8 PENDING zombies will be reconciler-resolved on the next tick once Railway picks up the build.
+- ✅ RESCUED never auto-completes — replaying side effects unsafely is intentionally a human review.
+- ⚠️ Legacy cancel URLs created before Commit 6 only carry `poolId`. The cancel page handles missing `paymentId` — GA4 event still fires, backend beacon is skipped.
+- ⚠️ The reconciler does NOT call `getOrder` (F-10 deferred). RESCUED detection is by `checkout.status` only. If we ever need to auto-process a RESCUED row, that wiring is required.
+- ⚠️ Deferred findings (revisit post-mundial): F-6 (ipapi.co dependency), F-7 (module-scoped cache), F-8 (rename `polarCheckoutId` → `gatewayReference`), F-11 (decompose `paymentService.ts`), F-12 (pricing duplication backend↔frontend).
+
+**Related code:**
+- Backend schema: `backend/prisma/schema.prisma` (PoolPayment + PaymentEvent), `backend/prisma/migrations/20260519_extend_payment_observability/migration.sql`, `backend/prisma/migrations/20260521_pool_payment_initiated_state/migration.sql`.
+- Backend taxonomy: `backend/src/lib/paymentEvents.ts` (NEW — single source of truth for source + event-type constants).
+- Backend service: `backend/src/services/paymentService.ts` (initiate flows, webhook handlers, `recordClientEvent`, `recordUnhandledPolarEvent`, `reconcileStalePayment`, `findStalePayments`), `backend/src/services/polar/client.ts` (returnUrl).
+- Backend routes + jobs: `backend/src/routes/payments.ts` (new endpoint + webhook header capture), `backend/src/jobs/paymentReconcileJob.ts` (NEW), `backend/src/server.ts` (job wiring), `backend/src/lib/email.ts` (`payment_reconciler_rescued` AdminCategory).
+- Frontend: `frontend-next/src/lib/api/paymentAttemptEvent.ts` (NEW beacon helper), `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolCapacityTab.tsx` (banner + beacons + funnel events), `frontend-next/src/components/pool-wizard/PoolCreationWizard.tsx` (banner + beacons), `frontend-next/src/app/[locale]/pago/cancelado/page.tsx` (USER_CANCELLED + GA4), `frontend-next/src/messages/{es,en,pt}/payment.json`.
+- Docs: `POLAR_AUDIT.md` (per-finding status tracker — kept current with commit SHAs).
+
+---
+
 **END OF DOCUMENT**

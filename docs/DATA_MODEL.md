@@ -1018,9 +1018,9 @@ checkout attempt across both gateways (Polar USD / Mercado Pago COP).
 | `id` | String | PK, UUID | |
 | `poolId` | String | FK → Pool | Target pool being upgraded |
 | `userId` | String | FK → User | Who paid |
-| `polarCheckoutId` | String | Unique | Checkout session ID from Polar. Also used as the reference for MP checkouts so one column covers both gateways. |
+| `polarCheckoutId` | String? | Partial unique (when set) | Checkout session ID from Polar (also used as the reference for MP). Nullable to support the `INITIATED` state — the row is INSERTed before we call the gateway, so this is populated only after the gateway accepts the create. Partial unique index `PoolPayment_polarCheckoutId_unique_when_set` (UNIQUE WHERE NOT NULL) enforces uniqueness only when present. See ADR-060. |
 | `polarOrderId` | String? | Unique | Order ID set by the Polar webhook on confirmation. Null for MP payments and for Polar payments still pending. |
-| `status` | PaymentStatus | Default: PENDING | Payment lifecycle state (PENDING / COMPLETED / FAILED / REFUNDED). |
+| `status` | PaymentStatus | Default: PENDING | Payment lifecycle state — INITIATED / PENDING / COMPLETED / FAILED / ABANDONED / EXPIRED / CANCELLED / REFUNDED. See ADR-060 for the lifecycle. |
 | `amountUsd` | Int | | Amount in USD cents. Stored for EVERY gateway so the platform has a unified figure. For COP payments this is the USD equivalent at checkout time; the real pesos paid live in `amountCop`. |
 | `amountCop` | Int? | | Actual COP amount paid (whole pesos — MP has no sub-unit). Null for non-MP payments. Used by the Purchase event `value` reported to GA4 and Meta so revenue reflects what the customer really paid (avoids the 40× under-report when the USD-cents value is mis-labelled as pesos). |
 | `currency` | String | Default: "usd" | ISO 4217. `"usd"` for Polar, `"cop"` for MP. |
@@ -1046,23 +1046,33 @@ checkout attempt across both gateways (Polar USD / Mercado Pago COP).
 
 ### 3.29 PaymentEvent
 
-Webhook idempotency log. Every webhook event (Polar `order.paid`,
-`order.refunded`; MP IPN `payment.updated`) is persisted here before the
-handler processes it. A duplicate delivery with the same `polarEventId`
-is rejected by the UNIQUE constraint and returned as 200 without
-reprocessing — this is what protects against double capacity expansion
-and double refunds.
+Immutable audit log of every payment-related event we observe. Covers
+gateway webhooks (Polar `order.paid`, `order.refunded`, `checkout.*`;
+MP IPN `payment.updated`), browser beacons (REDIRECT_INITIATED,
+USER_CANCELLED, CLIENT_ERROR), reconciler decisions, and internal
+SERVER state transitions. See ADR-060.
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
 | `id` | String | PK, UUID | |
-| `polarEventId` | String | Unique | Webhook event id (Polar's real id for Polar webhooks; synthetic `mp-{payment_id}` for MP IPN so both gateways share one idempotency key column). |
-| `eventType` | String | | `"order.paid"`, `"order.refunded"`, `"mp.payment.updated"`, etc. |
-| `payloadJson` | Json | | Full webhook payload for forensics |
+| `source` | String | Default: `"POLAR_WEBHOOK"` | Origin discriminator. One of: `POLAR_WEBHOOK`, `MP_WEBHOOK`, `CLIENT`, `RECONCILER`, `SERVER`. See `lib/paymentEvents.ts` for the typed constants. |
+| `polarEventId` | String? | Partial unique (when set) | Gateway event ID. Required for `POLAR_WEBHOOK` / `MP_WEBHOOK` rows (idempotency anchor per ADR-046). Null for `CLIENT`, `RECONCILER`, `SERVER` — partial unique index `PaymentEvent_polarEventId_unique_when_set` (UNIQUE WHERE NOT NULL) enforces uniqueness only when present. |
+| `poolPaymentId` | String? | FK → PoolPayment, ON DELETE SET NULL | Direct link to the attempt this event refers to. Populated for all post-20260519 rows. |
+| `eventType` | String | | Event taxonomy depending on `source`. Polar webhooks: `"order.paid"`, `"order.refunded"`, `"checkout.updated"`, etc. MP IPN: `"mp.payment.updated"`. Client: `"REDIRECT_INITIATED"`, `"REDIRECT_FAILED"`, `"USER_CANCELLED"`, `"CLIENT_ERROR"`. Reconciler: `"RECONCILER_ABANDONED"`, `"RECONCILER_EXPIRED"`, `"RECONCILER_RESCUED"`, `"RECONCILER_NOOP"`. Server: `"STATUS_TRANSITION"`. |
+| `webhookId` | String? | | Polar's `webhook-id` delivery header. Used to cross-reference our log with Polar's dashboard for missing/duplicate deliveries. |
+| `webhookTimestamp` | DateTime? | | Polar's `webhook-timestamp` header. |
+| `payloadJson` | Json | | Verbatim payload (gateway body / client beacon body / reconciler snapshot). |
 | `processedAtUtc` | DateTime | Default: now() | |
 | `createdAtUtc` | DateTime | Default: now() | |
 
-**Indexes:** `polarEventId` (unique constraint and index)
+**Indexes:**
+- `polarEventId` (non-unique index) — fast lookup by gateway event id
+- `PaymentEvent_polarEventId_unique_when_set` — UNIQUE WHERE polarEventId IS NOT NULL (idempotency contract)
+- `poolPaymentId` (index) — fast lookup by PoolPayment
+- `(source, eventType)` (composite index) — funnel & analytics queries
+
+**Relations:**
+- `poolPayment` → PoolPayment (N:1, nullable)
 
 ---
 
