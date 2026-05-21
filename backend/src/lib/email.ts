@@ -997,12 +997,13 @@ export async function sendCorporateActivationEmail(params: {
  * inbox assignments.
  */
 export type AdminCategory =
-  | "feedback"               // Beta feedback / bug reports from users
-  | "corporate_inquiry"      // Lead form submission from /empresas
-  | "corporate_pool_created" // A corporate pool was created via the wizard
-  | "payment_completed"      // A payment was confirmed (Polar / MP)
-  | "system_event"           // Successful system event (phase advanced, sync OK)
-  | "error";                 // Real technical error (job failed, sync rejected)
+  | "feedback"                   // Beta feedback / bug reports from users
+  | "corporate_inquiry"          // Lead form submission from /empresas
+  | "corporate_pool_created"     // A corporate pool was created via the wizard
+  | "payment_completed"          // A payment was confirmed (Polar / MP)
+  | "payment_reconciler_rescued" // Reconciler found a discrepancy needing human review (F-14)
+  | "system_event"               // Successful system event (phase advanced, sync OK)
+  | "error";                     // Real technical error (job failed, sync rejected)
 
 interface CategoryRoute {
   // Names of inboxes this notification copies to. Each name is resolved
@@ -1023,6 +1024,7 @@ const CATEGORY_ROUTING: Record<AdminCategory, CategoryRoute> = {
   corporate_inquiry:      { inboxes: ["enterprise"],         emoji: "📩", label: "Cotización corporativa" },
   corporate_pool_created: { inboxes: ["enterprise"],         emoji: "🏢", label: "Pool corporativa creada" },
   payment_completed:      { inboxes: ["sales", "admin"],     emoji: "💰", label: "Pago confirmado" },
+  payment_reconciler_rescued: { inboxes: ["admin"],          emoji: "🛟", label: "Reconciler: revisión manual" },
   system_event:           { inboxes: ["admin"],              emoji: "ℹ️", label: "Evento del sistema" },
   error:                  { inboxes: ["admin"],              emoji: "🚨", label: "Error" },
 };

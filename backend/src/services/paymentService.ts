@@ -1093,6 +1093,330 @@ export async function getPaymentStatus(
   };
 }
 
+// ─── Reconciliation (F-14) ─────────────────────────────────────
+
+import { RECONCILER_EVENT_TYPE } from "../lib/paymentEvents";
+import { getCheckoutSession } from "./polar/client";
+
+/**
+ * Threshold (in hours) past which a PoolPayment still in INITIATED or
+ * PENDING is considered abandoned. Configurable via env var so we can
+ * relax during the World Cup and tighten otherwise. Default 24h —
+ * Polar's default checkout TTL is 24h, beyond which the checkout
+ * link is unusable anyway.
+ */
+const RECONCILE_ABANDONED_THRESHOLD_HOURS = Number(
+  process.env.RECONCILE_ABANDONED_THRESHOLD_HOURS || "24",
+);
+
+/**
+ * Grace period before considering a row eligible for reconciliation.
+ * Inside this window the webhook is still expected to arrive normally;
+ * reconciling too aggressively would race the gateway. 15 minutes is
+ * Polar's typical webhook delivery worst-case + a safety margin.
+ */
+const RECONCILE_GRACE_PERIOD_MINUTES = Number(
+  process.env.RECONCILE_GRACE_PERIOD_MINUTES || "15",
+);
+
+export interface ReconcileResult {
+  paymentId: string;
+  outcome: "RESCUED" | "EXPIRED" | "FAILED_FROM_GATEWAY" | "ABANDONED_GATEWAY_404" | "ABANDONED_LOCAL_TIMEOUT" | "NOOP";
+  previousStatus: string;
+  nextStatus: string | null;
+}
+
+/**
+ * Reconcile a single stale PoolPayment against Polar.
+ *
+ * Strategy:
+ *   1. If the row has no `polarCheckoutId` (rare — only possible if a
+ *      previous initiateCheckout crashed AFTER the INITIATED INSERT but
+ *      BEFORE Polar accepted the create), there's nothing to query. If
+ *      the row is past the abandon threshold, mark ABANDONED with a
+ *      `gateway_never_reached` reason.
+ *   2. Otherwise call Polar `getCheckoutSession(polarCheckoutId)` and
+ *      map the response:
+ *       - status=`succeeded` and our row is NOT COMPLETED → RESCUED.
+ *         Write an audit row + notify admin. We do NOT auto-complete
+ *         because the webhook side-effects (CAPI Purchase, GA4 purchase,
+ *         pool capacity bump, receipt email) are non-trivial to replay
+ *         safely; a human reviews and processes via the override path.
+ *       - status=`expired` → mark EXPIRED.
+ >      - status=`failed` → mark FAILED.
+ *       - status=`open` and row older than threshold → mark ABANDONED.
+ *       - status=`open` and row within threshold → NOOP.
+ *       - HTTP 404 (checkout deleted upstream) → mark ABANDONED.
+ *
+ * Every outcome writes a `PaymentEvent` row with `source=RECONCILER` so
+ * the audit log shows exactly what the reconciler decided and why.
+ */
+export async function reconcileStalePayment(paymentId: string): Promise<ReconcileResult> {
+  const payment = await prisma.poolPayment.findUnique({ where: { id: paymentId } });
+  if (!payment) {
+    throw new ServiceError("NOT_FOUND", 404);
+  }
+
+  // Only INITIATED / PENDING are reconcilable. Anything else has already
+  // reached a terminal state.
+  if (payment.status !== "INITIATED" && payment.status !== "PENDING") {
+    return {
+      paymentId,
+      outcome: "NOOP",
+      previousStatus: payment.status,
+      nextStatus: null,
+    };
+  }
+
+  const ageHours = (Date.now() - payment.createdAtUtc.getTime()) / 3_600_000;
+  const isOlderThanThreshold = ageHours >= RECONCILE_ABANDONED_THRESHOLD_HOURS;
+
+  // Case 1: no polarCheckoutId — Polar create never returned, and the
+  // initiateCheckout failure path didn't run (host crashed mid-flight,
+  // or rare race). Only act once we're past the abandon threshold.
+  if (!payment.polarCheckoutId) {
+    if (!isOlderThanThreshold) {
+      return {
+        paymentId,
+        outcome: "NOOP",
+        previousStatus: payment.status,
+        nextStatus: null,
+      };
+    }
+    await markAbandoned(payment.id, payment.status, "gateway_never_reached", {
+      ageHours,
+      polarCheckoutId: null,
+    });
+    return {
+      paymentId,
+      outcome: "ABANDONED_LOCAL_TIMEOUT",
+      previousStatus: payment.status,
+      nextStatus: "ABANDONED",
+    };
+  }
+
+  // Case 2: query Polar for the current checkout state.
+  let polarStatus: string | null = null;
+  let polarPayload: Record<string, unknown> | null = null;
+  let polarErrorCode: number | null = null;
+
+  try {
+    const session = await getCheckoutSession(payment.polarCheckoutId);
+    polarStatus = (session.status as string | undefined) ?? null;
+    polarPayload = JSON.parse(JSON.stringify(session));
+  } catch (err: any) {
+    // The SDK throws on non-2xx. We can distinguish 404 from transient
+    // failures by inspecting the error structure. The standardwebhooks
+    // / SDK error shape exposes `statusCode` for HTTP errors.
+    polarErrorCode = typeof err?.statusCode === "number" ? err.statusCode : null;
+    polarPayload = {
+      error: err instanceof Error ? err.message : String(err),
+      statusCode: polarErrorCode,
+    };
+
+    // 404 from Polar = checkout deleted upstream (long since expired or
+    // explicitly removed via Polar dashboard). Treat as ABANDONED.
+    if (polarErrorCode === 404) {
+      await markAbandoned(payment.id, payment.status, "polar_404_checkout_missing", polarPayload);
+      return {
+        paymentId,
+        outcome: "ABANDONED_GATEWAY_404",
+        previousStatus: payment.status,
+        nextStatus: "ABANDONED",
+      };
+    }
+
+    // Any other error (5xx, network, rate limit) — do NOT transition.
+    // Audit the attempt as RECONCILER_NOOP so the operator can see we
+    // tried, then leave the row for the next tick.
+    await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.NOOP, {
+      reason: "polar_query_failed",
+      ...polarPayload,
+    });
+    return {
+      paymentId,
+      outcome: "NOOP",
+      previousStatus: payment.status,
+      nextStatus: null,
+    };
+  }
+
+  // Case 3: Polar responded — map status to outcome.
+  const polarStatusLower = (polarStatus ?? "").toLowerCase();
+
+  if (polarStatusLower === "succeeded" || polarStatusLower === "confirmed") {
+    // RESCUED — Polar believes this checkout completed but we don't have
+    // a COMPLETED row. Could be: webhook never delivered, webhook
+    // delivered but processing failed every retry, or the row was reset
+    // accidentally. We write the audit row + notify admin; we do NOT
+    // auto-complete (replaying handleOrderPaid is non-trivial; a human
+    // verifies via Polar dashboard and processes manually).
+    await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.RESCUED, {
+      polarStatus,
+      polarCheckoutId: payment.polarCheckoutId,
+      ageHours,
+      polarPayload,
+    });
+
+    // Fire admin notification (best-effort, async).
+    fireAndForget("admin:reconciler-rescued", sendAdminNotification({
+      subject: `[Reconciler] Polar says ${polarStatus} but PoolPayment ${payment.id} is ${payment.status}`,
+      body:
+        `<p><strong>Manual review required.</strong> Polar's checkout state contradicts ours.</p>` +
+        `<p><strong>Payment:</strong> <code>${payment.id}</code></p>` +
+        `<p><strong>polarCheckoutId:</strong> <code>${payment.polarCheckoutId}</code></p>` +
+        `<p><strong>Polar status:</strong> ${polarStatus}</p>` +
+        `<p><strong>Our status:</strong> ${payment.status} (age ${ageHours.toFixed(1)}h)</p>` +
+        `<p>Verify in Polar dashboard, then process manually (capacity bump + CAPI/GA4 + receipt email).</p>`,
+      category: "payment_reconciler_rescued",
+    }));
+
+    return {
+      paymentId,
+      outcome: "RESCUED",
+      previousStatus: payment.status,
+      nextStatus: null, // intentionally not transitioned by the reconciler
+    };
+  }
+
+  if (polarStatusLower === "expired") {
+    await prisma.$transaction(async (tx) => {
+      await tx.poolPayment.update({ where: { id: payment.id }, data: { status: "EXPIRED" } });
+      await tx.paymentEvent.create({
+        data: {
+          source: PAYMENT_EVENT_SOURCE.RECONCILER,
+          poolPaymentId: payment.id,
+          eventType: RECONCILER_EVENT_TYPE.EXPIRED,
+          payloadJson: { polarStatus, ageHours, polarPayload } as Prisma.InputJsonValue,
+        },
+      });
+    });
+    return {
+      paymentId,
+      outcome: "EXPIRED",
+      previousStatus: payment.status,
+      nextStatus: "EXPIRED",
+    };
+  }
+
+  if (polarStatusLower === "failed") {
+    await prisma.$transaction(async (tx) => {
+      await tx.poolPayment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
+      await tx.paymentEvent.create({
+        data: {
+          source: PAYMENT_EVENT_SOURCE.RECONCILER,
+          poolPaymentId: payment.id,
+          eventType: RECONCILER_EVENT_TYPE.EXPIRED,
+          payloadJson: { polarStatus, ageHours, polarPayload } as Prisma.InputJsonValue,
+        },
+      });
+    });
+    return {
+      paymentId,
+      outcome: "FAILED_FROM_GATEWAY",
+      previousStatus: payment.status,
+      nextStatus: "FAILED",
+    };
+  }
+
+  // Polar status is "open" (or anything else not terminal). If the row
+  // is older than the abandon threshold, give up locally — the checkout
+  // link is unusable anyway. Otherwise, NOOP and let the webhook
+  // eventually deliver.
+  if (isOlderThanThreshold) {
+    await markAbandoned(payment.id, payment.status, "local_timeout", {
+      polarStatus,
+      ageHours,
+      polarPayload,
+    });
+    return {
+      paymentId,
+      outcome: "ABANDONED_LOCAL_TIMEOUT",
+      previousStatus: payment.status,
+      nextStatus: "ABANDONED",
+    };
+  }
+
+  await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.NOOP, {
+    reason: "polar_still_open_within_threshold",
+    polarStatus,
+    ageHours,
+  });
+  return {
+    paymentId,
+    outcome: "NOOP",
+    previousStatus: payment.status,
+    nextStatus: null,
+  };
+}
+
+/**
+ * Mark a payment as ABANDONED atomically with a RECONCILER audit event.
+ * Helper to keep the reconciler's branches readable.
+ */
+async function markAbandoned(
+  paymentId: string,
+  previousStatus: string,
+  reason: string,
+  detail: Record<string, unknown>,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await tx.poolPayment.update({
+      where: { id: paymentId },
+      data: { status: "ABANDONED" },
+    });
+    await tx.paymentEvent.create({
+      data: {
+        source: PAYMENT_EVENT_SOURCE.RECONCILER,
+        poolPaymentId: paymentId,
+        eventType: RECONCILER_EVENT_TYPE.ABANDONED,
+        payloadJson: {
+          from: previousStatus,
+          to: "ABANDONED",
+          reason,
+          ...detail,
+        } as Prisma.InputJsonValue,
+      },
+    });
+  });
+}
+
+async function writeReconcilerEvent(
+  paymentId: string,
+  eventType: string,
+  detail: Record<string, unknown>,
+): Promise<void> {
+  await prisma.paymentEvent.create({
+    data: {
+      source: PAYMENT_EVENT_SOURCE.RECONCILER,
+      poolPaymentId: paymentId,
+      eventType,
+      payloadJson: detail as Prisma.InputJsonValue,
+    },
+  });
+}
+
+/**
+ * Find the next batch of PoolPayments eligible for reconciliation:
+ *   - status ∈ (INITIATED, PENDING)
+ *   - older than the grace period (so we don't race the webhook)
+ *
+ * Ordered oldest-first so a long-stuck row gets resolved before newer
+ * arrivals. Batch size capped to avoid hammering Polar's rate limit.
+ */
+export async function findStalePayments(batchSize: number): Promise<{ id: string }[]> {
+  const cutoff = new Date(Date.now() - RECONCILE_GRACE_PERIOD_MINUTES * 60_000);
+  return prisma.poolPayment.findMany({
+    where: {
+      status: { in: ["INITIATED", "PENDING"] },
+      createdAtUtc: { lt: cutoff },
+    },
+    select: { id: true },
+    orderBy: { createdAtUtc: "asc" },
+    take: batchSize,
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MERCADO PAGO (Colombia, COP)
 // ═══════════════════════════════════════════════════════════════
