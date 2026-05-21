@@ -4,7 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { getTeamFlag, getCountryName } from "@/data/teamFlags";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import type { PoolOverview, PoolMatchCard } from "@/lib/poolTypes";
-import { fmtUtc, isPlaceholder, getPlaceholderName } from "./poolHelpers";
+import { fmtUtc, isPlaceholder, getPlaceholderName, getMatchLabel } from "./poolHelpers";
 import { colors } from "@/lib/theme";
 import { PickSection } from "./PickComponents";
 import { ResultSection } from "./ResultComponents";
@@ -211,7 +211,7 @@ export function MatchCard({
       {/* Match Info: kickoff + deadline */}
       <div style={{ color: colors.textMuted, fontSize: 12, marginBottom: 12, paddingLeft: 4, display: "flex", flexDirection: "column", gap: 2 }}>
         <div>
-          {m.label ?? m.roundLabel ?? t("matchCard.matchLabel", { id: m.matchNumber ?? m.id })} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone, locale)}
+          {getMatchLabel(m, t)} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone, locale)}
         </div>
         <div style={{ color: m.isLocked ? colors.textLight : "#c0392b" }}>
           {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone, locale)}

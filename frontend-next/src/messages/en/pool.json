@@ -340,6 +340,7 @@
     "locked": "LOCKED",
     "open": "OPEN",
     "matchLabel": "Match {id}",
+    "groupMatchLabel": "Group {group} - Matchday {matchday}",
     "kickoff": "Kickoff",
     "deadline": "Picks close",
     "pendingTitle": "Pending Match",

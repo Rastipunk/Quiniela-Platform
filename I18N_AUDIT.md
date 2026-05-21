@@ -202,9 +202,9 @@ Static fallback dictionary. The `country` field is single-locale (Spanish only).
 > - `⚪ DEFERRED` — intentionally out of scope for this cycle.
 
 ### F-1: Match `roundLabel` from `dataJson` overrides the i18n fallback in MatchCard
-- **Status:** 🟥 PENDING
+- **Status:** 🟩 FIXED in `<PENDING-SHA>` (2026-05-22) — added `getMatchLabel(match, t)` helper in `poolHelpers.ts` that builds the label client-side from i18n keys (group → `matchCard.groupMatchLabel { group, matchday }` parsed from the matchId regex `_MD(\d+)_`; knockout → existing `phasesLong.{phaseId}` which is already trilingual). Added `matchCard.groupMatchLabel` key in ES/EN/PT catalogs. `MatchCard.tsx:214` now calls `getMatchLabel(m, t)` instead of the `??` chain. The dataJson `roundLabel` is retained for backend filters and `page.tsx` search via `norm()`, but is no longer the user-visible source.
 - **Severity:** **HIGH** — most visible bug; appears on every match card in EN and PT pools.
-- **Where:** `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/MatchCard.tsx:210`
+- **Where:** `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/MatchCard.tsx:214`
 - **Behavior:** `m.label ?? m.roundLabel ?? t("matchCard.matchLabel", ...)` — `m.roundLabel` is set from `dataJson.matches[].roundLabel` (Spanish-only: `"Grupo A - Jornada 1"`, `"R32 - 2A vs 2B"`) so the i18n fallback never fires.
 - **Fix proposal:** stop using `m.roundLabel` as the primary label. Build the label client-side from i18n keys: for group matches use `t("matchCard.groupMatchLabel", { group, matchday })`; for knockouts use `t("matchCard.knockoutLabel", { phaseKey, slot })`. The dataJson `roundLabel` becomes purely an internal hint (kept for backend filters at `page.tsx:334`, which uses it via `norm()` for search).
 
@@ -215,7 +215,7 @@ Static fallback dictionary. The `country` field is single-locale (Spanish only).
 - **Fix proposal:** make `fmtUtc` accept the current locale and forward it. Either pass it through every call site, or capture it via `useLocale()` and pass via a wrapping component / context. Smallest change: have `fmtUtc` be a hook (`useFmtUtc()`) that reads `useLocale()` and returns the formatter.
 
 ### F-3: `"partidos"` hardcoded in PoolMatchesTab group summary
-- **Status:** 🟥 PENDING
+- **Status:** 🟩 FIXED in `86ef4b0` (2026-05-22) — replaced literal with `t("filters.matchesCount", { count: n })`. New i18n key added in all 3 locales with ICU plural form (1 partido/match/jogo vs N partidos/matches/jogos).
 - **Severity:** medium — visible on every group accordion header.
 - **Where:** `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolMatchesTab.tsx:364`
 - **Behavior:** `<span>{n} partidos</span>` — Spanish literal.

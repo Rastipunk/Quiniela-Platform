@@ -340,6 +340,7 @@
     "locked": "LOCKED",
     "open": "OPEN",
     "matchLabel": "Partido {id}",
+    "groupMatchLabel": "Grupo {group} - Jornada {matchday}",
     "kickoff": "Inicio",
     "deadline": "Cierre de predicciones",
     "pendingTitle": "Partido Pendiente",

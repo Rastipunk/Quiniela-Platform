@@ -340,6 +340,7 @@
     "locked": "BLOQUEADO",
     "open": "ABERTO",
     "matchLabel": "Jogo {id}",
+    "groupMatchLabel": "Grupo {group} - Rodada {matchday}",
     "kickoff": "Início",
     "deadline": "Encerramento dos palpites",
     "pendingTitle": "Jogo Pendente",
