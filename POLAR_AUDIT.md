@@ -425,7 +425,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Surface the error with a styled inline banner (not `window.alert`). Capture the error message + the request payload, send a `client_error` beacon to the backend so we can audit failures. Add retry CTA.
 
 ### F-2: `cancelUrl` is computed but never passed to Polar
-- **Status:** 🟥 PENDING — to be fixed in Commit 3
+- **Status:** 🟩 FIXED in `412bb2b` (2026-05-21) — `polar/client.ts` now passes `params.cancelUrl` as Polar's `returnUrl` field. SDK field name verified directly against `@polar-sh/sdk` v0.47 type definitions, no assumption.
 - **Severity:** medium
 - **Where:** `backend/src/services/paymentService.ts:198` builds the cancel URL; `backend/src/services/polar/client.ts:84–88` only passes `successUrl` and `metadata` to `client.checkouts.create()` — `cancelUrl` is dropped.
 - **Behavior:** When a user backs out of Polar's checkout page, they don't bounce back to `picks4all.com/pago/cancelado` — they land on Polar's default cancellation page (or are stuck on a "Cancelled" state on polar.sh). Polar's `checkout.updated` webhook may or may not fire on user-initiated cancellation.
@@ -441,7 +441,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Write a `PaymentEvent` row for **every** webhook received, regardless of whether we have business logic for it. Add explicit branches for `confirmed` (user submitted payment, waiting for processor) and `succeeded` (intermediate before `order.paid`). The audit-log promise in the schema comment (`"every webhook event received from Polar"`) should be honored.
 
 ### F-4: No row exists to record "user clicked Pay" before backend call
-- **Status:** 🟧 IN PROGRESS — `INITIATED` enum value added in Commit 1; INSERT-before-call logic comes in Commit 3
+- **Status:** 🟩 FIXED in `412bb2b` (2026-05-21) — both `initiateCheckout` (Polar) and `initiateMpCheckout` (MP) now INSERT the PoolPayment row in `INITIATED` state BEFORE calling the gateway. Gateway success transitions to PENDING via atomic `$transaction` with a SERVER `STATUS_TRANSITION` audit event; gateway failure transitions to FAILED with the same audit pattern. Migration `20260521_pool_payment_initiated_state` made `polarCheckoutId` nullable to support this. Regression tests cover happy + failure paths.
 - **Severity:** high
 - **Where:** `backend/src/services/paymentService.ts:201–237` — `createCheckout` is called BEFORE `prisma.poolPayment.create()`; the row only exists once Polar accepts.
 - **Behavior:** If Polar's API returns an error (rate limit, 500, network blip), we never persist an attempt. The user gets a 500 from our route handler. We have NO RECORD that they tried.
@@ -449,7 +449,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** INSERT a `PoolPayment` row in status `INITIATED` (new enum value) **before** calling Polar. If Polar succeeds, UPDATE to PENDING + populate `polarCheckoutId`. If Polar fails, UPDATE to FAILED with the error. Alternative: keep a separate `CheckoutAttempt` audit table to avoid widening `PaymentStatus`.
 
 ### F-5: Idempotency lookup ignores user identity — possible cross-user URL leak
-- **Status:** 🟥 PENDING — to be fixed in Commit 3
+- **Status:** 🟩 FIXED in `412bb2b` (2026-05-21) — both `initiateCheckout` and `initiateMpCheckout` now include `userId` in the idempotency `findFirst` WHERE clause. Cross-user URL reuse impossible. Regression test "idempotency lookup scopes by userId (F-5 fix)" pins the behavior.
 - **Severity:** medium (security/attribution)
 - **Where:** `backend/src/services/paymentService.ts:165–168` — `prisma.poolPayment.findFirst({ where: { poolId, status: "PENDING", toCapacity } })` — no `userId` in the where clause.
 - **Behavior:** If two hosts of the same pool (e.g. HOST + CO_ADMIN) both initiate a checkout for the same target capacity, the second caller receives a Polar URL **created by and pre-filled with the email of the first caller**. The receipt + Meta event_id would then attribute to the wrong user.
