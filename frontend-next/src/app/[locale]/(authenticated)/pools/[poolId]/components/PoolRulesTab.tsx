@@ -7,6 +7,7 @@ import { PickRulesDisplay } from "@/components/PickRulesDisplay";
 import { usePoolTerm } from "@/contexts/PoolTermContext";
 import type { PoolPickTypesConfig } from "@/types/pickConfig";
 import type { PoolOverview } from "@/lib/api";
+import { getTournamentName } from "./poolHelpers";
 
 interface PoolRulesTabProps {
   overview: PoolOverview;
@@ -15,6 +16,7 @@ interface PoolRulesTabProps {
 
 export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
   const t = useTranslations("pool");
+  const tTournaments = useTranslations("tournaments");
   const { params: poolParams } = usePoolTerm();
 
   return (
@@ -114,7 +116,7 @@ export function PoolRulesTab({ overview, allowScorePick }: PoolRulesTabProps) {
             </h4>
             <div style={{ fontSize: 14, lineHeight: 1.8 }}>
               <div style={{ marginBottom: 6 }}>
-                <span style={{ fontWeight: 600 }}>{t("rules.tournament.name")}:</span> {overview.tournamentInstance.name}
+                <span style={{ fontWeight: 600 }}>{t("rules.tournament.name")}:</span> {getTournamentName(overview.tournamentInstance.templateKey, overview.tournamentInstance.name, tTournaments)}
               </div>
               <div style={{ marginBottom: 6 }}>
                 <span style={{ fontWeight: 600 }}>{t("rules.tournament.activeMembers")}:</span> {overview.counts.membersActive}

@@ -31,6 +31,7 @@ export type MePoolRow = {
     id: string;
     name: string;
     status: string;
+    templateKey?: string | null;
     [key: string]: any;
   };
   [key: string]: any;

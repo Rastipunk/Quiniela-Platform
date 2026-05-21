@@ -33,7 +33,7 @@ const PoolLeaderboardTab = dynamic(() => import("./components/PoolLeaderboardTab
 const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m => ({ default: m.PoolRulesTab })), {
   loading: () => <div style={{ padding: 20, textAlign: "center", color: colors.textLight }}>Loading...</div>,
 });
-import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName } from "./components/poolHelpers";
+import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName, getTournamentName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
 import { PoolSectionHeader } from "./components/PoolSectionHeader";
@@ -54,6 +54,7 @@ export default function PoolPage() {
   // because the hamburger drawer already exposes "Mis Pools".
   const isCompact = useIsMobile({ breakpoint: BREAKPOINTS.tabletLg });
   const t = useTranslations("pool");
+  const tTournaments = useTranslations("tournaments");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -725,7 +726,7 @@ export default function PoolPage() {
           )}
 
           <div style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
-            {overview.tournamentInstance.name} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
+            {getTournamentName(overview.tournamentInstance.templateKey, overview.tournamentInstance.name, tTournaments)} • {overview.pool.maxParticipants ? `${overview.counts.membersActive}/${overview.pool.maxParticipants}` : overview.counts.membersActive} {t("members")} • {t("yourRole")}: <b>{overview.myMembership.role}</b>
           </div>
 
           {/* Invite code display (shown after creating code) */}

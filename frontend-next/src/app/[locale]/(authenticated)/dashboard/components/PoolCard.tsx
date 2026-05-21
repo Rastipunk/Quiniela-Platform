@@ -1,9 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import type { MePoolRow } from "@/lib/api";
 import { colors, radii, fontSize as fs, fontWeight as fw, pillBadgeStyle } from "@/lib/theme";
+import { getTournamentName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 export interface PoolCardProps {
   row: MePoolRow;
@@ -16,6 +18,7 @@ export interface PoolCardProps {
 }
 
 export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave, onArchive }: PoolCardProps) {
+  const tTournaments = useTranslations("tournaments");
   return (
     <div
       key={r.poolId}
@@ -97,7 +100,7 @@ export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave,
 
           {r.tournamentInstance && (
             <div style={{ marginTop: 6, color: colors.textMuted, fontSize: isMobile ? fs.md : fs.sm }}>
-              {t("poolCard.tournament")}: {r.tournamentInstance.name}
+              {t("poolCard.tournament")}: {getTournamentName(r.tournamentInstance.templateKey, r.tournamentInstance.name, tTournaments)}
             </div>
           )}
         </div>

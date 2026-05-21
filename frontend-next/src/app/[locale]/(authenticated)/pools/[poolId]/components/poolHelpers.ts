@@ -136,6 +136,36 @@ export function getTeamName(
   return team.name ?? team.id;
 }
 
+/**
+ * Resolve a tournament's display name from the trilingual `tournaments`
+ * catalog keyed by `TournamentTemplate.key` (e.g. `wc_2026_sandbox` →
+ * "World Cup 2026"/"Copa Mundial 2026"/"Copa do Mundo 2026"). See
+ * I18N_AUDIT F-7.
+ *
+ * Fallback chain:
+ *   1. `tournaments.{templateKey}` from the i18n catalog
+ *   2. The stored `TournamentInstance.name` (single-locale, e.g.
+ *      "World Cup 2026") — used for instances whose template key is
+ *      not yet in the catalog
+ *   3. An empty string (caller decides whether to render a placeholder)
+ */
+export function getTournamentName(
+  templateKey: string | null | undefined,
+  fallbackName: string | null | undefined,
+  t: ReturnType<typeof useTranslations<"tournaments">>,
+): string {
+  if (templateKey) {
+    const tDynamic = t as (key: string) => string;
+    try {
+      const translated = tDynamic(templateKey);
+      if (translated && translated !== templateKey) return translated;
+    } catch {
+      // ignore — fall through
+    }
+  }
+  return fallbackName ?? "";
+}
+
 export function isPlaceholder(teamId: string) {
   return teamId === "t_TBD" || teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
 }

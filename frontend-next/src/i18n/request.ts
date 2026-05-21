@@ -12,7 +12,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const [
     common, auth, dashboard, profile, pool, legal,
     penca, polla, prode, porra, footballPool, seo, pricing, pricingPage,
-    poolWizard, worldCup, share, cookieConsent, payment, howToPlay, teams,
+    poolWizard, worldCup, share, cookieConsent, payment, howToPlay, teams, tournaments,
   ] = await Promise.all([
     import(`../messages/${locale}/common.json`).then((m) => m.default).catch(() => ({})),
     import(`../messages/${locale}/auth.json`).then((m) => m.default).catch(() => ({})),
@@ -35,6 +35,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
     import(`../messages/${locale}/payment.json`).then((m) => m.default).catch(() => ({})),
     import(`../messages/${locale}/howToPlay.json`).then((m) => m.default).catch(() => ({})),
     import(`../messages/${locale}/teams.json`).then((m) => m.default).catch(() => ({})),
+    import(`../messages/${locale}/tournaments.json`).then((m) => m.default).catch(() => ({})),
   ]);
 
   return {
@@ -43,7 +44,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
       ...common,
       auth, dashboard, profile, pool, legal,
       penca, polla, prode, porra, footballPool, seo, pricing, pricingPage,
-      poolWizard, worldCup, share, cookieConsent, payment, howToPlay, teams,
+      poolWizard, worldCup, share, cookieConsent, payment, howToPlay, teams, tournaments,
     },
   };
 });

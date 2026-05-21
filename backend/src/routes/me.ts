@@ -25,7 +25,9 @@ meRouter.get("/pools", async (req, res) => {
     include: {
       pool: {
         include: {
-          tournamentInstance: true,
+          tournamentInstance: {
+            include: { template: { select: { key: true } } },
+          },
         },
       },
     },
@@ -58,6 +60,7 @@ meRouter.get("/pools", async (req, res) => {
             status: m.pool.tournamentInstance.status,
             templateId: m.pool.tournamentInstance.templateId,
             templateVersionId: m.pool.tournamentInstance.templateVersionId,
+            templateKey: m.pool.tournamentInstance.template?.key ?? null,
             createdAtUtc: m.pool.tournamentInstance.createdAtUtc,
             updatedAtUtc: m.pool.tournamentInstance.updatedAtUtc,
           }
