@@ -2,7 +2,8 @@
 // Sistema de mapeo de banderas reutilizable para torneos
 
 export type TeamFlagData = {
-  country: string;      // Nombre del país en español
+  country: string;      // Display name (Spanish fallback for nations; locale-independent for clubs)
+  code?: string;        // FIFA 3-letter code (nations only) — keys messages/{locale}/teams.json
   iso2: string;         // Código ISO2 para banderas
   flagUrl: string;      // URL del SVG desde flagcdn.com
 };
@@ -21,76 +22,76 @@ export type TeamFlagMapping = {
  */
 export const WC2026_FLAGS: TeamFlagMapping = {
   // Grupo A
-  "A1": { country: "México", iso2: "mx", flagUrl: "https://flagcdn.com/w40/mx.png" },
-  "A2": { country: "Corea del Sur", iso2: "kr", flagUrl: "https://flagcdn.com/w40/kr.png" },
-  "A3": { country: "Sudáfrica", iso2: "za", flagUrl: "https://flagcdn.com/w40/za.png" },
-  "A4": { country: "República Checa", iso2: "cz", flagUrl: "https://flagcdn.com/w40/cz.png" },
+  "A1": { country: "México", code: "MEX", iso2: "mx", flagUrl: "https://flagcdn.com/w40/mx.png" },
+  "A2": { country: "Corea del Sur", code: "KOR", iso2: "kr", flagUrl: "https://flagcdn.com/w40/kr.png" },
+  "A3": { country: "Sudáfrica", code: "RSA", iso2: "za", flagUrl: "https://flagcdn.com/w40/za.png" },
+  "A4": { country: "República Checa", code: "CZE", iso2: "cz", flagUrl: "https://flagcdn.com/w40/cz.png" },
 
   // Grupo B
-  "B1": { country: "Canadá", iso2: "ca", flagUrl: "https://flagcdn.com/w40/ca.png" },
-  "B2": { country: "Qatar", iso2: "qa", flagUrl: "https://flagcdn.com/w40/qa.png" },
-  "B3": { country: "Suiza", iso2: "ch", flagUrl: "https://flagcdn.com/w40/ch.png" },
-  "B4": { country: "Bosnia y Herzegovina", iso2: "ba", flagUrl: "https://flagcdn.com/w40/ba.png" },
+  "B1": { country: "Canadá", code: "CAN", iso2: "ca", flagUrl: "https://flagcdn.com/w40/ca.png" },
+  "B2": { country: "Qatar", code: "QAT", iso2: "qa", flagUrl: "https://flagcdn.com/w40/qa.png" },
+  "B3": { country: "Suiza", code: "SUI", iso2: "ch", flagUrl: "https://flagcdn.com/w40/ch.png" },
+  "B4": { country: "Bosnia y Herzegovina", code: "BIH", iso2: "ba", flagUrl: "https://flagcdn.com/w40/ba.png" },
 
   // Grupo C
-  "C1": { country: "Brasil", iso2: "br", flagUrl: "https://flagcdn.com/w40/br.png" },
-  "C2": { country: "Haití", iso2: "ht", flagUrl: "https://flagcdn.com/w40/ht.png" },
-  "C3": { country: "Marruecos", iso2: "ma", flagUrl: "https://flagcdn.com/w40/ma.png" },
-  "C4": { country: "Escocia", iso2: "gb-sct", flagUrl: "https://flagcdn.com/w40/gb-sct.png" },
+  "C1": { country: "Brasil", code: "BRA", iso2: "br", flagUrl: "https://flagcdn.com/w40/br.png" },
+  "C2": { country: "Haití", code: "HAI", iso2: "ht", flagUrl: "https://flagcdn.com/w40/ht.png" },
+  "C3": { country: "Marruecos", code: "MAR", iso2: "ma", flagUrl: "https://flagcdn.com/w40/ma.png" },
+  "C4": { country: "Escocia", code: "SCO", iso2: "gb-sct", flagUrl: "https://flagcdn.com/w40/gb-sct.png" },
 
   // Grupo D
-  "D1": { country: "Estados Unidos", iso2: "us", flagUrl: "https://flagcdn.com/w40/us.png" },
-  "D2": { country: "Australia", iso2: "au", flagUrl: "https://flagcdn.com/w40/au.png" },
-  "D3": { country: "Paraguay", iso2: "py", flagUrl: "https://flagcdn.com/w40/py.png" },
-  "D4": { country: "Turquía", iso2: "tr", flagUrl: "https://flagcdn.com/w40/tr.png" },
+  "D1": { country: "Estados Unidos", code: "USA", iso2: "us", flagUrl: "https://flagcdn.com/w40/us.png" },
+  "D2": { country: "Australia", code: "AUS", iso2: "au", flagUrl: "https://flagcdn.com/w40/au.png" },
+  "D3": { country: "Paraguay", code: "PAR", iso2: "py", flagUrl: "https://flagcdn.com/w40/py.png" },
+  "D4": { country: "Turquía", code: "TUR", iso2: "tr", flagUrl: "https://flagcdn.com/w40/tr.png" },
 
   // Grupo E
-  "E1": { country: "Alemania", iso2: "de", flagUrl: "https://flagcdn.com/w40/de.png" },
-  "E2": { country: "Curazao", iso2: "cw", flagUrl: "https://flagcdn.com/w40/cw.png" },
-  "E3": { country: "Costa de Marfil", iso2: "ci", flagUrl: "https://flagcdn.com/w40/ci.png" },
-  "E4": { country: "Ecuador", iso2: "ec", flagUrl: "https://flagcdn.com/w40/ec.png" },
+  "E1": { country: "Alemania", code: "GER", iso2: "de", flagUrl: "https://flagcdn.com/w40/de.png" },
+  "E2": { country: "Curazao", code: "CUW", iso2: "cw", flagUrl: "https://flagcdn.com/w40/cw.png" },
+  "E3": { country: "Costa de Marfil", code: "CIV", iso2: "ci", flagUrl: "https://flagcdn.com/w40/ci.png" },
+  "E4": { country: "Ecuador", code: "ECU", iso2: "ec", flagUrl: "https://flagcdn.com/w40/ec.png" },
 
   // Grupo F
-  "F1": { country: "Países Bajos", iso2: "nl", flagUrl: "https://flagcdn.com/w40/nl.png" },
-  "F2": { country: "Japón", iso2: "jp", flagUrl: "https://flagcdn.com/w40/jp.png" },
-  "F3": { country: "Túnez", iso2: "tn", flagUrl: "https://flagcdn.com/w40/tn.png" },
-  "F4": { country: "Suecia", iso2: "se", flagUrl: "https://flagcdn.com/w40/se.png" },
+  "F1": { country: "Países Bajos", code: "NED", iso2: "nl", flagUrl: "https://flagcdn.com/w40/nl.png" },
+  "F2": { country: "Japón", code: "JPN", iso2: "jp", flagUrl: "https://flagcdn.com/w40/jp.png" },
+  "F3": { country: "Túnez", code: "TUN", iso2: "tn", flagUrl: "https://flagcdn.com/w40/tn.png" },
+  "F4": { country: "Suecia", code: "SWE", iso2: "se", flagUrl: "https://flagcdn.com/w40/se.png" },
 
   // Grupo G
-  "G1": { country: "Bélgica", iso2: "be", flagUrl: "https://flagcdn.com/w40/be.png" },
-  "G2": { country: "Egipto", iso2: "eg", flagUrl: "https://flagcdn.com/w40/eg.png" },
-  "G3": { country: "Irán", iso2: "ir", flagUrl: "https://flagcdn.com/w40/ir.png" },
-  "G4": { country: "Nueva Zelanda", iso2: "nz", flagUrl: "https://flagcdn.com/w40/nz.png" },
+  "G1": { country: "Bélgica", code: "BEL", iso2: "be", flagUrl: "https://flagcdn.com/w40/be.png" },
+  "G2": { country: "Egipto", code: "EGY", iso2: "eg", flagUrl: "https://flagcdn.com/w40/eg.png" },
+  "G3": { country: "Irán", code: "IRN", iso2: "ir", flagUrl: "https://flagcdn.com/w40/ir.png" },
+  "G4": { country: "Nueva Zelanda", code: "NZL", iso2: "nz", flagUrl: "https://flagcdn.com/w40/nz.png" },
 
   // Grupo H
-  "H1": { country: "España", iso2: "es", flagUrl: "https://flagcdn.com/w40/es.png" },
-  "H2": { country: "Cabo Verde", iso2: "cv", flagUrl: "https://flagcdn.com/w40/cv.png" },
-  "H3": { country: "Arabia Saudita", iso2: "sa", flagUrl: "https://flagcdn.com/w40/sa.png" },
-  "H4": { country: "Uruguay", iso2: "uy", flagUrl: "https://flagcdn.com/w40/uy.png" },
+  "H1": { country: "España", code: "ESP", iso2: "es", flagUrl: "https://flagcdn.com/w40/es.png" },
+  "H2": { country: "Cabo Verde", code: "CPV", iso2: "cv", flagUrl: "https://flagcdn.com/w40/cv.png" },
+  "H3": { country: "Arabia Saudita", code: "KSA", iso2: "sa", flagUrl: "https://flagcdn.com/w40/sa.png" },
+  "H4": { country: "Uruguay", code: "URU", iso2: "uy", flagUrl: "https://flagcdn.com/w40/uy.png" },
 
   // Grupo I
-  "I1": { country: "Francia", iso2: "fr", flagUrl: "https://flagcdn.com/w40/fr.png" },
-  "I2": { country: "Senegal", iso2: "sn", flagUrl: "https://flagcdn.com/w40/sn.png" },
-  "I3": { country: "Noruega", iso2: "no", flagUrl: "https://flagcdn.com/w40/no.png" },
-  "I4": { country: "Irak", iso2: "iq", flagUrl: "https://flagcdn.com/w40/iq.png" },
+  "I1": { country: "Francia", code: "FRA", iso2: "fr", flagUrl: "https://flagcdn.com/w40/fr.png" },
+  "I2": { country: "Senegal", code: "SEN", iso2: "sn", flagUrl: "https://flagcdn.com/w40/sn.png" },
+  "I3": { country: "Noruega", code: "NOR", iso2: "no", flagUrl: "https://flagcdn.com/w40/no.png" },
+  "I4": { country: "Irak", code: "IRQ", iso2: "iq", flagUrl: "https://flagcdn.com/w40/iq.png" },
 
   // Grupo J
-  "J1": { country: "Argentina", iso2: "ar", flagUrl: "https://flagcdn.com/w40/ar.png" },
-  "J2": { country: "Argelia", iso2: "dz", flagUrl: "https://flagcdn.com/w40/dz.png" },
-  "J3": { country: "Austria", iso2: "at", flagUrl: "https://flagcdn.com/w40/at.png" },
-  "J4": { country: "Jordania", iso2: "jo", flagUrl: "https://flagcdn.com/w40/jo.png" },
+  "J1": { country: "Argentina", code: "ARG", iso2: "ar", flagUrl: "https://flagcdn.com/w40/ar.png" },
+  "J2": { country: "Argelia", code: "ALG", iso2: "dz", flagUrl: "https://flagcdn.com/w40/dz.png" },
+  "J3": { country: "Austria", code: "AUT", iso2: "at", flagUrl: "https://flagcdn.com/w40/at.png" },
+  "J4": { country: "Jordania", code: "JOR", iso2: "jo", flagUrl: "https://flagcdn.com/w40/jo.png" },
 
   // Grupo K
-  "K1": { country: "Portugal", iso2: "pt", flagUrl: "https://flagcdn.com/w40/pt.png" },
-  "K2": { country: "Uzbekistán", iso2: "uz", flagUrl: "https://flagcdn.com/w40/uz.png" },
-  "K3": { country: "Colombia", iso2: "co", flagUrl: "https://flagcdn.com/w40/co.png" },
-  "K4": { country: "R.D. del Congo", iso2: "cd", flagUrl: "https://flagcdn.com/w40/cd.png" },
+  "K1": { country: "Portugal", code: "POR", iso2: "pt", flagUrl: "https://flagcdn.com/w40/pt.png" },
+  "K2": { country: "Uzbekistán", code: "UZB", iso2: "uz", flagUrl: "https://flagcdn.com/w40/uz.png" },
+  "K3": { country: "Colombia", code: "COL", iso2: "co", flagUrl: "https://flagcdn.com/w40/co.png" },
+  "K4": { country: "R.D. del Congo", code: "COD", iso2: "cd", flagUrl: "https://flagcdn.com/w40/cd.png" },
 
   // Grupo L
-  "L1": { country: "Inglaterra", iso2: "gb-eng", flagUrl: "https://flagcdn.com/w40/gb-eng.png" },
-  "L2": { country: "Croacia", iso2: "hr", flagUrl: "https://flagcdn.com/w40/hr.png" },
-  "L3": { country: "Ghana", iso2: "gh", flagUrl: "https://flagcdn.com/w40/gh.png" },
-  "L4": { country: "Panamá", iso2: "pa", flagUrl: "https://flagcdn.com/w40/pa.png" },
+  "L1": { country: "Inglaterra", code: "ENG", iso2: "gb-eng", flagUrl: "https://flagcdn.com/w40/gb-eng.png" },
+  "L2": { country: "Croacia", code: "CRO", iso2: "hr", flagUrl: "https://flagcdn.com/w40/hr.png" },
+  "L3": { country: "Ghana", code: "GHA", iso2: "gh", flagUrl: "https://flagcdn.com/w40/gh.png" },
+  "L4": { country: "Panamá", code: "PAN", iso2: "pa", flagUrl: "https://flagcdn.com/w40/pa.png" },
 };
 
 /**

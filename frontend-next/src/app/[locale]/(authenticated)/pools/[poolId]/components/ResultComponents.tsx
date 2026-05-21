@@ -4,7 +4,7 @@ import { colors } from "@/lib/theme";
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { getTeamFlag, getCountryName } from "@/data/teamFlags";
+import { getTeamFlag } from "@/data/teamFlags";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { getTeamName } from "./poolHelpers";
 
@@ -144,8 +144,8 @@ function ResultDisplay(props: {
   const { result } = props;
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
-  const homeName = getTeamName(props.homeTeam, tTeams) || getCountryName(props.homeTeam.id, props.tournamentKey);
-  const awayName = getTeamName(props.awayTeam, tTeams) || getCountryName(props.awayTeam.id, props.tournamentKey);
+  const homeName = getTeamName(props.homeTeam, tTeams);
+  const awayName = getTeamName(props.awayTeam, tTeams);
 
   // Live ticker label: "45+3", "HT", or just elapsed minute
   const isHalftime = props.matchStatus === "HT";
@@ -325,8 +325,8 @@ function ResultEditor(props: {
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
   const tTeams = useTranslations("teams");
-  const homeName = getTeamName(props.homeTeam, tTeams) || getCountryName(props.homeTeam.id, props.tournamentKey);
-  const awayName = getTeamName(props.awayTeam, tTeams) || getCountryName(props.awayTeam.id, props.tournamentKey);
+  const homeName = getTeamName(props.homeTeam, tTeams);
+  const awayName = getTeamName(props.awayTeam, tTeams);
 
   const needReason = props.requireReason && reason.trim().length === 0;
 

@@ -1,6 +1,7 @@
 "use client";
 
 // frontend-next/src/components/TeamFlag.tsx
+import { useTranslations } from "next-intl";
 import { getTeamFlag, getCountryName } from "../data/teamFlags";
 
 type TeamFlagProps = {
@@ -36,7 +37,23 @@ export function TeamFlag({
   // Extraer código: "t_A1" → "A1"
   const teamCode = teamId.replace("t_", "");
   const flag = getTeamFlag(teamCode, tournamentKey);
-  const countryName = getCountryName(teamId, tournamentKey);
+  // I18N_AUDIT F-6: resolve the display name through the `teams` catalog
+  // (keyed by FIFA 3-letter code) when the flag entry carries a `code`.
+  // Falls back to the Spanish `flag.country` for entries without a code
+  // (UCL clubs whose names are locale-independent) or unmapped codes.
+  const tTeams = useTranslations("teams");
+  const tDynamic = tTeams as (key: string) => string;
+  const countryName = (() => {
+    if (flag?.code) {
+      try {
+        const translated = tDynamic(flag.code);
+        if (translated && translated !== flag.code) return translated;
+      } catch {
+        // ignore — fall through
+      }
+    }
+    return flag?.country ?? getCountryName(teamId, tournamentKey);
+  })();
 
   // Fallback si no hay bandera
   if (!flag || !flag.flagUrl) {
@@ -58,7 +75,7 @@ export function TeamFlag({
   const flagImg = (
     <img
       src={flag.flagUrl}
-      alt={flag.country}
+      alt={countryName}
       width={sizeMap[size]}
       height={Math.round(sizeMap[size] * 0.75)}
       loading="lazy"
@@ -83,7 +100,7 @@ export function TeamFlag({
         minWidth: 0,
       }}
     >
-      {flag.country}
+      {countryName}
     </span>
   );
 

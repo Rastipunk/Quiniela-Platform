@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslations, useLocale } from "next-intl";
-import { getTeamFlag, getCountryName } from "@/data/teamFlags";
+import { getTeamFlag } from "@/data/teamFlags";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import type { PoolOverview, PoolMatchCard } from "@/lib/poolTypes";
-import { fmtUtc, isPlaceholder, getPlaceholderName, getMatchLabel } from "./poolHelpers";
+import { fmtUtc, isPlaceholder, getPlaceholderName, getMatchLabel, getTeamName } from "./poolHelpers";
 import { colors } from "@/lib/theme";
 import { PickSection } from "./PickComponents";
 import { ResultSection } from "./ResultComponents";
@@ -39,6 +39,7 @@ export function MatchCard({
   onToggleScoring,
 }: MatchCardProps) {
   const t = useTranslations("pool");
+  const tTeams = useTranslations("teams");
   // Locale captured so `fmtUtc` can render dates with the user's month
   // abbreviation + AM/PM convention. Pre-fix `fmtUtc` always defaulted
   // to `"es"`, leaking "11 jun 2026" into EN/PT UIs (I18N_AUDIT F-2).
@@ -51,9 +52,11 @@ export function MatchCard({
   const awayIsPlaceholder = isPlaceholder(m.awayTeam?.id || "");
   const hasAnyPlaceholder = homeIsPlaceholder || awayIsPlaceholder;
 
-  // Always prefer team.name from API; fall back to static mapping only if missing
-  const homeName = m.homeTeam?.name || getCountryName(m.homeTeam?.id, tournamentKey);
-  const awayName = m.awayTeam?.name || getCountryName(m.awayTeam?.id, tournamentKey);
+  // Resolve display names via the `teams` catalog (FIFA code → locale).
+  // Falls back to dataJson `team.name` (Spanish) and finally to the
+  // team id. See I18N_AUDIT F-5.
+  const homeName = getTeamName(m.homeTeam, tTeams);
+  const awayName = getTeamName(m.awayTeam, tTeams);
   const matchTitle = `${homeName} vs ${awayName}`;
 
   return (
