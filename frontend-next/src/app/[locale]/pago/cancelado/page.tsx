@@ -1,16 +1,48 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
+import { reportPaymentAttemptEvent } from "@/lib/api/paymentAttemptEvent";
+import { trackEvent } from "@/lib/analytics";
 
 export default function PaymentCancelledPage() {
   const t = useTranslations("payment");
   const router = useRouter();
   const searchParams = useSearchParams();
   const poolId = searchParams.get("poolId");
+  const paymentId = searchParams.get("paymentId");
+
+  // F-17: report the cancellation back to the backend + analytics on mount.
+  // useRef guard prevents double-firing in React 18+ strict-mode dev
+  // re-mounts. The audit row is what closes G-2 ("why did the user not
+  // complete?") for the cancellation branch — previously cancellations
+  // were completely silent.
+  const reportedRef = useRef(false);
+  useEffect(() => {
+    if (reportedRef.current) return;
+    reportedRef.current = true;
+
+    if (paymentId) {
+      void reportPaymentAttemptEvent(paymentId, {
+        eventType: "USER_CANCELLED",
+        details: { poolId, source: "pago_cancelado_page" },
+      });
+    }
+    // GA4 funnel event — fires regardless of whether we have a paymentId
+    // (legacy cancel URLs only carry poolId). Custom event, not GA4
+    // standard, so dashboards count cancellations distinctly from
+    // `payment_failed` (gateway-decided) and abandonments (reconciler-
+    // decided). See POLAR_AUDIT.md G-3.
+    trackEvent("payment_cancelled", {
+      poolId: poolId ?? undefined,
+      paymentId: paymentId ?? undefined,
+      source: "polar_or_mp_cancel_redirect",
+    });
+  }, [paymentId, poolId]);
 
   return (
     <div style={{

@@ -230,13 +230,7 @@ export async function initiateCheckout(
   });
   if (!user) throw new ServiceError("NOT_FOUND", 404);
 
-  // 6. Build success/cancel URLs
-  const frontendUrl = process.env.FRONTEND_URL || "https://picks4all.com";
-  const localePath = locale && locale !== "es" ? `/${locale}` : "";
-  const successUrl = `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`;
-  const cancelUrl = `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}`;
-
-  // 7. INSERT the PoolPayment in INITIATED state BEFORE calling Polar
+  // 6. INSERT the PoolPayment in INITIATED state BEFORE calling Polar
   // (F-4). This is the keystone of the audit trail: if Polar's API
   // rejects the create, network drops, or any failure happens before
   // we get a checkout URL back, the row still exists. Pre-fix, the
@@ -262,6 +256,14 @@ export async function initiateCheckout(
       clientUserAgent: input.clientUserAgent,
     },
   });
+
+  // 7. Build success/cancel URLs. cancelUrl carries `paymentId` so that
+  // /pago/cancelado can fire a USER_CANCELLED beacon back to the
+  // backend with the exact attempt that was cancelled (F-17).
+  const frontendUrl = process.env.FRONTEND_URL || "https://picks4all.com";
+  const localePath = locale && locale !== "es" ? `/${locale}` : "";
+  const successUrl = `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}&paymentId=${payment.id}`;
+  const cancelUrl = `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}&paymentId=${payment.id}`;
 
   // 8. Call Polar to create the actual checkout session. Failures must
   // not leave the row dangling — we transition to FAILED with an audit
@@ -1544,9 +1546,11 @@ export async function initiateMpCheckout(
       externalReference: reference,
       notificationUrl: `${backendUrl}/payments/mp-webhook`,
       backUrls: {
-        success: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
-        failure: `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}`,
-        pending: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}`,
+        // Include paymentId so /pago/cancelado can fire a USER_CANCELLED
+        // beacon for the exact attempt that was cancelled (F-17).
+        success: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}&paymentId=${payment.id}`,
+        failure: `${frontendUrl}${localePath}/pago/cancelado?poolId=${poolId}&paymentId=${payment.id}`,
+        pending: `${frontendUrl}${localePath}/pago/exitoso?poolId=${poolId}&paymentId=${payment.id}`,
       },
     });
   } catch (err) {

@@ -9,6 +9,8 @@ import {
   getPaymentCountry,
 } from "@/lib/api/payments";
 import { reportPaymentAttemptEvent } from "@/lib/api/paymentAttemptEvent";
+import { trackBeginCheckout } from "@/lib/ecommerce";
+import { trackMetaEvent } from "@/lib/metaPixel";
 import {
   getTierForCustomCount,
   getTierForCustomCountUsd,
@@ -157,6 +159,24 @@ function ExpandCapacitySection({
       if (country === "CO") {
         // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick.
         const mpData = await createMpCheckout(poolId, selectedCapacity);
+        // F-16: emit GA4 + Meta funnel events from the expand path so
+        // admin-tab checkouts are counted alongside wizard checkouts.
+        // Pre-fix only PoolCreationWizard emitted these — the funnel
+        // was blind to host-driven capacity expansions.
+        trackBeginCheckout({
+          fromCapacity: currentCapacity,
+          toCapacity: selectedCapacity,
+          poolType,
+          price: mpData.amountCop,
+          currency: "COP",
+        });
+        trackMetaEvent("InitiateCheckout", {
+          content_type: "product",
+          content_ids: [`pool_upgrade_${poolType}_${selectedCapacity}`],
+          num_items: 1,
+          currency: "COP",
+          value: mpData.amountCop,
+        });
         const params = new URLSearchParams({
           publicKey: mpData.publicKey || "",
           amount: String(mpData.amountCop),
@@ -186,6 +206,21 @@ function ExpandCapacitySection({
       } else {
         // Polar redirect (international/USD).
         const result = await createCheckout(poolId, selectedCapacity);
+        // F-16: GA4 + Meta funnel events for the admin expand path.
+        trackBeginCheckout({
+          fromCapacity: currentCapacity,
+          toCapacity: selectedCapacity,
+          poolType,
+          price: result.amountUsd,
+          currency: "USD",
+        });
+        trackMetaEvent("InitiateCheckout", {
+          content_type: "product",
+          content_ids: [`pool_upgrade_${poolType}_${selectedCapacity}`],
+          num_items: 1,
+          currency: "USD",
+          value: result.amountUsd,
+        });
         void reportPaymentAttemptEvent(result.paymentId, {
           eventType: "REDIRECT_INITIATED",
           details: { gateway: "POLAR", url: result.checkoutUrl },
