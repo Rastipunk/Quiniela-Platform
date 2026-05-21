@@ -517,7 +517,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Add `POST /payments/attempts/:paymentId/event` with body `{ type: "REDIRECT_INITIATED" | "REDIRECT_FAILED" | "CLIENT_ERROR" | "USER_CANCELLED", error?: string }`. Persist these as `PaymentEvent` rows or a new `PoolPaymentAttemptEvent` table. Frontend fires it from every catch block AND fires a `REDIRECT_INITIATED` immediately before `window.location.href = ...`.
 
 ### F-14: No background reconciliation job
-- **Status:** 🟥 PENDING — to be built in Commit 4 (depends on enum values from Commit 1 + `getOrder`/`getCheckoutSession` from polar/client.ts)
+- **Status:** 🟩 FIXED in `b6fbad8` (2026-05-21) — new `paymentReconcileJob` runs every 30 min (configurable via `RECONCILE_CRON`), early-exits on idle, uses Postgres advisory lock for multi-instance safety. `reconcileStalePayment` maps Polar's checkout state to one of 5 outcomes (RESCUED, EXPIRED, FAILED_FROM_GATEWAY, ABANDONED_GATEWAY_404, ABANDONED_LOCAL_TIMEOUT) with a RECONCILER audit row each. RESCUED triggers admin notification (manual review) — does not auto-complete to avoid replaying CAPI/GA4/email side effects unsafely.
 - **Severity:** medium
 - **Where:** no `backend/src/jobs/paymentReconcileJob.ts` exists.
 - **Behavior:** PoolPayment rows that go PENDING and never receive a webhook stay PENDING forever (Abril's 7-day-old row is proof). We never query Polar after the fact to ask "what's the status of this checkout?"
