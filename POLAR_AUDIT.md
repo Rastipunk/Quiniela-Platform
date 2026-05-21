@@ -417,7 +417,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 > Every status transition records the commit SHA + date so this doc stays a single source of truth on what is/isn't actually solved.
 
 ### F-1: Silent checkout failure in `PoolCapacityTab.handleExpand`
-- **Status:** 🟥 PENDING — to be fixed in Commit 5
+- **Status:** 🟩 FIXED in `63ff362` (2026-05-21) — catch block now sets a typed `errorMsg` state that renders as a styled inline alert banner (errorTitle / errorHint / Reintentar button). Pre-fix `console.error + setBusy(false)` silent path replaced. Same treatment applied to `PoolCreationWizard.tsx` (window.alert → inline banner via existing `state.error`). i18n keys added in es/en/pt.
 - **Severity:** critical
 - **Where:** `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolCapacityTab.tsx:170–173`
 - **Behavior:** If `createCheckout` throws (backend 500, network blip, ad-blocker, CSP), the catch only runs `console.error(...); setBusy(false)`. The user sees the spinner disappear and the button re-enabled with **no message, alert, banner, or toast**.
@@ -510,7 +510,7 @@ Shared layout for the `/pago/*` pages. **OK** — no Polar logic.
 - **Fix:** Either (a) frontend fetches pricing from backend (extra hop, but single source of truth), or (b) extract a shared TypeScript package + monorepo workspace. Defer to post-mundial.
 
 ### F-13: No backend route to report "client side payment error"
-- **Status:** 🟧 IN PROGRESS — backend endpoint `POST /payments/attempts/:paymentId/event` shipped in `f3c1e24` (2026-05-21) with `recordClientEvent` service helper enforcing ownership; frontend beacons (REDIRECT_INITIATED, USER_CANCELLED, CLIENT_ERROR) come in Commits 5 + 6.
+- **Status:** 🟩 FIXED — backend endpoint `POST /payments/attempts/:paymentId/event` shipped in `f3c1e24`; `reportPaymentAttemptEvent` helper + REDIRECT_INITIATED / REDIRECT_FAILED beacons shipped in `63ff362` (both PoolCapacityTab and PoolCreationWizard). USER_CANCELLED beacon ships in Commit 6 as part of /pago/cancelado (F-17). Helper is fire-and-forget so beacon failures never stall the redirect.
 - **Severity:** high (observability)
 - **Where:** missing endpoint. There's no POST `/payments/client-event` (or similar) that the frontend can hit when something fails *after* the backend created the checkout but before the user reached Polar.
 - **Impact:** All client-side failures (redirect blocked, page unload, network drop after PoolPayment INSERT) are invisible to us.
