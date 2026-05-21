@@ -6,6 +6,7 @@ import { TeamFlag } from "@/components/TeamFlag";
 import { getTeamFlag, getCountryName } from "@/data/teamFlags";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { colors, radii, fontSize, fontWeight, shadows } from "@/lib/theme";
+import { getTeamName } from "./poolHelpers";
 
 // ========== PICK SECTION (con modo lectura/edición) ==========
 export function PickSection(props: {
@@ -97,11 +98,12 @@ export function PickSection(props: {
 
 function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamentKey: string }) {
   const t = useTranslations("pool");
+  const tTeams = useTranslations("teams");
   const { pick } = props;
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
-  const homeName = props.homeTeam.name || getCountryName(props.homeTeam.id, props.tournamentKey);
-  const awayName = props.awayTeam.name || getCountryName(props.awayTeam.id, props.tournamentKey);
+  const homeName = getTeamName(props.homeTeam, tTeams) || getCountryName(props.homeTeam.id, props.tournamentKey);
+  const awayName = getTeamName(props.awayTeam, tTeams) || getCountryName(props.awayTeam.id, props.tournamentKey);
 
   if (pick.type === "SCORE") {
     return (
@@ -209,8 +211,9 @@ function PickEditor(props: {
 
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
-  const homeName = props.homeTeam.name || getCountryName(props.homeTeam.id, props.tournamentKey);
-  const awayName = props.awayTeam.name || getCountryName(props.awayTeam.id, props.tournamentKey);
+  const tTeams = useTranslations("teams");
+  const homeName = getTeamName(props.homeTeam, tTeams) || getCountryName(props.homeTeam.id, props.tournamentKey);
+  const awayName = getTeamName(props.awayTeam, tTeams) || getCountryName(props.awayTeam.id, props.tournamentKey);
 
   const handleSave = () => {
     if (props.allowScorePick) {

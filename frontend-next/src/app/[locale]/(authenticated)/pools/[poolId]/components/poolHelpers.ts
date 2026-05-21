@@ -101,6 +101,41 @@ export function getPoolStatusBadge(status: string, t: ReturnType<typeof useTrans
   }
 }
 
+/**
+ * Resolve a real team's display name from the trilingual `teams.{code}`
+ * catalog (FIFA 3-letter codes — MEX, BRA, KOR, ...). Pre-fix the UI
+ * rendered `team.name` from dataJson which is Spanish-only ("México",
+ * "Sudáfrica", "Corea del Sur") so EN/PT users saw Spanish — see
+ * I18N_AUDIT F-5.
+ *
+ * Use this for REAL teams. Placeholders ("W_A", "RU_B", "3rd_POOL_*",
+ * "t_TBD") go through `getPlaceholderName` instead — call sites
+ * typically branch on `isPlaceholder(team.id)` first.
+ *
+ * Fallback chain:
+ *   1. `teams.{code}` from the i18n catalog (covers all WC2026 nations)
+ *   2. `team.name` from dataJson (Spanish fallback — better than empty)
+ *   3. `team.id` (last resort)
+ */
+export function getTeamName(
+  team: { id: string; name?: string | null; code?: string | null } | null | undefined,
+  t: ReturnType<typeof useTranslations<"teams">>,
+): string {
+  if (!team) return "";
+  const tDynamic = t as (key: string) => string;
+  if (team.code) {
+    try {
+      const translated = tDynamic(team.code);
+      // next-intl returns the key itself when not found (no throw); guard
+      // against that so we fall through to `team.name`.
+      if (translated && translated !== team.code) return translated;
+    } catch {
+      // ignore — fall through
+    }
+  }
+  return team.name ?? team.id;
+}
+
 export function isPlaceholder(teamId: string) {
   return teamId === "t_TBD" || teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
 }

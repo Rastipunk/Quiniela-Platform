@@ -23,6 +23,7 @@ import type {
 type Team = {
   id: string;
   name: string;
+  code?: string;
   flag?: string;
 };
 
@@ -456,6 +457,7 @@ function extractGroups(tournamentData: any, _phaseId: string): Group[] {
     group.push({
       id: team.id,
       name: team.name,
+      code: team.code,
       flag: team.flag,
     });
     teamsByGroup.set(team.groupId, group);

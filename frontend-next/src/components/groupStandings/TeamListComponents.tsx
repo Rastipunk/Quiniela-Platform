@@ -22,11 +22,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { Team } from "./types";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "../../hooks/useIsMobile";
+import { useTranslations } from "next-intl";
+import { getTeamName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 export const MEDALS = ["🥇", "🥈", "🥉", ""];
 
 // Static team list with medals
 export function StaticTeamList({ teams, orderedTeamIds, isMobile }: { teams: Team[]; orderedTeamIds: string[]; isOfficial?: boolean; isMobile?: boolean }) {
+  const tTeams = useTranslations("teams");
   const teamMap = new Map(teams.map((t) => [t.id, t]));
   const orderedTeams = orderedTeamIds.map((id) => teamMap.get(id)!).filter(Boolean);
 
@@ -48,7 +51,7 @@ export function StaticTeamList({ teams, orderedTeamIds, isMobile }: { teams: Tea
         >
           <span style={{ fontSize: 16, width: 24 }}>{MEDALS[index]}</span>
           <span style={{ fontSize: isMobile ? 13 : 12, color: colors.textLighter, width: 20 }}>{index + 1}.</span>
-          <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: colors.text }}>{team.name}</span>
+          <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: colors.text }}>{getTeamName(team, tTeams)}</span>
         </div>
       ))}
     </div>
@@ -134,6 +137,7 @@ export function DraggableTeamList({
 
 // Sortable team item
 function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; position: number; disabled: boolean; isMobile?: boolean }) {
+  const tTeams = useTranslations("teams");
   // Snappier transition (160ms vs. the 250ms default) so siblings
   // rearranging during drag feel responsive instead of "weighty".
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -184,7 +188,7 @@ function SortableTeamItem({ team, position, disabled, isMobile }: { team: Team; 
       >
         <span style={{ fontSize: 16, width: 24 }}>{MEDALS[position]}</span>
         <span style={{ fontSize: isMobile ? 13 : 12, color: colors.textLighter, width: 20 }}>{position + 1}.</span>
-        <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: colors.text, flex: 1 }}>{team.name}</span>
+        <span style={{ fontSize: isMobile ? 14 : 13, fontWeight: 500, color: colors.text, flex: 1 }}>{getTeamName(team, tTeams)}</span>
         {!disabled && (
           // Drag handle indicator. Larger + bolder on mobile so the
           // affordance is obvious (press-and-hold to reorder).

@@ -26,6 +26,7 @@ import { useTranslations } from "next-intl";
 import { upsertStructuralPick, publishKnockoutMatchWinner } from "../lib/api";
 import { isApiError } from "../lib/apiError";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { getTeamName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 type Team = {
   id: string;
@@ -88,6 +89,7 @@ export function KnockoutMatchCard({
   void _kickoffUtc;
   const isMobile = useIsMobile();
   const t = useTranslations("pool");
+  const tTeams = useTranslations("teams");
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => {
@@ -211,9 +213,9 @@ export function KnockoutMatchCard({
         borderBottom: "1px solid #f3f4f6",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>{homeTeam.name}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>{getTeamName(homeTeam, tTeams)}</span>
           <span style={{ fontSize: 12, color: colors.textLighter }}>vs</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>{awayTeam.name}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>{getTeamName(awayTeam, tTeams)}</span>
         </div>
         {publishedTeam && (
           <div style={{
@@ -224,7 +226,7 @@ export function KnockoutMatchCard({
             fontWeight: 600,
             color: colors.successAlt,
           }}>
-            {t("knockoutCard.advances", { team: publishedTeam.name })}
+            {t("knockoutCard.advances", { team: getTeamName(publishedTeam, tTeams) })}
           </div>
         )}
       </div>
@@ -432,7 +434,7 @@ export function KnockoutMatchCard({
                     fontWeight: 600,
                     color: colors.successAlt,
                   }}>
-                    🏆 {t("knockoutCard.teamAdvancesResult", { team: publishedTeam.name })}
+                    🏆 {t("knockoutCard.teamAdvancesResult", { team: getTeamName(publishedTeam, tTeams) })}
                   </div>
                 )}
               </div>
@@ -520,6 +522,7 @@ function TeamPickButton({
   disabled: boolean;
 }) {
   const t = useTranslations("pool");
+  const tTeams = useTranslations("teams");
   return (
     <button
       onClick={onClick}
@@ -545,7 +548,7 @@ function TeamPickButton({
         fontWeight: isSelected ? 600 : 500,
         color: isSelected ? colors.successAlt : colors.text,
       }}>
-        {team.name}
+        {getTeamName(team, tTeams)}
       </span>
       {isSelected && (
         <span style={{
