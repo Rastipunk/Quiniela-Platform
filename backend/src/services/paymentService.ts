@@ -1402,6 +1402,12 @@ async function writeReconcilerEvent(
  * Find the next batch of PoolPayments eligible for reconciliation:
  *   - status ∈ (INITIATED, PENDING)
  *   - older than the grace period (so we don't race the webhook)
+ *   - **Polar-only** (`mpPreferenceId IS NULL`) — MP rows reuse the
+ *     `polarCheckoutId` column to store an MP idempotency reference
+ *     like `P4A-{poolId}-{ts}`, which is not a UUID and crashes the
+ *     Polar SDK with `uuid_parsing` on every tick. MP rows live their
+ *     own reconciliation cycle via IPN retries; if/when we need a
+ *     server-side MP reconciler it gets its own query + handler.
  *
  * Ordered oldest-first so a long-stuck row gets resolved before newer
  * arrivals. Batch size capped to avoid hammering Polar's rate limit.
@@ -1412,6 +1418,7 @@ export async function findStalePayments(batchSize: number): Promise<{ id: string
     where: {
       status: { in: ["INITIATED", "PENDING"] },
       createdAtUtc: { lt: cutoff },
+      mpPreferenceId: null,
     },
     select: { id: true },
     orderBy: { createdAtUtc: "asc" },
