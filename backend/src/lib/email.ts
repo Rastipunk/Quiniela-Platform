@@ -9,6 +9,7 @@ import { SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveUserLocale, type SupportedLoc
 import { BRAND } from "./brand";
 import { generateUnsubscribeToken, buildUnsubscribeUrl } from "./unsubscribe";
 import { appendUtm, emailUtm } from "./utm";
+import { buildActivationUrl } from "./activationUrl";
 import {
   getPasswordResetTemplate,
   getVerificationTemplate,
@@ -927,7 +928,13 @@ export async function sendCorporateActivationEmail(params: {
   if (!ready) return { success: false, error: "Email service not configured" };
 
   const locale = params.locale || DEFAULT_LOCALE;
-  const activationUrl = appendUtm(`${FRONTEND_URL}/activar-cuenta?token=${params.activationToken}`, emailUtm("corporate_activation"));
+  // Resolve the locale-correct activation page. Without this, every
+  // non-ES email lands the employee on the Spanish UI even though the
+  // email itself is in their language. See EMAIL_LOCALE_HANDOFF_AUDIT.md §3.3.
+  const activationUrl = appendUtm(
+    buildActivationUrl(locale as "es" | "en" | "pt", params.activationToken),
+    emailUtm("corporate_activation"),
+  );
 
   const subjects: Record<string, string> = {
     es: `${params.companyName} te invitó a jugar — ${APP_NAME}`,
