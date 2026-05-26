@@ -105,8 +105,40 @@ export async function getPoolOverview(token: string, poolId: string, leaderboard
   return requestJson<PoolOverview>(`/pools/${poolId}/overview${q}`, { method: "GET" });
 }
 
-export async function createInvite(token: string, poolId: string): Promise<{ code: string }> {
-  return requestJson<{ code: string }>(`/pools/${poolId}/invites`, { method: "POST" });
+export async function createInvite(
+  token: string,
+  poolId: string,
+  options?: { maxUses?: number; expiresAtUtc?: string },
+): Promise<{ id: string; code: string; maxUses: number | null; expiresAtUtc: string | null }> {
+  const body = options && (options.maxUses != null || options.expiresAtUtc != null)
+    ? JSON.stringify(options)
+    : undefined;
+  return requestJson(`/pools/${poolId}/invites`, { method: "POST", body });
+}
+
+export interface PoolInviteRow {
+  id: string;
+  code: string;
+  maxUses: number | null;
+  uses: number;
+  expiresAtUtc: string | null;
+  createdAtUtc: string;
+  acceptedByUserId: string | null;
+  acceptedAtUtc: string | null;
+  expired: boolean;
+  exhausted: boolean;
+}
+
+export async function getPoolInvites(token: string, poolId: string): Promise<{ invites: PoolInviteRow[] }> {
+  return requestJson(`/pools/${poolId}/invites`, { method: "GET" });
+}
+
+export async function deletePoolInvite(
+  token: string,
+  poolId: string,
+  inviteId: string,
+): Promise<{ id: string; expiresAtUtc: string }> {
+  return requestJson(`/pools/${poolId}/invites/${inviteId}`, { method: "DELETE" });
 }
 
 export async function leavePool(token: string, poolId: string): Promise<any> {

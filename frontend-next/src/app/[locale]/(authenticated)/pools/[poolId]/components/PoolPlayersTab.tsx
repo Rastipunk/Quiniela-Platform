@@ -9,6 +9,7 @@ import { MemberManagement } from "./admin/MemberManagement";
 import { ExpulsionModal } from "./admin/ExpulsionModal";
 import { PendingJoinRequests } from "./admin/PendingJoinRequests";
 import { CorporateEmployeeManager } from "@/components/CorporateEmployeeManager";
+import { PoolInviteCodeManager } from "@/components/PoolInviteCodeManager";
 
 interface PoolPlayersTabProps {
   poolId: string;
@@ -72,6 +73,20 @@ export function PoolPlayersTab({
           isMobile={isMobile}
           maxParticipants={overview.pool.maxParticipants ?? undefined}
           currentMembers={overview.counts.membersActive}
+        />
+      )}
+
+      {/* Corporate: shareable-link invite flow (sits between email
+          panel and player roster — disclaimer-backed, see
+          CORPORATE_INVITES_AUDIT.md §6). */}
+      {isCorporate && overview.permissions.canInvite && (
+        <PoolInviteCodeManager
+          poolId={poolId}
+          token={token}
+          isMobile={isMobile}
+          maxParticipants={overview.pool.maxParticipants ?? undefined}
+          currentMembers={overview.counts.membersActive}
+          organizationName={overview.pool.organization?.name ?? ""}
         />
       )}
 
