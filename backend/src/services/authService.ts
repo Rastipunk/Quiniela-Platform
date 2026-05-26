@@ -15,7 +15,6 @@ import { writeAuditEvent } from "../lib/audit";
 import { validateUsername, normalizeUsername } from "../lib/username";
 import {
   sendPasswordResetEmail,
-  sendWelcomeEmail,
   sendVerificationEmail,
   sendPasswordChangedEmail,
 } from "../lib/email";
@@ -480,9 +479,9 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
     ip: ctx.ip, userAgent: ctx.userAgent,
   }));
 
-  fireAndForget("welcome email", sendWelcomeEmail({
-    to: newUser.email, userId: newUser.id, displayName: newUser.displayName,
-  }));
+  // Welcome email is deferred to POST /users/me/locale-preference (or
+  // the 24h fallback job) so it ships in the locale the user explicitly
+  // picks in LocalePreferenceModal. See EMAIL_LOCALE_HANDOFF_AUDIT.md §3.1.
 
   const metaEventId = crypto.randomUUID();
   fireAndForget("capi:google-register", sendCapiEvent({
@@ -542,10 +541,9 @@ export async function verifyEmail(token: string, ctx: AuditContext): Promise<Ver
     ip: ctx.ip, userAgent: ctx.userAgent,
   }));
 
-  fireAndForget("welcome email", sendWelcomeEmail({
-    to: user.email, userId: user.id, displayName: user.displayName,
-    locale: resolveUserLocale(user),
-  }));
+  // Welcome email is deferred to POST /users/me/locale-preference (or
+  // the 24h fallback job) so it ships in the locale the user explicitly
+  // picks in LocalePreferenceModal. See EMAIL_LOCALE_HANDOFF_AUDIT.md §3.1.
 
   // Activation-funnel telemetry. Pairing `email_verification_sent` with
   // this completes the ratio GA4 reports use to spot deliverability /
@@ -789,9 +787,9 @@ export async function activateCorporateAccount(
     ip: ctx.ip, userAgent: ctx.userAgent,
   }));
 
-  fireAndForget("welcome email", sendWelcomeEmail({
-    to: newUser.email, userId: newUser.id, displayName: newUser.displayName,
-  }));
+  // Welcome email is deferred to POST /users/me/locale-preference (or
+  // the 24h fallback job) so it ships in the locale the user explicitly
+  // picks in LocalePreferenceModal. See EMAIL_LOCALE_HANDOFF_AUDIT.md §3.1.
 
   return { user: newUser, poolId, poolName, companyName, alreadyExisted: false };
 }

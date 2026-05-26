@@ -5,7 +5,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { writeAuditEvent } from "../lib/audit";
 import { sendData, sendOk, sendBadRequest, sendNotFound } from "../lib/apiResponse";
 import { USER_RULES, SUPPORTED_LOCALES, type SupportedLocale } from "../lib/constants";
-import { sendVerificationEmail } from "../lib/email";
+import { sendVerificationEmail, sendWelcomeEmail } from "../lib/email";
 import { fireAndForget } from "../lib/asyncHelpers";
 
 export const userProfileRouter = Router();
@@ -136,6 +136,7 @@ userProfileRouter.post("/me/locale-preference", async (req, res) => {
       emailVerified: true,
       emailVerificationToken: true,
       localePromptCompletedAt: true,
+      welcomeEmailSentAt: true,
     },
   });
   if (!before) return sendNotFound(res, "USER_NOT_FOUND");
@@ -147,6 +148,14 @@ userProfileRouter.post("/me/locale-preference", async (req, res) => {
       country: data.country ? data.country.toUpperCase() : undefined,
       requestedLocale: data.requestedLocale ? data.requestedLocale.toLowerCase() : undefined,
       localePromptCompletedAt: now,
+      // Set inside the same update so the fallback job (which only
+      // looks at welcomeEmailSentAt IS NULL) never duplicates the
+      // welcome below. If the actual sendWelcomeEmail fails, we accept
+      // the welcome is lost — the user has completed the modal and
+      // seen the dashboard, so support recovery is cheaper than a
+      // retry-with-counter mechanism. See EMAIL_LOCALE_HANDOFF_AUDIT.md §6.
+      welcomeEmailSentAt:
+        before.welcomeEmailSentAt === null ? now : undefined,
     },
   });
 
@@ -178,6 +187,20 @@ userProfileRouter.post("/me/locale-preference", async (req, res) => {
       to: before.email,
       displayName: before.displayName,
       verificationToken: before.emailVerificationToken,
+      locale: data.locale,
+    }));
+  }
+
+  // Deferred welcome email — the single trigger point for the happy
+  // path. Fires only when the user has not yet been welcomed
+  // (welcomeEmailSentAt was NULL pre-update). Ships in the locale
+  // the user just picked. The 24h fallback job covers users who
+  // never reach this endpoint. See EMAIL_LOCALE_HANDOFF_AUDIT.md §3.1.
+  if (before.welcomeEmailSentAt === null) {
+    fireAndForget("locale-prompt: deferred welcome email", sendWelcomeEmail({
+      to: before.email,
+      userId,
+      displayName: before.displayName,
       locale: data.locale,
     }));
   }
