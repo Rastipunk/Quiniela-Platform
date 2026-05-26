@@ -1016,8 +1016,8 @@ export function getCorporateActivationTemplate({
   }> = {
     es: {
       heroSubtitle: "te reta a jugar",
-      greeting: safeEmployeeName ? `Hey ${safeEmployeeName}!` : "Hey!",
-      body: `Tu equipo en <strong>${safeCompanyName}</strong> ya está armando su quiniela y necesitan que te sumes. Demuestra que eres el/la que más sabe de fútbol.`,
+      greeting: safeEmployeeName ? `Hola ${safeEmployeeName}!` : "Hola!",
+      body: `<strong>${safeCompanyName}</strong> te invita a unirte y competir con tus compañeros/as demostrando quién sabe más de fútbol.`,
       poolLabel: safePoolName,
       ctaLabel: "Entrar a jugar →",
       instructions: "Solo necesitas crear usuario y clave. Toma 30 segundos.",
@@ -1027,8 +1027,8 @@ export function getCorporateActivationTemplate({
     },
     en: {
       heroSubtitle: "challenges you to play",
-      greeting: safeEmployeeName ? `Hey ${safeEmployeeName}!` : "Hey!",
-      body: `Your crew at <strong>${safeCompanyName}</strong> is setting up a sports pool and they need you in. Show everyone who really knows football.`,
+      greeting: safeEmployeeName ? `Hi ${safeEmployeeName}!` : "Hi!",
+      body: `<strong>${safeCompanyName}</strong> is inviting you to join and compete with your teammates to show who knows football best.`,
       poolLabel: safePoolName,
       ctaLabel: "Get in the game →",
       instructions: "Just create a username and password. Takes 30 seconds.",
@@ -1038,8 +1038,8 @@ export function getCorporateActivationTemplate({
     },
     pt: {
       heroSubtitle: "te desafia a jogar",
-      greeting: safeEmployeeName ? `E aí ${safeEmployeeName}!` : "E aí!",
-      body: `A galera da <strong>${safeCompanyName}</strong> já está montando o bolão e precisa de você. Mostra quem realmente entende de futebol.`,
+      greeting: safeEmployeeName ? `Olá ${safeEmployeeName}!` : "Olá!",
+      body: `<strong>${safeCompanyName}</strong> está te convidando para entrar e competir com seus colegas mostrando quem sabe mais de futebol.`,
       poolLabel: safePoolName,
       ctaLabel: "Entrar no jogo →",
       instructions: "Só criar usuário e senha. Leva 30 segundos.",
