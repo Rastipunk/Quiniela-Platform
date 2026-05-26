@@ -70,12 +70,95 @@ poolInvitesRouter.post("/:poolId/invites", async (req, res) => {
     action: "POOL_INVITE_CREATED",
     entityType: "PoolInvite",
     entityId: invite.id,
-    dataJson: { poolId, code },
+    // organizationId is captured so a funnel query can split
+    // corporate-pool code-invites from personal-pool ones without
+    // re-joining Pool → Organization at read time.
+    dataJson: { poolId, code, organizationId: pool.organizationId ?? null },
     ip: req.ip,
     userAgent: req.get("user-agent") ?? null,
   });
 
   return sendCreated(res, invite as unknown as Record<string, unknown>);
+});
+
+// GET /pools/:poolId/invites  (host/co-admin/corporate-host)
+//
+// Returns every PoolInvite for a pool with two derived flags:
+//   - expired:  expiresAtUtc < now
+//   - exhausted: maxUses != null && uses >= maxUses
+//
+// The host UI uses these flags to render an "Expirado" or "Sin cupos"
+// badge without doing the comparison itself. We deliberately return
+// expired/revoked invites too — the host needs to see history, not
+// just live codes.
+poolInvitesRouter.get("/:poolId/invites", async (req, res) => {
+  const { poolId } = req.params;
+
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
+
+  const pool = await prisma.pool.findUnique({ where: { id: poolId }, select: { id: true } });
+  if (!pool) return sendNotFound(res, "NOT_FOUND");
+
+  const rows = await prisma.poolInvite.findMany({
+    where: { poolId },
+    orderBy: { createdAtUtc: "desc" },
+    select: {
+      id: true,
+      code: true,
+      maxUses: true,
+      uses: true,
+      expiresAtUtc: true,
+      createdAtUtc: true,
+      acceptedByUserId: true,
+      acceptedAtUtc: true,
+    },
+  });
+
+  const now = Date.now();
+  const invites = rows.map((r) => ({
+    ...r,
+    expired: !!(r.expiresAtUtc && r.expiresAtUtc.getTime() < now),
+    exhausted: r.maxUses != null && r.uses >= r.maxUses,
+  }));
+
+  return sendOk(res, { invites });
+});
+
+// DELETE /pools/:poolId/invites/:inviteId  (host/co-admin/corporate-host)
+//
+// Soft-revoke: sets expiresAtUtc = now() so subsequent /pools/join
+// attempts hit the existing "Invite expired" branch and return 409.
+// We don't hard-delete the row because it carries acceptedByUserId
+// for referral attribution on multi-use invites that already had
+// redeemers; deleting it would orphan that link.
+poolInvitesRouter.delete("/:poolId/invites/:inviteId", async (req, res) => {
+  const { poolId, inviteId } = req.params;
+
+  const isHostOrCoAdmin = await requirePoolAdmin(req.auth!.userId, poolId);
+  if (!isHostOrCoAdmin) return sendForbidden(res, "FORBIDDEN");
+
+  const invite = await prisma.poolInvite.findUnique({ where: { id: inviteId } });
+  if (!invite || invite.poolId !== poolId) {
+    return sendNotFound(res, "NOT_FOUND");
+  }
+
+  const updated = await prisma.poolInvite.update({
+    where: { id: inviteId },
+    data: { expiresAtUtc: new Date() },
+  });
+
+  await writeAuditEvent({
+    actorUserId: req.auth!.userId,
+    action: "POOL_INVITE_REVOKED",
+    entityType: "PoolInvite",
+    entityId: invite.id,
+    dataJson: { poolId, code: invite.code },
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? null,
+  });
+
+  return sendOk(res, { id: updated.id, expiresAtUtc: updated.expiresAtUtc });
 });
 
 // POST /pools/:poolId/send-invite-email
