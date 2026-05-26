@@ -121,6 +121,17 @@ model User {
   requestedLocale         String?   @db.VarChar(8)
   localePromptCompletedAt DateTime?
 
+  // Set when the welcome email actually ships. Two trigger paths:
+  //   (a) POST /users/me/locale-preference fires it after the user
+  //       closes LocalePreferenceModal (happy path — welcome ships
+  //       in the locale the user just picked).
+  //   (b) welcomeEmailFallbackJob fires it 24h after user creation
+  //       if (a) never happened (closed-tab edge case). Resolves
+  //       locale via org.invitationLocale (corporate) or
+  //       resolveUserLocale (signup).
+  // See EMAIL_LOCALE_HANDOFF_AUDIT.md §3.1 + §3.2.
+  welcomeEmailSentAt      DateTime?
+
   // =========================================================================
   // MARKETING ATTRIBUTION (first-touch)
   // Comentario en español: atribución del canal que trajo al usuario.
