@@ -57,7 +57,7 @@ The dictionary lives in `backend/src/pdf/i18n.ts` — single file, three keys: `
 | 11 | Frontend: `/admin/ventas/cuentas-de-cobro` route (list + create form + manual mark-paid + download) | 🟩 DONE | `8e4dbf5` |
 | 12 | Frontend: "¿Tienes una cuenta de cobro?" box in `StepCapacity` (creation wizard) and `ExpandCapacitySection` (existing pool) | 🟩 DONE | `ec3f261` |
 | 13 | Frontend: NavBar "Gestión de Ventas" entry under ADMIN | 🟩 DONE | `86e2631` |
-| 14 | Docs: ADR-061 + BUSINESS_RULES update + CLAUDE.md invariant + MEMORY entry (and Wompi-stale-note cleanup) | 🟩 DONE | `4e1fd41` |
+| 14 | Docs: ADR-061 + BUSINESS_RULES update + CLAUDE.md invariant + MEMORY entry (and Wompi-stale-note cleanup) | 🟩 DONE | `79c8046` |
 
 After commit 12 the feature is live for both you and customers. Commits 13-14 are polish + documentation hygiene.
 
