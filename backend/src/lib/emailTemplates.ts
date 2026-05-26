@@ -1336,6 +1336,10 @@ export interface PaymentReceiptEmailParams {
   toCapacity: number;
   paidAt: string;
   locale: string;
+  /** Optional: CC consecutive ("CC-2026-0001"). When present, a row
+   *  referencing the cuenta de cobro is rendered in the receipt
+   *  table. See SALES_AUDIT.md §11.9 / commit 7. */
+  accountReceivableNumber?: string;
 }
 
 export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): string {
@@ -1347,7 +1351,8 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
   const i18n: Record<string, {
     heading: string; intro: string; details: string; pool: string;
     transaction: string; amount: string; upgrade: string; date: string;
-    participants: string; cta: string; preheader: string; footer: string;
+    participants: string; accountReceivable: string;
+    cta: string; preheader: string; footer: string;
   }> = {
     es: {
       heading: "Comprobante de pago",
@@ -1359,6 +1364,7 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
       upgrade: "Ampliación",
       date: "Fecha",
       participants: "participantes",
+      accountReceivable: "Cuenta de cobro",
       cta: "Ir a mi pool",
       preheader: `Pago confirmado — ${safePoolName}`,
       footer: "Conserva este correo como comprobante de tu transacción.",
@@ -1373,6 +1379,7 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
       upgrade: "Upgrade",
       date: "Date",
       participants: "participants",
+      accountReceivable: "Account receivable",
       cta: "Go to my pool",
       preheader: `Payment confirmed — ${safePoolName}`,
       footer: "Keep this email as proof of your transaction.",
@@ -1387,6 +1394,7 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
       upgrade: "Ampliação",
       date: "Data",
       participants: "participantes",
+      accountReceivable: "Conta de cobrança",
       cta: "Ir ao meu bolão",
       preheader: `Pagamento confirmado — ${safePoolName}`,
       footer: "Guarde este e-mail como comprovante da sua transação.",
@@ -1422,6 +1430,11 @@ export function getPaymentReceiptTemplate(params: PaymentReceiptEmailParams): st
           <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.date}</td>
           <td style="padding:8px 0;text-align:right;color:${BRAND.textColor};font-size:14px;">${params.paidAt}</td>
         </tr>
+        ${params.accountReceivableNumber ? `
+        <tr>
+          <td style="padding:8px 0;color:${BRAND.mutedColor};font-size:14px;">${t.accountReceivable}</td>
+          <td style="padding:8px 0;text-align:right;font-family:monospace;font-weight:600;color:${BRAND.textColor};font-size:13px;">${escapeHtml(params.accountReceivableNumber)}</td>
+        </tr>` : ""}
       </table>
     `)}
 

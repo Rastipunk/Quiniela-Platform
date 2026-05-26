@@ -818,6 +818,16 @@ export async function handleOrderPaid(
       });
       if (!user || !pool) return;
       const amountUsd = payment.amountUsd / 100;
+      // If this payment was linked to a CC, look up the consecutive
+      // so the receipt email surfaces it (SALES_AUDIT.md §11.9).
+      let accountReceivableNumber: string | undefined;
+      if (payment.accountReceivableId) {
+        const cc = await prisma.accountReceivable.findUnique({
+          where: { id: payment.accountReceivableId },
+          select: { consecutive: true },
+        });
+        accountReceivableNumber = cc?.consecutive;
+      }
       await sendPaymentReceiptEmail({
         to: user.email,
         userId: metadata.userId!,
@@ -831,6 +841,7 @@ export async function handleOrderPaid(
         toCapacity: metadata.toCapacity!,
         paidAt: new Date(),
         locale: resolveUserLocale(user),
+        accountReceivableNumber,
       });
     })());
   }
@@ -2228,6 +2239,15 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
       // mpPurchaseValue prefers the persisted amountCop column and falls back
       // to recomputing from pricing for pre-migration rows.
       const amountCop = mpPurchaseValue(payment);
+      // Surface the CC consecutive on the receipt when linked.
+      let accountReceivableNumber: string | undefined;
+      if (payment.accountReceivableId) {
+        const cc = await prisma.accountReceivable.findUnique({
+          where: { id: payment.accountReceivableId },
+          select: { consecutive: true },
+        });
+        accountReceivableNumber = cc?.consecutive;
+      }
       await sendPaymentReceiptEmail({
         to: user.email,
         userId: payment.userId,
@@ -2241,6 +2261,7 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
         toCapacity: payment.toCapacity,
         paidAt: new Date(),
         locale: resolveUserLocale(user),
+        accountReceivableNumber,
       });
     })());
   } else if (mpPayment.status === "rejected" || mpPayment.status === "cancelled") {

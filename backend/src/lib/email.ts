@@ -1582,6 +1582,10 @@ export async function sendPaymentReceiptEmail(params: {
   toCapacity: number;
   paidAt: Date;
   locale: string;
+  /** Set when the payment fulfilled an AccountReceivable. Adds an
+   *  extra row in the receipt table referencing the CC consecutive
+   *  (e.g. "CC-2026-0001"). See SALES_AUDIT.md §11.9. */
+  accountReceivableNumber?: string;
 }): Promise<{ success: boolean; error?: string }> {
   const ready = getReadyClient();
   if (!ready) return { success: false, error: "Email service not configured" };
@@ -1606,6 +1610,7 @@ export async function sendPaymentReceiptEmail(params: {
       year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
     }),
     locale: loc,
+    accountReceivableNumber: params.accountReceivableNumber,
   };
 
   try {
