@@ -107,6 +107,10 @@ const createCorporatePoolSchema = z.object({
   invitationMessage: z.string().max(1000).optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #4F46E5)").optional(),
   secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #4F46E5)").optional(),
+  // First-touch email locale. Defaults to "es" if the wizard omits it
+  // (matches Organization.invitationLocale default). See
+  // CORPORATE_LOCALE_AUDIT.md §3.6 for the validation contract.
+  invitationLocale: z.enum(["es", "en", "pt"]).default("es"),
   tournamentInstanceId: z.string().min(1),
   poolName: z.string().min(3).max(120),
   poolDescription: z.string().max(500).optional(),

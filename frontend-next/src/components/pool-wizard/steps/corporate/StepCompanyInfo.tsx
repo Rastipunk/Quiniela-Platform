@@ -440,7 +440,94 @@ export function StepCompanyInfo() {
           })}
         />
       </WizardSubStep>
+
+      {/* 6. Invitation locale */}
+      <WizardSubStep
+        number={6}
+        title={t("companyInfo.invitationLocaleLabel", {
+          defaultMessage: "Idioma de las invitaciones",
+        })}
+        subtitle={t("companyInfo.invitationLocaleHelp", {
+          defaultMessage:
+            "El primer correo a tus colaboradores se envía en este idioma. Cuando activen su cuenta, ellos pueden elegir su propio idioma para los correos siguientes.",
+        })}
+      >
+        <InvitationLocalePicker
+          value={state.invitationLocale}
+          onChange={(value) =>
+            dispatch({ type: "SET_FIELD", field: "invitationLocale", value })
+          }
+          isMobile={isMobile}
+        />
+      </WizardSubStep>
     </PoolWizardStepContainer>
+  );
+}
+
+// ─── Invitation locale picker ────────────────────────────────
+
+const LOCALE_OPTIONS: Array<{
+  value: "es" | "en" | "pt";
+  label: string;
+  flag: string;
+}> = [
+  { value: "es", label: "Español", flag: "🇪🇸" },
+  { value: "en", label: "English", flag: "🇬🇧" },
+  { value: "pt", label: "Português", flag: "🇧🇷" },
+];
+
+function InvitationLocalePicker({
+  value,
+  onChange,
+  isMobile,
+}: {
+  value: "es" | "en" | "pt";
+  onChange: (next: "es" | "en" | "pt") => void;
+  isMobile: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: spacing.sm,
+        flexWrap: "wrap",
+        flexDirection: isMobile ? "column" : "row",
+      }}
+    >
+      {LOCALE_OPTIONS.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            style={{
+              flex: isMobile ? "1 1 auto" : "1 1 0",
+              padding: `${spacing.md}px ${spacing.lg}px`,
+              borderRadius: radii.lg,
+              border: active
+                ? `2px solid ${colors.brand}`
+                : `1px solid ${colors.borderMedium}`,
+              background: active ? colors.brandBg : colors.white,
+              color: active ? colors.brand : colors.textDark,
+              fontWeight: active ? fontWeight.semibold : fontWeight.medium,
+              fontSize: fontSize.base,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: spacing.sm,
+              minHeight: 48,
+              transition: "background 0.15s, border-color 0.15s",
+            }}
+            aria-pressed={active}
+          >
+            <span style={{ fontSize: "1.2em" }}>{opt.flag}</span>
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

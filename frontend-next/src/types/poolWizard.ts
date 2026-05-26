@@ -72,6 +72,10 @@ export interface WizardState {
   // Brand colors — empty string means "use Picks4All default".
   primaryColor: string;
   secondaryColor: string;
+  // Locale for the very first email the employee receives (the
+  // corporate-activation email). Once they activate, User.locale
+  // takes over. See CORPORATE_LOCALE_AUDIT.md §3.2.
+  invitationLocale: "es" | "en" | "pt";
 
   // Step 1: Tournament
   instanceId: string;

@@ -10,6 +10,10 @@ export type CreateCorporatePoolInput = {
   primaryColor?: string;
   /** Hex #RRGGBB. Paired with primaryColor for the splash gradient. */
   secondaryColor?: string;
+  /** Language for the activation email. Once the employee logs in,
+   *  LocalePreferenceModal lets them pick their personal locale and
+   *  this field stops mattering. See CORPORATE_LOCALE_AUDIT.md §3.2. */
+  invitationLocale?: "es" | "en" | "pt";
   tournamentInstanceId: string;
   poolName: string;
   poolDescription?: string;

@@ -28,6 +28,7 @@ function getInitialState(mode: WizardMode): WizardState {
     invitationMessage: "",
     primaryColor: "",
     secondaryColor: "",
+    invitationLocale: "es",
     instanceId: "",
     instanceName: "",
     instancePhases: [],

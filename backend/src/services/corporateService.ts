@@ -67,6 +67,7 @@ export type CreateCorporatePoolInput = {
   invitationMessage?: string;
   primaryColor?: string;
   secondaryColor?: string;
+  invitationLocale?: "es" | "en" | "pt";
   tournamentInstanceId: string;
   poolName: string;
   poolDescription?: string;
@@ -265,7 +266,7 @@ export async function createCorporatePool(
 ): Promise<CreateCorporatePoolResult> {
   const {
     userId, companyName, logoBase64, welcomeMessage, invitationMessage,
-    primaryColor, secondaryColor,
+    primaryColor, secondaryColor, invitationLocale,
     tournamentInstanceId, poolName, poolDescription,
     timeZone, deadlineMinutesBeforeKickoff, requireApproval,
     pickTypesConfig, maxParticipants, emails,
@@ -324,6 +325,7 @@ export async function createCorporatePool(
         invitationMessage: invitationMessage ? escapeHtml(invitationMessage) : null,
         primaryColor: primaryColor || null,
         secondaryColor: secondaryColor || null,
+        invitationLocale: invitationLocale ?? "es",
         status: "ACTIVE",
       },
     });

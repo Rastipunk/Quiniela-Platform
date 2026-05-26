@@ -99,6 +99,7 @@ function WizardInner() {
           invitationMessage: state.invitationMessage.trim() || undefined,
           primaryColor: state.primaryColor || undefined,
           secondaryColor: state.secondaryColor || undefined,
+          invitationLocale: state.invitationLocale,
           tournamentInstanceId: state.instanceId,
           poolName: state.poolName.trim(),
           poolDescription: state.poolDescription.trim() || undefined,
