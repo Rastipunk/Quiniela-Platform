@@ -53,6 +53,7 @@
     "jsonwebtoken": "^9.0.3",
     "mercadopago": "^2.12.0",
     "node-cron": "^4.2.1",
+    "numero-a-letras": "^1.0.6",
     "resend": "^6.6.0",
     "standardwebhooks": "^1.0.0",
     "typescript": "^5.9.3",
