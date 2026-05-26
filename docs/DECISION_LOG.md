@@ -4671,4 +4671,67 @@ Full per-decision rationale in `CORPORATE_LOCALE_AUDIT.md` §3 (granularity, sco
 
 ---
 
+## ADR-063: Welcome email locale handoff
+
+**Date:** 2026-05-26 | **Status:** Accepted
+
+**Context:** ADR-062 fixed the corporate-invitation email's locale plumbing but left two unaddressed gaps:
+
+1. The welcome email (fired right after a User row is created) ignored locale entirely. Three call sites in `authService.ts` — Google signup (line 483), email-verify (line 545), corporate activation (line 792) — never passed `locale` to `sendWelcomeEmail`, so every welcome shipped in the `DEFAULT_LOCALE` ("es"). Even the user who chose English in the next breath received a Spanish welcome first.
+2. The corporate-activation email's link (`email.ts:930`) was hardcoded to `/activar-cuenta` so a non-Spanish employee — even after ADR-062 made their invitation email arrive in English — clicked through and landed in the Spanish UI.
+
+The user (2026-05-26) asked: "Is it possible to always send the welcome AFTER the language-selection banner?" Yes. We defer it.
+
+Full per-decision rationale in `EMAIL_LOCALE_HANDOFF_AUDIT.md` §3.
+
+**Decision:**
+
+- New column `User.welcomeEmailSentAt DateTime?`. NULL = pending. Migration includes a backfill that sets the column to `createdAtUtc` for every pre-existing user, so the fallback job's first tick doesn't attempt to re-welcome the existing base.
+- All three inline `sendWelcomeEmail` call sites in `authService.ts` are removed.
+- `POST /users/me/locale-preference` becomes the single trigger point in the happy path. Inside the same `prisma.user.update` that sets `User.locale` + `User.localePromptCompletedAt`, the endpoint sets `welcomeEmailSentAt = now` if it was NULL, then dispatches the welcome with the just-chosen locale via `fireAndForget`.
+- New `welcomeEmailFallbackJob` (hourly at `:15`, advisory lock `82636505n`, batch cap 50) catches users with `welcomeEmailSentAt IS NULL AND createdAtUtc < now - 24h`. Resolves locale: `org.invitationLocale` for users who are members of a corporate pool; `resolveUserLocale(user)` otherwise (country + platform default chain).
+- New helper `backend/src/lib/activationUrl.ts` returns the locale-correct path that mirrors `frontend-next/src/i18n/routing.ts:86-90`:
+  - `es → /activar-cuenta`
+  - `en → /en/activate-account`
+  - `pt → /pt/ativar-conta`
+  Called from `email.ts:930` so the link in the corporate-activation email points to the matching-language page.
+
+**Scope is the welcome email AND the activation link — not the broader email system:**
+
+- Other emails (deadline reminders, results, payment receipts) already read `User.locale` correctly once it's set; they're untouched.
+- Inquiry-confirmation emails are already correct (read `locale` from the inquiry payload).
+- Background jobs (deadline reminders, new-member digest) are NOT filtered by `localePromptCompletedAt` — punishing users who never close the modal by silencing their pool notifications would be worse than the rare locale mismatch.
+
+**Lifecycle invariants:**
+
+1. **`welcomeEmailSentAt` is set inside the same tx as `locale` + `localePromptCompletedAt`.** No partial state where the user has been welcomed but their locale is null.
+2. **`welcomeEmailSentAt` is set BEFORE the Resend call.** If Resend fails, the flag is already set. Trade-off: a small rate of "missed welcomes" on Resend outages in exchange for guaranteed idempotency. Recovery is via support, not a retry counter.
+3. **Backfill at migration time.** Existing users get `welcomeEmailSentAt = createdAtUtc` so the fallback job ignores them.
+4. **The fallback never re-welcomes a row whose `welcomeEmailSentAt` is non-null.** Idempotency property of the candidate query, not behavioural.
+5. **Activation URL helper mirrors routing.ts.** A comment in the helper flags the cross-boundary dependency. Future routing changes must update both.
+
+**Migration:**
+
+`backend/prisma/migrations/20260526_add_user_welcome_email_sent_at/migration.sql` — additive column + backfill UPDATE. Zero data loss.
+
+**Consequences:**
+
+- ✅ Welcome email always arrives in the user's chosen locale (or the best available fallback for closed-tab users).
+- ✅ Activation page renders in the email's language end-to-end. No more "email in English → page in Spanish" mismatch.
+- ✅ The locked-down trigger surface (one endpoint + one job) means future code can't accidentally reintroduce the inline-locale-blind welcome.
+- ⚠️ Welcome arrives slightly later in the user journey (after dashboard load, not at signup). For users who immediately log in, this is sub-minute. For users who delay, the 24h fallback ships it.
+- ⚠️ If Resend fails between the flag-set and the actual send, the welcome is lost (won't retry). v1 chooses simplicity over a retry counter; revisit if real undeliverable cases surface.
+- ⚠️ The activation URL helper duplicates the path table from `routing.ts`. Same pattern as `lib/saleTerms.ts` and `lib/pricing.ts` (ADR-061 also has this cross-boundary issue). Acceptable until a shared package emerges.
+
+**Related code:**
+- Backend schema: `backend/prisma/schema.prisma` (User model) + `backend/prisma/migrations/20260526_add_user_welcome_email_sent_at/migration.sql`.
+- Backend libs: `backend/src/lib/activationUrl.ts` (new), `backend/src/lib/email.ts` (line 930 uses the helper).
+- Backend service: `backend/src/services/authService.ts` (three `sendWelcomeEmail` call sites removed; import cleaned).
+- Backend routes: `backend/src/routes/userProfile.ts` (`POST /me/locale-preference` is the new trigger).
+- Backend jobs: `backend/src/jobs/welcomeEmailFallbackJob.ts` (new), registered in `backend/src/server.ts`.
+- Pre-existing infra (untouched): `frontend-next/src/components/LocalePreferenceModal.tsx`, `LocalePreferenceGate.tsx`, `frontend-next/src/i18n/routing.ts`.
+- Specs: `EMAIL_LOCALE_HANDOFF_AUDIT.md`, `EMAIL_LOCALE_HANDOFF_IMPLEMENTATION.md`.
+
+---
+
 **END OF DOCUMENT**

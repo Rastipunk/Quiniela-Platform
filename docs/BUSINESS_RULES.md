@@ -1098,3 +1098,49 @@ resend action to re-ship in the new language.
 Standard (non-corporate) pools have no `Organization`, so
 `invitationLocale` does not exist for them. The branding panel only
 surfaces the picker when the pool is corporate.
+
+---
+
+## 16. Welcome email handoff
+
+Full rationale in `ADR-063` (DECISION_LOG.md); execution log in
+`EMAIL_LOCALE_HANDOFF_IMPLEMENTATION.md`; locked decisions in
+`EMAIL_LOCALE_HANDOFF_AUDIT.md` §3.
+
+### 16.1 Single trigger surface
+
+The welcome email is dispatched from **exactly two places**, never inline at signup or activation:
+
+1. `POST /users/me/locale-preference` — happy path. Fires when the user closes `LocalePreferenceModal`, with the just-chosen `User.locale`.
+2. `welcomeEmailFallbackJob` — safety net. Fires 24h after user creation if path 1 hasn't run.
+
+`User.welcomeEmailSentAt` (DateTime nullable) is the idempotency key. Set in the same `prisma.user.update` as `User.locale` and `User.localePromptCompletedAt`. Once non-null, the user is excluded from the fallback's candidate set.
+
+### 16.2 Locale resolution for the fallback
+
+When the fallback job fires (user never closed the modal), locale is resolved as:
+
+| Path | Locale source |
+|---|---|
+| Corporate employee (member of a pool whose pool.organization has `invitationLocale`) | `org.invitationLocale` |
+| Otherwise (signup path, no corporate pool) | `resolveUserLocale(user)` — chain of User.locale → User.country → platform default |
+
+### 16.3 Activation page locale matches the email
+
+The corporate-invitation email's link is built with `backend/src/lib/activationUrl.ts`, which mirrors the localized pathnames registered in `frontend-next/src/i18n/routing.ts`. Concrete mapping:
+
+- `es → /activar-cuenta`
+- `en → /en/activate-account`
+- `pt → /pt/ativar-conta`
+
+The employee whose invitation arrived in English clicks the link and lands directly on the English activation page. No intermediate Spanish UI.
+
+### 16.4 Reliability semantics
+
+- `welcomeEmailSentAt` is set BEFORE the Resend call (inside the tx). If Resend fails, the welcome is lost (no retry-with-counter). Acceptable trade-off — manual support recovery is cheaper than a retry mechanism, and the alternative (set-after-send) would double-send on transient Resend errors.
+- The fallback job leaves `welcomeEmailSentAt` NULL on its own thrown errors (e.g. network issue talking to Resend), so the next tick retries.
+- The migration backfilled every pre-existing user with `welcomeEmailSentAt = createdAtUtc` so the fallback job ignores them on its first run.
+
+### 16.5 No effect on other emails
+
+The deferred dispatch concerns ONLY the welcome email. All other emails (deadline reminders, results, payment receipts, corporate check-in, etc.) continue to read `User.locale` once it's set, which after the modal is always populated. Background jobs are NOT filtered by `localePromptCompletedAt` — punishing closed-tab users by silencing their pool notifications would be worse than the rare locale mismatch.
