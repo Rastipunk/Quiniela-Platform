@@ -191,24 +191,45 @@ export default function AdminQuoteDetailContent({ quoteId }: Props) {
               📄 Descargar PDF
             </a>
             {quote.status === "ACTIVE" && (
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={cancelling}
-                style={{
-                  padding: "12px 20px",
-                  borderRadius: radii.md,
-                  border: "1px solid var(--danger-border)",
-                  background: "var(--surface)",
-                  color: "var(--danger-text)",
-                  fontWeight: fontWeight.semibold,
-                  fontSize: fontSize.sm,
-                  cursor: cancelling ? "not-allowed" : "pointer",
-                  minHeight: 48,
-                }}
-              >
-                {cancelling ? "Cancelando…" : "Cancelar cotización"}
-              </button>
+              <>
+                <Link
+                  href={{ pathname: "/admin/ventas/cuentas-de-cobro/nueva", query: { fromQuoteId: quote.id } }}
+                  style={{
+                    padding: "12px 20px",
+                    borderRadius: radii.md,
+                    border: `1px solid ${colors.brand}`,
+                    background: "var(--surface)",
+                    color: colors.brand,
+                    fontWeight: fontWeight.semibold,
+                    fontSize: fontSize.sm,
+                    textDecoration: "none",
+                    minHeight: 48,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  → Emitir cuenta de cobro
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  style={{
+                    padding: "12px 20px",
+                    borderRadius: radii.md,
+                    border: "1px solid var(--danger-border)",
+                    background: "var(--surface)",
+                    color: "var(--danger-text)",
+                    fontWeight: fontWeight.semibold,
+                    fontSize: fontSize.sm,
+                    cursor: cancelling ? "not-allowed" : "pointer",
+                    minHeight: 48,
+                  }}
+                >
+                  {cancelling ? "Cancelando…" : "Cancelar cotización"}
+                </button>
+              </>
             )}
           </div>
 
