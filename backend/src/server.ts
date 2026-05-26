@@ -17,6 +17,7 @@ import { pickPresetsRouter } from "./routes/pickPresets";
 import { legalRouter } from "./routes/legal";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
+import { salesRedemptionRouter } from "./routes/salesRedemption";
 import { sendOk, sendForbidden, sendInternal, sendNotFound } from "./lib/apiResponse";
 import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteCheckLimiter, corporateActivateLimiter } from "./middleware/rateLimit";
@@ -265,6 +266,10 @@ app.use("/pick-presets", pickPresetsRouter);
 app.use("/legal", legalRouter);
 app.use("/feedback", express.json({ limit: "2mb" }), feedbackRouter);
 app.use("/corporate", corporateRouter);
+// Customer-facing CC redemption (authed, not admin-gated). The
+// admin-side issuance routes live under /admin/sales/* — see
+// routes/adminSales.ts.
+app.use("/sales/account-receivables", salesRedemptionRouter);
 
 // Unsubscribe route (public, no auth)
 import { unsubscribeRouter } from "./routes/unsubscribe";

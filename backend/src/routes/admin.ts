@@ -35,6 +35,7 @@ import { adminSettingsRouter } from "./adminSettings";
 import { adminCorporateRouter } from "./adminCorporate";
 import { analyticsHealthRouter } from "./analyticsHealth";
 import { adminAnalyticsDashboardRouter } from "./adminAnalyticsDashboard";
+import { adminSalesRouter } from "./adminSales";
 
 export const adminRouter = Router();
 
@@ -49,6 +50,7 @@ adminRouter.use("/corporate", adminCorporateRouter);
 // which we deliberately avoid.
 adminRouter.use("/analytics", analyticsHealthRouter);
 adminRouter.use("/analytics", adminAnalyticsDashboardRouter);
+adminRouter.use("/sales", adminSalesRouter);
 
 // ─── Helpers ─────────────────────────────────────────────────
 
