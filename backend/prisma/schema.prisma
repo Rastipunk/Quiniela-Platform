@@ -1074,6 +1074,14 @@ model Organization {
   notes             String?            @db.Text
   status            OrganizationStatus @default(INQUIRY)
 
+  // First-contact email locale. Governs ONLY the corporate-activation
+  // email — the one sent before any User row exists for the employee.
+  // Once the employee activates, LocalePreferenceModal lets them pick
+  // their personal locale, and from that point on User.locale is
+  // authoritative for all downstream emails. See
+  // CORPORATE_LOCALE_AUDIT.md §3.2 for the locked scope decision.
+  invitationLocale  String             @default("es")
+
   inquiries     OrganizationInquiry[]
   pools         Pool[]
   brandingAudit OrganizationBrandingAudit[]
