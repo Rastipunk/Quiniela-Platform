@@ -152,7 +152,7 @@ function WizardInner() {
 
           if (isColombia) {
             // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick
-            const mpData = await createMpCheckout(poolId, effectiveCapacity);
+            const mpData = await createMpCheckout(poolId, effectiveCapacity, state.accountReceivableId);
             trackBeginCheckout({
               fromCapacity: freeLimit,
               toCapacity: effectiveCapacity,
@@ -203,7 +203,7 @@ function WizardInner() {
             return;
           } else {
             // Polar redirect (International/USD)
-            const checkout = await createCheckout(poolId, effectiveCapacity);
+            const checkout = await createCheckout(poolId, effectiveCapacity, state.accountReceivableId);
             trackBeginCheckout({
               fromCapacity: freeLimit,
               toCapacity: effectiveCapacity,

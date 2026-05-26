@@ -55,27 +55,35 @@ export async function getPaymentCountry(): Promise<string> {
 /**
  * Create a Polar checkout session for a pool capacity upgrade.
  * Returns the checkout URL to redirect the user to.
+ *
+ * `accountReceivableId` (optional) ties the payment to a cuenta de
+ * cobro the customer has already applied via the redemption box. The
+ * backend validates + atomically locks the CC inside the same tx that
+ * creates the PoolPayment row (SALES_AUDIT.md §9.7).
  */
 export async function createCheckout(
   poolId: string,
   targetCapacity: number,
+  accountReceivableId?: string,
 ): Promise<CheckoutResponse> {
   return requestJson<CheckoutResponse>("/payments/checkout", {
     method: "POST",
-    body: JSON.stringify({ poolId, targetCapacity }),
+    body: JSON.stringify({ poolId, targetCapacity, accountReceivableId }),
   });
 }
 
 /**
  * Prepare Mercado Pago Payment Brick checkout data (Colombia/COP).
+ * See createCheckout for the accountReceivableId semantics.
  */
 export async function createMpCheckout(
   poolId: string,
   targetCapacity: number,
+  accountReceivableId?: string,
 ): Promise<MpCheckoutResponse> {
   return requestJson<MpCheckoutResponse>("/payments/mp-checkout", {
     method: "POST",
-    body: JSON.stringify({ poolId, targetCapacity }),
+    body: JSON.stringify({ poolId, targetCapacity, accountReceivableId }),
   });
 }
 

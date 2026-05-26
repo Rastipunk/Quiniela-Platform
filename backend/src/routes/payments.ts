@@ -66,6 +66,12 @@ export const paymentsRouter = Router();
 const checkoutSchema = z.object({
   poolId: z.string().uuid(),
   targetCapacity: z.number().int().min(2).max(10000),
+  // Optional CC redemption — when the customer pre-paid via a cuenta
+  // de cobro the wizard / expand-capacity tab attaches its id here.
+  // paymentService validates the snapshot against live pricing.ts and
+  // atomically locks the CC to REDEEMED inside the same tx that
+  // creates the PoolPayment. See SALES_AUDIT.md §9.7.
+  accountReceivableId: z.string().uuid().optional(),
 });
 
 // POST /payments/checkout — Create a Polar checkout session
@@ -84,6 +90,7 @@ paymentsRouter.post("/checkout", requireAuth, async (req: Request, res: Response
       userId: req.auth!.userId,
       poolId: parsed.data.poolId,
       targetCapacity: parsed.data.targetCapacity,
+      accountReceivableId: parsed.data.accountReceivableId,
       locale: String(req.headers["accept-language"] ?? "es").slice(0, 2),
       ...extractMetaSignals(req),
     });
@@ -126,6 +133,7 @@ paymentsRouter.post("/mp-checkout", requireAuth, async (req: Request, res: Respo
       userId: req.auth!.userId,
       poolId: parsed.data.poolId,
       targetCapacity: parsed.data.targetCapacity,
+      accountReceivableId: parsed.data.accountReceivableId,
       locale: String(req.headers["accept-language"] ?? "es").slice(0, 2),
       ...extractMetaSignals(req),
     });

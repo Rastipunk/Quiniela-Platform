@@ -96,6 +96,19 @@ export interface WizardState {
   // Step 5: Capacity
   maxParticipants: number;
 
+  // Optional CC redemption applied at the Capacity step. When set, the
+  // wizard locks `maxParticipants` to the CC's targetCapacity and the
+  // checkout call carries the accountReceivableId so the backend can
+  // atomically REDEEM the CC inside the same tx that creates the
+  // PoolPayment (SALES_AUDIT.md §9.7). Cleared if the customer removes
+  // the code.
+  accountReceivableId?: string;
+  accountReceivableConsec?: string;
+  accountReceivableTargetCapacity?: number;
+  accountReceivableCurrency?: "COP" | "USD";
+  accountReceivableAmountCop?: number | null;
+  accountReceivableAmountUsdCents?: number | null;
+
   // UI state
   error: string | null;
   busy: boolean;

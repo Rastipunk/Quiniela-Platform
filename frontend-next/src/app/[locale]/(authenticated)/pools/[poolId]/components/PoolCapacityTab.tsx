@@ -19,7 +19,9 @@ import {
   type Currency,
 } from "@/lib/pricing";
 import CapacitySelector from "@/components/CapacitySelector";
-import type { PoolOverview } from "@/lib/api";
+import AccountReceivableRedemptionBox from "@/components/AccountReceivableRedemptionBox";
+import type { PoolOverview, RedemptionSummary } from "@/lib/api";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 // Dedicated capacity tab. Extracted verbatim from the old admin tab
 // (where it used to live as one of many embedded sections) so hosts
@@ -139,6 +141,7 @@ function ExpandCapacitySection({
 }) {
   const t = useTranslations("payment");
   const locale = useLocale();
+  const isMobile = useIsMobile();
   const [selectedCapacity, setSelectedCapacity] = useState(currentCapacity);
   const [busy, setBusy] = useState(false);
   const [country, setCountry] = useState("US");
@@ -146,9 +149,21 @@ function ExpandCapacitySection({
   // console.error + spinner off — Abril's "no me anda la página" case.
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Cuenta-de-cobro redemption is only meaningful on corporate pools —
+  // backend issuance is gated to poolType="corporate" (commit 5).
+  const ccEnabled = poolType === "corporate";
+  const [ccApplied, setCcApplied] = useState<RedemptionSummary | null>(null);
+
   useEffect(() => {
     getPaymentCountry().then(setCountry).catch(() => {});
   }, []);
+
+  // When a CC is applied its targetCapacity drives the selection; the
+  // CapacitySelector becomes a read-only summary so the host can't
+  // accidentally override what the CC pre-paid for.
+  useEffect(() => {
+    if (ccApplied) setSelectedCapacity(ccApplied.targetCapacity);
+  }, [ccApplied]);
 
   const handleExpand = async () => {
     if (selectedCapacity <= currentCapacity) return;
@@ -158,7 +173,7 @@ function ExpandCapacitySection({
       const country = await getPaymentCountry();
       if (country === "CO") {
         // Mercado Pago (Colombia/COP) — navigate to embedded Payment Brick.
-        const mpData = await createMpCheckout(poolId, selectedCapacity);
+        const mpData = await createMpCheckout(poolId, selectedCapacity, ccApplied?.id);
         // F-16: emit GA4 + Meta funnel events from the expand path so
         // admin-tab checkouts are counted alongside wizard checkouts.
         // Pre-fix only PoolCreationWizard emitted these — the funnel
@@ -205,7 +220,7 @@ function ExpandCapacitySection({
         }
       } else {
         // Polar redirect (international/USD).
-        const result = await createCheckout(poolId, selectedCapacity);
+        const result = await createCheckout(poolId, selectedCapacity, ccApplied?.id);
         // F-16: GA4 + Meta funnel events for the admin expand path.
         trackBeginCheckout({
           fromCapacity: currentCapacity,
@@ -252,11 +267,22 @@ function ExpandCapacitySection({
 
   return (
     <div>
+      {ccEnabled && (
+        <AccountReceivableRedemptionBox
+          onRedeem={setCcApplied}
+          onClear={() => {
+            setCcApplied(null);
+            setSelectedCapacity(currentCapacity);
+          }}
+          applied={ccApplied}
+          isMobile={isMobile}
+        />
+      )}
       <CapacitySelector
         type={poolType}
         currentCapacity={currentCapacity}
         selectedCapacity={selectedCapacity}
-        onSelect={setSelectedCapacity}
+        onSelect={(c) => { if (!ccApplied) setSelectedCapacity(c); }}
         mode="expansion"
         currency={country === "CO" ? "COP" : "USD"}
       />

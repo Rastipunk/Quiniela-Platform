@@ -5,9 +5,12 @@ import { useTranslations } from "next-intl";
 import { useWizard } from "../PoolWizardContext";
 import { PoolWizardStepContainer } from "../PoolWizardStepContainer";
 import CapacitySelector from "@/components/CapacitySelector";
+import AccountReceivableRedemptionBox from "@/components/AccountReceivableRedemptionBox";
+import type { RedemptionSummary } from "@/lib/api";
 import {
   PERSONAL_FREE_LIMIT,
   CORPORATE_FREE_LIMIT,
+  formatPrice,
   getUpgradePrice,
   getUpgradePriceUsd,
   type Currency,
@@ -37,6 +40,56 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
   const poolType = state.mode === "corporate" ? "corporate" : "personal";
   const freeLimit = state.mode === "corporate" ? CORPORATE_FREE_LIMIT : PERSONAL_FREE_LIMIT;
   const isPaidTier = state.maxParticipants > freeLimit;
+
+  // CC redemption — only available for corporate pools (CC issuance is
+  // locked to poolType="corporate" in commit 5). For standard pools the
+  // box stays hidden so we don't promise something the backend rejects.
+  const ccEnabled = state.mode === "corporate";
+  const ccApplied: RedemptionSummary | null = state.accountReceivableId
+    ? {
+        id: state.accountReceivableId,
+        consecutive: state.accountReceivableConsec || "",
+        targetCapacity: state.accountReceivableTargetCapacity ?? state.maxParticipants,
+        currency: (state.accountReceivableCurrency ?? "COP"),
+        amountCop: state.accountReceivableAmountCop ?? null,
+        amountUsdCents: state.accountReceivableAmountUsdCents ?? null,
+        poolType: "corporate",
+        clientLegalName: "",
+        validUntil: "",
+      }
+    : null;
+
+  const applyRedemption = useCallback(
+    (summary: RedemptionSummary) => {
+      dispatch({ type: "SET_FIELD", field: "accountReceivableId", value: summary.id });
+      dispatch({ type: "SET_FIELD", field: "accountReceivableConsec", value: summary.consecutive });
+      dispatch({ type: "SET_FIELD", field: "accountReceivableTargetCapacity", value: summary.targetCapacity });
+      dispatch({ type: "SET_FIELD", field: "accountReceivableCurrency", value: summary.currency });
+      dispatch({ type: "SET_FIELD", field: "accountReceivableAmountCop", value: summary.amountCop });
+      dispatch({ type: "SET_FIELD", field: "accountReceivableAmountUsdCents", value: summary.amountUsdCents });
+      dispatch({ type: "SET_FIELD", field: "maxParticipants", value: summary.targetCapacity });
+      // Lock the live preview currency to the CC's currency so the
+      // total shown matches what will actually be charged.
+      setCurrency(summary.currency);
+    },
+    [dispatch],
+  );
+
+  const clearRedemption = useCallback(() => {
+    dispatch({ type: "SET_FIELD", field: "accountReceivableId", value: undefined });
+    dispatch({ type: "SET_FIELD", field: "accountReceivableConsec", value: undefined });
+    dispatch({ type: "SET_FIELD", field: "accountReceivableTargetCapacity", value: undefined });
+    dispatch({ type: "SET_FIELD", field: "accountReceivableCurrency", value: undefined });
+    dispatch({ type: "SET_FIELD", field: "accountReceivableAmountCop", value: undefined });
+    dispatch({ type: "SET_FIELD", field: "accountReceivableAmountUsdCents", value: undefined });
+  }, [dispatch]);
+
+  function ccAmountFormatted(): string {
+    if (!ccApplied) return "";
+    if (ccApplied.currency === "COP" && ccApplied.amountCop !== null) return formatPrice(ccApplied.amountCop, "COP");
+    if (ccApplied.currency === "USD" && ccApplied.amountUsdCents !== null) return formatPrice(ccApplied.amountUsdCents / 100, "USD");
+    return "";
+  }
 
   // GA4 `view_item`: emit whenever the user selects a paid-tier capacity.
   // Guard against duplicate pushes for the same (capacity, currency) tuple
@@ -103,15 +156,55 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
           </p>
         )}
 
-        <CapacitySelector
-          type={poolType}
-          selectedCapacity={state.maxParticipants}
-          onSelect={(capacity) =>
-            dispatch({ type: "SET_FIELD", field: "maxParticipants", value: capacity })
-          }
-          mode="creation"
-          currency={currency}
-        />
+        {ccEnabled && (
+          <AccountReceivableRedemptionBox
+            onRedeem={applyRedemption}
+            onClear={clearRedemption}
+            applied={ccApplied}
+            isMobile={isMobile}
+          />
+        )}
+
+        {ccApplied ? (
+          <div
+            style={{
+              padding: 16,
+              background: "#dcfce7",
+              border: "1px solid #86efac",
+              borderRadius: radii.md,
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <div style={{ color: "#166534", fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {t("capacity.ccLockedTitle", { defaultMessage: "Capacidad pre-pagada" })}
+            </div>
+            <div style={{ color: "#166534", fontSize: "1.5rem", fontWeight: 700 }}>
+              {ccApplied.targetCapacity}{" "}
+              <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>
+                {t("capacity.ccLockedSlots", { defaultMessage: "cupos" })}
+              </span>
+            </div>
+            <div style={{ color: "#15803d", fontSize: 14 }}>
+              {t("capacity.ccLockedAmount", {
+                defaultMessage: "Total a pagar: {amount} (vía {consecutive})",
+                amount: ccAmountFormatted(),
+                consecutive: ccApplied.consecutive,
+              })}
+            </div>
+          </div>
+        ) : (
+          <CapacitySelector
+            type={poolType}
+            selectedCapacity={state.maxParticipants}
+            onSelect={(capacity) =>
+              dispatch({ type: "SET_FIELD", field: "maxParticipants", value: capacity })
+            }
+            mode="creation"
+            currency={currency}
+          />
+        )}
       </PoolWizardStepContainer>
 
       {/* Sticky CTA — stays visible on mobile matching other wizard steps */}
@@ -171,15 +264,17 @@ export function StepCapacity({ onSubmit, submitBusy }: Props) {
           >
             {submitBusy
               ? t("nav.creating", { defaultMessage: "Creando..." })
-              : isPaidTier
-                ? <>&#x1F6D2; {t("capacity.proceedToPayment", { defaultMessage: "Proceder al pago" })}</>
-                : t("capacity.createPool", { defaultMessage: "Crear Pool" })
+              : ccApplied
+                ? <>&#x1F6D2; {t("capacity.payWithCc", { defaultMessage: "Pagar con cuenta de cobro ({amount})", amount: ccAmountFormatted() })}</>
+                : isPaidTier
+                  ? <>&#x1F6D2; {t("capacity.proceedToPayment", { defaultMessage: "Proceder al pago" })}</>
+                  : t("capacity.createPool", { defaultMessage: "Crear Pool" })
             }
           </button>
         </div>
 
-        {/* Secondary: continue free option (only when paid tier is selected) */}
-        {isPaidTier && !submitBusy && (
+        {/* Secondary: continue free option (only when paid tier is selected and no CC applied) */}
+        {isPaidTier && !submitBusy && !ccApplied && (
           state.mode === "corporate" ? (
             <button
               onClick={handleContinueFree}
