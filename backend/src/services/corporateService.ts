@@ -650,7 +650,7 @@ export async function sendInvitations(
   // Get pool and org for email data
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
-    include: { organization: { select: { name: true, logoBase64: true, invitationMessage: true, primaryColor: true, secondaryColor: true } } },
+    include: { organization: { select: { name: true, logoBase64: true, invitationMessage: true, primaryColor: true, secondaryColor: true, invitationLocale: true } } },
   });
   if (!pool) throw new ServiceError("NOT_FOUND", 404);
 
@@ -659,6 +659,12 @@ export async function sendInvitations(
   const orgInvitationMessage = pool.organization?.invitationMessage || null;
   const orgPrimaryColor = pool.organization?.primaryColor || null;
   const orgSecondaryColor = pool.organization?.secondaryColor || null;
+  // CORPORATE_LOCALE_AUDIT.md §3.2: the org's invitationLocale governs
+  // the very first email each employee gets. We read it at send time
+  // (last-writer-wins) so if the host edited the value after upload
+  // but before this call, the latest intent ships.
+  const orgInvitationLocale =
+    (pool.organization?.invitationLocale as "es" | "en" | "pt" | undefined) ?? "es";
 
   // Find PENDING invites
   const pendingInvites = await prisma.corporateInvite.findMany({
@@ -704,6 +710,7 @@ export async function sendInvitations(
         invitationMessage: orgInvitationMessage,
         primaryColor: orgPrimaryColor,
         secondaryColor: orgSecondaryColor,
+        locale: orgInvitationLocale,
       });
 
       if (emailResult.success) {
@@ -804,6 +811,7 @@ export async function resendInvitation(
               invitationMessage: true,
               primaryColor: true,
               secondaryColor: true,
+              invitationLocale: true,
             },
           },
         },
@@ -843,6 +851,12 @@ export async function resendInvitation(
   const orgInvitationMessage = invite.pool.organization?.invitationMessage || null;
   const orgPrimaryColor = invite.pool.organization?.primaryColor || null;
   const orgSecondaryColor = invite.pool.organization?.secondaryColor || null;
+  // Resend reads invitationLocale at send time — if the host changed
+  // it between original-send and now, the resend ships in the new
+  // language. Documented as the locked semantics in
+  // CORPORATE_LOCALE_AUDIT.md §3.8.
+  const orgInvitationLocale =
+    (invite.pool.organization?.invitationLocale as "es" | "en" | "pt" | undefined) ?? "es";
 
   const emailResult = await sendCorporateActivationEmail({
     to: invite.email,
@@ -854,6 +868,7 @@ export async function resendInvitation(
     invitationMessage: orgInvitationMessage,
     primaryColor: orgPrimaryColor,
     secondaryColor: orgSecondaryColor,
+    locale: orgInvitationLocale,
   });
 
   if (!emailResult.success) {
@@ -930,6 +945,7 @@ export async function bulkResendExpired(
           invitationMessage: true,
           primaryColor: true,
           secondaryColor: true,
+          invitationLocale: true,
         },
       },
     },
@@ -956,6 +972,10 @@ export async function bulkResendExpired(
   const orgInvitationMessage = pool.organization?.invitationMessage || null;
   const orgPrimaryColor = pool.organization?.primaryColor || null;
   const orgSecondaryColor = pool.organization?.secondaryColor || null;
+  // Bulk-resend reads the current locale at send time, same semantics
+  // as resendInvitation. CORPORATE_LOCALE_AUDIT.md §3.8.
+  const orgInvitationLocale =
+    (pool.organization?.invitationLocale as "es" | "en" | "pt" | undefined) ?? "es";
 
   let sent = 0;
   let failed = 0;
@@ -988,6 +1008,7 @@ export async function bulkResendExpired(
         invitationMessage: orgInvitationMessage,
         primaryColor: orgPrimaryColor,
         secondaryColor: orgSecondaryColor,
+        locale: orgInvitationLocale,
       });
 
       if (emailResult.success) {
