@@ -4551,4 +4551,73 @@ We needed an "Administrar reglas" host panel without breaking the original invar
 
 ---
 
+## ADR-061: Sales Management — quotes, cuentas de cobro, and CC-redemption checkout path
+
+**Date:** 2026-05-26 | **Status:** Accepted
+
+**Context:** The issuer (Juan Camilo Chacón Alvarado, persona natural, régimen simplificado, Colombia) needs to (a) send sales proposals to corporate prospects with branded PDFs and (b) issue Colombian "cuentas de cobro" (the non-tax-invoice billing document used by simplified-régime issuers) that the customer then redeems at checkout. Both documents must be auditable, trilingual (ES / EN / PT), and tie cleanly into the existing capacity-upgrade payment flow without bypassing the pricing safeguards added in ADR-046. v1 explicitly scopes to "generate + persist to DB + download PDF" — no email send, no public quote-acceptance link, only Picks4All corporate pools (no free-form line items).
+
+See `SALES_AUDIT.md` for the full per-decision log (§11.1–§11.23) and `SALES_IMPLEMENTATION.md` for the 14-commit execution tracker.
+
+**Decision:** Two new aggregate roots backed by a shared atomic-counter table, three PDF templates rendered server-side via `@react-pdf/renderer`, an admin UI at `/admin/ventas/...`, and a customer-facing redemption box that funnels into the existing payment service.
+
+**Data model (additive, see `backend/prisma/schema.prisma`):**
+
+- `Quote`: client snapshot + locale/term + computed pricing snapshot + lifecycle (`ACTIVE` / `EXPIRED` / `CANCELLED`). Consecutive `COT-{year}-{4 digits}`.
+- `AccountReceivable`: same shape plus 8-digit UNIQUE `redemptionCode`, `targetCapacity`, `paidAtUtc`, optional `linkedQuoteId`, and a 1:1 FK to `PoolPayment.accountReceivableId`. Lifecycle `PENDING → REDEEMED → PAID`; `PENDING → EXPIRED` via sweep; any → `CANCELLED` via admin. Consecutive `CC-{year}-{4 digits}`.
+- `DocumentCounter`: atomic `(kind, year) → lastNumber` counter with `INSERT … ON CONFLICT DO UPDATE … RETURNING` so two concurrent issuances get sequential numbers, never duplicates.
+
+**Lifecycle invariants (locked):**
+
+1. **Pricing is server-derived.** Admin input names participants/targetCapacity + currency; amount is computed via `backend/src/lib/pricing.ts`. Client-supplied amounts are rejected. The CC snapshot is re-verified against live `pricing.ts` at redemption; mismatch fires `cc_pricing_drift` admin alert and blocks checkout with `CONFLICT` — admin must reissue.
+2. **Issuer snapshot is frozen.** `issuerSnapshotJson` is a deep copy of `lib/issuerInfo.ts` taken at issuance time, persisted on the row, and read by the PDF renderer. Editing `issuerInfo.ts` later does not retroactively mutate documents already issued (legal audit requirement).
+3. **CC redemption is atomic.** `tx.accountReceivable.updateMany WHERE status='PENDING'` inside the same `prisma.$transaction` as `PoolPayment.create`. The single winner of two concurrent redeemers gets the lock; the loser sees `count===0` and the route returns 409. Mirrors the activate-corporate pattern (ADR-048).
+4. **CC release on payment expiry.** Reconciler (ADR-060) transitions EXPIRED / FAILED / ABANDONED PoolPayments inside a tx that also calls `releaseAccountReceivable(tx, ccId)` — flips `REDEEMED → PENDING` only, leaving `PAID` alone (so a webhook race never undoes a completed payment).
+5. **Sweep-to-EXPIRED.** Hourly `accountReceivableExpiryJob` (advisory lock `82636504n`) flips PENDING CCs whose `validUntil` is past to EXPIRED. Bounded batch + distinct lock key so it runs concurrently with `paymentReconcileJob`.
+6. **Soft-revoke only.** No `DELETE FROM AccountReceivable` ever. Cancellation sets `status='CANCELLED'`. Same for quotes. Consecutive numbers are never reused — gaps are visible in the audit trail.
+7. **Trilingual PDFs with locale-conditional copy.** `backend/src/pdf/i18n.ts` carries an `es | en | pt` dictionary; the renderer substitutes `{term}` per the admin's chosen term (filtered by locale via `SALE_TERMS`). The DIAN régimen-tributario phrase appears only when `locale === "es"` (the issuer's tax status is Colombian — the phrase has no legal meaning in en/pt copies).
+8. **Bancolombia bank-transfer block COP-only.** CC PDFs show the wire-transfer instructions only when `currency === "COP"`. USD international clients see only the online card-payment block (Polar).
+9. **Section-level no-split.** Every `<View>` block in both PDF templates carries `wrap={false}` so sections never split across pages — visual integrity for legal documents the issuer signs.
+
+**Customer-facing redemption path:**
+
+- New `POST /sales/account-receivables/redeem` (auth-required, NOT admin) — pure lookup. Distinguishes statuses with distinct 409 codes (`ALREADY_PAID`, `ALREADY_REDEEMED`, `CANCELLED`, `EXPIRED`) so the wizard renders a clear message.
+- `AccountReceivableRedemptionBox` (component) sits above `CapacitySelector` in both `StepCapacity` (wizard) and `ExpandCapacitySection` (existing-pool capacity tab). Gated to `poolType === "corporate"` to match the backend's CC issuance restriction. When applied, capacity locks to `CC.targetCapacity` and both checkout helpers pass `accountReceivableId` through to `paymentService.initiateCheckout / initiateMpCheckout`.
+- The payment-service validate-and-lock pipeline blocks redemption on snapshot drift, capacity mismatch, and stale `validUntil`; on success it links the new `PoolPayment.accountReceivableId` and flips CC → REDEEMED inside the same tx.
+- Webhook completion handlers (Polar `order.paid`, MP IPN approved at both Brick and webhook entry points) flip CC → `PAID` inside the same tx that flips PoolPayment → `COMPLETED`. The receipt email (`sendPaymentReceiptEmail`) renders an extra row with the CC consecutive when `payment.accountReceivableId` is set.
+
+**Admin UI:**
+
+- `/admin/ventas/cotizaciones` and `/admin/ventas/cuentas-de-cobro`, gated by `requireAdmin`. Mobile-first (issuer's stated use case: emit documents on the go). List + filter + paginate; create with sectioned form + live amount preview from the frontend mirror of `pricing.ts`; detail with status badge, download PDF (opens via `credentials: include` cookies so no token plumbing), "Cancelar" for both, "Marcar como pagada" for CCs in PENDING/REDEEMED.
+- "→ Emitir cuenta de cobro" on ACTIVE quote detail navigates to the CC create page with `?fromQuoteId=` so client + locale + term + capacity + currency + tournament pre-fill.
+
+**Migration footprint (additive only, zero-downtime):**
+
+- `20260522_add_sales_management/migration.sql` — three new tables, three new enums, one new column + FK on `PoolPayment`, indexes on `[status, validUntil]` for the expiry sweep and on `clientContactEmail` for admin search.
+
+**Consequences:**
+
+- ✅ End-to-end traceability: every cotización and CC has a UNIQUE consecutive, an issuer snapshot, and a PDF that can be regenerated at any time from the row.
+- ✅ Race-safe redemption — the activate-corporate atomic-claim pattern extended to CCs.
+- ✅ Drift-safe pricing — a CC issued at one price/tier configuration cannot be silently honoured at a different one after pricing.ts changes; the customer gets a clear 409 + admin gets a `cc_pricing_drift` alert.
+- ✅ Cookies-only auth on PDF downloads — no token plumbing, opens cleanly in a new tab from the admin UI.
+- ✅ Admin convention preserved: hardcoded Spanish (matches `AdminFeedbackContent` / `AdminEmailSettingsContent`); customer-facing redemption box uses next-intl `defaultMessage` so ES renders now and EN/PT keys can be populated later without component changes.
+- ⚠️ Standard (non-corporate) pools cannot redeem CCs. The redemption box is hidden for those flows. If/when personal-pool CCs become a thing, lift the `poolType === "corporate"` gate on both the box and the backend issuance.
+- ⚠️ `lib/saleTerms.ts` is duplicated between backend and frontend (same pattern as `lib/pricing.ts` per ADR-046 / F-12). Both files are small and changes require deliberate intent — acceptable until a shared package emerges.
+- ⚠️ No email send for v1. Admin downloads the PDF and sends manually via existing email channels. Auto-send + tokenized customer-facing quote-acceptance link is a future commit.
+
+**Related code:**
+- Backend schema: `backend/prisma/schema.prisma` (Quote, AccountReceivable, DocumentCounter, PoolPayment.accountReceivableId), `backend/prisma/migrations/20260522_add_sales_management/migration.sql`.
+- Backend services: `backend/src/services/sales/quoteService.ts`, `backend/src/services/sales/accountReceivableService.ts`, `backend/src/services/sales/documentCounterService.ts`, `backend/src/services/paymentService.ts` (validate-and-lock + release helper).
+- Backend libs: `backend/src/lib/issuerInfo.ts`, `backend/src/lib/saleTerms.ts`, `backend/src/lib/amountInWords.ts`.
+- Backend PDF: `backend/src/pdf/i18n.ts`, `backend/src/pdf/QuoteDocument.tsx`, `backend/src/pdf/CcDocument.tsx`, `backend/src/pdf/renderQuotePdf.tsx`, `backend/src/pdf/renderCcPdf.tsx`.
+- Backend routes + jobs: `backend/src/routes/adminSales.ts`, `backend/src/routes/salesRedemption.ts`, `backend/src/routes/payments.ts` (accountReceivableId Zod field), `backend/src/jobs/accountReceivableExpiryJob.ts`.
+- Frontend libs: `frontend-next/src/lib/api/sales.ts`, `frontend-next/src/lib/api/payments.ts` (accountReceivableId param), `frontend-next/src/lib/saleTerms.ts`.
+- Frontend admin UI: `frontend-next/src/components/AdminSalesHeader.tsx`, `frontend-next/src/components/AdminQuotesListContent.tsx`, `frontend-next/src/components/AdminQuoteCreateContent.tsx`, `frontend-next/src/components/AdminQuoteDetailContent.tsx`, `frontend-next/src/components/AdminCcsListContent.tsx`, `frontend-next/src/components/AdminCcCreateContent.tsx`, `frontend-next/src/components/AdminCcDetailContent.tsx`, six `page.tsx` files under `frontend-next/src/app/[locale]/(authenticated)/admin/ventas/`.
+- Frontend customer flow: `frontend-next/src/components/AccountReceivableRedemptionBox.tsx`, `frontend-next/src/components/pool-wizard/steps/StepCapacity.tsx`, `frontend-next/src/components/pool-wizard/PoolCreationWizard.tsx`, `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolCapacityTab.tsx`.
+- Frontend nav: `frontend-next/src/components/NavBar.tsx` (admin "Gestión de Ventas" link).
+- Specs: `SALES_AUDIT.md`, `SALES_IMPLEMENTATION.md`.
+
+---
+
 **END OF DOCUMENT**

@@ -207,6 +207,7 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 6. **Pool independence:** Each pool has its own `fixtureSnapshot`. Advancing phases in one pool does not affect others.
 7. **Scraper-first results:** In AUTO mode, picks4all-scores is the primary source (15s polling during matches). API-Football is fallback only (30min after estimated FT). Host can only override existing results.
 8. **Estratega is fully automatic:** In SIMPLE preset pools, `autoPublishStructuralResults` derives `GroupStandingsResult` (FIFA tiebreakers) and `StructuralPhaseResult.matches[].winnerId` (penalty fallback) directly from scraper-confirmed `PoolMatchResult` data. Host never publishes manually — only overrides existing publications via the dedicated PUT endpoints (mandatory reason + email-everyone). See ADR-059.
+9. **Sales documents are soft-revoke only:** Never `DELETE FROM Quote` or `DELETE FROM AccountReceivable`. Cancellation sets `status='CANCELLED'`; the consecutive number is preserved so the series shows no gaps. Pricing is **always** server-derived via `lib/pricing.ts`; admin cannot override the amount. CC redemption uses the atomic lock `tx.accountReceivable.updateMany WHERE status='PENDING'` inside the same tx as `PoolPayment.create` — drift between the CC snapshot and live `pricing.ts` blocks the redemption with `409 CONFLICT` + `cc_pricing_drift` admin alert. See ADR-061.
 
 ---
 

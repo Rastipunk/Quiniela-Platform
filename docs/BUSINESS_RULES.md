@@ -962,3 +962,89 @@ as to grant. The footer link **"Gestionar cookies"** dispatches the
 from localStorage and re-opens the banner. Nothing else pivots — the
 next banner interaction writes the new preference as if it were the
 first choice.
+
+---
+
+## 14. Sales Management
+
+Sales documents (cotizaciones + cuentas de cobro) and the
+customer-facing CC redemption flow that ties them to capacity
+purchases. Full rationale in `ADR-061` (DECISION_LOG.md); execution
+log in `SALES_IMPLEMENTATION.md`; locked decisions in
+`SALES_AUDIT.md` §11.
+
+### 14.1 Documents
+
+| Document | Consecutive | Lifecycle | Status transitions |
+|---|---|---|---|
+| **Cotización** (`Quote`) | `COT-{year}-{4 digits}` | `ACTIVE → EXPIRED` (sweep) or `→ CANCELLED` (admin) | Never DELETE. No `EXPIRED → ACTIVE` ressurrection — admin must issue a new one. |
+| **Cuenta de cobro** (`AccountReceivable`) | `CC-{year}-{4 digits}` | `PENDING → REDEEMED → PAID`. Sweep `PENDING → EXPIRED` past `validUntil`. Reconciler `REDEEMED → PENDING` on payment expiry. Any → `CANCELLED` (admin). | `PAID` is terminal — never reverted. |
+
+Both rows carry an immutable `issuerSnapshotJson` (deep copy of
+`backend/src/lib/issuerInfo.ts` at issue time). The PDF renderer
+reads from the snapshot, never from the live constant — so updating
+the issuer's bank account / address tomorrow does not retroactively
+edit yesterday's documents.
+
+### 14.2 Pricing safeguard
+
+- Admin input names participants (Quote) or `targetCapacity` (CC) plus
+  currency. The amount is **computed server-side** via
+  `backend/src/lib/pricing.ts` (`calculateUpgradePrice` /
+  `calculateUpgradePriceCop` from `CORPORATE_FREE_LIMIT` to the
+  requested count). Client-supplied amounts are rejected.
+- At redemption, the live `pricing.ts` is **re-evaluated** against the
+  CC's snapshot. A mismatch (configuration drift between issue date
+  and redemption date) blocks the checkout with `409 CONFLICT` and
+  fires the `cc_pricing_drift` admin notification. Admin must reissue
+  with the current price.
+
+### 14.3 Redemption
+
+- 8-digit numeric code stored raw in `redemptionCode UNIQUE`; rendered
+  in PDFs + UI as `XXXX-XXXX`. Lookup normalises both forms.
+- Two concurrent redeemers of the same code → the lock is `tx
+  .accountReceivable.updateMany WHERE status = 'PENDING'`. The winner
+  proceeds; the loser sees `count === 0` and `paymentService` throws
+  `CONFLICT`. Same pattern as `activate-corporate` (ADR-048).
+- Pre-flight lookup `POST /sales/account-receivables/redeem`
+  (auth-required, NOT admin-required) returns a redemption summary
+  the wizard uses to preview capacity + amount; the actual lock
+  happens later inside `paymentService.initiateCheckout` /
+  `initiateMpCheckout`.
+- Redemption is **only available on corporate pools**. The
+  `AccountReceivableRedemptionBox` is hidden in standard-pool flows
+  and the backend rejects issuance for `poolType !== "corporate"`.
+
+### 14.4 Reconciliation
+
+- `paymentReconcileJob` (ADR-060) transitions stale `PoolPayment`s.
+  When the linked payment lands in `EXPIRED` / `FAILED` / `ABANDONED`,
+  the same transaction calls `releaseAccountReceivable(tx, ccId)` —
+  flips `REDEEMED → PENDING` only. `PAID` rows are left alone so a
+  webhook race never undoes a completed charge.
+- `accountReceivableExpiryJob` (hourly, advisory lock `82636504n`)
+  sweeps `PENDING` CCs whose `validUntil` is past and flips them to
+  `EXPIRED`. Bounded batch, distinct lock key so it does not contend
+  with `paymentReconcileJob`.
+
+### 14.5 Trilingual PDFs
+
+- Per-locale string dictionary in `backend/src/pdf/i18n.ts`. The
+  `{term}` placeholder is substituted by the admin's choice from
+  `SALE_TERMS[locale]` (es: polla/penca/prode/quiniela/porra/pool;
+  en: pool/prediction game/sports pool; pt: bolão/palpites/pool).
+- The DIAN régimen-tributario phrase appears **only when
+  `locale === "es"`** — the issuer's tax status is Colombian and the
+  phrase carries no legal meaning in other jurisdictions.
+- The Bancolombia bank-transfer block appears **only when
+  `currency === "COP"`** — international USD clients see the online
+  card-payment block (Polar) only.
+- Every section view carries `wrap={false}` — sections never split
+  across pages.
+
+### 14.6 Soft revoke
+
+`DELETE FROM Quote` and `DELETE FROM AccountReceivable` are forbidden.
+Cancellation sets `status = 'CANCELLED'`. The consecutive number is
+preserved so audit gaps (missing numbers in the series) never appear.
