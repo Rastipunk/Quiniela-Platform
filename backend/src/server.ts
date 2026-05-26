@@ -35,6 +35,10 @@ import {
   startAccountReceivableExpiryJob,
   stopAccountReceivableExpiryJob,
 } from "./jobs/accountReceivableExpiryJob";
+import {
+  startWelcomeEmailFallbackJob,
+  stopWelcomeEmailFallbackJob,
+} from "./jobs/welcomeEmailFallbackJob";
 import { prisma } from "./db";
 
 const app = express();
@@ -329,6 +333,7 @@ const server = app.listen(PORT, () => {
   startCapiRetryJob();
   startPaymentReconcileJob();
   startAccountReceivableExpiryJob();
+  startWelcomeEmailFallbackJob();
 });
 
 // Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)
@@ -354,6 +359,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopCapiRetryJob();
   stopPaymentReconcileJob();
   stopAccountReceivableExpiryJob();
+  stopWelcomeEmailFallbackJob();
 
   // 3. Disconnect Prisma (closes DB connection pool)
   try {
