@@ -17,6 +17,7 @@ export interface PoolOrganization {
   invitationMessage: string | null;
   primaryColor: string | null;
   secondaryColor: string | null;
+  invitationLocale: "es" | "en" | "pt";
 }
 
 export interface PoolInfo {

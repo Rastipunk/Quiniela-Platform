@@ -177,6 +177,9 @@ export type UpdatePoolBrandingInput = {
   /** Plain text, max 1000 chars. `null` to clear. */
   welcomeMessage?: string | null;
   invitationMessage?: string | null;
+  /** Activation-email language. Non-nullable (DB has DEFAULT 'es').
+   *  Omit to leave unchanged. */
+  invitationLocale?: "es" | "en" | "pt";
 };
 
 export type UpdatePoolBrandingResponse = {
@@ -187,6 +190,7 @@ export type UpdatePoolBrandingResponse = {
     | "secondaryColor"
     | "welcomeMessage"
     | "invitationMessage"
+    | "invitationLocale"
   >;
   branding: {
     logoBase64: string | null;
@@ -194,6 +198,7 @@ export type UpdatePoolBrandingResponse = {
     secondaryColor: string | null;
     welcomeMessage: string | null;
     invitationMessage: string | null;
+    invitationLocale: "es" | "en" | "pt";
   };
 };
 

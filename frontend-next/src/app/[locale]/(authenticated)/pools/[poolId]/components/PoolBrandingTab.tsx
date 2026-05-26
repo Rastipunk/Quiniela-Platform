@@ -62,6 +62,8 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
 
   // Initial values from current organization. Empty string is the
   // "unset" sentinel for color/textarea fields throughout the app.
+  // invitationLocale is non-nullable so it falls back to "es" only if
+  // the org somehow lacks the field (legacy rows pre-migration).
   const initial = useMemo(
     () => ({
       logoBase64: org?.logoBase64 ?? "",
@@ -69,6 +71,7 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
       secondaryColor: org?.secondaryColor ?? "",
       welcomeMessage: org?.welcomeMessage ?? "",
       invitationMessage: org?.invitationMessage ?? "",
+      invitationLocale: (org?.invitationLocale ?? "es") as "es" | "en" | "pt",
     }),
     [org],
   );
@@ -78,6 +81,7 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
   const [secondaryColor, setSecondaryColor] = useState(initial.secondaryColor);
   const [welcomeMessage, setWelcomeMessage] = useState(initial.welcomeMessage);
   const [invitationMessage, setInvitationMessage] = useState(initial.invitationMessage);
+  const [invitationLocale, setInvitationLocale] = useState(initial.invitationLocale);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [statusMessage, setStatusMessage] = useState<
@@ -114,7 +118,8 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
     primaryColor !== initial.primaryColor ||
     secondaryColor !== initial.secondaryColor ||
     welcomeMessage !== initial.welcomeMessage ||
-    invitationMessage !== initial.invitationMessage;
+    invitationMessage !== initial.invitationMessage ||
+    invitationLocale !== initial.invitationLocale;
 
   const optionalLabel = t("companyInfo.optional", { defaultMessage: "opcional" });
 
@@ -161,6 +166,7 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
     setSecondaryColor(initial.secondaryColor);
     setWelcomeMessage(initial.welcomeMessage);
     setInvitationMessage(initial.invitationMessage);
+    setInvitationLocale(initial.invitationLocale);
     setLogoError(null);
     setStatusMessage(null);
     if (fileRef.current) fileRef.current.value = "";
@@ -196,6 +202,10 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
     }
     if (invitationMessage !== initial.invitationMessage) {
       payload.invitationMessage = invitationMessage || null;
+    }
+    if (invitationLocale !== initial.invitationLocale) {
+      // Non-nullable on the server — never send null here.
+      payload.invitationLocale = invitationLocale;
     }
 
     setBusy(true);
@@ -558,6 +568,24 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
         </div>
       </WizardSubStep>
 
+      {/* 5. Invitation locale */}
+      <WizardSubStep
+        number={5}
+        title={t("companyInfo.invitationLocaleLabel", {
+          defaultMessage: "Idioma de las invitaciones",
+        })}
+        subtitle={t("companyInfo.invitationLocaleHelp", {
+          defaultMessage:
+            "El primer correo a tus colaboradores se envía en este idioma. Cuando activen su cuenta, ellos pueden elegir su propio idioma para los correos siguientes.",
+        })}
+      >
+        <BrandingInvitationLocalePicker
+          value={invitationLocale}
+          onChange={setInvitationLocale}
+          isMobile={isMobile}
+        />
+      </WizardSubStep>
+
       {/* Save / Discard footer */}
       <div
         style={{
@@ -623,6 +651,73 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
           {busy ? tPool("branding.saving") : tPool("branding.saveChanges")}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Invitation locale picker ────────────────────────────────
+
+const LOCALE_OPTIONS: Array<{
+  value: "es" | "en" | "pt";
+  label: string;
+  flag: string;
+}> = [
+  { value: "es", label: "Español", flag: "🇪🇸" },
+  { value: "en", label: "English", flag: "🇬🇧" },
+  { value: "pt", label: "Português", flag: "🇧🇷" },
+];
+
+function BrandingInvitationLocalePicker({
+  value,
+  onChange,
+  isMobile,
+}: {
+  value: "es" | "en" | "pt";
+  onChange: (next: "es" | "en" | "pt") => void;
+  isMobile: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: spacing.sm,
+        flexWrap: "wrap",
+        flexDirection: isMobile ? "column" : "row",
+      }}
+    >
+      {LOCALE_OPTIONS.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            style={{
+              flex: isMobile ? "1 1 auto" : "1 1 0",
+              padding: `${spacing.md}px ${spacing.lg}px`,
+              borderRadius: radii.lg,
+              border: active
+                ? `2px solid ${colors.brand}`
+                : `1px solid ${colors.borderMedium}`,
+              background: active ? colors.brandBg : colors.white,
+              color: active ? colors.brand : colors.textDark,
+              fontWeight: active ? fontWeight.semibold : fontWeight.medium,
+              fontSize: fontSize.base,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: spacing.sm,
+              minHeight: 48,
+              transition: "background 0.15s, border-color 0.15s",
+            }}
+            aria-pressed={active}
+          >
+            <span style={{ fontSize: "1.2em" }}>{opt.flag}</span>
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

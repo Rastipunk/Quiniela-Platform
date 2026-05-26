@@ -154,6 +154,10 @@ const updateBrandingSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #4F46E5)")
     .nullable()
     .optional(),
+  // Non-nullable: the column has NOT NULL DEFAULT 'es' in the DB, so
+  // there's no "clear" semantics — the field always carries one of
+  // the three enum values. See CORPORATE_LOCALE_AUDIT.md §3.6.
+  invitationLocale: z.enum(["es", "en", "pt"]).optional(),
 });
 
 // ─── Routes ──────────────────────────────────────────────────

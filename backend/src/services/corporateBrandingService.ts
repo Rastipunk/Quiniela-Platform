@@ -35,6 +35,10 @@ export type UpdateBrandingInput = {
     secondaryColor?: string | null;
     welcomeMessage?: string | null;
     invitationMessage?: string | null;
+    // Non-nullable: the DB column is NOT NULL with DEFAULT 'es', so
+    // no "clear" semantic. Zod at the route guarantees only the enum
+    // values reach us. See CORPORATE_LOCALE_AUDIT.md §3.6.
+    invitationLocale?: "es" | "en" | "pt";
   };
 };
 
@@ -44,6 +48,7 @@ export type BrandingFields = {
   secondaryColor: string | null;
   welcomeMessage: string | null;
   invitationMessage: string | null;
+  invitationLocale: "es" | "en" | "pt";
 };
 
 export type UpdateBrandingResult = {
@@ -60,6 +65,7 @@ const BRANDING_FIELD_KEYS = [
   "secondaryColor",
   "welcomeMessage",
   "invitationMessage",
+  "invitationLocale",
 ] as const;
 type BrandingFieldKey = (typeof BRANDING_FIELD_KEYS)[number];
 
@@ -125,6 +131,7 @@ export async function updateBranding(
         secondaryColor: true,
         welcomeMessage: true,
         invitationMessage: true,
+        invitationLocale: true,
       },
     });
 
@@ -170,6 +177,7 @@ export async function updateBranding(
         secondaryColor: true,
         welcomeMessage: true,
         invitationMessage: true,
+        invitationLocale: true,
       },
     });
 
