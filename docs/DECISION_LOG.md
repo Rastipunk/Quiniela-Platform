@@ -4620,4 +4620,55 @@ See `SALES_AUDIT.md` for the full per-decision log (§11.1–§11.23) and `SALES
 
 ---
 
+## ADR-062: Corporate invitation locale
+
+**Date:** 2026-05-26 | **Status:** Accepted
+
+**Context:** Caterine Ochoa (Native Intelligence SAS) reported on 2026-05-26 that her English-speaking employees received corporate-activation emails with Spanish copy hardcoded ("Hey! Tu equipo en Native Intelligence SAS ya está armando su quiniela…"). The `getCorporateActivationTemplate` helper had ES/EN/PT branches (emailTemplates.ts:1006-1050) but `corporateService.sendInvitations` never passed `locale` to `sendCorporateActivationEmail`, so every employee got the Spanish branch via the `DEFAULT_LOCALE` fallback at email.ts:929.
+
+The Organization model had no field to carry the host's preference, and neither the wizard nor the post-creation branding panel offered a way to pick one.
+
+Full per-decision rationale in `CORPORATE_LOCALE_AUDIT.md` §3 (granularity, scope, naming, UI, backfill, validation, audit, no-retroactive-resend).
+
+**Decision:** A single new column `Organization.invitationLocale` (TEXT NOT NULL DEFAULT 'es') that controls the language of the first email each employee receives. After activation, `LocalePreferenceModal` (which already exists and runs on every authenticated layout mount via `LocalePreferenceGate`) blocks the dashboard until the user picks their personal locale; from that point, `User.locale` governs every downstream email and `invitationLocale` stops mattering for them.
+
+**Scope is deliberately narrow:**
+
+- `invitationLocale` governs ONLY `sendCorporateActivationEmail`. Other corporate emails to employees (`sendCorporateCheckinEmail`, deadline reminders, results, etc.) read `User.locale` once it exists.
+- `sendCorporateInquiryConfirmationEmail` (to the prospect, before any org exists) already reads locale from the inquiry payload — untouched by this work.
+- Standard (non-corporate) pools are unaffected; the field does not exist on personal pools.
+
+**Lifecycle invariants:**
+
+1. **Last-writer-wins at send time.** `sendInvitations`, `resendInvitation`, and `bulkResendExpired` all re-read the current `org.invitationLocale` at send time. If the host updates the field between original upload and an actual send, the new value ships. This means a stuck PENDING invite that the host re-sends after switching ES → EN will arrive in English even though the original (never-shipped) version was queued in Spanish.
+2. **No retroactive resend.** Changing the field does NOT re-trigger emails that already left. PENDING invites whose emails already shipped before the change keep the old language in the recipient's inbox; the host must explicitly use the resend action to re-ship in the new language.
+3. **Soft handoff to `User.locale`.** `LocalePreferenceModal` is the contractually-enforced handoff point. The window between activation and modal completion is sub-minute (modal is blocking), and no scheduled email targets users whose `localePromptCompletedAt` is NULL — so the "wrong locale" window is bounded to the single activation email.
+4. **Audit on change.** Every PATCH on the branding endpoint that modifies `invitationLocale` writes an `OrganizationBrandingAudit` row with `fieldsChanged: ["invitationLocale"]`, `beforeJson: { invitationLocale: "es" }`, `afterJson: { invitationLocale: "en" }`. Reused the existing branding audit table — no new audit type or schema.
+5. **Validation at boundaries.** Both the create-pool POST and the branding PATCH use `z.enum(["es", "en", "pt"])` at the route layer. The dropdown emits only those three values so anything else is a tampered request → 400.
+
+**Migration:**
+
+`backend/prisma/migrations/20260526_add_organization_invitation_locale/migration.sql` — single additive `ALTER TABLE` with `DEFAULT 'es'`. Zero data loss, zero behavioural change for existing pools (they keep sending Spanish exactly as today until the host opens the branding panel and picks otherwise).
+
+**Consequences:**
+
+- ✅ Unblocks Caterine's case and every future non-Spanish-speaking corporate client. The English template that has been silently sitting in the codebase finally reaches an inbox.
+- ✅ Host-mediated: the platform doesn't auto-detect employee language (which would be a guess based on TLDs, names, or IP). The host knows their team better than any heuristic and now has the explicit knob.
+- ✅ No drift: the `OrganizationBrandingAudit` trail records every change with `{ from, to }`. If a host claims "I never set it to Spanish", the row proves otherwise.
+- ⚠️ Mixed-language teams (e.g. 5 EN + 3 ES) get one default; each employee right-sizes their own language via the post-activation modal. Worst case: one wrong-language email per employee.
+- ⚠️ A host that changes the field after an upload but before the actual send job runs may get a different language than they expected at upload time. Documented as last-writer-wins; revisit if real users complain.
+- ⚠️ Per-invitation override (CSV column) is out of scope for v1 and deliberately so — adds two columns of UX surface area for a use case that hasn't been requested yet.
+
+**Related code:**
+
+- Backend schema: `backend/prisma/schema.prisma` (Organization model) + `backend/prisma/migrations/20260526_add_organization_invitation_locale/migration.sql`.
+- Backend routes + services: `backend/src/routes/corporate.ts` (create-pool + branding-patch Zod schemas), `backend/src/services/corporateService.ts` (`createCorporatePool` persists the field; `sendInvitations`, `resendInvitation`, `bulkResendExpired` all read + forward to email), `backend/src/services/corporateBrandingService.ts` (diff + audit), `backend/src/services/poolOverviewService.ts` (selects + surfaces the field).
+- Email plumbing (pre-existing, untouched): `backend/src/lib/email.ts` (`sendCorporateActivationEmail`), `backend/src/lib/emailTemplates.ts` (`getCorporateActivationTemplate` ES/EN/PT blocks).
+- Locale handoff (pre-existing, verified in audit §2.5): `frontend-next/src/components/LocalePreferenceModal.tsx`, `frontend-next/src/components/LocalePreferenceGate.tsx`, `POST /users/me/locale-preference`.
+- Frontend wizard: `frontend-next/src/types/poolWizard.ts`, `frontend-next/src/components/pool-wizard/PoolWizardContext.tsx`, `frontend-next/src/components/pool-wizard/steps/corporate/StepCompanyInfo.tsx`, `frontend-next/src/components/pool-wizard/PoolCreationWizard.tsx`, `frontend-next/src/lib/api/corporate.ts`.
+- Frontend branding panel: `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolBrandingTab.tsx`, `frontend-next/src/lib/poolTypes.ts`.
+- Specs: `CORPORATE_LOCALE_AUDIT.md`, `CORPORATE_LOCALE_IMPLEMENTATION.md`.
+
+---
+
 **END OF DOCUMENT**

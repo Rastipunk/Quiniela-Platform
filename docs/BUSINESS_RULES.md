@@ -1048,3 +1048,53 @@ edit yesterday's documents.
 `DELETE FROM Quote` and `DELETE FROM AccountReceivable` are forbidden.
 Cancellation sets `status = 'CANCELLED'`. The consecutive number is
 preserved so audit gaps (missing numbers in the series) never appear.
+
+---
+
+## 15. Corporate invitation locale
+
+Full rationale in `ADR-062` (DECISION_LOG.md); execution log in
+`CORPORATE_LOCALE_IMPLEMENTATION.md`; locked decisions in
+`CORPORATE_LOCALE_AUDIT.md` §3.
+
+### 15.1 Scope
+
+`Organization.invitationLocale` (TEXT NOT NULL DEFAULT `'es'`)
+governs **only** the first email each employee receives — the
+corporate activation email triggered by `sendCorporateActivationEmail`.
+After the employee activates the account, the existing
+`LocalePreferenceModal` blocks the dashboard until they pick a
+personal locale; from that point onward, `User.locale` is the
+authoritative source for every downstream email (deadline reminders,
+results, etc.) and `invitationLocale` no longer applies to that user.
+
+### 15.2 Lifecycle
+
+| Trigger | invitationLocale read at | Effect |
+|---|---|---|
+| Pool created via wizard | Insert time (from form payload) | Persisted on the new `Organization` row. Default `"es"` if the wizard omits it. |
+| Host edits via `PoolBrandingTab` | Patch time | `OrganizationBrandingAudit` row written with `{ from, to }`. No-op detection: setting the same value writes nothing. |
+| `sendInvitations` runs | Send time | Reads `org.invitationLocale` and passes it to `sendCorporateActivationEmail`. Last-writer-wins — see §15.3. |
+| `resendInvitation` or `bulkResendExpired` runs | Send time | Same as above. A resend after a value change ships in the NEW language. |
+| Employee activates + completes `LocalePreferenceModal` | First login | `User.locale` set. All downstream emails to that user now read `User.locale`, NOT `Organization.invitationLocale`. |
+
+### 15.3 Last-writer-wins
+
+The org's `invitationLocale` is read at send time, not at upload time.
+A host who uploads a CSV when the value is `"es"` and changes it to
+`"en"` before any email actually leaves will see the queued
+invitations ship in English. Locked semantic per
+`CORPORATE_LOCALE_AUDIT.md` §3.8.
+
+### 15.4 No retroactive resend
+
+Changing `invitationLocale` does NOT re-send invitations that already
+shipped. PENDING invites whose emails already left keep the old
+language in the recipient's inbox; the host must explicitly use the
+resend action to re-ship in the new language.
+
+### 15.5 Restricted to corporate pools
+
+Standard (non-corporate) pools have no `Organization`, so
+`invitationLocale` does not exist for them. The branding panel only
+surfaces the picker when the pool is corporate.
