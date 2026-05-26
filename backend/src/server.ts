@@ -84,7 +84,16 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Public invite preview (no auth required)
+// Public invite preview (no auth required).
+//
+// Two fixes applied per CORPORATE_INVITES_IMPLEMENTATION.md commit 1:
+//   1. `members.where` includes CORPORATE_HOST — pre-fix it only
+//      matched HOST, so corporate pools always returned hostName=null
+//      and the landing page read "te invita alguien".
+//   2. Response now carries the pool's Organization (logo, colors,
+//      welcomeMessage) when set, so the public landing page can
+//      render the company's branding instead of the default
+//      Picks4All gradient. Personal pools get `organization: null`.
 app.get("/invite-preview/:code", async (req, res) => {
   try {
     const invite = await prisma.poolInvite.findUnique({
@@ -106,10 +115,19 @@ app.get("/invite-preview/:code", async (req, res) => {
               select: { members: { where: { status: "ACTIVE" } } },
             },
             members: {
-              where: { role: "HOST" },
+              where: { role: { in: ["HOST", "CORPORATE_HOST"] } },
               take: 1,
               select: {
                 user: { select: { displayName: true } },
+              },
+            },
+            organization: {
+              select: {
+                name: true,
+                logoBase64: true,
+                primaryColor: true,
+                secondaryColor: true,
+                welcomeMessage: true,
               },
             },
           },
@@ -131,6 +149,15 @@ app.get("/invite-preview/:code", async (req, res) => {
       memberCount: invite.pool._count.members,
       status: invite.pool.status,
       valid: !expired && !maxUsesReached && invite.pool.status !== "ARCHIVED",
+      organization: invite.pool.organization
+        ? {
+            name: invite.pool.organization.name,
+            logoBase64: invite.pool.organization.logoBase64 ?? null,
+            primaryColor: invite.pool.organization.primaryColor ?? null,
+            secondaryColor: invite.pool.organization.secondaryColor ?? null,
+            welcomeMessage: invite.pool.organization.welcomeMessage ?? null,
+          }
+        : null,
     });
   } catch {
     return sendInternal(res, "INTERNAL_ERROR");
