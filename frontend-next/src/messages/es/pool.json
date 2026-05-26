@@ -904,6 +904,8 @@
   "inviteLanding": {
     "title": "{host} te ha invitado a una quiniela",
     "someone": "Alguien",
+    "companyInvite": "{company} te invita a participar",
+    "poweredBy": "Vía Picks4All",
     "members": "{count} participantes",
     "active": "Activa",
     "joinNow": "Unirme ahora",

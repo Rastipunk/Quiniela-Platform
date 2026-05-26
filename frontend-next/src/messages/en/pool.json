@@ -904,6 +904,8 @@
   "inviteLanding": {
     "title": "{host} invited you to a prediction pool",
     "someone": "Someone",
+    "companyInvite": "{company} invites you to join",
+    "poweredBy": "Powered by Picks4All",
     "members": "{count} participants",
     "active": "Active",
     "joinNow": "Join now",

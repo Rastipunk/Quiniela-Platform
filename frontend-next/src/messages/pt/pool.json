@@ -904,6 +904,8 @@
   "inviteLanding": {
     "title": "{host} te convidou para um bolão",
     "someone": "Alguém",
+    "companyInvite": "{company} te convida para participar",
+    "poweredBy": "Via Picks4All",
     "members": "{count} participantes",
     "active": "Ativo",
     "joinNow": "Entrar agora",
