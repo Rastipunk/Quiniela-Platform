@@ -328,6 +328,8 @@
     "invitationHelp": "This is the message your team will receive in the invitation email when you invite them to join.",
     "invitationPlaceholder": "This message will be included in the employee invitation email.",
     "invitationPreviewLabel": "Preview: invitation email",
+    "invitationLocaleLabel": "Invitation language",
+    "invitationLocaleHelp": "The first email to your team will be sent in this language. Once they activate their account, they can pick their own language for subsequent emails.",
     "previewEmailSubject": "challenges you to play",
     "previewEmailGreeting": "Hey Maria!",
     "previewEmailBody": "Your crew at {company} is setting up a sports pool and they need you in.",

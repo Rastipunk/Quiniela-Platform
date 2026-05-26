@@ -328,6 +328,8 @@
     "invitationHelp": "Este es el mensaje que recibirán tus colaboradores en su correo cuando los invites a unirse.",
     "invitationPlaceholder": "Este mensaje se incluirá en el email de invitación a los empleados.",
     "invitationPreviewLabel": "Vista previa: email de invitación",
+    "invitationLocaleLabel": "Idioma de las invitaciones",
+    "invitationLocaleHelp": "El primer correo a tus colaboradores se envía en este idioma. Cuando activen su cuenta, ellos pueden elegir su propio idioma para los correos siguientes.",
     "previewEmailSubject": "te reta a jugar",
     "previewEmailGreeting": "¡Hey María!",
     "previewEmailBody": "Tu equipo en {company} ya está armando su quiniela y necesitan que te sumes.",

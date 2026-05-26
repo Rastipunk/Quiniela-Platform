@@ -466,14 +466,18 @@ export function StepCompanyInfo() {
 
 // ─── Invitation locale picker ────────────────────────────────
 
+// Plain text labels — emoji flags render as letter codes (ES / GB / BR)
+// on Windows because Microsoft never shipped Regional Indicator glyphs.
+// Use the native language name + a small short-code pill on the side so
+// the option is recognisable in every locale without OS-dependent fonts.
 const LOCALE_OPTIONS: Array<{
   value: "es" | "en" | "pt";
   label: string;
-  flag: string;
+  code: string;
 }> = [
-  { value: "es", label: "Español", flag: "🇪🇸" },
-  { value: "en", label: "English", flag: "🇬🇧" },
-  { value: "pt", label: "Português", flag: "🇧🇷" },
+  { value: "es", label: "Español", code: "ES" },
+  { value: "en", label: "English", code: "EN" },
+  { value: "pt", label: "Português", code: "PT" },
 ];
 
 function InvitationLocalePicker({
@@ -522,7 +526,19 @@ function InvitationLocalePicker({
             }}
             aria-pressed={active}
           >
-            <span style={{ fontSize: "1.2em" }}>{opt.flag}</span>
+            <span
+              style={{
+                fontSize: "0.7em",
+                padding: "2px 8px",
+                borderRadius: radii.md,
+                background: active ? colors.brand : colors.bgLighter,
+                color: active ? colors.white : colors.textMuted,
+                fontWeight: fontWeight.bold,
+                letterSpacing: "0.05em",
+              }}
+            >
+              {opt.code}
+            </span>
             {opt.label}
           </button>
         );

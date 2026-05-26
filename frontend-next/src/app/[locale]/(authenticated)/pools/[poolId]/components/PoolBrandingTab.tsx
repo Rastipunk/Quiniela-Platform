@@ -657,14 +657,17 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
 
 // ─── Invitation locale picker ────────────────────────────────
 
+// Plain text labels — emoji flags render as letter codes on Windows
+// (no Regional Indicator glyph in Segoe UI Emoji). Use a small
+// short-code pill instead so the option is recognisable everywhere.
 const LOCALE_OPTIONS: Array<{
   value: "es" | "en" | "pt";
   label: string;
-  flag: string;
+  code: string;
 }> = [
-  { value: "es", label: "Español", flag: "🇪🇸" },
-  { value: "en", label: "English", flag: "🇬🇧" },
-  { value: "pt", label: "Português", flag: "🇧🇷" },
+  { value: "es", label: "Español", code: "ES" },
+  { value: "en", label: "English", code: "EN" },
+  { value: "pt", label: "Português", code: "PT" },
 ];
 
 function BrandingInvitationLocalePicker({
@@ -713,7 +716,19 @@ function BrandingInvitationLocalePicker({
             }}
             aria-pressed={active}
           >
-            <span style={{ fontSize: "1.2em" }}>{opt.flag}</span>
+            <span
+              style={{
+                fontSize: "0.7em",
+                padding: "2px 8px",
+                borderRadius: radii.md,
+                background: active ? colors.brand : colors.bgLighter,
+                color: active ? colors.white : colors.textMuted,
+                fontWeight: fontWeight.bold,
+                letterSpacing: "0.05em",
+              }}
+            >
+              {opt.code}
+            </span>
             {opt.label}
           </button>
         );
