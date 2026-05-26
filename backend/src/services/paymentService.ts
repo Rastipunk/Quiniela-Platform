@@ -45,6 +45,97 @@ import {
   type ClientEventType,
 } from "../lib/paymentEvents";
 
+// ── Account-Receivable (CC) redemption helpers ────────────────
+//
+// When the customer pays via a CC redemption code, the checkout
+// pipeline validates the CC snapshot against live pricing.ts and
+// atomically flips the CC from PENDING → REDEEMED inside the same
+// transaction that creates the PoolPayment. See SALES_AUDIT.md §9.7
+// + §11.7 for the locked semantics.
+//
+// validateAccountReceivableForCheckout is the pre-INSERT read-only
+// guard. It throws ServiceError on any mismatch so the caller can
+// surface a 4xx without writing partial state.
+
+interface CcSnapshot {
+  id: string;
+  status: "PENDING" | "REDEEMED" | "PAID" | "EXPIRED" | "CANCELLED";
+  targetCapacity: number;
+  currency: string;
+  amountCop: number | null;
+  amountUsdCents: number | null;
+  validUntil: Date;
+}
+
+async function validateAccountReceivableForCheckout(params: {
+  accountReceivableId: string;
+  targetCapacity: number;
+  expectedCurrency: "COP" | "USD";
+  computedAmountCop: number | null;
+  computedAmountUsdCents: number | null;
+}): Promise<CcSnapshot> {
+  const cc = await prisma.accountReceivable.findUnique({
+    where: { id: params.accountReceivableId },
+    select: {
+      id: true, status: true, targetCapacity: true, currency: true,
+      amountCop: true, amountUsdCents: true, validUntil: true,
+    },
+  });
+  if (!cc) throw new ServiceError("NOT_FOUND", 404, { message: "Account receivable not found" });
+
+  if (cc.status !== "PENDING") {
+    throw new ServiceError("CONFLICT", 409, {
+      message: `Account receivable is not redeemable (status=${cc.status})`,
+      ccStatus: cc.status,
+    });
+  }
+  if (cc.validUntil.getTime() < Date.now()) {
+    throw new ServiceError("CONFLICT", 409, { message: "Account receivable expired" });
+  }
+  if (cc.targetCapacity !== params.targetCapacity) {
+    throw new ServiceError("CONFLICT", 409, {
+      message: "CC capacity does not match the requested target",
+      ccTargetCapacity: cc.targetCapacity,
+      requested: params.targetCapacity,
+    });
+  }
+  if (cc.currency !== params.expectedCurrency) {
+    throw new ServiceError("CONFLICT", 409, {
+      message: "CC currency does not match the checkout currency",
+      ccCurrency: cc.currency,
+      requested: params.expectedCurrency,
+    });
+  }
+  // Pricing-drift safeguard (§11.7). If pricing.ts changed between
+  // issuance and redemption, the customer's CC is stale and we must
+  // block — admin re-issues with the current price.
+  if (cc.currency === "COP" && cc.amountCop !== params.computedAmountCop) {
+    fireAndForget("admin:cc-drift", sendAdminNotification({
+      subject: `[Sales] CC pricing drift — ${cc.id}`,
+      body: `<p>CC ${cc.id} snapshot amountCop=${cc.amountCop} but pricing.ts now computes ${params.computedAmountCop}. Customer redemption blocked.</p>`,
+      category: "cc_pricing_drift",
+    }));
+    throw new ServiceError("CONFLICT", 409, {
+      message: "CC amount outdated, contact sales for an updated document",
+      expectedAmountCop: params.computedAmountCop,
+      ccSnapshotAmountCop: cc.amountCop,
+    });
+  }
+  if (cc.currency === "USD" && cc.amountUsdCents !== params.computedAmountUsdCents) {
+    fireAndForget("admin:cc-drift", sendAdminNotification({
+      subject: `[Sales] CC pricing drift — ${cc.id}`,
+      body: `<p>CC ${cc.id} snapshot amountUsdCents=${cc.amountUsdCents} but pricing.ts now computes ${params.computedAmountUsdCents}. Customer redemption blocked.</p>`,
+      category: "cc_pricing_drift",
+    }));
+    throw new ServiceError("CONFLICT", 409, {
+      message: "CC amount outdated, contact sales for an updated document",
+      expectedAmountUsdCents: params.computedAmountUsdCents,
+      ccSnapshotAmountUsdCents: cc.amountUsdCents,
+    });
+  }
+  return cc;
+}
+
 // ── Helpers ────────────────────────────────────────────────────
 
 /**
@@ -100,6 +191,14 @@ export interface InitiateCheckoutInput {
   metaFbc?: string;
   clientIpAddress?: string;
   clientUserAgent?: string;
+  /** Optional: when the customer is redeeming a CC, this is the
+   *  AccountReceivable.id resolved server-side from
+   *  /sales/account-receivables/redeem. The service validates the CC
+   *  is PENDING + not expired + targetCapacity matches + pricing
+   *  snapshot matches `pricing.ts` output, then atomically flips it
+   *  to REDEEMED inside the same transaction as the PoolPayment
+   *  INSERT. See SALES_AUDIT.md §9.7. Any mismatch → 409. */
+  accountReceivableId?: string;
 }
 
 export interface InitiateCheckoutResult {
@@ -230,6 +329,18 @@ export async function initiateCheckout(
   });
   if (!user) throw new ServiceError("NOT_FOUND", 404);
 
+  // 5b. If the customer is redeeming a CC, validate snapshot vs live
+  // pricing BEFORE the INITIATED INSERT. Throws on any mismatch.
+  if (input.accountReceivableId) {
+    await validateAccountReceivableForCheckout({
+      accountReceivableId: input.accountReceivableId,
+      targetCapacity,
+      expectedCurrency: "USD",
+      computedAmountCop: null,
+      computedAmountUsdCents: amountCents,
+    });
+  }
+
   // 6. INSERT the PoolPayment in INITIATED state BEFORE calling Polar
   // (F-4). This is the keystone of the audit trail: if Polar's API
   // rejects the create, network drops, or any failure happens before
@@ -237,25 +348,61 @@ export async function initiateCheckout(
   // INSERT happened AFTER the Polar call so a gateway-side failure
   // vanished entirely — exactly the case Abril's "no me anda la
   // página" report fell into.
-  const payment = await prisma.poolPayment.create({
-    data: {
-      poolId,
-      userId,
-      polarCheckoutId: null, // populated post-Polar-success below
-      status: "INITIATED",
-      amountUsd: amountCents,
-      currency: "usd",
-      fromCapacity: currentCapacity,
-      toCapacity: targetCapacity,
-      poolType,
-      // Persist Meta Advanced Matching signals so the async order.paid
-      // webhook can emit a CAPI Purchase with full EMQ quality.
-      metaFbp: input.metaFbp,
-      metaFbc: input.metaFbc,
-      clientIpAddress: input.clientIpAddress,
-      clientUserAgent: input.clientUserAgent,
-    },
-  });
+  //
+  // When a CC is being redeemed, the INSERT happens inside a
+  // transaction that ALSO atomically flips the CC from PENDING →
+  // REDEEMED. If two clients race the same code, only one wins
+  // (updateMany count===0 on the loser → CONFLICT). See §9.7.
+  const payment = input.accountReceivableId
+    ? await prisma.$transaction(async (tx) => {
+        const lock = await tx.accountReceivable.updateMany({
+          where: { id: input.accountReceivableId, status: "PENDING" },
+          data: { status: "REDEEMED", redeemedByUserId: userId, redeemedAtUtc: new Date() },
+        });
+        if (lock.count === 0) {
+          throw new ServiceError("CONFLICT", 409, { message: "CC already redeemed (raced)" });
+        }
+        const p = await tx.poolPayment.create({
+          data: {
+            poolId,
+            userId,
+            polarCheckoutId: null,
+            status: "INITIATED",
+            amountUsd: amountCents,
+            currency: "usd",
+            fromCapacity: currentCapacity,
+            toCapacity: targetCapacity,
+            poolType,
+            metaFbp: input.metaFbp,
+            metaFbc: input.metaFbc,
+            clientIpAddress: input.clientIpAddress,
+            clientUserAgent: input.clientUserAgent,
+            accountReceivableId: input.accountReceivableId,
+          },
+        });
+        await tx.accountReceivable.update({
+          where: { id: input.accountReceivableId! },
+          data: { poolPaymentId: p.id },
+        });
+        return p;
+      })
+    : await prisma.poolPayment.create({
+        data: {
+          poolId,
+          userId,
+          polarCheckoutId: null,
+          status: "INITIATED",
+          amountUsd: amountCents,
+          currency: "usd",
+          fromCapacity: currentCapacity,
+          toCapacity: targetCapacity,
+          poolType,
+          metaFbp: input.metaFbp,
+          metaFbc: input.metaFbc,
+          clientIpAddress: input.clientIpAddress,
+          clientUserAgent: input.clientUserAgent,
+        },
+      });
 
   // 7. Build success/cancel URLs. cancelUrl carries `paymentId` so that
   // /pago/cancelado can fire a USER_CANCELLED beacon back to the
@@ -503,6 +650,15 @@ export async function handleOrderPaid(
           capacityWarningNotifiedAt: null,
         },
       });
+      // CC redemption: flip the linked CC to PAID atomically. The
+      // `payment.accountReceivableId` was set when the customer
+      // redeemed in initiateCheckout (commit 6 §9.7).
+      if (payment.accountReceivableId) {
+        await tx.accountReceivable.update({
+          where: { id: payment.accountReceivableId },
+          data: { status: "PAID", paidAtUtc: paidAt },
+        });
+      }
     });
   } catch (err: any) {
     if (err?.code === "P2002") {
@@ -1517,29 +1673,79 @@ export async function initiateMpCheckout(
   const backendUrl = process.env.BACKEND_URL || "https://api.picks4all.com";
   const localePath = input.locale && input.locale !== "es" ? `/${input.locale}` : "";
 
+  // 1a. Validate CC snapshot (when redeeming). Symmetric with Polar
+  // path. See SALES_AUDIT.md §11.7 and §9.7.
+  if (input.accountReceivableId) {
+    await validateAccountReceivableForCheckout({
+      accountReceivableId: input.accountReceivableId,
+      targetCapacity,
+      expectedCurrency: "COP",
+      computedAmountCop: amountCop,
+      computedAmountUsdCents: null,
+    });
+  }
+
   // 1. INSERT the PoolPayment row in INITIATED state BEFORE calling MP
   // (F-4 symmetric with Polar). If MP rejects the preference create, the
   // row stays around long enough for the FAILED transition below to
   // record the cause — instead of vanishing into "we never tried".
-  const payment = await prisma.poolPayment.create({
-    data: {
-      poolId,
-      userId,
-      polarCheckoutId: reference, // our reference is stable from the start; MP only adds the preferenceId after its create call
-      mpPreferenceId: null,        // populated after MP accepts
-      status: "INITIATED",
-      amountUsd: usdToCents(amountUsd),
-      amountCop,
-      currency: "cop",
-      fromCapacity: currentCapacity,
-      toCapacity: targetCapacity,
-      poolType,
-      metaFbp: input.metaFbp,
-      metaFbc: input.metaFbc,
-      clientIpAddress: input.clientIpAddress,
-      clientUserAgent: input.clientUserAgent,
-    },
-  });
+  //
+  // CC redemption: wraps the INSERT in a transaction that atomically
+  // flips the CC PENDING → REDEEMED. Race-safe.
+  const payment = input.accountReceivableId
+    ? await prisma.$transaction(async (tx) => {
+        const lock = await tx.accountReceivable.updateMany({
+          where: { id: input.accountReceivableId, status: "PENDING" },
+          data: { status: "REDEEMED", redeemedByUserId: userId, redeemedAtUtc: new Date() },
+        });
+        if (lock.count === 0) {
+          throw new ServiceError("CONFLICT", 409, { message: "CC already redeemed (raced)" });
+        }
+        const p = await tx.poolPayment.create({
+          data: {
+            poolId,
+            userId,
+            polarCheckoutId: reference,
+            mpPreferenceId: null,
+            status: "INITIATED",
+            amountUsd: usdToCents(amountUsd),
+            amountCop,
+            currency: "cop",
+            fromCapacity: currentCapacity,
+            toCapacity: targetCapacity,
+            poolType,
+            metaFbp: input.metaFbp,
+            metaFbc: input.metaFbc,
+            clientIpAddress: input.clientIpAddress,
+            clientUserAgent: input.clientUserAgent,
+            accountReceivableId: input.accountReceivableId,
+          },
+        });
+        await tx.accountReceivable.update({
+          where: { id: input.accountReceivableId! },
+          data: { poolPaymentId: p.id },
+        });
+        return p;
+      })
+    : await prisma.poolPayment.create({
+        data: {
+          poolId,
+          userId,
+          polarCheckoutId: reference,
+          mpPreferenceId: null,
+          status: "INITIATED",
+          amountUsd: usdToCents(amountUsd),
+          amountCop,
+          currency: "cop",
+          fromCapacity: currentCapacity,
+          toCapacity: targetCapacity,
+          poolType,
+          metaFbp: input.metaFbp,
+          metaFbc: input.metaFbc,
+          clientIpAddress: input.clientIpAddress,
+          clientUserAgent: input.clientUserAgent,
+        },
+      });
 
   // 2. Create MP preference. Failure path mirrors the Polar handler:
   // transition to FAILED with an audit event, then re-throw.
@@ -1717,6 +1923,13 @@ export async function processMpPayment(
         capacityWarningNotifiedAt: null,
       },
       });
+      // CC redemption: PENDING/REDEEMED → PAID (sales/§9.7).
+      if (payment.accountReceivableId) {
+        await tx.accountReceivable.update({
+          where: { id: payment.accountReceivableId },
+          data: { status: "PAID", paidAtUtc: new Date() },
+        });
+      }
     });
 
     console.log(`[PaymentService] MP: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
@@ -1922,6 +2135,13 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
             capacityWarningNotifiedAt: null,
           },
         });
+        // CC redemption: linked CC also moves to PAID atomically.
+        if (payment.accountReceivableId) {
+          await tx.accountReceivable.update({
+            where: { id: payment.accountReceivableId },
+            data: { status: "PAID", paidAtUtc: new Date() },
+          });
+        }
       });
     } catch (err: any) {
       if (err?.code === "P2002") {

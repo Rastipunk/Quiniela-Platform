@@ -1002,6 +1002,7 @@ export type AdminCategory =
   | "corporate_pool_created"     // A corporate pool was created via the wizard
   | "payment_completed"          // A payment was confirmed (Polar / MP)
   | "payment_reconciler_rescued" // Reconciler found a discrepancy needing human review (F-14)
+  | "cc_pricing_drift"           // CC snapshot disagrees with live pricing.ts (SALES_AUDIT.md §11.7)
   | "system_event"               // Successful system event (phase advanced, sync OK)
   | "error";                     // Real technical error (job failed, sync rejected)
 
@@ -1025,6 +1026,7 @@ const CATEGORY_ROUTING: Record<AdminCategory, CategoryRoute> = {
   corporate_pool_created: { inboxes: ["enterprise"],         emoji: "🏢", label: "Pool corporativa creada" },
   payment_completed:      { inboxes: ["sales", "admin"],     emoji: "💰", label: "Pago confirmado" },
   payment_reconciler_rescued: { inboxes: ["admin"],          emoji: "🛟", label: "Reconciler: revisión manual" },
+  cc_pricing_drift:       { inboxes: ["sales", "admin"],     emoji: "⚠️", label: "CC: drift de precio" },
   system_event:           { inboxes: ["admin"],              emoji: "ℹ️", label: "Evento del sistema" },
   error:                  { inboxes: ["admin"],              emoji: "🚨", label: "Error" },
 };
