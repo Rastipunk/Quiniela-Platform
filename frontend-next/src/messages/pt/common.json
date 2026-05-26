@@ -523,5 +523,26 @@
     "message": "Ocorreu um erro inesperado. Por favor, tente novamente.",
     "retry": "Tentar novamente",
     "goHome": "Ir para o início"
+  },
+  "accountReceivableRedemption": {
+    "cta": "Tem uma conta de cobrança?",
+    "applyCta": "Aplicar código",
+    "inputLabel": "Código da conta de cobrança",
+    "apply": "Aplicar",
+    "applying": "Aplicando…",
+    "cancel": "Cancelar",
+    "remove": "Remover",
+    "successTitle": "Conta de cobrança aplicada",
+    "slots": "vagas",
+    "forAmount": "por",
+    "findCodeHint": "O código de 8 dígitos aparece na seção «Forma de pagamento» do PDF que você recebeu.",
+    "errorFormat": "O código deve ter 8 dígitos.",
+    "errorAuth": "Faça login para aplicar o código.",
+    "errorNotFound": "Não encontramos esta conta de cobrança.",
+    "errorAlreadyPaid": "Esta conta de cobrança já foi paga.",
+    "errorAlreadyRedeemed": "Esta conta de cobrança já está em uso.",
+    "errorCancelled": "Esta conta de cobrança foi cancelada.",
+    "errorExpired": "Esta conta de cobrança expirou. Contate vendas.",
+    "errorGeneric": "Não conseguimos aplicar o código. Tente novamente."
   }
 }

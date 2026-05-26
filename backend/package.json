@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc && node -e \"require('fs').cpSync('src/assets','dist/assets',{recursive:true})\"",
     "start": "npx prisma migrate resolve --rolled-back 20260131120000_seed_legal_documents || true && prisma migrate deploy && node dist/server.js",
     "seed:admin": "ts-node-dev --transpile-only src/scripts/seedAdmin.ts",
     "seed:test-accounts": "ts-node-dev --transpile-only src/scripts/seedTestAccounts.ts",

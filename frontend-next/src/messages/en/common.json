@@ -523,5 +523,26 @@
     "message": "An unexpected error occurred. Please try again.",
     "retry": "Try again",
     "goHome": "Go to home"
+  },
+  "accountReceivableRedemption": {
+    "cta": "Have an account receivable?",
+    "applyCta": "Apply code",
+    "inputLabel": "Account receivable code",
+    "apply": "Apply",
+    "applying": "Applying…",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "successTitle": "Account receivable applied",
+    "slots": "slots",
+    "forAmount": "for",
+    "findCodeHint": "The 8-digit code is shown in the «Payment method» section of the PDF you received.",
+    "errorFormat": "The code must have 8 digits.",
+    "errorAuth": "Sign in to apply the code.",
+    "errorNotFound": "We couldn't find this account receivable.",
+    "errorAlreadyPaid": "This account receivable was already paid.",
+    "errorAlreadyRedeemed": "This account receivable is already in use.",
+    "errorCancelled": "This account receivable was cancelled.",
+    "errorExpired": "This account receivable expired. Contact sales.",
+    "errorGeneric": "We couldn't apply the code. Please try again."
   }
 }

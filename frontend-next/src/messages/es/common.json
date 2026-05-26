@@ -523,5 +523,26 @@
     "message": "Ocurrió un error inesperado. Por favor intenta de nuevo.",
     "retry": "Intentar de nuevo",
     "goHome": "Ir al inicio"
+  },
+  "accountReceivableRedemption": {
+    "cta": "¿Tienes una cuenta de cobro?",
+    "applyCta": "Aplicar código",
+    "inputLabel": "Código de cuenta de cobro",
+    "apply": "Aplicar",
+    "applying": "Aplicando…",
+    "cancel": "Cancelar",
+    "remove": "Quitar",
+    "successTitle": "Cuenta de cobro aplicada",
+    "slots": "cupos",
+    "forAmount": "por",
+    "findCodeHint": "El código de 8 dígitos aparece en la sección «Forma de pago» del PDF que recibiste.",
+    "errorFormat": "El código debe tener 8 dígitos.",
+    "errorAuth": "Inicia sesión para aplicar el código.",
+    "errorNotFound": "No encontramos esta cuenta de cobro.",
+    "errorAlreadyPaid": "Esta cuenta de cobro ya fue pagada.",
+    "errorAlreadyRedeemed": "Esta cuenta de cobro ya está en uso.",
+    "errorCancelled": "Esta cuenta de cobro fue anulada.",
+    "errorExpired": "Esta cuenta de cobro venció. Contacta al equipo de ventas.",
+    "errorGeneric": "No pudimos aplicar el código. Intenta de nuevo."
   }
 }
