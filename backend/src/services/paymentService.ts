@@ -44,6 +44,7 @@ import {
   SERVER_EVENT_TYPE,
   type ClientEventType,
 } from "../lib/paymentEvents";
+import { releaseAccountReceivable } from "./sales/accountReceivableService";
 
 // ── Account-Receivable (CC) redemption helpers ────────────────
 //
@@ -1451,6 +1452,13 @@ export async function reconcileStalePayment(paymentId: string): Promise<Reconcil
   if (polarStatusLower === "expired") {
     await prisma.$transaction(async (tx) => {
       await tx.poolPayment.update({ where: { id: payment.id }, data: { status: "EXPIRED" } });
+      // If this payment was funded by a CC redemption, release the
+      // CC back to PENDING so the customer can retry with a fresh
+      // checkout. PAID rows are intentionally left alone — see
+      // releaseAccountReceivable. SALES_IMPLEMENTATION.md commit 8.
+      if (payment.accountReceivableId) {
+        await releaseAccountReceivable(tx, payment.accountReceivableId);
+      }
       await tx.paymentEvent.create({
         data: {
           source: PAYMENT_EVENT_SOURCE.RECONCILER,
@@ -1471,6 +1479,9 @@ export async function reconcileStalePayment(paymentId: string): Promise<Reconcil
   if (polarStatusLower === "failed") {
     await prisma.$transaction(async (tx) => {
       await tx.poolPayment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
+      if (payment.accountReceivableId) {
+        await releaseAccountReceivable(tx, payment.accountReceivableId);
+      }
       await tx.paymentEvent.create({
         data: {
           source: PAYMENT_EVENT_SOURCE.RECONCILER,
@@ -1530,10 +1541,19 @@ async function markAbandoned(
   detail: Record<string, unknown>,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    // Read accountReceivableId before the update so we know whether
+    // to release a linked CC. Lookup is by PK so the cost is trivial.
+    const row = await tx.poolPayment.findUnique({
+      where: { id: paymentId },
+      select: { accountReceivableId: true },
+    });
     await tx.poolPayment.update({
       where: { id: paymentId },
       data: { status: "ABANDONED" },
     });
+    if (row?.accountReceivableId) {
+      await releaseAccountReceivable(tx, row.accountReceivableId);
+    }
     await tx.paymentEvent.create({
       data: {
         source: PAYMENT_EVENT_SOURCE.RECONCILER,
