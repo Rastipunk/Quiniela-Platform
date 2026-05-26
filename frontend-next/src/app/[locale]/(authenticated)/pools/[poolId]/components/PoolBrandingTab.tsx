@@ -538,18 +538,7 @@ export function PoolBrandingTab({ poolId, overview, onSaved }: Props) {
           previewLabel={t("companyInfo.invitationPreviewLabel", {
             defaultMessage: "Vista previa: email de invitación",
           })}
-          subjectLine={t("companyInfo.previewEmailSubject", {
-            defaultMessage: "te reta a jugar",
-          })}
-          greeting={t("companyInfo.previewEmailGreeting", {
-            defaultMessage: "Hey María!",
-          })}
-          body={t("companyInfo.previewEmailBody", {
-            company: companyName.trim() || "tu empresa",
-          })}
-          ctaLabel={t("companyInfo.previewEmailCta", {
-            defaultMessage: "Entrar a jugar →",
-          })}
+          previewLocale={invitationLocale}
         />
         <div
           role="note"

@@ -3,10 +3,21 @@
 import { colors, fontSize, fontWeight } from "@/lib/theme";
 import { resolveBrandColors } from "@/lib/brandColors";
 
-// Compact mock of the corporate invitation email body. Hero band
-// (gradient + logo + company name + subhead) and a highlight box
-// for the host's custom message — mirrors `backend/src/lib/
-// emailTemplates.ts` so the preview matches what lands in inbox.
+// Compact mock of the corporate invitation email body — mirrors
+// `backend/src/lib/emailTemplates.ts` (getCorporateActivationTemplate)
+// so the host sees in the wizard / branding panel what their team
+// will actually receive in their inbox.
+//
+// IMPORTANT: the strings in PREVIEW_STRINGS below must stay in sync
+// with the i18n block of the backend template. When you change the
+// email copy there, change it here too — there's no shared source of
+// truth across the backend/frontend boundary today, so a sync break
+// silently misleads the host about what's being sent.
+//
+// The dictionary is keyed by `previewLocale` (the host's
+// `Organization.invitationLocale`), NOT by the UI locale — the preview
+// must show what the EMPLOYEE will receive, not the host's interface
+// language.
 
 interface Props {
   primary: string;
@@ -15,11 +26,45 @@ interface Props {
   logoBase64: string;
   invitationMessage: string;
   previewLabel: string;
+  /** Which locale to render the preview in. Drives all strings —
+   *  greeting, subjectLine, body, CTA. Defaults to "es" so legacy
+   *  call sites that haven't been migrated keep working. */
+  previewLocale: "es" | "en" | "pt";
+}
+
+interface LocaleStrings {
   subjectLine: string;
   greeting: string;
-  body: string;
+  /** Text rendered AFTER the bolded company name in the body. Keeping
+   *  the company name out of the string lets us render it as
+   *  <strong>…</strong> exactly like the real email does. */
+  bodyAfterCompany: string;
   ctaLabel: string;
 }
+
+const PREVIEW_STRINGS: Record<"es" | "en" | "pt", LocaleStrings> = {
+  es: {
+    subjectLine: "te reta a jugar",
+    greeting: "Hola María!",
+    bodyAfterCompany:
+      " te invita a unirte y competir con tus compañeros/as demostrando quién sabe más de fútbol.",
+    ctaLabel: "Entrar a jugar →",
+  },
+  en: {
+    subjectLine: "challenges you to play",
+    greeting: "Hi Maria!",
+    bodyAfterCompany:
+      " is inviting you to join and compete with your teammates to show who knows football best.",
+    ctaLabel: "Get in the game →",
+  },
+  pt: {
+    subjectLine: "te desafia a jogar",
+    greeting: "Olá Maria!",
+    bodyAfterCompany:
+      " está te convidando para entrar e competir com seus colegas mostrando quem sabe mais de futebol.",
+    ctaLabel: "Entrar no jogo →",
+  },
+};
 
 export function InvitationEmailPreview({
   primary,
@@ -28,11 +73,9 @@ export function InvitationEmailPreview({
   logoBase64,
   invitationMessage,
   previewLabel,
-  subjectLine,
-  greeting,
-  body,
-  ctaLabel,
+  previewLocale,
 }: Props) {
+  const t = PREVIEW_STRINGS[previewLocale];
   const brand = resolveBrandColors(primary || null, secondary || null);
   const heroGradient = brand.isCustom
     ? `linear-gradient(135deg,${brand.primary} 0%,${brand.secondary} 100%)`
@@ -127,7 +170,7 @@ export function InvitationEmailPreview({
               fontWeight: fontWeight.semibold,
             }}
           >
-            {subjectLine}
+            {t.subjectLine}
           </div>
         </div>
 
@@ -141,7 +184,7 @@ export function InvitationEmailPreview({
               marginBottom: 6,
             }}
           >
-            {greeting}
+            {t.greeting}
           </div>
           <div
             style={{
@@ -151,7 +194,7 @@ export function InvitationEmailPreview({
               marginBottom: 10,
             }}
           >
-            {body}
+            <strong>{previewName}</strong>{t.bodyAfterCompany}
           </div>
           <div
             style={{
@@ -170,7 +213,7 @@ export function InvitationEmailPreview({
                 fontStyle: "italic",
               }}
             >
-              &ldquo;{showsMessage ? invitationMessage : body}&rdquo;
+              &ldquo;{showsMessage ? invitationMessage : `${previewName}${t.bodyAfterCompany}`}&rdquo;
             </div>
             <div
               style={{
@@ -196,7 +239,7 @@ export function InvitationEmailPreview({
               letterSpacing: 0.3,
             }}
           >
-            {ctaLabel}
+            {t.ctaLabel}
           </div>
         </div>
       </div>

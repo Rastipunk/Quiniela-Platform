@@ -426,18 +426,7 @@ export function StepCompanyInfo() {
           previewLabel={t("companyInfo.invitationPreviewLabel", {
             defaultMessage: "Vista previa: email de invitación",
           })}
-          subjectLine={t("companyInfo.previewEmailSubject", {
-            defaultMessage: "te reta a jugar",
-          })}
-          greeting={t("companyInfo.previewEmailGreeting", {
-            defaultMessage: "Hey María!",
-          })}
-          body={t("companyInfo.previewEmailBody", {
-            company: state.companyName.trim() || "tu empresa",
-          })}
-          ctaLabel={t("companyInfo.previewEmailCta", {
-            defaultMessage: "Entrar a jugar →",
-          })}
+          previewLocale={state.invitationLocale}
         />
       </WizardSubStep>
 
