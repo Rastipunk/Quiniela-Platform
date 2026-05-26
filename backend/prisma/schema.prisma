@@ -167,6 +167,13 @@ model User {
   poolPayments              PoolPayment[]
   brandingAuditEntries      OrganizationBrandingAudit[]
 
+  // Sales documents (issued by ADMIN users only; see SALES_AUDIT.md).
+  // Back-references for the FKs on Quote.createdByUserId and the two
+  // FKs on AccountReceivable (createdByUserId + redeemedByUserId).
+  quotesCreated              Quote[]
+  accountReceivablesCreated  AccountReceivable[] @relation("CreatedAccountReceivables")
+  accountReceivablesRedeemed AccountReceivable[] @relation("RedeemedAccountReceivables")
+
   @@index([username])
   @@index([resetToken])
   @@index([googleId])
@@ -440,8 +447,8 @@ model Pool {
   // `pendingDigestStreakStartAt` is the first day of the current streak —
   // i.e. the first time we sent the digest with this exact pending set. We
   // use it to enforce the 7-day cap.
-  pendingDigestPendingHash    String?
-  pendingDigestStreakStartAt  DateTime?
+  pendingDigestPendingHash   String?
+  pendingDigestStreakStartAt DateTime?
 
   members          PoolMember[]
   invites          PoolInvite[]
@@ -1134,10 +1141,10 @@ model OrganizationInquiry {
   // Quote-specific fields populated by the /empresas quote panel.
   // Optional because the legacy inquiry path (employeeCount tier) doesn't
   // capture them. Country uses ISO 3166-1 alpha-2 (e.g. "CO", "AR").
-  country       String?
-  currency      String?
-  numberOfPools Int?
-  slotsPerPool  Int?
+  country         String?
+  currency        String?
+  numberOfPools   Int?
+  slotsPerPool    Int?
   // JSON-encoded array of slot counts, one entry per pool requested.
   // Lets the requester ask for several pools of different sizes
   // (e.g. [50, 80, 30] for marketing/sales/HR). When all entries are
@@ -1290,6 +1297,13 @@ model PoolPayment {
   // Audit trail. See PaymentEvent for the source / eventType taxonomy.
   events PaymentEvent[]
 
+  // Optional 1:1 link to the AccountReceivable (cuenta de cobro) this
+  // payment fulfilled. Set when the customer redeemed a CC code during
+  // checkout (see SALES_AUDIT.md §9.7). Nullable for payments without a
+  // CC. Unique so a given CC is paid exactly once.
+  accountReceivableId String?            @unique
+  accountReceivable   AccountReceivable? @relation(fields: [accountReceivableId], references: [id])
+
   @@index([poolId])
   @@index([userId])
   @@index([status])
@@ -1391,4 +1405,191 @@ model FailedAnalyticsEvent {
 
   @@index([provider, nextRetryAt, resolvedAt])
   @@index([eventId])
+}
+
+// =========================================================================
+// SALES MANAGEMENT (admin-only)
+// Three models that back the /admin/ventas/ panel:
+//   - Quote               (cotización — pre-sale price quote)
+//   - AccountReceivable   (cuenta de cobro — formal billing doc with a
+//                          redemption code customers can use at checkout)
+//   - DocumentCounter     (atomic per-year consecutive numbers)
+// See SALES_AUDIT.md and SALES_IMPLEMENTATION.md for the full spec and
+// the locked decisions (§11.1–§11.23). Single-currency per document
+// (COP via Mercado Pago or USD via Polar); pricing always derived
+// server-side from lib/pricing.ts.
+// =========================================================================
+
+model Quote {
+  id String @id @default(uuid())
+
+  // Numbering — assigned at issue time via DocumentCounter.
+  consecutive String @unique // "COT-2026-0001"
+  year        Int // for counter lookup
+  number      Int // sequence within year
+
+  // Client snapshot at issue time. Captured by value (not FK) because
+  // the client is rarely a User of the platform — usually just a
+  // company we're quoting.
+  clientLegalName    String
+  clientContactEmail String
+
+  // Issuer snapshot — JSON copy of issuerInfo.ts at issue time so
+  // previously-issued documents retain the legal data they were
+  // signed with even if Juan Camilo updates his constant later.
+  issuerSnapshotJson Json
+
+  // Localization — admin picks per document.
+  // locale: "es" | "en" | "pt"
+  // term:   "polla" | "pool" | "prode" | "quiniela" | "bolão" | etc.
+  //         Validated against the locale's allowed term list at the
+  //         service layer (saleTerms.ts).
+  locale String
+  term   String
+
+  // Investment block (single, no multi-option per §11.14).
+  // amountCop / amountUsdCents are SERVER-DERIVED from pricing.ts —
+  // admin never enters them. The pair is nullable per currency to
+  // mirror PoolPayment's existing pattern (ADR-046: never mix units).
+  participants          Int
+  currency              String // "COP" | "USD"
+  amountCop             Int?
+  amountUsdCents        Int?
+  perPersonAmount       Int // in the chosen currency's minor unit
+  tournament            String?
+  investmentDescription String? @db.Text
+
+  // Dates.
+  issueDate  DateTime @db.Date
+  validUntil DateTime @db.Date
+
+  // Layout.
+  includeCoverPage Boolean @default(true)
+  notes            String? @db.Text
+
+  // Lifecycle.
+  status QuoteStatus @default(ACTIVE)
+
+  // Audit.
+  createdByUserId String
+  createdAtUtc    DateTime @default(now())
+  updatedAtUtc    DateTime @updatedAt
+
+  createdBy User                @relation(fields: [createdByUserId], references: [id])
+  linkedCcs AccountReceivable[]
+
+  @@index([consecutive])
+  @@index([clientContactEmail])
+  @@index([createdAtUtc])
+}
+
+enum QuoteStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model AccountReceivable {
+  id String @id @default(uuid())
+
+  // Numbering.
+  consecutive String @unique // "CC-2026-0001"
+  year        Int
+  number      Int
+
+  // Redemption code — 8-digit numeric (§11.3). Stored raw; UI/PDF
+  // formats with hyphen as XXXX-XXXX. Customer types either form
+  // (normalised in saleRedemption.ts before lookup).
+  redemptionCode String @unique
+
+  // Client snapshot.
+  clientLegalName    String
+  clientNit          String?
+  clientContactEmail String
+  clientCity         String?
+
+  // Issuer snapshot — same shape as Quote.issuerSnapshotJson.
+  issuerSnapshotJson Json
+
+  // Localization.
+  locale String
+  term   String
+
+  // Content.
+  concept    String  @db.Text
+  tournament String?
+  notes      String? @db.Text
+
+  // Pricing — server-derived, mirrors Quote (§11.20). Nullable per
+  // currency. amountInWords localized at issue time using
+  // numero-a-letras with locale-aware suffix.
+  currency       String
+  amountCop      Int?
+  amountUsdCents Int?
+  amountInWords  String
+  // targetCapacity is the # of slots this CC pre-pays. At redemption
+  // it locks the wizard's capacity to this value (§11.7 safeguard).
+  targetCapacity Int
+  poolType       String // "corporate" v1; future "personal" possible
+
+  // Dates.
+  issueDate  DateTime @db.Date
+  validUntil DateTime @db.Date
+
+  // Lifecycle — PENDING → REDEEMED → PAID. PENDING → EXPIRED when
+  // validUntil passes without redemption. Any → CANCELLED via admin.
+  status           AccountReceivableStatus @default(PENDING)
+  redeemedAtUtc    DateTime?
+  redeemedByUserId String?
+  paidAtUtc        DateTime?
+
+  // Cross-reference back to the optional Quote it originated from
+  // (§11.5: docs are independent by default, but admin may link).
+  linkedQuoteId String?
+
+  // Forward link to the PoolPayment that consumed this CC. Set when
+  // CC transitions to REDEEMED (inside paymentService.initiateCheckout
+  // — see §9.7). UNIQUE so a CC can only fund one payment.
+  poolPaymentId String? @unique
+
+  // Audit.
+  createdByUserId String
+  createdAtUtc    DateTime @default(now())
+  updatedAtUtc    DateTime @updatedAt
+
+  createdBy   User         @relation("CreatedAccountReceivables", fields: [createdByUserId], references: [id])
+  redeemedBy  User?        @relation("RedeemedAccountReceivables", fields: [redeemedByUserId], references: [id])
+  linkedQuote Quote?       @relation(fields: [linkedQuoteId], references: [id])
+  poolPayment PoolPayment?
+
+  @@index([consecutive])
+  @@index([redemptionCode])
+  @@index([clientContactEmail])
+  @@index([status, validUntil]) // for the expiry sweep job
+}
+
+enum AccountReceivableStatus {
+  PENDING
+  REDEEMED
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+// Atomic per-year consecutive counter, keyed by (kind, year). Single
+// row per kind/year combo; INSERT ... ON CONFLICT DO UPDATE used at
+// the service layer (documentCounterService.ts) to atomically read +
+// increment + return the next number inside one transaction.
+model DocumentCounter {
+  kind         DocumentKind
+  year         Int
+  lastNumber   Int          @default(0)
+  updatedAtUtc DateTime     @updatedAt
+
+  @@id([kind, year])
+}
+
+enum DocumentKind {
+  QUOTE
+  ACCOUNT_RECEIVABLE
 }
