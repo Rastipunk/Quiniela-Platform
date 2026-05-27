@@ -131,6 +131,49 @@ function pathStartsWithLocale(path: string): boolean {
   );
 }
 
+// Return the locale prefix at the start of the path, or null if none.
+// Used by the manual locale resolution block below to compare against
+// the user's cookie / Accept-Language preference.
+function extractUrlLocalePrefix(path: string): string | null {
+  for (const l of routing.locales) {
+    if (path === `/${l}` || path.startsWith(`/${l}/`)) return l;
+  }
+  return null;
+}
+
+// Strip a leading /en, /pt, etc. locale prefix from the path. Used to
+// compare the "logical" path against COOKIE_REDIRECT_PREFIXES, which
+// stores unprefixed entries like "/dashboard" — without stripping, a
+// hit on /en/dashboard wouldn't match the entry.
+function stripLocalePrefix(path: string): string {
+  const p = extractUrlLocalePrefix(path);
+  if (!p) return path;
+  const after = path.slice(p.length + 1);
+  return after === "" ? "/" : after;
+}
+
+// Manual Accept-Language detection. Parses the header (e.g.
+// "en-US,en;q=0.9,es;q=0.8") into primary-subtag candidates ordered
+// by browser priority and returns the first one in routing.locales.
+// Replaces the auto-detection that next-intl used to do before we
+// disabled `localeDetection`. See LOCALE_RESOLUTION_AUDIT.md §3.1.
+function detectLocaleFromAcceptLanguage(header: string | null): string | null {
+  if (!header) return null;
+  const candidates = header
+    .split(",")
+    .map((part) => part.split(";")[0]?.trim().toLowerCase() ?? "")
+    .filter(Boolean);
+  for (const lang of candidates) {
+    // "en-US" → "en", "pt-BR" → "pt". Browsers send region tags;
+    // routing.locales is primary-only.
+    const primary = lang.split("-")[0] ?? "";
+    if ((routing.locales as readonly string[]).includes(primary)) {
+      return primary;
+    }
+  }
+  return null;
+}
+
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
 
@@ -144,30 +187,68 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
-  // Step 1b: cookie-aware sticky locale.
-  // When the user explicitly chose a non-default locale (via the language
-  // switcher or the first-login modal, both of which write NEXT_LOCALE),
-  // honour that choice on any non-prefixed authenticated path. Without
-  // this, a raw `/dashboard` hit served the Spanish version even for an
-  // English-cookied user — the "language reverts" bug.
+  // Step 1b: locale resolution.
   //
-  // We only READ the cookie (no Set-Cookie on the response), so the SEO
+  // Precedence (LOCALE_RESOLUTION_AUDIT.md §3.1):
+  //   1. URL prefix (/en, /pt) — authoritative if cookie agrees or absent.
+  //   2. NEXT_LOCALE cookie — written by LanguageSelector,
+  //      LocalePreferenceModal, and backend setAuthCookies at login.
+  //      If it disagrees with the URL, we redirect to match the cookie.
+  //   3. Accept-Language — only for anonymous visitors with no cookie.
+  //   4. routing.defaultLocale (es) — terminal fallback.
+  //
+  // We only READ cookies (no Set-Cookie on the response), so the SEO
   // cacheability documented in i18n/routing.ts stays intact: bots have
   // no cookie and continue to land on the default-locale URL.
+  //
+  // next-intl is configured with localeDetection:false so it no longer
+  // does Accept-Language detection. The manual detection below is the
+  // single source of truth.
   const path = request.nextUrl.pathname;
-  if (!pathStartsWithLocale(path) && pathMatchesCookieRedirect(path)) {
-    const cookieLocale = request.cookies.get("NEXT_LOCALE")?.value;
-    if (
-      cookieLocale &&
-      cookieLocale !== routing.defaultLocale &&
-      (routing.locales as readonly string[]).includes(cookieLocale)
-    ) {
-      const target = new URL(
-        `/${cookieLocale}${path}${request.nextUrl.search}`,
-        request.nextUrl.origin,
+  const urlLocale = extractUrlLocalePrefix(path);
+  const cookieValue = request.cookies.get("NEXT_LOCALE")?.value;
+  const cookieLocale =
+    cookieValue && (routing.locales as readonly string[]).includes(cookieValue)
+      ? cookieValue
+      : null;
+
+  // The cookie-redirect (and Accept-Language fallback) only applies to
+  // authenticated app paths + public auth flows. Public SEO pages
+  // continue to be served by next-intl directly without our overrides.
+  const unprefixedPath = urlLocale ? stripLocalePrefix(path) : path;
+  const inScope = pathMatchesCookieRedirect(unprefixedPath);
+
+  if (inScope) {
+    // Step A: cookie present → it wins. Reconcile URL with cookie.
+    if (cookieLocale) {
+      // ES (default) lives at unprefixed paths; EN/PT at /en/X and /pt/X.
+      const desiredUrlLocale =
+        cookieLocale === routing.defaultLocale ? null : cookieLocale;
+      if (desiredUrlLocale !== urlLocale) {
+        const target = desiredUrlLocale
+          ? `/${desiredUrlLocale}${unprefixedPath === "/" ? "" : unprefixedPath}`
+          : unprefixedPath;
+        return NextResponse.redirect(
+          new URL(target + request.nextUrl.search, request.nextUrl.origin),
+          307,
+        );
+      }
+      // cookie matches URL — no redirect, fall through.
+    } else if (!urlLocale) {
+      // Step B: no cookie + no URL prefix → manual Accept-Language detection.
+      const detected = detectLocaleFromAcceptLanguage(
+        request.headers.get("accept-language"),
       );
-      return NextResponse.redirect(target, 307);
+      if (detected && detected !== routing.defaultLocale) {
+        const target = `/${detected}${path}`;
+        return NextResponse.redirect(
+          new URL(target + request.nextUrl.search, request.nextUrl.origin),
+          307,
+        );
+      }
+      // detected is default or null → fall through (next-intl serves default).
     }
+    // Step C: cookie absent + URL has prefix → respect URL, fall through.
   }
 
   // Step 2: i18n routing (locale detection + redirect).
