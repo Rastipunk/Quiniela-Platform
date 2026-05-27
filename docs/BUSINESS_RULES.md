@@ -1144,3 +1144,60 @@ The employee whose invitation arrived in English clicks the link and lands direc
 ### 16.5 No effect on other emails
 
 The deferred dispatch concerns ONLY the welcome email. All other emails (deadline reminders, results, payment receipts, corporate check-in, etc.) continue to read `User.locale` once it's set, which after the modal is always populated. Background jobs are NOT filtered by `localePromptCompletedAt` — punishing closed-tab users by silencing their pool notifications would be worse than the rare locale mismatch.
+
+---
+
+## 17. Locale resolution
+
+Full rationale in `ADR-064` (DECISION_LOG.md); execution log in
+`LOCALE_RESOLUTION_IMPLEMENTATION.md`; locked decisions in
+`LOCALE_RESOLUTION_AUDIT.md` §3.
+
+### 17.1 Precedence
+
+For every request that reaches `proxy.ts`, locale is resolved in this fixed order:
+
+| Priority | Signal | Authoritative when |
+|---|---|---|
+| 1 | URL prefix (`/en/`, `/pt/`) | Cookie agrees or is absent |
+| 2 | `NEXT_LOCALE` cookie | Present and a valid locale |
+| 3 | `Accept-Language` header | No cookie AND no URL prefix |
+| 4 | `routing.defaultLocale = "es"` | Everything else fails |
+
+If the URL prefix disagrees with the cookie, the cookie wins — the middleware issues a 307 redirect to align them.
+
+### 17.2 SEO posture
+
+`routing.localeCookie: false` is preserved. next-intl does NOT write `NEXT_LOCALE` on every response — public SSG pages stay cacheable, avoiding the Set-Cookie vs Cache-Control contradiction that downgrades Google indexing priority. Only our explicit writers set the cookie:
+
+- `LanguageSelector.tsx` (client-side, on user click)
+- `LocalePreferenceModal.tsx` (client-side, on modal submit)
+- `setAuthCookies` (server-side, on register / login / google / activate-corporate)
+- `setLocaleCookie` (server-side, on POST `/users/me/locale-preference`)
+
+### 17.3 Backend sync at every auth event
+
+Every endpoint that establishes or refreshes a session writes `NEXT_LOCALE` if the user's `locale` is known:
+
+| Endpoint | Cookie written? |
+|---|---|
+| `POST /auth/register` | Only if `User.locale` non-null (typically null at register — modal sets it later) |
+| `POST /auth/login` | Yes if `User.locale` non-null (returning users) |
+| `POST /auth/google` | Same as login |
+| `POST /auth/activate-corporate` | Only if existing user with `locale` populated |
+| `POST /users/me/locale-preference` | Always (`setLocaleCookie`) — defensive backup for client write |
+
+When `User.locale` is null (fresh signups before the modal), the cookie is NOT written. The modal will set it client-side on first dashboard load.
+
+### 17.4 Logout clears the locale cookie
+
+`clearAuthCookies` clears `NEXT_LOCALE` in addition to the auth cookies. Without this, two users sharing a browser would inherit each other's locale until the new user explicitly changes it. ADR-064 closes this latent bug.
+
+### 17.5 next-intl boundaries
+
+`routing.ts` configures:
+- `localePrefix: "as-needed"` — ES (default) has no URL prefix; EN and PT do.
+- `localeCookie: false` — next-intl doesn't read/write the cookie.
+- `localeDetection: false` — next-intl doesn't auto-redirect by `Accept-Language`.
+
+The result: next-intl only renders based on URL prefix or falls back to `defaultLocale`. All other locale signals flow through our `proxy.ts`.

@@ -4734,4 +4734,60 @@ Full per-decision rationale in `EMAIL_LOCALE_HANDOFF_AUDIT.md` §3.
 
 ---
 
+## ADR-064: Locale resolution architecture
+
+**Date:** 2026-05-26 | **Status:** Accepted
+
+**Context:** Santiago Arcila (senriquearcila@hotmail.com) reported on 2026-05-26 that when he picked Spanish in the language selector, the page reloaded back to English. The owner reproduced the exact flow on his own admin account in Chrome incognito with `Accept-Language: en-US`: clicking "Español" wrote `NEXT_LOCALE=es`, navigated to `/dashboard` (unprefixed because ES is `defaultLocale`), and then a 307 redirect bounced back to `/en/dashboard`.
+
+Forensic mapping (`LOCALE_RESOLUTION_AUDIT.md` §2) identified three bugs in the locale-resolution pipeline:
+
+1. The cookie-aware redirect in `proxy.ts:158-171` had an asymmetric guard `cookieLocale !== routing.defaultLocale` — it only honoured the cookie when the user picked a NON-default locale. A user picking ES (the default) was ignored at this layer, falling through to next-intl's auto-detection.
+2. next-intl's `localeDetection: true` default + Picks4All's `localeCookie: false` (set for SEO reasons in `routing.ts:15`) created a hostile combination: next-intl ignored the cookie and used `Accept-Language`, so a user on an English browser who picked ES via the selector was redirected back to `/en/`.
+3. `setAuthCookies` never wrote `NEXT_LOCALE`, and `clearAuthCookies` never cleared it — so a fresh login on a shared browser would inherit the previous user's locale, and a successful modal submission was entirely client-side (a single `document.cookie = …` in `LocalePreferenceModal.tsx:177`) with no server-side defense.
+
+**Decision:** A four-layer locale resolution chain with the cookie as the canonical user signal, manual `Accept-Language` detection in `proxy.ts` for anonymous visitors, and backend cookie sync at every auth event.
+
+**Precedence (locked):**
+
+1. **URL prefix** (`/en/`, `/pt/`) — authoritative if the cookie agrees or is absent.
+2. **`NEXT_LOCALE` cookie** — if present and valid, redirect the URL to match.
+3. **`Accept-Language`** — manual parsing in `proxy.ts` for anonymous visitors only.
+4. **`routing.defaultLocale = "es"`** — terminal fallback.
+
+**Implementation:**
+
+- `frontend-next/src/i18n/routing.ts`: `localeDetection: false` added. next-intl now only consults URL prefix + defaultLocale. All other detection moves to our code so we have a single authority.
+- `frontend-next/src/proxy.ts`: Step 1b rewritten with the full precedence chain. Three branches:
+  - cookie present + URL mismatch → redirect to match cookie
+  - no cookie + no URL prefix → manual `Accept-Language` detection
+  - cookie absent + URL has prefix → respect URL
+- `backend/src/lib/authCookies.ts`:
+  - `setAuthCookies` accepts `locale?: string | null`. When non-null and a valid locale, writes `NEXT_LOCALE` with attributes mirroring the frontend writers (1-year `maxAge`, `Lax`, `Secure`, `.picks4all.com` domain in prod).
+  - New helper `setLocaleCookie(res, locale)` for the locale-preference handler.
+  - `clearAuthCookies` clears `NEXT_LOCALE` along with the auth cookies — closes the inherited-locale-on-shared-browser bug.
+- `backend/src/routes/auth.ts`: 4 call sites of `setAuthCookies` (register, login, google, activate-corporate) now pass `result.user.locale`.
+- `backend/src/routes/userProfile.ts`: `POST /users/me/locale-preference` calls `setLocaleCookie(res, data.locale)` before returning — server-side defense against client-side cookie write failures.
+- `backend/src/lib/serializers.ts`: `SerializedUser` gains `locale: string | null` (not sensitive — the frontend has it via cookie anyway, this just plumbs it cleanly through service results).
+
+**SEO posture preserved:** `localeCookie: false` stays — next-intl still does not write `NEXT_LOCALE` on every response. Only our explicit writers (selector, modal, login) set it. Public SSG pages stay cacheable per the original architectural decision documented in `routing.ts:7-14`.
+
+**Consequences:**
+
+- ✅ Santiago's exact bug is fixed. Cookie always wins.
+- ✅ Returning users land in their saved locale immediately after login, no client JS needed.
+- ✅ Logout fully cleans the browser state. No locale leak between users on shared devices.
+- ✅ POST `/users/me/locale-preference` is now resilient to client-side JS failures.
+- ✅ Single source of truth for locale resolution: `proxy.ts`. No more dual-authority confusion between `proxy.ts` and next-intl.
+- ⚠️ We now own the `Accept-Language` parsing logic that next-intl used to handle. Small, well-isolated function (`detectLocaleFromAcceptLanguage` in `proxy.ts`). Future locale additions need a single change in `routing.locales` to propagate correctly.
+- ⚠️ `COOKIE_REDIRECT_PREFIXES` is still a curated list. `/empresas`, `/activar-cuenta`, `/crear-pool` are NOT in it. Bounded-impact (these pages either start a journey before the cookie is set, or are short-lived). Adding them is a quality improvement deferred to a future cycle.
+
+**Related code:**
+
+- Frontend: `frontend-next/src/i18n/routing.ts`, `frontend-next/src/proxy.ts`. Pre-existing writers (untouched): `frontend-next/src/components/LanguageSelector.tsx:120`, `frontend-next/src/components/LocalePreferenceModal.tsx:177`.
+- Backend: `backend/src/lib/authCookies.ts`, `backend/src/lib/serializers.ts`, `backend/src/routes/auth.ts`, `backend/src/routes/userProfile.ts`, `backend/src/services/authService.ts` (Prisma selects extended).
+- Specs: `LOCALE_RESOLUTION_AUDIT.md`, `LOCALE_RESOLUTION_IMPLEMENTATION.md`.
+
+---
+
 **END OF DOCUMENT**
