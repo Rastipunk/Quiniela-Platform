@@ -8,11 +8,19 @@ export const routing = defineRouting({
   // off, every public SSG response stops carrying `Set-Cookie` — Google
   // treats `Set-Cookie` + `Cache-Control: public, s-maxage=...` as
   // contradictory signals ("personalised response that's also publicly
-  // cacheable?") and downgrades indexing priority. Detection still
-  // works via URL prefix and Accept-Language; for users who explicitly
-  // switch language, `LanguageSelector.tsx` writes the cookie itself
-  // so the preference persists across sessions.
+  // cacheable?") and downgrades indexing priority. For users who
+  // explicitly switch language, the cookie is written by
+  // `LanguageSelector.tsx`, `LocalePreferenceModal.tsx`, and
+  // `backend/src/lib/authCookies.ts` (at login).
   localeCookie: false,
+  // Disable next-intl's Accept-Language auto-redirect. Combined with
+  // localeCookie:false above, next-intl now only consults URL prefix +
+  // defaultLocale. All other signals (cookie, Accept-Language) flow
+  // through our manual logic in `proxy.ts`, so we keep one source of
+  // truth for locale resolution and avoid the conflict where a
+  // manually-set NEXT_LOCALE=es cookie gets overridden by an English
+  // Accept-Language header. See LOCALE_RESOLUTION_AUDIT.md §3.1.
+  localeDetection: false,
   pathnames: {
     "/": "/",
     "/invite": "/invite",
