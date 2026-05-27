@@ -6,6 +6,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { sendData, sendOk, sendBadRequest, sendNotFound } from "../lib/apiResponse";
 import { USER_RULES, SUPPORTED_LOCALES, type SupportedLocale } from "../lib/constants";
 import { sendVerificationEmail, sendWelcomeEmail } from "../lib/email";
+import { setLocaleCookie } from "../lib/authCookies";
 import { fireAndForget } from "../lib/asyncHelpers";
 
 export const userProfileRouter = Router();
@@ -204,6 +205,13 @@ userProfileRouter.post("/me/locale-preference", async (req, res) => {
       locale: data.locale,
     }));
   }
+
+  // Defensive: also write NEXT_LOCALE server-side so the frontend
+  // middleware honours the user's choice even if the client-side
+  // `document.cookie = …` in LocalePreferenceModal/LanguageSelector
+  // fails to run (browser extension, JS error mid-handler).
+  // See LOCALE_RESOLUTION_AUDIT.md §3.5.
+  setLocaleCookie(res, data.locale);
 
   return sendOk(res, { locale: data.locale });
 });

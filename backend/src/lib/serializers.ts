@@ -19,6 +19,11 @@ export type SerializedUser = {
   displayName: string;
   platformRole: PlatformRole;
   status: string;
+  /** Locale picked by the user via LocalePreferenceModal (es / en / pt)
+   *  or null if they haven't completed it yet. Consumed by auth route
+   *  handlers to sync the NEXT_LOCALE cookie via setAuthCookies. Not
+   *  sensitive — the frontend already has it via the cookie itself. */
+  locale: string | null;
 };
 
 /** Strip sensitive fields from a User record before sending to client. */
@@ -29,6 +34,7 @@ export function serializeUser(u: {
   displayName: string;
   platformRole: PlatformRole;
   status: string;
+  locale: string | null;
 }): SerializedUser {
   return {
     id: u.id,
@@ -37,5 +43,6 @@ export function serializeUser(u: {
     displayName: u.displayName,
     platformRole: u.platformRole,
     status: u.status,
+    locale: u.locale,
   };
 }

@@ -178,6 +178,7 @@ export async function registerUser(data: RegisterInput, ctx: AuditContext): Prom
     select: {
       id: true, email: true, username: true, displayName: true,
       platformRole: true, status: true, timezone: true, createdAtUtc: true,
+      locale: true,
     },
   });
 
@@ -378,7 +379,7 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
 
   let user = await prisma.user.findFirst({
     where: { OR: [{ email: normalizedEmail }, { googleId: googleUser.googleId }] },
-    select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, googleId: true },
+    select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, googleId: true, locale: true },
   });
 
   // Existing user — login
@@ -390,7 +391,7 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
       user = await prisma.user.update({
         where: { id: user.id },
         data: { googleId: googleUser.googleId },
-        select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, googleId: true },
+        select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, googleId: true, locale: true },
       });
       fireAndForget("audit:google-link", writeAuditEvent({
         actorUserId: user.id, action: "GOOGLE_ACCOUNT_LINKED",
@@ -470,7 +471,7 @@ export async function authenticateWithGoogle(data: GoogleAuthInput, ctx: AuditCo
       wbraid: data.attribution?.wbraid,
       fbclid: data.attribution?.fbclid,
     },
-    select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, googleId: true },
+    select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, googleId: true, locale: true },
   });
 
   fireAndForget("audit:google-register", writeAuditEvent({
@@ -745,7 +746,7 @@ export async function activateCorporateAccount(
           acceptedPrivacyAt: now, acceptedPrivacyVersion: CURRENT_LEGAL_VERSIONS.PRIVACY_POLICY,
           ageVerifiedAt: now,
         },
-        select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true },
+        select: { id: true, email: true, username: true, displayName: true, platformRole: true, status: true, locale: true },
       });
 
       await ensurePoolCapacity(tx, poolId, invite.pool.maxParticipants);
