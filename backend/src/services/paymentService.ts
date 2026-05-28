@@ -2151,6 +2151,25 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   // even when the local payment is COMPLETED — that IS the precondition.
   if (!isRefundSignal && payment.status === "COMPLETED") return;
 
+  // Defensively persist MP's real payment.id on first delivery. The
+  // approved branch's markPaymentCompleted call also writes this column,
+  // but earlier deliveries (status=pending / in_process / rejected /
+  // cancelled / refunded) historically left mpPaymentId NULL — and the
+  // MP reconciler needs it to call getPayment() when a row gets stuck.
+  // Doing the write here means every IPN delivery, regardless of status,
+  // captures the ID the first time MP tells us about it. Subsequent
+  // deliveries are no-ops (the column is already populated). Outside any
+  // tx so a follow-up tx rollback below does NOT revert the ID — having
+  // it on the row is more valuable than the few microseconds saved by
+  // batching with the next write.
+  if (!payment.mpPaymentId) {
+    await prisma.poolPayment.update({
+      where: { id: payment.id },
+      data: { mpPaymentId: String(paymentMpId) },
+    });
+    payment.mpPaymentId = String(paymentMpId);
+  }
+
   // Build the PaymentEvent.create payload once — it's the same in every
   // branch and goes INSIDE the branch tx to keep the idempotency slot
   // atomic with the actual state change. If a branch tx rolls back, the
