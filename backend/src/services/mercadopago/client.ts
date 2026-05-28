@@ -173,3 +173,36 @@ export async function getPayment(paymentId: string) {
   const payment = new Payment(client);
   return payment.get({ id: paymentId });
 }
+
+/**
+ * Search the most recent MP payment for our external_reference.
+ *
+ * Used by the MP reconciler as a fallback for legacy PoolPayment rows
+ * whose mpPaymentId column is still NULL (i.e. rows created before
+ * commit 4 landed the defensive write, or rows that never received an
+ * IPN at all). MP's search returns the most recently created payment
+ * matching the reference, sorted desc by date_created.
+ *
+ * Returns null if no payment exists for the reference.
+ */
+export async function searchPaymentByExternalReference(
+  externalReference: string,
+): Promise<{ id: number; status: string; date_approved: string | null } | null> {
+  const client = getClient();
+  const payment = new Payment(client);
+  const result = await payment.search({
+    options: {
+      criteria: "desc",
+      sort: "date_created",
+      external_reference: externalReference,
+      limit: 1,
+    },
+  });
+  const first = result?.results?.[0];
+  if (!first || typeof first.id !== "number") return null;
+  return {
+    id: first.id,
+    status: String(first.status ?? ""),
+    date_approved: first.date_approved ?? null,
+  };
+}

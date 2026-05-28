@@ -86,6 +86,10 @@ export const RECONCILER_EVENT_TYPE = {
   ABANDONED: "RECONCILER_ABANDONED",
   /** Gateway told us the checkout expired. Marked EXPIRED. */
   EXPIRED: "RECONCILER_EXPIRED",
+  /** Gateway told us the payment was rejected / cancelled. Marked
+   *  FAILED. Distinct from EXPIRED so analytics can separate
+   *  declined-by-issuer from timed-out-without-action. */
+  FAILED: "RECONCILER_FAILED",
   /** Gateway told us the payment actually succeeded but we never got
    *  the webhook. Replayed the success path. */
   RESCUED: "RECONCILER_RESCUED",

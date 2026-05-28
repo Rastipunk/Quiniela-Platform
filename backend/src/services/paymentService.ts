@@ -36,6 +36,7 @@ import {
   getPayment as mpGetPayment,
   getMpPublicKey,
   createPreference as mpCreatePreference,
+  searchPaymentByExternalReference as mpSearchByExternalRef,
 } from "./mercadopago/client";
 import { Prisma } from "@prisma/client";
 import {
@@ -1694,6 +1695,298 @@ export async function findStalePayments(batchSize: number): Promise<{ id: string
       status: { in: ["INITIATED", "PENDING"] },
       createdAtUtc: { lt: cutoff },
       mpPreferenceId: null,
+    },
+    select: { id: true },
+    orderBy: { createdAtUtc: "asc" },
+    take: batchSize,
+  });
+}
+
+// ─── MP reconciliation ─────────────────────────────────────────
+//
+// Mirror of the Polar reconciler above, scoped to PoolPayment rows with
+// `mpPreferenceId IS NOT NULL`. Symmetrical decision tree, but the
+// approved branch auto-completes via `markPaymentCompleted` instead of
+// just flagging for human review — see PAYMENTS_PARITY_AUDIT.md §3.2
+// for why (MP IPN already exercises the same code path, so replaying
+// it via the shared function is the safest option).
+
+const MP_RECONCILE_ABANDONED_THRESHOLD_HOURS = Number(
+  process.env.MP_RECONCILE_ABANDONED_THRESHOLD_HOURS || "24",
+);
+
+const MP_RECONCILE_GRACE_PERIOD_MINUTES = Number(
+  process.env.MP_RECONCILE_GRACE_PERIOD_MINUTES || "15",
+);
+
+export interface MpReconcileResult {
+  paymentId: string;
+  outcome:
+    | "RESCUED"
+    | "FAILED_FROM_GATEWAY"
+    | "ABANDONED_LOCAL_TIMEOUT"
+    | "MP_NOT_FOUND"
+    | "NOOP";
+  previousStatus: string;
+  nextStatus: string | null;
+}
+
+/**
+ * Reconcile a single stale MP PoolPayment row.
+ *
+ * Decision tree per row:
+ *   1. Skip if status is already terminal (NOOP).
+ *   2. Resolve MP's payment id:
+ *        a. If PoolPayment.mpPaymentId is set, use it.
+ *        b. Otherwise (legacy / never received an IPN), call
+ *           searchPaymentByExternalReference(polarCheckoutId) to recover
+ *           it. Persist the value back so the next tick avoids the
+ *           extra round-trip.
+ *        c. If both are unavailable, the user never actually paid;
+ *           mark ABANDONED if past the threshold, NOOP otherwise.
+ *   3. Call getPayment(mpPaymentId) to read the canonical MP state.
+ *   4. Map status:
+ *        - approved → markPaymentCompleted with source=RECONCILER.
+ *          Audit row, capacity bump, receipt email, CAPI+GA4 — all
+ *          via the shared function so the customer gets the exact
+ *          same downstream treatment as a normal IPN/sync.
+ *        - rejected / cancelled → flip to FAILED, release CC.
+ *        - pending / in_process — if past abandon threshold mark
+ *          ABANDONED; otherwise NOOP and wait for IPN delivery.
+ *
+ * Every branch writes a PaymentEvent with source=RECONCILER so the
+ * audit log shows what the reconciler decided and why.
+ */
+export async function reconcileStaleMpPayment(
+  paymentId: string,
+): Promise<MpReconcileResult> {
+  const payment = await prisma.poolPayment.findUnique({ where: { id: paymentId } });
+  if (!payment) {
+    throw new ServiceError("NOT_FOUND", 404);
+  }
+
+  if (payment.status !== "INITIATED" && payment.status !== "PENDING") {
+    return {
+      paymentId,
+      outcome: "NOOP",
+      previousStatus: payment.status,
+      nextStatus: null,
+    };
+  }
+
+  const ageHours = (Date.now() - payment.createdAtUtc.getTime()) / 3_600_000;
+  const isOlderThanThreshold = ageHours >= MP_RECONCILE_ABANDONED_THRESHOLD_HOURS;
+
+  // 1. Resolve MP payment id (defensive write from commit 4 already
+  // captures it on any IPN delivery; this is the legacy / never-IPN'd
+  // fallback path).
+  let mpPaymentIdStr: string | null = payment.mpPaymentId;
+  if (!mpPaymentIdStr) {
+    // Polar create equivalent never landed — nothing to query at MP.
+    if (!payment.polarCheckoutId) {
+      if (!isOlderThanThreshold) {
+        await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.NOOP, {
+          reason: "mp_no_external_ref_within_threshold",
+          ageHours,
+        });
+        return {
+          paymentId,
+          outcome: "NOOP",
+          previousStatus: payment.status,
+          nextStatus: null,
+        };
+      }
+      await markAbandoned(payment.id, payment.status, "mp_no_external_ref", {
+        ageHours,
+      });
+      return {
+        paymentId,
+        outcome: "ABANDONED_LOCAL_TIMEOUT",
+        previousStatus: payment.status,
+        nextStatus: "ABANDONED",
+      };
+    }
+
+    let found: Awaited<ReturnType<typeof mpSearchByExternalRef>>;
+    try {
+      found = await mpSearchByExternalRef(payment.polarCheckoutId);
+    } catch (err: any) {
+      await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.NOOP, {
+        reason: "mp_search_failed",
+        ref: payment.polarCheckoutId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return {
+        paymentId,
+        outcome: "NOOP",
+        previousStatus: payment.status,
+        nextStatus: null,
+      };
+    }
+
+    if (!found) {
+      // MP knows nothing for this reference. Likely the user closed
+      // the tab before the Brick was even rendered. Mark ABANDONED if
+      // past threshold; otherwise wait — they may complete soon.
+      if (!isOlderThanThreshold) {
+        await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.NOOP, {
+          reason: "mp_search_no_payment_within_threshold",
+          ref: payment.polarCheckoutId,
+          ageHours,
+        });
+        return {
+          paymentId,
+          outcome: "NOOP",
+          previousStatus: payment.status,
+          nextStatus: null,
+        };
+      }
+      await markAbandoned(payment.id, payment.status, "mp_no_payment_for_ref", {
+        ref: payment.polarCheckoutId,
+        ageHours,
+      });
+      return {
+        paymentId,
+        outcome: "MP_NOT_FOUND",
+        previousStatus: payment.status,
+        nextStatus: "ABANDONED",
+      };
+    }
+
+    mpPaymentIdStr = String(found.id);
+    await prisma.poolPayment.update({
+      where: { id: payment.id },
+      data: { mpPaymentId: mpPaymentIdStr },
+    });
+  }
+
+  // 2. Query MP for the current canonical state.
+  let mpPayment;
+  try {
+    mpPayment = await mpGetPayment(mpPaymentIdStr);
+  } catch (err: any) {
+    await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.NOOP, {
+      reason: "mp_query_failed",
+      mpPaymentId: mpPaymentIdStr,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      paymentId,
+      outcome: "NOOP",
+      previousStatus: payment.status,
+      nextStatus: null,
+    };
+  }
+
+  const mpStatus = String(mpPayment?.status ?? "").toLowerCase();
+
+  // 3. approved → auto-complete via the shared function. Same idempotency
+  // surface as IPN/sync — a concurrent IPN that fires mid-reconcile claims
+  // the PaymentEvent slot first; this call dedupes silently.
+  if (mpStatus === "approved") {
+    await markPaymentCompleted({
+      paymentId: payment.id,
+      gatewayEventId: `mp-${mpPaymentIdStr}-reconciled`,
+      eventType: RECONCILER_EVENT_TYPE.RESCUED,
+      source: PAYMENT_EVENT_SOURCE.RECONCILER,
+      paidAtUtc: mpPayment.date_approved
+        ? new Date(mpPayment.date_approved)
+        : new Date(),
+      polarOrderId: `mp-${mpPaymentIdStr}`,
+      mpPaymentId: mpPaymentIdStr,
+      payloadJson: {
+        id: mpPaymentIdStr,
+        status: mpStatus,
+        date_approved: mpPayment.date_approved ?? null,
+        reconciled: true,
+      } as Prisma.InputJsonValue,
+    });
+    return {
+      paymentId,
+      outcome: "RESCUED",
+      previousStatus: payment.status,
+      nextStatus: "COMPLETED",
+    };
+  }
+
+  // 4. rejected / cancelled → flip to FAILED, release the CC if linked.
+  if (mpStatus === "rejected" || mpStatus === "cancelled") {
+    await prisma.$transaction(async (tx) => {
+      await tx.poolPayment.update({
+        where: { id: payment.id },
+        data: { status: "FAILED" },
+      });
+      if (payment.accountReceivableId) {
+        await releaseAccountReceivable(tx, payment.accountReceivableId);
+      }
+      await tx.paymentEvent.create({
+        data: {
+          source: PAYMENT_EVENT_SOURCE.RECONCILER,
+          poolPaymentId: payment.id,
+          eventType: RECONCILER_EVENT_TYPE.FAILED,
+          payloadJson: {
+            mpStatus,
+            mpPaymentId: mpPaymentIdStr,
+            ageHours,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    });
+    return {
+      paymentId,
+      outcome: "FAILED_FROM_GATEWAY",
+      previousStatus: payment.status,
+      nextStatus: "FAILED",
+    };
+  }
+
+  // 5. Still pending / in_process at MP. Past abandon threshold → give
+  // up locally (the customer's session is long gone). Within threshold
+  // → leave alone, IPN should still deliver.
+  if (isOlderThanThreshold) {
+    await markAbandoned(payment.id, payment.status, "mp_still_in_flight_past_threshold", {
+      mpStatus,
+      mpPaymentId: mpPaymentIdStr,
+      ageHours,
+    });
+    return {
+      paymentId,
+      outcome: "ABANDONED_LOCAL_TIMEOUT",
+      previousStatus: payment.status,
+      nextStatus: "ABANDONED",
+    };
+  }
+
+  await writeReconcilerEvent(payment.id, RECONCILER_EVENT_TYPE.NOOP, {
+    reason: "mp_still_in_flight",
+    mpStatus,
+    mpPaymentId: mpPaymentIdStr,
+    ageHours,
+  });
+  return {
+    paymentId,
+    outcome: "NOOP",
+    previousStatus: payment.status,
+    nextStatus: null,
+  };
+}
+
+/**
+ * Find the next batch of MP PoolPayments eligible for reconciliation:
+ *   - status ∈ (INITIATED, PENDING)
+ *   - older than the MP grace period
+ *   - MP-only (`mpPreferenceId IS NOT NULL`) — Polar rows are handled
+ *     by findStalePayments above. The compound index
+ *     PoolPayment_status_createdAtUtc_idx (migration
+ *     20260527_add_mp_payment_id_and_status_index) covers this query.
+ */
+export async function findStaleMpPayments(batchSize: number): Promise<{ id: string }[]> {
+  const cutoff = new Date(Date.now() - MP_RECONCILE_GRACE_PERIOD_MINUTES * 60_000);
+  return prisma.poolPayment.findMany({
+    where: {
+      status: { in: ["INITIATED", "PENDING"] },
+      createdAtUtc: { lt: cutoff },
+      mpPreferenceId: { not: null },
     },
     select: { id: true },
     orderBy: { createdAtUtc: "asc" },

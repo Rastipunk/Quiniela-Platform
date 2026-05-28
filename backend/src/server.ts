@@ -31,6 +31,7 @@ import { startFixtureVerificationJob, stopFixtureVerificationJob } from "./jobs/
 import { startTrackStatusCheckerJob, stopTrackStatusCheckerJob } from "./jobs/trackStatusCheckerJob";
 import { startCapiRetryJob, stopCapiRetryJob } from "./jobs/capiRetryJob";
 import { startPaymentReconcileJob, stopPaymentReconcileJob } from "./jobs/paymentReconcileJob";
+import { startMpPaymentReconcileJob, stopMpPaymentReconcileJob } from "./jobs/mpPaymentReconcileJob";
 import {
   startAccountReceivableExpiryJob,
   stopAccountReceivableExpiryJob,
@@ -332,6 +333,7 @@ const server = app.listen(PORT, () => {
   startTrackStatusCheckerJob();
   startCapiRetryJob();
   startPaymentReconcileJob();
+  startMpPaymentReconcileJob();
   startAccountReceivableExpiryJob();
   startWelcomeEmailFallbackJob();
 });
@@ -358,6 +360,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopTrackStatusCheckerJob();
   stopCapiRetryJob();
   stopPaymentReconcileJob();
+  stopMpPaymentReconcileJob();
   stopAccountReceivableExpiryJob();
   stopWelcomeEmailFallbackJob();
 
