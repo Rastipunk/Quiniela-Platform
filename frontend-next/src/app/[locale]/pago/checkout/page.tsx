@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
 import { processMpPayment } from "@/lib/api/payments";
+import { reportPaymentAttemptEvent } from "@/lib/api/paymentAttemptEvent";
 import { formatCOP } from "@/lib/pricing";
 import { trackMetaEvent, getMetaCookies } from "@/lib/metaPixel";
 import {
@@ -51,6 +52,11 @@ export default function MpCheckoutPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const brickControllerRef = useRef<any>(null);
   const brickInitialized = useRef(false);
+  // Flips to true the moment MP's `onReady` callback fires. Used to
+  // classify `onError` calls as `init` (pre-ready, SDK / instantiation
+  // failure) vs `render` (post-ready, in-form failure) without relying
+  // on the React `status` state, which lags one render behind.
+  const brickReadyRef = useRef(false);
 
   const publicKey = searchParams.get("publicKey") || "";
   const amount = Number(searchParams.get("amount") || "0");
@@ -128,6 +134,16 @@ export default function MpCheckoutPage() {
           callbacks: {
             onReady: () => {
               setStatus("ready");
+              brickReadyRef.current = true;
+              // BRICK_LOADED beacon — confirms the form is rendered
+              // and interactive. Absence in the audit timeline means
+              // the SDK failed somewhere upstream (network, MP outage,
+              // CSP, instantiation error). See ADR-066 and
+              // PAYMENT_ATTEMPT_TELEMETRY_AUDIT.md §2 G-1.
+              void reportPaymentAttemptEvent(paymentId, {
+                eventType: "BRICK_LOADED",
+                details: { gateway: "MP", preferenceId },
+              });
             },
             onSubmit: ({ selectedPaymentMethod, formData }: {
               selectedPaymentMethod: string;
@@ -212,6 +228,21 @@ export default function MpCheckoutPage() {
                   ? JSON.stringify(error)
                   : String(error);
               setErrorMsg(`Error al cargar el formulario de pago: ${detail}`);
+              // BRICK_ERROR beacon — server-side audit row carrying
+              // the MP-supplied error message. `stage` distinguishes
+              // a load-time failure (SDK failed before the form
+              // rendered) from a post-render failure (form was up,
+              // something broke). The submit-path error catch lives
+              // in onSubmit's .catch above and is its own signal —
+              // it surfaces as a FAILED PoolPayment via processMpPayment.
+              void reportPaymentAttemptEvent(paymentId, {
+                eventType: "BRICK_ERROR",
+                details: {
+                  error: detail,
+                  stage: brickReadyRef.current ? "render" : "init",
+                  gateway: "MP",
+                },
+              });
             },
           },
         });
@@ -219,6 +250,20 @@ export default function MpCheckoutPage() {
         console.error("[PaymentBrick] Failed to load:", err);
         setStatus("error");
         setErrorMsg("No se pudo cargar el formulario de pago. Verifica tu conexión e intenta de nuevo.");
+        // BRICK_ERROR with stage=init — this path catches failures
+        // before MP's own callbacks attach (SDK script fetch failure,
+        // CSP block, `new MercadoPago(...)` throw). Without this
+        // beacon those errors are invisible to the backend (`onError`
+        // only fires after the controller is built).
+        void reportPaymentAttemptEvent(paymentId, {
+          eventType: "BRICK_ERROR",
+          details: {
+            error: err instanceof Error ? err.message : String(err),
+            stage: "init",
+            phase: "sdk_load_or_instantiation",
+            gateway: "MP",
+          },
+        });
       }
     };
 
