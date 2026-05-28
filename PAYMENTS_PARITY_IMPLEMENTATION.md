@@ -22,7 +22,7 @@
 | 3 | Backend: MP sync path (`processMpPayment`) + MP IPN path (`handleMpWebhook`) refactored to call `markPaymentCompleted` — closes gaps 1, 2, 3, 5 | 🟩 DONE | `5881f9a` |
 | 4 | Backend: IPN handler persists `mpPaymentId` on first delivery (defensive — reconciler needs it) | 🟩 DONE | `c15f843` |
 | 5 | Backend: `mpPaymentReconcileJob` (advisory lock `82636506n`, 30-min cron, batch 50) — closes gap 4 | 🟩 DONE | `78efdd2` |
-| 6 | Docs: ADR-065 + BUSINESS_RULES §18 + CLAUDE.md invariant 13 + MEMORY entry | 🟧 IN PROGRESS | — |
+| 6 | Docs: ADR-065 + BUSINESS_RULES §18 + CLAUDE.md invariant 13 + MEMORY entry | 🟩 DONE | `166e447` |
 
 Cycle is functionally complete after commit 5. Commit 6 is documentation hygiene.
 
@@ -433,7 +433,7 @@ Mirror `paymentReconcileJob.ts`:
 
 ### 6.5 Status
 
-🟥 PENDING — SHA: —
+🟩 DONE — SHA: `166e447`
 
 ---
 
