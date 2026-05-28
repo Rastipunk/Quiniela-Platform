@@ -43,6 +43,7 @@ import {
   CLIENT_EVENT_TYPES,
   SERVER_EVENT_TYPE,
   type ClientEventType,
+  type PaymentEventSource,
 } from "../lib/paymentEvents";
 import { releaseAccountReceivable } from "./sales/accountReceivableService";
 
@@ -524,8 +525,347 @@ export async function initiateCheckout(
 // ── Webhook Processing ─────────────────────────────────────────
 
 /**
+ * Mark a PoolPayment as COMPLETED and run all side effects atomically.
+ *
+ * Single source of truth for payment completion across all 4 callers:
+ *   - Polar webhook (`handleOrderPaid`)
+ *   - MP synchronous Brick path (`processMpPayment`)
+ *   - MP IPN webhook path (`handleMpWebhook`)
+ *   - MP reconciler (`reconcileStaleMpPayment`, lands in commit 5)
+ *
+ * Fully idempotent — calling twice for the same payment is a no-op via:
+ *   1. PaymentEvent.polarEventId UNIQUE pre-check (cheap)
+ *   2. payment.status === "COMPLETED" entry guard
+ *   3. PaymentEvent.polarEventId UNIQUE constraint inside the tx
+ *      (catches the race between concurrent callers)
+ *
+ * Atomic block:
+ *   - PaymentEvent.create (audit trail of the gateway event)
+ *   - PoolPayment.update → status COMPLETED, gateway IDs, paidAtUtc, metaEventId
+ *   - Pool.update → maxParticipants + reset notification flags
+ *   - AccountReceivable.update → status PAID (if linked CC)
+ *   - AuditEvent.create → action "PAYMENT_COMPLETED" (uniform across gateways)
+ *
+ * Post-tx fan-out (fire-and-forget so a Resend/CAPI/GA4 outage doesn't
+ * block the customer):
+ *   - sendAdminNotification "payment_completed"
+ *   - sendCapiEvent Purchase
+ *   - sendGa4Event purchase
+ *   - sendPaymentReceiptEmail (with CC consecutive lookup if linked)
+ *
+ * Currency, affiliation, and transactionId are derived from `source` +
+ * payment.mpPreferenceId, NOT hardcoded — so the reconciler can call
+ * this function for either gateway uniformly.
+ *
+ * See PAYMENTS_PARITY_AUDIT.md §3.1 for the locked architecture.
+ */
+export interface MarkPaymentCompletedInput {
+  /** Our PoolPayment.id (already resolved by the caller). */
+  paymentId: string;
+  /** Gateway event identifier — `polarEventId` for Polar webhooks,
+   *  `mp-{paymentId}-{status}` for MP webhooks, `mp-{paymentId}-sync` for
+   *  the MP Brick sync path, `mp-{paymentId}-reconciled` for reconciler. */
+  gatewayEventId: string;
+  /** Human-readable event type for the PaymentEvent row's eventType
+   *  column. e.g. "order.paid", "mp.payment.approved", "mp.sync.approved". */
+  eventType: string;
+  /** Provenance of this confirmation. */
+  source: PaymentEventSource;
+  paidAtUtc: Date;
+  /** Polar order ID (Polar) or `mp-{mpPaymentId}` (MP). Persisted to
+   *  PoolPayment.polarOrderId — the column name is legacy. */
+  polarOrderId: string;
+  /** MP's real `payment.id`. Set on MP paths only. Persisted to
+   *  PoolPayment.mpPaymentId for the reconciler. */
+  mpPaymentId?: string;
+  /** Full gateway payload for forensic PaymentEvent.payloadJson. */
+  payloadJson: Prisma.InputJsonValue;
+  /** Polar webhook delivery metadata (webhookId, timestamp). Only set
+   *  when source === POLAR_WEBHOOK. */
+  webhookContext?: WebhookContext;
+}
+
+export async function markPaymentCompleted(
+  input: MarkPaymentCompletedInput,
+): Promise<void> {
+  const {
+    paymentId,
+    gatewayEventId,
+    eventType,
+    source,
+    paidAtUtc,
+    polarOrderId,
+    mpPaymentId,
+    payloadJson,
+    webhookContext,
+  } = input;
+
+  // 1. Cheap idempotency pre-check (avoids opening a tx for known dupes).
+  // The real lock is the partial unique index on PaymentEvent.polarEventId
+  // claimed inside the tx below — this just skips early when possible.
+  const existingEvent = await prisma.paymentEvent.findFirst({
+    where: { polarEventId: gatewayEventId },
+  });
+  if (existingEvent) {
+    console.log(`[PaymentService] markPaymentCompleted: duplicate event ${gatewayEventId}, skipping`);
+    return;
+  }
+
+  // 2. Resolve the payment row.
+  const payment = await prisma.poolPayment.findUnique({ where: { id: paymentId } });
+  if (!payment) {
+    console.error(`[PaymentService] markPaymentCompleted: PoolPayment ${paymentId} not found`);
+    return;
+  }
+
+  // 3. Entry guard: already completed → no-op.
+  if (payment.status === "COMPLETED") {
+    console.log(`[PaymentService] markPaymentCompleted: payment ${paymentId} already COMPLETED, skipping`);
+    return;
+  }
+
+  // 4. Gateway derivation. MP paths set mpPreferenceId at checkout
+  // creation; the reconciler reads payment.mpPreferenceId for routing
+  // when source === RECONCILER.
+  const isMp =
+    source === PAYMENT_EVENT_SOURCE.MP_SYNC ||
+    source === PAYMENT_EVENT_SOURCE.MP_WEBHOOK ||
+    (source === PAYMENT_EVENT_SOURCE.RECONCILER && payment.mpPreferenceId !== null);
+
+  // 5. Reuse the persisted metaEventId if any (set by the sync path
+  // ahead of the IPN). Mint a fresh one otherwise.
+  const metaEventId = payment.metaEventId ?? crypto.randomUUID();
+
+  // 6. Atomic tx — PaymentEvent, PoolPayment, Pool, AccountReceivable,
+  // AuditEvent all commit together. If anything throws (including the
+  // P2002 race on the polarEventId UNIQUE), the whole thing rolls back
+  // and the gateway / reconciler can retry cleanly.
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentEvent.create({
+        data: {
+          source,
+          polarEventId: gatewayEventId,
+          poolPaymentId: payment.id,
+          eventType,
+          webhookId: webhookContext?.webhookId,
+          webhookTimestamp: webhookContext?.webhookTimestamp,
+          payloadJson,
+        },
+      });
+      await tx.poolPayment.update({
+        where: { id: payment.id },
+        data: {
+          status: "COMPLETED",
+          polarOrderId,
+          paidAtUtc,
+          metaEventId,
+          ...(mpPaymentId ? { mpPaymentId } : {}),
+        },
+      });
+      await tx.pool.update({
+        where: { id: payment.poolId },
+        data: {
+          maxParticipants: payment.toCapacity,
+          // Re-arm capacity threshold notifications so future joins
+          // can re-fire the warning + full emails.
+          poolFullNotifiedAt: null,
+          capacityWarningNotifiedAt: null,
+        },
+      });
+      // CC redemption → PAID (sales/§9.7). Only when linked.
+      if (payment.accountReceivableId) {
+        await tx.accountReceivable.update({
+          where: { id: payment.accountReceivableId },
+          data: { status: "PAID", paidAtUtc },
+        });
+      }
+      // Audit event INSIDE the tx — improvement over the prior
+      // fire-and-forget pattern that lived outside the tx. With it
+      // inside, a tx rollback never leaves a "PAYMENT_COMPLETED" audit
+      // row claiming a non-event happened.
+      await tx.auditEvent.create({
+        data: {
+          actorUserId: payment.userId,
+          action: "PAYMENT_COMPLETED",
+          entityType: "Pool",
+          entityId: payment.poolId,
+          poolId: payment.poolId,
+          dataJson: {
+            paymentId: payment.id,
+            polarOrderId,
+            mpPaymentId: mpPaymentId ?? null,
+            source,
+            fromCapacity: payment.fromCapacity,
+            toCapacity: payment.toCapacity,
+            poolType: payment.poolType,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      // Concurrent caller claimed the event slot first; safe no-op.
+      console.log(`[PaymentService] markPaymentCompleted: race-duplicate event ${gatewayEventId}, skipping`);
+      return;
+    }
+    throw err; // Real failure → propagate so caller returns 5xx.
+  }
+
+  console.log(
+    `[PaymentService] Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity} (source=${source}, gateway=${isMp ? "MP" : "Polar"})`,
+  );
+
+  // 7. Admin notification — fire-and-forget post-tx.
+  fireAndForget(
+    "admin:payment-completed",
+    (async () => {
+      const [pool, user] = await Promise.all([
+        prisma.pool.findUnique({
+          where: { id: payment.poolId },
+          select: { name: true },
+        }),
+        prisma.user.findUnique({
+          where: { id: payment.userId },
+          select: { displayName: true, email: true },
+        }),
+      ]);
+      const poolName = pool?.name || payment.poolId;
+      const buyer = user
+        ? `${user.displayName} <${user.email}>`
+        : "(usuario desconocido)";
+      const usdAmount = `$${(payment.amountUsd / 100).toFixed(2)} USD`;
+      const copAmount = payment.amountCop
+        ? `${payment.amountCop.toLocaleString("es-CO")} COP`
+        : null;
+      const amountStr = copAmount ? `${copAmount} (${usdAmount})` : usdAmount;
+      const gateway = isMp ? "Mercado Pago" : "Polar";
+      const sourceLabel =
+        source === PAYMENT_EVENT_SOURCE.RECONCILER ? " — RECONCILED" : "";
+      return sendAdminNotification({
+        subject: `${buyer} — pool "${poolName}" ${payment.fromCapacity}→${payment.toCapacity} (${amountStr})${sourceLabel}`,
+        body:
+          `<p><strong>Pool:</strong> "${poolName}" (${payment.poolType})</p>` +
+          `<p><strong>Comprador:</strong> ${buyer}</p>` +
+          `<p><strong>Capacidad:</strong> ${payment.fromCapacity} → ${payment.toCapacity} participantes</p>` +
+          `<p><strong>Monto:</strong> ${amountStr}</p>` +
+          `<p><strong>Pasarela:</strong> ${gateway} · source <code>${source}</code> · payment id <code>${payment.id}</code></p>`,
+        category: "payment_completed",
+      });
+    })(),
+  );
+
+  // 8. CAPI Purchase + GA4 purchase (currency/affiliation derived from gateway).
+  const purchaseValue = isMp ? mpPurchaseValue(payment) : payment.amountUsd / 100;
+  const purchaseCurrency = isMp ? "COP" : "USD";
+  const affiliation = isMp ? "Mercado Pago Colombia" : "Polar International";
+  const transactionId = isMp ? polarOrderId : gatewayEventId;
+
+  const userForCapi = await prisma.user.findUnique({
+    where: { id: payment.userId },
+    select: {
+      email: true,
+      firstName: true,
+      lastName: true,
+      dateOfBirth: true,
+      gender: true,
+      country: true,
+    },
+  });
+
+  fireAndForget("capi:purchase", sendCapiEvent({
+    eventName: "Purchase",
+    eventId: metaEventId,
+    userData: {
+      externalId: payment.userId,
+      email: userForCapi?.email,
+      firstName: userForCapi?.firstName ?? undefined,
+      lastName: userForCapi?.lastName ?? undefined,
+      dateOfBirth: userForCapi?.dateOfBirth?.toISOString().slice(0, 10),
+      gender: userForCapi?.gender ?? undefined,
+      country: userForCapi?.country ?? undefined,
+      fbp: payment.metaFbp ?? undefined,
+      fbc: payment.metaFbc ?? undefined,
+      clientIpAddress: payment.clientIpAddress ?? undefined,
+      clientUserAgent: payment.clientUserAgent ?? undefined,
+    },
+    customData: {
+      value: purchaseValue,
+      currency: purchaseCurrency,
+      content_type: "product",
+      content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
+      num_items: 1,
+    },
+  }));
+
+  fireAndForget("ga4mp:purchase", sendGa4Event({
+    userId: payment.userId,
+    events: [{
+      name: "purchase",
+      params: {
+        transaction_id: transactionId,
+        affiliation,
+        currency: purchaseCurrency,
+        value: purchaseValue,
+        items: [{
+          item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
+          item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
+          item_category: "pool_capacity",
+          item_variant: payment.poolType,
+          price: purchaseValue,
+          quantity: 1,
+          currency: purchaseCurrency,
+        }],
+      },
+    }],
+  }));
+
+  // 9. Receipt email — with CC consecutive lookup when linked.
+  fireAndForget("payment-receipt-email", (async () => {
+    const user = await prisma.user.findUnique({
+      where: { id: payment.userId },
+      select: { email: true, displayName: true, country: true, locale: true },
+    });
+    const pool = await prisma.pool.findUnique({
+      where: { id: payment.poolId },
+      select: { name: true },
+    });
+    if (!user || !pool) return;
+    let accountReceivableNumber: string | undefined;
+    if (payment.accountReceivableId) {
+      const cc = await prisma.accountReceivable.findUnique({
+        where: { id: payment.accountReceivableId },
+        select: { consecutive: true },
+      });
+      accountReceivableNumber = cc?.consecutive;
+    }
+    const amountForEmail = isMp
+      ? purchaseValue.toLocaleString("es-CO")
+      : purchaseValue.toFixed(2);
+    await sendPaymentReceiptEmail({
+      to: user.email,
+      userId: payment.userId,
+      displayName: user.displayName,
+      poolName: pool.name,
+      poolId: payment.poolId,
+      transactionId,
+      amount: amountForEmail,
+      currency: purchaseCurrency,
+      fromCapacity: payment.fromCapacity,
+      toCapacity: payment.toCapacity,
+      paidAt: paidAtUtc,
+      locale: resolveUserLocale(user),
+      accountReceivableNumber,
+    });
+  })());
+}
+
+/**
  * Process an order.paid webhook from Polar.
  * Idempotent: duplicate events are skipped silently.
+ *
+ * Thin parser — validates the webhook payload, resolves our PoolPayment
+ * row, and delegates the actual completion work to `markPaymentCompleted`.
  *
  * @param payload  Verified webhook body from Polar.
  * @param ctx      Delivery metadata threaded through from the route
@@ -547,22 +887,7 @@ export async function handleOrderPaid(
   const eventId = payload.data.id;
   const eventType = payload.type || "order.paid";
 
-  // 1. Cheap idempotency pre-check (avoids opening a tx for known duplicates).
-  // Not a correctness boundary — the real lock is the partial unique index
-  // `PaymentEvent_polarEventId_unique_when_set` (UNIQUE WHERE polarEventId
-  // IS NOT NULL), claimed inside the transaction below. findFirst here
-  // because Prisma doesn't recognise partial unique indexes as findUnique
-  // targets, but the partial index guarantees ≤1 row per non-null value
-  // so this is functionally equivalent.
-  const existing = await prisma.paymentEvent.findFirst({
-    where: { polarEventId: eventId },
-  });
-  if (existing) {
-    console.log(`[PaymentService] Duplicate event ${eventId}, skipping`);
-    return;
-  }
-
-  // 2. Validate metadata BEFORE entering the tx (cheap, no DB cost on bad input).
+  // Validate metadata BEFORE doing any DB work.
   const metadata = payload.data.metadata as {
     poolId?: string;
     userId?: string;
@@ -570,282 +895,45 @@ export async function handleOrderPaid(
     toCapacity?: number;
     poolType?: string;
   } | null;
-
   if (!metadata?.poolId || !metadata?.toCapacity) {
     console.error("[PaymentService] order.paid missing metadata:", metadata);
     return;
   }
-
   const checkoutId = payload.data.checkout_id;
   if (!checkoutId) {
     console.error("[PaymentService] order.paid missing checkoutId");
     return;
   }
 
-  // 3. Find the PoolPayment by checkout ID. findFirst (not findUnique)
-  // because polarCheckoutId is partial-unique-when-set after the
-  // 20260521 migration; the index still guarantees ≤1 row per value.
+  // Resolve our PoolPayment row. findFirst (not findUnique) because
+  // polarCheckoutId is partial-unique-when-set after the 20260521
+  // migration; ≤1 row per value still guaranteed.
   const payment = await prisma.poolPayment.findFirst({
     where: { polarCheckoutId: checkoutId },
   });
-
   if (!payment) {
-    // Common cause: race between checkout creation and webhook delivery
-    // (50-200ms window where the PoolPayment row was not yet committed
-    // when Polar fired this webhook). Throw so the route returns 5xx
-    // and Polar retries with exponential backoff — the row will exist
-    // on retry. If after Polar's full retry budget the row still doesn't
-    // exist, the event lands in Polar's DLQ for human triage.
-    // The pre-fix `return` here silently dropped pagos when the race hit.
+    // Race between checkout creation and webhook delivery (50-200ms
+    // window). Throw so the route returns 5xx and Polar retries with
+    // exponential backoff — the row will exist on retry. If after
+    // Polar's full retry budget the row still doesn't exist, the
+    // event lands in Polar's DLQ for human triage.
     console.error(`[PaymentService] order.paid: PoolPayment not found for checkout ${checkoutId} — signalling retry`);
     throw new Error("PAYMENT_NOT_FOUND_RETRYABLE");
   }
 
-  if (payment.status === "COMPLETED") {
-    console.log(`[PaymentService] Payment ${payment.id} already completed, skipping`);
-    return;
-  }
-
-  // 4. Generate the Meta event ID up-front so it can be persisted INSIDE the
-  // same tx as the rest of the state changes. The success-page Pixel emission
-  // and the server-side CAPI emission below both use this ID; if it weren't
-  // committed atomically with COMPLETED, a tx that failed AFTER metaEventId
-  // was set could leave the pool expanded but the Pixel/CAPI dedup broken.
-  const metaEventId = metadata.userId ? crypto.randomUUID() : null;
-  const paidAt = new Date();
-
-  // 5. Atomic claim + state changes. PaymentEvent.create is now INSIDE the
-  // tx so the partial-unique-index slot only stays committed if the rest
-  // of the writes succeed. If anything throws, the slot rolls back and
-  // Polar's retry (which our 5xx response triggers — see route handler)
-  // gets a fresh shot at processing.
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.paymentEvent.create({
-        data: {
-          source: PAYMENT_EVENT_SOURCE.POLAR_WEBHOOK,
-          polarEventId: eventId,
-          poolPaymentId: payment.id,
-          eventType,
-          webhookId: ctx.webhookId,
-          webhookTimestamp: ctx.webhookTimestamp,
-          payloadJson: JSON.parse(JSON.stringify(payload)),
-        },
-      });
-      await tx.poolPayment.update({
-        where: { id: payment.id },
-        data: {
-          status: "COMPLETED",
-          polarOrderId: eventId,
-          paidAtUtc: paidAt,
-          ...(metaEventId ? { metaEventId } : {}),
-        },
-      });
-      await tx.pool.update({
-        where: { id: metadata.poolId! },
-        data: {
-          maxParticipants: metadata.toCapacity!,
-          // Re-arm capacity threshold notifications so the warning + full
-          // emails fire again if the pool refills after the expansion.
-          poolFullNotifiedAt: null,
-          capacityWarningNotifiedAt: null,
-        },
-      });
-      // CC redemption: flip the linked CC to PAID atomically. The
-      // `payment.accountReceivableId` was set when the customer
-      // redeemed in initiateCheckout (commit 6 §9.7).
-      if (payment.accountReceivableId) {
-        await tx.accountReceivable.update({
-          where: { id: payment.accountReceivableId },
-          data: { status: "PAID", paidAtUtc: paidAt },
-        });
-      }
-    });
-  } catch (err: any) {
-    if (err?.code === "P2002") {
-      // Concurrent webhook claimed the event slot first; safe to skip.
-      console.log(`[PaymentService] Race-condition duplicate event ${eventId}, skipping`);
-      return;
-    }
-    throw err; // Real failure → propagate so route returns 5xx and Polar retries.
-  }
-
-  console.log(
-    `[PaymentService] Pool ${metadata.poolId} expanded: ${metadata.fromCapacity} → ${metadata.toCapacity} participants`
-  );
-
-  // 6. Audit + notification
-  fireAndForget("audit:payment-completed", writeAuditEvent({
-    actorUserId: metadata.userId || null,
-    action: "PAYMENT_COMPLETED",
-    entityType: "Pool",
-    entityId: metadata.poolId,
-    poolId: metadata.poolId,
-    dataJson: {
-      paymentId: payment.id,
-      polarOrderId: eventId,
-      fromCapacity: metadata.fromCapacity,
-      toCapacity: metadata.toCapacity,
-      poolType: metadata.poolType,
-    },
-  }));
-
-  fireAndForget(
-    "admin:payment-completed",
-    (async () => {
-      const [pool, user] = await Promise.all([
-        prisma.pool.findUnique({
-          where: { id: metadata.poolId! },
-          select: { name: true },
-        }),
-        metadata.userId
-          ? prisma.user.findUnique({
-              where: { id: metadata.userId },
-              select: { displayName: true, email: true },
-            })
-          : null,
-      ]);
-      const poolName = pool?.name || metadata.poolId!;
-      const buyer = user
-        ? `${user.displayName} <${user.email}>`
-        : "(usuario desconocido)";
-      const usdAmount = `$${(payment.amountUsd / 100).toFixed(2)} USD`;
-      const copAmount = payment.amountCop
-        ? `${payment.amountCop.toLocaleString("es-CO")} COP`
-        : null;
-      const amountStr = copAmount ? `${copAmount} (${usdAmount})` : usdAmount;
-      // This handler is the Polar `order.paid` webhook entry point —
-      // MP completions go through a different handler elsewhere — so the
-      // gateway is always Polar here. We derive it from `mpPreferenceId`
-      // anyway to stay correct if the routing ever changes.
-      const gateway = payment.mpPreferenceId ? "Mercado Pago" : "Polar";
-      return sendAdminNotification({
-        subject: `${buyer} — pool "${poolName}" ${metadata.fromCapacity}→${metadata.toCapacity} (${amountStr})`,
-        body:
-          `<p><strong>Pool:</strong> "${poolName}" (${metadata.poolType})</p>` +
-          `<p><strong>Comprador:</strong> ${buyer}</p>` +
-          `<p><strong>Capacidad:</strong> ${metadata.fromCapacity} → ${metadata.toCapacity} participantes</p>` +
-          `<p><strong>Monto:</strong> ${amountStr}</p>` +
-          `<p><strong>Pasarela:</strong> ${gateway} · payment id <code>${payment.id}</code></p>`,
-        category: "payment_completed",
-      });
-    })(),
-  );
-
-  if (metadata.userId && metaEventId) {
-    // metaEventId was generated and persisted INSIDE the atomic tx above —
-    // no separate update here. The success-page Pixel emission and the
-    // server-side CAPI emission below both use the same ID, so Meta
-    // deduplicates the Purchase event automatically.
-    // Enriched Advanced Matching: everything we know about the user that
-    // Meta accepts (email, name, DOB, gender, country) improves EMQ score
-    // and match quality in Events Manager.
-    const userForCapi = await prisma.user.findUnique({
-      where: { id: metadata.userId },
-      select: {
-        email: true,
-        firstName: true,
-        lastName: true,
-        dateOfBirth: true,
-        gender: true,
-        country: true,
-      },
-    });
-    fireAndForget("capi:purchase-polar", sendCapiEvent({
-      eventName: "Purchase",
-      eventId: metaEventId,
-      userData: {
-        externalId: metadata.userId,
-        email: userForCapi?.email,
-        firstName: userForCapi?.firstName ?? undefined,
-        lastName: userForCapi?.lastName ?? undefined,
-        dateOfBirth: userForCapi?.dateOfBirth?.toISOString().slice(0, 10),
-        gender: userForCapi?.gender ?? undefined,
-        country: userForCapi?.country ?? undefined,
-        // Advanced Matching signals captured when the checkout was
-        // initiated from the browser. Without these the EMQ score
-        // drops 2-3 points and Meta's audience optimisation degrades.
-        fbp: payment.metaFbp ?? undefined,
-        fbc: payment.metaFbc ?? undefined,
-        clientIpAddress: payment.clientIpAddress ?? undefined,
-        clientUserAgent: payment.clientUserAgent ?? undefined,
-      },
-      customData: {
-        value: payment.amountUsd / 100,
-        currency: "USD",
-        content_type: "product",
-        content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
-        num_items: 1,
-      },
-    }));
-
-    // Server-side GA4 failsafe. GA4 deduplicates by `transaction_id`, so
-    // if the browser already fired `purchase` this call is a no-op in
-    // reports but guarantees revenue is captured when the browser event
-    // was blocked (ad-blocker, tab closed on redirect, Polar bounce).
-    fireAndForget("ga4mp:purchase-polar", sendGa4Event({
-      userId: metadata.userId,
-      events: [{
-        name: "purchase",
-        params: {
-          transaction_id: eventId,
-          affiliation: "Polar International",
-          currency: "USD",
-          value: payment.amountUsd / 100,
-          items: [{
-            item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
-            item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
-            item_category: "pool_capacity",
-            item_variant: payment.poolType,
-            price: payment.amountUsd / 100,
-            quantity: 1,
-            currency: "USD",
-          }],
-        },
-      }],
-    }));
-  }
-
-  // 7. Send payment receipt to user
-  if (metadata.userId) {
-    fireAndForget("payment-receipt-email", (async () => {
-      const user = await prisma.user.findUnique({
-        where: { id: metadata.userId! },
-        select: { email: true, displayName: true, country: true },
-      });
-      const pool = await prisma.pool.findUnique({
-        where: { id: metadata.poolId! },
-        select: { name: true },
-      });
-      if (!user || !pool) return;
-      const amountUsd = payment.amountUsd / 100;
-      // If this payment was linked to a CC, look up the consecutive
-      // so the receipt email surfaces it (SALES_AUDIT.md §11.9).
-      let accountReceivableNumber: string | undefined;
-      if (payment.accountReceivableId) {
-        const cc = await prisma.accountReceivable.findUnique({
-          where: { id: payment.accountReceivableId },
-          select: { consecutive: true },
-        });
-        accountReceivableNumber = cc?.consecutive;
-      }
-      await sendPaymentReceiptEmail({
-        to: user.email,
-        userId: metadata.userId!,
-        displayName: user.displayName,
-        poolName: pool.name,
-        poolId: metadata.poolId!,
-        transactionId: eventId,
-        amount: amountUsd.toFixed(2),
-        currency: "USD",
-        fromCapacity: metadata.fromCapacity!,
-        toCapacity: metadata.toCapacity!,
-        paidAt: new Date(),
-        locale: resolveUserLocale(user),
-        accountReceivableNumber,
-      });
-    })());
-  }
+  // Delegate to the single source of truth for payment completion.
+  // Idempotency, transaction, side effects (audit, admin notification,
+  // CAPI, GA4, receipt email) all owned by markPaymentCompleted.
+  await markPaymentCompleted({
+    paymentId: payment.id,
+    gatewayEventId: eventId,
+    eventType,
+    source: PAYMENT_EVENT_SOURCE.POLAR_WEBHOOK,
+    paidAtUtc: new Date(),
+    polarOrderId: eventId,
+    payloadJson: JSON.parse(JSON.stringify(payload)),
+    webhookContext: ctx,
+  });
 }
 
 /**

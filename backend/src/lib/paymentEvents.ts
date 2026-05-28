@@ -23,8 +23,12 @@
 export const PAYMENT_EVENT_SOURCE = {
   /** Received from Polar's signed webhook delivery. */
   POLAR_WEBHOOK: "POLAR_WEBHOOK",
-  /** Received from Mercado Pago IPN. */
+  /** Received from Mercado Pago IPN (async webhook delivery). */
   MP_WEBHOOK: "MP_WEBHOOK",
+  /** MP Payment Brick's synchronous response (sync path). Distinct from
+   *  MP_WEBHOOK so analytics can tell whether the completion came from
+   *  the on-page Brick form or from the async IPN delivery. */
+  MP_SYNC: "MP_SYNC",
   /** Beacon from the browser (redirect lifecycle, user cancel, errors). */
   CLIENT: "CLIENT",
   /** Written by the periodic reconciliation job. */
