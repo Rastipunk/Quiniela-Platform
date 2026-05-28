@@ -1990,7 +1990,12 @@ export interface MpProcessInput {
 export async function processMpPayment(
   input: MpProcessInput,
 ): Promise<{ status: string; statusDetail: string; mpPaymentId: number; metaEventId?: string }> {
-  const { paymentId, formData, metaCookies, clientIpAddress, clientUserAgent, country } = input;
+  const { paymentId, formData } = input;
+  // metaCookies / clientIpAddress / clientUserAgent / country are accepted
+  // for backwards compatibility with the route boundary but no longer
+  // consumed here. markPaymentCompleted reads fbp/fbc/IP/UA from the
+  // persisted PoolPayment columns (captured at checkout creation) and
+  // country from User.country. See approved-path comment below.
 
   // Find our payment record
   const payment = await prisma.poolPayment.findUnique({ where: { id: paymentId } });
@@ -2022,118 +2027,50 @@ export async function processMpPayment(
   console.log(`[PaymentService] MP payment result: id=${result.id}, status=${result.status}, detail=${result.statusDetail}`);
 
   if (result.status === "approved") {
-    // Expand capacity immediately
-    await prisma.$transaction(async (tx) => {
-      await tx.poolPayment.update({
-        where: { id: payment.id },
-        data: {
-          status: "COMPLETED",
-          polarOrderId: `mp-${result.id}`,
-          paidAtUtc: new Date(),
-        },
-      });
-      await tx.pool.update({
-        where: { id: payment.poolId },
-        data: {
-        maxParticipants: payment.toCapacity,
-        // Re-arm capacity threshold notifications so the warning + full
-        // emails fire again if the pool refills after the expansion.
-        poolFullNotifiedAt: null,
-        capacityWarningNotifiedAt: null,
-      },
-      });
-      // CC redemption: PENDING/REDEEMED → PAID (sales/§9.7).
-      if (payment.accountReceivableId) {
-        await tx.accountReceivable.update({
-          where: { id: payment.accountReceivableId },
-          data: { status: "PAID", paidAtUtc: new Date() },
-        });
-      }
+    // Delegate the entire completion sequence to the shared function.
+    // It handles: PaymentEvent (idempotency slot), PoolPayment update
+    // (status / paidAtUtc / mpPaymentId / metaEventId), Pool capacity bump,
+    // AccountReceivable PAID flip (if CC linked), AuditEvent row — all
+    // atomic — plus post-tx admin notification, CAPI Purchase, GA4 purchase,
+    // and receipt email. See markPaymentCompleted's docstring.
+    //
+    // Idempotency key matches what the IPN handler will emit
+    // (`mp-{id}-approved`) so whichever path lands first claims the
+    // PaymentEvent slot; the other dedupes silently via P2002 or the
+    // status entry guard. The `source` field (MP_SYNC vs MP_WEBHOOK)
+    // records which path actually wrote the row for analytics.
+    await markPaymentCompleted({
+      paymentId: payment.id,
+      gatewayEventId: `mp-${result.id}-approved`,
+      eventType: "mp.sync.approved",
+      source: PAYMENT_EVENT_SOURCE.MP_SYNC,
+      paidAtUtc: new Date(),
+      polarOrderId: `mp-${result.id}`,
+      mpPaymentId: String(result.id),
+      payloadJson: {
+        id: result.id,
+        status: result.status,
+        statusDetail: result.statusDetail,
+      } as Prisma.InputJsonValue,
     });
 
-    console.log(`[PaymentService] MP: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
-
-    fireAndForget("audit:mp-payment-completed", writeAuditEvent({
-      actorUserId: payment.userId,
-      action: "MP_PAYMENT_COMPLETED",
-      entityType: "Pool",
-      entityId: payment.poolId,
-      poolId: payment.poolId,
-      dataJson: { mpPaymentId: result.id, status: result.status },
-    }));
-
-    const metaEventId = crypto.randomUUID();
-    // Persist so the exitoso page (and any IPN re-entry) re-uses the same
-    // event_id and Meta deduplicates across emission channels.
-    await prisma.poolPayment.update({
+    // The Brick response needs the metaEventId so the browser can dedupe
+    // its client-side Pixel Purchase event against the server-side CAPI
+    // event we just enqueued inside markPaymentCompleted. Re-read the row
+    // (cheap — primary key lookup) instead of returning it from the
+    // shared function — keeps the shared signature focused on the
+    // completion contract rather than on Brick-response plumbing.
+    const after = await prisma.poolPayment.findUnique({
       where: { id: payment.id },
-      data: { metaEventId },
+      select: { metaEventId: true },
     });
-    const userForCapi = await prisma.user.findUnique({
-      where: { id: payment.userId },
-      select: {
-        email: true,
-        firstName: true,
-        lastName: true,
-        dateOfBirth: true,
-        gender: true,
-        country: true,
-      },
-    });
-    fireAndForget("capi:purchase-mp", sendCapiEvent({
-      eventName: "Purchase",
-      eventId: metaEventId,
-      userData: {
-        externalId: payment.userId,
-        email: userForCapi?.email,
-        firstName: userForCapi?.firstName ?? undefined,
-        lastName: userForCapi?.lastName ?? undefined,
-        dateOfBirth: userForCapi?.dateOfBirth?.toISOString().slice(0, 10),
-        gender: userForCapi?.gender ?? undefined,
-        country: userForCapi?.country ?? country,
-        fbp: metaCookies?.fbp,
-        fbc: metaCookies?.fbc,
-        clientIpAddress,
-        clientUserAgent,
-      },
-      customData: {
-        // COP Purchase: value must be the REAL pesos paid, not the USD cents
-        // equivalent. `amountCop` is written at checkout creation; fallback
-        // to recomputing from the pricing library handles pre-migration
-        // rows that still have NULL amountCop.
-        value: mpPurchaseValue(payment),
-        currency: "COP",
-        content_type: "product",
-        content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
-        num_items: 1,
-      },
-    }));
 
-    fireAndForget("ga4mp:purchase-mp", sendGa4Event({
-      userId: payment.userId,
-      ipOverride: clientIpAddress,
-      userAgent: clientUserAgent,
-      events: [{
-        name: "purchase",
-        params: {
-          transaction_id: String(result.id),
-          affiliation: "Mercado Pago Colombia",
-          currency: "COP",
-          value: mpPurchaseValue(payment),
-          items: [{
-            item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
-            item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
-            item_category: "pool_capacity",
-            item_variant: payment.poolType,
-            price: mpPurchaseValue(payment),
-            quantity: 1,
-            currency: "COP",
-          }],
-        },
-      }],
-    }));
-
-    return { status: result.status, statusDetail: result.statusDetail, mpPaymentId: result.id, metaEventId };
+    return {
+      status: result.status,
+      statusDetail: result.statusDetail,
+      mpPaymentId: result.id,
+      metaEventId: after?.metaEventId ?? undefined,
+    };
   } else if (result.status === "rejected") {
     await prisma.poolPayment.update({
       where: { id: payment.id },
@@ -2227,151 +2164,31 @@ export async function handleMpWebhook(paymentMpId: string): Promise<void> {
   };
 
   if (mpPayment.status === "approved") {
-    // Re-use the event_id from the sync flow if the browser already fired
-    // a Pixel event (dedupe). Otherwise mint a new one and persist it for
-    // any future re-entry (rare but possible with MP retries).
-    const metaEventId = payment.metaEventId ?? crypto.randomUUID();
-
-    try {
-      await prisma.$transaction(async (tx) => {
-        await tx.paymentEvent.create({ data: eventCreateData });
-        await tx.poolPayment.update({
-          where: { id: payment.id },
-          data: {
-            status: "COMPLETED",
-            polarOrderId: `mp-${paymentMpId}`,
-            paidAtUtc: new Date(),
-            metaEventId,
-          },
-        });
-        await tx.pool.update({
-          where: { id: payment.poolId },
-          data: {
-            maxParticipants: payment.toCapacity,
-            // Re-arm capacity threshold notifications so the warning + full
-            // emails fire again if the pool refills after the expansion.
-            poolFullNotifiedAt: null,
-            capacityWarningNotifiedAt: null,
-          },
-        });
-        // CC redemption: linked CC also moves to PAID atomically.
-        if (payment.accountReceivableId) {
-          await tx.accountReceivable.update({
-            where: { id: payment.accountReceivableId },
-            data: { status: "PAID", paidAtUtc: new Date() },
-          });
-        }
-      });
-    } catch (err: any) {
-      if (err?.code === "P2002") {
-        console.log(`[PaymentService] Race-condition duplicate MP event ${eventId}, skipping`);
-        return;
-      }
-      throw err;
-    }
-    console.log(`[PaymentService] MP IPN: Pool ${payment.poolId} expanded ${payment.fromCapacity} → ${payment.toCapacity}`);
-
-    const userForIpnCapi = await prisma.user.findUnique({
-      where: { id: payment.userId },
-      select: {
-        email: true,
-        firstName: true,
-        lastName: true,
-        dateOfBirth: true,
-        gender: true,
-        country: true,
-      },
+    // Delegate the entire completion sequence to the shared function.
+    // It owns: PaymentEvent (idempotency slot on `gatewayEventId`),
+    // PoolPayment update (status / paidAtUtc / mpPaymentId / metaEventId),
+    // Pool capacity bump, AccountReceivable PAID flip (if CC linked),
+    // AuditEvent row — all atomic — plus post-tx admin notification,
+    // CAPI Purchase, GA4 purchase, and receipt email.
+    //
+    // The IPN uses the same idempotency key the sync path uses
+    // (`mp-{id}-approved`). Whichever path lands first writes the
+    // PaymentEvent; the second sees either P2002 (race) or
+    // status === COMPLETED (entry guard) and returns silently.
+    await markPaymentCompleted({
+      paymentId: payment.id,
+      gatewayEventId: eventId,
+      eventType: "mp.payment.approved",
+      source: PAYMENT_EVENT_SOURCE.MP_WEBHOOK,
+      paidAtUtc: new Date(),
+      polarOrderId: `mp-${paymentMpId}`,
+      mpPaymentId: String(paymentMpId),
+      payloadJson: {
+        id: paymentMpId,
+        status: mpPayment.status,
+        reference,
+      } as Prisma.InputJsonValue,
     });
-    fireAndForget("capi:purchase-mp-ipn", sendCapiEvent({
-      eventName: "Purchase",
-      eventId: metaEventId,
-      userData: {
-        externalId: payment.userId,
-        email: userForIpnCapi?.email,
-        firstName: userForIpnCapi?.firstName ?? undefined,
-        lastName: userForIpnCapi?.lastName ?? undefined,
-        dateOfBirth: userForIpnCapi?.dateOfBirth?.toISOString().slice(0, 10),
-        gender: userForIpnCapi?.gender ?? undefined,
-        country: userForIpnCapi?.country ?? undefined,
-        // Advanced Matching from checkout-time cookies (see schema note).
-        fbp: payment.metaFbp ?? undefined,
-        fbc: payment.metaFbc ?? undefined,
-        clientIpAddress: payment.clientIpAddress ?? undefined,
-        clientUserAgent: payment.clientUserAgent ?? undefined,
-      },
-      customData: {
-        value: mpPurchaseValue(payment),
-        currency: "COP",
-        content_type: "product",
-        content_ids: [`pool_upgrade_${payment.poolType}_${payment.toCapacity}`],
-        num_items: 1,
-      },
-    }));
-
-    fireAndForget("ga4mp:purchase-mp-ipn", sendGa4Event({
-      userId: payment.userId,
-      events: [{
-        name: "purchase",
-        params: {
-          transaction_id: `mp-${paymentMpId}`,
-          affiliation: "Mercado Pago Colombia",
-          currency: "COP",
-          value: mpPurchaseValue(payment),
-          items: [{
-            item_id: `pool_upgrade_${payment.poolType}_${payment.toCapacity}`,
-            item_name: `Pool capacity upgrade to ${payment.toCapacity}`,
-            item_category: "pool_capacity",
-            item_variant: payment.poolType,
-            price: mpPurchaseValue(payment),
-            quantity: 1,
-            currency: "COP",
-          }],
-        },
-      }],
-    }));
-
-    // Send payment receipt to user
-    fireAndForget("mp-payment-receipt-email", (async () => {
-      const user = await prisma.user.findUnique({
-        where: { id: payment.userId },
-        select: { email: true, displayName: true, country: true },
-      });
-      const pool = await prisma.pool.findUnique({
-        where: { id: payment.poolId },
-        select: { name: true },
-      });
-      if (!user || !pool) return;
-      // amountUsd stores USD cents (e.g. 6597 for $65.97). Using it here
-      // would render "$6.597 COP" in the receipt while the customer's bank
-      // shows ~$260,000 COP — a ~40x discrepancy that triggers chargebacks.
-      // mpPurchaseValue prefers the persisted amountCop column and falls back
-      // to recomputing from pricing for pre-migration rows.
-      const amountCop = mpPurchaseValue(payment);
-      // Surface the CC consecutive on the receipt when linked.
-      let accountReceivableNumber: string | undefined;
-      if (payment.accountReceivableId) {
-        const cc = await prisma.accountReceivable.findUnique({
-          where: { id: payment.accountReceivableId },
-          select: { consecutive: true },
-        });
-        accountReceivableNumber = cc?.consecutive;
-      }
-      await sendPaymentReceiptEmail({
-        to: user.email,
-        userId: payment.userId,
-        displayName: user.displayName,
-        poolName: pool.name,
-        poolId: payment.poolId,
-        transactionId: `mp-${paymentMpId}`,
-        amount: amountCop.toLocaleString("es-CO"),
-        currency: "COP",
-        fromCapacity: payment.fromCapacity,
-        toCapacity: payment.toCapacity,
-        paidAt: new Date(),
-        locale: resolveUserLocale(user),
-        accountReceivableNumber,
-      });
-    })());
   } else if (mpPayment.status === "rejected" || mpPayment.status === "cancelled") {
     try {
       await prisma.$transaction(async (tx) => {
