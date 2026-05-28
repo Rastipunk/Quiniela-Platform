@@ -1277,3 +1277,77 @@ The reconciler reads `payment.mpPaymentId` to call `getPayment()` for canonical 
 ### 18.7 Webhook return semantics
 
 Webhook handlers return 5xx on processing errors, not 200. Both Polar and Mercado Pago retry with exponential backoff. The 401 signature-error path is the only exception. This ensures a transient failure (DB blip, retry exhaustion at CAPI, etc.) gets re-delivered by the gateway rather than dropped silently.
+
+## 19. Payment-attempt telemetry (ADR-066)
+
+Client-side beacons posted from the browser to `POST /payments/attempts/:paymentId/event` populate `PaymentEvent` rows with `source=CLIENT` so the backend can reconstruct what the user did during a checkout attempt — information no webhook can supply.
+
+### 19.1 Event taxonomy
+
+| `eventType` | Emit site | Meaning |
+|---|---|---|
+| `REDIRECT_INITIATED` | Pre-redirect, both gateways | Browser is about to assign `window.location.href`. |
+| `REDIRECT_FAILED` | Catch around `window.location.href`, both gateways | Synchronous throw during assignment (CSP, popup blocker). |
+| `USER_CANCELLED` | `/pago/cancelado` (Polar return path) + Cancel button in `/pago/checkout` (MP). | User chose to leave deliberately. |
+| `CLIENT_ERROR` | Reserved — no current emit site. | Catch-all for ad-hoc fetch errors during the flow. |
+| `BRICK_LOADED` | MP `/pago/checkout` `onReady`. | MP form rendered and is interactive. |
+| `BRICK_ERROR` | MP `/pago/checkout` `onError` + outer SDK-load catch. | MP-supplied error; `details.stage` ∈ `init` / `render` / `submit`. |
+| `USER_CLOSED_TAB` | MP `/pago/checkout` `beforeunload`. | Browser tearing down the page mid-flow. |
+
+### 19.2 Lifecycle reconstruction
+
+For an MP attempt, ordering `PaymentEvent` rows by `createdAtUtc` yields one of six terminal sequences:
+
+| Sequence | Interpretation |
+|---|---|
+| `REDIRECT_INITIATED` alone | Never reached `/pago/checkout` (CSP, popup blocker, network abort). |
+| `… BRICK_ERROR(init)` | SDK failed to load or instantiate. |
+| `… BRICK_LOADED → USER_CANCELLED` | User clicked the Cancel button. |
+| `… BRICK_LOADED → USER_CLOSED_TAB` | User closed the tab without interacting. |
+| `… BRICK_LOADED → BRICK_ERROR(render)` | Form rendered then broke. |
+| `… BRICK_LOADED → MP_SYNC PAYMENT_COMPLETED` | Paid successfully. |
+| `… BRICK_LOADED → MP_SYNC (rejected)` | Card declined / fraud check failed. |
+
+For a Polar attempt, only two extra signals exist: `USER_CANCELLED` from `/pago/cancelado` if the user clicked Polar's cancel exit, or — if neither webhook nor `/pago/cancelado` fires — the reconciler (ADR-060) eventually marks the row `ABANDONED_LOCAL_TIMEOUT` after 24h. Polar's hosted checkout is out-of-domain so we cannot instrument it further.
+
+### 19.3 Transport rules
+
+- **In-flow beacons** (`REDIRECT_INITIATED`, `BRICK_LOADED`, `BRICK_ERROR`, `USER_CANCELLED` from buttons): use `reportPaymentAttemptEvent` (fetch-based). Errors are swallowed silently — a missing beacon must not affect the user-visible flow.
+- **Unload-time beacons** (`USER_CLOSED_TAB`): MUST use `reportPaymentAttemptEventBeacon` (`navigator.sendBeacon`). `fetch()` is cancelled by modern browsers during page tear-down, so any audit row sent that way is lost roughly half the time.
+
+Both helpers live in `frontend-next/src/lib/api/paymentAttemptEvent.ts`.
+
+### 19.4 CORS / Content-Type
+
+`navigator.sendBeacon` sends a Blob with `Content-Type: text/plain` to escape the CORS preflight that aborts during unload. The backend route at `POST /payments/attempts/:paymentId/event` mounts a dedicated `express.text({ type: "text/plain", limit: "8kb" })` middleware in front of the handler. The handler `JSON.parse`s the raw string before the Zod schema runs. JSON-body callers (the in-flow beacons) bypass this branch because `req.body` arrives already parsed.
+
+### 19.5 Forensic queries
+
+To reconstruct the lifecycle of a specific attempt:
+
+```sql
+SELECT "eventType", source, "createdAtUtc",
+       "payloadJson"::text AS details
+FROM "PaymentEvent"
+WHERE "poolPaymentId" = $1
+ORDER BY "createdAtUtc";
+```
+
+To count MP attempts by exit state in a window:
+
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE last_event = 'USER_CANCELLED')        AS cancelled,
+  COUNT(*) FILTER (WHERE last_event = 'USER_CLOSED_TAB')       AS closed,
+  COUNT(*) FILTER (WHERE last_event = 'BRICK_ERROR')           AS errored,
+  COUNT(*) FILTER (WHERE pp.status = 'COMPLETED')              AS completed,
+  COUNT(*) FILTER (WHERE pp.status = 'FAILED')                 AS rejected
+FROM "PoolPayment" pp
+LEFT JOIN LATERAL (
+  SELECT "eventType" AS last_event FROM "PaymentEvent"
+  WHERE "poolPaymentId" = pp.id
+  ORDER BY "createdAtUtc" DESC LIMIT 1
+) le ON true
+WHERE pp."mpPreferenceId" IS NOT NULL
+  AND pp."createdAtUtc" > NOW() - INTERVAL '7 days';
+```

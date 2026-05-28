@@ -4838,4 +4838,54 @@ Forensic mapping (`LOCALE_RESOLUTION_AUDIT.md` §2) identified three bugs in the
 
 ---
 
+## ADR-066: Payment-attempt client-side telemetry (MP Brick visibility)
+
+**Date:** 2026-05-28 | **Status:** Accepted
+
+**Context:** On 2026-05-28 the owner attempted two payments on Mercado Pago and asked: "cuando un usuario da click en pagar, saber si solo cerró la ventana y no lo hizo, o hizo click en volver, o qué pasó." Forensic audit of his two attempts (PoolPayments `f543a1a9`, `f7cf0bde`) showed both in PENDING with `mpPaymentId=NULL` and PaymentEvent sequence ending at `CLIENT REDIRECT_INITIATED` — the backend had zero signal about what happened after he reached `/pago/checkout`. The 7 stuck MP rows the reconciler resolved on the same day (ADR-065) had the same forensic dead-end.
+
+`PAYMENT_ATTEMPT_TELEMETRY_AUDIT.md` mapped five concrete gaps:
+
+1. **G-1.** MP Brick load success/failure invisible — `onReady` and `onError` only wrote to local React state.
+2. **G-2.** MP Brick tab-close invisible — no `beforeunload` listener.
+3. **G-3.** MP Brick had no visible cancel exit — only a hardcoded "← Volver" link that called `router.back()` and silently navigated.
+4. **G-4.** `CLIENT_ERROR` enum value was documented but never emitted from anywhere in `frontend-next/`.
+5. **G-5.** `REDIRECT_FAILED` only catches synchronous `window.location.href` throws — async navigation aborts (CSP, popup blocker) are missed. **Out of scope for this ADR.**
+
+**Decision:** Three new `CLIENT_EVENT_TYPE` values (`BRICK_LOADED`, `BRICK_ERROR`, `USER_CLOSED_TAB`), `navigator.sendBeacon` transport for the unload-safe event, and a visible Cancel button on `/pago/checkout` that emits `USER_CANCELLED`. Polar is unchanged — out-of-domain limits prevent equivalent instrumentation; the existing `/pago/cancelado` flow already covers deliberate cancellations from polar.sh.
+
+**Locked decisions (PAYMENT_ATTEMPT_TELEMETRY_AUDIT.md §3, confirmed via AskUserQuestion):**
+
+- **3.1 Taxonomy:** new specific event types instead of reusing `CLIENT_ERROR` with discriminating details. Queryable directly in SQL (`WHERE eventType = 'BRICK_LOADED'`) without parsing the payload JSON.
+- **3.2 Cancel button:** yes, with a beacon. Resolves the "back vs close" ambiguity that the audit's gap inventory called out as the owner's primary question.
+- **3.3 `beforeunload` scope:** only `/pago/checkout`. Adding it on the pool-capacity tab pre-Polar-redirect window would noise on every legitimate navigation and add no signal Polar can't already give us via `/pago/cancelado`.
+- **3.4 Transport:** `navigator.sendBeacon` via a new `reportPaymentAttemptEventBeacon` helper. `fetch()` does not survive page unload; mixing transports in one function would hide that operational difference.
+- **3.5 CORS:** `text/plain` Blob (sendBeacon-friendly, simple-request, no preflight). Backend route teaches itself to parse `text/plain` bodies via a dedicated 8kb `express.text()` middleware mounted only on this route.
+
+**Implementation (5 commits, 2026-05-28):**
+
+- `e705992` — `CLIENT_EVENT_TYPE` enum extended; route accepts `text/plain` body with 8kb cap. Additive backend change (column is TEXT — no migration).
+- `c6b6064` — `reportPaymentAttemptEventBeacon` helper; local `ClientEventType` union mirrors backend.
+- `b8da1fa` — `/pago/checkout` emits `BRICK_LOADED` from `onReady`; `BRICK_ERROR` from `onError` with stage=`init`/`render`; outer SDK-load catch also emits `BRICK_ERROR` with stage=`init`, phase=`sdk_load_or_instantiation`. A `brickReadyRef` distinguishes the two stages without relying on React state lag.
+- `f7cafac` — `beforeunload` listener emits `USER_CLOSED_TAB` via sendBeacon with `{ brickStatus, msOnPage, hadBrickLoaded, gateway }`. Cancel button rewritten as i18n'd exit emitting `USER_CANCELLED`. `suppressUnloadRef` flipped before deliberate navigations so beforeunload does not double-count. i18n key `payment.checkout.cancel` added to ES/EN/PT.
+- `<this commit>` — ADR-066, BUSINESS_RULES §19, MEMORY entry.
+
+**Consequences:**
+
+- ✅ For any MP payment attempt the audit log distinguishes six exit states: paid, rejected, cancelled-via-button, closed-tab, broken-form-render, SDK-failed-init. The owner's exact question is answerable by reading `PaymentEvent` rows ordered by `createdAtUtc`.
+- ✅ Brick failures pre-`onReady` (SDK fetch, instantiation throw) are no longer invisible — the outer try/catch emits `BRICK_ERROR(init)`.
+- ✅ The Cancel button is i18n'd, deterministic (no `router.back()` weirdness for fresh-tab users), and matches the locale chosen by the user.
+- ⚠️ `sendBeacon` returns silently false on some browsers if the page is shutting down faster than the queue can flush. Acceptable — the audit log accepts intermittent loss; a missing `USER_CLOSED_TAB` is no worse than today's zero coverage.
+- ⚠️ `BRICK_ERROR` `stage` is inferred from `brickReadyRef`. If MP changes `onReady`/`onError` semantics in a future SDK version the classification could drift. We re-validate manually if the SDK major-bumps.
+- ⚠️ Polar lifecycle visibility is unchanged. The cycle is intentionally MP-focused — Polar's hosted checkout is out-of-domain and the existing `USER_CANCELLED` from `/pago/cancelado` already covers the deliberate-cancel case.
+- ⚠️ The wizard's MP flow (`PoolCreationWizard.tsx`) routes users through the SAME `/pago/checkout` page (verified at code level), so it inherits the new telemetry automatically. No separate wizard work needed.
+
+**Related code:**
+
+- Backend: `backend/src/lib/paymentEvents.ts` (enum), `backend/src/routes/payments.ts` (text/plain parser).
+- Frontend: `frontend-next/src/lib/api/paymentAttemptEvent.ts` (sendBeacon helper), `frontend-next/src/app/[locale]/pago/checkout/page.tsx` (beacon emit sites + Cancel button), `frontend-next/src/messages/{es,en,pt}/payment.json`.
+- Specs: `PAYMENT_ATTEMPT_TELEMETRY_AUDIT.md`, `PAYMENT_ATTEMPT_TELEMETRY_IMPLEMENTATION.md`.
+
+---
+
 **END OF DOCUMENT**
