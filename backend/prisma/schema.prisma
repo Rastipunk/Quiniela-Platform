@@ -1309,6 +1309,14 @@ model PoolPayment {
   // the same purpose.
   mpPreferenceId String?
 
+  // MP's real `payment.id`. Set on the first IPN delivery (defensive,
+  // even on `pending` status) so the MP reconciler can call
+  // `getPayment(mpPaymentId)` to resolve stuck rows. For legacy rows
+  // (created before this column existed), the reconciler falls back to
+  // MP's `payments/search` by external_reference (= polarCheckoutId).
+  // See PAYMENTS_PARITY_AUDIT.md §3.6.
+  mpPaymentId String?
+
   paidAtUtc    DateTime?
   createdAtUtc DateTime  @default(now())
   updatedAtUtc DateTime  @updatedAt
@@ -1326,6 +1334,12 @@ model PoolPayment {
   @@index([poolId])
   @@index([userId])
   @@index([status])
+  // Compound index for both reconcilers' stale-row queries:
+  //   WHERE status IN (...) AND createdAtUtc < cutoff
+  // Polar reconciler uses it via `findStalePayments`; MP reconciler
+  // (added in commit 5 of this cycle) uses the same pattern. Single
+  // index covers both. See PAYMENTS_PARITY_AUDIT.md §3.5.
+  @@index([status, createdAtUtc])
 }
 
 // Immutable audit log of every payment-related event we observe.
