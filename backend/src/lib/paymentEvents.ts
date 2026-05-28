@@ -50,20 +50,46 @@ export type PaymentEventSource =
  *   2. Just before `window.location.href = url`, emit REDIRECT_INITIATED.
  *   3. If the redirect throws (CSP, popup blocker, etc.), emit
  *      REDIRECT_FAILED inside the catch.
- *   4. If the user lands on /pago/cancelado, that page emits
- *      USER_CANCELLED before showing the cancel UI.
- *   5. Any other client-side fetch error during the flow emits
+ *   4. (MP only) On /pago/checkout the Brick's `onReady` fires →
+ *      emit BRICK_LOADED. Absence later means the SDK failed.
+ *   5. (MP only) The Brick's `onError` fires → emit BRICK_ERROR with
+ *      stage (init / render / submit) and the MP error in details.
+ *   6. (MP only) `beforeunload` fires while the Brick is mid-flow
+ *      (status ∈ loading/ready/processing) → emit USER_CLOSED_TAB.
+ *      Must be sent via navigator.sendBeacon (fetch can't survive
+ *      page unload); see PAYMENT_ATTEMPT_TELEMETRY_AUDIT.md §3.4.
+ *   7. If the user clicks a deliberate cancel exit — either Polar's
+ *      /pago/cancelado return path or MP's in-page "Cancelar" button
+ *      — emit USER_CANCELLED.
+ *   8. Any other client-side fetch error during the flow emits
  *      CLIENT_ERROR with the message.
  *
  * Without these breadcrumbs we cannot distinguish "user gave up on
- * Polar's page" from "our redirect never executed" from "the user closed
- * the tab during the round-trip". See POLAR_AUDIT.md G-1, G-2, G-3.
+ * the gateway page" from "our redirect never executed" from "the user
+ * closed the tab" from "the SDK failed silently". See POLAR_AUDIT.md
+ * G-1/G-2/G-3 and PAYMENT_ATTEMPT_TELEMETRY_AUDIT.md §2 for the gaps
+ * each value closes.
  */
 export const CLIENT_EVENT_TYPE = {
   REDIRECT_INITIATED: "REDIRECT_INITIATED",
   REDIRECT_FAILED: "REDIRECT_FAILED",
   USER_CANCELLED: "USER_CANCELLED",
   CLIENT_ERROR: "CLIENT_ERROR",
+  /** (MP) Brick `onReady` fired — payment form is rendered and the
+   *  user can interact with it. Absence later in the timeline implies
+   *  the SDK failed to load or the Brick never instantiated. */
+  BRICK_LOADED: "BRICK_LOADED",
+  /** (MP) Brick `onError` fired. `details.stage` is `init` if the
+   *  error happened before BRICK_LOADED, `render` after, or `submit`
+   *  when the failure is tied to a form submission attempt. The
+   *  MP-supplied error message is in `details.error`. */
+  BRICK_ERROR: "BRICK_ERROR",
+  /** (MP) `beforeunload` fired while the Brick was mid-flow. Sent
+   *  via navigator.sendBeacon so the request survives page unload.
+   *  `details` carries `brickStatus`, `msOnPage`, and
+   *  `hadBrickLoaded` so we can distinguish "left after 2s" from
+   *  "stayed five minutes before giving up". */
+  USER_CLOSED_TAB: "USER_CLOSED_TAB",
 } as const;
 
 export type ClientEventType =

@@ -8,7 +8,7 @@
  * (same library Polar uses internally).
  */
 
-import { Router, Request, Response } from "express";
+import express, { Router, Request, Response } from "express";
 import { z } from "zod";
 import { Webhook } from "standardwebhooks";
 import { requireAuth } from "../middleware/requireAuth";
@@ -219,9 +219,22 @@ const clientEventSchema = z.object({
   details: z.record(z.string(), z.unknown()).optional(),
 });
 
+// Accept text/plain bodies for this route ALONGSIDE the default JSON
+// parser. Required because navigator.sendBeacon (used for the
+// USER_CLOSED_TAB beacon on page unload) cannot set
+// `Content-Type: application/json` without triggering a CORS preflight
+// that gets aborted while the page unloads. With Content-Type set to
+// text/plain the request is a simple CORS request, no preflight, and
+// the browser flushes it reliably. The handler JSON.parses the raw
+// string before the existing Zod schema runs.
+// Cap at 8kb — beacons are tiny by design; this prevents a malicious
+// caller from filling the audit log with megabyte payloads.
+const beaconBodyParser = express.text({ type: "text/plain", limit: "8kb" });
+
 paymentsRouter.post(
   "/attempts/:paymentId/event",
   requireAuth,
+  beaconBodyParser,
   async (req: Request, res: Response) => {
     // Validate the path param shape before touching the DB. Express types
     // params as `string | string[]` in some configurations; coerce.
@@ -231,7 +244,21 @@ paymentsRouter.post(
       return sendBadRequest(res, "INVALID_PAYMENT_ID");
     }
 
-    const parsed = clientEventSchema.safeParse(req.body);
+    // If the request came via sendBeacon (text/plain) the body is the
+    // raw JSON string — parse it once here so the Zod schema below
+    // operates on the same shape regardless of transport. JSON-body
+    // requests (the existing fetch-based callers) come through with
+    // req.body already parsed as an object; they bypass this branch.
+    let rawBody: unknown = req.body;
+    if (typeof rawBody === "string") {
+      try {
+        rawBody = JSON.parse(rawBody);
+      } catch {
+        return sendBadRequest(res, "INVALID_JSON_BODY");
+      }
+    }
+
+    const parsed = clientEventSchema.safeParse(rawBody);
     if (!parsed.success) {
       return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
     }
