@@ -17,12 +17,12 @@
 
 | # | Title | Status | SHA |
 |---|---|---|---|
-| 1 | Backend: schema — add `PoolPayment.mpPaymentId` + compound index `[status, createdAtUtc]` + migration | 🟥 PENDING | — |
-| 2 | Backend: extract `markPaymentCompleted` shared function (refactor — Polar handler calls it, behavior unchanged) | 🟥 PENDING | — |
-| 3 | Backend: MP sync path (`processMpPayment`) + MP IPN path (`handleMpWebhook`) refactored to call `markPaymentCompleted` — closes gaps 1, 2, 3, 5 | 🟥 PENDING | — |
-| 4 | Backend: IPN handler persists `mpPaymentId` on first delivery (defensive — reconciler needs it) | 🟥 PENDING | — |
-| 5 | Backend: `mpPaymentReconcileJob` (advisory lock `82636506n`, 30-min cron, batch 50) — closes gap 4 | 🟥 PENDING | — |
-| 6 | Docs: ADR-065 + BUSINESS_RULES §18 + CLAUDE.md invariant 13 + MEMORY entry | 🟥 PENDING | — |
+| 1 | Backend: schema — add `PoolPayment.mpPaymentId` + compound index `[status, createdAtUtc]` + migration | 🟩 DONE | `9e85fa9` |
+| 2 | Backend: extract `markPaymentCompleted` shared function (refactor — Polar handler calls it, behavior unchanged) | 🟩 DONE | `a062d1c` |
+| 3 | Backend: MP sync path (`processMpPayment`) + MP IPN path (`handleMpWebhook`) refactored to call `markPaymentCompleted` — closes gaps 1, 2, 3, 5 | 🟩 DONE | `5881f9a` |
+| 4 | Backend: IPN handler persists `mpPaymentId` on first delivery (defensive — reconciler needs it) | 🟩 DONE | `c15f843` |
+| 5 | Backend: `mpPaymentReconcileJob` (advisory lock `82636506n`, 30-min cron, batch 50) — closes gap 4 | 🟩 DONE | `78efdd2` |
+| 6 | Docs: ADR-065 + BUSINESS_RULES §18 + CLAUDE.md invariant 13 + MEMORY entry | 🟧 IN PROGRESS | — |
 
 Cycle is functionally complete after commit 5. Commit 6 is documentation hygiene.
 
@@ -113,7 +113,7 @@ Co-Authored-By: …
 
 ### 1.6 Status
 
-🟥 PENDING — SHA: —
+🟩 DONE — SHA: `9e85fa9`
 
 ---
 
@@ -187,7 +187,7 @@ The body of `handleOrderPaid` shrinks from ~300 LOC to ~60 LOC.
 
 ### 2.5 Status
 
-🟥 PENDING — SHA: —
+🟩 DONE — SHA: `a062d1c`
 
 ---
 
@@ -256,7 +256,7 @@ Add `MP_SYNC` to the enum in `lib/paymentEvents.ts` to distinguish synchronous B
 
 ### 3.6 Status
 
-🟥 PENDING — SHA: —
+🟩 DONE — SHA: `5881f9a`
 
 ---
 
@@ -292,7 +292,7 @@ This runs BEFORE the status check, so even `pending` IPN deliveries persist the 
 
 ### 4.4 Status
 
-🟥 PENDING — SHA: —
+🟩 DONE — SHA: `c15f843`
 
 ---
 
@@ -401,7 +401,7 @@ Mirror `paymentReconcileJob.ts`:
 
 ### 5.5 Status
 
-🟥 PENDING — SHA: —
+🟩 DONE — SHA: `78efdd2`
 
 ---
 

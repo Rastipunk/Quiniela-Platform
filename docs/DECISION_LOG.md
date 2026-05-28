@@ -4790,4 +4790,52 @@ Forensic mapping (`LOCALE_RESOLUTION_AUDIT.md` §2) identified three bugs in the
 
 ---
 
+## ADR-065: Mercado Pago / Polar payment-completion parity
+
+**Date:** 2026-05-28 | **Status:** Accepted
+
+**Context:** The Santiago fix in ADR-064 surfaced a question the owner pushed on: are the two payment gateways — Polar (USD, international) and Mercado Pago (COP, Colombia) — capturing the same information and giving the customer the same downstream treatment? A forensic line-by-line audit (`PAYMENTS_PARITY_AUDIT.md`) of `handleOrderPaid` (Polar webhook) vs `processMpPayment` (MP Brick sync) vs `handleMpWebhook` (MP IPN) identified five concrete gaps plus a sixth structural one:
+
+1. **No PaymentEvent for MP sync completions.** The Brick's synchronous `approved` response wrote nothing to `PaymentEvent`. Forensic trail of synchronously-approved MP payments was effectively absent.
+2. **No receipt email for MP sync completions.** `sendPaymentReceiptEmail` only ran in the IPN path. Cards that resolved instantly on the Brick (the common case) never triggered the IPN's receipt branch.
+3. **Audit row inconsistencies.** Polar wrote `PAYMENT_COMPLETED` post-tx via `fireAndForget`; MP sync wrote `MP_PAYMENT_COMPLETED` post-tx; MP IPN wrote nothing. A tx commit followed by a fire-and-forget failure could leave a COMPLETED PoolPayment with no audit row.
+4. **No reconciler for stuck MP rows.** Polar had `paymentReconcileJob` (ADR-060/F-14) but MP did not — leaving 7 rows in production stuck in PENDING (oldest 23 days, 2 paid for ~$228,500 COP each).
+5. **No admin notification for MP completions.** `sendAdminNotification` only fired from the Polar handler.
+6. **Structural duplication.** Completion side effects (idempotency claim, PoolPayment update, Pool capacity bump, AccountReceivable PAID flip, audit row, receipt, CAPI, GA4, admin notification) were re-implemented inline in three places. Adding a new side effect required edits in three locations with three different orderings.
+
+**Decision:** Consolidate the completion sequence into one shared function and use it from every code path that can complete a payment. Add an MP-specific reconciler symmetrical to Polar's. Persist MP's payment id on first IPN delivery so the reconciler can always look up canonical state.
+
+**Implementation (6 commits, 2026-05-27 → 2026-05-28):**
+
+- **`PoolPayment.mpPaymentId`** (migration `20260527_add_mp_payment_id_and_status_index`) — MP's real `payment.id`, populated by the IPN on first delivery and by the reconciler's search fallback. Required because the legacy `polarCheckoutId` column for MP rows holds our `P4A-{poolId}-{ts}` external reference, not MP's id.
+- **Compound index `[status, createdAtUtc]`** — covers both reconcilers' stale-row query. The previous single-column `status` index forced a sequential scan within the bucket to filter by `createdAtUtc`.
+- **`markPaymentCompleted` (paymentService.ts)** — single source of truth. Inputs: `paymentId`, `gatewayEventId` (the polarEventId UNIQUE slot), `eventType`, `source` (`POLAR_WEBHOOK` / `MP_SYNC` / `MP_WEBHOOK` / `RECONCILER`), `paidAtUtc`, `polarOrderId`, optional `mpPaymentId`, full `payloadJson`, optional Polar `webhookContext`. Owns an atomic tx (PaymentEvent + PoolPayment + Pool + AccountReceivable + AuditEvent) and a post-tx fan-out (admin notification + CAPI Purchase + GA4 purchase + receipt email). Cheap pre-check on PaymentEvent.findFirst short-circuits known duplicates; the real lock is the partial UNIQUE index inside the tx. Currency/affiliation/transactionId are derived from `source` + `payment.mpPreferenceId`, so the reconciler can call it for either gateway.
+- **`AuditEvent` is now inside the tx.** Previously fire-and-forget post-tx. With it inside, a rollback never leaves a `PAYMENT_COMPLETED` audit row claiming a non-event.
+- **`PAYMENT_EVENT_SOURCE.MP_SYNC`** — new enum value, distinguishes Brick sync completions from IPN deliveries. The PaymentEvent idempotency key is `mp-{paymentId}-approved` for both sync and IPN, so whichever path lands first claims the slot; the `source` field records who.
+- **IPN persists `mpPaymentId` defensively** at the top of `handleMpWebhook`, on every delivery regardless of status. Subsequent deliveries are no-ops (column already set). Outside any branch tx so a downstream rollback doesn't revert the capture.
+- **`mpPaymentReconcileJob`** — mirror of `paymentReconcileJob`. Advisory lock `82636506n` (distinct from Polar's `82636503n` and CAPI retry's `82636502n`). Default 30-min cadence (`MP_RECONCILE_CRON`). Batch 50/tick. Resolves the MP payment id from `PoolPayment.mpPaymentId` first; falls back to `searchPaymentByExternalReference(polarCheckoutId)` for legacy rows; marks ABANDONED if neither yields anything past the abandon threshold.
+- **Reconciler auto-completes on `approved`.** When MP reports a stuck row was actually paid, the reconciler calls `markPaymentCompleted` with `source: RECONCILER` — same code path as IPN/sync, so the customer gets the receipt email, the pool capacity bumps, CAPI/GA4 fire, and the admin gets notified. Diverges from the Polar reconciler's "flag for human review" posture: Polar's completion side effects are tangled enough that the audit kept it human-mediated; MP's were uniformed by this very ADR, so replaying them is safe.
+
+**Consequences:**
+
+- ✅ Synchronously-approved MP cards now get a PaymentEvent row, an AuditEvent row, a receipt email, an admin notification, a CAPI Purchase event, and a GA4 purchase event. Identical to Polar's downstream treatment.
+- ✅ A tx rollback never produces an audit row claiming success — audit is atomic with the state change.
+- ✅ Stuck rows (the 7 found in prod + any future occurrence) self-resolve within one cron tick. Customers who paid no longer wait indefinitely for pool capacity.
+- ✅ Single source of truth for completion. Adding a new side effect is one edit in `markPaymentCompleted`, propagates to all four callers automatically.
+- ✅ Forensic trail uniform across gateways and sources. `PaymentEvent.source` makes the provenance queryable: Polar webhook vs MP IPN vs MP sync vs reconciler.
+- ⚠️ Behaviour change for IPN deliveries that arrive AFTER the sync path already completed: previously the IPN wrote a `PaymentEvent` row for `mp-{id}-approved` with `source=MP_WEBHOOK`; now the sync's `MP_SYNC` row wins and the IPN dedupes silently via UNIQUE. Trade-off: one row instead of two; forensic trail is the sync's. Acceptable — the IPN provides no information the sync didn't already capture.
+- ⚠️ The reconciler's auto-complete posture (vs Polar's flag-for-human-review) accepts that markPaymentCompleted has been rigorously vetted in this ADR's audit. If the function ever changes substantively, the reconciler's behaviour changes with it — invariant 13 protects against accidental drift.
+- ⚠️ `searchPaymentByExternalReference` was added to the MP client. Used only by the reconciler's legacy fallback. After the 7 stuck rows are resolved, this path runs only for rows that never receive any IPN at all (a rare scenario).
+
+**Related code:**
+
+- Schema: `backend/prisma/schema.prisma` (`PoolPayment.mpPaymentId` + compound index), migration `20260527_add_mp_payment_id_and_status_index`.
+- Service: `backend/src/services/paymentService.ts` (`markPaymentCompleted`, `findStaleMpPayments`, `reconcileStaleMpPayment`, refactored `handleOrderPaid` / `processMpPayment` / `handleMpWebhook`).
+- Job: `backend/src/jobs/mpPaymentReconcileJob.ts` (registered in `backend/src/server.ts`).
+- Lib: `backend/src/lib/paymentEvents.ts` (`PAYMENT_EVENT_SOURCE.MP_SYNC`, `RECONCILER_EVENT_TYPE.FAILED`), `backend/src/services/mercadopago/client.ts` (`searchPaymentByExternalReference`).
+- Specs: `PAYMENTS_PARITY_AUDIT.md`, `PAYMENTS_PARITY_IMPLEMENTATION.md`.
+- Commits: `9e85fa9` (schema), `a062d1c` (markPaymentCompleted), `5881f9a` (MP refactor), `c15f843` (defensive mpPaymentId), `78efdd2` (reconciler).
+
+---
+
 **END OF DOCUMENT**

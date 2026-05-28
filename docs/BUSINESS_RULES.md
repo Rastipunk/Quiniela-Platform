@@ -1201,3 +1201,79 @@ When `User.locale` is null (fresh signups before the modal), the cookie is NOT w
 - `localeDetection: false` — next-intl doesn't auto-redirect by `Accept-Language`.
 
 The result: next-intl only renders based on URL prefix or falls back to `defaultLocale`. All other locale signals flow through our `proxy.ts`.
+
+## 18. Payment completion + reconciliation (ADR-065)
+
+Every code path that needs to mark a `PoolPayment` as `COMPLETED` goes through `paymentService.markPaymentCompleted`. Direct writes of `poolPayment.status = "COMPLETED"` are forbidden. The shared function exists so the two payment gateways (Polar for USD/international, Mercado Pago for COP/Colombia) provide identical downstream treatment to the customer regardless of how the success signal arrived.
+
+### 18.1 Callers
+
+| Caller | Path | Source value | Idempotency key |
+|---|---|---|---|
+| `handleOrderPaid` | Polar webhook (`order.paid`) | `POLAR_WEBHOOK` | `polar.event.id` |
+| `processMpPayment` | MP Brick sync response (`approved`) | `MP_SYNC` | `mp-{paymentId}-approved` |
+| `handleMpWebhook` | MP IPN webhook (`approved`) | `MP_WEBHOOK` | `mp-{paymentId}-approved` |
+| `reconcileStaleMpPayment` | MP reconciler (`getPayment.status=approved`) | `RECONCILER` | `mp-{paymentId}-reconciled` |
+
+The MP sync and IPN paths share the same idempotency key on purpose: whichever lands first claims the `PaymentEvent.polarEventId` UNIQUE slot, and the second dedupes silently via either the status entry guard (status already `COMPLETED`) or the P2002 race. The `source` field records which path actually wrote the row.
+
+### 18.2 Atomic completion sequence
+
+Every successful invocation commits the following inside one `prisma.$transaction`:
+
+1. `PaymentEvent.create` — claims the idempotency slot (UNIQUE `polarEventId`).
+2. `PoolPayment.update` — `status: COMPLETED`, `paidAtUtc`, `polarOrderId`, `mpPaymentId` (when provided), `metaEventId`.
+3. `Pool.update` — `maxParticipants: payment.toCapacity`, reset capacity-warning + full-pool notification flags.
+4. `AccountReceivable.update` (when `payment.accountReceivableId` is set) — `status: PAID`, `paidAtUtc`.
+5. `AuditEvent.create` — `action: "PAYMENT_COMPLETED"` with full `dataJson`.
+
+Any failure rolls back the entire sequence, including the idempotency slot, so the gateway's retry (or the reconciler's next tick) can re-process cleanly. The audit row is **inside** the tx — a rollback never leaves a `PAYMENT_COMPLETED` row claiming a non-event.
+
+### 18.3 Post-tx fan-out
+
+Once the tx commits, the function fires four non-blocking side effects via `fireAndForget`:
+
+- **Admin notification** (`sendAdminNotification`) — operator visibility, includes pasarela + source labels.
+- **CAPI Purchase event** (`sendCapiEvent`) — server-side Meta event with `metaEventId` for Pixel dedup.
+- **GA4 purchase event** (`sendGa4Event`) — measurement-protocol event with correct currency + affiliation per gateway.
+- **Payment receipt email** (`sendPaymentReceiptEmail`) — includes CC consecutive when redeemed from a sales document.
+
+A downstream outage at Resend / Meta / GA4 cannot roll back a confirmed payment.
+
+### 18.4 Gateway derivation
+
+`markPaymentCompleted` does not hardcode currency, affiliation, or transaction id. It derives:
+
+- `isMp = source ∈ {MP_SYNC, MP_WEBHOOK} ∨ (source = RECONCILER ∧ payment.mpPreferenceId ≠ NULL)`
+- `currency = isMp ? "COP" : "USD"`
+- `affiliation = isMp ? "Mercado Pago Colombia" : "Polar International"`
+- `value = isMp ? mpPurchaseValue(payment) : payment.amountUsd / 100`
+
+The reconciler routes correctly for either gateway by inspecting `payment.mpPreferenceId`. A new gateway would add a new `PAYMENT_EVENT_SOURCE` value and a new isMp-style branch.
+
+### 18.5 Reconciliation
+
+Two reconcilers run alongside the main flow:
+
+| Job | Scope (WHERE) | Advisory lock | Default cadence |
+|---|---|---|---|
+| `paymentReconcileJob` | `status IN (INITIATED, PENDING) AND mpPreferenceId IS NULL` | `82636503n` | `*/30 * * * *` |
+| `mpPaymentReconcileJob` | `status IN (INITIATED, PENDING) AND mpPreferenceId IS NOT NULL` | `82636506n` | `*/30 * * * *` |
+
+Both query the compound index `PoolPayment_status_createdAtUtc_idx` (migration `20260527_add_mp_payment_id_and_status_index`) for stale rows past the grace period (15 min). Both write `PaymentEvent` rows with `source: RECONCILER`. The two locks are distinct so the jobs run concurrently across Railway replicas without mutual blocking.
+
+The MP reconciler's `approved` branch calls `markPaymentCompleted` — same code path as IPN/sync. Customer gets the receipt, capacity bumps, CAPI/GA4 fire, admin gets notified. The Polar reconciler diverges from this posture and flags `succeeded`-but-uncompleted rows for human review — Polar's completion side effects are tangled enough that the audit kept that path human-mediated. The two postures are intentional and documented in ADR-065.
+
+### 18.6 mpPaymentId capture
+
+MP's real `payment.id` is captured on the `PoolPayment.mpPaymentId` column at the earliest opportunity:
+
+1. On every IPN delivery (any status) before the branch tx — `handleMpWebhook` writes it if NULL.
+2. By the reconciler's search fallback for legacy rows that never received an IPN.
+3. By `markPaymentCompleted` on any path that includes `mpPaymentId` in its input.
+
+The reconciler reads `payment.mpPaymentId` to call `getPayment()` for canonical state. Without it, the reconciler falls back to `searchPaymentByExternalReference(polarCheckoutId)` — slower but functional.
+
+### 18.7 Webhook return semantics
+
+Webhook handlers return 5xx on processing errors, not 200. Both Polar and Mercado Pago retry with exponential backoff. The 401 signature-error path is the only exception. This ensures a transient failure (DB blip, retry exhaustion at CAPI, etc.) gets re-delivered by the gateway rather than dropped silently.
