@@ -27,7 +27,8 @@
     "errorTitle": "We couldn't start the payment",
     "errorHint": "If the problem persists, email support@picks4all.com and we'll process it for you manually.",
     "retry": "Retry payment",
-    "checkoutFailed": "Something went wrong connecting to the payment gateway. Please try again."
+    "checkoutFailed": "Something went wrong connecting to the payment gateway. Please try again.",
+    "cancel": "Cancel and go back to pool"
   },
   "rejected": {
     "generic": "Payment was declined. Try a different payment method.",

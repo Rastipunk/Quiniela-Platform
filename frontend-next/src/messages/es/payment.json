@@ -27,7 +27,8 @@
     "errorTitle": "No pudimos iniciar el pago",
     "errorHint": "Si el problema persiste, escríbenos a soporte@picks4all.com y te ayudamos a procesarlo manualmente.",
     "retry": "Reintentar pago",
-    "checkoutFailed": "Algo falló al conectar con la pasarela de pagos. Por favor intenta de nuevo."
+    "checkoutFailed": "Algo falló al conectar con la pasarela de pagos. Por favor intenta de nuevo.",
+    "cancel": "Cancelar y volver al pool"
   },
   "rejected": {
     "generic": "El pago fue rechazado. Intenta con otro medio de pago.",

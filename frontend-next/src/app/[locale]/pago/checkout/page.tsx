@@ -7,7 +7,10 @@ import { useTranslations } from "next-intl";
 import { colors, radii, fontWeight } from "@/lib/theme";
 import { BRAND } from "@/lib/brand";
 import { processMpPayment } from "@/lib/api/payments";
-import { reportPaymentAttemptEvent } from "@/lib/api/paymentAttemptEvent";
+import {
+  reportPaymentAttemptEvent,
+  reportPaymentAttemptEventBeacon,
+} from "@/lib/api/paymentAttemptEvent";
 import { formatCOP } from "@/lib/pricing";
 import { trackMetaEvent, getMetaCookies } from "@/lib/metaPixel";
 import {
@@ -57,6 +60,14 @@ export default function MpCheckoutPage() {
   // failure) vs `render` (post-ready, in-form failure) without relying
   // on the React `status` state, which lags one render behind.
   const brickReadyRef = useRef(false);
+  // Flipped to true RIGHT BEFORE a deliberate navigation away (success
+  // redirect or cancel button) so the `beforeunload` listener below
+  // does not double-fire USER_CLOSED_TAB on top of the real event.
+  const suppressUnloadRef = useRef(false);
+  // Wall-clock at mount so USER_CLOSED_TAB can report msOnPage. Lives
+  // in a ref instead of state because beforeunload runs synchronously
+  // during page tear-down and cannot await React.
+  const mountedAtRef = useRef<number>(Date.now());
 
   const publicKey = searchParams.get("publicKey") || "";
   const amount = Number(searchParams.get("amount") || "0");
@@ -200,6 +211,7 @@ export default function MpCheckoutPage() {
                       result.metaEventId,
                     );
                     setStatus("success");
+                    suppressUnloadRef.current = true;
                     setTimeout(() => router.push(`/pools/${poolId}`), 2000);
                   } else if (result.status === "rejected") {
                     setStatus("error");
@@ -209,6 +221,7 @@ export default function MpCheckoutPage() {
                     // The exitoso page polls getPaymentStatus() and fires
                     // `purchase` once the IPN webhook confirms approval.
                     setStatus("success");
+                    suppressUnloadRef.current = true;
                     setTimeout(() => router.push(`/pago/exitoso?poolId=${poolId}`), 2000);
                   }
                 })
@@ -276,6 +289,42 @@ export default function MpCheckoutPage() {
       }
     };
   }, [publicKey, amount, preferenceId, paymentId, poolId, router, upgrade, t]);
+
+  // ── USER_CLOSED_TAB beacon ─────────────────────────────────────
+  //
+  // Fires on `beforeunload` whenever the user is about to leave the
+  // page in a way that is NOT one of our own deliberate navigations.
+  // Three guards:
+  //
+  //   1. `suppressUnloadRef.current` — the success redirect and the
+  //      cancel button both set this to true right before navigating;
+  //      we honour that suppression so we don't double-count.
+  //   2. `status === "success"` — terminal happy state; the redirect
+  //      is already in flight, no value in beaconing.
+  //   3. No paymentId — defensive; recordClientEvent would 400 anyway.
+  //
+  // Uses navigator.sendBeacon (via reportPaymentAttemptEventBeacon)
+  // because fetch() does NOT survive page unload — modern browsers
+  // cancel in-flight fetches when the document tears down. Without
+  // this transport the audit row would be lost roughly half the time.
+  useEffect(() => {
+    if (!paymentId) return;
+    const handler = () => {
+      if (suppressUnloadRef.current) return;
+      if (status === "success") return;
+      reportPaymentAttemptEventBeacon(paymentId, {
+        eventType: "USER_CLOSED_TAB",
+        details: {
+          brickStatus: status,
+          msOnPage: Date.now() - mountedAtRef.current,
+          hadBrickLoaded: brickReadyRef.current,
+          gateway: "MP",
+        },
+      });
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [paymentId, status]);
 
   const handleRetry = () => {
     // Unmount existing Brick before re-creating
@@ -385,16 +434,36 @@ export default function MpCheckoutPage() {
         )}
       </div>
 
-      {/* Back link */}
-      <button
-        onClick={() => router.back()}
-        style={{
-          marginTop: 20, background: "none", border: "none",
-          color: colors.textMuted, cursor: "pointer", fontSize: 14,
-        }}
-      >
-        &#8592; Volver
-      </button>
+      {/* Cancel / back link — hidden while a submit is in flight or
+          after a terminal state. Emits USER_CANCELLED so the audit log
+          distinguishes "user clicked back" from "user closed the tab"
+          (which would emit USER_CLOSED_TAB via the beforeunload
+          listener above). Deterministic destination via router.push so
+          the user lands somewhere usable even if history is empty
+          (e.g. they opened the link in a fresh tab). */}
+      {(status === "loading" || status === "ready") && (
+        <button
+          onClick={() => {
+            void reportPaymentAttemptEvent(paymentId, {
+              eventType: "USER_CANCELLED",
+              details: {
+                source: "pago_checkout_cancel_button",
+                brickStatus: status,
+                hadBrickLoaded: brickReadyRef.current,
+                gateway: "MP",
+              },
+            });
+            suppressUnloadRef.current = true;
+            router.push(poolId ? `/pools/${poolId}` : "/dashboard");
+          }}
+          style={{
+            marginTop: 20, background: "none", border: "none",
+            color: colors.textMuted, cursor: "pointer", fontSize: 14,
+          }}
+        >
+          &#8592; {t("checkout.cancel")}
+        </button>
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

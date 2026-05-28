@@ -27,7 +27,8 @@
     "errorTitle": "Não conseguimos iniciar o pagamento",
     "errorHint": "Se o problema persistir, escreva para support@picks4all.com e ajudamos você a processar manualmente.",
     "retry": "Tentar pagamento novamente",
-    "checkoutFailed": "Algo falhou ao conectar com a pasarela de pagamento. Por favor tente novamente."
+    "checkoutFailed": "Algo falhou ao conectar com a pasarela de pagamento. Por favor tente novamente.",
+    "cancel": "Cancelar e voltar ao bolão"
   },
   "rejected": {
     "generic": "O pagamento foi recusado. Tente outro meio de pagamento.",
