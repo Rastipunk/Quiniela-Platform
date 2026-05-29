@@ -266,7 +266,7 @@ async function probeDlqBacklog(): Promise<CheckResult> {
     }
     // Threshold — warn (not error) while the number is manageable; error
     // when it crosses a ceiling that suggests a sink is outright broken.
-    const status = unresolved > 1_000 ? "error" : "error"; // keep error for now; could split to warn tier later
+    const status = "error"; // keep error for now; could split to warn tier later
     return {
       status,
       message: `${unresolved} unresolved events in DLQ. Oldest from ${oldestUnresolved?.createdAtUtc?.toISOString() ?? "unknown"}.`,

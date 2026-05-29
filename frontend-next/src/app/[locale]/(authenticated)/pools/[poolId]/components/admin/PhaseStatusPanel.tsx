@@ -6,7 +6,7 @@ import type { PoolOverview } from "@/lib/api";
 import type { PhaseData } from "../poolTypes";
 import { formatPhaseFullName } from "../poolHelpers";
 import {
-  colors, fontSize, fontWeight, radii, shadows, spacing,
+  colors, fontSize, fontWeight, radii, spacing,
   adminSectionStyle, adminHeadingStyle, badgeStyle,
 } from "@/lib/theme";
 

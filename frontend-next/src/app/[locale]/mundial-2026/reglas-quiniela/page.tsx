@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getLocale, getTranslations, setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PublicPageWrapper } from "@/components/PublicPageWrapper";
 import { JsonLd } from "@/components/JsonLd";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -470,12 +470,11 @@ export default async function ReglasQuinielaPage({ params }: { params: Promise<{
                 <tbody>
                   {multiplierRows.map((row, i) => {
                     const isLast = i === multiplierRows.length - 1;
-                    const isFinal = i === multiplierRows.length - 1;
                     return (
                       <tr
                         key={i}
                         style={
-                          isFinal
+                          isLast
                             ? {
                                 background:
                                   "linear-gradient(90deg, rgba(118,75,162,0.08) 0%, rgba(16,185,129,0.08) 100%)",
@@ -490,7 +489,7 @@ export default async function ReglasQuinielaPage({ params }: { params: Promise<{
                               ? undefined
                               : "1px solid var(--border)",
                             color: "var(--text)",
-                            fontWeight: isFinal ? 600 : 400,
+                            fontWeight: isLast ? 600 : 400,
                           }}
                         >
                           {row.phase}
@@ -503,10 +502,10 @@ export default async function ReglasQuinielaPage({ params }: { params: Promise<{
                               ? undefined
                               : "1px solid var(--border)",
                             fontWeight: 700,
-                            color: isFinal
+                            color: isLast
                               ? colors.brand
                               : colors.successAlt,
-                            fontSize: isFinal ? "1.1rem" : "1rem",
+                            fontSize: isLast ? "1.1rem" : "1rem",
                           }}
                         >
                           {row.mult}

@@ -1015,7 +1015,7 @@ function TournamentCard({
   return (
     <div
       style={{
-        background: active ? "var(--surface)" : "var(--surface)",
+        background: "var(--surface)",
         border: active ? "2px solid var(--border)" : "1px solid var(--border)",
         borderRadius: 14,
         padding: isMobile ? 16 : 20,

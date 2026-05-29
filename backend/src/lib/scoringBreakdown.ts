@@ -10,7 +10,6 @@
 import type {
   PhasePickConfig,
   MatchPickTypeKey,
-  MatchPickType,
 } from "../types/pickConfig";
 
 // ==================== TIPOS PARA BREAKDOWN ====================

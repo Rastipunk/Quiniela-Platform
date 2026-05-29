@@ -44,8 +44,6 @@ function VerifyEmailInner() {
 
       if (result.alreadyVerified) {
         setStatus("already_verified");
-      } else if (result.verified) {
-        setStatus("success");
       } else {
         setStatus("success");
       }

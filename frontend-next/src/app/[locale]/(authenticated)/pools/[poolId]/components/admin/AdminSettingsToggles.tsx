@@ -7,7 +7,7 @@ import type { PhaseData } from "../poolTypes";
 import { formatPhaseFullName } from "../poolHelpers";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import {
-  colors, fontSize, fontWeight, radii, shadows, spacing,
+  colors, fontSize, fontWeight, radii, spacing,
   adminSectionStyle, adminHeadingStyle, toggleTrackStyle, toggleThumbStyle,
 } from "@/lib/theme";
 

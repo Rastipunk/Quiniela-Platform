@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { getToken } from "@/lib/auth";
 import {
   accountReceivablePdfUrl,
@@ -46,7 +46,6 @@ function statusMeta(status: AccountReceivableStatus): { bg: string; fg: string; 
 
 export default function AdminCcDetailContent({ ccId }: Props) {
   const isMobile = useIsMobile();
-  const router = useRouter();
   const [cc, setCc] = useState<AccountReceivableRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { getToken } from "@/lib/auth";
 import {
   cancelQuote,
@@ -36,7 +36,6 @@ function statusMeta(status: QuoteStatus): { bg: string; fg: string; label: strin
 
 export default function AdminQuoteDetailContent({ quoteId }: Props) {
   const isMobile = useIsMobile();
-  const router = useRouter();
   const [quote, setQuote] = useState<QuoteRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

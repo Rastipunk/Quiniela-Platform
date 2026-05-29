@@ -9,7 +9,6 @@ import { NotificationBanner } from "@/components/NotificationBanner";
 import { getMatchPicks, setScoringOverride, type MatchPicksResponse } from "@/lib/api";
 import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { formatPhaseName, formatPhaseFullName, isPlaceholder } from "./poolHelpers";
-import { ShareButtons } from "@/components/ShareButtons";
 import { MatchCard } from "./MatchCard";
 import { MatchPicksModal, type MatchPicksModalData } from "./MatchPicksModal";
 import { ScoringOverrideModal, type ScoringOverrideModalData } from "./ScoringOverrideModal";

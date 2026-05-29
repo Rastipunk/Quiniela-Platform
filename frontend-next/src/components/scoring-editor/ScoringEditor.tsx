@@ -926,7 +926,6 @@ function ExampleCalculator({
   );
 
   const totalPoints = results.reduce((sum, r) => sum + r.points, 0);
-  const maxPoints = results.reduce((sum, r) => sum + (r.hit ? r.points : 0) + (!r.hit ? r.points : 0), 0);
   const hasHits = results.some(r => r.hit);
 
   return (
@@ -1883,7 +1882,7 @@ export function ScoringEditor({
           borderRadius: radii.xl,
           background: colors.bgLighter,
           overflow: "hidden",
-          display: isCustom || showAdvanced ? "block" : "block",
+          display: "block",
         }}>
           {/* Toggle header — only for presets */}
           {!isCustom && (

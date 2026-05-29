@@ -29,7 +29,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   //   changed and warrants a re-crawl, helping recover from the post-
   //   Apr-15 deindex period.
   const recentlyUpdated = new Date("2026-05-08");
-  const stable = new Date("2026-05-08");
   const legal = new Date("2026-02-22");
 
   /** Alternates for all 3 locales with their localized paths. */
@@ -66,7 +65,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // FAQ
     withImage({
       url: `${baseUrl}/faq`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.8,
       alternates: samePath("/faq"),
@@ -75,7 +74,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // How it works
     withImage({
       url: `${baseUrl}/como-funciona`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.8,
       alternates: allLocales("/como-funciona", "/how-it-works", "/como-funciona"),
@@ -84,7 +83,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // What is a quiniela
     withImage({
       url: `${baseUrl}/que-es-una-quiniela`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.7,
       alternates: allLocales(
@@ -234,25 +233,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
     withImage({
       url: `${baseUrl}/polla-futbolera`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.7,
     }),
     withImage({
       url: `${baseUrl}/prode-deportivo`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.7,
     }),
     withImage({
       url: `${baseUrl}/porra-deportiva`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.7,
     }),
     withImage({
       url: `${baseUrl}/penca-futbol`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.7,
     }),
@@ -260,7 +259,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // English-language regional term
     withImage({
       url: `${baseUrl}/en/football-pool`,
-      lastModified: stable,
+      lastModified: recentlyUpdated,
       changeFrequency: "monthly",
       priority: 0.7,
     }),

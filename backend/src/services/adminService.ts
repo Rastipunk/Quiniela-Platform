@@ -13,7 +13,7 @@ import { MATCH_SYNC } from "../lib/constants";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
 import { ApiFootballClient } from "../services/apiFootball/client";
 import { fireAndForget } from "../lib/asyncHelpers";
-import { ServiceError, type AuditContext } from "./authService";
+import { ServiceError } from "./authService";
 
 // ─── Platform Stats ──────────────────────────────────────────
 
@@ -629,9 +629,6 @@ export async function fixR16Integrity(dryRun: boolean) {
   if (errors.length > 0) {
     throw new ServiceError("Validation errors", 400, { errors, logs });
   }
-
-  // Step 3-6 omitted for brevity — the full fix logic is preserved in the route file
-  // This service extracts the core data-building logic; the route handles dry-run branching
 
   log("STEP 3: Comparing with current DB state...");
 
