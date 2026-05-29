@@ -151,13 +151,15 @@ For each candidate: query MP's `/v1/payments/<id>` API with the row's `polarOrde
 
 ## ⚠️ Pre-existing test failures (not from this audit)
 
-As of 2026-05-04 the backend suite reports **13 failing tests / 601 passing (614 total across 28 test files)**. The failures cluster in three places:
+As of **2026-05-28** the backend suite reports **22 failing tests / 617 passing (639 total across 29 test files)**. This was verified to be **independent of the 2026-05-28 dead-code pruning** (`refactor: remove safe dead code`, commit `00b458e`): the suite reports the identical 22 failures with and without that change (measured via `git stash`). The failures are stale specs that drifted as code shipped without test updates — they cluster in five files:
 
+- `services/paymentService.test.ts` — `handleMpWebhook` specs mock the Prisma transaction (`tx`) without an `auditEvent` delegate, so they throw `Cannot read properties of undefined (reading 'create')` at `paymentService.ts:688`. The `tx.auditEvent.create` call was added when `markPaymentCompleted` moved the audit row inside the tx (ADR-065); the mocks were never updated.
+- `lib/serializers.test.ts` — `serializeUser` now returns 7 fields (added `locale`); the fixture omits `locale` and asserts `toHaveLength(6)` / a 6-key `toEqual`.
 - `lib/email.test.ts` — `isEmailEnabled` expectations against `PlatformSettings` defaults that drifted (deadline reminder default flipped, master toggle interaction).
-- `lib/pickPresets.test.ts` — `generateDynamicPresetConfig` for CUMULATIVE / BASIC presets; expected point values diverged from the engine after the cumulative-system rewrite.
+- `lib/pickPresets.test.ts` — `generateDynamicPresetConfig` for CUMULATIVE / BASIC presets; expected point values diverged from the engine after the cumulative-system rewrite (related to the `KNOCKOUT_POINTS`/`DEFAULT_MULTIPLIERS` keyed-by-static-WC-phase-id issue in `DEAD_CODE_FINDINGS.md` §D1).
 - `services/groupStandingsService.test.ts` — `upsertGroupStandingsPick` happy path; mock setup hasn't kept up with the deadline + lockedPhases enforcement added in the Wave 2 fixes.
 
-None are introduced by recent doc work; they were failing before and continue to fail. Surface area is unrelated to corporate flow / payments / scraper / analytics. Tracked here so the post-mundial cleanup pass picks them up alongside the test-coverage gap above.
+None are introduced by recent doc or pruning work; they were failing before and continue to fail. **Action:** a dedicated cycle to bring the suite green — these stale tests currently provide no regression protection. See `docs/repo-map/DEAD_CODE_FINDINGS.md` §A5 (XSS-test desync) and §D for the underlying drift.
 
 ---
 
