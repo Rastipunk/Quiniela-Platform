@@ -44,6 +44,8 @@ Picks4All Backend
   - After grace expires with stable score → `finalizeResult()`:
     - Creates new `PoolMatchResultVersion` with `source: API_CONFIRMED`
     - Sets `syncStatus = COMPLETED`, stops polling this match
+    - Fires (fire-and-forget, all idempotent) `autoPublishStructuralResults()` (derives the FIFA group table / knockout winner for Estratega pools), `checkAndTriggerAdvancement()` (opens the 10-min phase-advancement window), and `transitionToCompleted()` (moves AUTO-mode pools ACTIVE→COMPLETED once the last match finalizes)
+- Every finished provisional publish (`publishScraperResult` with FT) also calls `transitionToCompleted()` — the same idempotent pool-completion check, so completion is not lost if the finalization path is missed
 
 ### 4. Fallback: API-Football (30 min after estimated FT)
 - SmartSync checks if scraper already finalized each match
@@ -74,6 +76,9 @@ PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
 | IN_PROGRESS | Match started, live data flowing | Every 15s |
 | AWAITING_FINISH | FT detected, grace period | Every 15s |
 | COMPLETED | Result finalized | Stopped |
+| SKIPPED | No API-Football mapping (unmappable match) or MANUAL mode | Never polled |
+
+`SKIPPED` is set by SmartSync (not the scraper path) when a match has no API-Football mapping or the instance is in MANUAL mode.
 
 ## Environment Variables
 
@@ -113,5 +118,7 @@ PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
 | `backend/src/jobs/fixtureTrackingJob.ts` | Hourly fixture registration |
 | `backend/src/services/smartSync/service.ts` | API-Football fallback (gated) |
 | `backend/src/services/poolOverviewService.ts` | Returns live data to frontend |
+| `backend/src/services/structuralAutoPublish.ts` | Derives Estratega group tables / knockout winners on finalization (`autoPublishStructuralResults`) |
+| `backend/src/services/advancementTrigger.ts` | Phase-advancement check on finalization (`checkAndTriggerAdvancement`) |
+| `backend/src/services/poolStateMachine.ts` | Moves AUTO-mode pools ACTIVE→COMPLETED (`transitionToCompleted`) |
 | `frontend-next/src/hooks/useLiveRefresh.ts` | Auto-refresh when matches are live |
-| `frontend-next/src/lib/analytics.ts` | Event tracking utility |

@@ -14,6 +14,7 @@ Multi-tournament football prediction platform. Create pools, invite friends, pre
 - **Tournaments** — FIFA World Cup 2026 (48 teams, official FIFA bracket), UEFA Champions League 2025-26
 - **Corporate** — Enterprise self-service: inquiry, pool creation, employee activation via CSV/email
 - **Payments** — Dual gateway: Mercado Pago (Colombia/COP) + Polar.sh (international/USD)
+- **Sales** — Admin quote + cuenta-de-cobro flow for pre-paid pool capacity
 - **i18n** — Spanish (default), English, Portuguese
 - **SEO** — Server-rendered public pages, JSON-LD, Open Graph, regional landing pages
 - **Admin analytics** — Real-time dashboard with growth, retention, revenue, corporate funnel
@@ -98,4 +99,4 @@ See [docs/guides/DEPLOYMENT.md](docs/guides/DEPLOYMENT.md) for production deploy
 
 ## License
 
-MIT
+Proprietary — all rights reserved. The source is published for transparency and educational purposes only; no permission is granted to use, copy, modify, or distribute it without explicit written permission from the copyright holder. See [LICENSE](LICENSE).

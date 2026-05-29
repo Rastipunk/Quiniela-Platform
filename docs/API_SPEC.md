@@ -1,6 +1,6 @@
 # API Specification — Picks4All Platform
 
-> **Last updated:** 2026-05-03
+> **Last updated:** 2026-05-28
 >
 > This document describes every REST endpoint exposed by the Express backend at `api.picks4all.com`.
 
@@ -188,11 +188,14 @@ All endpoints under `/auth`.
   "acceptTerms": true,
   "acceptPrivacy": true,
   "acceptAge": true,
-  "acceptMarketing": false
+  "acceptMarketing": false,
+  "fbClickId": "fb.1...",
+  "fbBrowserId": "fb.1...",
+  "attribution": { "source": "google", "medium": "cpc", "campaign": "wc2026", "gclid": "...", "fbclid": "...", "landingPath": "/", "referrerUrl": "..." }
 }
 ```
 
-**Validation:** email (valid email), username (3-20 chars), displayName (2-50 chars), password (8-200 chars, 1 uppercase + 1 number), acceptTerms/acceptPrivacy/acceptAge (required true).
+**Validation:** email (valid email), username (3-20 chars), displayName (2-50 chars), password (8-200 chars, 1 uppercase + 1 number), acceptTerms/acceptPrivacy/acceptAge (required true). `fbClickId`/`fbBrowserId` (Meta Advanced Matching ids) and the `attribution` object (UTM source/medium/campaign/content/term, click ids `gclid`/`gbraid`/`wbraid`/`fbclid`, `landingPath`, `referrerUrl`) are all optional analytics fields.
 
 **Response (201):** `{ "user": { id, email, username, displayName, platformRole } }`
 
@@ -228,13 +231,16 @@ All endpoints under `/auth`.
   "acceptTerms": true,
   "acceptPrivacy": true,
   "acceptAge": true,
-  "acceptMarketing": false
+  "acceptMarketing": false,
+  "fbClickId": "fb.1...",
+  "fbBrowserId": "fb.1...",
+  "attribution": { "source": "google", "medium": "cpc", "campaign": "wc2026" }
 }
 ```
 
-consent fields are only required if this is a new user registration.
+consent fields are only required if this is a new user registration. The optional `fbClickId`/`fbBrowserId` and `attribution` object accepted on register are also accepted here.
 
-**Response (200):** `{ "user": { id, email, username, displayName, platformRole } }`
+**Response (200):** `{ "user": { id, email, username, displayName, platformRole }, "metaEventId": "..." }`
 
 **Errors:** `GOOGLE_TOKEN_INVALID`, `EMAIL_TAKEN` (if email exists with different auth method), `LEGAL_CONSENT_REQUIRED`
 
@@ -352,8 +358,11 @@ All endpoints under `/me`. Auth required.
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/me/pools` | Yes | List pools where user is a member |
+| GET | `/me/aggregated` | Yes | Analytics-oriented snapshot (GA4 `user_properties` / CAPI dimensions) |
 | GET | `/me/email-preferences` | Yes | Get email notification preferences |
 | PUT | `/me/email-preferences` | Yes | Update email notification preferences |
+| GET | `/me/prediction-subscription` | Yes | Read AI prediction-update subscription status |
+| PUT | `/me/prediction-subscription` | Yes | Toggle AI prediction-update subscription |
 
 #### GET /me/pools
 
@@ -370,6 +379,30 @@ Returns pools where user has status ACTIVE, PENDING_APPROVAL, or LEFT.
 }
 ```
 
+#### GET /me/aggregated
+
+Returns derived, analytics-oriented dimensions the client cannot compute cheaply (pool counts, paid/free tier, corporate membership, signup method). Read once per session login to populate GA4 `user_properties` and Meta CAPI user-level fields.
+
+**Response:**
+```json
+{
+  "pool_count": 3,
+  "paid_pool_count": 1,
+  "tier": "free" | "paid",
+  "is_corporate": false,
+  "country": "CO",
+  "platform_role": "PLAYER" | "HOST" | "ADMIN",
+  "account_age_days": 42,
+  "acquisition_source": "google",
+  "acquisition_campaign": "wc2026",
+  "is_verified_email": true,
+  "signup_method": "email" | "google",
+  "predictions_count": 18,
+  "last_active_at": "2026-05-20T12:00:00.000Z",
+  "pool_host_count": 1
+}
+```
+
 #### GET /me/email-preferences
 
 **Response:**
@@ -380,10 +413,11 @@ Returns pools where user has status ACTIVE, PENDING_APPROVAL, or LEFT.
     "emailPoolInvitations": true,
     "emailDeadlineReminders": true,
     "emailResultNotifications": true,
-    "emailPoolCompletions": true
+    "emailPoolCompletions": true,
+    "emailNewMemberDigest": true,
+    "predictionUpdates": true
   },
   "platformEnabled": {
-    "emailPoolInvitations": true,
     "emailDeadlineReminders": false,
     "emailResultNotifications": true,
     "emailPoolCompletions": true
@@ -401,9 +435,22 @@ Returns pools where user has status ACTIVE, PENDING_APPROVAL, or LEFT.
   "emailPoolInvitations": true,
   "emailDeadlineReminders": false,
   "emailResultNotifications": true,
-  "emailPoolCompletions": true
+  "emailPoolCompletions": true,
+  "emailNewMemberDigest": false
 }
 ```
+
+#### GET /me/prediction-subscription
+
+Reads `user.predictionUpdates` (AI Mundial 2026 prediction-update emails).
+
+**Response:** `{ "enabled": true }`
+
+#### PUT /me/prediction-subscription
+
+**Body:** `{ "enabled": false }`
+
+**Response:** `{ "enabled": false }`
 
 ---
 
@@ -552,6 +599,8 @@ All require auth. Member actions require pool membership; admin actions require 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/pools/:poolId/invites` | Yes (admin) | Create invite code |
+| GET | `/pools/:poolId/invites` | Yes (admin) | List invite codes (includes expired/revoked for history) |
+| DELETE | `/pools/:poolId/invites/:inviteId` | Yes (admin) | Soft-revoke an invite code |
 | POST | `/pools/:poolId/send-invite-email` | Yes (admin) | Send invitation email to specific address |
 | POST | `/pools/join` | Yes | Join pool with invite code |
 
@@ -586,13 +635,22 @@ Respects user email preferences. Returns `skipped: true` if user disabled notifi
 |--------|------|------|-------------|
 | GET | `/invite-preview/:code` | No | Preview pool info before joining |
 
-**Response (200):**
+**Response (200):** flat object. `valid` is `false` once the invite is expired, has reached `maxUses`, or the pool is `ARCHIVED`. `organization` carries corporate branding when the pool belongs to one, otherwise `null`.
 ```json
 {
+  "poolName": "Pool Name",
+  "tournamentName": "World Cup 2026",
+  "hostName": "HostName",
+  "memberCount": 5,
+  "status": "ACTIVE",
   "valid": true,
-  "pool": { "name": "Pool Name", "memberCount": 5, "maxParticipants": 20, "tournament": "World Cup 2026" },
-  "host": { "displayName": "HostName" },
-  "expired": false
+  "organization": {
+    "name": "Acme Corp",
+    "logoBase64": "data:image/png;base64,...",
+    "primaryColor": "#4F46E5",
+    "secondaryColor": "#8F0E70",
+    "welcomeMessage": "Welcome to our corporate pool!"
+  }
 }
 ```
 
@@ -604,16 +662,31 @@ Respects user email preferences. Returns `skipped: true` if user disabled notifi
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/active-matches` | API Key (Bearer) | Returns active matches for picks4all-scores service |
+| GET | `/api/active-matches` | API Key | Returns active matches for picks4all-scores service |
 
-**Auth:** `Authorization: Bearer ${SCORES_SERVICE_API_KEY}` — NOT user JWT.
+**Auth:** `x-api-key: <SCORES_SERVICE_API_KEY>` header (or `?key=` query param) — NOT user JWT. Returns `404 NOT_CONFIGURED` if `SCORES_SERVICE_API_KEY` is unset, `403 INVALID_API_KEY` if the key does not match.
+
+Matches are AUTO-mode, sync-enabled, ACTIVE instances whose kickoff falls in the window from 3 hours ago to 24 hours ahead.
 
 **Response (200):**
 ```json
 {
   "matches": [
-    { "fixtureId": 1234567, "homeTeam": "Mexico", "awayTeam": "South Africa", "kickoffUtc": "2026-06-11T19:00:00Z" }
-  ]
+    {
+      "fixtureId": 1234567,
+      "internalMatchId": "gs_a_m1",
+      "instanceId": "uuid",
+      "instanceName": "FIFA World Cup 2026",
+      "homeTeamName": "Mexico",
+      "awayTeamName": "South Africa",
+      "kickoffUtc": "2026-06-11T19:00:00Z",
+      "leagueId": 1,
+      "season": 2026
+    }
+  ],
+  "windowStart": "2026-06-11T16:00:00.000Z",
+  "windowEnd": "2026-06-12T19:00:00.000Z",
+  "timestamp": "2026-06-11T19:00:00.000Z"
 }
 ```
 
@@ -949,7 +1022,9 @@ Endpoints under `/corporate`. Mix of public and authenticated.
 | GET | `/corporate/pools/:poolId/employees` | Yes | List employees/invites |
 | POST | `/corporate/pools/:poolId/send-invitations` | Yes | Send invitation emails to all pending employees |
 | POST | `/corporate/pools/:poolId/employees/:inviteId/resend` | Yes | Re-send a single activation email; rotates the activation token |
+| POST | `/corporate/pools/:poolId/employees/bulk-resend-expired` | Yes | Reissue activation emails for every expired invite in the pool |
 | DELETE | `/corporate/pools/:poolId/employees/:inviteId` | Yes | Remove pending employee |
+| PATCH | `/corporate/pools/:poolId/branding` | Yes | Edit organization branding after creation |
 | GET | `/corporate/csv-template` | No | Download CSV template for employee upload |
 
 #### POST /corporate/inquiry
@@ -961,11 +1036,18 @@ Endpoints under `/corporate`. Mix of public and authenticated.
   "contactName": "Maria Garcia",
   "contactEmail": "maria@acme.com",
   "contactPhone": "+573001234567",
+  "country": "CO",
+  "currency": "COP",
+  "poolsConfig": [50, 50, 100],
+  "numberOfPools": 3,
+  "slotsPerPool": 100,
   "employeeCount": "51-200",
   "message": "We want to create a pool for our company...",
   "locale": "es"
 }
 ```
+
+The quote-panel fields (`country` ISO 3166-1 alpha-2, `currency` `"COP"`/`"USD"`, `poolsConfig` array of per-pool slot counts, `numberOfPools`, `slotsPerPool`) drive the sales/quote funnel (ADR-061). When `poolsConfig` is present the service derives `numberOfPools`/`slotsPerPool` from the array. `employeeCount` (`"1-50"`/`"51-200"`/`"201-500"`/`"500+"`) is the legacy tiered selector, kept only for back-compat.
 
 #### POST /corporate/pools
 
@@ -976,6 +1058,9 @@ Endpoints under `/corporate`. Mix of public and authenticated.
   "logoBase64": "data:image/png;base64,...",
   "welcomeMessage": "Welcome to our corporate pool!",
   "invitationMessage": "You've been invited to our company pool!",
+  "primaryColor": "#4F46E5",
+  "secondaryColor": "#8F0E70",
+  "invitationLocale": "es",
   "tournamentInstanceId": "uuid",
   "poolName": "Acme WC 2026",
   "poolDescription": "...",
@@ -987,6 +1072,8 @@ Endpoints under `/corporate`. Mix of public and authenticated.
   "emails": ["emp1@acme.com", "emp2@acme.com"]
 }
 ```
+
+`primaryColor`/`secondaryColor` are optional hex colors (`#RRGGBB`). `invitationLocale` (`"es"` | `"en"` | `"pt"`, default `"es"`) sets the first-touch email locale on the Organization (ADR-062 — governs only the activation email; `User.locale` takes over post-activation).
 
 Creates Organization + Pool + PoolMember(CORPORATE_HOST) (+ CorporateInvites if `emails` was provided) in a transaction.
 
@@ -1031,6 +1118,36 @@ Re-sends the activation email for a single corporate invite. Use case: the origi
 **Errors:** `FORBIDDEN` (not `CORPORATE_HOST` of the pool), `NOT_FOUND` (invite ID belongs to a different pool — IDOR defence), `ALREADY_ACTIVATED` (employee already has account; no resend possible), `TOO_MANY_INVITE_REQUESTS_PER_HOUR`, `DAILY_INVITE_LIMIT_EXCEEDED`.
 
 **Rate limits:** SAME per-user buckets as `/send-invitations` (200/hour, 1000/day) keyed on `req.auth.userId`. The bulk-send and individual-resend share the budget so a host cannot bypass the bulk cap by spamming individual resends.
+
+#### POST /corporate/pools/:poolId/employees/bulk-resend-expired
+
+Reissues activation emails for every expired invite in the pool in one call, rotating each invite's token and resetting its 30-day expiry. Host-only (`CORPORATE_HOST`).
+
+**Body:** none.
+
+**Errors:** `FORBIDDEN` (not `CORPORATE_HOST`), `NOT_FOUND` (pool), `TOO_MANY_INVITE_REQUESTS_PER_HOUR`, `DAILY_INVITE_LIMIT_EXCEEDED`.
+
+**Rate limits:** SAME per-user buckets as `/send-invitations` (`inviteSendLimiter` + `inviteSendDailyLimiter`, 200/hour + 1000/day) keyed on `req.auth.userId`, so bulk-resend cannot bypass the bulk-send cap.
+
+#### PATCH /corporate/pools/:poolId/branding
+
+Edits the pool's Organization branding after creation. Host-only. Every field is optional: pass `null` to clear a field, a string/hex value to set it, omit to leave unchanged. Each successful change records an `OrganizationBrandingAudit` entry.
+
+**Body (all optional):**
+```json
+{
+  "logoBase64": "data:image/png;base64,...",
+  "welcomeMessage": "Welcome!",
+  "invitationMessage": "You've been invited!",
+  "primaryColor": "#4F46E5",
+  "secondaryColor": "#8F0E70",
+  "invitationLocale": "en"
+}
+```
+
+`invitationLocale` is non-nullable (the column has `NOT NULL DEFAULT 'es'`); the other fields accept `null` to clear.
+
+**Errors:** `FORBIDDEN` (not `CORPORATE_HOST`), `NOT_FOUND` (pool), `VALIDATION_ERROR`.
 
 #### DELETE /corporate/pools/:poolId/employees/:inviteId
 
@@ -1190,6 +1307,8 @@ Platform settings management under `/admin/settings`. All require Admin.
 | POST | `/admin/settings/email/test` | Admin | Send test email |
 | POST | `/admin/settings/email/reminders/run` | Admin | Manually trigger deadline reminders |
 | GET | `/admin/settings/email/reminders/stats` | Admin | Get reminder statistics |
+| GET | `/admin/settings/scores` | Admin | Read `scoresServiceEnabled` toggle |
+| PUT | `/admin/settings/scores` | Admin | Write `scoresServiceEnabled` toggle |
 
 #### PUT /admin/settings/email
 
@@ -1206,7 +1325,17 @@ Platform settings management under `/admin/settings`. All require Admin.
 
 #### POST /admin/settings/email/test
 
-**Body:** `{ "type": "welcome" | "poolInvitation" | "deadlineReminder" | "resultPublished" | "poolCompleted", "to": "test@example.com" }`
+**Body:** `{ "type": "welcome" | "poolInvitation" | "deadlineReminder" | "resultPublished" | "poolCompleted" | "newMemberDigest" | "phaseCompletionSummary", "to": "test@example.com" }`
+
+#### GET /admin/settings/scores
+
+**Response:** `{ "scoresServiceEnabled": true }`
+
+#### PUT /admin/settings/scores
+
+**Body:** `{ "scoresServiceEnabled": false }`
+
+**Response:** `{ "scoresServiceEnabled": false }`
 
 #### POST /admin/settings/email/reminders/run
 
@@ -1420,18 +1549,39 @@ Cloudflare `CF-IPCountry` header.
 | POST | `/payments/checkout` | Yes | Initiate a Polar (USD) checkout for a capacity upgrade. Returns the hosted-checkout URL. Captures Meta Advanced Matching signals (`_fbp`, `_fbc`, IP, UA) so async webhook emissions can attach them to the CAPI Purchase event. |
 | POST | `/payments/mp-checkout` | Yes | Initiate a Mercado Pago checkout (COP). Returns a Brick `preferenceId`. Idempotent: a re-entry returns the existing preference instead of creating a duplicate that would race the customer into paying twice. |
 | POST | `/payments/mp-process` | Yes | Server-side processing of a Mercado Pago Brick payment. Used by the SPA when the Brick UI submits payment data directly. |
+| POST | `/payments/attempts/:paymentId/event` | Yes | Payment-attempt telemetry beacon (MP Brick lifecycle). Returns `202`. |
 | GET  | `/payments/pool/:poolId/status` | Yes | Returns the latest `PoolPayment` row for the pool — used by the post-checkout polling loop on `/pago/exitoso`. |
 
 **`POST /payments/checkout` body:**
 ```json
-{ "poolId": "uuid", "toCapacity": 100, "poolType": "personal" | "corporate" }
+{ "poolId": "uuid", "targetCapacity": 100, "accountReceivableId": "uuid" }
 ```
+
+`targetCapacity` is an integer 2–10000. `accountReceivableId` is optional: when the customer pre-paid via a cuenta de cobro, the wizard/expand-capacity tab attaches its id and `paymentService` validates the snapshot against live `pricing.ts` before atomically locking the CC to `REDEEMED` inside the same transaction that creates the `PoolPayment` (ADR-061).
 
 **Response (200):** `{ "checkoutUrl": "https://buy.polar.sh/...", "checkoutId": "..." }`
 
-**`POST /payments/mp-checkout` body:** same shape as Polar.
+**`POST /payments/mp-checkout` body:** identical schema to Polar checkout (`poolId`, `targetCapacity`, optional `accountReceivableId`).
 
 **Response (200):** `{ "preferenceId": "...", "amountCop": 28500, "publicKey": "TEST-..." }`
+
+**`POST /payments/mp-process` body:**
+```json
+{
+  "paymentId": "uuid",
+  "formData": { ... },
+  "metaCookies": { "fbc": "...", "fbp": "..." }
+}
+```
+
+`formData` is the Brick's native MP payload (accepted permissively, validated server-side). `metaCookies` is optional and only improves Meta CAPI match quality.
+
+**`POST /payments/attempts/:paymentId/event` body:**
+```json
+{ "eventType": "BRICK_LOADED" | "BRICK_ERROR" | "USER_CLOSED_TAB" | ..., "details": { ... } }
+```
+
+The MP Brick lifecycle telemetry surface (ADR-066). `eventType` is one of the `CLIENT_EVENT_TYPES` enum values; `details` is an optional free-form bag. Accepts both `application/json` and `text/plain` bodies (the latter so `navigator.sendBeacon` can flush a `USER_CLOSED_TAB` event on page unload without a CORS preflight; body capped at 8 KB). Ownership is enforced server-side — the service refuses to write events for another user's payment. Events are intentionally NOT deduplicated (each is a forensic row). Returns `202` with `{ "recorded": true }`.
 
 **Errors:** `VALIDATION_ERROR`, `FORBIDDEN` (caller is not the pool's host), `NOT_FOUND` (pool), `CONFLICT` (capacity downgrade or invalid tier), `GATEWAY_ERROR` (Polar/MP rejected the request).
 
@@ -1456,13 +1606,15 @@ Async callbacks from external providers. None of these accept user JWTs
 
 ### 5.29 Unsubscribe
 
-Tokenised email unsubscribe surfaces. The token is delivered in every
-notification email's footer link and identifies the user + the
-subscription scope without requiring login.
+Tokenised email unsubscribe surface. The token is delivered in every
+notification email's footer link and identifies the user without
+requiring login. Unsubscribe is all-or-nothing: both verbs set
+`User.emailNotificationsEnabled = false` (there is no per-scope
+granularity). The token is read from the query string for both verbs.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET  | `/unsubscribe?token=...` | Token | Frontend redirect target. Resolves the token, looks up the user, and renders a confirmation page. |
-| POST | `/unsubscribe` | Token (in body) | Apply the unsubscribe action. Body `{ "token": "...", "scope": "all" \| "deadlineReminders" \| "poolInvitations" \| ... }`. Updates the corresponding `User.email*` flag and returns the new state. |
+| GET  | `/unsubscribe?token=...` | Token (query) | Disables all email notifications for the token's user, then redirects to `${FRONTEND_URL}/unsubscribed`. |
+| POST | `/unsubscribe?token=...` | Token (query) | RFC 8058 one-click unsubscribe (`List-Unsubscribe-Post: List-Unsubscribe=One-Click`). Disables all email notifications and returns `{ "unsubscribed": true }`. |
 
-**Errors:** `INVALID_TOKEN`, `TOKEN_EXPIRED` (if scoped tokens get a TTL), `UNKNOWN_SCOPE`.
+**Errors:** `MISSING_TOKEN` (no `token` query param), `INVALID_TOKEN` (signature/lookup failure), `USER_NOT_FOUND`.

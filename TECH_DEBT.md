@@ -21,12 +21,18 @@ Splitting requires careful test coverage we don't have time for right now.
 
 | File | LOC | Suggested split |
 |------|-----|-----------------|
-| `frontend-next/src/components/pool-wizard/steps/StepScoring.tsx` | ~2,070 | `PresetSelector`, `CriterionEditor`, `ScoringPreview`, shared hook for preset state |
-| `backend/src/lib/emailTemplates.ts` | ~1,700 | One file per template family under `lib/emailTemplates/`, keep the barrel export |
-| `backend/src/lib/email.ts` | ~1,470 | Extract `EmailQueue`, `EmailRetry`, `EmailBatch` into their own modules |
-| `backend/src/services/paymentService.ts` | ~1,230 | Split into `paymentService.polar.ts`, `paymentService.mp.ts`, `paymentService.shared.ts` |
-| `backend/src/services/poolAdminService.ts` | ~1,120 | Pull scoring recomputation + phase locking into their own services |
-| `backend/src/services/adminInstanceService.ts` | ~1,130 | Separate template-vs-instance lifecycle |
+| `frontend-next/src/components/scoring-editor/ScoringEditor.tsx` | ~2,265 | `PresetSelector`, `CriterionEditor`, `ScoringPreview`, shared hook for preset state |
+| `backend/src/lib/emailTemplates.ts` | ~2,169 | One file per template family under `lib/emailTemplates/`, keep the barrel export |
+| `backend/src/lib/email.ts` | ~2,162 | Extract `EmailQueue`, `EmailRetry`, `EmailBatch` into their own modules |
+| `backend/src/services/paymentService.ts` | ~2,606 | Split into `paymentService.polar.ts`, `paymentService.mp.ts`, `paymentService.shared.ts` (more than doubled after the dual-gateway + reconciler + telemetry work landed here) |
+| `backend/src/services/poolAdminService.ts` | ~1,509 | Pull scoring recomputation + phase locking into their own services |
+| `backend/src/services/adminInstanceService.ts` | ~1,132 | Separate template-vs-instance lifecycle |
+
+The wizard's `StepScoring.tsx` has already been reduced to a ~55-line thin
+wrapper that mounts `ScoringEditor` and adapts wizard state/dispatch — all
+scoring logic, presets, multipliers and the example calculator now live in
+`components/scoring-editor/`, so the remaining split work targets
+`ScoringEditor.tsx` itself.
 
 **Why this is deferred:** each split touches ~20 import sites and needs
 a regression pass the current sprint cannot absorb.
@@ -52,7 +58,7 @@ payment gateway with a recorded HAR for the webhook.
 
 | Where | Detail |
 |-------|--------|
-| `liveScoresJob.ts` / `resultSyncJob.ts` | ~15 LOC of `[JobName] ... ` console prefix boilerplate; would collapse into a `lib/jobLogger.ts`. |
+| `liveScoresJob.ts` / `resultSyncJob.ts` | ~15 LOC of `[JobName] ... ` console prefix boilerplate; would collapse into a `lib/jobLogger.ts`. Low value now: `resultSyncJob.ts` is a documented legacy fallback (its `scheduledTask` stays null and `runSyncJob()` is effectively unreachable — `DEAD_CODE_FINDINGS.md` B4) and is itself slated for removal, so consolidating its logging is moot. |
 | `lib/fixture.ts` / `lib/serializers.ts` | Date formatting helpers duplicated; consolidate into `lib/dateUtils.ts`. |
 | `services/scoresService/client.ts` / `services/apiFootball/client.ts` | HTTP request builders 80% identical; base client lib with hook for per-provider auth headers. |
 | `10000` player ceiling | Hardcoded in `routes/pools.ts`, `payments.ts`, `corporate.ts`. Centralise under `lib/constants.ts` as `POOL.MAX_PARTICIPANTS`. |
@@ -62,8 +68,10 @@ payment gateway with a recorded HAR for the webhook.
 
 ## 📝 Structured logging
 
-91 `console.log` / `console.error` calls across the codebase. A
-structured logger (pino or winston) would give:
+~530 `console.log` / `console.error` / `console.warn` calls across
+`backend/src` + `frontend-next/src`. `backend/src/lib/logger.ts` already
+exists; the refactor should adopt and extend it (pino or winston) rather
+than introduce a new logger. A structured logger would give:
 
 - Request-scoped correlation IDs (attach to every log line in a request).
 - Level-based filtering without grepping strings.
@@ -85,8 +93,8 @@ upgrades, not patches.
 - **Strip `'unsafe-inline'` from the CSP** (`frontend-next/next.config.ts:9`). Use script nonces issued per request. The inline consent-default script in `lib/gtm.ts` is the only reason `unsafe-inline` is on; migrating it to a nonce-tagged `next/script` with `strategy="beforeInteractive"` closes the gap without affecting order of execution.
 - **Rate limit per-user (not just per-IP)** for authenticated endpoints. NAT / corporate proxies share IPs and can exhaust limits for unrelated users.
 - **Helmet non-defaults**: `helmet({ frameguard: { action: "deny" }, referrerPolicy: { policy: "strict-origin-when-cross-origin" } })`.
-- **Email-template XSS audit**: verify every user-provided field (displayName, pool name, organisation name) passes through `escapeHtml()` before interpolation. Sampled paths are clean; a full pass would catch any regression.
-- **Cluster-wide lock on non-analytics crons** (deadlineReminder, newMemberDigest, phaseSync, smartSync). Today we run single-replica so no conflict exists; the moment we scale to 2+ replicas the `isRunning` in-memory flag is insufficient. The pattern is already in place via `pg_try_advisory_xact_lock` in `capiRetryJob`.
+- **Email-template XSS audit**: verify every user-provided field (displayName, pool name, organisation name) passes through `escapeHtml()` before interpolation. Most paths compute a `safe*` value, but two open gaps interpolate raw user/host input and should be fixed now rather than deferred (they are active findings, not belt-and-suspenders): `getCorporateInquiryConfirmationTemplate` uses raw `${contactName}` in its EN/PT greetings (`emailTemplates.ts:898,908`) while the ES branch and the body use `safeContactName`; and `getPhaseCompletionSummaryTemplate` renders raw `${entry.name}` in the Top-10 leaderboard rows (`emailTemplates.ts:2134`) despite the in-code comment claiming entries are escaped.
+- **Cluster-wide lock on non-analytics crons** (deadlineReminder, newMemberDigest, phaseSync, smartSync). Today we run single-replica so no conflict exists; the moment we scale to 2+ replicas the `isRunning` in-memory flag is insufficient. The `pg_try_advisory_xact_lock` pattern is already in place across five payment/lifecycle jobs (`capiRetryJob`, `accountReceivableExpiryJob`, `mpPaymentReconcileJob`, `paymentReconcileJob`, `welcomeEmailFallbackJob`); these four crons remain unlocked.
 
 ---
 
@@ -105,8 +113,8 @@ Deferred, but worth picking up once ad spend makes them worth the setup:
 ## 🗃️ Database / schema cleanups
 
 - **`PoolPayment.amountCop` backfill for pre-migration rows**: the current code falls back to `calculateUpgradePriceCop()` (via the `mpPurchaseValue()` helper) so GA4/Meta and the success page show correct values, but a one-shot UPDATE that fills the column from the pricing library would let us drop the fallback path entirely. Low priority; the fallback is correct.
-- **Deprecate legacy scoring types (`EXACT_SCORE`, `PARTIAL_SCORE`)**: verify via `SELECT COUNT(*) FROM Pool WHERE pickConfig::text LIKE '%EXACT_SCORE%'`. If zero, remove the branch in `scoringAdvanced.ts` + type union.
-- **Retire the three one-time seed scripts** (`scripts/fetchUclData.ts`, `scripts/initSmartSyncStates.ts`, `scripts/updateUclR16Draw.ts`) — archive into `docs/seed-history/` and remove from `backend/src/scripts/`.
+- **Retire only the legacy *terminating-evaluation* code path in `scoringAdvanced.ts`** once no pool runs in non-cumulative mode. Note `EXACT_SCORE` and `PARTIAL_SCORE` are NOT removable legacy types — they are live scoring keys: the cumulative engine evaluates `EXACT_SCORE` and `PARTIAL_SCORE` as additive bonuses (`scoringAdvanced.ts` ~lines 130-152), and `validation/pickConfig.ts` actively validates and warns on their point values (~lines 190-229). The only deferrable cleanup is the legacy-mode branch where `EXACT_SCORE` *terminates* evaluation (~lines 167-189); the keys themselves must stay.
+- **Retire the spent one-time seed scripts** (`scripts/fetchUclData.ts`, `scripts/initSmartSyncStates.ts`, `scripts/updateUclR16Draw.ts`, plus `scripts/migrateExtraTimeConfig.ts`, `scripts/seedAdmin.ts` and the `scripts/ucl_2025_fixtures.json` fixture — the full `DEAD_CODE_FINDINGS.md` section E list) — archive into `docs/seed-history/` and remove from `backend/src/scripts/`.
 
 ---
 

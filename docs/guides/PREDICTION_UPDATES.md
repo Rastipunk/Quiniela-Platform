@@ -33,6 +33,8 @@ After a matchday completes, Claude should:
 
 ### Change types to track:
 
+The `type` and `description` fields are both **free-form strings** — the backend Zod schema (`predictionUpdateSchema` in `backend/src/routes/admin.ts`) only enforces `type: string (1–100 chars)` and `description: string (1–500 chars)`, and the `changes` array must contain **1–50 entries**. There is no enforced enum. The types below are recommended documentation conventions, not validated values.
+
 | Type | When to use |
 |------|-------------|
 | `CHAMPION` | Predicted champion changes |
@@ -71,11 +73,12 @@ Update these constants at the top of the file:
 
 ### Translation keys to update:
 
-- `predictions.groups.analysis[A-L]` — per-group analysis text
+- `predictions.groups.analysisA` through `predictions.groups.analysisL` — per-group analysis text
 - `predictions.champion.team` — predicted champion name
 - `predictions.champion.reasoning` — why this team wins
-- `predictions.analysis.p1` through `p4` — detailed analysis paragraphs
-- `predictions.knockout.finalTeamA` / `finalTeamB` — finalists
+- `predictions.analysis.p1` through `predictions.analysis.p4` — detailed analysis paragraphs
+- `predictions.knockout.finalTeamA` / `predictions.knockout.finalTeamB` — finalists
+- `predictions.bestThirds.*` — best third-placed teams that advance (also surfaced on the page)
 
 ### JSON-LD dateModified:
 
@@ -95,20 +98,22 @@ git push origin main
 
 ### Generate JWT admin token:
 
+Run this on the backend host (Railway), where `JWT_SECRET` is set in the environment. The signing recipe must match `signToken` in `backend/src/lib/jwt.ts` exactly — `HS256` algorithm, a `{ userId, platformRole }` payload, and the secret read from `process.env.JWT_SECRET` (production tokens use `expiresIn: "4h"`):
+
 ```bash
 cd quiniela-platform/backend
 node -e "
 const jwt = require('jsonwebtoken');
 const token = jwt.sign(
-  { userId: '<ADMIN_USER_ID>' },
-  'quiniela_jwt_secret_prod_2026',
-  { expiresIn: '1h' }
+  { userId: '<ADMIN_USER_ID>', platformRole: 'ADMIN' },
+  process.env.JWT_SECRET,
+  { expiresIn: '4h', algorithm: 'HS256' }
 );
 console.log(token);
 "
 ```
 
-Admin user ID: `59db1874-b8c2-40d1-9132-5480690ca96c` (Juan Camilo)
+Admin user ID: `59db1874-b8c2-40d1-9132-5480690ca96c` (Juan Camilo). The referenced user must actually have `platformRole = ADMIN` in the database — `requireAdmin` re-derives the role from the DB and rejects anything else (the `platformRole` claim in the token is not trusted on its own).
 
 ### Call the admin endpoint:
 
@@ -127,25 +132,40 @@ curl -X POST https://api.picks4all.com/admin/prediction-update \
 
 ### Response:
 
+When there is at least one subscriber, the endpoint returns immediately and queues the send:
+
 ```json
 {
-  "ok": true,
+  "message": "Prediction update emails queued.",
   "emailsQueued": 47
 }
 ```
 
+When there are no subscribers, nothing is queued and the response uses a different key (`emailsSent`):
+
+```json
+{
+  "message": "No subscribers found.",
+  "emailsSent": 0
+}
+```
+
+### Who receives the email:
+
+The route selects users where `predictionUpdates = true` AND `status = "ACTIVE"` AND `emailNotificationsEnabled = true`. A user who has globally disabled email notifications is excluded even if subscribed to prediction updates. Each email is sent in the user's resolved locale (`resolveUserLocale(user)`).
+
 ### What the email contains:
 
-- Subject: "La predicción del Mundial 2026 se ha actualizado" (localized)
-- Table of changes with type badges and descriptions
+- Subject: "La predicción del Mundial 2026 se ha actualizado" (localized chrome)
+- Table of changes, each row showing the raw `type` badge and the `description` text
 - CTA button linking to the predictions page
-- Unsubscribe link
+- An in-body "manage preference" link to `/profile` (where the user toggles the subscription) — this is **not** a tokenized one-click unsubscribe. RFC `List-Unsubscribe` / `List-Unsubscribe-Post` headers are also set via `getUnsubscribeHeaders(userId)`.
 
 ### Batch behavior:
 
-- Emails are sent in batches of 10 with 1-second delay between batches
+- Emails are sent in batches of 10 (`PREDICTION_EMAIL_BATCH_SIZE`) with a 1-second delay between batches (`PREDICTION_EMAIL_BATCH_DELAY_MS`)
 - The endpoint returns immediately — emails are fire-and-forget
-- An audit event is logged with subscriber count
+- An audit event (`action: "prediction_update_mass_send"`, `entityType: "PredictionUpdate"`) is logged with the subscriber count and changes count
 
 ---
 
@@ -153,9 +173,9 @@ curl -X POST https://api.picks4all.com/admin/prediction-update \
 
 When calling the admin endpoint, provide descriptions in all three locales. The system sends the email in the user's preferred locale.
 
-**Important:** The `description` field in the changes array should be in the DEFAULT locale (Spanish). The email template handles the translation based on the `type` field badge. However, the description text itself is sent as-is.
+**Important:** Only the email *chrome* (subject, heading, greeting, intro paragraph, CTA, footer / unsubscribe text) is localized per `es/en/pt`. The `type` badge and the `description` are rendered **verbatim** by `getPredictionUpdateTemplate` — there is no `type → label` translation map. An EN/PT user sees the badge string exactly as sent (e.g. literal `CHAMPION`) and the description in whatever language it was provided.
 
-The description is sent in Spanish — the majority of users are Spanish-speaking (71% Colombia). For EN/PT users, the type badge (CHAMPION, ELIMINATED, etc.) provides context even if the description is in Spanish.
+In practice, send the `description` in the DEFAULT locale (Spanish), since the majority of users are Spanish-speaking (71% Colombia). For EN/PT users, the type badge provides context even though the description stays in Spanish. Localized per-change badges/descriptions are not implemented.
 
 ---
 

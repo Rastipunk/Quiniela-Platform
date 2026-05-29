@@ -5,7 +5,7 @@
 >
 > **Audience:** Developers, product managers, stakeholders, and new team members.
 >
-> **Last Updated:** 2026-05-03
+> **Last Updated:** 2026-05-28
 
 ---
 
@@ -18,6 +18,7 @@
 - [Predictions & Scoring](#predictions--scoring)
 - [Technical Terms](#technical-terms)
 - [Acronyms & Abbreviations](#acronyms--abbreviations)
+- [Domain-Specific Slang](#domain-specific-slang)
 
 ---
 
@@ -486,53 +487,66 @@ return "DRAW";
 
 ### Scoring Preset
 
-**Definition:** Pre-configured scoring rule defining points awarded per pick type.
+**Definition:** A packaged scoring rule a host applies when creating a pool. Picks4All ships TWO independent scoring systems, each with its own preset set.
 
-**Current Presets:**
+#### (a) Legacy scoring presets (`lib/scoringPresets.ts`)
 
-| Preset | Description |
-|--------|-------------|
-| **CUMULATIVE** | Points stack: outcome + exact score + goal difference (most rewarding) |
-| **BASIC** | Outcome points + exact score bonus (balanced) |
-| **SIMPLE** | Outcome-only scoring (simplest) |
-| **CUSTOM** | Host defines custom point values per pick type |
+Single-key system. Stored in `Pool.scoringPresetKey` (schema default `"CLASSIC"`). Each preset is a flat `{ outcomePoints, exactScoreBonus, allowScorePick }`.
 
-**Example:** "In CUMULATIVE preset, a correct exact score earns outcome + exact + goal difference points (cumulative)."
+| Key | `outcomePoints` | `exactScoreBonus` | Description |
+|-----|-----------------|-------------------|-------------|
+| **CLASSIC** (default) | 3 | 2 | Outcome points plus an exact-score bonus. |
+| **OUTCOME_ONLY** | 3 | 0 | Outcome only; no exact-score pick. |
+| **EXACT_HEAVY** | 2 | 3 | Lighter outcome, heavier exact-score bonus. |
+
+#### (b) Advanced pick-type presets (`lib/pickPresets.ts`)
+
+Per-phase system. Stored in `Pool.pickTypesConfig` (a `PoolPickTypesConfig`, see [Pick Rules](#pick-rules)). `getAllPresets()` returns exactly three packaged presets:
+
+| Key | Description |
+|-----|-------------|
+| **CUMULATIVE** | Points stack per matched criterion (`MATCH_OUTCOME_90MIN` 10 + `HOME_GOALS` 4 + `AWAY_GOALS` 4 + `GOAL_DIFFERENCE` 2 = 20 max at base phase), auto-scaling ×1→×4 by phase. |
+| **BASIC** | Exact-score-only (`EXACT_SCORE`), auto-scaling 20 pts (group) → 80 pts (final). |
+| **SIMPLE** | Structural, no scores: `GROUP_STANDINGS` in groups, `KNOCKOUT_WINNER` in knockout rounds (15→40 pts by phase). |
+
+**CUSTOM** is NOT a packaged preset — it exists only as a member of the `PickConfigPresetKey` type union, denoting a host-defined `pickTypesConfig`.
+
+**Example:** "In the CUMULATIVE preset a correct exact score scores `MATCH_OUTCOME_90MIN` + `HOME_GOALS` + `AWAY_GOALS` + `GOAL_DIFFERENCE` simultaneously."
 
 ---
 
 ### Pick Rules
 
-**Definition:** Host-configured rules defining which pick types are active and points per type.
+**Definition:** The advanced per-phase scoring configuration a host stores in `Pool.pickTypesConfig`. Shape defined by `PoolPickTypesConfig` in `backend/src/types/pickConfig.ts` — an array of `PhasePickConfig`, one per tournament phase. Each phase sets `requiresScore` and then carries EITHER `matchPicks.types[]` (`{ key, enabled, points }`) when `requiresScore = true`, OR `structuralPicks` when `requiresScore = false`. The two branches are mutually exclusive.
 
-**Configuration:**
-- `activePickTypes`: Array of enabled types
-- `pointsMap`: Points awarded per type
-
-**Example:**
+**Example** (a `group_stage` phase enabling `MATCH_OUTCOME_90MIN` and `EXACT_SCORE`):
 ```json
 {
-  "activePickTypes": ["EXACT_SCORE", "MATCH_OUTCOME"],
-  "pointsMap": {
-    "EXACT_SCORE": 5,
-    "MATCH_OUTCOME": 1
+  "phaseId": "group_stage",
+  "phaseName": "Fase de Grupos",
+  "requiresScore": true,
+  "matchPicks": {
+    "types": [
+      { "key": "MATCH_OUTCOME_90MIN", "enabled": true, "points": 10 },
+      { "key": "EXACT_SCORE", "enabled": true, "points": 20 }
+    ]
   }
 }
 ```
 
-**Scoring:** User can earn 5+1=6 pts if exact score correct (cumulative).
+**Scoring:** With the cumulative system the engine sums points for every matched, enabled criterion in the phase config.
 
 ---
 
 ### Exact Score
 
-**Definition:** Pick where predicted score exactly matches actual score.
+**Definition:** Pick where the predicted score exactly matches the actual score.
 
-**Validation:** `pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals`
+**Validation:** the player's score is parsed from `Prediction.pickJson` (e.g. `pick.home` / `pick.away`) and compared against `homeGoals` / `awayGoals` on the published `PoolMatchResultVersion`. There are no top-level `homeGoals`/`awayGoals` scalar fields on the prediction — the pick lives entirely in the flexible `pickJson` JSON column.
 
 **Bonus:** Awards extra points (configurable by preset).
 
-**Example:** "I predicted 2-1, result was 2-1 → Exact score! I get 3pts (outcome) + 2pts (bonus) = 5pts."
+**Example:** "I predicted 2-1, result was 2-1 → Exact score! Under the legacy CLASSIC preset I get 3 pts (outcome) + 2 pts (bonus) = 5 pts. Other presets award different amounts."
 
 ---
 

@@ -176,8 +176,11 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Payments | `services/mercadopago/`, `services/polar/`, `services/paymentService.ts` |
 | Pricing | `lib/pricing.ts` (USD + COP dynamic pricing with volume discounts) |
 | Result publishing | `services/resultService.ts`, `services/resultSync/`, `services/advancementTrigger.ts` |
-| Admin routes | `routes/admin.ts`, `routes/adminAnalyticsDashboard.ts`, `routes/adminInstances.ts`, `routes/adminTemplates.ts`, `routes/adminCorporate.ts`, `routes/adminSettings.ts` |
-| Jobs | `jobs/liveScoresJob.ts`, `jobs/smartSyncJob.ts`, `jobs/resultSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/fixtureVerificationJob.ts`, `jobs/newMemberDigestJob.ts`, `jobs/capiRetryJob.ts`, `jobs/trackStatusCheckerJob.ts` |
+| Admin routes | `routes/admin.ts`, `routes/adminAnalyticsDashboard.ts`, `routes/adminInstances.ts`, `routes/adminTemplates.ts`, `routes/adminCorporate.ts`, `routes/adminSettings.ts`, `routes/adminSales.ts` |
+| Sales | `routes/adminSales.ts` (quotes + cuentas de cobro), `routes/salesRedemption.ts` (public CC redemption), `services/sales/quoteService.ts`, `services/sales/accountReceivableService.ts`, `services/sales/documentCounterService.ts` |
+| Activation links | `lib/activationUrl.ts` (locale-correct activation/welcome URLs) |
+| Boot crons (started in `server.ts`) | `jobs/liveScoresJob.ts`, `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/fixtureVerificationJob.ts`, `jobs/newMemberDigestJob.ts`, `jobs/capiRetryJob.ts`, `jobs/trackStatusCheckerJob.ts`, `jobs/paymentReconcileJob.ts` (Polar reconciler), `jobs/mpPaymentReconcileJob.ts` (MP reconciler), `jobs/accountReceivableExpiryJob.ts` (sales CC expiry sweep), `jobs/welcomeEmailFallbackJob.ts` (24h welcome-email safety net) |
+| Admin-triggered sync | `jobs/resultSyncJob.ts` (not a boot cron; invoked via `services/adminInstanceService.ts`) |
 
 ### Frontend (`frontend-next/src/`)
 | Category | Files |
@@ -188,6 +191,7 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Validation | `lib/validation.ts` (centralized form constraints) |
 | API client | `lib/api/client.ts` |
 | Payments API | `lib/api/payments.ts` (checkout, MP process, country detection) |
+| Payment telemetry | `lib/api/paymentAttemptEvent.ts` (MP Brick lifecycle beacons via sendBeacon — ADR-066) |
 | Pricing | `lib/pricing.ts` (COP + USD tiers, dynamic computation) |
 | Analytics | `lib/analytics.ts` (trackEvent via GTM dataLayer) |
 | i18n | `i18n/routing.ts`, `messages/{es,en,pt}/*.json` |

@@ -1,6 +1,6 @@
 # Sistema de Notificaciones por Email
 
-> **Last Updated:** 2026-05-04
+> **Last Updated:** 2026-05-28
 
 ## Resumen
 
@@ -27,11 +27,16 @@ El sistema de notificaciones por email permite enviar comunicaciones automática
 | Pool Full | Pool alcanzó capacidad máxima (notifica al host) | No (siempre activo) | No |
 | Capacity Warning | Pool cerca de capacidad máxima (umbral configurable, default 95%) | No (siempre activo) | No |
 | Blocked Join Attempt | Alguien intentó unirse a un pool lleno (throttled, default 24h por pool) | No (siempre activo) | No |
+| Group Standings Override | Host modificó la clasificación de un grupo publicada por el Estratega | No (siempre activo) | No |
+| Knockout Winner Override | Host modificó el ganador de un cruce eliminatorio publicado por el Estratega | No (siempre activo) | No |
+| Pool Reverted To Draft | Pool revirtió ACTIVE → DRAFT (último jugador salió/fue removido) | No (siempre activo) | No |
 | Member Removed | Notifica al miembro que fue removido/baneado | No (siempre activo) | No |
+| Pending Approval Digest | Resumen de solicitudes pendientes de aprobación (para hosts) | No (siempre activo) | Sí (`emailNewMemberDigest`) |
 | Prediction Update | Actualización de predicciones AI (suscripción) | No (siempre activo) | Sí (`predictionUpdates`) |
-| Payment Receipt | Recibo de pago | No (siempre activo) | No |
+| Payment Receipt | Recibo de pago (Polar / Mercado Pago) | No (siempre activo) | No |
 | Corporate Activation | Invitación de activación corporativa | No (siempre activo) | No |
 | Corporate Inquiry Confirmation | Confirmación de solicitud empresarial | No (siempre activo) | No |
+| Corporate Check-in | Seguimiento proactivo a clientes corporativos | No (siempre activo) | No |
 | Admin Notification | Notificación interna al admin | No (siempre activo) | No |
 
 ## Arquitectura
@@ -41,10 +46,10 @@ El sistema de notificaciones por email permite enviar comunicaciones automática
 #### Servicio de Email
 **Archivo**: `backend/src/lib/email.ts`
 
-Funciones principales:
+Funciones principales (`send*` exportadas):
 - `sendPasswordResetEmail()` - Siempre activo
 - `sendPasswordChangedEmail()` - Siempre activo
-- `sendVerificationEmail()` - Siempre activo
+- `sendVerificationEmail()` - Siempre activo (disparado por `POST /users/me/locale-preference`)
 - `sendWelcomeEmail()` - Verifica configuración de plataforma y usuario
 - `sendPoolInvitationEmail()` - Siempre activo a nivel plataforma, verifica preferencia de usuario
 - `sendDeadlineReminderEmail()` - Verifica configuración de plataforma y usuario
@@ -52,17 +57,24 @@ Funciones principales:
 - `sendPoolCompletedEmail()` - Verifica configuración de plataforma y usuario
 - `sendPhaseCompletionSummaryEmail()` - Siempre activo, verifica master toggle de usuario
 - `sendNewMemberDigestEmail()` - Para hosts, enviado por cron diario (8AM COL)
+- `sendPendingApprovalDigestEmail()` - Resumen de solicitudes pendientes para hosts (reusa el opt-out `emailNewMemberDigest`)
 - `sendNewMemberNotificationEmail()` - Legado, solo usado por endpoint de test admin
 - `sendMemberRemovedEmail()` - Siempre activo
+- `sendPoolRevertedToDraftEmail()` - Notifica cuando un pool revierte ACTIVE → DRAFT
 - `sendCorporateActivationEmail()` - Envía invitación corporativa con token de activación (30 días)
 - `sendCorporateInquiryConfirmationEmail()` - Confirma recepción de solicitud empresarial
+- `sendCorporateCheckinEmail()` - Seguimiento proactivo a clientes corporativos (FROM/Reply-To `empresas@picks4all.com`)
 - `sendAdminNotification()` - Notifica al admin de eventos importantes (ej. nuevo feedback)
 - `sendResultOverrideNotification()` - Notifica a TODOS los miembros cuando el host modifica un resultado API-confirmed
+- `sendGroupStandingsOverrideNotification()` - Notifica cuando el host modifica una clasificación de grupo del Estratega
+- `sendKnockoutWinnerOverrideNotification()` - Notifica cuando el host modifica el ganador de un cruce eliminatorio del Estratega
 - `sendPoolFullNotificationEmail()` - Notifica al host cuando su pool alcanza capacidad máxima
+- `sendCapacityWarningEmail()` - Notifica al host cuando el pool se acerca a su capacidad máxima
+- `sendBlockedJoinAttemptEmail()` - Notifica al host cuando alguien intenta unirse a un pool lleno (throttled)
 - `sendPredictionUpdateEmail()` - Envía actualización de predicciones AI a suscriptores
-- `sendPaymentReceiptEmail()` - Recibo de pago
+- `sendPaymentReceiptEmail()` - Recibo de pago (Polar / MP), Reply-To `ventas@picks4all.com`
 
-Cada función:
+Cada función configurable:
 1. Verifica si el email está habilitado a nivel de plataforma
 2. Verifica las preferencias del usuario
 3. Envía el email si ambas condiciones se cumplen
@@ -83,7 +95,7 @@ Todas las interpolaciones de variables controladas por usuario (`companyName`, `
 
 - **Helper:** `backend/src/lib/htmlSafe.ts` (módulo aislado para evitar dependencia circular con `email.ts`).
 - **Convención:** el patrón es `const safeX = escapeHtml(x)` al inicio de la función del template, y todos los lugares de interpolación usan `${safeX}` en vez de `${x}`. Cualquier nuevo template debe seguir esta convención.
-- **Cobertura verificada:** `backend/src/lib/emailTemplates.xss.test.ts` renderiza CADA uno de los 17 templates con un payload `<script>alert(...)</script>` en cada variable host/user-controlled y asserta que el script raw no sobrevive en el HTML rendered.
+- **Cobertura:** `backend/src/lib/emailTemplates.xss.test.ts` renderiza los templates con un payload `<script>alert(...)</script>` en cada variable host/user-controlled y asserta que el script raw no sobrevive en el HTML rendered. La cobertura NO es total: el saludo `contactName` en las variantes EN/PT de la confirmación de cotización corporativa y los nombres del Top-10 (`entry.name`) en el resumen de fase tienen interpolación sin escapar conocida, y varios casos de test usan shapes de parámetros desalineados con la interfaz actual (`getMemberRemovedTemplate` con `type: "REMOVED"` en vez de `"kicked"|"banned"`; `getPhaseCompletionSummaryTemplate` con `top10: [{displayName, points}]` en vez de `{rank, name, points}`; `getPaymentReceiptTemplate` con `paidAt: Date` + `userId` en vez de `paidAt: string`). Estos gaps están pendientes de re-alineación; no asumas cobertura completa.
 - **Por qué al render y no a la persistencia:** el contexto de renderizado es lo que define qué necesita escape. Lo que es seguro en `<p>` puede no serlo en `<img alt="...">`. Escapar al render hace explícita la frontera. Excepción: `welcomeMessage`/`invitationMessage` también se escapan al persistir como defensa adicional (defence in depth).
 
 #### API de Configuración Admin
@@ -99,6 +111,8 @@ Todas las interpolaciones de variables controladas por usuario (`companyName`, `
 
 Requiere: `requireAuth` + `requireAdmin`
 
+> El mismo router expone también `GET/PUT /admin/settings/scores` (configuración de scoring), fuera del alcance de este documento.
+
 #### API de Preferencias de Usuario
 **Archivo**: `backend/src/routes/me.ts`
 
@@ -110,7 +124,8 @@ Requiere: `requireAuth` + `requireAdmin`
 ### Frontend
 
 #### Panel de Admin
-**Archivo**: `frontend-next/src/app/[locale]/(authenticated)/admin/settings/email/page.tsx`
+**Archivo**: `frontend-next/src/components/AdminEmailSettingsContent.tsx` (la UI de toggles)
+**Wrapper**: `frontend-next/src/app/[locale]/(authenticated)/admin/settings/email/page.tsx` (solo metadata, renderiza `<AdminEmailSettingsContent />`)
 **Ruta**: `/admin/settings/email`
 
 Características:
@@ -194,24 +209,34 @@ model User {
                     └─ Sí → ENVIAR EMAIL
 ```
 
-## Flujo de Verificación de Email
+## Flujo de Verificación y Welcome Email (ADR-063)
+
+Los emails de **verificación** y **bienvenida** NO se envían al registrarse. Ambos se difieren al handoff de preferencia de idioma en el primer login (`POST /users/me/locale-preference`), para que salgan en el idioma elegido por el usuario. `sendWelcomeEmail` y `sendVerificationEmail` NUNCA se llaman inline desde los handlers de signup ni de activación corporativa.
 
 ```
-1. Usuario se registra con email/password
-   └─ Se genera token de verificación (24 horas de validez)
-   └─ Se envía email de verificación
-   └─ Usuario puede usar la app (emailVerified = false)
+1. Usuario se registra (email/password o Google OAuth)
+   └─ Google OAuth: emailVerified = true (auto-verificado por el proveedor)
+   └─ Email/password: emailVerified = false, se genera token de verificación (24h)
+   └─ Email de verificación + Welcome DIFERIDOS (no se envían aquí)
+   └─ Usuario puede usar la app
 
-2. Usuario registra con Google OAuth
-   └─ Email se marca como verificado automáticamente
-   └─ Se envía Welcome email directamente
+2. Primer login → LocalePreferenceModal → POST /users/me/locale-preference
+   └─ Persiste User.locale + localePromptCompletedAt
+   └─ Dispara (fire-and-forget) el email de verificación pendiente en el locale elegido
+   └─ Dispara el Welcome email en el locale elegido
+   └─ User.welcomeEmailSentAt se marca dentro de la misma tx (idempotencia)
 
-3. Usuario hace clic en link de verificación
+3. Fallback 24h — backend/src/jobs/welcomeEmailFallbackJob.ts
+   └─ Cron `15 * * * *` (cada hora al minuto :15), advisory lock 82636505n
+   └─ Captura usuarios con welcomeEmailSentAt = null y createdAtUtc > 24h
+   └─ Resuelve locale: org.invitationLocale (corporativo) o resolveUserLocale (signup)
+   └─ Envía el Welcome e idempotentemente marca welcomeEmailSentAt
+
+4. Usuario hace clic en link de verificación
    └─ GET /verify-email?token=xxx
-   └─ Si token válido → emailVerified = true
-   └─ Redirect a dashboard
+   └─ Si token válido → emailVerified = true → redirect a dashboard
 
-4. Usuario puede reenviar verificación
+5. Usuario puede reenviar verificación
    └─ POST /auth/resend-verification (requiere auth)
    └─ Genera nuevo token y envía nuevo email
 ```
@@ -221,6 +246,8 @@ model User {
 emailVerified                   Boolean   @default(false)
 emailVerificationToken          String?   @unique
 emailVerificationTokenExpiresAt DateTime?
+welcomeEmailSentAt              DateTime? // Idempotencia del Welcome email diferido (ADR-063)
+locale                          String?   // Elección explícita del usuario en el modal de primer login
 ```
 
 ## Infraestructura de Email
@@ -229,10 +256,12 @@ emailVerificationTokenExpiresAt DateTime?
 
 - **Servicio**: Resend (https://resend.com)
 - **Dominio verificado**: picks4all.com (ADR-037, verificado 2026-03-01)
-- **From**: noreply@picks4all.com
+- **From**: `${APP_NAME} <${RESEND_FROM_EMAIL}>` (env-driven; la dirección de producción es `hola@picks4all.com`, un buzón real y monitoreado). Se abandonó `noreply@` porque Resend Insights penaliza remitentes que señalan "sin comunicación bidireccional" y degrada la entregabilidad.
+- **Reply-To por defecto**: `soporte@${EMAIL_DOMAIN || SITE_DOMAIN}` — inyectado automáticamente en todos los emails transaccionales de usuario por `resilientSend()`.
+- **Reply-To por tipo**: los recibos de pago usan `ventas@…` y los correos corporativos (`sendCorporateCheckinEmail`) usan `empresas@picks4all.com`. Las notificaciones internas al admin optan por NO recibir Reply-To (`skipDefaultReplyTo: true`), ya que el equipo no se responde a sí mismo.
 - **Free tier**: 3,000 emails/mes
 - **Dashboard**: https://resend.com/emails
-- **Variable de entorno**: `RESEND_API_KEY`
+- **Variable de entorno**: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
 - **SPF**: Configurado con `include:send.resend.com` en DNS de Cloudflare
 - **DKIM**: Clave DKIM agregada como registro DNS en Cloudflare
 
@@ -302,7 +331,7 @@ privacyEmail: "privacidade@picks4all.com"
 #### Emails Transaccionales (siempre activos)
 - **Password Reset**: En `auth.ts` - POST `/auth/forgot-password`
 - **Password Changed**: En `authService.ts` - Notifica al usuario cuando se cambia su contraseña
-- **Email Verification**: En `auth.ts` - Enviado al registrarse, verificación en `/verify-email?token=xxx`
+- **Email Verification**: Diferido al handoff de idioma — disparado por `POST /users/me/locale-preference`, no al registrarse (ADR-063). Verificación en `/verify-email?token=xxx`
   - Endpoint para reenviar: POST `/auth/resend-verification`
   - UI de banner en perfil si no está verificado
 - **Pool Invitation**: En `pools.ts` - POST `/pools/:poolId/send-invite-email`
@@ -313,7 +342,7 @@ privacyEmail: "privacidade@picks4all.com"
 - **Payment Receipt**: En `paymentService.ts` - Recibo de pago
 
 #### Emails de Notificación (configurables por admin)
-- **Welcome Email**: En `auth.ts` - Enviado después de verificar email (Google: auto-verificado)
+- **Welcome Email**: Diferido al handoff de idioma — disparado por `POST /users/me/locale-preference` (`userProfile.ts`), con fallback a las 24h vía `welcomeEmailFallbackJob.ts`. NUNCA se envía inline desde signup/activación (ADR-063). Idempotente vía `User.welcomeEmailSentAt`.
 - **Result Published**: En `results.ts` - PUT `/pools/:poolId/results/:matchId`
   - Solo se envía en modo MANUAL, Smart Sync no dispara este email
 - **Pool Completed**: En `poolStateMachine.ts` - Transición ACTIVE → COMPLETED
@@ -335,10 +364,11 @@ privacyEmail: "privacidade@picks4all.com"
 #### Deadline Reminder (Desactivado por defecto)
 - **Servicio**: `backend/src/services/deadlineReminderService.ts`
 - **Funcionalidad**: Encuentra usuarios sin pronósticos para partidos próximos y envía recordatorios
+- **Cron**: `backend/src/jobs/deadlineReminderJob.ts` — `0 12 * * *` (env `DEADLINE_REMINDER_CRON`, 7:00 AM Colombia / 12:00 UTC). Llama `processDeadlineReminders(48, false)`, es decir ventana de **48 horas**.
 - **Ejecución manual**: `POST /admin/settings/email/reminders/run`
-  - Parámetros: `hoursBeforeDeadline` (default: 24), `dryRun` (default: false)
+  - Parámetros: `hoursBeforeDeadline` (default: **24**), `dryRun` (default: false)
 - **Tracking**: Tabla `DeadlineReminderLog` evita duplicados
-- **Por defecto desactivado**: El admin debe habilitarlo manualmente en el panel
+- **Por defecto desactivado**: La plataforma trae `emailDeadlineReminderEnabled = false`; el cron corre pero no envía hasta que el admin lo habilite en el panel
 
 #### Emails de Suscripción
 - **Prediction Update**: En `adminPredictionUpdate.ts` - Envía actualización de predicciones AI a suscriptores
@@ -358,14 +388,18 @@ privacyEmail: "privacidade@picks4all.com"
   - Cada categoría tiene su propio emoji y label en el asunto, así puedes
     escanear la bandeja sin abrir nada.
 
-| Categoría | Bandeja | Emoji | Disparado por |
-|-----------|---------|-------|----------------|
-| `feedback` | `SUPPORT_NOTIFICATION_EMAIL` | 💬 | `feedback.ts` (BUG/SUGGESTION del formulario beta) |
-| `corporate_inquiry` | `ENTERPRISE_NOTIFICATION_EMAIL` | 📩 | `corporateService.ts` (formulario `/empresas`) |
-| `corporate_pool_created` | `ENTERPRISE_NOTIFICATION_EMAIL` | 🏢 | `corporateService.ts` (wizard de pool corporativa) |
-| `payment_completed` | `SALES_NOTIFICATION_EMAIL` + `ADMIN_NOTIFICATION_EMAIL` | 💰 | `paymentService.ts` (webhook Polar) |
-| `system_event` | `ADMIN_NOTIFICATION_EMAIL` | ℹ️ | Avances de fase, sync resuelto, fixtures actualizados |
-| `error` | `ADMIN_NOTIFICATION_EMAIL` | 🚨 | Jobs caídos, sync fallido, fixtures rechazados |
+| Categoría | Bandeja | Emoji | Label | Disparado por |
+|-----------|---------|-------|-------|----------------|
+| `feedback` | `support` (`SUPPORT_NOTIFICATION_EMAIL`) | 💬 | Feedback | `feedback.ts` (BUG/SUGGESTION del formulario beta) |
+| `corporate_inquiry` | `enterprise` (`ENTERPRISE_NOTIFICATION_EMAIL`) | 📩 | Cotización corporativa | `corporateService.ts` (formulario `/empresas`) |
+| `corporate_pool_created` | `enterprise` (`ENTERPRISE_NOTIFICATION_EMAIL`) | 🏢 | Pool corporativa creada | `corporateService.ts` (wizard de pool corporativa) |
+| `payment_completed` | `sales` + `admin` | 💰 | Pago confirmado | `paymentService.ts` (webhook Polar / MP) |
+| `payment_reconciler_rescued` | `admin` (`ADMIN_NOTIFICATION_EMAIL`) | 🛟 | Reconciler: revisión manual | Reconciler de pagos detecta una discrepancia que requiere revisión humana |
+| `cc_pricing_drift` | `sales` + `admin` | ⚠️ | CC: drift de precio | Snapshot de la cuenta de cobro discrepa de `pricing.ts` al redimir (ADR-061) |
+| `system_event` | `admin` (`ADMIN_NOTIFICATION_EMAIL`) | ℹ️ | Evento del sistema | Avances de fase, sync resuelto, fixtures actualizados |
+| `error` | `admin` (`ADMIN_NOTIFICATION_EMAIL`) | 🚨 | Error | Jobs caídos, sync fallido, fixtures rechazados |
+
+Cada nombre lógico de bandeja (`admin`, `support`, `enterprise`, `sales`) se resuelve a su env var correspondiente (`ADMIN_/SUPPORT_/ENTERPRISE_/SALES_NOTIFICATION_EMAIL`), con fallback a `ADMIN_NOTIFICATION_EMAIL` cuando la var no está configurada.
 
 > **Routing en Gmail:** las cuatro direcciones (`soporte@`, `empresas@`,
 > `ventas@`, `admin@`) son aliases en Cloudflare Email Routing que
@@ -389,7 +423,7 @@ curl -X POST http://localhost:3000/admin/settings/email/test \
   -d '{"type": "welcome", "to": "test@example.com"}'
 ```
 
-Tipos válidos: `welcome`, `poolInvitation`, `deadlineReminder`, `resultPublished`, `poolCompleted`
+Tipos válidos: `welcome`, `poolInvitation`, `deadlineReminder`, `resultPublished`, `poolCompleted`, `newMemberDigest`, `phaseCompletionSummary`
 
 ### Verificar configuración
 ```bash

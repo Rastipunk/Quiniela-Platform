@@ -1,8 +1,8 @@
 # Data Model — Picks4All Platform
 
-> **Last updated:** 2026-05-03
+> **Last updated:** 2026-05-28
 >
-> This document describes every model, enum, relationship, index, and pattern in the PostgreSQL database as defined in `backend/prisma/schema.prisma`.
+> This document describes every model, enum, relationship, index, and pattern in the PostgreSQL database as defined in `backend/prisma/schema.prisma`. It reflects the schema through migration `20260527_add_mp_payment_id_and_status_index`.
 
 ---
 
@@ -43,6 +43,9 @@
    - [FailedAnalyticsEvent](#330-failedanalyticsevent)
    - [EmailSuppression](#331-emailsuppression)
    - [OrganizationBrandingAudit](#332-organizationbrandingaudit)
+   - [Quote](#333-quote)
+   - [AccountReceivable](#334-accountreceivable)
+   - [DocumentCounter](#335-documentcounter)
 4. [Relationship Diagram](#4-relationship-diagram)
 
 ---
@@ -276,6 +279,50 @@ Sources are listed by precedence — higher rows are never overwritten by lower 
 | `ACTIVATED` | User created account and joined pool |
 | `FAILED` | Error sending email |
 
+### PaymentStatus
+
+Lifecycle states for a `PoolPayment`. Values are ordered to match the lifecycle; new values are appended in migrations to preserve the on-disk enum ordering (see `20260519_extend_payment_observability`).
+
+| Value | Description |
+|-------|-------------|
+| `INITIATED` | Row inserted before calling the gateway. If the gateway call fails the row stays `INITIATED` and is later swept by a reconciler. Distinguishes "we never reached the gateway" from `PENDING`. |
+| `PENDING` | Checkout created on Polar/MP, awaiting user action on the gateway page |
+| `COMPLETED` | Gateway webhook confirmed payment (Polar `order.paid` or MP `approved`) |
+| `FAILED` | Gateway explicitly rejected / failed the payment |
+| `ABANDONED` | Reconciler swept a stale `PENDING`/`INITIATED` with no gateway-side signal for > N hours. Distinct from `EXPIRED` because there is no explicit gateway expiration event. |
+| `EXPIRED` | Gateway told us the checkout expired (e.g. Polar `checkout.updated` status=expired) |
+| `CANCELLED` | User explicitly cancelled at the gateway page (Polar `order.canceled` or MP cancelled) |
+| `REFUNDED` | Refund processed by the gateway after a `COMPLETED` payment |
+
+### QuoteStatus
+
+| Value | Description |
+|-------|-------------|
+| `ACTIVE` | Quote is valid |
+| `EXPIRED` | `validUntil` passed |
+| `CANCELLED` | Admin cancelled (soft-revoke; consecutive number preserved) |
+
+### AccountReceivableStatus
+
+Lifecycle for a cuenta de cobro: `PENDING → REDEEMED → PAID`. `PENDING → EXPIRED` when `validUntil` passes without redemption. Any state → `CANCELLED` via admin (soft-revoke).
+
+| Value | Description |
+|-------|-------------|
+| `PENDING` | Issued, not yet redeemed |
+| `REDEEMED` | Code redeemed at checkout; `PoolPayment` created |
+| `PAID` | Linked `PoolPayment` completed |
+| `EXPIRED` | `validUntil` passed without redemption |
+| `CANCELLED` | Admin cancelled (consecutive number preserved) |
+
+### DocumentKind
+
+Discriminator for the per-year consecutive counter.
+
+| Value | Description |
+|-------|-------------|
+| `QUOTE` | Counter for `Quote` consecutives (`COT-YYYY-NNNN`) |
+| `ACCOUNT_RECEIVABLE` | Counter for `AccountReceivable` consecutives (`CC-YYYY-NNNN`) |
+
 ---
 
 ## 3. Models
@@ -307,6 +354,10 @@ Core user account. Supports email/password and Google OAuth registration.
 | `emailVerified` | Boolean | Default: false | Whether email is verified |
 | `emailVerificationToken` | String? | Unique | Email verification token |
 | `emailVerificationTokenExpiresAt` | DateTime? | | Token expiry (24 hours) |
+| `locale` | String? | VarChar(2) | Personal UI/email locale ("es" \| "en" \| "pt"). Null = not chosen yet; `resolveUserLocale` derives from country until set. Once set via the modal, it takes absolute precedence (ADR-064). |
+| `requestedLocale` | String? | VarChar(8) | ISO 639-1 code the user speaks but the platform does not yet support (analytics-only). |
+| `localePromptCompletedAt` | DateTime? | | When the user closed `LocalePreferenceModal`; gates whether the modal reappears. |
+| `welcomeEmailSentAt` | DateTime? | | Idempotency key for the deferred welcome email. Set inside the same tx that flips `localePromptCompletedAt`, or by `welcomeEmailFallbackJob` after 24h (ADR-063). |
 | `acceptedTermsAt` | DateTime? | | When TOS was accepted |
 | `acceptedTermsVersion` | String? | | Version of accepted TOS |
 | `acceptedPrivacyAt` | DateTime? | | When Privacy Policy was accepted |
@@ -351,6 +402,9 @@ Core user account. Supports email/password and Google OAuth registration.
 - `poolMatchOverrides` -> PoolMatchOverride[] (1:N)
 - `poolPayments` -> PoolPayment[] (1:N)
 - `brandingAuditEntries` -> OrganizationBrandingAudit[] (1:N)
+- `quotesCreated` -> Quote[] (1:N) — sales quotes issued by this ADMIN user
+- `accountReceivablesCreated` -> AccountReceivable[] (1:N, named "CreatedAccountReceivables")
+- `accountReceivablesRedeemed` -> AccountReceivable[] (1:N, named "RedeemedAccountReceivables")
 - `referredByUser` -> User? (self-FK, many referrals → one referrer)
 - `referrals` -> User[] (inverse of `referredByUser`)
 
@@ -484,6 +538,8 @@ A prediction contest. Each pool has its own fixtureSnapshot, scoring config, and
 | `capacityWarningNotifiedAt` | DateTime? | | Set when host received the "pool nearing capacity" email (default 95% threshold). Same atomic-claim pattern as `poolFullNotifiedAt`; same reset on expansion. |
 | `capacityWarningThresholdPct` | Int? | 1..99 | Per-pool override for the warning email threshold. Null falls back to `CAPACITY_WARNING_THRESHOLD_PCT` env (default 95). |
 | `lastBlockedAttemptNotifiedAt` | DateTime? | | Throttle for the "someone tried to join a full pool" email. Updated atomically in a `WHERE lastBlockedAttemptNotifiedAt < now() - throttle_window` claim so a flood of failed joins produces at most one email per `BLOCKED_ATTEMPT_THROTTLE_HOURS` window (default 24h). |
+| `pendingDigestPendingHash` | String? | | Hash of the current pending-approval member set. Compared on each daily-digest tick (O(1)) to detect whether the pending set changed (ADR-058 throttle). |
+| `pendingDigestStreakStartAt` | DateTime? | | First day of the current digest streak — the first time the digest was sent with this exact pending set. Used to enforce the 7-day cap. |
 | `createdByUserId` | String | FK -> User | |
 | `createdAtUtc` | DateTime | Default: now() | |
 | `updatedAtUtc` | DateTime | @updatedAt | |
@@ -504,6 +560,7 @@ A prediction contest. Each pool has its own fixtureSnapshot, scoring config, and
 - `groupStandingsPredictions` -> GroupStandingsPrediction[] (1:N)
 - `groupStandingsResults` -> GroupStandingsResult[] (1:N)
 - `matchOverrides` -> PoolMatchOverride[] (1:N)
+- `payments` -> PoolPayment[] (1:N)
 
 ---
 
@@ -872,6 +929,11 @@ Per-match sync tracking for smart polling. See [state machine](#14-matchsyncstat
 | `lastCheckedAtUtc` | DateTime? | | |
 | `completedAtUtc` | DateTime? | | |
 | `lastApiStatus` | String? | | e.g., "1H", "HT", "2H", "FT" |
+| `trackedAtUtc` | DateTime? | | When picks4all-scores confirmed it is tracking this match |
+| `graceEndUtc` | DateTime? | | Grace-period expiry after FT was detected (provisional result finalizes when this passes) |
+| `lastElapsed` | Int? | | Cached elapsed minute for live display |
+| `lastExtra` | Int? | | Cached added-time minutes (45+X, 90+X) for live display |
+| `lastLiveDataJson` | Json? | | Full LiveScore payload from picks4all-scores for the overview API |
 | `createdAtUtc` | DateTime | Default: now() | |
 | `updatedAtUtc` | DateTime | @updatedAt | |
 
@@ -950,6 +1012,7 @@ Company entity for corporate pools.
 | `secondaryColor` | String? | | Secondary branding hex (#RRGGBB). |
 | `notes` | String? | @db.Text | Internal admin notes |
 | `status` | OrganizationStatus | Default: INQUIRY | |
+| `invitationLocale` | String | Default: "es" | First-contact email locale. Governs ONLY the corporate-activation email (sent before any User row exists). Once the employee activates, `User.locale` takes over for all downstream emails (ADR-062). |
 | `createdAtUtc` | DateTime | Default: now() | |
 | `updatedAtUtc` | DateTime | @updatedAt | |
 
@@ -977,6 +1040,11 @@ Contact form submissions from companies interested in corporate pools.
 | `employeeCount` | String? | | |
 | `message` | String? | @db.Text | |
 | `locale` | String | Default: "es" | |
+| `country` | String? | | ISO 3166-1 alpha-2 (e.g. "CO", "AR"). From the `/empresas` quote panel. |
+| `currency` | String? | | Quote currency requested via the quote panel. |
+| `numberOfPools` | Int? | | Number of pools requested (quote panel). |
+| `slotsPerPool` | Int? | | Slots per pool. Populated only when all requested pools have an identical size; null when heterogeneous (then `poolsConfigJson` is the source of truth). |
+| `poolsConfigJson` | String? | | JSON-encoded array of slot counts, one entry per pool requested (e.g. `[50, 80, 30]`). Source of truth when pool sizes differ. |
 | `responded` | Boolean | Default: false | |
 | `respondedAt` | DateTime? | | |
 | `createdAtUtc` | DateTime | Default: now() | |
@@ -1033,14 +1101,19 @@ checkout attempt across both gateways (Polar USD / Mercado Pago COP).
 | `clientIpAddress` | String? | | Remote IP at checkout init. Used for GEO enrichment and Meta EMQ score. |
 | `clientUserAgent` | String? | | User-Agent at checkout init. Same purpose as `clientIpAddress`. |
 | `mpPreferenceId` | String? | | Mercado Pago preference ID. Only set for MP/COP payments. Persisted so a re-entry into `initiateMpCheckout` (host double-click, page reload mid-flow) can return the EXISTING preference instead of creating a duplicate that would race the customer into paying twice. Polar uses `polarCheckoutId` for the same purpose. |
+| `mpPaymentId` | String? | | MP's real `payment.id`. Set on the first IPN delivery (defensively, even on `pending` status) so the MP reconciler can call `getPayment(mpPaymentId)` to resolve stuck rows. Legacy rows fall back to `payments/search` by `external_reference` (= `polarCheckoutId`). Migration `20260527_add_mp_payment_id_and_status_index`. |
 | `paidAtUtc` | DateTime? | | When the gateway confirmed the charge |
 | `createdAtUtc` | DateTime | Default: now() | Checkout initiation |
 | `updatedAtUtc` | DateTime | @updatedAt | |
+| `accountReceivableId` | String? | Unique | Optional 1:1 link to the `AccountReceivable` (cuenta de cobro) this payment fulfilled. Set when the customer redeemed a CC code during checkout. Unique so a given CC is paid exactly once. |
+
+**Indexes:** `poolId`, `userId`, `status`, `[status, createdAtUtc]` (compound — used by both the Polar and MP reconcilers' stale-row queries `WHERE status IN (...) AND createdAtUtc < cutoff`). Plus the partial unique index `PoolPayment_polarCheckoutId_unique_when_set` and the unique `polarOrderId`.
 
 **Relations:**
 - `pool` → Pool (N:1)
 - `user` → User (N:1)
 - `events` → PaymentEvent[] (1:N) — webhook idempotency log
+- `accountReceivable` → AccountReceivable? (1:1, via `accountReceivableId`)
 
 ---
 
@@ -1151,6 +1224,109 @@ Platform-admin edits made through the admin panel are NOT recorded here
 
 ---
 
+### 3.33 Quote
+
+Cotización — a pre-sale price quote (`COT-YYYY-NNNN`). Issued by ADMIN users from the `/admin/ventas/` panel. Single-currency per document; pricing is always server-derived from `lib/pricing.ts` (ADR-061). Cancellation is soft-revoke only — the consecutive number is preserved.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | String | PK, UUID | |
+| `consecutive` | String | Unique | Human-facing number, e.g. "COT-2026-0001" |
+| `year` | Int | Required | For `DocumentCounter` lookup |
+| `number` | Int | Required | Sequence within the year |
+| `clientLegalName` | String | Required | Client snapshot (captured by value, not FK) |
+| `clientContactEmail` | String | Required | |
+| `issuerSnapshotJson` | Json | Required | Copy of `issuerInfo.ts` at issue time, so documents keep the legal data they were signed with |
+| `locale` | String | Required | "es" \| "en" \| "pt" |
+| `term` | String | Required | Localized domain term (e.g. "polla", "pool", "prode", "bolão"); validated against the locale's allowed term list |
+| `participants` | Int | Required | Number of participants quoted |
+| `currency` | String | Required | "COP" \| "USD" |
+| `amountCop` | Int? | | Server-derived COP amount (whole pesos). Null for USD quotes. |
+| `amountUsdCents` | Int? | | Server-derived USD cents. Null for COP quotes. |
+| `perPersonAmount` | Int | Required | Per-person amount in the chosen currency's minor unit |
+| `tournament` | String? | | |
+| `investmentDescription` | String? | @db.Text | |
+| `issueDate` | DateTime | @db.Date | |
+| `validUntil` | DateTime | @db.Date | |
+| `includeCoverPage` | Boolean | Default: true | PDF layout option |
+| `notes` | String? | @db.Text | |
+| `status` | QuoteStatus | Default: ACTIVE | |
+| `createdByUserId` | String | FK -> User | Issuing ADMIN |
+| `createdAtUtc` | DateTime | Default: now() | |
+| `updatedAtUtc` | DateTime | @updatedAt | |
+
+**Indexes:** `consecutive`, `clientContactEmail`, `createdAtUtc`
+
+**Relations:**
+- `createdBy` -> User (N:1)
+- `linkedCcs` -> AccountReceivable[] (1:N) — cuentas de cobro that originated from this quote
+
+---
+
+### 3.34 AccountReceivable
+
+Cuenta de cobro — a formal billing document (`CC-YYYY-NNNN`) with a redemption code the customer enters at checkout to pre-pay pool capacity. Single-currency; pricing server-derived. Soft-revoke only (consecutive number preserved). Redemption uses an atomic `updateMany WHERE status='PENDING'` lock inside the same tx as `PoolPayment.create` (ADR-061).
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | String | PK, UUID | |
+| `consecutive` | String | Unique | Human-facing number, e.g. "CC-2026-0001" |
+| `year` | Int | Required | |
+| `number` | Int | Required | |
+| `redemptionCode` | String | Unique | 8-digit numeric. Stored raw; UI/PDF format with a hyphen (XXXX-XXXX). Either form is normalised before lookup. |
+| `clientLegalName` | String | Required | |
+| `clientNit` | String? | | |
+| `clientContactEmail` | String | Required | |
+| `clientCity` | String? | | |
+| `issuerSnapshotJson` | Json | Required | Same shape as `Quote.issuerSnapshotJson` |
+| `locale` | String | Required | "es" \| "en" \| "pt" |
+| `term` | String | Required | Localized domain term |
+| `concept` | String | @db.Text | |
+| `tournament` | String? | | |
+| `notes` | String? | @db.Text | |
+| `currency` | String | Required | "COP" \| "USD" |
+| `amountCop` | Int? | | Server-derived COP amount. Null for USD. |
+| `amountUsdCents` | Int? | | Server-derived USD cents. Null for COP. |
+| `amountInWords` | String | Required | Amount in words, localized at issue time |
+| `targetCapacity` | Int | Required | Slots this CC pre-pays. Locks the checkout wizard's capacity to this value on redemption. |
+| `poolType` | String | Required | "corporate" (v1) |
+| `issueDate` | DateTime | @db.Date | |
+| `validUntil` | DateTime | @db.Date | |
+| `status` | AccountReceivableStatus | Default: PENDING | |
+| `redeemedAtUtc` | DateTime? | | |
+| `redeemedByUserId` | String? | FK -> User | Who redeemed the code |
+| `paidAtUtc` | DateTime? | | |
+| `linkedQuoteId` | String? | FK -> Quote | Optional originating quote |
+| `poolPaymentId` | String? | Unique | Forward link to the `PoolPayment` that consumed this CC. Set on REDEEMED. Unique so a CC funds exactly one payment. |
+| `createdByUserId` | String | FK -> User | Issuing ADMIN |
+| `createdAtUtc` | DateTime | Default: now() | |
+| `updatedAtUtc` | DateTime | @updatedAt | |
+
+**Indexes:** `consecutive`, `redemptionCode`, `clientContactEmail`, `[status, validUntil]` (used by the expiry sweep job)
+
+**Relations:**
+- `createdBy` -> User (N:1, named "CreatedAccountReceivables")
+- `redeemedBy` -> User? (N:1, named "RedeemedAccountReceivables")
+- `linkedQuote` -> Quote? (N:1)
+- `poolPayment` -> PoolPayment? (1:1, inverse of `PoolPayment.accountReceivable`)
+
+---
+
+### 3.35 DocumentCounter
+
+Atomic per-year consecutive counter, keyed by (kind, year). One row per kind/year combo; `INSERT ... ON CONFLICT DO UPDATE` at the service layer (`documentCounterService.ts`) atomically reads, increments, and returns the next number inside one transaction.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `kind` | DocumentKind | PK (composite) | QUOTE or ACCOUNT_RECEIVABLE |
+| `year` | Int | PK (composite) | |
+| `lastNumber` | Int | Default: 0 | Last issued number for this kind/year |
+| `updatedAtUtc` | DateTime | @updatedAt | |
+
+**Primary key:** `[kind, year]`
+
+---
+
 ## 4. Relationship Diagram
 
 ```
@@ -1175,8 +1351,13 @@ Pool ── N:1 ── TournamentInstance ── N:1 ── TournamentTemplateVe
   |-- N:1 ── Organization ── 1:N ── OrganizationInquiry
   |                       '─ 1:N ── OrganizationBrandingAudit ── N:1 ── User
   |-- 1:N ── CorporateInvite
-  |-- 1:N ── PoolPayment ─── 1:N ── PaymentEvent (idempotency log, FK by polarEventId)
+  |-- 1:N ── PoolPayment ─── 1:N ── PaymentEvent (audit log; FK by poolPaymentId,
+  |              |                   polarEventId is the gateway idempotency anchor)
+  |              '── 1:1 ── AccountReceivable (CC the payment fulfilled)
   '-- 1:N ── PoolMatchResult ── 1:N ── PoolMatchResultVersion
+
+User ── 1:N ── Quote ── 1:N ── AccountReceivable (linkedQuote, optional)
+User ── 1:N ── AccountReceivable (createdBy + redeemedBy)
 
 PlatformSettings (singleton)
 LegalDocument (standalone, versioned)
@@ -1185,4 +1366,5 @@ DeadlineReminderLog (standalone)
 BetaFeedback (standalone)
 EmailSuppression (standalone — populated by Resend webhook)
 FailedAnalyticsEvent (standalone — DLQ for GA4 MP / Meta CAPI)
+DocumentCounter (standalone — atomic per-year consecutive counter)
 ```

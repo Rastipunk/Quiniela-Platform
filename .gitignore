@@ -23,6 +23,14 @@ build/
 *.swo
 *~
 
+# Claude Code local settings — personal, may contain credentials in
+# permission rules. MUST stay untracked (see security finding 2026-05-28).
+.claude/settings.local.json
+
+# Generated test artifacts (should never be committed)
+frontend-next/playwright-report/
+frontend-next/test-results/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -52,6 +60,14 @@ tmp_*.js
 
 # Growth snapshots (contain user emails, payment amounts, etc.)
 backend/scripts/growth-snapshot/
+
+# Local diagnostic / scratch scripts in backend/scripts/ — one-off,
+# never meant for production, and MANY embed the prod DATABASE_URL with
+# password. Never commit. The two tracked render helpers are already in
+# git and explicitly re-included below.
+backend/scripts/*
+!backend/scripts/_test-cc-render.ts
+!backend/scripts/_test-quote-render.ts
 
 # Next.js
 .next/

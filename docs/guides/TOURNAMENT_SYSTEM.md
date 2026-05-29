@@ -68,7 +68,8 @@ Stored in `TournamentTemplateVersion.dataJson` and `TournamentInstance.dataJson`
       name: string,            // "Mexico"
       shortName?: string,      // "MEX"
       code?: string,           // "MEX" (ISO code)
-      groupId?: string         // "A" (GROUP phase teams only)
+      groupId?: string,        // "A" (GROUP phase teams only)
+      apiFootballId?: number   // API-Football (api-sports.io) team ID, for AUTO-mode resolution
     }
   ],
 
@@ -98,9 +99,13 @@ Stored in `TournamentTemplateVersion.dataJson` and `TournamentInstance.dataJson`
       venue?: string,          // "Estadio Azteca"
       groupId?: string         // "A" (GROUP matches only)
     }
-  ]
+  ],
+
+  note?: string                // Optional free-text annotation (max 500 chars)
 }
 ```
+
+The schema also uses `.passthrough()`, so unrecognized top-level keys are preserved rather than stripped.
 
 **Consistency validation rules:**
 
@@ -221,7 +226,7 @@ Winners from R32 paired sequentially:
 
 | File | Responsibility |
 |------|----------------|
-| `tournamentAdvancement.ts` | Pure calculation algorithms (no DB access) |
+| `tournamentAdvancement.ts` | Pure calculation algorithms (no DB access), including two-legged tie resolution (`determineTwoLeggedTieWinner`) |
 | `instanceAdvancement.ts` | Database integration layer |
 | `adminInstances.ts` | API endpoints for manual advancement |
 
@@ -245,6 +250,8 @@ Semi-finals (2 matches)
     ▼  POST /admin/instances/:id/advance-knockout
 Finals (2 matches)
 ```
+
+For two-legged knockout ties (UEFA-style competitions where the same pairing plays home and away), the admin endpoint `POST /admin/instances/:instanceId/advance-two-legged` resolves the aggregate winner via `determineTwoLeggedTieWinner` before populating the next round. The World Cup format is single-leg, so it does not use this path.
 
 ### Group Stage -> Round of 32
 
@@ -279,7 +286,7 @@ Finals (2 matches)
 
 Each pool has `autoAdvanceEnabled` (default `true`) and `lockedPhases` (default `[]`).
 
-- After each result publication, the system checks if auto-advance should trigger.
+- After each result publication, the system schedules an auto-advance check. The check is not immediate: `advancementTrigger` waits `ADVANCEMENT.DELAY_MS` (default 10 minutes, configurable via `ADVANCEMENT_DELAY_MS`) after a phase completes before filling the next bracket, giving admins/hosts a window to make manual corrections first.
 - `validateCanAutoAdvance()` checks: feature enabled, phase not locked, all phase results present, no pending erratas.
 - Block types: `ERRATA`, `COMPLEX_TIE`, `INCOMPLETE`, `DISABLED`.
 - Auto-advance failure is logged but does NOT fail the result publication.
@@ -478,7 +485,7 @@ Higher rows are never overwritten by lower ones. This is the contract every writ
 | `API_CONFIRMED` | Final result, from scraper-grace-period or API-Football fallback | Only `HOST_OVERRIDE` |
 | `SCRAPER_PROVISIONAL` | Live in-play score from picks4all-scores | `API_CONFIRMED`, `HOST_OVERRIDE` |
 | `HOST_PROVISIONAL` | Host entered in AUTO mode while waiting for sync | `SCRAPER_PROVISIONAL`, `API_CONFIRMED`, `HOST_OVERRIDE` |
-| `HOST_MANUAL` | Host entered in MANUAL-mode instance | `HOST_OVERRIDE` (and other manual edits in MANUAL mode) |
+| `HOST_MANUAL` | First host publish in a MANUAL-mode instance | `HOST_OVERRIDE` |
 
 ### Concrete decisions
 

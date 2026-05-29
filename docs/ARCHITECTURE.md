@@ -52,7 +52,7 @@
 │  next-intl v4           │  │                                          │
 │  standalone output      │  │  ┌────────┐ ┌──────────┐ ┌────────┐    │
 │                         │  │  │ Routes │ │ Services │ │  Jobs  │    │
-│  SSR: public/SEO pages  │  │  │  28    │ │   24     │ │   10   │    │
+│  SSR: public/SEO pages  │  │  │  30    │ │   29     │ │   13   │    │
 │  CSR: authenticated app │  │  └───┬────┘ └────┬─────┘ └───┬────┘    │
 │                         │  │      │           │           │          │
 │  CSS custom properties  │  │  ┌───▼───────────▼───────────▼──────┐   │
@@ -72,7 +72,7 @@
                              │          POSTGRESQL 16                    │
                              │          Railway managed                  │
                              │                                          │
-                             │  32 models, 57+ migrations               │
+                             │  35 models, 57+ migrations               │
                              │  ACID transactions, indexes, FK, JSON    │
                              └──────────────────────────────────────────┘
 
@@ -116,7 +116,7 @@ External Integrations:
 | Database | PostgreSQL | 16 | Relational data store |
 | Validation | Zod | 4.2.1 | Runtime schema validation on all endpoints |
 | Auth | jsonwebtoken | 9.0.3 | JWT signing and verification |
-| Password | bcrypt | 6.0.0 | Password hashing (salt rounds = 10) |
+| Password | bcrypt | 6.0.0 | Password hashing (salt rounds = 12) |
 | OAuth | google-auth-library | 10.5.0 | Google OAuth token verification |
 | Email | Resend | 6.6.0 | Transactional email delivery |
 | HTTP Security | helmet | 8.1.0 | Security headers |
@@ -205,20 +205,25 @@ backend/src/
 │   ├── requireAuth.ts                 # JWT authentication
 │   ├── requireAdmin.ts                # Platform admin role check
 │   └── rateLimit.ts                   # Rate limiters (api, auth, password, create)
-├── lib/                               # 34 utility modules. Highlights:
+├── lib/                               # Utility modules (see repo-map for the full list). Highlights:
 │   ├── jwt.ts, password.ts, passwordRules.ts, authCookies.ts
 │   ├── googleAuth.ts                  # Google OAuth token verification
 │   ├── audit.ts, roles.ts             # Audit logging + role helpers
 │   ├── email.ts, emailTemplates.ts, htmlSafe.ts
+│   ├── activationUrl.ts               # Locale-correct corporate activation links (ADR-063)
+│   ├── unsubscribe.ts                 # Tokenised email unsubscribe links
 │   ├── brand.ts, constants.ts, schemas.ts, env.ts
 │   ├── scoringPresets.ts              # Legacy presets (CLASSIC, OUTCOME_ONLY, EXACT_HEAVY)
 │   ├── scoringAdvanced.ts, scoringBreakdown.ts, pickPresets.ts
 │   ├── poolCapacity.ts, poolHelpers.ts
 │   ├── pricing.ts                     # USD + COP dynamic pricing with volume discounts
+│   ├── amountInWords.ts, saleTerms.ts, issuerInfo.ts  # Sales-document helpers (Quote / CC)
+│   ├── paymentEvents.ts, paymentEventSources.ts       # PaymentEvent source taxonomy
 │   ├── ga4.ts, metaCapi.ts            # Server-side analytics sinks (DLQ-aware)
+│   ├── utm.ts, syntheticFixtureId.ts
 │   ├── fixture.ts, serializers.ts, timezone.ts, username.ts
 │   └── apiResponse.ts, asyncHelpers.ts, logger.ts, validateBase64Image.ts
-├── routes/                            # 28 mounted route files. Categories:
+├── routes/                            # 30 mounted route files. Categories:
 │   ├── auth.ts                        # Register, login, Google OAuth, password reset,
 │   │                                  #   email verify, corporate activation
 │   ├── me.ts, userProfile.ts          # /me/pools, /me/email-preferences, /users/me/profile
@@ -229,10 +234,12 @@ backend/src/
 │   ├── feedback.ts, unsubscribe.ts    # Public surfaces
 │   ├── corporate.ts                   # Corporate inquiry, pool create, employees
 │   ├── payments.ts                    # Polar + MP checkout init, country detection
+│   ├── salesRedemption.ts             # Customer CC redemption (mounted /sales/account-receivables)
 │   ├── resendWebhook.ts               # Resend bounce/complaint suppression
 │   ├── analyticsHealth.ts             # Server-analytics health probe
 │   ├── admin.ts, adminAnalyticsDashboard.ts, adminCorporate.ts,
-│   ├── adminTemplates.ts, adminInstances.ts, adminSettings.ts
+│   ├── adminTemplates.ts, adminInstances.ts, adminSettings.ts,
+│   ├── adminSales.ts                  # Admin Quote + Cuenta-de-Cobro issuance (mounted /admin/sales)
 ├── services/
 │   ├── scoresService/                 # picks4all-scores client (PRIMARY live scores)
 │   ├── smartSync/                     # API-Football per-match polling (FALLBACK)
@@ -240,6 +247,7 @@ backend/src/
 │   ├── apiFootball/                   # API-Football HTTP client + types
 │   ├── mercadopago/                   # MP SDK wrapper, signature verification, IPN
 │   ├── polar/                         # Polar SDK wrapper, webhook verification
+│   ├── sales/                         # quoteService, accountReceivableService, documentCounterService (ADR-061)
 │   ├── authService.ts                 # Authentication business logic
 │   ├── pickService.ts                 # Pick submission with deadline + lockedPhases enforcement
 │   ├── resultService.ts               # Result publication logic
@@ -251,20 +259,27 @@ backend/src/
 │   ├── paymentService.ts              # Cross-gateway payment orchestration
 │   ├── adminService.ts, adminInstanceService.ts
 │   ├── instanceAdvancement.ts, tournamentAdvancement.ts
-│   ├── structuralScoring.ts, groupStandingsService.ts
+│   ├── structuralScoring.ts, structuralAutoPublish.ts, groupStandingsService.ts
 │   ├── newMemberDigestService.ts      # Daily host digest of new joiners
 │   └── deadlineReminderService.ts     # Email reminder scheduling logic
-├── jobs/                              # 10 cron jobs (started in server.ts)
+├── pdf/                               # Sales-document PDF renderers (@react-pdf)
+│   ├── QuoteDocument.tsx, renderQuotePdf.tsx
+│   └── CcDocument.tsx, renderCcPdf.tsx
+├── jobs/                              # 13 cron jobs started in server.ts (see §4.5)
 │   ├── liveScoresJob.ts               # picks4all-scores polling (15s during live windows)
 │   ├── smartSyncJob.ts                # API-Football fallback (~30min after est. FT)
-│   ├── resultSyncJob.ts               # Legacy batch sync (kept for backfill)
+│   ├── resultSyncJob.ts               # Legacy batch sync — dead code, admin-triggered only (not a boot cron)
 │   ├── phaseSyncJob.ts                # Process PendingPhaseSync queue
 │   ├── deadlineReminderJob.ts         # Send deadline reminder emails (48h window)
 │   ├── fixtureTrackingJob.ts          # Track fixture changes from API-Football
 │   ├── fixtureVerificationJob.ts      # Verify mappings stay aligned
 │   ├── newMemberDigestJob.ts          # Daily digest of new pool joiners
 │   ├── capiRetryJob.ts                # Drain FailedAnalyticsEvent DLQ (advisory lock)
-│   └── trackStatusCheckerJob.ts       # External status monitoring
+│   ├── trackStatusCheckerJob.ts       # External status monitoring
+│   ├── paymentReconcileJob.ts         # Polar stale-payment reconciler (advisory lock)
+│   ├── mpPaymentReconcileJob.ts       # Mercado Pago reconciler (advisory lock)
+│   ├── accountReceivableExpiryJob.ts  # Sweeps expired Cuenta-de-Cobro documents
+│   └── welcomeEmailFallbackJob.ts     # 24h welcome-email safety net (ADR-063)
 ├── validation/
 │   └── pickConfig.ts                  # Zod schemas for pick configuration
 ├── schemas/
@@ -294,6 +309,7 @@ frontend-next/src/
 │   ├── icon.tsx                       # Favicon generation
 │   ├── pwa-icon-192/route.tsx         # PWA icon 192px
 │   ├── pwa-icon-512/route.tsx         # PWA icon 512px
+│   ├── api/region/route.ts            # Client-side region detection endpoint
 │   └── [locale]/                      # Locale segment (all pages nested here)
 │       ├── layout.tsx                 # Locale layout: <html lang>, NextIntlClientProvider
 │       ├── page.tsx                   # Landing page (SSR)
@@ -306,12 +322,16 @@ frontend-next/src/
 │       ├── activar-cuenta/            # Corporate employee activation
 │       ├── faq/                       # FAQ page (SSR + JSON-LD)
 │       ├── como-funciona/             # "How it works" (SSR)
+│       ├── como-se-juega/             # "How to play" (SSR)
 │       ├── que-es-una-quiniela/       # "What is a pool" (SSR)
-│       ├── empresas/                  # Enterprise landing + pool creation wizard
+│       ├── empresas/                  # Enterprise landing (public; pool wizard is authed — see below)
+│       ├── invite/                    # Public invite-preview landing
 │       ├── precios/                   # Pricing page
 │       ├── terminos/                  # Terms of service
 │       ├── privacidad/                # Privacy policy
 │       ├── reembolsos/                # Refund policy
+│       ├── mundial-2026/              # WC2026 SEO hub: page, grupos, calendario, sedes,
+│       │                             #   predicciones, reglas-quiniela, como-hacer-quiniela
 │       ├── polla-futbolera/           # Regional SEO (ES)
 │       ├── prode-deportivo/           # Regional SEO (ES)
 │       ├── penca-futbol/              # Regional SEO (ES)
@@ -325,9 +345,13 @@ frontend-next/src/
 │           ├── profile/page.tsx       # User profile
 │           ├── pago/                  # Payment pages (checkout, exitoso, cancelado)
 │           ├── crear-pool/page.tsx    # Standard pool creation wizard
+│           ├── empresas/crear/page.tsx # Corporate pool creation wizard
 │           └── admin/                 # Platform admin pages
 │               ├── analytics/page.tsx # Real-time growth dashboard
+│               ├── analytics-health/page.tsx # Server-analytics DLQ health
 │               ├── feedback/page.tsx  # Feedback inbox
+│               ├── ventas/cotizaciones/ # Quote issuance (list, nueva, [id])
+│               ├── ventas/cuentas-de-cobro/ # Cuenta-de-Cobro issuance (list, nueva, [id])
 │               └── settings/email/page.tsx
 ├── i18n/
 │   ├── routing.ts                     # next-intl routing config
@@ -388,15 +412,16 @@ frontend-next/src/
 │   ├── api/                           # Modular API client
 │   │   ├── client.ts                  # requestJson, getApiBase, 401 handling
 │   │   ├── auth.ts                    # login, register, google, password flows
-│   │   ├── dashboard.ts              # getMePools, listInstances, createPool, joinPool
-│   │   ├── pool.ts                    # getPoolOverview, upsertPick, upsertResult
-│   │   ├── structural.ts             # structural picks and results
+│   │   ├── pools.ts                   # getMePools, listInstances, createPool, joinPool, overview, members
+│   │   ├── picks.ts                   # match + structural pick upserts
+│   │   ├── groupStandings.ts         # group standings picks/results
 │   │   ├── scoring.ts                # match/phase/group breakdowns
-│   │   ├── members.ts                # member management
-│   │   ├── profile.ts                # user profile and preferences
+│   │   ├── user.ts                    # profile, email prefs, locale preference, country detect
 │   │   ├── admin.ts                   # admin operations + analytics dashboard
 │   │   ├── corporate.ts              # corporate pool operations
+│   │   ├── sales.ts                   # quote / cuenta-de-cobro + CC redemption
 │   │   ├── payments.ts               # checkout init (Polar/MP), country detection
+│   │   ├── paymentAttemptEvent.ts    # MP Brick lifecycle telemetry beacons (ADR-066)
 │   │   └── index.ts                   # Re-exports
 │   ├── auth.ts                        # Token storage + auth event system
 │   ├── brand.ts                       # Brand identity (mirrors backend)
@@ -443,9 +468,9 @@ Business logic never lives in route handlers. Routes validate input and call ser
 3. JSON body parser (1MB limit)
 4. Global rate limiting
 5. Stricter rate limiting on auth endpoints
-6. Router mounting (28 route files)
+6. Router mounting (30 route files)
 7. Health check endpoint with version/commit info
-8. Cron job startup (10 jobs — see §4.5)
+8. Cron job startup (13 jobs — see §4.5)
 
 ### 4.3 Middleware
 
@@ -485,7 +510,8 @@ Key services and their responsibilities:
 | `pickService.ts` | Pick submission with deadline + lockedPhases enforcement. Reads from `pool.fixtureSnapshot ?? instance.dataJson`. |
 | `poolOverviewService.ts` | Single-call overview assembly (matches, picks, results, leaderboard) |
 | `corporateService.ts` / `corporateBrandingService.ts` | Corporate pool creation, employee invitation, branding edits with audit trail. |
-| `paymentService.ts` | Cross-gateway orchestration (Polar USD / Mercado Pago COP), capacity expansion, idempotent webhook handling. |
+| `paymentService.ts` | Cross-gateway orchestration (Polar USD / Mercado Pago COP), capacity expansion, idempotent webhook handling. All COMPLETED transitions route through `markPaymentCompleted` (ADR-065). |
+| `sales/quoteService.ts`, `sales/accountReceivableService.ts`, `sales/documentCounterService.ts` | Sales-document subsystem (ADR-061): server-derived Quote + Cuenta-de-Cobro issuance, gap-free consecutive numbering, soft-revoke only, atomic CC redemption. |
 | `deadlineReminderService.ts` | Email reminder scheduling (48h window, excludes pools with muted reminders) |
 | `newMemberDigestService.ts` | Daily digest of new joiners delivered to pool hosts. |
 | `structuralScoring.ts` | Scoring for group standings and knockout bracket predictions |
@@ -496,7 +522,7 @@ Key services and their responsibilities:
 |-----|------|----------|---------|
 | Live Scores | `liveScoresJob.ts` | 15s during match live windows | **Primary** results channel — polls picks4all-scores. Gated by `PlatformSettings.scoresServiceEnabled`. |
 | Smart Sync | `smartSyncJob.ts` | Periodic (configurable) | **Fallback** — polls API-Football and only publishes results the scraper hasn't already reported. |
-| Result Sync (legacy) | `resultSyncJob.ts` | Inactive | Batch mode sync (kept for backfill) |
+| Result Sync (legacy) | `resultSyncJob.ts` | Not started | Dead code — `runSyncJob()` is unreachable and the scheduled task is never created. Not wired into `server.ts`; candidate for removal. |
 | Phase Sync | `phaseSyncJob.ts` | Periodic | Drains the `PendingPhaseSync` queue (advances pool fixtureSnapshots after a phase completes). |
 | Fixture Tracking | `fixtureTrackingJob.ts` | Periodic | Tracks fixture changes from API-Football. |
 | Fixture Verification | `fixtureVerificationJob.ts` | Periodic | Re-verifies that mappings stay aligned. |
@@ -504,6 +530,10 @@ Key services and their responsibilities:
 | New-Member Digest | `newMemberDigestJob.ts` | Daily | Digest of new joiners delivered to hosts. |
 | CAPI Retry | `capiRetryJob.ts` | Periodic | Drains `FailedAnalyticsEvent` DLQ for GA4 MP / Meta CAPI; advisory-locked so multi-replica deploys never double-send. |
 | Track Status | `trackStatusCheckerJob.ts` | Periodic | External status monitoring. |
+| Payment Reconcile (Polar) | `paymentReconcileJob.ts` | Periodic | Reconciles stale Polar `PoolPayment` rows against the gateway; advisory-locked. Flags discrepancies for human review (intentional asymmetry vs MP). |
+| Payment Reconcile (MP) | `mpPaymentReconcileJob.ts` | Periodic | Reconciles stale Mercado Pago payments; advisory-locked. Auto-completes `approved` payments via `markPaymentCompleted`. |
+| Account-Receivable Expiry | `accountReceivableExpiryJob.ts` | Periodic | Sweeps and expires overdue Cuenta-de-Cobro documents; advisory-locked. |
+| Welcome-Email Fallback | `welcomeEmailFallbackJob.ts` | Periodic | 24h safety net that sends the deferred welcome email when the locale-preference handoff never fired (ADR-063); advisory-locked. |
 
 ### 4.6 Validation
 
@@ -599,14 +629,16 @@ Modular API client organized by domain:
 |--------|---------|
 | `client.ts` | `requestJson()`, `getApiBase()`, 401 handling, session expiry |
 | `auth.ts` | login, register, loginWithGoogle, forgotPassword, resetPassword, verifyEmail |
-| `dashboard.ts` | getMePools, listInstances, createPool, joinPool |
-| `pool.ts` | getPoolOverview, upsertPick, upsertResult, createInvite |
-| `structural.ts` | structural picks, structural results, group standings |
+| `pools.ts` | getMePools, listInstances, createPool, joinPool, getPoolOverview, createInvite, member management (promote, approve, kick, ban) |
+| `picks.ts` | match + structural pick upserts |
+| `groupStandings.ts` | group standings picks and results |
 | `scoring.ts` | match/phase/group breakdowns |
-| `members.ts` | promote, approve, kick, ban |
-| `profile.ts` | getUserProfile, updateUserProfile, getUserEmailPreferences |
-| `admin.ts` | feedback, email settings |
+| `user.ts` | getUserProfile, updateUserProfile, getUserEmailPreferences, setLocalePreference, detectCountry |
+| `admin.ts` | admin operations, feedback, email settings, analytics dashboard |
 | `corporate.ts` | createCorporatePool, addEmployees, sendInvitations |
+| `sales.ts` | quote / cuenta-de-cobro listing + CC redemption |
+| `payments.ts` | checkout init (Polar/MP), MP Brick process, country detection |
+| `paymentAttemptEvent.ts` | MP Brick lifecycle telemetry beacons (ADR-066) |
 
 ### 5.6 Styling
 
@@ -638,7 +670,9 @@ Modular API client organized by domain:
 - **Local development:** Docker container via `backend/docker-compose.yml`
 - **ORM:** Prisma 6.19+ with type-safe client and migration system
 
-### 6.2 Models (32 total)
+### 6.2 Models (35 total)
+
+The full schema reference lives in `docs/DATA_MODEL.md`; the categories below are a summary.
 
 | Category | Models |
 |----------|--------|
@@ -650,6 +684,7 @@ Modular API client organized by domain:
 | **Sync** | `MatchExternalMapping`, `MatchSyncState`, `ResultSyncLog`, `PendingPhaseSync` |
 | **Corporate** | `Organization`, `OrganizationInquiry`, `CorporateInvite`, `OrganizationBrandingAudit` |
 | **Payments** | `PoolPayment`, `PaymentEvent` |
+| **Sales** | `Quote`, `AccountReceivable`, `DocumentCounter` |
 | **Platform / ops** | `AuditEvent`, `BetaFeedback`, `LegalDocument`, `PlatformSettings`, `DeadlineReminderLog`, `EmailSuppression`, `FailedAnalyticsEvent` |
 
 ### 6.3 Design Principles
@@ -709,7 +744,7 @@ Modular API client organized by domain:
 
 ### 7.4 Password Security
 
-- bcrypt with salt rounds = 10
+- bcrypt with salt rounds = 12
 - Strength validation: min 8 chars, 1 uppercase, 1 number, 1 special character
 
 ### 7.5 Security Headers (Next.js)
@@ -781,6 +816,10 @@ PAYMENTS
   POST   /payments/webhook                             Polar webhook (raw body, signature verified)
   POST   /payments/mp-webhook                          MP IPN (HMAC + timestamp drift)
 
+SALES (ADR-061)
+  POST   /sales/account-receivables/redeem             Customer redeems a Cuenta de Cobro (authed) — atomic
+                                                        CC-claim + PoolPayment in one tx, blocks on pricing drift
+
 ADMIN (gated by requireAdmin)
   GET    /admin/ping
   GET    /admin/analytics/dashboard                    Platform-wide growth/health snapshot
@@ -789,6 +828,8 @@ ADMIN (gated by requireAdmin)
   CRUD   /admin/corporate                              Corporate org / inquiry management
   GET/PUT /admin/settings/email                        Email toggles + scoresServiceEnabled
   GET    /admin/feedback                               BetaFeedback inbox
+  POST/GET /admin/sales/quotes                         Issue / list quotes (+ /:id, /:id/pdf, /:id/status)
+  POST/GET /admin/sales/account-receivables            Issue / list Cuentas de Cobro (+ /:id, /:id/pdf, /:id/status)
 
 WEBHOOKS / OTHER
   POST   /feedback                                     Submit user feedback (auth optional)
@@ -964,11 +1005,13 @@ Write AuditEvent (POOL_CREATED)
 Host opens capacity upgrade
   │
   ▼
-Frontend → GET /payments/country-detect
+Frontend → GET /payments/country
             (Cloudflare CF-IPCountry header → CO ⇒ MP, else ⇒ Polar)
   │
   ▼
-POST /payments/checkout/{polar|mercadopago}
+POST /payments/checkout        (Polar, USD)
+  or POST /payments/mp-checkout (MP Brick preference)
+     + POST /payments/mp-process (MP Brick submission)
   │
   ▼
 Backend: paymentService creates PoolPayment row
@@ -980,22 +1023,56 @@ Backend: paymentService creates PoolPayment row
 Customer pays
   │
   ▼
-Webhook arrives (POST /payments/webhooks/{polar|mercadopago})
+Webhook arrives (POST /payments/webhook — Polar, raw body
+                 │ POST /payments/mp-webhook — MP IPN)
   ├── Verify signature (return 401 on mismatch)
   ├── MP-only: reject events whose timestamp drifts > MP_WEBHOOK_MAX_DRIFT_MS
-  ├── BEGIN TRANSACTION
-  │     ├── INSERT PaymentEvent { polarEventId } (UNIQUE — claims the slot;
-  │     │   duplicate retries fail here and exit 200 without side-effects)
+  ├── markPaymentCompleted (single entry point — ADR-065) BEGIN TRANSACTION
+  │     ├── INSERT PaymentEvent { source, polarEventId } — partial unique index
+  │     │   `PaymentEvent_polarEventId_unique_when_set` is enforced only when
+  │     │   polarEventId is non-NULL and is shared across gateways (Polar event
+  │     │   id or MP composite `mp-{id}-{status}`). `source` discriminates
+  │     │   POLAR_WEBHOOK / MP_WEBHOOK / CLIENT / RECONCILER / SERVER.
   │     ├── UPDATE PoolPayment status = COMPLETED, paidAtUtc = now()
-  │     └── UPDATE Pool maxParticipants = toCapacity, reset capacity
-  │         notification flags so warning emails can fire again if it refills
+  │     ├── UPDATE Pool maxParticipants = toCapacity, reset capacity
+  │     │   notification flags so warning emails can fire again if it refills
+  │     └── Settle linked AccountReceivable + write AuditEvent (if CC-backed)
   │   COMMIT (so rollback also frees the idempotency slot for a real retry)
-  ├── Emit Purchase to GA4 MP and Meta CAPI (deduped by metaEventId)
+  ├── Post-tx fan-out: admin notification, GA4 MP + Meta CAPI Purchase
+  │   (deduped by metaEventId), receipt email
   │   On retry-budget exhaust → enqueue FailedAnalyticsEvent (see §9.6)
   └── Return 200. Processing errors return 5xx so the gateway retries.
 ```
 
-### 9.6 Server-Side Analytics DLQ
+### 9.6 Sales / Cuenta de Cobro Redemption (ADR-061)
+
+The Sales subsystem lets an admin pre-issue a **Quote** and convert it into a
+**Cuenta de Cobro (CC)** that the customer later redeems to upgrade pool
+capacity without going through a live gateway charge. Documents are
+**soft-revoke only** (cancellation sets `status = CANCELLED`; the consecutive
+number is preserved so the series shows no gaps) and pricing is **always**
+server-derived via `lib/pricing.ts` — the admin cannot override the amount.
+
+```
+Admin issues Quote → converts to AccountReceivable (PENDING)
+  ├── DocumentCounter assigns the next gap-free consecutive number
+  └── renderQuotePdf / renderCcPdf produce the downloadable PDF
+  │
+  ▼
+Customer redeems: POST /sales/account-receivables/redeem
+  ├── BEGIN TRANSACTION
+  │     ├── Atomic claim: tx.accountReceivable.updateMany WHERE status = PENDING
+  │     ├── Drift guard: CC snapshot vs live pricing.ts — mismatch →
+  │     │   409 CONFLICT (cc_pricing_drift) + admin alert
+  │     ├── PoolPayment.create → markPaymentCompleted (shared completion path)
+  │     └── AuditEvent
+  │   COMMIT
+  │
+  ▼
+accountReceivableExpiryJob sweeps overdue PENDING CCs (advisory-locked)
+```
+
+### 9.7 Server-Side Analytics DLQ
 
 ```
 sendCapiEvent / sendGa4Event

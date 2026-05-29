@@ -22,14 +22,11 @@ Esta guía explica cómo configurar Google OAuth para permitir que los usuarios 
 5. Haz clic en **"Crear"**
 6. Espera a que se cree el proyecto y selecciónalo
 
-### 2. Habilitar Google+ API (Opcional pero recomendado)
+### 2. APIs a Habilitar
 
-1. En el menú lateral, ve a **"APIs y servicios" → "Biblioteca"**
-2. Busca "Google+ API"
-3. Haz clic en "Google+ API"
-4. Haz clic en **"Habilitar"**
+No necesitas habilitar ninguna API adicional. Picks4All usa **Google Identity Services** (el script `gsi/client` de Sign In with Google) y verifica los ID tokens en el backend con `google-auth-library`. Basta con configurar la pantalla de consentimiento y crear las credenciales OAuth 2.0 (pasos 3 y 4).
 
-> **Nota:** Esto es opcional para OAuth básico, pero recomendado para obtener información adicional del perfil.
+> **Nota:** La antigua "Google+ API" fue descontinuada por Google en 2019 y la aplicación no la utiliza.
 
 ### 3. Configurar la Pantalla de Consentimiento OAuth
 
@@ -153,10 +150,10 @@ Deberías ver en los logs que **NO** aparece el warning:
 
 ### 2. Frontend
 
-Reinicia el servidor frontend:
+Reinicia el servidor frontend. El backend ya ocupa el puerto 3000, así que el frontend debe arrancar en 3001 (el script `dev` es `next dev`, que por defecto usa 3000):
 ```bash
 cd frontend-next
-npm run dev
+PORT=3001 npm run dev
 ```
 
 Ve a `http://localhost:3001` (puerto del frontend) y deberías ver:
@@ -229,7 +226,7 @@ Para MVP, quédate en modo "Externo" con usuarios de prueba.
 
 **Verifica:**
 1. Que `NEXT_PUBLIC_GOOGLE_CLIENT_ID` esté en `frontend-next/.env.local`
-2. Que reiniciaste el servidor frontend (`npm run dev`)
+2. Que reiniciaste el servidor frontend (`PORT=3001 npm run dev`)
 3. Que el script de Google esté cargado (abre DevTools → Network → busca `gsi/client`)
 4. Revisa la consola del navegador por errores
 

@@ -62,12 +62,13 @@ TournamentTemplate (reusable format definition)
 5. **Scoring** -- 7 pick types, 4 presets (3 base + custom), cumulative scoring with auto-scaling
 6. **Leaderboard** -- Real-time rankings with scoring breakdowns per match/phase
 7. **Corporate self-service** -- Enterprise inquiry, pool creation wizard, employee activation
-8. **Payments** -- Dual gateway: Mercado Pago (Colombia/COP) + Polar.sh (international/USD)
-9. **Internationalization** -- Full ES/EN/PT support for UI, emails, legal pages, SEO
-10. **SEO** -- SSR public pages, JSON-LD, hreflang, localized sitemap, regional landing pages
-11. **Email notifications** -- Welcome, verification, invitation, deadline reminder, result published, pool completed, corporate activation, capacity warnings, new-member digest, admin alerts
-12. **Admin tooling** -- Platform analytics dashboard (`/admin/analytics`), feedback inbox (`/admin/feedback`), email/settings panels
-13. **Server-side analytics** -- GA4 Measurement Protocol + Meta CAPI (with retry queue) for purchase deduplication and EMQ uplift
+8. **Payments** -- Dual gateway: Mercado Pago (Colombia/COP) + Polar.sh (international/USD), with stale-payment reconcilers and browser payment-attempt telemetry
+9. **Sales management** -- Corporate quotes (cotizaciones) and cuentas de cobro with consecutive numbering, PDF generation, and redemption-code prepayment
+10. **Internationalization** -- Full ES/EN/PT support for UI, emails, legal pages, SEO
+11. **SEO** -- SSR public pages, JSON-LD, hreflang, localized sitemap, regional landing pages
+12. **Email notifications** -- Welcome, verification, invitation, deadline reminder, result published, pool completed, corporate activation, capacity warnings, new-member digest, admin alerts
+13. **Admin tooling** -- Platform analytics dashboard (`/admin/analytics`), analytics-health dashboard (`/admin/analytics-health`), feedback inbox (`/admin/feedback`), sales panels (`/admin/ventas`), email/settings panels
+14. **Server-side analytics** -- GA4 Measurement Protocol + Meta CAPI for purchase deduplication and EMQ uplift, with a `FailedEvent` dead-letter queue and `capiRetryJob` retry worker
 
 ---
 
@@ -124,10 +125,11 @@ TournamentTemplate (reusable format definition)
 
 ### 4.2 Session Management
 
-- JWT tokens with 4-hour expiry, HMAC-SHA256 signed
-- Token stored in `localStorage` on frontend
+- JWT issued as an httpOnly cookie (`p4a_token`), HMAC-SHA256 signed, 4-hour expiry — never exposed to client JS
+- A non-httpOnly `p4a_logged_in` flag cookie lets client JS detect session state; a `p4a_admin` hint cookie flags platform admins (UX guardrail, not a security boundary)
+- Legacy `localStorage` tokens (`quiniela.token`, `token`) are cleared on first load — the migration to cookies is complete
 - No refresh tokens; user re-authenticates after expiry
-- Auto-logout on 401 response
+- Cross-tab logout is broadcast via a `localStorage` timestamp key (cookies do not emit `storage` events)
 
 ### 4.3 Account Features
 
@@ -234,16 +236,18 @@ Players submit a single prediction per match containing an exact score. The scor
 | **Simple** | `SIMPLE` | No match score picks. Only structural predictions (group standings, knockout advancement). |
 | **Custom** | `CUSTOM` | Host selects which pick types to enable and sets points per type per phase. |
 
-**Auto-scaling multipliers** (when enabled):
+**Auto-scaling multipliers** (when enabled, defaults from `pickPresets.ts`; applied per phase relative to the base group phase):
 
 | Phase | Multiplier |
 |-------|-----------|
-| Group Stage | 1.0x |
-| Round of 16 | 1.5x |
-| Quarter-finals | 2.0x |
-| Semi-finals | 2.5x |
-| Third place | 2.5x |
-| Final | 3.0x |
+| Group Stage (`group_stage`) | 1.0x |
+| Round of 32 (`round_of_32`) | 1.5x |
+| Round of 16 (`round_of_16`) | 2.0x |
+| Quarter-finals (`quarter_finals`) | 2.5x |
+| Semi-finals (`semi_finals`) | 3.0x |
+| Final (`finals`) | 4.0x |
+
+The WC2026 48-team format opens its knockout stage with a Round of 32. Multipliers are per-phase and the phase chain comes from the tournament instance — the table above lists the shipped defaults, not a fixed schema.
 
 ### 6.3 Structural Predictions
 
@@ -332,7 +336,7 @@ Each result includes:
 | **3. Pool creation** | Authenticated CORPORATE_HOST uses 6-step wizard at `/empresas/crear` |
 | **4. Employee management** | Add employees manually or via CSV upload (UTF-8 BOM for Excel compatibility) |
 | **5. Invitation** | System generates `CorporateInvite` tokens (32-byte / 64-char hex, 30-day expiry) and sends activation emails |
-| **6. Activation** | Employee visits `/activar-cuenta?token=xxx`, creates password, joins pool |
+| **6. Activation** | Employee visits the locale-aware activation page (`/activar-cuenta` / `/en/activate-account` / `/pt/ativar-conta`) with `?token=xxx`, creates password, joins pool. The welcome email is deferred until the locale-preference modal is closed (24h fallback). |
 
 ### 9.2 Corporate Models
 
@@ -383,6 +387,13 @@ Key routes have localized slugs:
 | Terms | `/terminos` | `/en/terms` | `/pt/termos` |
 | Privacy | `/privacidad` | `/en/privacy` | `/pt/privacidade` |
 | FAQ | `/faq` | `/en/faq` | `/pt/faq` |
+
+### 10.4 Locale Resolution
+
+`frontend-next/src/proxy.ts` is the sole locale authority. next-intl runs in URL-prefix-only mode (`localeDetection: false`, `localeCookie: false`), so the resolution order is URL prefix, then the `NEXT_LOCALE` cookie, then `Accept-Language`, then the default (`es`). The proxy also filters the `Link:` hreflang header so single-locale regional pages do not advertise cross-locale alternates.
+
+- **`User.locale`** stores the authenticated user's preference; it is captured via the `LocalePreferenceModal` / `LocalePreferenceGate` on first login. The backend writes `NEXT_LOCALE` server-side (login, Google sign-in, corporate activation, and `POST /users/me/locale-preference`) so the cookie always reflects `User.locale`.
+- **`Organization.invitationLocale`** (default `es`) governs only the first corporate activation email; once the employee completes the locale modal, `User.locale` takes over for every downstream email.
 
 ---
 
@@ -477,9 +488,25 @@ All templates are locale-aware (ES/EN/PT), mobile-responsive, and use the Picks4
 - **Colombia (COP):** Mercado Pago — Payment Brick embedded checkout + IPN webhooks
 - **International (USD):** Polar.sh — External hosted checkout
 - **Country detection:** ipapi.co (frontend) + Cloudflare headers (backend)
+- **Pre-paid (corporate):** A cuenta de cobro carries an 8-digit numeric redemption code redeemed atomically at checkout instead of a live gateway charge (see §13a)
+
+### Reliability
+- **Single completion path:** every gateway/reconciler caller marks a payment `COMPLETED` through `markPaymentCompleted`, which owns the atomic transaction and the post-completion fan-out (admin notification, GA4 + Meta CAPI purchase, receipt email).
+- **Idempotency:** completion is keyed on the `PaymentEvent` unique index, so webhook retries and reconciler runs cannot double-process.
+- **Stale-payment reconcilers:** `paymentReconcileJob` (Polar) and `mpPaymentReconcileJob` (Mercado Pago) sweep pending payments — the MP reconciler auto-completes approved charges; the Polar reconciler flags for human review.
+- **Payment-attempt telemetry:** the browser emits lifecycle beacons (`REDIRECT_INITIATED`, `REDIRECT_FAILED`, `USER_CANCELLED`, `CLIENT_ERROR`, plus MP Brick `BRICK_LOADED` / `BRICK_ERROR` / `USER_CLOSED_TAB`) via `navigator.sendBeacon`, persisted as client-sourced `PaymentEvent` rows.
 
 ### Pricing Page
 - Available at `/precios` (ES), `/pricing` (EN), `/precos` (PT)
+
+### 13a. Sales Documents (Quotes + Cuentas de Cobro)
+
+Corporate sales are managed through two consecutively-numbered document types issued from the admin panel (`/admin/ventas/cotizaciones`, `/admin/ventas/cuentas-de-cobro`):
+
+- **Quote (cotización):** non-binding price offer rendered to PDF (`QuoteDocument.tsx`).
+- **Cuenta de cobro:** payable account-receivable rendered to PDF (`CcDocument.tsx`), carrying an 8-digit numeric redemption code.
+
+A customer redeems a cuenta de cobro's code at checkout; the redemption is claimed atomically inside the same transaction that records the payment. Pricing is always server-derived via `lib/pricing.ts` — admins cannot override the amount — and a drift between the document snapshot and live pricing blocks the redemption with a conflict and an admin alert. Documents are soft-revoke only: cancellation sets `status = CANCELLED` and the consecutive number is preserved so the series shows no gaps.
 
 ---
 

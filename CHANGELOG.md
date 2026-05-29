@@ -6,6 +6,44 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [Unreleased]
+
+### Sales (cuenta de cobro), locale resolution, payment observability + parity
+
+Work shipped between 2026-05-12 and 2026-05-27 (migrations `20260512_*` through `20260527_*`). The code-level version is unchanged (`backend/package.json` and `frontend-next/package.json` remain `1.0.0`, `BUILD_VERSION` remains `v1.0.0`); these changes land under `[Unreleased]` until the next version bump.
+
+#### Added — Sales management (Quote + Cuenta de Cobro)
+- **Quote / AccountReceivable / DocumentCounter models** (`schema.prisma`, migration `20260522_add_sales_management`). Server-derived sales documents: a quote (cotización) and a cuenta de cobro (CC) with consecutive numbering per series via `DocumentCounter`.
+- **Sales services** — `services/sales/quoteService.ts`, `services/sales/accountReceivableService.ts`, `services/sales/documentCounterService.ts`. Pricing is **always** derived server-side via `lib/pricing.ts`; admins cannot override the amount.
+- **Sales routes** — `routes/adminSales.ts` (admin quote + CC management) and `routes/salesRedemption.ts` (public CC code redemption at checkout). This brings the backend router count to 30 modules.
+- **PDF generation** — `pdf/QuoteDocument.tsx`, `pdf/CcDocument.tsx`.
+- **Admin sales UI** under `/admin/ventas/...`.
+- **Soft-revoke invariant** — quotes and cuentas de cobro are never hard-deleted; cancellation sets `status='CANCELLED'` so the consecutive series shows no gaps. CC redemption uses an atomic `updateMany WHERE status='PENDING'` lock inside the same transaction as `PoolPayment.create`; pricing drift between the CC snapshot and live `lib/pricing.ts` blocks redemption with `409 CONFLICT` + a `cc_pricing_drift` admin alert. See ADR-061.
+- **CC expiry sweep** — `jobs/accountReceivableExpiryJob.ts` (advisory lock `82636504`) marks stale PENDING cuentas as expired.
+
+#### Added — Locale resolution + locale preference
+- **`User.locale`** (`String?`, ISO 639-1) — explicit per-user locale choice (migrations `20260512_add_user_locale_preference`, `20260512_user_locale_nullable`).
+- **`POST /users/me/locale-preference`** writes `User.locale`, the `NEXT_LOCALE` cookie (defensive backup for the client-side write), and is the single happy-path trigger for the deferred welcome email.
+- **Locale-resolution architecture** — `next-intl` runs in URL-prefix-only mode (`localeCookie: false` + `localeDetection: false` in `i18n/routing.ts`); `frontend-next/src/proxy.ts` is the sole authority for cookie / `Accept-Language` / default fallback. Frontend `LocalePreferenceGate` / `LocalePreferenceModal` capture the first-login choice. See ADR-064.
+
+#### Added — Corporate invitation locale
+- **`Organization.invitationLocale`** (`String NOT NULL DEFAULT 'es'`, migration `20260526_add_organization_invitation_locale`) governs the corporate-activation email **only**; once the employee completes the locale modal, `User.locale` takes over for every downstream email. See ADR-062.
+
+#### Added — Deferred welcome-email handoff
+- **`User.welcomeEmailSentAt`** (`DateTime?`, migration `20260526_add_user_welcome_email_sent_at`) is the idempotency key for the welcome email, which is no longer sent inline from signup/activation. It fires from `POST /users/me/locale-preference` (happy path) or `jobs/welcomeEmailFallbackJob.ts` (24h safety net, advisory lock `82636505`). Locale-correct activation/welcome links are built via `lib/activationUrl.ts`. See ADR-063.
+
+#### Added — Payment observability (lifecycle + telemetry)
+- **`PaymentStatus.INITIATED` and `PaymentStatus.ABANDONED`** states (migrations `20260519_extend_payment_observability`, `20260521_pool_payment_initiated_state`). `INITIATED` marks a row written before the gateway call (so a gateway-side failure leaves a trail); `ABANDONED` marks a stale PENDING/INITIATED swept by the reconciler. `PoolPayment.polarCheckoutId` is now nullable with a partial unique index (`UNIQUE WHERE polarCheckoutId IS NOT NULL`).
+- **`PaymentEvent` extended** beyond Polar webhooks to cover MP webhooks, client-side beacons (`REDIRECT_INITIATED` / `REDIRECT_FAILED` / `USER_CANCELLED` / `CLIENT_ERROR`), reconciler-issued transitions, and server transitions, via the TEXT `source` discriminator (`POLAR_WEBHOOK` / `MP_WEBHOOK` / `CLIENT` / `RECONCILER` / `SERVER`). `polarEventId` is now a partial unique index (unique only when non-NULL).
+- **Payment-attempt telemetry** — frontend `lib/api/paymentAttemptEvent.ts` emits MP Brick lifecycle beacons (`REDIRECT_INITIATED` / `USER_CANCELLED` / `CLIENT_ERROR`) via `navigator.sendBeacon`. See ADR-066.
+
+#### Added — Mercado Pago payment reconciler + completion parity
+- **`PoolPayment.mpPaymentId`** (migration `20260527_add_mp_payment_id_and_status_index`) stores MP's real `payment.id`, set defensively on the first IPN delivery so the reconciler can resolve stuck rows. Adds the compound index `(status, createdAtUtc)` shared by both reconcilers' stale-row queries.
+- **`jobs/mpPaymentReconcileJob.ts`** (advisory lock `82636506`) — MP reconciler; auto-completes `approved` payments via the shared `markPaymentCompleted` function. Runs concurrently with the Polar reconciler `jobs/paymentReconcileJob.ts` (advisory lock `82636503`), which flags for human review instead (intentional asymmetry).
+- **`markPaymentCompleted` single-entry rule** — every path that marks a `PoolPayment` `COMPLETED` (Polar webhook, MP sync, MP IPN, either reconciler) routes through `paymentService.markPaymentCompleted`, which owns the atomic transaction (PaymentEvent + PoolPayment + Pool + AccountReceivable + AuditEvent) and the post-tx fan-out (admin notification, CAPI Purchase, GA4 purchase, receipt email). MP sync and IPN share the idempotency key `mp-{id}-approved`. See ADR-065.
+
+---
+
 ## [1.0.0] — 2026-05-04
 
 ### Production release

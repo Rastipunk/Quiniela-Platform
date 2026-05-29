@@ -86,19 +86,25 @@ cp .env.example .env
 
 | Variable | Purpose |
 |----------|---------|
-| `FRONTEND_URL` | Frontend origin for CORS and email links (default: `http://localhost:3001`) |
+| `FRONTEND_URL` | Frontend origin for CORS and email links. The code default is `http://localhost:5173` (a leftover Vite-era port); set it explicitly to `http://localhost:3001` for the Next.js frontend below. |
 | `PORT` | API port (default: `3000`) |
 | `GOOGLE_CLIENT_ID` | Google OAuth — leave empty to disable |
 | `RESEND_API_KEY` | Email sending via Resend — leave empty to silently skip emails |
 | `RESEND_FROM_EMAIL` | Sender address for emails (e.g. `Picks4All <noreply@picks4all.com>`) |
+| `ADMIN_NOTIFICATION_EMAIL` | Inbox for admin notifications. The other category inboxes fall back to this if unset. |
+| `SUPPORT_NOTIFICATION_EMAIL` / `ENTERPRISE_NOTIFICATION_EMAIL` / `SALES_NOTIFICATION_EMAIL` | Per-category internal notification inboxes — each falls back to `ADMIN_NOTIFICATION_EMAIL` when unset. |
 | `API_FOOTBALL_KEY` | API-Football fallback layer — leave empty to disable |
-| `SMART_SYNC_ENABLED` | `"true"` to enable the API-Football fallback cron |
+| `API_FOOTBALL_ENABLED` | `"true"` to enable the API-Football integration |
+| `SMART_SYNC_ENABLED` | `"true"` to enable the API-Football fallback cron (Smart Sync) |
+| `RESULT_SYNC_ENABLED` | `"true"` to enable the result-sync layer |
 | `SCORES_SERVICE_URL` / `SCORES_SERVICE_API_KEY` | picks4all-scores client (primary live-scoring layer). Leave empty to disable. |
 | `MP_ACCESS_TOKEN` / `MP_PUBLIC_KEY` / `MP_WEBHOOK_SECRET` | Mercado Pago (COP). Optional locally — checkout endpoints will return 503 without them. |
 | `POLAR_API_KEY` / `POLAR_WEBHOOK_SECRET` | Polar.sh (USD). Same. |
 | `GA4_MEASUREMENT_ID` / `GA4_API_SECRET` | Server-side GA4. `sendGa4Event` no-ops silently when unset. |
 | `META_PIXEL_ID` / `META_CAPI_ACCESS_TOKEN` | Meta CAPI. Same. |
 | `BRAND_COLORS_JSON` | Runtime brand override (backend only). |
+
+> **Note:** `backend/.env.example` is intentionally minimal — it contains only `DATABASE_URL`, `JWT_SECRET`, `PORT`, `FRONTEND_URL`, `GOOGLE_CLIENT_ID`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `API_FOOTBALL_KEY`, `API_FOOTBALL_ENABLED`, `SMART_SYNC_ENABLED`, `RESULT_SYNC_ENABLED`, and the `TEST_*` seed accounts. The payment (`MP_*`, `POLAR_*`), analytics (`GA4_*`, `META_*`), scores (`SCORES_SERVICE_*`), notification-inbox, and `BRAND_COLORS_JSON` variables above are **not** in the example file — add them to your `.env` manually when you need those features locally.
 
 ### 3.2 Database Migration
 
@@ -148,7 +154,7 @@ curl http://localhost:3000/health
 Expected response:
 
 ```json
-{ "version": "v1.0.0", "commit": "local", "timestamp": "..." }
+{ "ok": true, "version": "v1.0.0", "commit": "local", "timestamp": "..." }
 ```
 
 ---
@@ -187,7 +193,13 @@ The legacy `NEXT_PUBLIC_GA_ID` is no longer read — GA4 is loaded by GTM, so `N
 The backend already occupies port 3000, so the frontend goes on 3001:
 
 ```bash
+# bash / macOS / Linux
 PORT=3001 npm run dev
+```
+
+```powershell
+# PowerShell (Windows)
+$env:PORT=3001; npm run dev
 ```
 
 Visit `http://localhost:3001`. If you launch with the default `npm run dev` (no `PORT`) you'll see a port-conflict error — either start the frontend first OR use the `PORT=3001` form above.

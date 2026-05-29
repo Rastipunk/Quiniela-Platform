@@ -52,33 +52,48 @@ campaign name must be declared here before being used in production.
 
 #### Transactional email campaigns (automated)
 
-| Campaign                  | Triggered by                                |
-|---------------------------|---------------------------------------------|
-| `welcome`                 | First login after signup                    |
-| `email_verification`      | Registration confirmation                   |
-| `password_reset`          | Forgot-password flow                        |
-| `password_changed`        | Password reset completion                   |
-| `pool_invite`             | Pool invitation email                       |
-| `deadline_reminder`       | Kickoff deadline alerts                     |
-| `result_published`        | Match result notifications                  |
-| `result_override`         | Host-override correction emails             |
-| `pool_completed`          | Pool final results email                    |
-| `pool_full`               | "Pool is full" host notification            |
-| `new_member`              | Host: new member notifications              |
-| `new_member_digest`       | Host: daily new-member digest               |
-| `phase_completed`         | Tournament phase closure email              |
-| `corporate_activation`    | Corporate-invite activation link            |
-| `corporate_inquiry`       | Enterprise lead acknowledgement             |
-| `payment_receipt`         | Post-purchase receipt                       |
-| `prediction_update`       | AI prediction subscribers email             |
-| `email_footer`            | Links in the email footer (terms, privacy…) |
+These are the only campaign strings passed to `emailUtm(...)` in
+`backend/src/lib/email.ts`. A transactional email appears here **only**
+if it contains a UTM-tagged CTA — many notification emails (welcome,
+deadline reminders, new-member digests, etc.) link out without UTM
+tagging and therefore are not campaigns.
+
+| Campaign                   | Triggered by                                 | Call site (`email.ts`) |
+|----------------------------|----------------------------------------------|------------------------|
+| `email_verification`       | Registration confirmation link               | `email_verification`   |
+| `password_reset`           | Forgot-password reset link                   | `password_reset`       |
+| `corporate_activation`     | Corporate-invite activation link             | `corporate_activation` |
+| `result_override`          | Host result-override correction email        | `result_override`      |
+| `group_standings_override` | Host group-standings override email          | `group_standings_override` |
+| `knockout_winner_override` | Host knockout-winner override email          | `knockout_winner_override` |
+| `pool_reverted_to_draft`   | Pool auto-reverted ACTIVE → DRAFT notice     | `pool_reverted_to_draft` |
+| `prediction_update`        | AI prediction subscribers email (CTA + unsubscribe) | `prediction_update` |
+
+The `prediction_update` email is the only transactional email with two
+UTM-tagged links: the CTA (`utm_content=cta_button`, default) and the
+unsubscribe link (`utm_content=unsubscribe`).
 
 #### Share / referral campaigns
 
-| Campaign       | Trigger                                      |
-|----------------|----------------------------------------------|
-| `pool_share`   | User shares an existing pool                 |
-| `pool_invite`  | User copies the explicit invite link         |
+`frontend-next/src/lib/utm.ts` `getShareUtm(platform, context)` maps the
+four `ShareContext` values to a campaign and copies the **raw context
+string** into `utm_content`. Only `poolInvite` produces the `pool_invite`
+campaign; the other three contexts collapse to `pool_share`.
+
+| `ShareContext`    | Campaign      | `utm_content`     |
+|-------------------|---------------|-------------------|
+| `poolInvite`      | `pool_invite` | `poolInvite`      |
+| `poolShare`       | `pool_share`  | `poolShare`       |
+| `poolLeaderboard` | `pool_share`  | `poolLeaderboard` |
+| `poolPredictions` | `pool_share`  | `poolPredictions` |
+
+> **Known convention violation:** `getShareUtm` emits **camelCase**
+> `utm_content` values (`poolInvite`, `poolShare`, `poolLeaderboard`,
+> `poolPredictions`), which contradicts the lowercase snake_case rule for
+> `utm_content` stated below. This is intentional drift left in place to
+> avoid breaking existing share-link history in GA4; treat the share
+> contexts as the documented exception, and keep all *email* `utm_content`
+> values snake_case.
 
 #### Marketing campaigns (ad buys)
 
@@ -125,10 +140,20 @@ updating this file in the same PR.
 |---------------------|-----------------------|-----------------------------------------|
 | `view_item_list`    | Pricing page          | `frontend-next/src/app/[locale]/precios/PricingPageContent.tsx` |
 | `view_item`         | Capacity selector     | `frontend-next/src/components/pool-wizard/steps/StepCapacity.tsx` |
-| `begin_checkout`    | Wizard submit         | `frontend-next/src/components/pool-wizard/PoolCreationWizard.tsx` |
+| `begin_checkout`    | Wizard submit + capacity upgrade | `frontend-next/src/components/pool-wizard/PoolCreationWizard.tsx`, `frontend-next/src/app/[locale]/(authenticated)/pools/[poolId]/components/PoolCapacityTab.tsx` |
 | `add_payment_info`  | MP Brick submit       | `frontend-next/src/app/[locale]/pago/checkout/page.tsx` |
-| `purchase`          | MP approval + Polar   | `frontend-next/src/app/[locale]/pago/exitoso/page.tsx`, backend `paymentService.ts` |
-| `refund`            | Webhook only          | `backend/src/services/paymentService.ts` |
+| `purchase`          | MP approval + success page | `frontend-next/src/app/[locale]/pago/checkout/page.tsx` (on MP approval), `frontend-next/src/app/[locale]/pago/exitoso/page.tsx` |
+| `refund`            | Webhook only          | `frontend-next/src/lib/ecommerce.ts` (`trackRefund`) |
+
+The canonical builders live in `frontend-next/src/lib/ecommerce.ts`
+(`trackViewItemList`, `trackViewItem`, `trackBeginCheckout`,
+`trackAddPaymentInfo`, `trackPurchase`, `trackRefund`). `purchase` is
+fired twice on purpose — from the checkout page on MP Brick approval and
+again from the success page — and deduplicated by `transaction_id`. The
+`affiliation` parameter is exactly `"Mercado Pago Colombia"` (COP) or
+`"Polar International"` (USD). Server-side conversions are emitted via GA4
+Measurement Protocol (`backend/src/lib/ga4.ts`) and Meta CAPI
+(`backend/src/lib/metaCapi.ts`), sharing the same `transaction_id`.
 
 ### Engagement events
 
@@ -146,13 +171,18 @@ updating this file in the same PR.
 | `tab_changed`                      | Pool-page tab change                      |
 | `wizard_step`                      | Pool creation wizard step transition      |
 | `cta_clicked`                      | Landing page CTA                          |
-| `pricing_page_viewed`              | Deprecated — use `view_item_list`         |
+| `begin_registration`               | Registration form opened (`AuthSlidePanel.tsx`) |
 | `language_changed`                 | Locale switcher                           |
 | `feedback_submitted`               | In-app feedback modal                     |
-| `corporate_inquiry`                | Enterprise inquiry form                   |
+| `corporate_inquiry`                | Enterprise inquiry form (`EnterpriseLandingContent.tsx`) |
+| `corporate_quote_opened`           | Corporate quote panel opened (`EnterpriseLandingContent.tsx`) |
+| `corporate_quote_submitted`        | Corporate quote submitted (`CorporateQuotePanel.tsx`) |
+| `payment_cancelled`                | Payment cancel page mount (`pago/cancelado/page.tsx`) |
 | `error_displayed`                  | User-facing error surfaced                |
 | `notification_subscription_toggled`| Any opt-in toggle (`type`, `enabled`)     |
-| `referral_conversion`              | Join via invite of another user           |
+
+`corporate_inquiry` is a GA4 **event** only. There is no transactional
+email campaign of the same name — do not confuse it with §1.
 
 ### Reserved params (must keep their canonical names)
 
@@ -181,6 +211,16 @@ changes the user's segment. Names kept <= 24 chars and values <= 36 chars
 | `platform_role`        | string           | `User.platformRole`            |
 | `acquisition_source`   | string           | first-touch UTM                |
 | `acquisition_campaign` | string           | first-touch UTM                |
+| `is_verified_email`    | boolean          | `User.emailVerifiedAt`         |
+| `signup_method`        | `email` / `google` | registration method          |
+| `predictions_count`    | number           | saved picks across pools       |
+| `last_active_at`       | ISO 8601 UTC     | most recent pick / session     |
+| `pool_host_count`      | number           | pools where user is HOST        |
+
+All eleven properties above are accepted by `setUserProperties()` in
+`frontend-next/src/lib/analytics.ts`. The helper truncates string values
+to 36 chars (GA4 value limit) and skips `undefined` / `null`. The "<= 24
+char name" guidance is the GA4 platform rule; it is not enforced in code.
 
 ---
 
@@ -197,11 +237,53 @@ When adding a new server-side conversion:
 2. Emit the same identifier to **both** the browser (via API response)
    and the server-to-server call.
 3. GA4 MP and Meta CAPI each have their own retry + DLQ handled by
-   `backend/src/lib/ga4.ts` and `backend/src/lib/metaCapi.ts`.
+   `backend/src/lib/ga4.ts` (`sendGa4Event`, `retryFailedGa4EventsBatch`)
+   and `backend/src/lib/metaCapi.ts` (`sendCapiEvent`,
+   `retryFailedCapiEventsBatch`, `buildUserData`). Both implement an
+   in-process attempt that, on failure, persists to the `FailedCapiEvent`
+   dead-letter queue with `MAX_DLQ_ATTEMPTS = 8` and the same backoff
+   schedule `DLQ_BACKOFF_MINUTES = [1, 5, 15, 60, 240, 720, 1440, 1440]`.
+   The DLQ is drained by `capiRetryJob` (see `guides/ANALYTICS_PIPELINE.md`
+   for the retry/advisory-lock detail).
+
+`buildUserData()` SHA-256 hashes every PII field (email, phone, name)
+before it reaches Meta — never pass raw PII to CAPI.
 
 ---
 
-## 5. Anti-patterns to avoid
+## 5. Payment-attempt telemetry
+
+Distinct from the GA4/CAPI conversion pipeline, the platform records a
+**payment-attempt lifecycle** channel that captures what happens inside
+the gateway round-trip — information webhooks cannot supply (ADR-066).
+
+`frontend-next/src/lib/api/paymentAttemptEvent.ts` emits seven
+`ClientEventType` beacons to `POST /payments/attempts/:paymentId/event`:
+
+| Event               | Fired when                                          |
+|---------------------|-----------------------------------------------------|
+| `REDIRECT_INITIATED`| Immediately before `window.location.href` to gateway |
+| `REDIRECT_FAILED`   | Redirect assignment throws synchronously             |
+| `USER_CANCELLED`    | `/pago/cancelado` mounts                             |
+| `CLIENT_ERROR`      | Any catch block during the flow                      |
+| `BRICK_LOADED`      | Mercado Pago Payment Brick finished mounting         |
+| `BRICK_ERROR`       | MP Brick reported an error                           |
+| `USER_CLOSED_TAB`   | `beforeunload` / `pagehide` during checkout          |
+
+Beacons persist as `PaymentEvent` rows with `source=CLIENT` via
+`recordClientEvent` in `backend/src/services/paymentService.ts`.
+Unload-safe events (`USER_CLOSED_TAB`) use `navigator.sendBeacon` with a
+`text/plain` Blob body — a CORS simple request that avoids the preflight
+that would otherwise race the page teardown. All beacons are best-effort:
+delivery failures are swallowed and never block the payment flow.
+
+These event names are a **separate naming surface** from the GA4 event
+taxonomy in §2 — they are never pushed to the GTM dataLayer and must not
+be conflated with GA4 events.
+
+---
+
+## 6. Anti-patterns to avoid
 
 - ❌ Hand-building UTM strings. Use `appendUtm()` + `emailUtm()`.
 - ❌ Mixed case in UTM values. GA4 treats `Email` and `email` as different.

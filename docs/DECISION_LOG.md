@@ -5,7 +5,7 @@
 >
 > **Format:** Each decision includes: Context, Decision, Rationale, Consequences, Alternatives Considered, Status
 >
-> **Last Updated:** 2026-05-03
+> **Last Updated:** 2026-05-28
 
 ---
 
@@ -96,14 +96,42 @@ How to implement this decision (if applicable)
 | [028](#adr-028-rate-limiting-strategy) | Rate Limiting Strategy | Accepted | 2026-01-18 |
 | [029](#adr-029-internal-notification-system-badges) | Internal Notification System (Badges) | Accepted | 2026-01-18 |
 | [030](#adr-030-slide-in-auth-panel) | Slide-in Auth Panel | Accepted | 2026-02-01 |
-| [031](#adr-031-automatic-results-via-api-football) | Automatic Results via API-Football | Accepted | 2026-02-04 |
+| [031](#adr-031-automatic-results-via-api-football) | Automatic Results via API-Football | Superseded by ADR-052 | 2026-02-04 |
 | [032](#adr-032-smart-sync---optimized-api-polling-strategy) | Smart Sync - Optimized API Polling Strategy | Accepted | 2026-02-04 |
 | [033](#adr-033-nextjs-migration-ssr--seo) | Next.js Migration (SSR + SEO) | Accepted | 2026-02-13 |
 | [034](#adr-034-cloudflare-email-routing-for-incoming-email) | Cloudflare Email Routing for Incoming Email | Accepted | 2026-03-01 |
 | [035](#adr-035-corporate-pool-feature--self-service-mvp) | Corporate Pool Feature — Self-Service MVP | Accepted | 2026-03-01 |
-| [036](#adr-036-lemon-squeezy-as-merchant-of-record) | Lemon Squeezy as Merchant of Record | Accepted | 2026-03-01 |
+| [036](#adr-036-lemon-squeezy-as-merchant-of-record) | Lemon Squeezy as Merchant of Record | Superseded by ADR-044 | 2026-03-01 |
 | [037](#adr-037-resend-domain-verification-for-production-email) | Resend Domain Verification for Production Email | Accepted | 2026-03-01 |
 | [038](#adr-038-limpieza-de-código-y-documentación-v060) | Limpieza de Código y Documentación v0.6.0 | Accepted | 2026-03-17 |
+| [039](#adr-039-security--infrastructure-audit) | Security & Infrastructure Audit | Accepted | 2026-03-18 |
+| [040](#adr-040-wc-2026-instance-rebuild-with-api-data) | WC 2026 Instance Rebuild with API Data | Accepted | 2026-04-03 |
+| [041](#adr-041-centralized-branding-system) | Centralized Branding System | Accepted | 2026-04-04 |
+| [042](#adr-042-eliminate-hardcoded-values-4-audit-rounds) | Eliminate Hardcoded Values (4 Audit Rounds) | Accepted | 2026-04-04 |
+| [043](#adr-043-api-first-results-with-host-override) | API-First Results with Host Override | Superseded by ADR-052 | 2026-04-04 |
+| [044](#adr-044-polarsh-as-payment-processor-replacing-lemon-squeezy) | Polar.sh as Payment Processor (replacing Lemon Squeezy) | Accepted | 2026-04-13 |
+| [045](#adr-045-per-user-invitation-rate-limit-capacity-threshold-notifications) | Per-user invitation rate limit; capacity-threshold notifications | Accepted | 2026-05-01 |
+| [046](#adr-046-webhook-retry-contract-5xx-on-error-throw-on-orphan) | Webhook retry contract (5xx-on-error, throw-on-orphan) | Accepted | 2026-05-03 |
+| [047](#adr-047-html-escape-strategy-for-email-templates-defence-at-render-time) | HTML escape strategy for email templates | Accepted | 2026-05-03 |
+| [048](#adr-048-magic-link-session-mismatch-defence) | Magic-link session-mismatch defence | Accepted | 2026-05-03 |
+| [049](#adr-049-corporate-wizard--drop-the-invite-employees-step) | Corporate wizard — drop the "invite employees" step | Accepted | 2026-05-03 |
+| [050](#adr-050-per-invite-resend-with-token-rotation) | Per-invite resend with token rotation | Accepted | 2026-05-03 |
+| [051](#adr-051-usd-cents-vs-cop-pesos-field-discipline) | USD-cents vs COP-pesos field discipline | Accepted | 2026-05-03 |
+| [052](#adr-052-scraper-first-results-picks4all-scores-as-primary-api-football-as-fallback) | Scraper-first results (picks4all-scores primary; API-Football fallback) | Accepted | 2026-05-03 |
+| [053](#adr-053-mercado-pago-for-colombia-dual-gateway-routing) | Mercado Pago for Colombia (dual-gateway routing) | Accepted | 2026-04-14 |
+| [054](#adr-054-server-side-analytics-with-dlq--advisory-locked-drainer) | Server-side analytics with DLQ + advisory-locked drainer | Accepted | 2026-05-03 |
+| [055](#adr-055-email-suppression-via-resend-webhook) | Email suppression via Resend webhook | Accepted | 2026-05-03 |
+| [056](#adr-056-organization-branding-edits-with-audit-trail) | Organization branding edits with audit trail | Accepted | 2026-05-03 |
+| [057](#adr-057-admin-analytics-dashboard-with-saferun-fault-tolerance) | Admin analytics dashboard with safeRun fault tolerance | Accepted | 2026-05-03 |
+| [058](#adr-058-editable-scoring-rules-with-auto-revert-active--draft) | Editable scoring rules with auto-revert ACTIVE → DRAFT | Accepted | 2026-05-11 |
+| [059](#adr-059-estratega-is-100-scraper-driven-host-only-intervenes-for-overrides) | Estratega is 100% scraper-driven; host only intervenes for overrides | Accepted | 2026-05-11 |
+| [060](#adr-060-payment-funnel-observability--initiated-state-every-event-audit-log-reconciler) | Payment funnel observability — INITIATED state, audit log, reconciler | Accepted | 2026-05-21 |
+| [061](#adr-061-sales-management--quotes-cuentas-de-cobro-and-cc-redemption-checkout-path) | Sales Management — quotes, cuentas de cobro, CC-redemption checkout | Accepted | 2026-05-26 |
+| [062](#adr-062-corporate-invitation-locale) | Corporate invitation locale | Accepted | 2026-05-26 |
+| [063](#adr-063-welcome-email-locale-handoff) | Welcome email locale handoff | Accepted | 2026-05-26 |
+| [064](#adr-064-locale-resolution-architecture) | Locale resolution architecture | Accepted | 2026-05-26 |
+| [065](#adr-065-mercado-pago--polar-payment-completion-parity) | Mercado Pago / Polar payment-completion parity | Accepted | 2026-05-28 |
+| [066](#adr-066-payment-attempt-client-side-telemetry-mp-brick-visibility) | Payment-attempt client-side telemetry (MP Brick visibility) | Accepted | 2026-05-28 |
 
 ---
 
@@ -160,7 +188,7 @@ quiniela-platform/
 ├── backend/
 │   ├── package.json
 │   └── src/
-├── frontend/
+├── frontend-next/
 │   ├── package.json
 │   └── src/
 ├── docs/
@@ -168,6 +196,8 @@ quiniela-platform/
 ```
 
 Each package has its own `package.json` and runs independently.
+
+> **Update (ADR-033):** The original Vite SPA at `frontend/` was retired and replaced by the Next.js App Router app at `frontend-next/`. Early ADRs that reference `frontend/src/...` paths now resolve under `frontend-next/src/...`.
 
 ---
 
@@ -296,9 +326,11 @@ const users = await prisma.user.findMany();
 ## ADR-004: JWT for Authentication
 
 **Date:** 2024-12-28
-**Status:** Accepted
+**Status:** Accepted (delivery mechanism superseded in part by ADR-064)
 **Deciders:** Product Team
 **Tags:** #security #authentication
+
+> **Update:** The HS256 / 4-hour-expiry JWT decision below still holds (`backend/src/lib/jwt.ts` — `expiresIn: "4h", algorithm: "HS256"`). What changed is *delivery*: tokens are no longer carried by the client in an `Authorization` header or `localStorage`. They are issued as **httpOnly cookies** via `setAuthCookies` / `clearAuthCookies` (`backend/src/lib/authCookies.ts`), and the legacy `quiniela.token` localStorage key is treated as `LEGACY_TOKEN_KEY` and cleared on first load (`frontend-next/src/lib/auth.ts`). The "Token theft risk (XSS)" negative is mitigated by the httpOnly flag. ADR-064 also writes a `NEXT_LOCALE` cookie alongside the auth cookies. The "Implementation Notes" snippet below reflects the original header-based design and is retained for historical context.
 
 ### Context
 
@@ -1164,7 +1196,9 @@ Frontend needs state management. Options:
 
 ### Implementation Notes
 
-**Auth state:**
+The "no Redux/Zustand" decision still holds. The auth-state snippet below is **historical** — it describes the Vite-era `localStorage` + custom-event pattern. Since the httpOnly-cookie migration (ADR-064), the session token is no longer read from `localStorage`; `quiniela.token` is now a `LEGACY_TOKEN_KEY` cleared on first load (`frontend-next/src/lib/auth.ts`), and auth state is consumed via the `useAuth` hook backed by cookie-authenticated `/users/me` calls.
+
+**Auth state (historical, Vite SPA):**
 ```typescript
 // lib/auth.ts
 const TOKEN_KEY = 'quiniela.token';
@@ -1177,7 +1211,7 @@ export function getToken() {
 window.dispatchEvent(new CustomEvent('quiniela:auth'));
 ```
 
-**App.tsx:**
+**App.tsx (historical):**
 ```typescript
 const [token, setToken] = useState(getToken());
 
@@ -2252,7 +2286,7 @@ Implement a **token-based password reset flow** with email delivery via **Resend
 - ⚠️ Requires email provider account setup
 - ⚠️ Free tier limitations (100 emails/day)
 - ⚠️ Sandbox mode in dev (must verify recipient emails)
-- ⚠️ No rate limiting (user can spam reset requests)
+- ⚠️ ~~No rate limiting (user can spam reset requests)~~ — superseded by ADR-028, which adds a 5/hour password-reset limiter
 
 **Risks:**
 - ⚠️ Email deliverability issues (spam filters)
@@ -2383,9 +2417,11 @@ await prisma.user.update({
 ## ADR-026: Google OAuth Integration
 
 **Date:** 2026-01-04
-**Status:** Accepted
+**Status:** Accepted (setup details updated for Next.js — see note)
 **Deciders:** Product Team, Engineering Team
 **Tags:** #authentication #oauth #user-experience #google
+
+> **Update (ADR-033):** This ADR was written during the Vite SPA era. The decision (server-side ID-token verification via `google-auth-library`, `POST /auth/google`, account linking, auto-generated usernames) is unchanged and current. Only the frontend wiring moved to Next.js: the client ID env var is `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (not `VITE_GOOGLE_CLIENT_ID` / `import.meta.env`), there is no `localhost:5173` origin, and the token is now returned as an httpOnly cookie rather than handed back in the response body (ADR-064). Configuration steps live in `docs/guides/GOOGLE_OAUTH.md`. The Vite-flavoured snippets below are retained for historical context.
 
 ### Context
 
@@ -2537,8 +2573,8 @@ npm install google-auth-library
 # backend/.env
 GOOGLE_CLIENT_ID=123456789-abc...xyz.apps.googleusercontent.com
 
-# frontend/.env
-VITE_GOOGLE_CLIENT_ID=123456789-abc...xyz.apps.googleusercontent.com
+# frontend-next/.env
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=123456789-abc...xyz.apps.googleusercontent.com
 ```
 
 **Backend Helper ([lib/googleAuth.ts](../../backend/src/lib/googleAuth.ts)):**
@@ -2647,7 +2683,7 @@ CREATE INDEX "User_googleId_idx" ON "User"("googleId");
 
 ### Setup Guide
 
-See [GOOGLE_OAUTH_SETUP.md](../GOOGLE_OAUTH_SETUP.md) for detailed instructions on:
+See [guides/GOOGLE_OAUTH.md](guides/GOOGLE_OAUTH.md) for detailed instructions on:
 1. Creating a Google Cloud project
 2. Configuring OAuth consent screen
 3. Creating OAuth 2.0 credentials
@@ -2658,8 +2694,8 @@ See [GOOGLE_OAUTH_SETUP.md](../GOOGLE_OAUTH_SETUP.md) for detailed instructions 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create project → Enable OAuth
 3. Create OAuth 2.0 Client ID (Web application)
-4. Add `http://localhost:5173` to authorized origins
-5. Copy Client ID to `.env` files
+4. Add the local dev origin (Next.js default `http://localhost:3000`) to authorized origins
+5. Set `GOOGLE_CLIENT_ID` (backend) and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (frontend) in `.env`
 6. Restart backend and frontend
 
 ### Related Decisions
@@ -3881,44 +3917,6 @@ The platform is approaching its April 1st launch. Critical security and stabilit
 ### Related Decisions
 - ADR-038 (Code Cleanup v0.6.0)
 - ADR-028 (Rate Limiting Strategy)
-
----
-
-## Future Decisions (To Be Documented)
-
-**v0.3.0:**
-- [x] ADR-027: Cumulative Scoring System ✅ (2026-01-18)
-- [x] ADR-028: Rate Limiting Strategy ✅ (2026-01-18)
-- [x] ADR-029: Internal Notification System ✅ (2026-01-18)
-
-**v0.3.2:**
-- [x] Email verification on registration ✅ (2026-01-26) — implemented without separate ADR
-
-**v0.3.3:**
-- [x] ADR-030: Slide-in Auth Panel ✅ (2026-02-01)
-
-**v0.3.4:**
-- [x] ADR-031: Automatic Results via API-Football ✅ (2026-02-04)
-- [x] ADR-032: Smart Sync - Optimized API Polling ✅ (2026-02-04)
-
-**v0.3.5:**
-- [x] Comprehensive Code Review ✅ (2026-02-10) — findings documented in CURRENT_STATE.md
-
-**v0.4.0:**
-- [x] ADR-033: Next.js Migration ✅ (2026-02-13)
-
-**v0.6.0:**
-- [x] ADR-034: Cloudflare Email Routing for Incoming Email ✅ (2026-03-01)
-- [x] ADR-035: Corporate Pool Feature — Self-Service MVP ✅ (2026-03-01)
-- [x] ADR-036: Lemon Squeezy as Merchant of Record ✅ (2026-03-01)
-- [x] ADR-037: Resend Domain Verification for Production Email ✅ (2026-03-01)
-- [x] ADR-038: Limpieza de Código y Documentación v0.6.0 ✅ (2026-03-17)
-- [x] ADR-039: Security & Infrastructure Audit ✅ (2026-03-18)
-
-- [x] ADR-040: WC 2026 Instance Rebuild with API Data ✅ (2026-04-03)
-- [x] ADR-041: Centralized Branding System ✅ (2026-04-04)
-- [x] ADR-042: Eliminate Hardcoded Values (4 rounds) ✅ (2026-04-04)
-- [x] ADR-043: API-First Results with Host Override ✅ (2026-04-04)
 
 ---
 

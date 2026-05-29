@@ -74,6 +74,34 @@ most one drainer per cron tick, avoiding double-sends.
 - PII is hashed SHA-256 before leaving the process. Phone digits only,
   DOB compacted to YYYYMMDD, gender mapped to `m/f/o`.
 
+## Health probe
+
+`backend/src/routes/analyticsHealth.ts` exposes an admin-only diagnostic that
+answers "is tracking wired correctly right now?" by calling the real APIs (it
+does not simulate). It is mounted under the admin router at `/analytics`:
+
+- `GET /admin/analytics/probe` — runs four checks in parallel and returns a
+  single JSON report (`overall: ok | degraded | error`):
+  - **GA4** hits the validation-only endpoint `debug/mp/collect` and surfaces
+    Google's `validationMessages[]` (no ingestion).
+  - **Meta CAPI** hits the production `/events` endpoint with a synthetic
+    `event_id` plus the account's `test_event_code` when configured, so the
+    event lands in Events Manager → Test Events rather than real prod data.
+  - **DLQ backlog** counts unresolved `FailedAnalyticsEvent` rows, breaks them
+    down by `provider`, and reports the oldest unresolved entry.
+  - **Frontend HTML** fetches `FRONTEND_URL` and checks for the GTM loader,
+    Consent Mode v2 defaults, and the `dataLayer` initialiser — catching the
+    case where `NEXT_PUBLIC_*` vars are set on the backend service but missing
+    from the frontend build.
+  The report also lists presence (never values) of every analytics env var.
+- `POST /admin/analytics/probe/send-real-purchase` — escape hatch (gated by
+  `allowReal: true`) that emits a REAL synthetic `purchase` / `Purchase` event
+  through `sendGa4Event` / `sendCapiEvent` so the operator can confirm it lands
+  in GA4 Realtime / Meta Test Events.
+
+The admin surface is `frontend-next/src/components/AnalyticsHealthContent.tsx`
+(page at `admin/analytics-health/page.tsx`).
+
 ## Adding a new sink
 
 1. Create `backend/src/lib/<sink>.ts` exposing `send<Sink>Event()` with
@@ -89,9 +117,9 @@ most one drainer per cron tick, avoiding double-sends.
 |-----------------------------|--------------------------------------------------------|
 | `GA4_MEASUREMENT_ID`        | `sendGa4Event` noops silently (startup logs a warning) |
 | `GA4_API_SECRET`            | same                                                   |
-| `GA4_DEBUG=1`               | Routes GA4 MP to `/debug/mp/collect` (no ingestion)    |
+| `GA4_DEBUG=1`               | Routes GA4 MP to `debug/mp/collect` (no ingestion)     |
 | `META_PIXEL_ID`             | `sendCapiEvent` noops silently                         |
 | `META_CAPI_ACCESS_TOKEN`    | same                                                   |
 | `META_TEST_EVENT_CODE`      | Events bypass Events Manager Test Events tab          |
-| `ANALYTICS_RETRY_CRON`      | Defaults to `*/5 * * * *`                              |
-| `ANALYTICS_RETRY_BATCH_SIZE`| Defaults to `20`                                       |
+| `ANALYTICS_RETRY_CRON`      | Defaults to `*/5 * * * *` (legacy alias `CAPI_RETRY_CRON` still honored) |
+| `ANALYTICS_RETRY_BATCH_SIZE`| Defaults to `20` (legacy alias `CAPI_RETRY_BATCH_SIZE` still honored)    |

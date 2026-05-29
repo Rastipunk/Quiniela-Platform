@@ -129,10 +129,11 @@ All rate limit values are overridable via environment variables.
 | `verificationResendLimiter` | Resend verification | 3 req | 1 hour |
 | `corporateInviteCheckLimiter` | `GET /auth/check-corporate-invite` (per IP) | 20 req | 1 min |
 | `corporateActivateLimiter` | `POST /auth/activate-corporate` (per IP) | 10 req | 15 min |
-| `corporateInquiryLimiter` | `POST /corporate/inquiry` | 5 req | 15 min |
+| `inquiryLimiter` | `POST /corporate/inquiry` | 5 req | 15 min |
 | `inviteSendLimiter` (per user) | `POST /corporate/pools/:id/send-invitations` and `…/employees/:inviteId/resend` | 200 sends | 1 hour |
 | `inviteSendDailyLimiter` (per user) | same as above | 1000 sends | 24 hours |
-| `poolCreateLimiter` | `POST /pools` | 10 req | 1 hour |
+| `poolJoinLimiter` | `POST /pools/join` (per IP) | 10 req | 15 min |
+| `poolCreationLimiter` | `POST /pools` | 10 req | 1 hour |
 | `resultPublishLimiter` | `PUT /pools/:id/results/:matchId` | 10 req | 1 min |
 | `feedbackLimiter` | `POST /feedback` | 5 req | 1 min |
 

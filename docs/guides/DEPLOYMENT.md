@@ -28,7 +28,11 @@ The platform runs on Railway with three services:
 └─────────────────────────────┘
 ```
 
-**Build configuration (`railway.toml`, backend only):**
+**Build configuration:**
+
+There are two backend-relevant `railway.toml` files; which one Railway honors depends on the service's configured root directory.
+
+Root `railway.toml` (used when the backend service builds from the monorepo root):
 
 ```toml
 [build]
@@ -39,13 +43,50 @@ buildCommand = "cd backend && npm install && npm run build"
 startCommand = "cd backend && npm run start"
 ```
 
-The backend `npm run start` command runs Prisma migrations automatically before starting the server:
+`backend/railway.toml` (used when the backend service root is `backend/`):
+
+```toml
+[build]
+builder = "nixpacks"
+
+[build.nixpacks]
+installCmd = "npm ci --include=dev"
+
+[build.env]
+NIXPACKS_NODE_VERSION = "22"
+NPM_CONFIG_PRODUCTION = "false"
+
+[deploy]
+releaseCommand = "npx prisma migrate deploy"
+startCommand = "npm run start"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+```
+
+The backend `npm run start` command runs Prisma migrations automatically before starting the server. It begins with a one-off rollback guard for the `20260131120000_seed_legal_documents` migration:
 
 ```
-prisma migrate resolve --rolled-back <migration> || true && prisma migrate deploy && node dist/server.js
+npx prisma migrate resolve --rolled-back 20260131120000_seed_legal_documents || true && prisma migrate deploy && node dist/server.js
 ```
 
-The frontend service is configured in Railway's dashboard (no `railway.toml`). It uses Next.js standalone output mode.
+The frontend service is configured via `frontend-next/railway.toml`. It uses Next.js standalone output mode; the build step copies static and public assets into the standalone bundle, and the deploy step launches the standalone server:
+
+```toml
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && npm run build && cp -r .next/static .next/standalone/.next/static && rm -rf .next/standalone/public && cp -r public .next/standalone/public"
+
+[deploy]
+startCommand = "node .next/standalone/server.js"
+healthcheckPath = "/"
+healthcheckTimeout = 120
+
+[build.env]
+NODE_ENV = "production"
+NIXPACKS_NODE_VERSION = "22"
+```
 
 ---
 
@@ -232,6 +273,20 @@ via a Postgres advisory lock (multi-instance safe). See
 | `ANALYTICS_RETRY_CRON` | Cron schedule for the drain job. | `*/5 * * * *` |
 | `ANALYTICS_RETRY_BATCH_SIZE` | Rows drained per sink per tick. | `20` |
 
+#### Payment Reconcilers / Sweeps
+
+Background sweeps that close the payment and sales-document observability loops. Each is multi-instance safe via a distinct Postgres advisory lock. See Section 7 (Cron Jobs).
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `RECONCILE_CRON` | Cron schedule for the Polar stale-payment reconciler. | `*/30 * * * *` |
+| `MP_RECONCILE_CRON` | Cron schedule for the Mercado Pago reconciler. | `*/30 * * * *` |
+| `MP_RECONCILE_BATCH_SIZE` | Stale MP rows queried per tick. | `50` |
+| `CC_EXPIRY_CRON` | Cron schedule for the AccountReceivable (cuenta de cobro) expiry sweep. | `5 * * * *` |
+| `CC_EXPIRY_BATCH_SIZE` | PENDING AccountReceivable rows expired per tick. | `100` |
+| `WELCOME_FALLBACK_CRON` | Cron schedule for the deferred welcome-email safety net. | `15 * * * *` |
+| `WELCOME_FALLBACK_HOURS` | Account age (hours) after which the fallback ships the welcome email. | `24` |
+
 #### Railway-Injected
 
 | Variable | Description |
@@ -314,7 +369,7 @@ curl https://api.picks4all.com/health
 Expected:
 
 ```json
-{ "version": "v1.0.0", "commit": "abc1234", "timestamp": "..." }
+{ "ok": true, "version": "v1.0.0", "commit": "abc1234", "timestamp": "..." }
 ```
 
 ---
@@ -328,10 +383,19 @@ Use `railway run` to execute scripts with production environment variables:
 cd backend
 
 railway run npm run seed:admin
+railway run npm run seed:test-accounts
 railway run npm run seed:legal
 railway run npm run seed:wc2026-sandbox
 railway run npm run seed:ucl2025
 railway run npm run init:smart-sync
+```
+
+Maintenance / data scripts (run as needed, not part of routine deploys):
+
+```bash
+railway run npm run script:fetch-ucl          # Fetch UCL fixture data
+railway run npm run script:update-ucl-draw    # Update UCL round-of-16 draw
+railway run npm run script:migrate-extra-time # Backfill extra-time config
 ```
 
 **Warning:** Seed scripts are idempotent but should be used carefully in production. Always verify the seed script's behavior before running.
@@ -356,20 +420,25 @@ railway run npx prisma migrate deploy  # Apply pending migrations
 
 ### Cron Jobs
 
-Ten background jobs run automatically (all started in `server.ts`, configured via env-var cron expressions):
+Thirteen background jobs run automatically (all started in `server.ts`, configured via env-var cron expressions):
 
 | Job | Default schedule | Purpose |
 |-----|------------------|---------|
 | Live Scores (`liveScoresJob`) | 15 s during match windows | **Primary** results channel — polls picks4all-scores. Gated by `PlatformSettings.scoresServiceEnabled`. |
 | Smart Sync (`smartSyncJob`) | `SMART_SYNC_CRON` (default `* * * * *`) | API-Football fallback — only publishes results the scraper hasn't already reported. |
-| Result Sync legacy (`resultSyncJob`) | inactive | Kept for backfill. |
 | Phase Sync (`phaseSyncJob`) | `PHASE_SYNC_CRON` (default `0 8,20 * * *`) | Drains the `PendingPhaseSync` queue. |
 | Deadline Reminders (`deadlineReminderJob`) | `DEADLINE_REMINDER_CRON` (default `0 12 * * *`) | Sends 48h pre-kickoff reminders (excludes muted pools). |
 | Fixture Tracking (`fixtureTrackingJob`) | `FIXTURE_TRACKING_CRON` (default `0 * * * *`) | Registers upcoming fixtures with picks4all-scores. |
 | Fixture Verification (`fixtureVerificationJob`) | `FIXTURE_VERIFY_CRON` (default `0 6 * * *`) | Re-verifies external mappings stay aligned. |
 | New-Member Digest (`newMemberDigestJob`) | `NEW_MEMBER_DIGEST_CRON` (default `0 13 * * *`) | Daily host digest of new joiners. |
-| CAPI Retry (`capiRetryJob`) | `ANALYTICS_RETRY_CRON` (default `*/5 * * * *`) | Drains the `FailedAnalyticsEvent` DLQ. Postgres advisory lock makes multi-replica deploys safe. |
+| CAPI Retry (`capiRetryJob`) | `ANALYTICS_RETRY_CRON` (default `*/5 * * * *`) | Drains the `FailedAnalyticsEvent` DLQ. Postgres advisory lock (`82636502`) makes multi-replica deploys safe. |
 | Track Status (`trackStatusCheckerJob`) | `TRACK_STATUS_CHECK_CRON` (default `* * * * *`) | External status monitoring. |
+| Polar Reconciler (`paymentReconcileJob`) | `RECONCILE_CRON` (default `*/30 * * * *`) | Sweeps INITIATED/PENDING `PoolPayment` rows past the grace period, queries Polar for canonical state, and flags stuck rows for review. Advisory lock `82636503`. |
+| MP Reconciler (`mpPaymentReconcileJob`) | `MP_RECONCILE_CRON` (default `*/30 * * * *`) | Mercado Pago equivalent — sweeps stale MP rows (batch `MP_RECONCILE_BATCH_SIZE`, default 50) and auto-completes `approved` payments via `markPaymentCompleted`. Advisory lock `82636506`. |
+| AccountReceivable Expiry (`accountReceivableExpiryJob`) | `CC_EXPIRY_CRON` (default `5 * * * *`) | Flips PENDING `AccountReceivable` (cuenta de cobro) rows past `validUntil` to EXPIRED (batch `CC_EXPIRY_BATCH_SIZE`, default 100). Advisory lock `82636504`. |
+| Welcome Email Fallback (`welcomeEmailFallbackJob`) | `WELCOME_FALLBACK_CRON` (default `15 * * * *`) | Ships the welcome email `WELCOME_FALLBACK_HOURS` (default 24) after signup for users who never completed the `LocalePreferenceModal` handoff. Advisory lock `82636505`. |
+
+`resultSyncJob.ts` is **not** a scheduled job — its `start`/`stop`/`triggerManual` exports were removed as dead code. Only `getJobStatus()` survives, consumed by the admin instance UI. SmartSync + Live Scores are the active sync mechanisms.
 
 All jobs log their activity to stdout (visible in Railway logs).
 
