@@ -1017,6 +1017,25 @@ edit yesterday's documents.
   `AccountReceivableRedemptionBox` is hidden in standard-pool flows
   and the backend rejects issuance for `poolType !== "corporate"`.
 
+**Two ways to pay a CC, and applying a bank transfer (ADR-067).** A CC
+is a billing document, not a prepay. It is paid either:
+- **(A) with the redemption code via card** (MP/Polar) — automatic; the
+  redemption lock + capacity application happen inside
+  `paymentService.initiateCheckout` → `markPaymentCompleted`; or
+- **(B) by bank transfer** — the client wires the money and the admin
+  applies the capacity to the pool the client names, via
+  `applyPaidAccountReceivableToPool` (`POST /admin/sales/account-
+  receivables/:id/apply { poolId }`). One transaction: mark `PAID` if
+  needed → create a `COMPLETED` `PoolPayment` (attributed to the pool's
+  host, `polarOrderId = "manual-cc-{consecutive}"`) → expand
+  `maxParticipants` to `targetCapacity` → link the CC → audit. A
+  confirmation receipt is emailed to the CC contact.
+- **Single-apply invariant:** a CC is applied to **at most one** pool —
+  `AccountReceivable.poolPaymentId != null` is the lock; a second apply
+  is `409 ALREADY_APPLIED`. Leg B does **not** re-price (the paid CC
+  amount is the source of truth — owner decision, ADR-067), unlike the
+  card-leg drift guard.
+
 ### 14.4 Reconciliation
 
 - `paymentReconcileJob` (ADR-060) transitions stale `PoolPayment`s.

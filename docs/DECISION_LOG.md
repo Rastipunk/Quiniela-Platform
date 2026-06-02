@@ -4886,4 +4886,39 @@ Forensic mapping (`LOCALE_RESOLUTION_AUDIT.md` §2) identified three bugs in the
 
 ---
 
+## ADR-067: Applying a transfer-paid Cuenta de Cobro to a pool
+
+**Date:** 2026-06-02 | **Status:** Accepted
+
+**Context:** A Cuenta de Cobro (CC) is a billing document, not a prepay. It can be paid two ways (owner-confirmed model): **(A) with the redemption code via card** (MP/Polar) — automatic, `paymentService.initiateCheckout` locks the CC `PENDING→REDEEMED` and `markPaymentCompleted` expands the pool; or **(B) by bank transfer** — the client wires the money, the admin reconciles by hand and applies the capacity to the pool the client names.
+
+Leg (B) was broken in half. `PATCH /admin/sales/account-receivables/:id/status → PAID` (`markAccountReceivablePaid`) only flipped the status — it took no `poolId`, created no `PoolPayment`, expanded no capacity. So a transfer-paid CC ended up `PAID` with `poolPaymentId = null` and the capacity never applied (the CC-2026-0002 / Native Intelligence incident, resolved by a one-off script on 2026-06-02 before this ADR). There was no clean, repeatable path — and it would recur for every corporate client paying by transfer.
+
+**Decision:** Add an admin "register payment and apply" path that produces the exact same final state as a completed card redemption, without charging again.
+
+**Implementation:**
+- **Service** `applyPaidAccountReceivableToPool({ ccId, poolId, adminUserId })` (`accountReceivableService.ts`), one transaction: mark `PAID` if not already → create a `COMPLETED` `PoolPayment` attributed to the pool's host (`polarOrderId = "manual-cc-{consecutive}"`) → expand `Pool.maxParticipants` to `cc.targetCapacity` (+ reset capacity-notification flags) → link the CC (`poolPaymentId`, `redeemedAtUtc`, `redeemedByUserId`) → `AuditEvent` (`appliedManually`, `method: "bank_transfer"`).
+- **Single-apply lock:** `poolPaymentId != null` is the guard — a CC can only ever be applied to one pool; a second attempt is `409 ALREADY_APPLIED`. Also rejects `CANCELLED`/`EXPIRED`/`REDEEMED` and nothing-to-apply (capacity already ≥ target).
+- **Endpoints:** `POST /admin/sales/account-receivables/:id/apply { poolId }` + `GET /admin/sales/pools/search?q=` (pool picker by name or host email).
+- **Confirmation email:** reuses `sendPaymentReceiptEmail` (it already renders pool, capacity change, amount, CC consecutive) — fire-and-forget, sent to the CC's contact.
+- **UI:** a button + pool-search modal on the CC detail screen (admin, Spanish-only like the rest of `admin/ventas`).
+
+**Decisions taken (owner, 2026-06-02):**
+- **No re-pricing / no drift handling.** The CC amount the client paid is the source of truth; the price will not change. (Diverges from the card-redemption drift guard in ADR-061 — intentional, scoped to leg B.)
+- **One button** ("register payment and apply"): marks PAID if needed and applies in one step (idempotent via the single-apply lock).
+- **CC stays `PAID`** after applying (no new status); `poolPaymentId` is the "applied" signal.
+
+**Consequences:**
+- ✅ Transfer-paid CCs have a clean, audited, repeatable application path; no more manual scripts.
+- ✅ Capacity always flows through a `PoolPayment` with a contable trace (respects the ADR-061 invariant) and the CC is locked against double application.
+- ⚠️ The `PoolPayment` is attributed to the pool's host, who may differ from the CC's contact email (cross-account case). Intentional — the capacity belongs to the pool; the audit row records the CC.
+- ⚠️ No drift guard on leg B by design; if pricing ever does change, a transfer-paid CC applies at its original amount. Acceptable per the owner.
+
+**Related code:**
+- Backend: `backend/src/services/sales/accountReceivableService.ts` (`applyPaidAccountReceivableToPool`, `searchPoolsForCcApply`), `backend/src/routes/adminSales.ts`.
+- Frontend: `frontend-next/src/lib/api/sales.ts`, `frontend-next/src/components/AdminCcDetailContent.tsx`.
+- Spec: `SALES_CC_APPLY_PLAN.md`.
+
+---
+
 **END OF DOCUMENT**
