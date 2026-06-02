@@ -6,14 +6,14 @@ import { prisma } from "../../db";
 vi.mock("../../db", () => ({
   prisma: {
     accountReceivable: { findUnique: vi.fn(), update: vi.fn() },
-    pool: { findUnique: vi.fn(), update: vi.fn() },
+    pool: { findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() },
     poolPayment: { create: vi.fn() },
     auditEvent: { create: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
 
-import { applyPaidAccountReceivableToPool } from "./accountReceivableService";
+import { applyPaidAccountReceivableToPool, searchPoolsForCcApply } from "./accountReceivableService";
 import { ServiceError } from "../authService";
 
 const ADMIN = "admin-1";
@@ -137,5 +137,28 @@ describe("applyPaidAccountReceivableToPool", () => {
       (c: any[]) => c[0]?.data?.status === "PAID",
     );
     expect(paid).toBe(true);
+  });
+});
+
+describe("searchPoolsForCcApply", () => {
+  it("returns [] for queries shorter than 2 chars without hitting the DB", async () => {
+    const out = await searchPoolsForCcApply("a");
+    expect(out).toEqual([]);
+    expect(prisma.pool.findMany).not.toHaveBeenCalled();
+  });
+
+  it("maps the corporate host email into hostEmail", async () => {
+    (prisma.pool.findMany as any).mockResolvedValue([
+      {
+        id: "pool-1", name: "Native World Cup 2026", status: "ACTIVE",
+        maxParticipants: 2, organizationId: "org-1",
+        members: [{ role: "CORPORATE_HOST", user: { email: "caterine@yahoo.com" } }],
+      },
+    ]);
+    const out = await searchPoolsForCcApply("native");
+    expect(prisma.pool.findMany).toHaveBeenCalled();
+    expect(out).toEqual([
+      expect.objectContaining({ id: "pool-1", name: "Native World Cup 2026", hostEmail: "caterine@yahoo.com" }),
+    ]);
   });
 });

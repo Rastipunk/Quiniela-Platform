@@ -522,3 +522,68 @@ export async function applyPaidAccountReceivableToPool(
     clientContactEmail: cc.clientContactEmail,
   };
 }
+
+// ─── Pool search for the CC-apply admin UI ───────────────────
+//
+// Powers the "apply to a pool" picker: matches by pool name OR by the
+// email of an active HOST/CORPORATE_HOST. Capped to keep the picker
+// snappy. Read-only.
+
+export interface PoolSearchResult {
+  id: string;
+  name: string;
+  status: string;
+  maxParticipants: number | null;
+  organizationId: string | null;
+  hostEmail: string | null;
+}
+
+const POOL_SEARCH_LIMIT = 20;
+
+export async function searchPoolsForCcApply(q: string): Promise<PoolSearchResult[]> {
+  const term = q.trim();
+  if (term.length < 2) return [];
+
+  const pools = await prisma.pool.findMany({
+    where: {
+      OR: [
+        { name: { contains: term, mode: "insensitive" } },
+        {
+          members: {
+            some: {
+              role: { in: ["CORPORATE_HOST", "HOST"] },
+              status: "ACTIVE",
+              user: { email: { contains: term, mode: "insensitive" } },
+            },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      maxParticipants: true,
+      organizationId: true,
+      members: {
+        where: { role: { in: ["CORPORATE_HOST", "HOST"] }, status: "ACTIVE" },
+        select: { role: true, user: { select: { email: true } } },
+      },
+    },
+    orderBy: { createdAtUtc: "desc" },
+    take: POOL_SEARCH_LIMIT,
+  });
+
+  return pools.map((p) => {
+    const host =
+      p.members.find((m) => m.role === "CORPORATE_HOST") ?? p.members.find((m) => m.role === "HOST");
+    return {
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      maxParticipants: p.maxParticipants,
+      organizationId: p.organizationId,
+      hostEmail: host?.user.email ?? null,
+    };
+  });
+}

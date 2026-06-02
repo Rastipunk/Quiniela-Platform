@@ -29,6 +29,8 @@ import {
   listAccountReceivables,
   cancelAccountReceivable,
   markAccountReceivablePaid,
+  applyPaidAccountReceivableToPool,
+  searchPoolsForCcApply,
 } from "../services/sales/accountReceivableService";
 import { isTermValidForLocale, SALE_TERMS, type SaleLocale } from "../lib/saleTerms";
 import { renderQuotePdf } from "../pdf/renderQuotePdf";
@@ -287,6 +289,42 @@ adminSalesRouter.patch("/account-receivables/:id/status", async (req, res) => {
       ? await cancelAccountReceivable(req.params.id)
       : await markAccountReceivablePaid(req.params.id);
     return sendOk(res, { id: updated.id, status: updated.status });
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// Pool picker for the "apply CC to a pool" flow. ?q matches pool name or
+// an active host's email. Min 2 chars (the service returns [] otherwise).
+adminSalesRouter.get("/pools/search", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q : "";
+  try {
+    const results = await searchPoolsForCcApply(q);
+    return sendData(res, { pools: results });
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// Register a bank-transfer payment and apply the CC's capacity to a
+// pool (leg B). One-button: marks PAID if needed, creates the COMPLETED
+// PoolPayment, expands the pool, and locks the CC against re-apply.
+// Body: { poolId }.
+const applyCcSchema = z.object({ poolId: z.string().uuid() });
+
+adminSalesRouter.post("/account-receivables/:id/apply", async (req, res) => {
+  const parsed = applyCcSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+  try {
+    const result = await applyPaidAccountReceivableToPool({
+      ccId: req.params.id,
+      poolId: parsed.data.poolId,
+      adminUserId: req.auth!.userId,
+    });
+    // Commit 3 wires the confirmation email here.
+    return sendOk(res, asRecord(result));
   } catch (err) {
     return handleServiceError(res, err);
   }
