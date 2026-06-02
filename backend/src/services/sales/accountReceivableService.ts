@@ -341,3 +341,184 @@ export async function releaseAccountReceivable(
     },
   });
 }
+
+// ─── Apply a transfer-paid CC to a pool (admin) ──────────────
+//
+// The "(B) bank transfer" leg of CC payment: the client wired the
+// money, the admin reconciles by hand and applies the paid capacity to
+// the pool the client indicated. This is the missing bridge between
+// "PAID" and "capacity applied" — the card leg (A) does it inside
+// initiateCheckout + markPaymentCompleted, but markAccountReceivablePaid
+// only flipped the status. See SALES_CC_APPLY_PLAN.md + ADR-067.
+//
+// Idempotent & single-apply: `poolPaymentId != null` is the lock — a CC
+// can only ever be applied to one pool. No re-pricing (the CC amount the
+// client paid is the source of truth, per the owner's decision).
+
+export interface ApplyPaidCcInput {
+  ccId: string;
+  poolId: string;
+  adminUserId: string;
+}
+
+export interface ApplyPaidCcResult {
+  ccId: string;
+  consecutive: string;
+  poolId: string;
+  poolPaymentId: string;
+  fromCapacity: number;
+  toCapacity: number;
+  /** The CC's contact email — commit 3 uses it to send the confirmation. */
+  clientContactEmail: string;
+}
+
+export async function applyPaidAccountReceivableToPool(
+  input: ApplyPaidCcInput,
+): Promise<ApplyPaidCcResult> {
+  const cc = await prisma.accountReceivable.findUnique({ where: { id: input.ccId } });
+  if (!cc) throw new ServiceError("NOT_FOUND", 404, { message: "Account receivable not found" });
+
+  // Single-apply lock: once linked to a PoolPayment it can never reapply.
+  if (cc.poolPaymentId) {
+    throw new ServiceError("ALREADY_APPLIED", 409, {
+      message: "This account receivable was already applied to a pool",
+      poolPaymentId: cc.poolPaymentId,
+    });
+  }
+  if (cc.status === "CANCELLED" || cc.status === "EXPIRED") {
+    throw new ServiceError("CONFLICT", 409, {
+      message: `Account receivable status ${cc.status} cannot be applied`,
+    });
+  }
+  // REDEEMED means it is mid-card-checkout (leg A); the automatic flow
+  // owns it — don't double-apply by hand.
+  if (cc.status === "REDEEMED") {
+    throw new ServiceError("CONFLICT", 409, {
+      message: "Account receivable is in card checkout (REDEEMED); it will apply automatically",
+    });
+  }
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: input.poolId },
+    select: {
+      id: true,
+      maxParticipants: true,
+      organizationId: true,
+      members: {
+        where: { role: { in: ["CORPORATE_HOST", "HOST"] }, status: "ACTIVE" },
+        select: { userId: true, role: true },
+      },
+    },
+  });
+  if (!pool) throw new ServiceError("NOT_FOUND", 404, { message: "Pool not found" });
+
+  const fromCapacity = pool.maxParticipants ?? CORPORATE_FREE_LIMIT;
+  if (cc.targetCapacity <= fromCapacity) {
+    throw new ServiceError("CONFLICT", 409, {
+      message: `Nothing to apply: pool capacity (${fromCapacity}) is already >= CC targetCapacity (${cc.targetCapacity})`,
+    });
+  }
+
+  // Prefer the CORPORATE_HOST, fall back to a HOST. The PoolPayment is
+  // attributed to whoever owns the pool (may differ from the CC contact
+  // — cross-account case).
+  const host =
+    pool.members.find((m) => m.role === "CORPORATE_HOST")?.userId ??
+    pool.members.find((m) => m.role === "HOST")?.userId;
+  if (!host) {
+    throw new ServiceError("VALIDATION_ERROR", 400, {
+      message: "Pool has no active HOST/CORPORATE_HOST to attribute the payment to",
+    });
+  }
+
+  // PoolPayment.amountUsd is USD cents (required). For a COP CC we keep
+  // the COP the client paid and derive the USD-cents equivalent from the
+  // pricing library; for a USD CC we use the CC's own cents.
+  const amountCop = cc.amountCop;
+  const amountUsdCents =
+    cc.currency === "USD"
+      ? cc.amountUsdCents ?? 0
+      : usdToCents(calculateUpgradePrice("corporate", fromCapacity, cc.targetCapacity));
+
+  const payment = await prisma.$transaction(async (tx) => {
+    // 1. Mark PAID if it wasn't already (one-button "register payment + apply").
+    if (cc.status !== "PAID") {
+      await tx.accountReceivable.update({
+        where: { id: cc.id },
+        data: { status: "PAID", paidAtUtc: cc.paidAtUtc ?? new Date() },
+      });
+    }
+
+    // 2. PoolPayment COMPLETED — the contable trace of the applied capacity.
+    const created = await tx.poolPayment.create({
+      data: {
+        poolId: input.poolId,
+        userId: host,
+        polarCheckoutId: null,
+        polarOrderId: `manual-cc-${cc.consecutive}`,
+        status: "COMPLETED",
+        amountUsd: amountUsdCents,
+        amountCop,
+        currency: cc.currency.toLowerCase(),
+        fromCapacity,
+        toCapacity: cc.targetCapacity,
+        poolType: "corporate",
+        accountReceivableId: cc.id,
+        paidAtUtc: cc.paidAtUtc ?? new Date(),
+      },
+    });
+
+    // 3. Expand the pool + re-arm capacity notifications.
+    await tx.pool.update({
+      where: { id: input.poolId },
+      data: {
+        maxParticipants: cc.targetCapacity,
+        poolFullNotifiedAt: null,
+        capacityWarningNotifiedAt: null,
+      },
+    });
+
+    // 4. Link the CC to the payment — the single-apply lock.
+    await tx.accountReceivable.update({
+      where: { id: cc.id },
+      data: {
+        poolPaymentId: created.id,
+        redeemedAtUtc: new Date(),
+        redeemedByUserId: input.adminUserId,
+      },
+    });
+
+    // 5. Audit trail.
+    await tx.auditEvent.create({
+      data: {
+        actorUserId: input.adminUserId,
+        action: "PAYMENT_COMPLETED",
+        entityType: "Pool",
+        entityId: input.poolId,
+        poolId: input.poolId,
+        dataJson: {
+          appliedManually: true,
+          method: "bank_transfer",
+          cc: cc.consecutive,
+          fromCapacity,
+          toCapacity: cc.targetCapacity,
+          amountCop,
+          amountUsdCents,
+          paymentId: created.id,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return created;
+  });
+
+  return {
+    ccId: cc.id,
+    consecutive: cc.consecutive,
+    poolId: input.poolId,
+    poolPaymentId: payment.id,
+    fromCapacity,
+    toCapacity: cc.targetCapacity,
+    clientContactEmail: cc.clientContactEmail,
+  };
+}
