@@ -32,6 +32,8 @@ import {
   applyPaidAccountReceivableToPool,
   searchPoolsForCcApply,
 } from "../services/sales/accountReceivableService";
+import { sendPaymentReceiptEmail } from "../lib/email";
+import { fireAndForget } from "../lib/asyncHelpers";
 import { isTermValidForLocale, SALE_TERMS, type SaleLocale } from "../lib/saleTerms";
 import { renderQuotePdf } from "../pdf/renderQuotePdf";
 import { renderCcPdf } from "../pdf/renderCcPdf";
@@ -323,7 +325,33 @@ adminSalesRouter.post("/account-receivables/:id/apply", async (req, res) => {
       poolId: parsed.data.poolId,
       adminUserId: req.auth!.userId,
     });
-    // Commit 3 wires the confirmation email here.
+
+    // Confirmation receipt to the client who paid (fire-and-forget —
+    // a mail outage must not roll back the applied capacity). Reuses the
+    // payment-receipt template: it already renders pool, capacity
+    // change, amount and the CC consecutive. Same shape as the card leg.
+    const amountStr = result.currency === "COP"
+      ? (result.amountCop ?? 0).toLocaleString("es-CO")
+      : ((result.amountUsdCents ?? 0) / 100).toFixed(2);
+    fireAndForget(
+      "sales:cc-applied-receipt",
+      sendPaymentReceiptEmail({
+        to: result.clientContactEmail,
+        userId: result.hostUserId,
+        displayName: result.clientLegalName,
+        poolName: result.poolName,
+        poolId: result.poolId,
+        transactionId: `manual-cc-${result.consecutive}`,
+        amount: amountStr,
+        currency: result.currency,
+        fromCapacity: result.fromCapacity,
+        toCapacity: result.toCapacity,
+        paidAt: new Date(),
+        locale: result.locale,
+        accountReceivableNumber: result.consecutive,
+      }),
+    );
+
     return sendOk(res, asRecord(result));
   } catch (err) {
     return handleServiceError(res, err);

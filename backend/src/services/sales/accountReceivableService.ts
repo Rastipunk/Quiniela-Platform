@@ -368,8 +368,15 @@ export interface ApplyPaidCcResult {
   poolPaymentId: string;
   fromCapacity: number;
   toCapacity: number;
-  /** The CC's contact email — commit 3 uses it to send the confirmation. */
+  // Fields the route uses to send the confirmation receipt email.
   clientContactEmail: string;
+  clientLegalName: string;
+  poolName: string;
+  hostUserId: string;
+  locale: string;
+  currency: string;
+  amountCop: number | null;
+  amountUsdCents: number | null;
 }
 
 export async function applyPaidAccountReceivableToPool(
@@ -402,6 +409,7 @@ export async function applyPaidAccountReceivableToPool(
     where: { id: input.poolId },
     select: {
       id: true,
+      name: true,
       maxParticipants: true,
       organizationId: true,
       members: {
@@ -520,6 +528,13 @@ export async function applyPaidAccountReceivableToPool(
     fromCapacity,
     toCapacity: cc.targetCapacity,
     clientContactEmail: cc.clientContactEmail,
+    clientLegalName: cc.clientLegalName,
+    poolName: pool.name,
+    hostUserId: host,
+    locale: cc.locale,
+    currency: cc.currency,
+    amountCop,
+    amountUsdCents,
   };
 }
 
