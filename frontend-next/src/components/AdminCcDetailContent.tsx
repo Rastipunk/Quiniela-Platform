@@ -8,8 +8,11 @@ import {
   cancelAccountReceivable,
   getAccountReceivable,
   markAccountReceivablePaid,
+  searchPoolsForApply,
+  applyAccountReceivable,
   type AccountReceivableRow,
   type AccountReceivableStatus,
+  type PoolSearchRow,
 } from "@/lib/api";
 import { formatPrice } from "@/lib/pricing";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -50,7 +53,14 @@ export default function AdminCcDetailContent({ ccId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [action, setAction] = useState<"" | "paying" | "cancelling">("");
+  const [action, setAction] = useState<"" | "paying" | "cancelling" | "applying">("");
+
+  // "Apply to a pool" modal state.
+  const [showApply, setShowApply] = useState(false);
+  const [poolQuery, setPoolQuery] = useState("");
+  const [poolResults, setPoolResults] = useState<PoolSearchRow[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedPool, setSelectedPool] = useState<PoolSearchRow | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +131,49 @@ export default function AdminCcDetailContent({ ccId }: Props) {
     }
   }
 
+  // Debounced pool search while the apply modal is open.
+  useEffect(() => {
+    if (!showApply) return;
+    const q = poolQuery.trim();
+    if (q.length < 2) { setPoolResults([]); return; }
+    const token = getToken();
+    if (!token) return;
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const { pools } = await searchPoolsForApply(token, q);
+        setPoolResults(pools);
+      } catch {
+        setPoolResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [poolQuery, showApply]);
+
+  async function handleApply() {
+    if (!cc || !selectedPool) return;
+    const token = getToken();
+    if (!token) return;
+    setAction("applying");
+    setError(null);
+    try {
+      await applyAccountReceivable(token, cc.id, selectedPool.id);
+      const { accountReceivable } = await getAccountReceivable(token, cc.id);
+      setCc(accountReceivable);
+      setShowApply(false);
+      setSelectedPool(null);
+      setPoolQuery("");
+      setPoolResults([]);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      setError(e.message || "Error al aplicar la cuenta de cobro al pool");
+    } finally {
+      setAction("");
+    }
+  }
+
   if (accessDenied) {
     return (
       <div style={{ maxWidth: 600, margin: "80px auto", textAlign: "center", padding: "0 16px" }}>
@@ -135,6 +188,9 @@ export default function AdminCcDetailContent({ ccId }: Props) {
 
   const canMarkPaid = cc && (cc.status === "PENDING" || cc.status === "REDEEMED");
   const canCancel = cc && (cc.status === "PENDING" || cc.status === "REDEEMED");
+  // Apply (bank-transfer leg): only while not already applied and not in
+  // a terminal/card-checkout state. PAID-not-yet-applied is the main case.
+  const canApply = cc && !cc.poolPaymentId && (cc.status === "PENDING" || cc.status === "PAID");
 
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: isMobile ? "24px 16px" : "32px 16px" }}>
@@ -225,6 +281,26 @@ export default function AdminCcDetailContent({ ccId }: Props) {
                 {action === "paying" ? "Marcando…" : "✓ Marcar como pagada"}
               </button>
             )}
+            {canApply && (
+              <button
+                type="button"
+                onClick={() => { setShowApply(true); setError(null); }}
+                disabled={action !== ""}
+                style={{
+                  padding: "12px 20px",
+                  borderRadius: radii.md,
+                  border: "none",
+                  background: colors.brandGradient,
+                  color: "white",
+                  fontWeight: fontWeight.semibold,
+                  fontSize: fontSize.sm,
+                  cursor: action !== "" ? "not-allowed" : "pointer",
+                  minHeight: 48,
+                }}
+              >
+                💳 Registrar pago y aplicar a un pool
+              </button>
+            )}
             {canCancel && (
               <button
                 type="button"
@@ -286,6 +362,117 @@ export default function AdminCcDetailContent({ ccId }: Props) {
             {cc.poolPaymentId && <KV label="Pago asociado" value={cc.poolPaymentId.slice(0, 8)} />}
           </DetailSection>
         </>
+      )}
+
+      {/* Apply-to-pool modal */}
+      {showApply && cc && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => { if (action === "") setShowApply(false); }}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 16, zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface)", borderRadius: radii.lg, padding: spacing.lg,
+              width: "100%", maxWidth: 520, maxHeight: "85vh", overflowY: "auto",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
+            }}
+          >
+            <h3 style={{ margin: 0, marginBottom: 4, color: "var(--text)", fontSize: "1.2rem", fontWeight: 700 }}>
+              Aplicar {cc.consecutive} a un pool
+            </h3>
+            <p style={{ color: "var(--muted)", fontSize: fontSize.sm, marginTop: 0, marginBottom: spacing.md }}>
+              Confirma que recibiste la transferencia. Se ampliará la capacidad del pool a <strong>{cc.targetCapacity}</strong> cupos. No se cobra de nuevo.
+            </p>
+
+            {!selectedPool ? (
+              <>
+                <input
+                  autoFocus
+                  type="text"
+                  value={poolQuery}
+                  onChange={(e) => setPoolQuery(e.target.value)}
+                  placeholder="Buscar pool por nombre o email del host…"
+                  style={{
+                    width: "100%", padding: "12px 14px", borderRadius: radii.md,
+                    border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)",
+                    fontSize: fontSize.sm, marginBottom: spacing.sm, boxSizing: "border-box",
+                  }}
+                />
+                {searching && <p style={{ color: "var(--muted)", fontSize: fontSize.sm }}>Buscando…</p>}
+                {!searching && poolQuery.trim().length >= 2 && poolResults.length === 0 && (
+                  <p style={{ color: "var(--muted)", fontSize: fontSize.sm }}>Sin resultados.</p>
+                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {poolResults.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSelectedPool(p)}
+                      style={{
+                        textAlign: "left", padding: "10px 12px", borderRadius: radii.md,
+                        border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer",
+                      }}
+                    >
+                      <div style={{ color: "var(--text)", fontWeight: 600, fontSize: fontSize.sm }}>{p.name}</div>
+                      <div style={{ color: "var(--muted)", fontSize: fontSize.xs }}>
+                        {p.status} · cap actual {p.maxParticipants ?? "—"} · host {p.hostEmail ?? "—"}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ border: "1px solid var(--border)", borderRadius: radii.md, padding: spacing.md, marginBottom: spacing.md }}>
+                <div style={{ color: "var(--text)", fontWeight: 600 }}>{selectedPool.name}</div>
+                <div style={{ color: "var(--muted)", fontSize: fontSize.sm, marginTop: 4 }}>
+                  Capacidad: <strong>{selectedPool.maxParticipants ?? "—"} → {cc.targetCapacity}</strong>
+                </div>
+                <div style={{ color: "var(--muted)", fontSize: fontSize.sm }}>Monto CC: {formatAmount(cc)}</div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPool(null)}
+                  style={{ marginTop: 8, background: "none", border: "none", color: colors.brand, cursor: "pointer", fontSize: fontSize.sm, padding: 0 }}
+                >
+                  ← Elegir otro pool
+                </button>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: spacing.md }}>
+              <button
+                type="button"
+                onClick={() => { if (action === "") { setShowApply(false); setSelectedPool(null); } }}
+                disabled={action !== ""}
+                style={{
+                  padding: "10px 16px", borderRadius: radii.md, border: "1px solid var(--border)",
+                  background: "var(--surface)", color: "var(--muted)", cursor: "pointer", fontSize: fontSize.sm, minHeight: 44,
+                }}
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={handleApply}
+                disabled={!selectedPool || action !== ""}
+                style={{
+                  padding: "10px 16px", borderRadius: radii.md, border: "none",
+                  background: !selectedPool ? "var(--border)" : colors.brandGradient,
+                  color: "white", fontWeight: fontWeight.semibold, fontSize: fontSize.sm,
+                  cursor: !selectedPool || action !== "" ? "not-allowed" : "pointer", minHeight: 44,
+                }}
+              >
+                {action === "applying" ? "Aplicando…" : "Confirmar y aplicar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -299,6 +299,50 @@ export function accountReceivablePdfUrl(id: string): string {
   return `${API_BASE}/admin/sales/account-receivables/${id}/pdf`;
 }
 
+// ─── CC apply (bank-transfer leg) ───────────────────────────────────
+
+export interface PoolSearchRow {
+  id: string;
+  name: string;
+  status: string;
+  maxParticipants: number | null;
+  organizationId: string | null;
+  hostEmail: string | null;
+}
+
+// Pool picker for the "apply CC to a pool" modal. Matches pool name or
+// an active host's email; backend returns [] for q shorter than 2.
+export async function searchPoolsForApply(
+  _token: string,
+  q: string,
+): Promise<{ pools: PoolSearchRow[] }> {
+  return requestJson<{ pools: PoolSearchRow[] }>(
+    `/admin/sales/pools/search?q=${encodeURIComponent(q)}`,
+    { method: "GET" },
+  );
+}
+
+export interface ApplyCcResult {
+  ccId: string;
+  consecutive: string;
+  poolId: string;
+  poolPaymentId: string;
+  fromCapacity: number;
+  toCapacity: number;
+}
+
+// Register the bank transfer + apply the CC's capacity to a pool.
+export async function applyAccountReceivable(
+  _token: string,
+  id: string,
+  poolId: string,
+): Promise<ApplyCcResult> {
+  return requestJson<ApplyCcResult>(
+    `/admin/sales/account-receivables/${id}/apply`,
+    { method: "POST", body: JSON.stringify({ poolId }) },
+  );
+}
+
 // ─── Customer-facing redemption ───────────────────────────────────
 
 // Summary returned by the redemption endpoint when the code matches a
