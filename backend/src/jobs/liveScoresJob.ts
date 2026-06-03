@@ -12,6 +12,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { getScoresServiceClient, LiveScore } from "../services/scoresService";
+import { deriveNinetyMinuteScore } from "../services/scoresService/timeline";
 import { writeAuditEvent } from "../lib/audit";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { FINISHED_STATUSES } from "../services/apiFootball/types";
@@ -296,10 +297,15 @@ async function publishScraperResult(
     }
   }
 
-  // d. For AET/PEN matches, store the 90-minute score separately
-  const wentToExtraTime = score.status === "AET" || score.status === "PEN";
-  const homeGoals90 = wentToExtraTime ? score.fulltimeHome : null;
-  const awayGoals90 = wentToExtraTime ? score.fulltimeAway : null;
+  // d. For matches that went to extra time, store the minute-90 score
+  //    separately. The scores service no longer fills fulltime/extratime
+  //    (always null) — derive end-of-regulation from the timeline[] (the
+  //    `ET` milestone carries the score with which ET began). See
+  //    FOR-PICKS4ALL-INTEGRATION §4-§5 and scoresService/timeline.ts.
+  const { homeGoals90, awayGoals90 } = deriveNinetyMinuteScore(
+    score.timeline,
+    score.status,
+  );
 
   // Build externalDataJson snapshot
   const externalDataJson: Prisma.InputJsonValue = {
