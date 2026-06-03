@@ -47,6 +47,29 @@ export interface LiveScore {
   /** Kickoff observed by sources (median if multiple report it).
    *  Falls back to registered kickoff if no source reported. */
   actualKickoffUtc?: string;
+  /** Confirmed-by-consensus milestones, oldest to newest. Append-only and
+   *  monotonic (never regresses). Empty until a publishable milestone
+   *  exists. Source of truth for the minute-90 / end-of-ET score, since
+   *  the fulltime and extratime fields are always null (see
+   *  FOR-PICKS4ALL-INTEGRATION sections 4 and 5). May be absent if the
+   *  scraper predates the timeline change. */
+  timeline?: TimelineEvent[];
+}
+
+/** One confirmed milestone in a match's timeline (scores service §4). */
+export interface TimelineEvent {
+  /** API-Football status code of the milestone (1H/HT/2H/ET/BT/P/FT/AET/PEN/…). */
+  status: string;
+  /** ISO when the milestone was confirmed, or null on an invalid source date. */
+  at: string | null;
+  /** Regulation score at the milestone (penalties separate). */
+  homeGoals: number;
+  awayGoals: number;
+  penaltyHome: number | null;
+  penaltyAway: number | null;
+  minute: number | null;
+  /** Sources that confirmed this milestone. */
+  confirmedBy: string[];
 }
 
 export interface LiveScoresResponse {
@@ -135,6 +158,29 @@ interface HealthResponse {
 // ============================================================================
 // Client
 // ============================================================================
+
+/**
+ * Typed error from the scores service so callers can react to the HTTP
+ * status instead of string-matching. Maps the contract's status codes
+ * (FOR-PICKS4ALL-INTEGRATION §1): 503 fail-closed, 401/403 auth, 429
+ * rate-limited (with Retry-After seconds).
+ */
+export class ScoresServiceError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly retryAfterSec: number | null,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ScoresServiceError";
+  }
+  /** Service has no API key configured (fail-closed). Transient/config. */
+  get isUnavailable(): boolean { return this.status === 503; }
+  /** Missing header (401) or invalid token (403) — needs ops attention. */
+  get isAuthError(): boolean { return this.status === 401 || this.status === 403; }
+  /** Too many requests — honour retryAfterSec. */
+  get isRateLimited(): boolean { return this.status === 429; }
+}
 
 export class ScoresServiceClient {
   /**
@@ -248,8 +294,14 @@ export class ScoresServiceClient {
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(
-          `[ScoresService] ${method} ${path} returned ${res.status}: ${text.slice(0, 200)}`
+        const retryAfterSec =
+          res.status === 429
+            ? Number(res.headers.get("retry-after")) || null
+            : null;
+        throw new ScoresServiceError(
+          res.status,
+          retryAfterSec,
+          `[ScoresService] ${method} ${path} returned ${res.status}: ${text.slice(0, 200)}`,
         );
       }
 
