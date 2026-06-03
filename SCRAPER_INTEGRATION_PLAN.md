@@ -113,3 +113,8 @@ cierra el partido. El scraper no reabrirá ese partido (brief §6.7).
 
 ## Versión
 - v1 — 2026-06-02 — plan unificado brief-scraper + audit-scoring, pendiente "Go".
+- v2 — 2026-06-02 — **EJECUTADO.** Commits 1-6 en `feat/scraper-integration`
+  (cliente+timeline, goals90, ABD+confirmaciones≥3, detector de atasco,
+  dedup FINISHED_STATUSES, docs). Formalizado en **ADR-068**;
+  `SCORING_RESULTS_AUDIT.md` cerrado (§10). Pendiente: acción única §4
+  (desatascar la final del 30-may por override, en dry-run).

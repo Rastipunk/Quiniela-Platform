@@ -279,8 +279,35 @@ the scraper goes silent / reverts to a non-terminal status:
 4. Consider a time-based finalize of an existing provisional score once
    well past expected end, with the source marked accordingly.
 
+## 10. Resolution — SHIPPED (2026-06-02)
+
+Root fix (§9-B) implemented as the picks4all-scores v2 integration
+(**ADR-068**), on branch `feat/scraper-integration`:
+
+1. **`NS` regression can't recur** — the scores service is now monotonic
+   (terminal states are final); the platform also never synthesizes `NS`
+   from missing data (a fixture absent from `matches[]` is skipped, not
+   reset).
+2. **Minute-90 from `timeline[]`** (`deriveNinetyMinuteScore`) — the
+   empate+penales case (1-1 → PEN) now stores `goals90 = 1-1`,
+   `penalties = 4-3` correctly, instead of reading the now-`null`
+   `fulltime` fields.
+3. **Confirmation gate** — finalization needs ≥3 sources on the terminal
+   milestone.
+4. **Stale detector** (`staleDetector.ts`, >210 min) + **undecidable-
+   knockout safeguard** (`structuralAutoPublish.ts`) — the silent-limbo
+   class of bug now produces a one-time admin alert. **Never fails
+   silent.**
+
+The §9-A operational unblock of the 30-may final (host override) is
+tracked separately as a one-off action.
+
+> **Status: CLOSED.** Further detail in `SCRAPER_INTEGRATION_PLAN.md` and
+> `docs/guides/SCORES_INTEGRATION.md`.
+
 ## Document version
 - v1 — 2026-06-01 — code audit complete; awaiting prod data (§5).
 - v2 — 2026-06-02 — root cause confirmed (§8): scraper reverted to `NS`,
   blocking both finalization and the API-Football fallback; result
   frozen at SCRAPER_PROVISIONAL. Fix proposed (§9).
+- v3 — 2026-06-02 — root fix shipped (§10, ADR-068). Audit closed.

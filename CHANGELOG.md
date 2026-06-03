@@ -8,6 +8,21 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### picks4all-scores v2 integration + scoring/finalization hardening (2026-06-02)
+
+Adopts the scores-service v2 contract and closes the silent-limbo failure mode behind the 30-may Champions final. No schema migration. See **ADR-068**; `SCORING_RESULTS_AUDIT.md` closed.
+
+#### Changed
+- **Minute-90 score now derived from the scraper `timeline[]`** (`scoresService/timeline.ts` · `deriveNinetyMinuteScore`) — the `fulltime`/`extratime` fields are always `null` in v2. The `ET` milestone gives the regulation score; penalties (`penaltyHome/Away`) stay separate and never count toward goals90. Fixes extra-time single matches (the final, one-leg knockouts) scoring off the post-ET result.
+- **`ABD` is now terminal** (`FINISHED_STATUSES`) so abandoned matches aren't polled forever; the duplicated local list in `adminService.ts` reuses the canonical constant.
+- **Typed scores HTTP errors** — `ScoresServiceError` (`isUnavailable` 503 / `isAuthError` 401·403 / `isRateLimited` 429 + `Retry-After`).
+
+#### Added
+- **Confirmation gate** — finalization to `API_CONFIRMED` requires ≥`SCORES_MIN_CONFIRMATIONS` (default 3) sources on the terminal `timeline[]` milestone (`terminalConfirmationCount`), falling back to live `sourcesAgreeing` for legacy feeds.
+- **Stale detector** (`scoresService/staleDetector.ts`) — throttled scan (`SCORES_STALE_SCAN_INTERVAL_MS`, 5min) for AUTO matches not `COMPLETED` >`SCORES_STALE_THRESHOLD_MS` (210min) after kickoff → one-time admin alert (idempotent via `MATCH_STALE_DETECTED` audit), runs even when the scraper is down.
+- **Undecidable-knockout safeguard** (`structuralAutoPublish.ts`) — authoritative knockout result with no derivable winner (draw without penalties, or penalties tied) → one-time `KNOCKOUT_WINNER_UNDECIDABLE` admin alert.
+- New env vars: `SCORES_MIN_CONFIRMATIONS`, `SCORES_STALE_THRESHOLD_MS`, `SCORES_STALE_SCAN_INTERVAL_MS`.
+
 ### Sales (cuenta de cobro), locale resolution, payment observability + parity
 
 Work shipped between 2026-05-12 and 2026-05-27 (migrations `20260512_*` through `20260527_*`). The code-level version is unchanged (`backend/package.json` and `frontend-next/package.json` remain `1.0.0`, `BUILD_VERSION` remains `v1.0.0`); these changes land under `[Unreleased]` until the next version bump.

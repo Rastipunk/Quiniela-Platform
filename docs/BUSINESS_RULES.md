@@ -371,8 +371,12 @@ Higher-priority sources are NEVER overwritten by lower-priority ones.
 **Scraper-first enforcement (AUTO mode):**
 
 - picks4all-scores is the **primary** scoring source. It polls live scores every 15 seconds during matches.
-- After FT, a 5-minute grace period ensures score stability before finalizing as `API_CONFIRMED`.
+- The scraper state machine is **monotonic** (a match never regresses; `FT`/`AET`/`PEN`/`ABD` are terminal). `ABD` (abandoned) counts as finished so it is not polled forever.
+- Before finalizing, the terminal milestone must be confirmed by **≥3 independent sources** (`SCORES_MIN_CONFIRMATIONS`); otherwise polling continues.
+- After a confirmed FT, a 5-minute grace period ensures score stability before finalizing as `API_CONFIRMED`.
+- **Minute-90 score** (for `includeExtraTime=false` phases) is derived from the scraper `timeline[]` (the `ET` milestone), since the legacy `fulltime` fields are no longer populated. Penalties are tracked separately and **never** count toward goals90.
 - API-Football is a **fallback only** — activates 30 minutes after estimated FT if the scraper hasn't reported.
+- **Stale safety net:** a match still not finalized **210 minutes** after kickoff (`SCORES_STALE_THRESHOLD_MS`) triggers a one-time admin alert. A knockout with an authoritative result but no derivable winner (draw without penalties, or penalties tied) also alerts once. (ADR-068.)
 - The host **cannot** publish results from scratch in AUTO mode. Results must come from the scraper or API-Football.
 - The host **can** override an existing confirmed result, but must provide a reason. A warning is shown and an email notification is sent to all pool members.
 - Legacy MANUAL mode instances are exempt from scraper-first enforcement.

@@ -235,6 +235,9 @@ All rate limit values are configurable via environment variables:
 | `SCORES_TRACK_WINDOW_HOURS` | Hours ahead to register fixtures | `24` |
 | `SCORES_GRACE_PERIOD_MS` | Grace period after FT before finalizing | `300000` |
 | `SCORES_FALLBACK_DELAY_MS` | Delay before API-Football fallback | `1800000` |
+| `SCORES_MIN_CONFIRMATIONS` | Min sources confirming the terminal milestone to finalize | `3` |
+| `SCORES_STALE_THRESHOLD_MS` | Age after kickoff a non-finalized match is "stale" (admin alert) | `12600000` |
+| `SCORES_STALE_SCAN_INTERVAL_MS` | Stale-detector scan cadence | `300000` |
 | `FIXTURE_TRACKING_CRON` | Fixture registration cron schedule | `0 * * * *` |
 
 #### Analytics — Google Analytics 4 Measurement Protocol (server-side)

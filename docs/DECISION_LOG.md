@@ -4921,4 +4921,36 @@ Leg (B) was broken in half. `PATCH /admin/sales/account-receivables/:id/status �
 
 ---
 
+## ADR-068: picks4all-scores v2 contract — timeline-derived scoring, confirmation gate, stale detection
+
+**Date:** 2026-06-02 | **Status:** Accepted
+
+**Context:** The scores service was reworked into a **monotonic** state machine (a match never regresses; terminal states `FT`/`AET`/`PEN`/`ABD` are final) and now exposes a per-match `timeline[]` of confirmed milestones. As part of that rework `fulltime*`/`halftime*`/`extratime*` are **always `null`**. Two things broke or were exposed on the Picks4All side:
+
+1. **Minute-90 score derivation.** `liveScoresJob` computed `homeGoals90/awayGoals90` from `score.fulltimeHome` (`homeGoals90 = wentToExtraTime ? score.fulltimeHome : null`). With that field now always `null`, any single match that goes to extra time (the final, one-leg knockouts) would lose its regulation score, so phases configured `includeExtraTime=false` would score off the post-ET result.
+2. **Silent limbo.** The 30-may Champions final sat as `SCRAPER_PROVISIONAL 1-1` forever: the old scraper regressed to `NS`, which blocked both scraper finalization and the API-Football fallback, and nobody was alerted (`SCORING_RESULTS_AUDIT.md` §8). The monotonic machine prevents the `NS` regression, but the platform still had no time-based safety net of its own.
+
+**Decision:** Adopt the v2 contract on the Picks4All side with the timeline as the source of truth for period scores and confirmations, plus our own time-based safety nets (the scraper deliberately never closes by time).
+
+**Implementation:**
+- **Client** (`scoresService/client.ts`): `LiveScore.timeline?: TimelineEvent[]`; typed `ScoresServiceError` (`isUnavailable` 503 / `isAuthError` 401·403 / `isRateLimited` 429 + `Retry-After`).
+- **Minute-90** (`scoresService/timeline.ts` · `deriveNinetyMinuteScore`): the regulation score = the `ET` milestone's goals (the score with which ET began); `null` when the match never reached ET (then `homeGoals/awayGoals` already are regulation) or when ET was reached but the `ET` milestone is missing (no invented value). Penalties never affect goals90.
+- **Confirmation gate** (`liveScoresJob`): finalization to `API_CONFIRMED` requires the terminal `timeline[]` milestone to be confirmed by ≥ `SCORES_MIN_CONFIRMATIONS` (default **3**) sources (`terminalConfirmationCount`); below that the match stays `AWAITING_FINISH`. Falls back to live `sourcesAgreeing` when `timeline[]` is absent (legacy feed).
+- **ABD terminal:** `ABD` added to `FINISHED_STATUSES` so an abandoned match is recognized as over (and routed through the same gate) rather than polled forever. The duplicated local list in `adminService.ts` now reuses the canonical constant.
+- **Stale detector** (`scoresService/staleDetector.ts`): throttled scan (`SCORES_STALE_SCAN_INTERVAL_MS`, default 5 min) for AUTO matches whose `MatchSyncState` is not `COMPLETED` more than `SCORES_STALE_THRESHOLD_MS` (default **210 min**) after kickoff → one-time admin alert, idempotent via a `MATCH_STALE_DETECTED` audit event; runs even when the scraper is down.
+- **Undecidable-knockout safeguard** (`structuralAutoPublish.ts`): when a knockout result is authoritative (`API_CONFIRMED`/`HOST_OVERRIDE`) but no winner is derivable (draw without penalties, or penalties tied), a one-time admin alert (`KNOCKOUT_WINNER_UNDECIDABLE`) instead of waiting forever.
+
+**Decisions taken (owner, 2026-06-02):** stale threshold **210 min** (covers 90' + HT + stoppage + full ET + penalties + margin); confirmation threshold **≥3** sources; the stuck 30-may final is unstuck by a separate one-off host override action, independent of this deploy.
+
+**Consequences:**
+- ✅ Single matches with extra time score correctly off the regulation result; the limbo failure mode is now caught and surfaced within ~210 min even if every automatic path fails.
+- ✅ No schema migration — idempotency uses audit events, not a new `MatchSyncStatus`.
+- ⚠️ A match the scraper can never confirm with 3 sources won't auto-finalize via the scraper; it relies on the API-Football fallback and, failing that, the stale alert + a manual override. Intentional (correctness over speed).
+- ⚠️ `STALE_THRESHOLD = 210 min` assumes no legitimate match runs longer; a rare long suspension would alert. Acceptable — an alert, not an auto-action.
+
+**Related code:** `backend/src/services/scoresService/{client,timeline,staleDetector}.ts`, `backend/src/jobs/liveScoresJob.ts`, `backend/src/services/apiFootball/types.ts`, `backend/src/services/structuralAutoPublish.ts`, `backend/src/lib/constants.ts` (`SCORES`).
+**Spec / audit:** `SCRAPER_INTEGRATION_PLAN.md`, `SCORING_RESULTS_AUDIT.md`.
+
+---
+
 **END OF DOCUMENT**
