@@ -12,7 +12,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { getScoresServiceClient, LiveScore } from "../services/scoresService";
-import { deriveNinetyMinuteScore } from "../services/scoresService/timeline";
+import {
+  deriveNinetyMinuteScore,
+  terminalConfirmationCount,
+} from "../services/scoresService/timeline";
 import { writeAuditEvent } from "../lib/audit";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { FINISHED_STATUSES } from "../services/apiFootball/types";
@@ -199,8 +202,23 @@ async function processLiveScore(
   let shouldFinalize = false;
 
   if (isFinished) {
-    if (!syncState?.graceEndUtc) {
-      // FT detected for the first time → start grace period
+    // Require enough independent sources to have confirmed the terminal
+    // milestone before we treat the match as finalizable. Below the
+    // threshold we keep polling (the API-Football fallback + stale
+    // detector are the backstops if it never reaches it).
+    const confirmations = terminalConfirmationCount(
+      score.timeline,
+      score.sourcesAgreeing,
+    );
+    const enoughConfirmations =
+      confirmations >= SCORES.MIN_CONFIRMATIONS_TO_FINALIZE;
+
+    if (!enoughConfirmations) {
+      // Terminal status but not yet enough confirmations — hold in
+      // AWAITING_FINISH without arming the grace period.
+      newSyncStatus = "AWAITING_FINISH";
+    } else if (!syncState?.graceEndUtc) {
+      // FT detected (and confirmed) for the first time → start grace period
       newSyncStatus = "AWAITING_FINISH";
       newGraceEndUtc = new Date(now.getTime() + SCORES.GRACE_PERIOD_MS);
     } else if (now.getTime() >= syncState.graceEndUtc.getTime()) {

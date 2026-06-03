@@ -43,6 +43,21 @@ export const SCORES = {
   GRACE_PERIOD_MS: envInt("SCORES_GRACE_PERIOD_MS", 5 * 60_000), // 5 min
   /** Delay after estimated FT before API-Football fallback activates (ms) */
   FALLBACK_DELAY_MS: envInt("SCORES_FALLBACK_DELAY_MS", 30 * 60_000), // 30 min
+  /**
+   * Minimum independent sources that must confirm the terminal milestone
+   * (timeline confirmedBy[]) before the scraper finalizes a result to
+   * API_CONFIRMED. Below this we keep polling; the API-Football fallback
+   * (FALLBACK_DELAY_MS) and the stale detector are the backstops if the
+   * scraper never reaches the threshold. Falls back to live
+   * sourcesAgreeing when the terminal milestone has no timeline entry.
+   */
+  MIN_CONFIRMATIONS_TO_FINALIZE: envInt("SCORES_MIN_CONFIRMATIONS", 3),
+  /**
+   * A match is considered "stale" (should have ended but no authoritative
+   * result) this long after kickoff. Covers 90' + halftime + stoppage +
+   * full extra time + penalties + margin. Triggers an admin alert.
+   */
+  STALE_THRESHOLD_MS: envInt("SCORES_STALE_THRESHOLD_MS", 210 * 60_000), // 210 min
 } as const;
 
 // ── Advancement automation ──────────────────────────────────

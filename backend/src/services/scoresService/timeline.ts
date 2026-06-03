@@ -14,6 +14,34 @@ import type { TimelineEvent } from "./client";
 
 const ET_STATUSES = new Set(["ET", "BT", "P", "PEN", "AET"]);
 
+/** Terminal API-Football status codes (match is over and won't resume). */
+const TERMINAL_STATUSES = new Set(["FT", "AET", "PEN", "ABD"]);
+
+/**
+ * How many independent sources confirmed the terminal (match-over)
+ * milestone. Looks at the timeline's terminal entry's confirmedBy[]. If
+ * the timeline is absent or has no terminal entry (legacy scraper), falls
+ * back to the live consensus count `sourcesAgreeing`.
+ *
+ * @param timeline          the match timeline (may be undefined/empty)
+ * @param sourcesAgreeing   live consensus count, used as legacy fallback
+ */
+export function terminalConfirmationCount(
+  timeline: TimelineEvent[] | undefined,
+  sourcesAgreeing: number,
+): number {
+  if (timeline && timeline.length > 0) {
+    // Last terminal milestone in the (monotonic, oldest→newest) timeline.
+    for (let i = timeline.length - 1; i >= 0; i--) {
+      const entry = timeline[i];
+      if (entry && TERMINAL_STATUSES.has(entry.status)) {
+        return entry.confirmedBy.length;
+      }
+    }
+  }
+  return sourcesAgreeing;
+}
+
 export interface NinetyMinuteScore {
   homeGoals90: number | null;
   awayGoals90: number | null;

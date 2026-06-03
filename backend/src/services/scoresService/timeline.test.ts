@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { deriveNinetyMinuteScore } from "./timeline";
+import {
+  deriveNinetyMinuteScore,
+  terminalConfirmationCount,
+} from "./timeline";
 import type { TimelineEvent } from "./client";
 
 // Helper to build a timeline milestone with sensible defaults.
@@ -87,6 +90,34 @@ describe("deriveNinetyMinuteScore", () => {
         homeGoals90: 2,
         awayGoals90: 2,
       });
+    });
+
+    it("counts confirmations of the terminal milestone, ignoring earlier ones", () => {
+      const timeline = [
+        ev({ status: "2H", confirmedBy: ["a", "b"] }),
+        ev({ status: "ET", confirmedBy: ["a", "b", "c", "d"] }),
+        ev({ status: "PEN", confirmedBy: ["a", "b", "c"] }),
+      ];
+      // Should use the PEN (terminal) entry → 3, not ET's 4.
+      expect(terminalConfirmationCount(timeline, 0)).toBe(3);
+    });
+
+    it("uses the last terminal milestone when several terminals exist", () => {
+      const timeline = [
+        ev({ status: "FT", confirmedBy: ["a", "b"] }),
+        ev({ status: "AET", confirmedBy: ["a", "b", "c", "d", "e"] }),
+      ];
+      expect(terminalConfirmationCount(timeline, 0)).toBe(5);
+    });
+
+    it("falls back to sourcesAgreeing when there is no terminal milestone", () => {
+      const timeline = [ev({ status: "2H", confirmedBy: ["a", "b"] })];
+      expect(terminalConfirmationCount(timeline, 4)).toBe(4);
+    });
+
+    it("falls back to sourcesAgreeing when the timeline is absent (legacy)", () => {
+      expect(terminalConfirmationCount(undefined, 2)).toBe(2);
+      expect(terminalConfirmationCount([], 6)).toBe(6);
     });
 
     it("falls back to null/null when ET was reached but the ET milestone is missing", () => {

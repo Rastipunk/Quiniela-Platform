@@ -153,9 +153,15 @@ export type FixtureStatusShort =
   | 'SUSP';
 
 /**
- * Fixture statuses that indicate the match is finished
+ * Fixture statuses that indicate the match is finished.
+ *
+ * ABD (abandoned) is terminal in the picks4all-scores state machine — the
+ * match won't resume, so it must be recognized as finished rather than
+ * left polling forever (the limbo bug). An abandoned match still routes
+ * through the confirmation gate + grace period like any terminal, and the
+ * stale detector / admin alert covers the case where it never confirms.
  */
-export const FINISHED_STATUSES: FixtureStatusShort[] = ['FT', 'AET', 'PEN'];
+export const FINISHED_STATUSES: FixtureStatusShort[] = ['FT', 'AET', 'PEN', 'ABD'];
 
 /**
  * Fixture statuses that indicate the match is in progress
