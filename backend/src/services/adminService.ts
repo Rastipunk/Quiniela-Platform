@@ -12,6 +12,7 @@ import { prisma } from "../db";
 import { MATCH_SYNC } from "../lib/constants";
 import { templateDataSchema, validateTemplateDataConsistency } from "../schemas/templateData";
 import { ApiFootballClient } from "../services/apiFootball/client";
+import { FINISHED_STATUSES } from "../services/apiFootball/types";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError } from "./authService";
 
@@ -676,7 +677,10 @@ export async function fixR16Integrity(dryRun: boolean) {
     include: { currentVersion: true, versions: true, pool: { select: { name: true } } },
   });
 
-  const FINISHED_STATUSES = ["FT", "AET", "PEN"];
+  // Use the canonical terminal-status list (shared with the live path) so
+  // this remediation tool never drifts from it (e.g. ABD).
+  const isFinishedStatus = (s: string): boolean =>
+    (FINISHED_STATUSES as readonly string[]).includes(s);
   const resultsToDelete: { id: string; matchId: string; poolName: string; reason: string; score: string }[] = [];
   const resultsCorrect: { matchId: string; poolName: string; score: string }[] = [];
 
@@ -685,7 +689,7 @@ export async function fixR16Integrity(dryRun: boolean) {
     if (!cv) continue;
     const cm = correctMappings.find((m) => m.internalMatchId === result.matchId);
     if (!cm) continue;
-    const isFinished = FINISHED_STATUSES.includes(cm.fixtureStatusShort);
+    const isFinished = isFinishedStatus(cm.fixtureStatusShort);
     const sourceFixtureId = cv.externalFixtureId;
     const wrongFixture = sourceFixtureId && sourceFixtureId !== cm.fixtureId;
     const matchNotFinished = !isFinished;
@@ -700,7 +704,7 @@ export async function fixR16Integrity(dryRun: boolean) {
   }
 
   log("STEP 5: Checking for missing results...");
-  const finishedMappings = correctMappings.filter((cm) => FINISHED_STATUSES.includes(cm.fixtureStatusShort));
+  const finishedMappings = correctMappings.filter((cm) => isFinishedStatus(cm.fixtureStatusShort));
   const missingResults: { matchId: string; poolName: string; fixtureId: number; score: string }[] = [];
 
   for (const cm of finishedMappings) {
@@ -741,7 +745,7 @@ export async function fixR16Integrity(dryRun: boolean) {
 
     for (const cm of correctMappings) {
       const kickoffUtc = new Date(cm.fixtureDate);
-      const isFinished = FINISHED_STATUSES.includes(cm.fixtureStatusShort);
+      const isFinished = isFinishedStatus(cm.fixtureStatusShort);
       await prisma.matchSyncState.upsert({
         where: { tournamentInstanceId_internalMatchId: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: cm.internalMatchId } },
         create: { tournamentInstanceId: UCL_INSTANCE_ID, internalMatchId: cm.internalMatchId, syncStatus: isFinished ? "COMPLETED" : "PENDING", kickoffUtc, firstCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FIRST_CHECK_MS), finishCheckAtUtc: new Date(kickoffUtc.getTime() + MATCH_SYNC.FINISH_CHECK_MS), completedAtUtc: isFinished ? new Date() : null, lastApiStatus: cm.fixtureStatusShort },
