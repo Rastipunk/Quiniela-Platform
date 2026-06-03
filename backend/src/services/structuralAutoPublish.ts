@@ -37,6 +37,58 @@ import { writeAuditEvent } from "../lib/audit";
 import { extractMatches, parseFixtureData } from "../lib/fixture";
 import { calculateGroupStandings } from "./tournamentAdvancement";
 import { fireAndForget } from "../lib/asyncHelpers";
+import { sendAdminNotification } from "../lib/email";
+
+/** Audit action / once-per-match idempotency key for undecidable knockouts. */
+const KNOCKOUT_UNDECIDABLE_ACTION = "KNOCKOUT_WINNER_UNDECIDABLE";
+
+/**
+ * A result source is authoritative (the match is officially over) when it
+ * is API-confirmed or a host override. SCRAPER_PROVISIONAL / HOST_* draft
+ * sources mean the match may still be live, so we stay silent.
+ */
+function isAuthoritativeSource(source: string): boolean {
+  return source === "API_CONFIRMED" || source === "HOST_OVERRIDE";
+}
+
+/**
+ * A knockout match has an authoritative result (officially over) but no
+ * winner can be derived — a draw with no penalties, or penalties tied.
+ * The bracket can't advance. Alert the team once so they can override.
+ */
+async function alertKnockoutUndecidable(
+  poolId: string,
+  phaseId: string,
+  matchId: string,
+  reason: string,
+): Promise<void> {
+  const key = `${poolId}:${matchId}`;
+  const already = await prisma.auditEvent.findFirst({
+    where: { action: KNOCKOUT_UNDECIDABLE_ACTION, entityId: key },
+    select: { id: true },
+  });
+  if (already) return;
+
+  await sendAdminNotification({
+    category: "error",
+    subject: `Eliminatoria sin ganador: ${matchId}`,
+    body:
+      `El partido de eliminatoria <strong>${matchId}</strong> (pool ${poolId}) ` +
+      `tiene resultado oficial pero no se puede derivar un ganador: ` +
+      `<strong>${reason}</strong>.<br><br>` +
+      `El bracket no puede avanzar. Publica/override el resultado con los ` +
+      `penales correctos para destrabarlo.`,
+  });
+
+  await writeAuditEvent({
+    actorUserId: null,
+    action: KNOCKOUT_UNDECIDABLE_ACTION,
+    entityType: "PoolMatchResult",
+    entityId: key,
+    poolId,
+    dataJson: { phaseId, matchId, reason },
+  });
+}
 
 type PhaseConfig = {
   phaseId: string;
@@ -241,10 +293,30 @@ async function autoPublishKnockoutWinner(
       winnerId = match.awayTeamId;
     } else {
       // Tied on penalties — invalid state, can't derive a winner.
+      if (isAuthoritativeSource(cv.source)) {
+        fireAndForget(
+          "structural:knockout-undecidable",
+          alertKnockoutUndecidable(poolId, phaseId, matchId, "penales empatados"),
+        );
+      }
       return;
     }
   } else {
-    // Tied at 90'+ET with no penalties recorded yet — wait.
+    // Tied at 90'+ET with no penalties recorded. During a live match
+    // (SCRAPER_PROVISIONAL) this is normal — we just wait. But once the
+    // result is authoritative (API_CONFIRMED / HOST_OVERRIDE) it means the
+    // match is officially over with no decider → the bracket is stuck.
+    if (isAuthoritativeSource(cv.source)) {
+      fireAndForget(
+        "structural:knockout-undecidable",
+        alertKnockoutUndecidable(
+          poolId,
+          phaseId,
+          matchId,
+          "empate sin penales registrados",
+        ),
+      );
+    }
     return;
   }
 

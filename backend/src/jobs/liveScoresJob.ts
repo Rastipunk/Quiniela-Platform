@@ -23,6 +23,7 @@ import { SCORES } from "../lib/constants";
 import { checkAndTriggerAdvancement } from "../services/advancementTrigger";
 import { transitionToCompleted } from "../services/poolStateMachine";
 import { autoPublishStructuralResults } from "../services/structuralAutoPublish";
+import { detectAndAlertStaleMatches } from "../services/scoresService/staleDetector";
 
 // ============================================================================
 // Configuration
@@ -69,6 +70,13 @@ const CONFIDENCE_LEVELS: Record<LiveScore["confidence"], number> = {
 
 let intervalId: NodeJS.Timeout | null = null;
 let isRunning = false;
+
+/**
+ * Stale-match scan cadence. The stale horizon is hours, so we don't need
+ * to scan on every 15s poll — throttle it. Env-configurable.
+ */
+const STALE_SCAN_INTERVAL_MS = envInt("SCORES_STALE_SCAN_INTERVAL_MS", 5 * 60_000);
+let lastStaleScanAtMs = 0;
 
 // ============================================================================
 // Types
@@ -551,6 +559,22 @@ async function finalizeResult(
 // ============================================================================
 
 async function pollLiveScores(): Promise<void> {
+  // 0. Stale-match safety net (throttled). Runs even when the scraper is
+  //    unavailable — an outage is exactly when matches go stale. Errors
+  //    here must never break the poll loop.
+  const nowMs = Date.now();
+  if (nowMs - lastStaleScanAtMs >= STALE_SCAN_INTERVAL_MS) {
+    lastStaleScanAtMs = nowMs;
+    fireAndForget(
+      "LiveScoresJob:stale-scan",
+      detectAndAlertStaleMatches().then((n) => {
+        if (n > 0) {
+          console.warn(`[LiveScoresJob] Stale-match alert sent for ${n} match(es)`);
+        }
+      }),
+    );
+  }
+
   // 1. Check platform toggle
   const settings = await prisma.platformSettings.findUnique({
     where: { id: "singleton" },
