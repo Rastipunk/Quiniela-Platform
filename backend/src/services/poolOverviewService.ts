@@ -18,6 +18,7 @@ import {
   type StructuralPickJson,
 } from "../lib/fixture";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
+import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
 import type { PhasePickConfig } from "../types/pickConfig";
@@ -371,9 +372,41 @@ export async function getPoolOverview(
 
   const scoringErrors: Array<{ userId: string; error: string }> = [];
 
+  // ── Tiebreaker metrics (TIEBREAKER_PLAN.md) ───────────────────────────
+  // "Perfect" = earned the MAX achievable for that match; "partial" =
+  // earned >0 but < max. The per-match max is independent of the actual
+  // result (a prediction equal to the result hits every criterion except
+  // the XOR PARTIAL_SCORE), so we cache it per phaseId. `partialApplicable`
+  // = the mode can produce a partial at all (else the column is hidden).
+  const legacyMaxPerMatch =
+    preset.outcomePoints + (preset.allowScorePick ? preset.exactScoreBonus : 0);
+  const maxByPhaseId = new Map<string, number>();
+  let partialApplicable = false;
+  {
+    const cfgs = (pool.pickTypesConfig as PhasePickConfig[] | null) ?? null;
+    if (cfgs && cfgs.length > 0) {
+      for (const pc of cfgs) {
+        if (pc.requiresScore && pc.matchPicks) {
+          const probe = { homeGoals: 1, awayGoals: 0 };
+          maxByPhaseId.set(pc.phaseId, scoreMatchPick(probe, probe, pc).totalPoints);
+          if (pc.matchPicks.types.filter((t) => t.enabled).length >= 2) {
+            partialApplicable = true;
+          }
+        } else if (!pc.requiresScore && pc.structuralPicks?.type === "GROUP_STANDINGS") {
+          partialApplicable = true; // a group can be partially correct
+        }
+      }
+    } else if (preset.allowScorePick) {
+      // Legacy preset pools: outcome-only hit (no exact) is a partial.
+      partialApplicable = true;
+    }
+  }
+
   const leaderboardRows = members.map((m) => {
     let points = 0;
     let scoredMatches = 0;
+    let perfectCount = 0;
+    let partialCount = 0;
     const pointsByPhase: Record<string, number> = {};
 
     for (const ph of phaseOrder) pointsByPhase[ph] = 0;
@@ -434,6 +467,10 @@ export async function getPoolOverview(
               pointsByPhase[match.phaseId] = (pointsByPhase[match.phaseId] ?? 0) + advancedResult.totalPoints;
               scoredMatches += 1;
 
+              const maxForMatch = maxByPhaseId.get(match.phaseId) ?? 0;
+              if (maxForMatch > 0 && advancedResult.totalPoints >= maxForMatch) perfectCount++;
+              else if (advancedResult.totalPoints > 0) partialCount++;
+
               if (leaderboardVerbose) {
                 breakdown.push({
                   matchId: match.id,
@@ -461,6 +498,9 @@ export async function getPoolOverview(
       points += scored.totalPoints;
       pointsByPhase[match.phaseId] = (pointsByPhase[match.phaseId] ?? 0) + scored.totalPoints;
       scoredMatches += 1;
+
+      if (legacyMaxPerMatch > 0 && scored.totalPoints >= legacyMaxPerMatch) perfectCount++;
+      else if (scored.totalPoints > 0) partialCount++;
 
       if (leaderboardVerbose) {
         breakdown.push({
@@ -497,6 +537,17 @@ export async function getPoolOverview(
         for (const [phaseId, pts] of Object.entries(breakdown.pointsByPhase)) {
           pointsByPhase[phaseId] = (pointsByPhase[phaseId] ?? 0) + pts;
         }
+        // Structural contribution to tiebreaker counts (D3): a fully-correct
+        // group or a correct knockout winner = "perfect" unit; a group with
+        // some (but not all) positions right = "partial" unit. Knockout is
+        // binary, so it only ever adds perfects.
+        for (const g of breakdown.groups) {
+          if (g.positionsTotal > 0 && g.positionsCorrect === g.positionsTotal) perfectCount++;
+          else if (g.positionsCorrect > 0) partialCount++;
+        }
+        for (const w of Object.values(breakdown.winnersByPhase)) {
+          perfectCount += w.correct;
+        }
       } catch (err) {
         console.error(
           `[SCORING_ERROR] Structural points failed for user ${m.userId} in pool ${pool.id}:`,
@@ -516,6 +567,8 @@ export async function getPoolOverview(
       points: points + structuralPoints,
       matchPickPoints: points,
       structuralPickPoints: structuralPoints,
+      perfectCount,
+      partialCount,
       structuralStats,
       pointsByPhase,
       scoredMatches,
@@ -524,12 +577,9 @@ export async function getPoolOverview(
     };
   });
 
-  leaderboardRows.sort((a, b) => {
-    if (b.points !== a.points) return b.points - a.points;
-    const aTime = a.joinedAtUtc instanceof Date ? a.joinedAtUtc.getTime() : new Date(a.joinedAtUtc).getTime();
-    const bTime = b.joinedAtUtc instanceof Date ? b.joinedAtUtc.getTime() : new Date(b.joinedAtUtc).getTime();
-    return aTime - bTime;
-  });
+  // Single source of truth: sort by tiebreakers and assign shared ranks
+  // (TIEBREAKER_PLAN.md). Same function used by the pool-completed email.
+  const rankedRows = rankLeaderboardRows(leaderboardRows);
 
   // 8) Final response
   const includeEmails = isPoolAdmin(myMembership.role);
@@ -600,8 +650,11 @@ export async function getPoolOverview(
       verbose: leaderboardVerbose,
       phases: phaseOrder,
       presetMode,
-      rows: leaderboardRows.map((r, idx) => ({
-        rank: idx + 1,
+      // Which tiebreaker columns are meaningful for this pool (D4).
+      tiebreakers: { perfect: true, partial: partialApplicable },
+      rows: rankedRows.map(({ row: r, rank, tiedGroupSize }) => ({
+        rank,
+        isTied: tiedGroupSize > 1,
         userId: r.userId,
         memberId: r.memberId,
         displayName: r.displayName,
@@ -611,6 +664,8 @@ export async function getPoolOverview(
         points: r.points,
         matchPickPoints: r.matchPickPoints,
         structuralPickPoints: r.structuralPickPoints,
+        perfectCount: r.perfectCount,
+        partialCount: r.partialCount,
         structuralStats: r.structuralStats,
         pointsByPhase: r.pointsByPhase,
         scoredMatches: r.scoredMatches,
