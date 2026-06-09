@@ -53,9 +53,16 @@ export default function ForgotPasswordContent() {
         <div className="card" style={{ padding: 24, borderRadius: 16, textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
           <h2 style={{ marginBottom: 8 }}>{t("forgotPasswordPage.success.title")}</h2>
-          <p style={{ color: "var(--muted)", marginBottom: 20 }}>
+          <p style={{ color: "var(--muted)", marginBottom: 16 }}>
             {t("forgotPasswordPage.success.message")}
           </p>
+          <div style={{
+            background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10,
+            padding: "12px 16px", marginBottom: 16, fontSize: 14, color: "#7a5c00",
+            fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}>
+            📩 {t("forgotPasswordPage.success.spamNote")}
+          </div>
           <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>
             {t("forgotPasswordPage.success.expiryNote")}
           </p>
