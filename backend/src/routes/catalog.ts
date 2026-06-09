@@ -12,7 +12,9 @@ catalogRouter.use(requireAuth);
 // GET /catalog/instances
 catalogRouter.get("/instances", async (_req, res) => {
   const instances = await prisma.tournamentInstance.findMany({
-    where: { status: "ACTIVE" },
+    // isTest instances are NEVER offered in the public catalog, even when
+    // ACTIVE — blindaje against the "test instance stuck in prod" incident.
+    where: { status: "ACTIVE", isTest: false },
     orderBy: { createdAtUtc: "desc" },
     select: {
       id: true,

@@ -308,6 +308,11 @@ model TournamentInstance {
   name   String
   status TournamentInstanceStatus @default(DRAFT)
 
+  // Comentario en español: instancia de prueba. Cuando es true NUNCA aparece
+  // en el catálogo público (GET /catalog/instances), aunque esté ACTIVE —
+  // blindaje contra el incidente de "instancia de prueba pegada en prod".
+  isTest Boolean @default(false)
+
   // Comentario en español: snapshot congelado del torneo "real" (copiado desde la versión publicada)
   dataJson Json
 
