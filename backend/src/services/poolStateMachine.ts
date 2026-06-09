@@ -23,6 +23,7 @@ import {
 import { resolveUserLocale } from "../lib/constants";
 import { extractMatches, typed, type PickJson } from "../lib/fixture";
 import { fireAndForget } from "../lib/asyncHelpers";
+import { getPoolOverview } from "./poolOverviewService";
 
 export type PoolStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
@@ -180,8 +181,9 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
         },
         orderBy: { joinedAtUtc: "asc" }
       });
+      if (members.length === 0) return; // nothing to rank / notify
 
-      // Obtener predicciones y calcular puntos
+      // Obtener predicciones (para el conteo de marcadores exactos del email)
       const predictions = await prisma.prediction.findMany({
         where: { poolId }
       });
@@ -202,47 +204,14 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
         }
       }
 
-      // Calcular puntos por usuario
-      const userPoints = new Map<string, number>();
-      for (const member of members) {
-        userPoints.set(member.userId, 0);
-      }
-
-      for (const pred of predictions) {
-        const result = resultByMatchId.get(pred.matchId);
-        if (!result) continue;
-
-        const pick = typed<PickJson>(pred.pickJson);
-        let points = 0;
-
-        if (pick?.type === "OUTCOME") {
-          const actualOutcome = result.homeGoals > result.awayGoals ? "HOME" :
-                                result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-          if (pick.outcome === actualOutcome) points = 3;
-        } else if (pick?.type === "SCORE") {
-          const actualOutcome = result.homeGoals > result.awayGoals ? "HOME" :
-                                result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-          const predOutcome = pick.homeGoals! > pick.awayGoals! ? "HOME" :
-                              pick.homeGoals! < pick.awayGoals! ? "AWAY" : "DRAW";
-          if (predOutcome === actualOutcome) {
-            points = 3;
-            if (pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
-              points = 5; // Exact score bonus
-            }
-          }
-        }
-
-        const current = userPoints.get(pred.userId) ?? 0;
-        userPoints.set(pred.userId, current + points);
-      }
-
-      // Ordenar por puntos (desc) y fecha de join (asc) para ranking
-      const sortedMembers = members
-        .map(m => ({ ...m, points: userPoints.get(m.userId) ?? 0 }))
-        .sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          return new Date(a.joinedAtUtc).getTime() - new Date(b.joinedAtUtc).getTime();
-        });
+      // Ranking: delegar en la MISMA función que produce el leaderboard
+      // (getPoolOverview) para que el email nunca diverja de la tabla —
+      // puntos correctos por config + desempates + posición compartida.
+      // Se llama como cualquier miembro activo (el ranking es el mismo;
+      // unimos por userId con `members` para email/displayName/locale).
+      const memberByUserId = new Map(members.map((m) => [m.userId, m]));
+      const overview = await getPoolOverview(members[0]!.userId, poolId, false);
+      const rankedRows = overview.leaderboard.rows;
 
       // Calcular exact scores por usuario
       const userExactScores = new Map<string, number>();
@@ -258,8 +227,11 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
         }
       }
 
-      // Enviar emails con ranking (batched to avoid hitting Resend rate limits)
-      const emailItems = sortedMembers.map((member, idx) => ({ member, rank: idx + 1 }));
+      // Enviar emails con ranking (batched to avoid hitting Resend rate limits).
+      // Usa el rank compartido del leaderboard (puede repetirse en empate).
+      const emailItems = rankedRows
+        .map((row) => ({ row, member: memberByUserId.get(row.userId) }))
+        .filter((x): x is { row: typeof x.row; member: NonNullable<typeof x.member> } => !!x.member);
       const { sent, failed, failures } = await batchSendEmails(emailItems, (item) =>
         sendPoolCompletedEmail({
           to: item.member.user.email,
@@ -267,9 +239,9 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
           displayName: item.member.user.displayName,
           poolName: pool.name,
           poolId,
-          finalRank: item.rank,
-          totalParticipants: sortedMembers.length,
-          totalPoints: item.member.points,
+          finalRank: item.row.rank,
+          totalParticipants: rankedRows.length,
+          totalPoints: item.row.points,
           exactScores: userExactScores.get(item.member.userId) ?? 0,
           locale: resolveUserLocale(item.member.user),
         }),
