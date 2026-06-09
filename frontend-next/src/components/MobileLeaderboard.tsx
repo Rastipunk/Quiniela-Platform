@@ -47,6 +47,8 @@ type MobileLeaderboardProps = {
   hasAnyStructural?: boolean;
   /** Which tiebreaker counters are meaningful for this pool (D4). */
   tiebreakers?: { perfect: boolean; partial: boolean };
+  /** Points totals that are shared by >=2 players — counters show only for these. */
+  tiedPointsValues?: number[];
 };
 
 export function MobileLeaderboard({
@@ -60,8 +62,10 @@ export function MobileLeaderboard({
   phaseTypeByPhaseId,
   hasAnyStructural,
   tiebreakers: tb,
+  tiedPointsValues,
 }: MobileLeaderboardProps) {
   const t = useTranslations("pool");
+  const tiedPoints = new Set(tiedPointsValues ?? []);
   const leaderPoints = rows[0]?.points ?? 0;
 
   return (
@@ -189,7 +193,7 @@ export function MobileLeaderboard({
                     })}
                   </div>
                 )}
-                {tb && (tb.perfect || tb.partial) && (
+                {tb && (tb.perfect || tb.partial) && tiedPoints.has(r.points) && (
                   <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
                     {tb.perfect && <span>✓ {t("leaderboard.perfectCount", { count: r.perfectCount ?? 0 })}</span>}
                     {tb.perfect && tb.partial && <span> · </span>}

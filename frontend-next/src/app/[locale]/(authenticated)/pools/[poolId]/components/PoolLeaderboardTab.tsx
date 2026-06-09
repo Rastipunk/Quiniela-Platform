@@ -35,6 +35,14 @@ export function PoolLeaderboardTab({
   // Which tiebreaker columns to surface (D4: only where meaningful).
   const tb = overview.leaderboard.tiebreakers;
   const anyTieAtTop = allRows.some((r) => r.rank === 1 && r.isTied);
+  // Tiebreaker counters are shown ONLY for players caught in a points tie
+  // (i.e. when the counters are actually used to resolve — or not — the
+  // tie). Players with a unique points total don't show them.
+  const tiedPointsValues = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const r of allRows) counts.set(r.points, (counts.get(r.points) ?? 0) + 1);
+    return new Set([...counts.entries()].filter(([, n]) => n >= 2).map(([p]) => p));
+  }, [allRows]);
   const myUserId = overview.myMembership?.userId;
   const myRow = allRows.find((r) => r.userId === myUserId);
   const myRank = myRow?.rank;
@@ -156,7 +164,7 @@ export function PoolLeaderboardTab({
               })}
             </div>
           )}
-          {tb && (tb.perfect || tb.partial) && (
+          {tb && (tb.perfect || tb.partial) && tiedPointsValues.has(r.points) && (
             <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }} title={t("leaderboard.tiebreakerTooltip")}>
               {tb.perfect && <span>✓ {t("leaderboard.perfectCount", { count: r.perfectCount ?? 0 })}</span>}
               {tb.perfect && tb.partial && <span> · </span>}
@@ -357,6 +365,7 @@ export function PoolLeaderboardTab({
               phaseTypeByPhaseId={phaseTypeByPhaseId}
               hasAnyStructural={hasAnyStructural}
               tiebreakers={tb}
+              tiedPointsValues={[...tiedPointsValues]}
             />
             <PaginationControls
               page={safePage} totalPages={totalPages}
