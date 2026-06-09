@@ -82,4 +82,31 @@ describe("rankLeaderboardRows", () => {
   it("handles empty input", () => {
     expect(rankLeaderboardRows([])).toEqual([]);
   });
+
+  it("does NOT treat a 0-point tie as a tie (pre-tournament / nobody scored)", () => {
+    // Everyone at 0 (tournament not started) → sequential ranks, no ties.
+    const r = rankLeaderboardRows([
+      row("a", 0, 0, 0, "2026-06-01T00:00:00.000Z"),
+      row("b", 0, 0, 0, "2026-06-02T00:00:00.000Z"),
+      row("c", 0, 0, 0, "2026-06-03T00:00:00.000Z"),
+    ]);
+    expect(r.map((x) => [x.row.id, x.rank, x.tiedGroupSize])).toEqual([
+      ["a", 1, 1],
+      ["b", 2, 1],
+      ["c", 3, 1],
+    ]);
+    expect(r.every((x) => x.tiedGroupSize === 1)).toBe(true);
+  });
+
+  it("0-point players get sequential ranks below a real leader", () => {
+    const r = rankLeaderboardRows([
+      row("leader", 10, 1, 0),
+      row("x", 0, 0, 0, "2026-06-01T00:00:00.000Z"),
+      row("y", 0, 0, 0, "2026-06-02T00:00:00.000Z"),
+    ]);
+    const byId = Object.fromEntries(r.map((x) => [x.row.id, x]));
+    expect(byId.leader.rank).toBe(1);
+    expect([byId.x.rank, byId.y.rank]).toEqual([2, 3]);
+    expect(byId.x.tiedGroupSize).toBe(1);
+  });
 });

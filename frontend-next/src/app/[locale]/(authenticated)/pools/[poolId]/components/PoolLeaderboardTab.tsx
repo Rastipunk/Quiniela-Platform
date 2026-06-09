@@ -41,7 +41,9 @@ export function PoolLeaderboardTab({
   const tiedPointsValues = useMemo(() => {
     const counts = new Map<number, number>();
     for (const r of allRows) counts.set(r.points, (counts.get(r.points) ?? 0) + 1);
-    return new Set([...counts.entries()].filter(([, n]) => n >= 2).map(([p]) => p));
+    // Exclude 0: a 0-point tie (tournament not started / nobody scored) is
+    // not a meaningful tie — don't surface counters for it.
+    return new Set([...counts.entries()].filter(([p, n]) => n >= 2 && p > 0).map(([p]) => p));
   }, [allRows]);
   const myUserId = overview.myMembership?.userId;
   const myRow = allRows.find((r) => r.userId === myUserId);

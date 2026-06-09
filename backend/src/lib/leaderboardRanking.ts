@@ -33,9 +33,17 @@ function toMs(d: Date | string): number {
   return d instanceof Date ? d.getTime() : new Date(d).getTime();
 }
 
-/** True when two rows are tied on every *visible* criterion. */
+/**
+ * True when two rows are tied on every *visible* criterion.
+ *
+ * A tie at 0 points is NOT a meaningful tie — it's the initial state
+ * (tournament not started / nobody scored yet) or the bottom of the table.
+ * Surfacing it ("everyone tied for 1st") is noise, so 0-point rows never
+ * group: each gets its own sequential rank and isTied=false.
+ */
 function sameRank(a: RankableRow, b: RankableRow): boolean {
   return (
+    a.points > 0 &&
     a.points === b.points &&
     a.perfectCount === b.perfectCount &&
     a.partialCount === b.partialCount
