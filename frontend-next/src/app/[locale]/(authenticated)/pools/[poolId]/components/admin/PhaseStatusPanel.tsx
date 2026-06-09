@@ -5,6 +5,7 @@ import { manualAdvancePhase, lockPhase } from "@/lib/api";
 import type { PoolOverview } from "@/lib/api";
 import type { PhaseData } from "../poolTypes";
 import { formatPhaseFullName } from "../poolHelpers";
+import { useIsMobile, TOUCH_TARGET } from "@/hooks/useIsMobile";
 import {
   colors, fontSize, fontWeight, radii, spacing,
   adminSectionStyle, adminHeadingStyle, badgeStyle,
@@ -31,6 +32,7 @@ export function PhaseStatusPanel({
   busyKey, setBusyKey, setError, friendlyError, reload,
 }: PhaseStatusPanelProps) {
   const t = useTranslations("pool");
+  const isMobile = useIsMobile();
 
   return (
     <div style={adminSectionStyle}>
@@ -62,13 +64,18 @@ export function PhaseStatusPanel({
                 borderRadius: radii.lg,
                 border: `2px solid ${sc.border}`,
                 display: "flex",
+                // Mobile: stack info over actions so the action buttons
+                // never overflow the viewport. Desktop: side-by-side.
+                flexDirection: isMobile ? "column" : "row",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: isMobile ? "stretch" : "center",
                 gap: 12
               }}
             >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              {/* minWidth:0 lets this flex child shrink so the title row
+                  wraps instead of forcing horizontal overflow. */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 20 }}>{sc.icon}</span>
                   <span style={{ fontWeight: fontWeight.bold, fontSize: fontSize.lg, color: colors.textDark }}>{formatPhaseFullName(phase.id, t)}</span>
                   <span style={badgeStyle(sc.border, sc.bg, sc.text)}>
@@ -91,7 +98,7 @@ export function PhaseStatusPanel({
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", ...(isMobile ? { width: "100%" } : {}) }}>
                 {/* Advance is only meaningful once every match in the
                     phase has a result — keep it gated to COMPLETED. */}
                 {status === "COMPLETED" && !hasPhaseAdvanced(phase.id) && nextPhaseMap[phase.id] && (
@@ -120,7 +127,8 @@ export function PhaseStatusPanel({
                       cursor: busyKey === `advance:${phase.id}` ? "wait" : "pointer",
                       fontSize: fontSize.md,
                       fontWeight: fontWeight.semibold,
-                      whiteSpace: "nowrap"
+                      whiteSpace: "nowrap",
+                      ...(isMobile ? { flex: 1, minHeight: TOUCH_TARGET.minimum } : {})
                     }}
                   >
                     {busyKey === `advance:${phase.id}` ? `⏳ ${t("admin.phasePanel.advancing")}` : `🚀 ${t("admin.phasePanel.advanceButton")}`}
@@ -135,7 +143,8 @@ export function PhaseStatusPanel({
                     color: colors.successDark,
                     fontSize: fontSize.md,
                     fontWeight: fontWeight.semibold,
-                    whiteSpace: "nowrap"
+                    whiteSpace: "nowrap",
+                    ...(isMobile ? { flex: 1, textAlign: "center" as const } : {})
                   }}>
                     ✓ {t("admin.phasePanel.alreadyAdvanced")}
                   </span>
@@ -173,7 +182,8 @@ export function PhaseStatusPanel({
                     cursor: busyKey === `lock:${phase.id}` ? "wait" : "pointer",
                     fontSize: fontSize.md,
                     fontWeight: fontWeight.semibold,
-                    whiteSpace: "nowrap"
+                    whiteSpace: "nowrap",
+                    ...(isMobile ? { flex: 1, minHeight: TOUCH_TARGET.minimum } : {})
                   }}
                 >
                   {busyKey === `lock:${phase.id}`
