@@ -242,3 +242,5 @@ Nota al final de Reglas (`messages/{es,en,pt}/pool.json`, render en
 - v2 — 2026-06-08 — plan de seguimiento paso a paso; pendiente cerrar D1–D7.
 - v3 — 2026-06-08 — **D1–D7 CERRADAS** (incl. D3 estructural por unidades).
   Plan listo para implementar al recibir el "go".
+- v4 — 2026-06-08 — **C1–C6 IMPLEMENTADOS** en `feat/tiebreakers` (ADR-069).
+  Pendiente: seed en cuenta del owner + deploy + verificación E1–E10.

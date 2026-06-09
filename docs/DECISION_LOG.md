@@ -4953,4 +4953,33 @@ Leg (B) was broken in half. `PATCH /admin/sales/account-receivables/:id/status �
 
 ---
 
+## ADR-069: Leaderboard tiebreakers + shared positions + single ranking source
+
+**Date:** 2026-06-08 | **Status:** Accepted
+
+**Context:** The leaderboard had a single, non-sporting tiebreaker — `joinedAtUtc` ascending (`poolOverviewService.ts`) — and assigned `rank = idx + 1`, so two players with identical points got different ranks (the earlier joiner silently "won"). There were no perfect/partial-based tiebreakers, and tied players never shared a position. Separately, the pool-completed email computed its own simplified 3/5-point OUTCOME/SCORE scoring (`poolStateMachine.ts`) that diverged from the real leaderboard in advanced/structural configs.
+
+**Decision:** Tiebreaker order: **(1) points → (2) # perfect hits → (3) # partial hits → (4) shared position** (the organization decides the final tie). One ranking function is the single source of truth for both the leaderboard and the email.
+
+**Implementation:**
+- **`lib/leaderboardRanking.ts`** (`rankLeaderboardRows`): sorts by points → perfectCount → partialCount → joinedAt (stable order only), and assigns **shared "1-2-2-4" competition ranks** (players equal on all three visible criteria share a rank; the next group jumps past the tie). Returns `tiedGroupSize`.
+- **Perfect/partial (config-agnostic):** "perfect" = earned the **maximum achievable** for that match (computed as the score of a prediction equal to the result — result-independent, cached per phase; respects the XOR `PARTIAL_SCORE` which never co-occurs with an exact hit). "partial" = `0 < earned < max`. Structural (D3): perfect += perfect groups + correct knockout winners; partial += groups with some-but-not-all positions. Counted by **units** so volume across phases breaks ties (5 correct R32 winners rank above 1 correct final). Does NOT use `calculateMaxPointsForPhase` (it sums all enabled types incl. partial → overstates; also unused).
+- **`partialApplicable` (D4):** the partial column is shown only when the mode can produce a partial (≥2 enabled match criteria, or a GROUP_STANDINGS phase); hidden in all-or-nothing modes (e.g. exact-score-only).
+- **Email unified (D6):** `poolStateMachine` now calls `getPoolOverview` and uses `leaderboard.rows` (correct points + tiebreakers + shared rank), removing its divergent inline scoring.
+- **Frontend:** desktop + mobile leaderboards key the medal/highlight off the shared rank, show perfect/partial counters under the name (when meaningful), mark tied rows, and show a banner when 1st place is tied. Rules display gains a tiebreaker note (ES/EN/PT).
+- **No scoring formula changed.**
+
+**Decisions taken (owner, 2026-06-08):** D1 perfect = max achievable; D2 partial = `0<x<max`; D3 structural counted by units (perfect groups + correct knockouts + partial groups); D4 hide partial column where N/A; D5 shared rank "1-2-2-4"; D6 unify email now.
+
+**Consequences:**
+- ✅ Ties are resolved by performance, then shared honestly; the email never diverges from the table.
+- ⚠️ Changing `rank = idx+1` to shared ranks changes the **displayed** rank of every existing pool with a points tie (correct, but visible to all users on deploy).
+- ⚠️ "Perfect-via-exact-simulation" understates the max in a pathological config where PARTIAL_SCORE is worth more than a full hit; not a real configuration.
+
+**Related code:** `backend/src/lib/leaderboardRanking.ts`, `backend/src/services/poolOverviewService.ts`, `backend/src/services/poolStateMachine.ts`, `frontend-next/.../PoolLeaderboardTab.tsx`, `frontend-next/src/components/{MobileLeaderboard,PickRulesDisplay}.tsx`.
+**Related (D7, same cycle):** `TournamentInstance.isTest` excludes test instances from the public catalog (`routes/catalog.ts`) — root-cause fix for the "test instance stuck in prod" incident.
+**Spec:** `TIEBREAKER_PLAN.md`.
+
+---
+
 **END OF DOCUMENT**

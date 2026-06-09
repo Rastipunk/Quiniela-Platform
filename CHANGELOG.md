@@ -8,6 +8,19 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Leaderboard tiebreakers + shared positions (2026-06-08)
+
+Resolves point ties fairly and transparently. See **ADR-069**. No scoring formula changed.
+
+#### Added
+- **Tiebreaker order:** points → # perfect hits → # partial hits → **shared position** (the organization decides the final tie). New `lib/leaderboardRanking.ts` is the single ranking source.
+- **Perfect/partial counts** per player, config-agnostic: "perfect" = earned the max achievable for that match (incl. perfect groups + correct knockout winners, counted by units); "partial" = `0<earned<max` (incl. partially-correct groups). Surfaced in the leaderboard (desktop + mobile) when meaningful, plus a tiebreaker note in the Rules (ES/EN/PT).
+- **`TournamentInstance.isTest`** (migration `20260608_add_instance_is_test`) — test instances are excluded from the public catalog even when ACTIVE (root-cause fix for the "test instance stuck in prod" incident). ADR-069 / D7.
+
+#### Changed
+- **Shared "1-2-2-4" ranking:** players tied on points + perfects + partials share the same rank (was `rank = idx+1`, which silently ranked the earlier joiner higher). Medals/highlights now key off the shared rank.
+- **Pool-completed email unified** with the leaderboard (`poolStateMachine` delegates to `getPoolOverview`), removing its divergent inline 3/5-point scoring.
+
 ### picks4all-scores v2 integration + scoring/finalization hardening (2026-06-02)
 
 Adopts the scores-service v2 contract and closes the silent-limbo failure mode behind the 30-may Champions final. No schema migration. See **ADR-068**; `SCORING_RESULTS_AUDIT.md` closed.

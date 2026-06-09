@@ -523,8 +523,10 @@ The engine (`scoringAdvanced.ts`) auto-detects scoring mode:
 
 ### 6.4 Leaderboard Ranking
 
-- **Primary sort:** `totalPoints DESC`.
-- **Tiebreaker:** `joinedAtUtc ASC` (earliest member wins).
+- **Sort order (tiebreakers, ADR-069):** `totalPoints DESC` → **# perfect hits DESC** → **# partial hits DESC** → `joinedAtUtc ASC` (the last is a stable-order fallback only, not a "visible" criterion).
+- **Shared positions ("1-2-2-4"):** players equal on points + perfects + partials **share the same rank**; the next group jumps past the tie. The final tie among shared players is decided by the organization (outside the system).
+- **Perfect hit** = earned the maximum achievable for that match/group/knockout (config-agnostic). **Partial hit** = earned `>0` but `< max`. Structural counts by units: perfect groups + correct knockout winners (perfect), partially-correct groups (partial). The partial column is shown only where the mode can produce a partial.
+- **Single source of truth:** `lib/leaderboardRanking.ts` ranks both the leaderboard and the pool-completed email — they never diverge.
 - Includes ACTIVE and LEFT members. LEFT members retain points (shown as "Retirado"). BANNED members excluded.
 - Points combine: match pick points + structural pick points.
 - `pointsByPhase` breakdown available.
