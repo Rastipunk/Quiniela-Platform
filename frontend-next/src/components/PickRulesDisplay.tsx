@@ -323,6 +323,7 @@ export function PickRulesDisplay({
               <li>{t("rulesDisplay.nonCumulativeNote")}</li>
             )}
             <li>{t.rich("rulesDisplay.deadlineNote", { strong: (chunks) => <strong style={{ color: "#c92a2a" }}>{chunks}</strong>, minutes: poolDeadlineMinutes })}</li>
+            <li style={{ marginTop: 8 }}>{t.rich("rulesDisplay.tiebreakerNote", { strong: (chunks) => <strong>{chunks}</strong> })}</li>
           </ul>
         </div>
       </div>

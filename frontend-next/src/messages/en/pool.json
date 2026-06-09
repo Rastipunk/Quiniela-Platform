@@ -457,7 +457,13 @@
     "noResults": "No results found",
     "structuralSummary": "{positionsCorrect}/{positionsTotal} positions · {perfectGroups} perfect groups",
     "tooltipGroupStage": "{positionsCorrect}/{positionsTotal} correct positions · {perfectGroups}/{totalGroups} perfect groups",
-    "tooltipKnockout": "{correct} of {total} winners predicted"
+    "tooltipKnockout": "{correct} of {total} winners predicted",
+    "perfectCount": "{count} perfect",
+    "partialCount": "{count} partial",
+    "tiebreakerTooltip": "Tiebreakers: more perfect hits, then more partial hits",
+    "tiedNote": "Tie — shared position; decided by the organization",
+    "tiedShort": "tie",
+    "tieAtTopNote": "There is a tie for first place. The players share the position and the final tiebreak is decided by the organization."
   },
 
   "players": {
@@ -624,7 +630,8 @@
     "notePointsIncrease": "Points usually increase in later tournament phases (round of 16, quarter-finals, semi-finals, final).",
     "cumulativeSystem": "<strong>Cumulative system:</strong> Points ADD UP for each criterion you get right. If you get the exact score, you earn the sum of all criteria (max 10 pts in groups, 20 pts in knockouts).",
     "nonCumulativeNote": "If you get the exact score, you also automatically match other types (but you only earn points for the exact score).",
-    "deadlineNote": "Picks are locked based on the deadline configured for this pool: <strong>{minutes} minutes before each match starts</strong>."
+    "deadlineNote": "Picks are locked based on the deadline configured for this pool: <strong>{minutes} minutes before each match starts</strong>.",
+    "tiebreakerNote": "<strong>In case of a points tie</strong>, the position is decided by: (1) more matches with a perfect hit, then (2) more matches with a partial hit. If the tie persists, the players share the position and the final tiebreak is decided by the organization."
   },
 
   "scoringBreakdown": {

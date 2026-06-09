@@ -457,7 +457,13 @@
     "noResults": "Nenhum resultado encontrado",
     "structuralSummary": "{positionsCorrect}/{positionsTotal} posições · {perfectGroups} grupos perfeitos",
     "tooltipGroupStage": "{positionsCorrect}/{positionsTotal} posições corretas · {perfectGroups}/{totalGroups} grupos perfeitos",
-    "tooltipKnockout": "{correct} de {total} vencedores acertados"
+    "tooltipKnockout": "{correct} de {total} vencedores acertados",
+    "perfectCount": "{count} perfeitos",
+    "partialCount": "{count} parciais",
+    "tiebreakerTooltip": "Critérios de desempate: mais acertos perfeitos, depois mais acertos parciais",
+    "tiedNote": "Empate — compartilham a posição; decidido pela organização",
+    "tiedShort": "empate",
+    "tieAtTopNote": "Há um empate no primeiro lugar. Os jogadores compartilham a posição e o desempate final é decidido pela organização."
   },
 
   "players": {
@@ -624,7 +630,8 @@
     "notePointsIncrease": "Os pontos geralmente aumentam nas fases mais avançadas do torneio (oitavas, quartas, semifinais, final).",
     "cumulativeSystem": "<strong>Sistema acumulativo:</strong> Os pontos se SOMAM por cada critério que você acertar. Se acertar o placar exato, ganha a soma de todos os critérios (máx 10 pts nos grupos, 20 pts nas eliminatórias).",
     "nonCumulativeNote": "Se você acertar o placar exato, também acerta automaticamente outros tipos (mas só ganha os pontos do exato).",
-    "deadlineNote": "Os palpites são bloqueados conforme o prazo configurado para este pool: <strong>{minutes} minutos antes do início de cada jogo</strong>."
+    "deadlineNote": "Os palpites são bloqueados conforme o prazo configurado para este pool: <strong>{minutes} minutos antes do início de cada jogo</strong>.",
+    "tiebreakerNote": "<strong>Em caso de empate de pontos</strong>, a posição é decidida por: (1) maior número de jogos com acerto perfeito, depois (2) maior número de jogos com acerto parcial. Se o empate continuar, os jogadores compartilham a posição e o desempate final é decidido pela organização."
   },
 
   "scoringBreakdown": {

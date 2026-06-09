@@ -457,7 +457,13 @@
     "noResults": "No se encontraron resultados",
     "structuralSummary": "{positionsCorrect}/{positionsTotal} posiciones · {perfectGroups} grupos perfectos",
     "tooltipGroupStage": "{positionsCorrect}/{positionsTotal} posiciones correctas · {perfectGroups}/{totalGroups} grupos perfectos",
-    "tooltipKnockout": "{correct} de {total} ganadores acertados"
+    "tooltipKnockout": "{correct} de {total} ganadores acertados",
+    "perfectCount": "{count} perfectos",
+    "partialCount": "{count} parciales",
+    "tiebreakerTooltip": "Criterios de desempate: más aciertos perfectos, luego más aciertos parciales",
+    "tiedNote": "Empate — comparten posición; lo define la organización",
+    "tiedShort": "empate",
+    "tieAtTopNote": "Hay un empate en el primer lugar. Los jugadores comparten la posición y el desempate final lo define la organización."
   },
 
   "players": {
@@ -624,7 +630,8 @@
     "notePointsIncrease": "Los puntos suelen aumentar en fases más avanzadas del torneo (octavos, cuartos, semifinales, final).",
     "cumulativeSystem": "<strong>Sistema acumulativo:</strong> Los puntos se SUMAN por cada criterio que aciertes. Si aciertas el marcador exacto, ganas la suma de todos los criterios (máx 10 pts en grupos, 20 pts en eliminatorias).",
     "nonCumulativeNote": "Si aciertas el marcador exacto, también aciertas automáticamente otros tipos (pero solo ganas los puntos del exacto).",
-    "deadlineNote": "Las predicciones se cierran según el deadline configurado para este pool: <strong>{minutes} minutos antes del inicio de cada partido</strong>."
+    "deadlineNote": "Las predicciones se cierran según el deadline configurado para este pool: <strong>{minutes} minutos antes del inicio de cada partido</strong>.",
+    "tiebreakerNote": "<strong>En caso de empate de puntos</strong>, la posición se decide por: (1) mayor cantidad de partidos con acierto perfecto, luego (2) mayor cantidad de partidos con acierto parcial. Si el empate continúa, los jugadores comparten la posición y el desempate final lo define la organización."
   },
 
   "scoringBreakdown": {

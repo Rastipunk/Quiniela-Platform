@@ -184,7 +184,10 @@ export interface LeaderboardStructuralStats {
 }
 
 export interface LeaderboardRow {
+  /** Competition rank; tied players share it ("1-2-2-4"). */
   rank: number;
+  /** True when this player shares the rank with at least one other. */
+  isTied?: boolean;
   userId: string;
   memberId: string;
   displayName: string;
@@ -196,6 +199,10 @@ export interface LeaderboardRow {
   matchPickPoints?: number;
   /** Points coming exclusively from structural (Estratega) predictions. */
   structuralPickPoints?: number;
+  /** Tiebreaker 1: matches/groups/knockouts hit at the maximum. */
+  perfectCount?: number;
+  /** Tiebreaker 2: matches/groups hit with >0 but < max. */
+  partialCount?: number;
   structuralStats?: LeaderboardStructuralStats;
   pointsByPhase: Record<string, number>;
   scoredMatches: number;
@@ -217,6 +224,8 @@ export interface PoolLeaderboard {
   phases: string[];
   /** Indicates which leaderboard rendering the frontend should pick. */
   presetMode?: PoolPresetMode;
+  /** Which tiebreaker columns are meaningful for this pool (D4). */
+  tiebreakers?: { perfect: boolean; partial: boolean };
   rows: LeaderboardRow[];
 }
 

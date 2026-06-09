@@ -32,6 +32,9 @@ export function PoolLeaderboardTab({
   const [search, setSearch] = useState("");
 
   const allRows = overview.leaderboard.rows;
+  // Which tiebreaker columns to surface (D4: only where meaningful).
+  const tb = overview.leaderboard.tiebreakers;
+  const anyTieAtTop = allRows.some((r) => r.rank === 1 && r.isTied);
   const myUserId = overview.myMembership?.userId;
   const myRow = allRows.find((r) => r.userId === myUserId);
   const myRank = myRow?.rank;
@@ -105,16 +108,17 @@ export function PoolLeaderboardTab({
   // ── Render a single table row ──────────────────────────────
   const renderRow = (r: typeof allRows[0], isPinned = false) => {
     const diff = leaderPoints - r.points;
-    const originalIdx = allRows.indexOf(r);
-    const medal = originalIdx === 0 ? "🥇" : originalIdx === 1 ? "🥈" : originalIdx === 2 ? "🥉" : "";
+    // Medal/highlight key off the (possibly shared) RANK, not the array
+    // index — so two players tied for 1st both show 🥇.
+    const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : "";
     const isMe = r.userId === myUserId;
 
     let rowBg = "transparent";
     if (isPinned) rowBg = colors.infoBgLight;
     else if (isMe) rowBg = "#EEF2FF";
-    else if (originalIdx === 0) rowBg = "#fff9e6";
-    else if (originalIdx === 1) rowBg = colors.bgLight;
-    else if (originalIdx === 2) rowBg = "#fafafa";
+    else if (r.rank === 1) rowBg = "#fff9e6";
+    else if (r.rank === 2) rowBg = colors.bgLight;
+    else if (r.rank === 3) rowBg = "#fafafa";
 
     return (
       <tr
@@ -127,6 +131,9 @@ export function PoolLeaderboardTab({
         <td style={{ padding: "14px 8px", fontWeight: 700, fontSize: 16 }}>
           {medal ? <span style={{ marginRight: 4 }}>{medal}</span> : null}
           {r.rank}
+          {r.isTied && (
+            <span title={t("leaderboard.tiedNote")} style={{ marginLeft: 3, fontSize: 12, color: colors.textMuted, fontWeight: 700 }}>=</span>
+          )}
           {isPinned && (
             <div style={{ fontSize: 9, color: colors.brand, fontWeight: 600, marginTop: 2 }}>
               {t("leaderboard.yourPosition")}
@@ -147,6 +154,13 @@ export function PoolLeaderboardTab({
                 positionsTotal: r.structuralStats.positionsTotal,
                 perfectGroups: r.structuralStats.perfectGroups,
               })}
+            </div>
+          )}
+          {tb && (tb.perfect || tb.partial) && (
+            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }} title={t("leaderboard.tiebreakerTooltip")}>
+              {tb.perfect && <span>✓ {t("leaderboard.perfectCount", { count: r.perfectCount ?? 0 })}</span>}
+              {tb.perfect && tb.partial && <span> · </span>}
+              {tb.partial && <span>~ {t("leaderboard.partialCount", { count: r.partialCount ?? 0 })}</span>}
             </div>
           )}
           <div style={{ display: "flex", gap: 4 }}>
@@ -295,6 +309,17 @@ export function PoolLeaderboardTab({
           </div>
         </div>
 
+        {/* Empate en el 1er lugar — lo decide la organización */}
+        {anyTieAtTop && (
+          <div style={{
+            marginBottom: 12, padding: "8px 12px", borderRadius: radii.lg,
+            background: colors.warningBg, border: `1px solid ${colors.warning}`,
+            color: colors.warningDark, fontSize: 13,
+          }}>
+            🤝 {t("leaderboard.tieAtTopNote")}
+          </div>
+        )}
+
         {/* Search */}
         {allRows.length > PAGE_SIZE && (
           <div style={{ marginBottom: 12 }}>
@@ -331,6 +356,7 @@ export function PoolLeaderboardTab({
               pinnedLabel={t("leaderboard.yourPosition")}
               phaseTypeByPhaseId={phaseTypeByPhaseId}
               hasAnyStructural={hasAnyStructural}
+              tiebreakers={tb}
             />
             <PaginationControls
               page={safePage} totalPages={totalPages}

@@ -23,6 +23,9 @@ type LeaderboardRow = {
   memberStatus?: string;
   points: number;
   rank: number;
+  isTied?: boolean;
+  perfectCount?: number;
+  partialCount?: number;
   pointsByPhase?: Record<string, number>;
   structuralStats?: LeaderboardStructuralStats;
 };
@@ -42,6 +45,8 @@ type MobileLeaderboardProps = {
   phaseTypeByPhaseId?: Map<string, PhaseType>;
   /** True when at least one phase is structural — toggles the summary line under the name. */
   hasAnyStructural?: boolean;
+  /** Which tiebreaker counters are meaningful for this pool (D4). */
+  tiebreakers?: { perfect: boolean; partial: boolean };
 };
 
 export function MobileLeaderboard({
@@ -54,6 +59,7 @@ export function MobileLeaderboard({
   pinnedLabel,
   phaseTypeByPhaseId,
   hasAnyStructural,
+  tiebreakers: tb,
 }: MobileLeaderboardProps) {
   const t = useTranslations("pool");
   const leaderPoints = rows[0]?.points ?? 0;
@@ -102,7 +108,8 @@ export function MobileLeaderboard({
 
       {rows.map((r, idx) => {
         const diff = leaderPoints - r.points;
-        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+        // Medal by (possibly shared) rank, not array index — ties share it.
+        const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : null;
         const isTopThree = idx < 3;
 
         return (
@@ -180,6 +187,14 @@ export function MobileLeaderboard({
                       positionsTotal: r.structuralStats.positionsTotal,
                       perfectGroups: r.structuralStats.perfectGroups,
                     })}
+                  </div>
+                )}
+                {tb && (tb.perfect || tb.partial) && (
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
+                    {tb.perfect && <span>✓ {t("leaderboard.perfectCount", { count: r.perfectCount ?? 0 })}</span>}
+                    {tb.perfect && tb.partial && <span> · </span>}
+                    {tb.partial && <span>~ {t("leaderboard.partialCount", { count: r.partialCount ?? 0 })}</span>}
+                    {r.isTied && <span style={{ fontWeight: 700 }}> · ={t("leaderboard.tiedShort")}</span>}
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
