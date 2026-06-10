@@ -23,8 +23,14 @@ import { prisma } from "../db";
 export const adminAnalyticsDashboardRouter = Router();
 
 // ─── Cache ──────────────────────────────────────────────────
+// Stale-while-revalidate: a fresh cache (< CACHE_TTL_MS) is served
+// as-is; a stale one is STILL served instantly while a background
+// rebuild refreshes it. User latency is thus decoupled from build
+// time — under WC-eve DB load a cold build measured 40 s, well past
+// the frontend's 30 s request timeout, so blocking on the build means
+// a guaranteed timeout for whoever loses the cache race.
 
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = parseInt(process.env.ADMIN_DASHBOARD_CACHE_TTL_MS || "300000", 10); // 5 min fresh
 let cache: { data: DashboardPayload; timestamp: number } | null = null;
 
 // ─── Types ──────────────────────────────────────────────────
@@ -1845,10 +1851,44 @@ async function buildDashboardData(): Promise<DashboardPayload> {
 
 // ─── Route ──────────────────────────────────────────────────
 
-// Coalesce concurrent cold-cache builds: the second admin (or a
-// refresh racing a first load) awaits the in-flight build instead of
-// firing a second full pass of every query bundle.
+// Coalesce concurrent builds: whoever needs a (re)build awaits the
+// single in-flight promise instead of firing a second full pass.
 let inFlightBuild: Promise<DashboardPayload> | null = null;
+
+function startBuild(): Promise<DashboardPayload> {
+  if (!inFlightBuild) {
+    const startedAt = Date.now();
+    inFlightBuild = buildDashboardData()
+      .then((data) => {
+        cache = { data, timestamp: Date.now() };
+        console.log(
+          `[admin analytics] dashboard built in ${Date.now() - startedAt}ms` +
+            (data.errors.length > 0 ? ` (${data.errors.length} section errors)` : ""),
+        );
+        return data;
+      })
+      .finally(() => {
+        inFlightBuild = null;
+      });
+  }
+  return inFlightBuild;
+}
+
+/**
+ * Pre-warm the dashboard cache on boot (called from server.ts).
+ * Without it the first admin to load Analítica after every deploy
+ * pays the full cold-build cost — the exact scenario that produced
+ * the 30 s timeouts on WC eve. Fire-and-forget: a pre-warm failure
+ * must never block server startup.
+ */
+export function prewarmAdminDashboardCache(): void {
+  startBuild().catch((err) => {
+    console.error(
+      "[admin analytics] prewarm failed:",
+      err instanceof Error ? err.message : String(err),
+    );
+  });
+}
 
 adminAnalyticsDashboardRouter.get(
   "/dashboard",
@@ -1857,26 +1897,23 @@ adminAnalyticsDashboardRouter.get(
   async (req, res) => {
     const force = req.query.refresh === "true";
     const now = Date.now();
-    if (!force && cache && now - cache.timestamp < CACHE_TTL_MS) {
-      return sendData(res, { ...cache.data, cached: true });
-    }
-    try {
-      if (!inFlightBuild) {
-        const startedAt = Date.now();
-        inFlightBuild = buildDashboardData()
-          .then((data) => {
-            cache = { data, timestamp: Date.now() };
-            console.log(
-              `[admin analytics] dashboard built in ${Date.now() - startedAt}ms` +
-                (data.errors.length > 0 ? ` (${data.errors.length} section errors)` : ""),
-            );
-            return data;
-          })
-          .finally(() => {
-            inFlightBuild = null;
-          });
+
+    if (cache && !force) {
+      const isFresh = now - cache.timestamp < CACHE_TTL_MS;
+      if (!isFresh) {
+        // Stale: serve it anyway, refresh in the background. The admin
+        // sees data instantly; the next load gets the fresh build.
+        startBuild().catch(() => {
+          /* already logged inside startBuild */
+        });
       }
-      const data = await inFlightBuild;
+      return sendData(res, { ...cache.data, cached: true, stale: !isFresh });
+    }
+
+    // No cache at all (first hit after boot before prewarm finishes) or
+    // an explicit ?refresh=true: block on the build.
+    try {
+      const data = await startBuild();
       return sendData(res, { ...data, cached: false });
     } catch (err) {
       console.error("[admin analytics dashboard] FAILED:", err);

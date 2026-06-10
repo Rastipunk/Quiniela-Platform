@@ -22,6 +22,7 @@ import { sendOk, sendForbidden, sendInternal, sendNotFound } from "./lib/apiResp
 import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteCheckLimiter, corporateActivateLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
+import { prewarmAdminDashboardCache } from "./routes/adminAnalyticsDashboard";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 import { startNewMemberDigestJob, stopNewMemberDigestJob } from "./jobs/newMemberDigestJob";
 import { startPhaseSyncJob, stopPhaseSyncJob } from "./jobs/phaseSyncJob";
@@ -336,6 +337,10 @@ const server = app.listen(PORT, () => {
   startMpPaymentReconcileJob();
   startAccountReceivableExpiryJob();
   startWelcomeEmailFallbackJob();
+  // Build the admin dashboard cache in the background so the first
+  // admin load after a deploy serves instantly instead of paying the
+  // full cold-build cost (40 s measured under WC-eve DB load).
+  prewarmAdminDashboardCache();
 });
 
 // Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)
