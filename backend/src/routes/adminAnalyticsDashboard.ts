@@ -366,17 +366,24 @@ interface CommunicationsHealth {
 
 // ─── Section runner ─────────────────────────────────────────
 
-const errors: { section: string; message: string }[] = [];
+type SectionError = { section: string; message: string };
 
-async function safeRun<T>(section: string, fallback: T, fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[admin analytics] section "${section}" failed:`, err);
-    errors.push({ section, message });
-    return fallback;
-  }
+/**
+ * Builds a per-call section runner. The error collector is scoped to a
+ * single buildDashboardData() invocation — a module-level array would
+ * interleave (and reset) errors across concurrent builds.
+ */
+function makeSafeRun(errors: SectionError[]) {
+  return async function safeRun<T>(section: string, fallback: T, fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[admin analytics] section "${section}" failed:`, err);
+      errors.push({ section, message });
+      return fallback;
+    }
+  };
 }
 
 function isoDate(d: Date): string {
@@ -495,14 +502,15 @@ const DEFAULT_WEEK_AGO: TopLineWeekAgo = {
 // ─── Builder ────────────────────────────────────────────────
 
 async function buildDashboardData(): Promise<DashboardPayload> {
-  errors.length = 0; // reset per call
+  const errors: SectionError[] = [];
+  const safeRun = makeSafeRun(errors);
   const now = new Date();
   const day7Ago = new Date(now.getTime() - 7 * 86_400_000);
   const day30Ago = new Date(now.getTime() - 30 * 86_400_000);
   const day90Ago = new Date(now.getTime() - 90 * 86_400_000);
 
   // ── Top-line KPIs ───────────────────────────────────────
-  const topLine = await safeRun<TopLineKPIs>("topLine", DEFAULT_TOP_LINE, async () => {
+  const topLinePromise = safeRun<TopLineKPIs>("topLine", DEFAULT_TOP_LINE, async () => {
     const [
       totalUsers,
       verifiedUsers,
@@ -608,7 +616,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   // windowed metrics are included — point-in-time fields like
   // pendingApprovalMembers don't have a meaningful "last week" value
   // without per-day snapshots, so they're left out on purpose.
-  const topLineWeekAgo = await safeRun<TopLineWeekAgo>("topLineWeekAgo", DEFAULT_WEEK_AGO, async () => {
+  const topLineWeekAgoPromise = safeRun<TopLineWeekAgo>("topLineWeekAgo", DEFAULT_WEEK_AGO, async () => {
     const day14Ago = new Date(now.getTime() - 14 * 86_400_000);
     const [
       totalUsersBefore,
@@ -676,7 +684,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   // Tracks both the chosen-language split AND the modal completion
   // rate (the count of `pending` is the population that still owes a
   // response to the first-login locale prompt).
-  const localeDistribution = await safeRun<LocaleRow[]>("localeDistribution", [], async () => {
+  const localeDistributionPromise = safeRun<LocaleRow[]>("localeDistribution", [], async () => {
     const rows = await prisma.$queryRaw<{ locale: string | null; count: bigint }[]>`
       SELECT locale, COUNT(*)::bigint AS count
       FROM "User"
@@ -692,7 +700,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Time series — last 12 weeks ────────────────────────
-  const signupsByWeek = await safeRun<WeeklySignups[]>("signupsByWeek", [], async () => {
+  const signupsByWeekPromise = safeRun<WeeklySignups[]>("signupsByWeek", [], async () => {
     const rows = await prisma.$queryRaw<
       { week_start: Date; total: bigint; verified: bigint; google: bigint; referred: bigint }[]
     >`
@@ -715,7 +723,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     }));
   });
 
-  const poolsByWeek = await safeRun<WeeklyPools[]>("poolsByWeek", [], async () => {
+  const poolsByWeekPromise = safeRun<WeeklyPools[]>("poolsByWeek", [], async () => {
     const rows = await prisma.$queryRaw<
       { week_start: Date; total: bigint; personal: bigint; corporate: bigint }[]
     >`
@@ -736,7 +744,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     }));
   });
 
-  const picksByWeek = await safeRun<WeeklyPicks[]>("picksByWeek", [], async () => {
+  const picksByWeekPromise = safeRun<WeeklyPicks[]>("picksByWeek", [], async () => {
     // Three pick tables share the same time-axis. We collect a row per
     // week from each table, full-outer-join into a single timeline so
     // gaps in any single series don't drop the week. Pre-fix this only
@@ -787,7 +795,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     }));
   });
 
-  const revenueByWeek = await safeRun<WeeklyRevenue[]>("revenueByWeek", [], async () => {
+  const revenueByWeekPromise = safeRun<WeeklyRevenue[]>("revenueByWeek", [], async () => {
     const rows = await prisma.$queryRaw<
       { week_start: Date; paid_count: bigint; revenue_usd_minor: bigint; revenue_cop: bigint }[]
     >`
@@ -809,7 +817,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     }));
   });
 
-  const dailyActiveUsers = await safeRun<DailyActive[]>("dailyActiveUsers", [], async () => {
+  const dailyActiveUsersPromise = safeRun<DailyActive[]>("dailyActiveUsers", [], async () => {
     // Unified across all three pick tables — see picksByWeek note.
     const rows = await prisma.$queryRaw<
       { day: Date; unique_users: bigint; picks_count: bigint }[]
@@ -839,7 +847,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Geo + tournaments ──────────────────────────────────
-  const usersByCountry = await safeRun<CountryRow[]>("usersByCountry", [], async () => {
+  const usersByCountryPromise = safeRun<CountryRow[]>("usersByCountry", [], async () => {
     const rows = await prisma.$queryRaw<{ country: string | null; count: bigint }[]>`
       SELECT country, COUNT(*)::bigint AS count
       FROM "User"
@@ -854,7 +862,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     }));
   });
 
-  const poolsByStatus = await safeRun<{ status: string; count: number }[]>(
+  const poolsByStatusPromise = safeRun<{ status: string; count: number }[]>(
     "poolsByStatus",
     [],
     async () => {
@@ -863,21 +871,22 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     },
   );
 
-  const poolsByTournament = await safeRun<TournamentRow[]>("poolsByTournament", [], async () => {
+  const poolsByTournamentPromise = safeRun<TournamentRow[]>("poolsByTournament", [], async () => {
     const rows = await prisma.$queryRaw<
       { name: string; template_key: string | null; pool_count: bigint; avg_members: number }[]
     >`
       SELECT ti.name,
-             ti."templateKey" AS template_key,
+             tt."key" AS template_key,
              COUNT(p.id)::bigint AS pool_count,
              COALESCE(AVG(member_counts.member_count), 0)::float AS avg_members
       FROM "Pool" p
       JOIN "TournamentInstance" ti ON ti.id = p."tournamentInstanceId"
+      JOIN "TournamentTemplate" tt ON tt.id = ti."templateId"
       LEFT JOIN (
         SELECT "poolId", COUNT(*)::int AS member_count
         FROM "PoolMember" WHERE status = 'ACTIVE' GROUP BY "poolId"
       ) member_counts ON member_counts."poolId" = p.id
-      GROUP BY ti.name, ti."templateKey"
+      GROUP BY ti.name, tt."key"
       ORDER BY pool_count DESC
     `;
     return rows.map((r) => ({
@@ -888,7 +897,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     }));
   });
 
-  const poolSizeDistribution = await safeRun<{ range: string; count: number }[]>(
+  const poolSizeDistributionPromise = safeRun<{ range: string; count: number }[]>(
     "poolSizeDistribution",
     [],
     async () => {
@@ -924,7 +933,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   );
 
   // ── Activation funnel ──────────────────────────────────
-  const funnel = await safeRun<ActivationFunnel>("funnel", DEFAULT_FUNNEL, async () => {
+  const funnelPromise = safeRun<ActivationFunnel>("funnel", DEFAULT_FUNNEL, async () => {
     const [usersJoined, usersPicked, totalUsers] = await Promise.all([
       prisma.$queryRaw<{ count: bigint }[]>`
         SELECT COUNT(DISTINCT "userId")::bigint AS count
@@ -957,7 +966,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Corporate funnel ───────────────────────────────────
-  const corporateFunnel = await safeRun<CorporateFunnel>(
+  const corporateFunnelPromise = safeRun<CorporateFunnel>(
     "corporateFunnel",
     DEFAULT_CORPORATE_FUNNEL,
     async () => {
@@ -1013,7 +1022,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   // For each top source/medium combo, cross-reference with PoolMember
   // and the unified pick tables. The pickRate tells the manager which
   // channels actually convert, not just which deliver volume.
-  const acquisitionFunnel = await safeRun<AcquisitionFunnelRow[]>("acquisitionFunnel", [], async () => {
+  const acquisitionFunnelPromise = safeRun<AcquisitionFunnelRow[]>("acquisitionFunnel", [], async () => {
     const rows = await prisma.$queryRaw<
       {
         source: string | null;
@@ -1075,7 +1084,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   // is what tells you whether THIS WEEK's signups are activating. Last
   // 8 cohorts. `inProgress` flags cohorts <14d old (their 2-week window
   // hasn't closed yet).
-  const cohortActivation = await safeRun<CohortActivationRow[]>("cohortActivation", [], async () => {
+  const cohortActivationPromise = safeRun<CohortActivationRow[]>("cohortActivation", [], async () => {
     const since = new Date(now.getTime() - 8 * 7 * 86_400_000);
     const rows = await prisma.$queryRaw<
       {
@@ -1146,7 +1155,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Acquisition + referrals ────────────────────────────
-  const topAcquisition = await safeRun<AcquisitionRow[]>("topAcquisition", [], async () => {
+  const topAcquisitionPromise = safeRun<AcquisitionRow[]>("topAcquisition", [], async () => {
     const rows = await prisma.$queryRaw<
       { source: string | null; medium: string | null; count: bigint }[]
     >`
@@ -1166,7 +1175,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     }));
   });
 
-  const organicReferrals = await safeRun<{ totalReferred: number; topReferrers: TopReferrer[] }>(
+  const organicReferralsPromise = safeRun<{ totalReferred: number; topReferrers: TopReferrer[] }>(
     "organicReferrals",
     { totalReferred: 0, topReferrers: [] },
     async () => {
@@ -1199,7 +1208,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   );
 
   // ── Recent inquiries ───────────────────────────────────
-  const recentInquiries = await safeRun<InquiryRow[]>("recentInquiries", [], async () => {
+  const recentInquiriesPromise = safeRun<InquiryRow[]>("recentInquiries", [], async () => {
     const rows = await prisma.organizationInquiry.findMany({
       orderBy: { createdAtUtc: "desc" },
       take: 15,
@@ -1232,7 +1241,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Top organizations ──────────────────────────────────
-  const topOrganizations = await safeRun<OrgRow[]>("topOrganizations", [], async () => {
+  const topOrganizationsPromise = safeRun<OrgRow[]>("topOrganizations", [], async () => {
     const rows = await prisma.$queryRaw<
       {
         id: string;
@@ -1275,7 +1284,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Pool health checks ─────────────────────────────────
-  const poolHealth = await safeRun<PoolHealth>("poolHealth", DEFAULT_POOL_HEALTH, async () => {
+  const poolHealthPromise = safeRun<PoolHealth>("poolHealth", DEFAULT_POOL_HEALTH, async () => {
     const [zombiePools, poolsWithNoMembers, oldEmptyDrafts, fullPools] = await Promise.all([
       // Zombie = ACTIVE pool with zero picks across ALL pick tables.
       // Pre-fix this checked only Prediction; an Estratega pool whose
@@ -1324,7 +1333,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Cohort retention (last 8 weeks) ────────────────────
-  const cohortRetention = await safeRun<CohortRow[]>("cohortRetention", [], async () => {
+  const cohortRetentionPromise = safeRun<CohortRow[]>("cohortRetention", [], async () => {
     const since = new Date(now.getTime() - 8 * 7 * 86_400_000);
     // Single `all_picks` CTE unifies the three pick tables so retention
     // counts Estratega activity the same as score-based picks. Without
@@ -1409,7 +1418,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   });
 
   // ── Payment breakdown ──────────────────────────────────
-  const paymentBreakdown = await safeRun<PaymentBreakdown>(
+  const paymentBreakdownPromise = safeRun<PaymentBreakdown>(
     "paymentBreakdown",
     DEFAULT_PAYMENT,
     async () => {
@@ -1423,6 +1432,9 @@ async function buildDashboardData(): Promise<DashboardPayload> {
             CASE
               WHEN "polarOrderId" IS NOT NULL THEN 'polar'
               WHEN "mpPreferenceId" IS NOT NULL THEN 'mercadopago'
+              -- Sales-flow CC redemptions create the PoolPayment directly
+              -- (no gateway ids) — without this arm they showed as 'unknown'.
+              WHEN "accountReceivableId" IS NOT NULL THEN 'sales_cc'
               ELSE 'unknown'
             END AS provider,
             currency,
@@ -1504,7 +1516,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   );
 
   // ── Operational health ─────────────────────────────────
-  const operationalHealth = await safeRun<OperationalHealth>(
+  const operationalHealthPromise = safeRun<OperationalHealth>(
     "operationalHealth",
     DEFAULT_OPERATIONAL,
     async () => {
@@ -1541,7 +1553,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   );
 
   // ── Communications health ──────────────────────────────
-  const communicationsHealth = await safeRun<CommunicationsHealth>(
+  const communicationsHealthPromise = safeRun<CommunicationsHealth>(
     "communicationsHealth",
     DEFAULT_COMMUNICATIONS,
     async () => {
@@ -1608,7 +1620,7 @@ async function buildDashboardData(): Promise<DashboardPayload> {
   );
 
   // ── Engagement signals (top players, hosts, tournaments) ─
-  const engagementSignals = await safeRun<EngagementSignals>(
+  const engagementSignalsPromise = safeRun<EngagementSignals>(
     "engagementSignals",
     DEFAULT_ENGAGEMENT,
     async () => {
@@ -1682,22 +1694,31 @@ async function buildDashboardData(): Promise<DashboardPayload> {
             SELECT "userId", "poolId" FROM "StructuralPrediction"
             UNION ALL
             SELECT "userId", "poolId" FROM "GroupStandingsPrediction"
+          ),
+          -- Members aggregated to the instance level BEFORE joining the
+          -- picks. Joining a per-pool member count onto the pool×picks
+          -- row set multiplies it by each pool's pick count (fan-out),
+          -- inflating total_active_members by orders of magnitude.
+          members_per_instance AS (
+            SELECT p."tournamentInstanceId" AS instance_id,
+                   COUNT(*)::bigint AS total_members
+            FROM "PoolMember" pm
+            JOIN "Pool" p ON p.id = pm."poolId"
+            WHERE pm.status = 'ACTIVE'
+            GROUP BY p."tournamentInstanceId"
           )
           SELECT ti.name AS tournament_name,
-                 ti."templateKey" AS template_key,
+                 tt."key" AS template_key,
                  COUNT(DISTINCT p.id)::bigint AS pool_count,
-                 COALESCE(SUM(mc.c), 0)::bigint AS total_active_members,
+                 COALESCE(MAX(mpi.total_members), 0)::bigint AS total_active_members,
                  COUNT(ap.*)::bigint AS total_picks,
                  COUNT(DISTINCT ap."userId")::bigint AS unique_pickers
           FROM "TournamentInstance" ti
+          JOIN "TournamentTemplate" tt ON tt.id = ti."templateId"
+          LEFT JOIN members_per_instance mpi ON mpi.instance_id = ti.id
           LEFT JOIN "Pool" p ON p."tournamentInstanceId" = ti.id
-          LEFT JOIN (
-            SELECT "poolId", COUNT(*)::int AS c
-            FROM "PoolMember" WHERE status = 'ACTIVE'
-            GROUP BY "poolId"
-          ) mc ON mc."poolId" = p.id
           LEFT JOIN all_picks ap ON ap."poolId" = p.id
-          GROUP BY ti.id, ti.name, ti."templateKey"
+          GROUP BY ti.id, ti.name, tt."key"
           ORDER BY total_picks DESC NULLS LAST
           LIMIT 15
         `,
@@ -1727,6 +1748,67 @@ async function buildDashboardData(): Promise<DashboardPayload> {
       };
     },
   );
+
+  // Await every section at once. Sections are mutually independent, so
+  // running them concurrently makes the wall time ≈ the slowest section
+  // instead of the sum of all 26 (which is what pushed cold loads past
+  // the frontend's 30 s request timeout). Queries beyond the Prisma
+  // connection-pool size simply queue.
+  const [
+    topLine,
+    topLineWeekAgo,
+    localeDistribution,
+    signupsByWeek,
+    poolsByWeek,
+    picksByWeek,
+    revenueByWeek,
+    dailyActiveUsers,
+    usersByCountry,
+    poolsByStatus,
+    poolsByTournament,
+    poolSizeDistribution,
+    funnel,
+    corporateFunnel,
+    acquisitionFunnel,
+    cohortActivation,
+    topAcquisition,
+    organicReferrals,
+    recentInquiries,
+    topOrganizations,
+    poolHealth,
+    cohortRetention,
+    paymentBreakdown,
+    operationalHealth,
+    communicationsHealth,
+    engagementSignals,
+  ] = await Promise.all([
+    topLinePromise,
+    topLineWeekAgoPromise,
+    localeDistributionPromise,
+    signupsByWeekPromise,
+    poolsByWeekPromise,
+    picksByWeekPromise,
+    revenueByWeekPromise,
+    dailyActiveUsersPromise,
+    usersByCountryPromise,
+    poolsByStatusPromise,
+    poolsByTournamentPromise,
+    poolSizeDistributionPromise,
+    funnelPromise,
+    corporateFunnelPromise,
+    acquisitionFunnelPromise,
+    cohortActivationPromise,
+    topAcquisitionPromise,
+    organicReferralsPromise,
+    recentInquiriesPromise,
+    topOrganizationsPromise,
+    poolHealthPromise,
+    cohortRetentionPromise,
+    paymentBreakdownPromise,
+    operationalHealthPromise,
+    communicationsHealthPromise,
+    engagementSignalsPromise,
+  ]);
 
   return {
     generatedAtUtc: now.toISOString(),
@@ -1763,6 +1845,11 @@ async function buildDashboardData(): Promise<DashboardPayload> {
 
 // ─── Route ──────────────────────────────────────────────────
 
+// Coalesce concurrent cold-cache builds: the second admin (or a
+// refresh racing a first load) awaits the in-flight build instead of
+// firing a second full pass of every query bundle.
+let inFlightBuild: Promise<DashboardPayload> | null = null;
+
 adminAnalyticsDashboardRouter.get(
   "/dashboard",
   requireAuth,
@@ -1774,8 +1861,22 @@ adminAnalyticsDashboardRouter.get(
       return sendData(res, { ...cache.data, cached: true });
     }
     try {
-      const data = await buildDashboardData();
-      cache = { data, timestamp: now };
+      if (!inFlightBuild) {
+        const startedAt = Date.now();
+        inFlightBuild = buildDashboardData()
+          .then((data) => {
+            cache = { data, timestamp: Date.now() };
+            console.log(
+              `[admin analytics] dashboard built in ${Date.now() - startedAt}ms` +
+                (data.errors.length > 0 ? ` (${data.errors.length} section errors)` : ""),
+            );
+            return data;
+          })
+          .finally(() => {
+            inFlightBuild = null;
+          });
+      }
+      const data = await inFlightBuild;
       return sendData(res, { ...data, cached: false });
     } catch (err) {
       console.error("[admin analytics dashboard] FAILED:", err);
