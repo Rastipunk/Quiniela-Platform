@@ -29,7 +29,7 @@ import {
   generateKnockoutWinnerBreakdown,
 } from "../lib/scoringBreakdown";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
-import { outcomeFromScore } from "../lib/poolHelpers";
+import { outcomeFromScore, buildPhaseTakesMatchPicks } from "../lib/poolHelpers";
 import {
   extractMatches,
   extractTeams,
@@ -1414,6 +1414,11 @@ export async function getPoolNotifications(
     return teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
   };
 
+  // Structural phases (Estratega) take group/knockout picks, not
+  // per-match Prediction rows — counting their matches here would
+  // flag "missing" picks that cannot exist (false-positive banner).
+  const phaseTakesMatchPicks = buildPhaseTakesMatchPicks(pool.pickTypesConfig);
+
   const urgentDeadlines: Array<{
     matchId: string;
     phaseId: string;
@@ -1424,6 +1429,7 @@ export async function getPoolNotifications(
   }> = [];
 
   for (const match of matches) {
+    if (!phaseTakesMatchPicks(match.phaseId)) continue;
     if (isPlaceholder(match.homeTeamId) || isPlaceholder(match.awayTeamId)) continue;
 
     const kickoff = new Date(match.kickoffUtc);

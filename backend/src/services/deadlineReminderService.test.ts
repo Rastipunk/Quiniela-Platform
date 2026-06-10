@@ -490,6 +490,128 @@ describe("Integration Scenarios", () => {
     expect(result.emailsSent).toBe(1);
   });
 
+  it("should NOT email members of structural (Estratega/SIMPLE) pools — no match picks exist there", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    // SIMPLE-preset pool: group_stage is structural (GROUP_STANDINGS),
+    // so its matches never take Prediction rows. Regression test for the
+    // false "1 match without a pick" reminder (KinaxisWorldCup2026).
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-simple",
+          name: "Estratega Pool",
+          predictions: [], // expected: structural pools have no Prediction rows
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                {
+                  id: "match-1",
+                  phaseId: "group_stage",
+                  kickoffTime: in6Hours.toISOString(),
+                  homeTeam: "A",
+                  awayTeam: "B",
+                },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          {
+            phaseId: "group_stage",
+            phaseName: "Fase de Grupos",
+            requiresScore: false,
+            structuralPicks: {
+              type: "GROUP_STANDINGS",
+              config: { pointsPerExactPosition: 10, bonusPerfectGroup: 20 },
+            },
+          },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([]);
+
+    const result = await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).not.toHaveBeenCalled();
+    expect(result.emailsSent).toBe(0);
+    expect(result.usersNotified).toBe(0);
+  });
+
+  it("should only count score-phase matches in MIXED-config pools", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+    const in8Hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-mixed",
+          name: "Mixed Pool",
+          predictions: [],
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                // Score phase — must be counted
+                {
+                  id: "match-score",
+                  phaseId: "group_stage",
+                  kickoffTime: in6Hours.toISOString(),
+                  homeTeam: "A",
+                  awayTeam: "B",
+                },
+                // Structural phase — must be ignored
+                {
+                  id: "match-structural",
+                  phaseId: "round_of_16",
+                  kickoffTime: in8Hours.toISOString(),
+                  homeTeam: "C",
+                  awayTeam: "D",
+                },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          {
+            phaseId: "group_stage",
+            phaseName: "Fase de Grupos",
+            requiresScore: true,
+            matchPicks: {
+              types: [{ key: "EXACT_SCORE", enabled: true, points: 20 }],
+            },
+          },
+          {
+            phaseId: "round_of_16",
+            phaseName: "Octavos de Final",
+            requiresScore: false,
+            structuralPicks: {
+              type: "KNOCKOUT_WINNER",
+              config: { pointsPerCorrectAdvance: 20 },
+            },
+          },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([]);
+    vi.mocked(emailModule.sendDeadlineReminderEmail).mockResolvedValue({
+      success: true,
+    });
+
+    await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchesCount: 1, // only the score-phase match
+      })
+    );
+  });
+
   it("should count matches correctly for reminder email", async () => {
     const now = new Date();
     const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);

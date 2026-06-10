@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { outcomeFromScore, makeInviteCode } from "./poolHelpers";
+import { outcomeFromScore, makeInviteCode, buildPhaseTakesMatchPicks } from "./poolHelpers";
 
 describe("poolHelpers", () => {
   // ── outcomeFromScore ──────────────────────────────────────
@@ -56,6 +56,91 @@ describe("poolHelpers", () => {
 
     it("returns a string type", () => {
       expect(typeof makeInviteCode()).toBe("string");
+    });
+  });
+
+  // ── buildPhaseTakesMatchPicks ─────────────────────────────
+
+  describe("buildPhaseTakesMatchPicks", () => {
+    // Mirrors the shapes produced by lib/pickPresets.ts
+    const scorePhase = (phaseId: string) => ({
+      phaseId,
+      phaseName: phaseId,
+      requiresScore: true,
+      matchPicks: {
+        types: [{ key: "EXACT_SCORE" as const, enabled: true, points: 20 }],
+      },
+    });
+    const structuralPhase = (phaseId: string) => ({
+      phaseId,
+      phaseName: phaseId,
+      requiresScore: false,
+      structuralPicks: {
+        type: "GROUP_STANDINGS" as const,
+        config: { pointsPerExactPosition: 10 },
+      },
+    });
+
+    it("counts every phase when pool has no pickTypesConfig (legacy)", () => {
+      expect(buildPhaseTakesMatchPicks(null)("group_stage")).toBe(true);
+      expect(buildPhaseTakesMatchPicks(undefined)("group_stage")).toBe(true);
+      expect(buildPhaseTakesMatchPicks([])("group_stage")).toBe(true);
+    });
+
+    it("counts every phase when config JSON is malformed (not an array)", () => {
+      expect(buildPhaseTakesMatchPicks({ foo: "bar" })("group_stage")).toBe(true);
+      expect(buildPhaseTakesMatchPicks("SIMPLE")("group_stage")).toBe(true);
+    });
+
+    it("excludes structural phases (SIMPLE / Estratega pools)", () => {
+      const predicate = buildPhaseTakesMatchPicks([
+        structuralPhase("group_stage"),
+        structuralPhase("round_of_32"),
+      ]);
+      expect(predicate("group_stage")).toBe(false);
+      expect(predicate("round_of_32")).toBe(false);
+    });
+
+    it("includes match-based phases (BASIC / CUMULATIVE pools)", () => {
+      const predicate = buildPhaseTakesMatchPicks([
+        scorePhase("group_stage"),
+        scorePhase("finals"),
+      ]);
+      expect(predicate("group_stage")).toBe(true);
+      expect(predicate("finals")).toBe(true);
+    });
+
+    it("distinguishes phases within a mixed config", () => {
+      const predicate = buildPhaseTakesMatchPicks([
+        scorePhase("group_stage"),
+        structuralPhase("round_of_16"),
+      ]);
+      expect(predicate("group_stage")).toBe(true);
+      expect(predicate("round_of_16")).toBe(false);
+    });
+
+    it("excludes phases absent from a non-empty config (no picks possible)", () => {
+      const predicate = buildPhaseTakesMatchPicks([scorePhase("group_stage")]);
+      expect(predicate("finals")).toBe(false);
+    });
+
+    it("counts matches without phaseId when config exists (cannot classify — preserve legacy)", () => {
+      const predicate = buildPhaseTakesMatchPicks([structuralPhase("group_stage")]);
+      expect(predicate(undefined)).toBe(true);
+    });
+
+    it("excludes a phase whose matchPicks exist but requiresScore is false", () => {
+      const predicate = buildPhaseTakesMatchPicks([
+        {
+          phaseId: "group_stage",
+          phaseName: "Fase de Grupos",
+          requiresScore: false,
+          matchPicks: {
+            types: [{ key: "EXACT_SCORE" as const, enabled: true, points: 20 }],
+          },
+        },
+      ]);
+      expect(predicate("group_stage")).toBe(false);
     });
   });
 });

@@ -11,6 +11,7 @@
 import { prisma } from "../db";
 import { sendDeadlineReminderEmail, isEmailEnabled } from "../lib/email";
 import { resolveUserLocale } from "../lib/constants";
+import { buildPhaseTakesMatchPicks } from "../lib/poolHelpers";
 
 // =========================================================================
 // TIPOS
@@ -39,6 +40,7 @@ interface ReminderDetail {
 
 interface MatchWithDeadline {
   id: string;
+  phaseId?: string;
   label?: string;
   homeTeamId?: string;
   awayTeamId?: string;
@@ -217,8 +219,14 @@ export async function processDeadlineReminders(
 
     if (matches.length === 0) continue;
 
+    // Structural phases (Estratega) take group/knockout picks, not
+    // per-match Prediction rows — including their matches here would
+    // email users about "missing" picks that cannot exist.
+    const phaseTakesMatchPicks = buildPhaseTakesMatchPicks(pool.pickTypesConfig);
+
     // Encontrar partidos cuyo deadline está dentro de la ventana
     const upcomingMatches = matches.filter((match) => {
+      if (!phaseTakesMatchPicks(match.phaseId)) return false;
       const kickoff = getKickoff(match);
       if (!kickoff) return false;
       const deadline = getMatchDeadline(
