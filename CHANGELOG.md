@@ -8,6 +8,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Admin — Monitor de partidos en vivo (Etapa 3A) (2026-06-11)
+
+#### Added
+- **`GET /admin/matches/monitor`** (admin-only): vista operativa de cada partido en ventana −12h/+36h sobre instancias AUTO — estado del scraper (marcador, status, confianza, fuentes desde `lastLiveDataJson`, ≤1 poll de antigüedad), frescura de tracking/poll, countdown del grace period y **propagación de resultados por fuente a través de las pools ACTIVE** ("311 confirmadas de 311"). Solo BD, sin llamadas extra al scraper.
+- **Página `/admin/monitor`**: cards por partido con auto-refresh 15s, badges de estado (programado/en vivo/descanso/prórroga/penales/final/ABANDONADO) y chips de señal (consenso ≥3 fuentes, track, poll, grace, pools). Primera fase del panel pedido por el owner (audit §6); el override master llega en 3B.
+
 ### Score pipeline — Etapa 2 (frontend): editor de resultados con prórroga (2026-06-11)
 
 #### Added

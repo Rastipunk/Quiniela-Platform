@@ -134,6 +134,19 @@ adminRouter.post("/bootstrap-admin", (_req, res) => {
   sendNotFound(res, "Not found");
 });
 
+// GET /admin/matches/monitor — Operational view of every match in the
+// live window: scraper state, tracking freshness, grace countdown and
+// per-source result propagation across ACTIVE pools (audit §6, Etapa 3A).
+adminRouter.get("/matches/monitor", requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const { getMatchMonitor } = await import("../services/matchMonitorService");
+    const rows = await getMatchMonitor();
+    return sendData(res, { matches: rows, generatedAt: new Date().toISOString() });
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
 // POST /admin/jobs/trigger-fixture-tracking — Manually trigger fixtureTrackingJob
 // Used to test the picks4all-scores integration end-to-end without waiting for the hourly cron.
 adminRouter.post("/jobs/trigger-fixture-tracking", requireAuth, requireAdmin, async (req, res) => {
