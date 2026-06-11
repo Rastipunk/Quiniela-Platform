@@ -162,18 +162,12 @@ const MATCH_PICK_TYPE_NAMES: Record<MatchPickTypeKey, string> = {
 // ==================== BREAKDOWN PARA MATCH PICKS ====================
 
 /**
- * Detecta si la configuración usa el sistema acumulativo (nuevos tipos HOME_GOALS, AWAY_GOALS)
- */
-function isCumulativeScoring(enabledTypes: { key: string }[]): boolean {
-  return enabledTypes.some((t) => t.key === "HOME_GOALS" || t.key === "AWAY_GOALS");
-}
-
-/**
  * Genera breakdown detallado para un pick de partido
  *
- * SOPORTA DOS SISTEMAS:
- * 1. ACUMULATIVO: Máximo = suma de todos los tipos habilitados
- * 2. LEGACY: Máximo = el tipo con más puntos (EXACT_SCORE)
+ * MOTOR ÚNICO ADITIVO (ADR-072): espejo exacto de scoreMatchPick —
+ * cada criterio habilitado se evalúa de forma independiente y los
+ * puntos de los cumplidos se SUMAN. EXACT_SCORE es bonus aditivo (sin
+ * short-circuit) y PARTIAL_SCORE es XOR. Máximo = suma de habilitados.
  */
 export function generateMatchPickBreakdown(
   pick: { homeGoals: number; awayGoals: number } | null,
@@ -187,12 +181,9 @@ export function generateMatchPickBreakdown(
   }
 
   const enabledTypes = phaseConfig.matchPicks.types.filter(t => t.enabled);
-  const isCumulative = isCumulativeScoring(enabledTypes);
 
-  // Calcular maximo teorico según el sistema
-  const maxPoints = isCumulative
-    ? enabledTypes.reduce((sum, t) => sum + t.points, 0)  // ACUMULATIVO: suma de todos
-    : Math.max(...enabledTypes.map(t => t.points), 0);   // LEGACY: el máximo
+  // Máximo teórico: suma de todos los criterios habilitados (ADR-072)
+  const maxPoints = enabledTypes.reduce((sum, t) => sum + t.points, 0);
 
   // Caso: No hay pick
   if (!pick) {
@@ -234,10 +225,9 @@ export function generateMatchPickBreakdown(
   const rules: RuleEvaluation[] = [];
   let totalEarned = 0;
 
-  // ==================== SISTEMA ACUMULATIVO ====================
-  if (isCumulative) {
-    // En sistema acumulativo, evaluamos TODOS los criterios y sumamos
-
+  // ==================== EVALUACIÓN ADITIVA (ADR-072) ====================
+  // Se evalúan TODOS los criterios habilitados y se suman los cumplidos.
+  {
     // 1. MATCH_OUTCOME_90MIN (Resultado: ganador/empate)
     const outcomeType = enabledTypes.find(t => t.key === "MATCH_OUTCOME_90MIN");
     if (outcomeType) {
@@ -413,175 +403,6 @@ export function generateMatchPickBreakdown(
     };
   }
 
-  // ==================== SISTEMA LEGACY ====================
-  // EXACT_SCORE termina la evaluación si acierta
-
-  // Evaluar EXACT_SCORE primero (si esta habilitado)
-  const exactScoreType = enabledTypes.find(t => t.key === "EXACT_SCORE");
-  if (exactScoreType) {
-    const matched = pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals;
-
-    rules.push({
-      ruleKey: "EXACT_SCORE",
-      ruleName: MATCH_PICK_TYPE_NAMES.EXACT_SCORE,
-      enabled: true,
-      matched,
-      pointsEarned: matched ? exactScoreType.points : 0,
-      pointsMax: exactScoreType.points,
-      details: matched
-        ? `Acertaste ${pick.homeGoals}-${pick.awayGoals}`
-        : `Predijiste ${pick.homeGoals}-${pick.awayGoals}, fue ${result.homeGoals}-${result.awayGoals}`,
-    });
-
-    if (matched) {
-      totalEarned = exactScoreType.points;
-      // Si acerto exacto, las demas reglas no aplican pero las mostramos como N/A
-      const otherTypes = enabledTypes.filter(t => t.key !== "EXACT_SCORE");
-      for (const t of otherTypes) {
-        rules.push({
-          ruleKey: t.key,
-          ruleName: MATCH_PICK_TYPE_NAMES[t.key],
-          enabled: true,
-          matched: false,
-          pointsEarned: 0,
-          pointsMax: 0, // No aplica porque ya gano el maximo
-          details: "No aplica (acertaste exacto)",
-        });
-      }
-
-      return {
-        type: "MATCH",
-        matchId,
-        hasPick: true,
-        hasResult: true,
-        pick,
-        result,
-        totalPointsEarned: totalEarned,
-        totalPointsMax: maxPoints,
-        rules,
-        summary: `${totalEarned} / ${maxPoints} pts`,
-      };
-    }
-  }
-
-  // Si no acerto exacto, evaluar otras reglas
-  // GOAL_DIFFERENCE
-  const goalDiffType = enabledTypes.find(t => t.key === "GOAL_DIFFERENCE");
-  if (goalDiffType) {
-    const pickDiff = pick.homeGoals - pick.awayGoals;
-    const resultDiff = result.homeGoals - result.awayGoals;
-    const matched = pickDiff === resultDiff;
-
-    rules.push({
-      ruleKey: "GOAL_DIFFERENCE",
-      ruleName: MATCH_PICK_TYPE_NAMES.GOAL_DIFFERENCE,
-      enabled: true,
-      matched,
-      pointsEarned: matched ? goalDiffType.points : 0,
-      pointsMax: goalDiffType.points,
-      details: matched
-        ? `Diferencia correcta: ${pickDiff >= 0 ? "+" : ""}${pickDiff}`
-        : `Predijiste ${pickDiff >= 0 ? "+" : ""}${pickDiff}, fue ${resultDiff >= 0 ? "+" : ""}${resultDiff}`,
-    });
-
-    if (matched) totalEarned += goalDiffType.points;
-  }
-
-  // PARTIAL_SCORE
-  const partialType = enabledTypes.find(t => t.key === "PARTIAL_SCORE");
-  if (partialType) {
-    const homeMatch = pick.homeGoals === result.homeGoals;
-    const awayMatch = pick.awayGoals === result.awayGoals;
-    const matched = homeMatch !== awayMatch; // XOR: solo uno coincide
-
-    let details = "";
-    if (matched) {
-      if (homeMatch) {
-        details = `Acertaste goles del local (${pick.homeGoals})`;
-      } else {
-        details = `Acertaste goles del visitante (${pick.awayGoals})`;
-      }
-    } else if (homeMatch && awayMatch) {
-      details = "Ambos correctos = marcador exacto";
-    } else {
-      details = "Ninguno de los dos marcadores parciales";
-    }
-
-    rules.push({
-      ruleKey: "PARTIAL_SCORE",
-      ruleName: MATCH_PICK_TYPE_NAMES.PARTIAL_SCORE,
-      enabled: true,
-      matched,
-      pointsEarned: matched ? partialType.points : 0,
-      pointsMax: partialType.points,
-      details,
-    });
-
-    if (matched) totalEarned += partialType.points;
-  }
-
-  // TOTAL_GOALS
-  const totalGoalsType = enabledTypes.find(t => t.key === "TOTAL_GOALS");
-  if (totalGoalsType) {
-    const pickTotal = pick.homeGoals + pick.awayGoals;
-    const resultTotal = result.homeGoals + result.awayGoals;
-    const matched = pickTotal === resultTotal;
-
-    rules.push({
-      ruleKey: "TOTAL_GOALS",
-      ruleName: MATCH_PICK_TYPE_NAMES.TOTAL_GOALS,
-      enabled: true,
-      matched,
-      pointsEarned: matched ? totalGoalsType.points : 0,
-      pointsMax: totalGoalsType.points,
-      details: matched
-        ? `Total correcto: ${pickTotal} goles`
-        : `Predijiste ${pickTotal} goles, fueron ${resultTotal}`,
-    });
-
-    if (matched) totalEarned += totalGoalsType.points;
-  }
-
-  // MATCH_OUTCOME_90MIN
-  const outcomeType = enabledTypes.find(t => t.key === "MATCH_OUTCOME_90MIN");
-  if (outcomeType) {
-    const pickOutcome = pick.homeGoals > pick.awayGoals ? "HOME" : pick.homeGoals < pick.awayGoals ? "AWAY" : "DRAW";
-    const resultOutcome = result.homeGoals > result.awayGoals ? "HOME" : result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-    const matched = pickOutcome === resultOutcome;
-
-    const outcomeNames: Record<string, string> = {
-      HOME: "Victoria Local",
-      AWAY: "Victoria Visitante",
-      DRAW: "Empate",
-    };
-
-    rules.push({
-      ruleKey: "MATCH_OUTCOME_90MIN",
-      ruleName: MATCH_PICK_TYPE_NAMES.MATCH_OUTCOME_90MIN,
-      enabled: true,
-      matched,
-      pointsEarned: matched ? outcomeType.points : 0,
-      pointsMax: outcomeType.points,
-      details: matched
-        ? `Resultado correcto: ${outcomeNames[pickOutcome]}`
-        : `Predijiste ${outcomeNames[pickOutcome]}, fue ${outcomeNames[resultOutcome]}`,
-    });
-
-    if (matched) totalEarned += outcomeType.points;
-  }
-
-  return {
-    type: "MATCH",
-    matchId,
-    hasPick: true,
-    hasResult: true,
-    pick,
-    result,
-    totalPointsEarned: totalEarned,
-    totalPointsMax: maxPoints,
-    rules,
-    summary: `${totalEarned} / ${maxPoints} pts`,
-  };
 }
 
 // ==================== BREAKDOWN PARA GROUP_STANDINGS ====================

@@ -6,23 +6,19 @@
 /**
  * Tipos de picks basados en marcadores de partidos individuales
  *
- * SISTEMA ACUMULATIVO (nuevo):
- * - Los puntos se ACUMULAN por cada criterio cumplido
- * - El marcador exacto = sumar todos los criterios (no es un tipo separado)
- * - Tipos independientes: HOME_GOALS, AWAY_GOALS, GOAL_DIFFERENCE, MATCH_OUTCOME_90MIN
- *
- * SISTEMA LEGACY (anterior):
- * - EXACT_SCORE terminaba la evaluación
- * - PARTIAL_SCORE era XOR (solo uno de los dos)
+ * MOTOR ÚNICO ADITIVO (ADR-072):
+ * - Los puntos se ACUMULAN por cada criterio habilitado que se cumpla
+ * - EXACT_SCORE es un bonus aditivo — NO termina la evaluación
+ * - PARTIAL_SCORE es XOR (acierta un solo lado; ambos = EXACT_SCORE)
  */
 export type MatchPickTypeKey =
-  | "EXACT_SCORE"           // [LEGACY] Marcador exacto (ej: 2-1) - termina evaluación
+  | "EXACT_SCORE"           // Marcador exacto (ej: 2-1) - bonus aditivo
   | "GOAL_DIFFERENCE"       // Diferencia exacta de goles (ej: +2)
-  | "PARTIAL_SCORE"         // [LEGACY] Acierta goles local O visitante (XOR)
+  | "PARTIAL_SCORE"         // Acierta goles local O visitante (XOR)
   | "TOTAL_GOALS"           // Total exacto de goles (ej: 3)
   | "MATCH_OUTCOME_90MIN"   // Resultado (HOME/DRAW/AWAY) en 90min
-  | "HOME_GOALS"            // [CUMULATIVE] Acierta goles del local exactamente
-  | "AWAY_GOALS";           // [CUMULATIVE] Acierta goles del visitante exactamente
+  | "HOME_GOALS"            // Acierta goles del local exactamente
+  | "AWAY_GOALS";           // Acierta goles del visitante exactamente
 
 /**
  * Configuración de un tipo de pick para partidos

@@ -496,7 +496,20 @@ resultSync goals90 (F2-6, inerte).
   overrides del host), F3-2 (advisory lock en ambos writers), F3-6
   (cierre de pool endurecido + 3 tests), A4 (sin 0-0 NS). Suite 720
   pass / 19 pre-existentes.
-- **Siguiente: Etapa 2** (terceros Estratega reales, goals90 robusto,
-  breakdown con selector, editor host con goals90, advancement
-  resiliente) — deadline R32 28-jun. Luego Etapa 3 (panel admin) y
-  Etapa 4 (visibilidad UI).
+- 15:55-18:30Z — **Etapas 2, 3A, 3B ejecutadas y desplegadas** el mismo
+  día (`1dbd855`+`46478ee`, `41c28be`, `957ac96`+`23faa4f`); **3C y
+  Etapa 4 commiteadas** (`213a9dc`, `80020e4`). Detalle por etapa en
+  CHANGELOG.md (entradas 2026-06-11) — §7.1 marca todas ✅.
+- ~20:2x-21:0xZ — **Hallazgo POST-auditoría (durante el inaugural):**
+  primer correo de soporte del Mundial. Host con reglas Resultado=3 /
+  Dif=1 / Exacto=1: el pick exacto 1-0 pagaba 1 pt y el 2-1 pagaba 4.
+  Causa: rama "legacy" de `scoreMatchPick` (configs sin HOME/AWAY_GOALS)
+  donde EXACT_SCORE hacía short-circuit y pagaba solo sus puntos —
+  contradiciendo el wording del wizard ("Bonus por acertar ambos
+  marcadores"). La auditoría F2 revisó la divergencia leaderboard ↔
+  breakdown pero no cuestionó la semántica del short-circuit en sí.
+  Alcance probado en prod: 17 pools multi-criterio legacy (8 ACTIVE,
+  ~90 miembros, 2 con paradoja plena, 0 COMPLETED). **Fix (ADR-072):
+  motor aditivo único** — EXACT_SCORE es bonus aditivo, sin
+  short-circuit; breakdown y maxPoints unificados; nota de reglas ×3
+  locales corregida. Regresión: caso 3/1/1 → exacto 5 > 2-1 4.

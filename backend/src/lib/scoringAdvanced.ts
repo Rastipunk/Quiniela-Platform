@@ -4,7 +4,6 @@
 import type {
   PhasePickConfig,
   MatchPicksConfig,
-  MatchPickTypeKey,
   PickEvaluationResult,
   MatchScoringResult,
 } from "../types/pickConfig";
@@ -24,23 +23,18 @@ type MatchPick = {
 // ==================== SCORING ENGINE ====================
 
 /**
- * Detecta si la configuración usa el sistema acumulativo (nuevos tipos HOME_GOALS, AWAY_GOALS)
- * o el sistema legacy (EXACT_SCORE que termina la evaluación)
- */
-function isCumulativeScoring(enabledTypes: { key: string }[]): boolean {
-  // Si tiene HOME_GOALS o AWAY_GOALS habilitados, es sistema acumulativo
-  return enabledTypes.some((t) => t.key === "HOME_GOALS" || t.key === "AWAY_GOALS");
-}
-
-/**
  * Evalúa un pick de partido contra el resultado oficial
  * y calcula puntos según la configuración de la fase
  *
- * SOPORTA DOS SISTEMAS:
- * 1. ACUMULATIVO (nuevo): Los puntos se suman por cada criterio cumplido
- *    - Usa HOME_GOALS, AWAY_GOALS, GOAL_DIFFERENCE, MATCH_OUTCOME_90MIN
- *    - El marcador exacto = suma de todos los criterios
- * 2. LEGACY: EXACT_SCORE termina la evaluación inmediatamente
+ * MOTOR ÚNICO ADITIVO (ADR-072): cada criterio habilitado se evalúa de
+ * forma independiente y los puntos de los criterios cumplidos se SUMAN.
+ * EXACT_SCORE es un bonus aditivo — nunca termina la evaluación ni
+ * reemplaza a los demás criterios. La UI (wizard y reglas) siempre lo
+ * presentó como "Bonus por acertar ambos marcadores"; el antiguo
+ * short-circuit "legacy" podía pagar MENOS al que acertaba el marcador
+ * exacto que a quien casi acierta (reporte de soporte 2026-06-11).
+ * PARTIAL_SCORE es XOR por definición, así que nunca paga junto con
+ * EXACT_SCORE.
  *
  * @param pick - Predicción del usuario
  * @param result - Resultado oficial del partido
@@ -62,215 +56,91 @@ export function scoreMatchPick(
   const matchConfig = config.matchPicks;
   const enabledTypes = matchConfig.types.filter((t) => t.enabled);
 
-  // Detectar qué sistema usar
-  if (isCumulativeScoring(enabledTypes)) {
-    // ==================== SISTEMA ACUMULATIVO ====================
-    // Evalúa TODOS los criterios y suma puntos de cada uno que cumpla
-
-    // 1. MATCH_OUTCOME_90MIN (Resultado: ganador/empate)
-    const outcomeType = enabledTypes.find((t) => t.key === "MATCH_OUTCOME_90MIN");
-    if (outcomeType) {
-      const matched = evaluateMatchOutcome(pick, result);
-      evaluations.push({
-        matchPickType: "MATCH_OUTCOME_90MIN",
-        points: matched ? outcomeType.points : 0,
-        matched,
-      });
-      if (matched) totalPoints += outcomeType.points;
-    }
-
-    // 2. HOME_GOALS (Goles del local exactos)
-    const homeGoalsType = enabledTypes.find((t) => t.key === "HOME_GOALS");
-    if (homeGoalsType) {
-      const matched = pick.homeGoals === result.homeGoals;
-      evaluations.push({
-        matchPickType: "HOME_GOALS",
-        points: matched ? homeGoalsType.points : 0,
-        matched,
-      });
-      if (matched) totalPoints += homeGoalsType.points;
-    }
-
-    // 3. AWAY_GOALS (Goles del visitante exactos)
-    const awayGoalsType = enabledTypes.find((t) => t.key === "AWAY_GOALS");
-    if (awayGoalsType) {
-      const matched = pick.awayGoals === result.awayGoals;
-      evaluations.push({
-        matchPickType: "AWAY_GOALS",
-        points: matched ? awayGoalsType.points : 0,
-        matched,
-      });
-      if (matched) totalPoints += awayGoalsType.points;
-    }
-
-    // 4. GOAL_DIFFERENCE (Diferencia de goles exacta)
-    const goalDiffType = enabledTypes.find((t) => t.key === "GOAL_DIFFERENCE");
-    if (goalDiffType) {
-      const matched = evaluateGoalDifference(pick, result);
-      evaluations.push({
-        matchPickType: "GOAL_DIFFERENCE",
-        points: matched ? goalDiffType.points : 0,
-        matched,
-      });
-      if (matched) totalPoints += goalDiffType.points;
-    }
-
-    // 5. TOTAL_GOALS (si está habilitado en modo acumulativo)
-    const totalGoalsType = enabledTypes.find((t) => t.key === "TOTAL_GOALS");
-    if (totalGoalsType) {
-      const matched = evaluateTotalGoals(pick, result);
-      evaluations.push({
-        matchPickType: "TOTAL_GOALS",
-        points: matched ? totalGoalsType.points : 0,
-        matched,
-      });
-      if (matched) totalPoints += totalGoalsType.points;
-    }
-
-    // 6. EXACT_SCORE — additive bonus in cumulative mode. The wizard
-    // exposes this criterion alongside HOME/AWAY/etc., so silently
-    // skipping it here drops the bonus the host configured. We evaluate
-    // it but DO NOT short-circuit (unlike legacy), so the user keeps
-    // accumulated points from other matched criteria.
-    const exactScoreType = enabledTypes.find((t) => t.key === "EXACT_SCORE");
-    if (exactScoreType) {
-      const matched = evaluateExactScore(pick, result);
-      evaluations.push({
-        matchPickType: "EXACT_SCORE",
-        points: matched ? exactScoreType.points : 0,
-        matched,
-      });
-      if (matched) totalPoints += exactScoreType.points;
-    }
-
-    // 7. PARTIAL_SCORE — XOR (one side matches, not both). Additive in
-    // cumulative mode for the same reason as EXACT_SCORE above.
-    const partialScoreType = enabledTypes.find((t) => t.key === "PARTIAL_SCORE");
-    if (partialScoreType) {
-      const matched = evaluatePartialScore(pick, result);
-      evaluations.push({
-        matchPickType: "PARTIAL_SCORE",
-        points: matched ? partialScoreType.points : 0,
-        matched,
-      });
-      if (matched) totalPoints += partialScoreType.points;
-    }
-
-    return {
-      matchId: "", // Se llena desde el llamador
-      totalPoints,
-      evaluations,
-    };
-  }
-
-  // ==================== SISTEMA LEGACY ====================
-  // EXACT_SCORE termina la evaluación si acierta
-
-  // 1. EXACT_SCORE (termina si acierta)
-  const exactScoreType = enabledTypes.find((t) => t.key === "EXACT_SCORE");
-  if (exactScoreType) {
-    const matched = evaluateExactScore(pick, result);
-    if (matched) {
-      evaluations.push({
-        matchPickType: "EXACT_SCORE",
-        points: exactScoreType.points,
-        matched: true,
-      });
-      totalPoints += exactScoreType.points;
-
-      // TERMINA: si acertó exacto, no evalúa otros tipos
-      return {
-        matchId: "", // Se llena desde el llamador
-        totalPoints,
-        evaluations,
-      };
-    } else {
-      evaluations.push({
-        matchPickType: "EXACT_SCORE",
-        points: 0,
-        matched: false,
-      });
-    }
-  }
-
-  // 2. GOAL_DIFFERENCE (solo si no acertó exacto)
-  const goalDiffType = enabledTypes.find((t) => t.key === "GOAL_DIFFERENCE");
-  if (goalDiffType) {
-    const matched = evaluateGoalDifference(pick, result);
-    if (matched) {
-      evaluations.push({
-        matchPickType: "GOAL_DIFFERENCE",
-        points: goalDiffType.points,
-        matched: true,
-      });
-      totalPoints += goalDiffType.points;
-    } else {
-      evaluations.push({
-        matchPickType: "GOAL_DIFFERENCE",
-        points: 0,
-        matched: false,
-      });
-    }
-  }
-
-  // 3. PARTIAL_SCORE (solo si no acertó exacto)
-  const partialScoreType = enabledTypes.find((t) => t.key === "PARTIAL_SCORE");
-  if (partialScoreType) {
-    const matched = evaluatePartialScore(pick, result);
-    if (matched) {
-      evaluations.push({
-        matchPickType: "PARTIAL_SCORE",
-        points: partialScoreType.points,
-        matched: true,
-      });
-      totalPoints += partialScoreType.points;
-    } else {
-      evaluations.push({
-        matchPickType: "PARTIAL_SCORE",
-        points: 0,
-        matched: false,
-      });
-    }
-  }
-
-  // 4. TOTAL_GOALS
-  const totalGoalsType = enabledTypes.find((t) => t.key === "TOTAL_GOALS");
-  if (totalGoalsType) {
-    const matched = evaluateTotalGoals(pick, result);
-    if (matched) {
-      evaluations.push({
-        matchPickType: "TOTAL_GOALS",
-        points: totalGoalsType.points,
-        matched: true,
-      });
-      totalPoints += totalGoalsType.points;
-    } else {
-      evaluations.push({
-        matchPickType: "TOTAL_GOALS",
-        points: 0,
-        matched: false,
-      });
-    }
-  }
-
-  // 5. MATCH_OUTCOME_90MIN (sistema legacy también puede tenerlo)
+  // 1. MATCH_OUTCOME_90MIN (Resultado: ganador/empate)
   const outcomeType = enabledTypes.find((t) => t.key === "MATCH_OUTCOME_90MIN");
   if (outcomeType) {
     const matched = evaluateMatchOutcome(pick, result);
-    if (matched) {
-      evaluations.push({
-        matchPickType: "MATCH_OUTCOME_90MIN",
-        points: outcomeType.points,
-        matched: true,
-      });
-      totalPoints += outcomeType.points;
-    } else {
-      evaluations.push({
-        matchPickType: "MATCH_OUTCOME_90MIN",
-        points: 0,
-        matched: false,
-      });
-    }
+    evaluations.push({
+      matchPickType: "MATCH_OUTCOME_90MIN",
+      points: matched ? outcomeType.points : 0,
+      matched,
+    });
+    if (matched) totalPoints += outcomeType.points;
+  }
+
+  // 2. HOME_GOALS (Goles del local exactos)
+  const homeGoalsType = enabledTypes.find((t) => t.key === "HOME_GOALS");
+  if (homeGoalsType) {
+    const matched = pick.homeGoals === result.homeGoals;
+    evaluations.push({
+      matchPickType: "HOME_GOALS",
+      points: matched ? homeGoalsType.points : 0,
+      matched,
+    });
+    if (matched) totalPoints += homeGoalsType.points;
+  }
+
+  // 3. AWAY_GOALS (Goles del visitante exactos)
+  const awayGoalsType = enabledTypes.find((t) => t.key === "AWAY_GOALS");
+  if (awayGoalsType) {
+    const matched = pick.awayGoals === result.awayGoals;
+    evaluations.push({
+      matchPickType: "AWAY_GOALS",
+      points: matched ? awayGoalsType.points : 0,
+      matched,
+    });
+    if (matched) totalPoints += awayGoalsType.points;
+  }
+
+  // 4. GOAL_DIFFERENCE (Diferencia de goles exacta)
+  const goalDiffType = enabledTypes.find((t) => t.key === "GOAL_DIFFERENCE");
+  if (goalDiffType) {
+    const matched = evaluateGoalDifference(pick, result);
+    evaluations.push({
+      matchPickType: "GOAL_DIFFERENCE",
+      points: matched ? goalDiffType.points : 0,
+      matched,
+    });
+    if (matched) totalPoints += goalDiffType.points;
+  }
+
+  // 5. TOTAL_GOALS (Total de goles del partido)
+  const totalGoalsType = enabledTypes.find((t) => t.key === "TOTAL_GOALS");
+  if (totalGoalsType) {
+    const matched = evaluateTotalGoals(pick, result);
+    evaluations.push({
+      matchPickType: "TOTAL_GOALS",
+      points: matched ? totalGoalsType.points : 0,
+      matched,
+    });
+    if (matched) totalPoints += totalGoalsType.points;
+  }
+
+  // 6. EXACT_SCORE — bonus aditivo. NO hace short-circuit: el pick que
+  // acierta el marcador exacto conserva además los puntos de resultado,
+  // diferencia y total (que cumple por implicación). Ver ADR-072.
+  const exactScoreType = enabledTypes.find((t) => t.key === "EXACT_SCORE");
+  if (exactScoreType) {
+    const matched = evaluateExactScore(pick, result);
+    evaluations.push({
+      matchPickType: "EXACT_SCORE",
+      points: matched ? exactScoreType.points : 0,
+      matched,
+    });
+    if (matched) totalPoints += exactScoreType.points;
+  }
+
+  // 7. PARTIAL_SCORE — XOR (acierta un solo lado, no ambos). Si acierta
+  // ambos lados aplica EXACT_SCORE, no este criterio.
+  const partialScoreType = enabledTypes.find((t) => t.key === "PARTIAL_SCORE");
+  if (partialScoreType) {
+    const matched = evaluatePartialScore(pick, result);
+    evaluations.push({
+      matchPickType: "PARTIAL_SCORE",
+      points: matched ? partialScoreType.points : 0,
+      matched,
+    });
+    if (matched) totalPoints += partialScoreType.points;
   }
 
   return {
@@ -397,9 +267,10 @@ export function applyAutoScalingToConfig(
 /**
  * Calcula puntos máximos teóricos para una fase con match picks
  *
- * SOPORTA DOS SISTEMAS:
- * 1. ACUMULATIVO: Máximo = suma de todos los tipos habilitados
- * 2. LEGACY: Máximo = el tipo con más puntos (EXACT_SCORE)
+ * MOTOR ADITIVO (ADR-072): el máximo teórico por partido es la suma de
+ * todos los criterios habilitados (cota superior — EXACT_SCORE y
+ * PARTIAL_SCORE no pueden cumplirse a la vez por el XOR, pero la suma
+ * simple es la misma convención que muestra el desglose al jugador).
  *
  * @param config - Configuración de la fase
  * @param matchCount - Número de partidos en la fase
@@ -421,18 +292,7 @@ export function calculateMaxPointsForPhase(
     : config;
 
   const enabledTypes = scaledConfig.matchPicks!.types.filter((t) => t.enabled);
-
-  // Detectar si es sistema acumulativo
-  const isCumulative = enabledTypes.some((t) => t.key === "HOME_GOALS" || t.key === "AWAY_GOALS");
-
-  let maxPerMatch: number;
-  if (isCumulative) {
-    // ACUMULATIVO: Máximo = suma de todos los tipos habilitados
-    maxPerMatch = enabledTypes.reduce((sum, t) => sum + t.points, 0);
-  } else {
-    // LEGACY: Máximo = el tipo con más puntos
-    maxPerMatch = Math.max(...enabledTypes.map((t) => t.points), 0);
-  }
+  const maxPerMatch = enabledTypes.reduce((sum, t) => sum + t.points, 0);
 
   return maxPerMatch * matchCount;
 }

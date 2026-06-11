@@ -1,6 +1,7 @@
 /**
  * Tests for scoringAdvanced.ts
- * Covers: CUMULATIVE scoring, LEGACY scoring, auto-scaling, pointsMax calculations
+ * Covers: the single additive engine (ADR-072 — EXACT_SCORE never
+ * short-circuits), auto-scaling, pointsMax calculations
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -323,7 +324,7 @@ describe("scoreMatchPick - CUMULATIVE system", () => {
     });
 
     it("does NOT short-circuit on EXACT_SCORE in cumulative mode", () => {
-      // Confirms exact-score is additive, unlike legacy mode where it terminates.
+      // Confirms exact-score is additive (single engine — ADR-072).
       // 1-1 vs 1-1: outcome(DRAW=DRAW) + home + away + diff + exact (no partial, XOR)
       const result = scoreMatchPick(
         { homeGoals: 1, awayGoals: 1 },
@@ -335,9 +336,9 @@ describe("scoreMatchPick - CUMULATIVE system", () => {
   });
 });
 
-// ==================== LEGACY SCORING ====================
+// ============ CONFIGS WITHOUT HOME/AWAY GOALS (ex-"legacy") ============
 
-describe("scoreMatchPick - LEGACY system", () => {
+describe("scoreMatchPick - configs without HOME/AWAY goals", () => {
   describe("BASIC preset (EXACT_SCORE only)", () => {
     it("gives full points for exact match", () => {
       const config = makeLegacyBasicConfig(20);
@@ -375,18 +376,19 @@ describe("scoreMatchPick - LEGACY system", () => {
     });
   });
 
-  describe("Multi-type LEGACY (EXACT_SCORE terminates)", () => {
-    it("gives only EXACT_SCORE points when exact match (no cascade)", () => {
+  describe("Multi-type without HOME/AWAY goals (additive — ADR-072)", () => {
+    it("adds EXACT_SCORE on top of the other matched criteria", () => {
       const config = makeLegacyMultiConfig();
       const result = scoreMatchPick(
         { homeGoals: 2, awayGoals: 1 },
         { homeGoals: 2, awayGoals: 1 },
         config
       );
-      // EXACT_SCORE terminates: only 10 pts, not 10+5+3+2+4
-      expect(result.totalPoints).toBe(10);
-      expect(result.evaluations[0].matchPickType).toBe("EXACT_SCORE");
-      expect(result.evaluations[0].matched).toBe(true);
+      // outcome(4) + diff(5) + total(2) + exact(10) = 21; partial is XOR → no
+      expect(result.totalPoints).toBe(21);
+      const exact = result.evaluations.find((e) => e.matchPickType === "EXACT_SCORE");
+      expect(exact?.matched).toBe(true);
+      expect(exact?.points).toBe(10);
     });
 
     it("cascades to other rules when exact score misses", () => {
@@ -425,13 +427,74 @@ describe("scoreMatchPick - LEGACY system", () => {
 
     it("does NOT give PARTIAL_SCORE when both goals match (that's EXACT)", () => {
       const config = makeLegacyMultiConfig();
-      // Pick: 2-1, Result: 2-1 → EXACT_SCORE takes over
+      // Pick: 2-1, Result: 2-1 → exact + outcome + diff + total, partial XOR fails
       const result = scoreMatchPick(
         { homeGoals: 2, awayGoals: 1 },
         { homeGoals: 2, awayGoals: 1 },
         config
       );
-      expect(result.totalPoints).toBe(10); // Only EXACT_SCORE
+      expect(result.totalPoints).toBe(21);
+      const partial = result.evaluations.find((e) => e.matchPickType === "PARTIAL_SCORE");
+      expect(partial?.matched).toBe(false);
+    });
+  });
+
+  // ── Regresión: reporte de soporte 2026-06-11 (pool "Apuesta Familia") ──
+  // Config del host: Resultado=3, Diferencia=1, Exacto=1 (sin HOME/AWAY).
+  // El antiguo short-circuit pagaba 1 pt al pick exacto y 4 pts al 2-1:
+  // el que acertaba el marcador recibía MENOS que el que casi acierta.
+  describe("Support regression: exact pick must never earn less than a worse pick", () => {
+    function rodrigoConfig(): PhasePickConfig {
+      return {
+        phaseId: "group_stage",
+        phaseName: "Fase de Grupos",
+        requiresScore: true,
+        matchPicks: {
+          types: [
+            { key: "EXACT_SCORE", enabled: true, points: 1 },
+            { key: "GOAL_DIFFERENCE", enabled: true, points: 1 },
+            { key: "PARTIAL_SCORE", enabled: false, points: 0 },
+            { key: "TOTAL_GOALS", enabled: false, points: 0 },
+            { key: "MATCH_OUTCOME_90MIN", enabled: true, points: 3 },
+          ],
+        },
+      };
+    }
+
+    it("pick 1-0 on result 1-0 earns outcome + diff + exact = 5", () => {
+      const result = scoreMatchPick(
+        { homeGoals: 1, awayGoals: 0 },
+        { homeGoals: 1, awayGoals: 0 },
+        rodrigoConfig()
+      );
+      expect(result.totalPoints).toBe(5);
+    });
+
+    it("pick 2-1 on result 1-0 earns outcome + diff = 4 (less than exact)", () => {
+      const result = scoreMatchPick(
+        { homeGoals: 2, awayGoals: 1 },
+        { homeGoals: 1, awayGoals: 0 },
+        rodrigoConfig()
+      );
+      expect(result.totalPoints).toBe(4);
+    });
+
+    it("pick 2-0 on result 1-0 earns outcome only = 3", () => {
+      const result = scoreMatchPick(
+        { homeGoals: 2, awayGoals: 0 },
+        { homeGoals: 1, awayGoals: 0 },
+        rodrigoConfig()
+      );
+      expect(result.totalPoints).toBe(3);
+    });
+
+    it("pick 1-2 on result 1-0 earns nothing", () => {
+      const result = scoreMatchPick(
+        { homeGoals: 1, awayGoals: 2 },
+        { homeGoals: 1, awayGoals: 0 },
+        rodrigoConfig()
+      );
+      expect(result.totalPoints).toBe(0);
     });
   });
 });
@@ -536,15 +599,15 @@ describe("calculateMaxPointsForPhase", () => {
     expect(calculateMaxPointsForPhase(config, 4)).toBe(80); // 20 * 4 matches
   });
 
-  it("uses max single type for LEGACY (only EXACT_SCORE=20)", () => {
+  it("sums the single enabled type for BASIC (only EXACT_SCORE=20)", () => {
     const config = makeLegacyBasicConfig(20);
     expect(calculateMaxPointsForPhase(config, 8)).toBe(160); // 20 * 8
   });
 
-  it("uses max type for LEGACY multi-type", () => {
+  it("sums all enabled types for multi-type without HOME/AWAY (ADR-072)", () => {
     const config = makeLegacyMultiConfig();
-    // EXACT_SCORE=10 is the max among enabled types
-    expect(calculateMaxPointsForPhase(config, 6)).toBe(60); // 10 * 6
+    // 10+5+3+2+4 = 24 per match
+    expect(calculateMaxPointsForPhase(config, 6)).toBe(144); // 24 * 6
   });
 
   it("returns 0 for structural phase", () => {

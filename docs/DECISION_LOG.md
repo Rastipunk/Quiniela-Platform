@@ -5040,4 +5040,27 @@ matchLockUtc = kickoffUtc - deadlineMinutes
 
 ---
 
+## ADR-072: Single additive scoring engine — EXACT_SCORE never short-circuits
+
+**Date:** 2026-06-11 | **Status:** Accepted
+
+**Context:** First live support report of the World Cup (host of pool "Apuesta Familia", 11 members, during México–Sudáfrica): with host-configured rules Outcome=3 / GoalDiff=1 / Exact=1, players who picked the exact score (1-0) showed **1 point** on the leaderboard while players who picked 2-1 showed **4 points**. Root cause: `scoreMatchPick` had two engines selected by a fragile heuristic (`isCumulativeScoring` = config has HOME_GOALS/AWAY_GOALS enabled). Configs without per-side goals fell into a "legacy" branch where a matched EXACT_SCORE **terminated evaluation and paid only its own points** — so the best possible prediction could earn less than a near miss. The product's own UI always promised additive semantics: the wizard describes EXACT_SCORE as *"Bonus por acertar ambos marcadores"* and the player rules screen lists criteria as independent point sources. Production scope (verified by read-only probe): 648 pools → 576 cumulative (unaffected), 55 single-criterion (unaffected), **17 multi-criteria "legacy" pools (8 ACTIVE, ~90 members, all WC 2026, created via the custom rules editor; 2 with the full inversion paradox; 0 COMPLETED → zero historical impact)**.
+
+**Decision:**
+1. **One additive engine for all configs** (`scoreMatchPick`): every enabled criterion evaluates independently and matched criteria SUM. EXACT_SCORE is an additive bonus; PARTIAL_SCORE stays XOR (one side only — both sides = EXACT_SCORE territory) so it never pays together with EXACT_SCORE. The legacy short-circuit branch and the mode heuristic are deleted.
+2. **`generateMatchPickBreakdown` mirrors the engine exactly** (same criteria, same semantics) and `maxPoints` is the sum of enabled types everywhere (`calculateMaxPointsForPhase` included).
+3. **Player-facing copy fixed** (`rulesDisplay.nonCumulativeNote` ×3 locales): it stated the opposite ("solo ganas los puntos del exacto") — now describes additive scoring.
+4. Deployed mid-matchday on purpose: points are computed on read (never stored), so the fix corrects every leaderboard instantly and retroactively; shipping before the first match finalized meant members never saw a wrong "final" score.
+
+**Consequences:**
+- ✅ An exact-score pick can never earn less than a worse pick on the same match (monotonicity restored).
+- ✅ Engine, breakdown modal and rules screen all tell the same story.
+- ⚠️ In the 6 non-paradox legacy-multi pools, exact hits now pay MORE than the old short-circuit did (e.g. Outcome=3/Exact=5 pays 8, not 5) — this matches the wizard's "Bonus" promise, and no result had finalized when it shipped.
+- ⚠️ BASIC-style single-criterion pools (EXACT only) are numerically identical under both semantics.
+
+**Related code:** `backend/src/lib/scoringAdvanced.ts`, `backend/src/lib/scoringBreakdown.ts`, `backend/src/types/pickConfig.ts`, `frontend-next/src/messages/{es,en,pt}/pool.json`.
+**Support report:** email "INCONVENIENTES CON LOS MARCADORES EN TIEMPO REAL", 2026-06-11.
+
+---
+
 **END OF DOCUMENT**

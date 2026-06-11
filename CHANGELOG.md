@@ -8,6 +8,17 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Scoring — Motor aditivo único: el marcador exacto nunca paga menos (ADR-072) (2026-06-11)
+
+Primer reporte de soporte del Mundial (host de "Apuesta Familia", durante el México–Sudáfrica): con reglas Resultado=3 / Diferencia=1 / Exacto=1, quien acertó el 1-0 exacto veía **1 punto** y quien puso 2-1 veía **4**.
+
+#### Fixed
+- **Eliminado el short-circuit "legacy" de `EXACT_SCORE`** (`scoreMatchPick`): las configs sin HOME/AWAY_GOALS caían en una rama donde acertar el exacto terminaba la evaluación y pagaba solo sus propios puntos — la mejor predicción posible podía ganar menos que una casi-acertada. Ahora hay UN solo motor aditivo: cada criterio habilitado se evalúa de forma independiente y los cumplidos se suman (lo que el wizard siempre prometió: "Bonus por acertar ambos marcadores"). `PARTIAL_SCORE` sigue siendo XOR y nunca paga junto al exacto.
+- **`generateMatchPickBreakdown` unificado** con el motor (mismo desglose que paga el leaderboard) y `maxPoints` = suma de criterios habilitados en todas partes (`calculateMaxPointsForPhase` incluido).
+- **Nota de reglas al jugador corregida ×3 idiomas** (`rulesDisplay.nonCumulativeNote`): decía lo contrario del wizard ("solo ganas los puntos del exacto").
+
+Alcance verificado en prod: 17 pools multi-criterio sin HOME/AWAY (8 ACTIVE, ~90 miembros, todas WC 2026, 0 COMPLETED → cero impacto histórico); 576 acumulativas y 55 de criterio único no cambian. Los puntos se recalculan al leer — el fix corrige todas las tablas al instante. Regresión cubierta con tests (caso 3/1/1 → exacto 5 > 2-1 4).
+
 ### Score pipeline — Etapas 3C + 4: plan de auditoría COMPLETO (2026-06-11)
 
 Cierre del plan aprobado en `SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1 — las 6 etapas (0, 1, 2, 3A, 3B, 3C, 4) quedaron desplegadas el mismo día de la auditoría.

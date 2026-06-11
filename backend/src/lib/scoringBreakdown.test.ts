@@ -194,10 +194,10 @@ describe("generateMatchPickBreakdown - CUMULATIVE", () => {
   });
 });
 
-// ==================== MATCH PICK BREAKDOWN - LEGACY ====================
+// ====== MATCH PICK BREAKDOWN - sin HOME/AWAY goals (aditivo ADR-072) ======
 
-describe("generateMatchPickBreakdown - LEGACY", () => {
-  it("exact score terminates and shows other rules as N/A", () => {
+describe("generateMatchPickBreakdown - multi-type without HOME/AWAY goals", () => {
+  it("exact score adds its bonus on top of the other matched criteria", () => {
     const config = makeLegacyConfig();
     const result = generateMatchPickBreakdown(
       { homeGoals: 2, awayGoals: 1 },
@@ -208,16 +208,16 @@ describe("generateMatchPickBreakdown - LEGACY", () => {
 
     expect(result.type).toBe("MATCH");
     if (result.type === "MATCH") {
-      expect(result.totalPointsEarned).toBe(10);
-      expect(result.rules[0].ruleKey).toBe("EXACT_SCORE");
-      expect(result.rules[0].matched).toBe(true);
+      // exact(10) + diff(5) + total(2) + outcome(4) = 21; partial XOR → no
+      expect(result.totalPointsEarned).toBe(21);
+      const exact = result.rules.find((r) => r.ruleKey === "EXACT_SCORE");
+      expect(exact?.matched).toBe(true);
+      expect(exact?.pointsEarned).toBe(10);
 
-      // Other rules should have pointsMax=0 (N/A)
-      const otherRules = result.rules.filter((r) => r.ruleKey !== "EXACT_SCORE");
-      for (const rule of otherRules) {
-        expect(rule.pointsMax).toBe(0);
-        expect(rule.details).toContain("No aplica");
-      }
+      // Every rule keeps its real pointsMax (no N/A masking)
+      const partial = result.rules.find((r) => r.ruleKey === "PARTIAL_SCORE");
+      expect(partial?.matched).toBe(false);
+      expect(partial?.pointsMax).toBe(3);
     }
   });
 
@@ -239,10 +239,11 @@ describe("generateMatchPickBreakdown - LEGACY", () => {
     }
   });
 
-  it("maxPoints is the highest single type (EXACT_SCORE=10)", () => {
+  it("maxPoints is the sum of all enabled types (ADR-072)", () => {
     const config = makeLegacyConfig();
     const result = generateMatchPickBreakdown(null, { homeGoals: 1, awayGoals: 0 }, config, "m1");
-    expect(result.totalPointsMax).toBe(10);
+    // 10+5+3+2+4 = 24
+    expect(result.totalPointsMax).toBe(24);
   });
 });
 
