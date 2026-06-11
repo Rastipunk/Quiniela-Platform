@@ -531,11 +531,29 @@ async function maybeResolveAlert(
   }
 }
 
+/**
+ * Kill switch for alert EMAILS only (owner request 2026-06-11 — the
+ * WC-eve incident produced a noisy stream of fire/resolve mails).
+ * Alert rows keep recording in PlatformHealthAlert (history feeds
+ * forensics — e.g. the rate-limit incident evidence) and
+ * GET /admin/health/deep stays fully functional. Re-enable by setting
+ * HEALTH_ALERTS_EMAIL_ENABLED=true (or removing the variable).
+ */
+function alertEmailsEnabled(): boolean {
+  return (process.env.HEALTH_ALERTS_EMAIL_ENABLED ?? "true") !== "false";
+}
+
 async function sendAlertEmail(
   m: MetricResult,
   severity: "WARN" | "CRITICAL",
   isRecovery: boolean,
 ): Promise<void> {
+  if (!alertEmailsEnabled()) {
+    console.log(
+      `[platformHealth] Alert email suppressed (HEALTH_ALERTS_EMAIL_ENABLED=false): ${m.key} ${severity}${isRecovery ? " recovery" : ""}`,
+    );
+    return;
+  }
   const emoji = isRecovery ? "✅" : severity === "CRITICAL" ? "🔴" : "🟡";
   const title = isRecovery
     ? `Resuelto: ${m.label}`

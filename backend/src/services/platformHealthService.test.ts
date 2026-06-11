@@ -99,6 +99,26 @@ describe("processSnapshotAlerts", () => {
     expect(sendAdminNotification).toHaveBeenCalledOnce();
   });
 
+  it("HEALTH_ALERTS_EMAIL_ENABLED=false suppresses the EMAIL but still records the alert row", async () => {
+    const prev = process.env.HEALTH_ALERTS_EMAIL_ENABLED;
+    process.env.HEALTH_ALERTS_EMAIL_ENABLED = "false";
+    try {
+      vi.mocked(prisma.platformHealthAlert.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.platformHealthAlert.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.platformHealthAlert.create).mockResolvedValue({} as never);
+
+      const s = evaluateSnapshot(snapshot([baseMetric({ value: 70 })])); // WARN
+      const result = await processSnapshotAlerts(s);
+
+      expect(result.fired).toBe(1);
+      expect(prisma.platformHealthAlert.create).toHaveBeenCalledOnce(); // history intact
+      expect(sendAdminNotification).not.toHaveBeenCalled(); // inbox silent
+    } finally {
+      if (prev === undefined) delete process.env.HEALTH_ALERTS_EMAIL_ENABLED;
+      else process.env.HEALTH_ALERTS_EMAIL_ENABLED = prev;
+    }
+  });
+
   it("suppresses re-notification while inside cooldown", async () => {
     const existing = {
       id: "a1",

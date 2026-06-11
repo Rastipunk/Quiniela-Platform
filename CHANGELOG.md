@@ -8,6 +8,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Platform health — alert email kill switch (2026-06-11)
+
+#### Added
+- **`HEALTH_ALERTS_EMAIL_ENABLED`** (default `true`): when `false`, the platform-health monitor stops sending fire/recovery alert emails while **still recording** every alert in `PlatformHealthAlert` (the silent history fed the rate-limit incident forensics) and keeping `GET /admin/health/deep` fully functional. Set to `false` in production at the owner's request — the WC-eve incident produced a noisy fire/resolve email stream (`stuck_webhooks` flapping at threshold).
+
 ### Rate limiting — real client IP resolution (2026-06-11)
 
 Root-cause fix for the all-day WC-eve blocking (`TOO_MANY_LOGIN_ATTEMPTS` / `RATE_LIMIT_EXCEEDED` / failed joins). See **ADR-071** and the forensic log `RATE_LIMIT_INCIDENT_2026-06-10.md`.
