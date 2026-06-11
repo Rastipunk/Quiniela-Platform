@@ -54,6 +54,16 @@ vi.mock("../lib/fixture", () => ({
   typed: vi.fn((x: unknown) => x),
 }));
 
+// transitionToActive fires the result backfill via dynamic import —
+// mock it so these tests stay hermetic (it has its own test file).
+vi.mock("./resultBackfillService", () => ({
+  backfillConfirmedResultsForPool: vi.fn().mockResolvedValue({
+    seeded: 0,
+    skippedExisting: 0,
+    skippedNoPayload: 0,
+  }),
+}));
+
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { extractMatches } from "../lib/fixture";
@@ -161,6 +171,18 @@ describe("transitionToActive", () => {
         dataJson: expect.objectContaining({ from: "DRAFT", to: "ACTIVE" }),
       })
     );
+  });
+
+  it("fires the confirmed-results backfill after activating (ADR-074)", async () => {
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "DRAFT" });
+    (prisma.poolMember.count as ReturnType<typeof vi.fn>).mockResolvedValue(1);
+    (prisma.pool.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (writeAuditEvent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+    await transitionToActive("pool-1", "user-1");
+
+    const { backfillConfirmedResultsForPool } = await import("./resultBackfillService");
+    expect(backfillConfirmedResultsForPool).toHaveBeenCalledWith("pool-1");
   });
 
   it("does NOT transition when DRAFT pool has zero ACTIVE PLAYER/CO_ADMIN", async () => {

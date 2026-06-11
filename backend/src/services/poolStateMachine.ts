@@ -24,6 +24,9 @@ import { resolveUserLocale, FINAL_RESULT_SOURCES } from "../lib/constants";
 import { extractMatches, typed, type PickJson } from "../lib/fixture";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { getPoolOverview } from "./poolOverviewService";
+// Circular at load time (resultBackfillService imports transitionToCompleted
+// from this file) — safe: both sides only dereference at call time.
+import { backfillConfirmedResultsForPool } from "./resultBackfillService";
 
 export type PoolStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
@@ -100,6 +103,16 @@ export async function transitionToActive(poolId: string, actorUserId: string) {
       reason: "First player joined"
     }
   });
+
+  // A pool activating mid-tournament missed every match the scraper
+  // already finalized (the live job only feeds ACTIVE pools, inside the
+  // polling window) — seed those confirmed results now so group tables
+  // and completion work (ADR-074). Fire-and-forget: activation must
+  // never fail because of the backfill.
+  fireAndForget(
+    "PoolStateMachine:backfill-results",
+    backfillConfirmedResultsForPool(poolId),
+  );
 }
 
 /**

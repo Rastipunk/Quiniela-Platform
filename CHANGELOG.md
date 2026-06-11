@@ -8,6 +8,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Pools — Backfill de resultados confirmados al activar (ADR-074) (2026-06-11)
+
+#### Fixed
+- **Una pool que pasaba a ACTIVE después de partidos ya jugados nunca recibía esos resultados** (el job en vivo solo alimenta pools ACTIVE dentro de la ventana de polling): tabla de grupo incompleta para siempre y pool incapaz de completarse al final del torneo. Ahora `transitionToActive` dispara `backfillConfirmedResultsForPool` (fire-and-forget): siembra `PoolMatchResult` con `source=API_CONFIRMED` desde el snapshot confirmado de `MatchSyncState` (solo partidos que el pipeline finalizó; goals90 derivado del timeline; penales incluidos), deriva los estructurales de Estratega y corre el check de completado. Idempotente, silencioso (sin emails, 1 evento de audit), no-op en instancias MANUAL, y nunca bloquea la activación.
+
 ### Scoring — Marcador parcial inclusivo: el máximo anunciado por fin es alcanzable (ADR-073) (2026-06-11)
 
 Segundo reporte de soporte del inaugural ("Slaski Szpil WC 2026"): los 5 miembros acertaron el 2-0 exacto y recibieron 16 de un máximo anunciado de 21.

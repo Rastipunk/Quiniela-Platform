@@ -5083,4 +5083,27 @@ matchLockUtc = kickoffUtc - deadlineMinutes
 
 ---
 
+## ADR-074: Confirmed-results backfill on pool activation
+
+**Date:** 2026-06-11 | **Status:** Accepted
+
+**Context:** `liveScoresJob` fans results out only to **ACTIVE** pools, and only while a match sits inside the polling window (kickoff −pre/+post hours). A pool that transitions DRAFT → ACTIVE *after* matches of its tournament already finished therefore never receives those results — **permanently**: group tables stay incomplete, `transitionToCompleted` can never fire (it requires a FINAL result for every match), and the Estratega structural derivations for finished groups never run. Discovered on inaugural matchday via the owner's DRAFT test pool showing an all-zeros group table; prod scan showed 0 ACTIVE pools affected *that day* (all existed before kickoff), but every pool created during the month-long World Cup group stage would hit it.
+
+**Decision:** New `resultBackfillService.backfillConfirmedResultsForPool(poolId)`, invoked fire-and-forget from `transitionToActive` (activation never fails because of the backfill). It seeds `PoolMatchResult` rows for every snapshot match whose **`MatchSyncState.syncStatus === "COMPLETED"`** — i.e., matches the scraper pipeline itself finalized — using the confirmed `LiveScore` snapshot persisted in `lastLiveDataJson` (the same payload `finalizeResult` wrote into sibling pools): `source = API_CONFIRMED`, goals90 derived from `timeline[]`, penalties included. After seeding it runs `autoPublishStructuralResults` per match (Estratega tables/knockouts derive) and an idempotent `transitionToCompleted` check.
+
+**Boundaries (explicit):**
+- Idempotent — matches with an existing result version (any source) are never touched; concurrent `liveScoresJob` publishes win unique races harmlessly.
+- MANUAL-mode instances are a no-op (no scraper pipeline to backfill from).
+- Matches resolved **only** via admin master override while the scraper was stuck are NOT seeded (their `MatchSyncState` never reached COMPLETED; no trustworthy instance-level snapshot) — the master override panel remains the tool for those.
+- Silent: no member emails; one `RESULTS_BACKFILLED_ON_ACTIVATION` audit event summarizes the seeding.
+
+**Consequences:**
+- ✅ Pools created/activated mid-tournament get complete tables and can complete normally.
+- ✅ Re-activation after revert-to-draft is a no-op (results were preserved by the revert).
+- ⚠️ Static import cycle `poolStateMachine ↔ resultBackfillService` is intentional and safe (both sides dereference only at call time; verified on compiled CJS output).
+
+**Related code:** `backend/src/services/resultBackfillService.ts`, `backend/src/services/poolStateMachine.ts` (`transitionToActive`).
+
+---
+
 **END OF DOCUMENT**

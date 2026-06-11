@@ -513,3 +513,18 @@ resultSync goals90 (F2-6, inerte).
   motor aditivo único** — EXACT_SCORE es bonus aditivo, sin
   short-circuit; breakdown y maxPoints unificados; nota de reglas ×3
   locales corregida. Regresión: caso 3/1/1 → exacto 5 > 2-1 4.
+- ~21:3x-22:2xZ — **Hallazgo POST-auditoría #2 (ADR-073):** 2.º correo
+  de soporte (host de Slaski Szpil; los 5 miembros exactos 2-0 con
+  16/21). PARTIAL_SCORE era XOR en el motor pero INCLUSIVO en la
+  calculadora del wizard (y el copy se contradecía entre superficies;
+  el PRD decía inclusivo, BUSINESS_RULES/GLOSSARY decían XOR) → el
+  máximo anunciado (suma de habilitados) era inalcanzable por
+  construcción. Fix: `evaluatePartialScore` inclusivo (al menos un
+  lado), breakdown espejado, copy ×3 unificado, docs reconciliados.
+  Verificado PRE-código con simulación sobre las 5 únicas pools con
+  parcial (0 COMPLETED; picks no-exactos bit-idénticos bajo ambas
+  semánticas); post-deploy: Slaski 5×(16→21), breakdown=motor en todas.
+  El recorrido del día para un exacto en Slaski: 5 (short-circuit) →
+  16 (ADR-072) → 21 (ADR-073). Nota: el host republicó el resultado él
+  mismo (source HOST_OVERRIDE, mismo 2-0) intentando arreglar los
+  puntos — sin efecto.
