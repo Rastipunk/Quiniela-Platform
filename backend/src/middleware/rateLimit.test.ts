@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   apiLimiter,
   authLimiter,
+  authIpLimiter,
   poolJoinLimiter,
   passwordResetLimiter,
   verificationResendLimiter,
@@ -9,6 +10,8 @@ import {
   inviteSendDailyLimiter,
   corporateInviteCheckLimiter,
   corporateActivateLimiter,
+  emailIpBucketKey,
+  userOrIpBucketKey,
 } from "./rateLimit";
 
 describe("rate limiters — configuration", () => {
@@ -59,6 +62,64 @@ describe("rate limiters — configuration", () => {
 
   it("health check is exempt from API limiter", () => {
     expect(apiLimiter.length).toBeGreaterThanOrEqual(3); // Express middleware signature
+  });
+
+  it("authIpLimiter (per-IP stuffing ceiling) is configured", () => {
+    expect(authIpLimiter).toBeDefined();
+    expect(typeof authIpLimiter).toBe("function");
+  });
+});
+
+describe("bucket key helpers (ADR-071)", () => {
+  describe("emailIpBucketKey", () => {
+    it("keys by normalized email + IP", () => {
+      expect(emailIpBucketKey({ email: "  User@Mail.COM " }, "1.2.3.4")).toBe(
+        "user@mail.com|1.2.3.4",
+      );
+    });
+
+    it("two users behind the SAME IP get different buckets (no collective punishment)", () => {
+      const a = emailIpBucketKey({ email: "a@x.com" }, "1.2.3.4");
+      const b = emailIpBucketKey({ email: "b@x.com" }, "1.2.3.4");
+      expect(a).not.toBe(b);
+    });
+
+    it("the same email from two IPs gets different buckets (distributed attack still bounded per source)", () => {
+      const a = emailIpBucketKey({ email: "a@x.com" }, "1.2.3.4");
+      const b = emailIpBucketKey({ email: "a@x.com" }, "5.6.7.8");
+      expect(a).not.toBe(b);
+    });
+
+    it("falls back to IP-only when the body has no email (reset-password carries a token)", () => {
+      expect(emailIpBucketKey({ token: "abc" }, "1.2.3.4")).toBe("|1.2.3.4");
+      expect(emailIpBucketKey(undefined, "1.2.3.4")).toBe("|1.2.3.4");
+      expect(emailIpBucketKey({ email: 42 }, "1.2.3.4")).toBe("|1.2.3.4");
+    });
+
+    it("groups IPv6 by /64 so a subscriber can't rotate within their own block", () => {
+      const a = emailIpBucketKey({ email: "a@x.com" }, "2001:db8:1:1::1");
+      const b = emailIpBucketKey({ email: "a@x.com" }, "2001:db8:1:1::ffff");
+      const c = emailIpBucketKey({ email: "a@x.com" }, "2001:db8:1:2::1");
+      expect(a).toBe(b); // same /64
+      expect(a).not.toBe(c); // different /64
+    });
+  });
+
+  describe("userOrIpBucketKey", () => {
+    it("keys by userId when authenticated", () => {
+      expect(userOrIpBucketKey({ userId: "u1" }, "1.2.3.4")).toBe("u1");
+    });
+
+    it("two users behind the same CGNAT IP get separate buckets", () => {
+      const a = userOrIpBucketKey({ userId: "u1" }, "1.2.3.4");
+      const b = userOrIpBucketKey({ userId: "u2" }, "1.2.3.4");
+      expect(a).not.toBe(b);
+    });
+
+    it("falls back to IP when unauthenticated", () => {
+      expect(userOrIpBucketKey(undefined, "1.2.3.4")).toBe("1.2.3.4");
+      expect(userOrIpBucketKey({}, "1.2.3.4")).toBe("1.2.3.4");
+    });
   });
 });
 

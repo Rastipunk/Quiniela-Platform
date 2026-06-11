@@ -31,6 +31,37 @@ const HOUR = 60 * MINUTE;
  */
 const IPV6_SUBNET = 64;
 
+// ── Bucket key helpers (ADR-071) ────────────────────────────
+// Per-IP keying collectively punishes everyone behind CGNAT (CO mobile
+// carriers), office NAT and VPN exits. Where a better identity exists,
+// the bucket keys on it; the IP component stays only where it adds
+// protection.
+
+/**
+ * Auth bucket key: `email|ip`. Brute force targets an ACCOUNT, so the
+ * (email, IP) pair caps it precisely without sharing the budget across
+ * a whole CGNAT crowd. Requests without an email in the body (e.g.
+ * reset-password, which carries a token) fall back to the IP-only key.
+ * Email-rotation stuffing from one IP is bounded by authIpLimiter.
+ */
+export function emailIpBucketKey(body: unknown, ip: string | undefined): string {
+  const rawEmail = (body as { email?: unknown } | null | undefined)?.email;
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+  return `${email}|${ipKeyGenerator(ip ?? "", IPV6_SUBNET)}`;
+}
+
+/**
+ * Authenticated-endpoint bucket key: `userId` when the auth middleware
+ * already ran (mount order verified per endpoint — see ADR-071), IP
+ * fallback otherwise.
+ */
+export function userOrIpBucketKey(
+  auth: { userId?: string } | undefined,
+  ip: string | undefined,
+): string {
+  return auth?.userId ?? ipKeyGenerator(ip ?? "", IPV6_SUBNET);
+}
+
 // ── Rate limit configuration ────────────────────────────────
 // All values are overridable via environment variables.
 
@@ -46,25 +77,43 @@ export const apiLimiter = rateLimit({
   skip: (req) => req.path === "/health",
 });
 
-// Auth endpoints — default 10 attempts / 15 min per IP
+// Auth endpoints — default 10 attempts / 15 min per (email, IP) pair.
+// express.json() runs before this mounts on /auth/login + /auth/register
+// (server.ts), so req.body.email is available to the key.
 export const authLimiter = rateLimit({
   windowMs: envInt("RATE_LIMIT_AUTH_WINDOW_MS", 15 * MINUTE),
   max: envInt("RATE_LIMIT_AUTH_MAX", 10),
   message: { error: "TOO_MANY_LOGIN_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => emailIpBucketKey(req.body, req.ip),
+  handler,
+});
+
+// Per-IP ceiling on auth endpoints — bounds credential stuffing that
+// rotates emails from a single IP (each rotation gets a fresh
+// (email, IP) bucket above). Sized for CGNAT/office crowds: many users
+// behind one IP legitimately log in around big kickoffs.
+export const authIpLimiter = rateLimit({
+  windowMs: envInt("RATE_LIMIT_AUTH_IP_WINDOW_MS", 15 * MINUTE),
+  max: envInt("RATE_LIMIT_AUTH_IP_MAX", 300),
+  message: { error: "TOO_MANY_LOGIN_ATTEMPTS" },
+  standardHeaders: false, // the per-(email,IP) limiter owns the headers
+  legacyHeaders: false,
   ipv6Subnet: IPV6_SUBNET,
   handler,
 });
 
-// Password reset — default 5 req/hour per IP
+// Password reset — default 5 req/hour per (email, IP) pair.
+// forgot-password carries the email in the body; reset-password carries
+// only the token, so it keys as IP-only via the same helper.
 export const passwordResetLimiter = rateLimit({
   windowMs: envInt("RATE_LIMIT_RESET_WINDOW_MS", HOUR),
   max: envInt("RATE_LIMIT_RESET_MAX", 5),
   message: { error: "TOO_MANY_RESET_REQUESTS" },
   standardHeaders: true,
   legacyHeaders: false,
-  ipv6Subnet: IPV6_SUBNET,
+  keyGenerator: (req) => emailIpBucketKey(req.body, req.ip),
   handler,
 });
 
@@ -79,14 +128,19 @@ export const verificationResendLimiter = rateLimit({
   handler,
 });
 
-// Pool join — default 10 attempts / 15 min per IP
+// Pool join — default 30 attempts / 15 min PER USER. The endpoint is
+// authenticated (poolsRouter.use(requireAuth) runs before this route
+// middleware), so the bucket keys on userId — a CGNAT/office crowd no
+// longer shares a join budget. IP fallback only for the (unreachable
+// in practice) unauthenticated case.
 export const poolJoinLimiter = rateLimit({
   windowMs: envInt("RATE_LIMIT_POOL_JOIN_WINDOW_MS", 15 * MINUTE),
-  max: envInt("RATE_LIMIT_POOL_JOIN_MAX", 10),
+  max: envInt("RATE_LIMIT_POOL_JOIN_MAX", 30),
   message: { error: "TOO_MANY_JOIN_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
-  ipv6Subnet: IPV6_SUBNET,
+  keyGenerator: (req) =>
+    userOrIpBucketKey((req as { auth?: { userId?: string } }).auth, req.ip),
   handler,
 });
 
@@ -128,12 +182,8 @@ export const corporateActivateLimiter = rateLimit({
 export const inviteSendLimiter = rateLimit({
   windowMs: envInt("RATE_LIMIT_INVITE_SEND_WINDOW_MS", HOUR),
   max: envInt("RATE_LIMIT_INVITE_SEND_MAX", 200),
-  keyGenerator: (req) => {
-    // Per-user when auth'd; fall back to IP normalized for IPv6 (/64 prefix)
-    // so attackers can't bypass the limit by rotating addresses in the same block.
-    const u = (req as { auth?: { userId?: string } }).auth?.userId;
-    return u ?? ipKeyGenerator(req.ip ?? "", IPV6_SUBNET);
-  },
+  keyGenerator: (req) =>
+    userOrIpBucketKey((req as { auth?: { userId?: string } }).auth, req.ip),
   message: { error: "TOO_MANY_INVITE_REQUESTS_PER_HOUR" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -146,12 +196,8 @@ export const inviteSendLimiter = rateLimit({
 export const inviteSendDailyLimiter = rateLimit({
   windowMs: envInt("RATE_LIMIT_INVITE_SEND_DAILY_WINDOW_MS", 24 * HOUR),
   max: envInt("RATE_LIMIT_INVITE_SEND_DAILY_MAX", 1000),
-  keyGenerator: (req) => {
-    // Per-user when auth'd; fall back to IP normalized for IPv6 (/64 prefix)
-    // so attackers can't bypass the limit by rotating addresses in the same block.
-    const u = (req as { auth?: { userId?: string } }).auth?.userId;
-    return u ?? ipKeyGenerator(req.ip ?? "", IPV6_SUBNET);
-  },
+  keyGenerator: (req) =>
+    userOrIpBucketKey((req as { auth?: { userId?: string } }).auth, req.ip),
   message: { error: "DAILY_INVITE_LIMIT_EXCEEDED" },
   standardHeaders: true,
   legacyHeaders: false,

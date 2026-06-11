@@ -20,7 +20,7 @@ import { corporateRouter } from "./routes/corporate";
 import { salesRedemptionRouter } from "./routes/salesRedemption";
 import { sendOk, sendForbidden, sendInternal, sendNotFound } from "./lib/apiResponse";
 import { logger } from "./lib/logger";
-import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteCheckLimiter, corporateActivateLimiter } from "./middleware/rateLimit";
+import { apiLimiter, authLimiter, authIpLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteCheckLimiter, corporateActivateLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startPlatformHealthJob, stopPlatformHealthJob } from "./jobs/platformHealthJob";
 import { startEventLoopMonitor, stopEventLoopMonitor } from "./lib/eventLoopMonitor";
@@ -264,8 +264,10 @@ app.get("/api/active-matches", async (req, res) => {
 });
 
 // Stricter rate limiting for auth endpoints
-app.use("/auth/login", authLimiter);
-app.use("/auth/register", authLimiter);
+// Two layers (ADR-071): per-IP ceiling first (bounds email-rotation
+// stuffing from one IP), then the precise per-(email, IP) limiter.
+app.use("/auth/login", authIpLimiter, authLimiter);
+app.use("/auth/register", authIpLimiter, authLimiter);
 app.use("/auth/forgot-password", passwordResetLimiter);
 app.use("/auth/reset-password", passwordResetLimiter);
 app.use("/auth/resend-verification", verificationResendLimiter);
