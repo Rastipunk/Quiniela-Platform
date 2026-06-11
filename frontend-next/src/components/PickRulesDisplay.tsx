@@ -167,6 +167,16 @@ export function PickRulesDisplay({
                 <div style={{ fontSize: 13, color: colors.warningDark }}>
                   ⏰ <b>{t("deadlineInfo")}:</b> {t("deadlineMinutes", { minutes: poolDeadlineMinutes })} ({t("timezoneInfo", { timezone: poolTimeZone })})
                 </div>
+                {/* The player finally learns WHICH score their pick is
+                    evaluated against (audit F4-4): the phase creator's
+                    choice — 90 minutes (default) or with extra time. */}
+                <div style={{ fontSize: 13, color: colors.warningDark, marginTop: 6 }}>
+                  ⏱️ <b>
+                    {phase.includeExtraTime
+                      ? t("rulesDisplay.scoringBasisET")
+                      : t("rulesDisplay.scoringBasis90")}
+                  </b>
+                </div>
               </div>
             </>
           ) : phase.structuralPicks ? (

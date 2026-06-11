@@ -434,17 +434,29 @@ Verificación Etapa 2: backend `1dbd855` (typecheck limpio, 720 pass /
   `MASTER_RESULT_OVERRIDE` con resumen. Modal en `/admin/monitor` +
   acceso desde el menú admin del NavBar (×3 locales). Cierra la decisión
   A2 del brief.
-- **3C (~½ día):** acciones rápidas — re-track, excluir de scoring (ABD),
-  ver fuentes del scraper.
+- **3C — ✅ EJECUTADA (2026-06-11):** acciones rápidas en el monitor —
+  `POST /admin/matches/retrack` (re-registro inmediato con el scraper) y
+  `POST /admin/matches/master-scoring-override` (excluir/rehabilitar
+  scoring instancia-wide, herramienta ABD — F1-6), con botones y modal
+  en cada card.
 
-### Etapa 4 — Visibilidad + decisiones de producto (durante grupos, ~1.5 días)
-| Ítem | Hallazgo |
-|---|---|
-| Badge provisional / "90': X-X" en AET / penales / estados ET-P en vivo (las llaves i18n muertas ya existen ×3 locales) | F4-2/3/5 🟡 |
-| Informar al jugador 90' vs 120' (PickRulesDisplay + cards) | F4-4 🟡 |
-| Emails secundarios unificados con ADR-069 | F2-3/F2-4 🟡 |
-| Endpoint leaderboard legacy: deprecar (410) | F2-5 🟡 |
-| Zod para includeExtraTime; A4 (suprimir 0-0 NS — recomendado SÍ) | F2-10 🔵 / A4 |
+### Etapa 4 — Visibilidad + decisiones de producto — ✅ EJECUTADA (2026-06-11)
+| Ítem | Hallazgo | Estado |
+|---|---|---|
+| Badge provisional (footer honesto) / "Hubo prórroga — 90': X-X" en MatchCard y KnockoutMatchCard (goals90 por fin consumido, page.tsx dejó de descartarlo) / estados ET (ámbar) y tanda de penales (rojo) diferenciados en vivo | F4-2/3/5 🟡 | ✅ |
+| Reglas por fase: "Tus marcadores se evalúan a los 90 minutos / incluyendo prórroga" según la elección del creador (decisión F2-9 del owner) | F4-4 🟡 | ✅ |
+| Email de fase completada delega en getPoolOverview (ADR-069) + respeta emailNotificationsEnabled; scoreLegacy con selector 90'/120' | F2-3/F2-4 🟡 | ✅ |
+| `GET /pools/:poolId/leaderboard` → 410 GONE (frontend no lo usaba — verificado) | F2-5 🟡 | ✅ |
+| Zod `includeExtraTime: z.boolean().optional()`; A4 ya ejecutada en Etapa 1 | F2-10 🔵 / A4 | ✅ |
+
+## 7.2 PLAN COMPLETO — todas las etapas desplegadas el 2026-06-11
+
+Etapa 0 (`2a521f3`) · Etapa 1 (`35f6392`) · Etapa 2 (`1dbd855`+`46478ee`) ·
+3A (`41c28be`) · 3B (`957ac96`+`23faa4f`) · 3C+4 (commits de cierre).
+Los 8 hallazgos 🔴 y los 18 🟡 accionables quedaron resueltos o con
+herramienta operativa; lo restante vive en "Fuera de alcance deliberado"
+(post-Mundial). Verificación en vivo continua durante el torneo vía
+`/admin/monitor`.
 
 ### Fuera de alcance deliberado (post-Mundial)
 Halftime end-to-end (columna + UI — F4-6/H-P3), guard de monotonicidad

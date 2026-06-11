@@ -62,6 +62,7 @@ export function ResultSection(props: {
         <>
           <ResultDisplay
             result={props.result}
+            resultSource={props.resultSource ?? null}
             homeTeam={props.homeTeam}
             awayTeam={props.awayTeam}
             tournamentKey={props.tournamentKey}
@@ -131,6 +132,7 @@ export function ResultSection(props: {
 
 function ResultDisplay(props: {
   result: any;
+  resultSource: string | null;
   homeTeam: any;
   awayTeam: any;
   tournamentKey: string;
@@ -250,6 +252,15 @@ function ResultDisplay(props: {
         </div>
       )}
 
+      {/* Extra time note (audit F4-2): a 2-1 after extra time used to be
+          visually identical to a 2-1 in regulation — and most pools score
+          against the 90' figure, so show it. goals90 != null ⇔ went to ET. */}
+      {result.homeGoals90 != null && result.awayGoals90 != null && (
+        <div style={{ marginTop: 8, padding: "6px 10px", background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, fontSize: 11, fontWeight: 600, color: "#854d0e", textAlign: "center" }}>
+          ⏱️ {t("result.extraTime90", { home: result.homeGoals90, away: result.awayGoals90 })}
+        </div>
+      )}
+
       {/* Penalties display (if any) */}
       {(result.homePenalties !== null && result.homePenalties !== undefined) && (
         <div style={{ marginTop: 12, padding: 10, background: "#fffbf0", border: "1px solid #ffc107", borderRadius: 8 }}>
@@ -273,9 +284,17 @@ function ResultDisplay(props: {
         </div>
       )}
 
-      <div style={{ marginTop: 6, fontSize: 10, color: colors.textLight, textAlign: "center" }}>
-        {t("result.officialResult")}{result.version > 1 ? ` (v${result.version})` : ""}
-      </div>
+      {/* Footer: be honest about provenance (audit F4-3) — a live
+          SCRAPER_PROVISIONAL used to be labeled "Resultado oficial". */}
+      {props.resultSource === "SCRAPER_PROVISIONAL" || props.isLive ? (
+        <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: "#b45309", textAlign: "center" }}>
+          {t("result.provisional")}
+        </div>
+      ) : (
+        <div style={{ marginTop: 6, fontSize: 10, color: colors.textLight, textAlign: "center" }}>
+          {t("result.officialResult")}{result.version > 1 ? ` (v${result.version})` : ""}
+        </div>
+      )}
       {result.reason && (
         <div
           style={{

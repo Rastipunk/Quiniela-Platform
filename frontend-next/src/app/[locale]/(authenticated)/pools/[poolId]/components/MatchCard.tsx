@@ -166,21 +166,30 @@ export function MatchCard({
             </span>
           )}
           {m.isLive && (() => {
-            // Status palette: live (green), halftime (amber), final/awaiting (slate)
+            // Status palette: live (green), halftime (amber), extra time /
+            // penalty shootout (distinct — audit F4-5), final/awaiting (slate)
             const status = m.matchStatus ?? "";
             const isHalftime = status === "HT";
+            const isExtraTime = status === "ET" || status === "BT";
+            const isShootout = status === "P";
             // AWAITING_FINISH (post-FT, in grace period) → "Final"
             const isAwaitingFinal = m.matchSyncStatus === "AWAITING_FINISH" || ["FT", "AET", "PEN"].includes(status);
-            const palette = isHalftime
+            const palette = isHalftime || isExtraTime
               ? { bg: "#fef3c7", border: "#fbbf24", fg: "#92400e", dot: "#f59e0b" }
-              : isAwaitingFinal
-                ? { bg: "#f1f5f9", border: "#cbd5e1", fg: "#475569", dot: "#64748b" }
-                : { bg: "#dcfce7", border: "#22c55e", fg: "#166534", dot: "#16a34a" };
+              : isShootout
+                ? { bg: "#fee2e2", border: "#fca5a5", fg: "#991b1b", dot: "#dc2626" }
+                : isAwaitingFinal
+                  ? { bg: "#f1f5f9", border: "#cbd5e1", fg: "#475569", dot: "#64748b" }
+                  : { bg: "#dcfce7", border: "#22c55e", fg: "#166534", dot: "#16a34a" };
             const label = isHalftime
               ? t("result.halftime")
-              : isAwaitingFinal
-                ? t("result.final")
-                : t("result.live");
+              : isExtraTime
+                ? t("result.extraTimeLive")
+                : isShootout
+                  ? t("result.penaltiesLive")
+                  : isAwaitingFinal
+                    ? t("result.final")
+                    : t("result.live");
             return (
               <span style={{
                 padding: "4px 10px",

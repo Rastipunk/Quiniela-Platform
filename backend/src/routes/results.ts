@@ -187,15 +187,16 @@ resultsRouter.put("/:poolId/results/:matchId", resultPublishLimiter, async (req,
   }
 });
 
-// GET /pools/:poolId/leaderboard  (active pool members)
-resultsRouter.get("/:poolId/leaderboard", async (req, res) => {
-  const poolId = req.params.poolId as string;
-  const verbose = req.query.verbose === "1" || req.query.verbose === "true";
-
-  try {
-    const data = await getLeaderboard(poolId, req.auth!.userId, verbose);
-    return sendData(res, data as any);
-  } catch (err) {
-    return handleServiceError(res, err);
-  }
+// GET /pools/:poolId/leaderboard — DEPRECATED (audit F2-5). This legacy
+// endpoint scored with hardcoded 3/2 points and ignored pickTypesConfig,
+// includeExtraTime and goals90 — it could only ever disagree with the
+// real leaderboard. The frontend never calls it (verified); the real
+// leaderboard ships inside GET /pools/:poolId/overview. 410 so any
+// unknown external consumer gets an explicit signal instead of wrong
+// numbers.
+resultsRouter.get("/:poolId/leaderboard", async (_req, res) => {
+  return res.status(410).json({
+    error: "GONE",
+    message: "Deprecated: use GET /pools/:poolId/overview — its `leaderboard` field is the single ranking source (ADR-069).",
+  });
 });

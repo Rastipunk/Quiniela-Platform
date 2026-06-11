@@ -76,6 +76,10 @@ export const PhasePickConfigSchema = z.object({
   phaseId: z.string().min(1),
   phaseName: z.string().min(1),
   requiresScore: z.boolean(),
+  // Strictly boolean (audit F2-10): the field was previously absent
+  // from this schema, so a string like "false" — truthy — would have
+  // silently flipped a phase to extra-time scoring.
+  includeExtraTime: z.boolean().optional(),
   structuralPicks: StructuralPicksConfigSchema.optional(),
   matchPicks: MatchPicksConfigSchema.optional(),
 });

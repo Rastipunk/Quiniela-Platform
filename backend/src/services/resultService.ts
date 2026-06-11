@@ -272,9 +272,19 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
 
     const preset = getScoringPreset(pool.scoringPresetKey);
 
-    function scoreLegacy(pick: PickJson | null | undefined, res: { homeGoals: number; awayGoals: number }): number {
+    function scoreLegacy(
+      pick: PickJson | null | undefined,
+      res: { homeGoals: number; awayGoals: number; homeGoals90?: number | null; awayGoals90?: number | null },
+      phaseConfig?: PhasePickConfig | null,
+    ): number {
       if (!pick) return 0;
-      const actual = outcomeFromScore(res.homeGoals, res.awayGoals);
+      // Same 90'/120' selector the leaderboard's legacy path applies
+      // (poolOverviewService — audit F2-4): without it, this email
+      // scored an AET against the with-extra-time goals while the
+      // leaderboard paid the 90'.
+      const homeGoals = phaseConfig?.includeExtraTime ? res.homeGoals : (res.homeGoals90 ?? res.homeGoals);
+      const awayGoals = phaseConfig?.includeExtraTime ? res.awayGoals : (res.awayGoals90 ?? res.awayGoals);
+      const actual = outcomeFromScore(homeGoals, awayGoals);
       if (pick.type === "OUTCOME") {
         return pick.outcome === actual ? preset.outcomePoints : 0;
       }
@@ -282,7 +292,7 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
         const predicted = outcomeFromScore(pick.homeGoals!, pick.awayGoals!);
         if (predicted !== actual) return 0;
         let pts = preset.outcomePoints;
-        if (preset.allowScorePick && pick.homeGoals === res.homeGoals && pick.awayGoals === res.awayGoals) {
+        if (preset.allowScorePick && pick.homeGoals === homeGoals && pick.awayGoals === awayGoals) {
           pts += preset.exactScoreBonus;
         }
         return pts;
@@ -296,10 +306,10 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
       phaseConfig: PhasePickConfig,
     ): number {
       if (!pick || pick.type !== "SCORE" || typeof pick.homeGoals !== "number" || typeof pick.awayGoals !== "number") {
-        return scoreLegacy(pick, res);
+        return scoreLegacy(pick, res, phaseConfig);
       }
       if (!phaseConfig.requiresScore || !phaseConfig.matchPicks) {
-        return scoreLegacy(pick, res);
+        return scoreLegacy(pick, res, phaseConfig);
       }
       try {
         const resultForScoring = {
@@ -312,7 +322,7 @@ export async function sendResultNotifications(data: SendResultNotificationsInput
           phaseConfig,
         ).totalPoints;
       } catch {
-        return scoreLegacy(pick, res);
+        return scoreLegacy(pick, res, phaseConfig);
       }
     }
 

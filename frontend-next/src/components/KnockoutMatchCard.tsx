@@ -55,6 +55,8 @@ type KnockoutMatchCardProps = {
   existingResult?: {
     homeGoals: number;
     awayGoals: number;
+    homeGoals90?: number | null;
+    awayGoals90?: number | null;
     homePenalties?: number | null;
     awayPenalties?: number | null;
   } | null;
@@ -474,6 +476,12 @@ export function KnockoutMatchCard({
                 <div style={{ fontSize: 24, fontWeight: 700, color: colors.text }}>
                   {existingResult.homeGoals} - {existingResult.awayGoals}
                 </div>
+                {/* AET is no longer invisible (audit F4-2): goals90 set ⇔ extra time. */}
+                {existingResult.homeGoals90 != null && existingResult.awayGoals90 != null && (
+                  <div style={{ fontSize: 12, color: "#854d0e", marginTop: "0.25rem", fontWeight: 600 }}>
+                    ⏱️ {t("knockoutCard.ninetyMin")} {existingResult.homeGoals90} - {existingResult.awayGoals90}
+                  </div>
+                )}
                 {wentToPenalties && (
                   <div style={{ fontSize: 13, color: colors.textLighter, marginTop: "0.25rem" }}>
                     ({existingResult.homePenalties} - {existingResult.awayPenalties} {t("knockoutCard.pen")})

@@ -372,12 +372,16 @@ export default function PoolPage() {
 
   const phaseMatchResults = useMemo(() => {
     if (!overview || !activePhase) return new Map();
-    const resultsMap = new Map<string, { homeGoals: number; awayGoals: number; homePenalties?: number | null; awayPenalties?: number | null }>();
+    const resultsMap = new Map<string, { homeGoals: number; awayGoals: number; homeGoals90?: number | null; awayGoals90?: number | null; homePenalties?: number | null; awayPenalties?: number | null }>();
     for (const m of overview.matches) {
       if (m.phaseId === activePhase && m.result) {
         resultsMap.set(m.id, {
           homeGoals: m.result.homeGoals,
           awayGoals: m.result.awayGoals,
+          // goals90 reaches the wire but was dropped here (audit F4-2) —
+          // KnockoutMatchCard needs it to show "90': X-X" on AET matches.
+          homeGoals90: m.result.homeGoals90,
+          awayGoals90: m.result.awayGoals90,
           homePenalties: m.result.homePenalties,
           awayPenalties: m.result.awayPenalties,
         });

@@ -323,80 +323,46 @@ async function sendPhaseCompletionNotifications(
     const members = await prisma.poolMember.findMany({
       where: { poolId, status: "ACTIVE" },
       include: {
-        user: { select: { id: true, email: true, displayName: true, country: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+            country: true,
+            emailNotificationsEnabled: true,
+          },
+        },
       },
       orderBy: { joinedAtUtc: "asc" },
     });
+    if (members.length === 0) return;
 
-    const predictions = await prisma.prediction.findMany({
-      where: { poolId },
-    });
+    // Ranking delegated to getPoolOverview — the SAME function that
+    // renders the leaderboard — so this email can never diverge from
+    // the table (ADR-069; audit F2-3: this function used to score
+    // inline with hardcoded 3/5 points against with-ET goals, ignoring
+    // the pool's pickTypesConfig entirely).
+    const { getPoolOverview } = await import("./poolOverviewService");
+    const memberByUserId = new Map(members.map((m) => [m.userId, m]));
+    const overview = await getPoolOverview(members[0]!.userId, poolId, false);
+    const rankedRows = overview.leaderboard.rows;
 
-    const poolResults = await prisma.poolMatchResult.findMany({
-      where: { poolId },
-      include: { currentVersion: true },
-    });
-
-    const resultByMatchId = new Map<string, { homeGoals: number; awayGoals: number }>();
-    for (const r of poolResults) {
-      if (r.currentVersion) {
-        resultByMatchId.set(r.matchId, {
-          homeGoals: r.currentVersion.homeGoals,
-          awayGoals: r.currentVersion.awayGoals,
-        });
-      }
-    }
-
-    // Calculate points per user (same logic as poolStateMachine)
-    const userPoints = new Map<string, number>();
-    for (const member of members) {
-      userPoints.set(member.userId, 0);
-    }
-
-    for (const pred of predictions) {
-      const result = resultByMatchId.get(pred.matchId);
-      if (!result) continue;
-
-      const pick = typed<PickJson>(pred.pickJson);
-      let points = 0;
-
-      if (pick?.type === "OUTCOME") {
-        const actualOutcome = result.homeGoals > result.awayGoals ? "HOME" :
-                              result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-        if (pick.outcome === actualOutcome) points = 3;
-      } else if (pick?.type === "SCORE") {
-        const actualOutcome = result.homeGoals > result.awayGoals ? "HOME" :
-                              result.homeGoals < result.awayGoals ? "AWAY" : "DRAW";
-        const predOutcome = pick.homeGoals! > pick.awayGoals! ? "HOME" :
-                            pick.homeGoals! < pick.awayGoals! ? "AWAY" : "DRAW";
-        if (predOutcome === actualOutcome) {
-          points = 3;
-          if (pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals) {
-            points = 5;
-          }
-        }
-      }
-
-      const current = userPoints.get(pred.userId) ?? 0;
-      userPoints.set(pred.userId, current + points);
-    }
-
-    const sortedMembers = members
-      .map((m) => ({ ...m, points: userPoints.get(m.userId) ?? 0 }))
-      .sort((a, b) => {
-        if (b.points !== a.points) return b.points - a.points;
-        return new Date(a.joinedAtUtc).getTime() - new Date(b.joinedAtUtc).getTime();
-      });
-
-    const top10 = sortedMembers.slice(0, 10).map((m, idx) => ({
-      rank: idx + 1,
-      name: m.user.displayName,
-      points: m.points,
+    const top10 = rankedRows.slice(0, 10).map((row) => ({
+      rank: row.rank,
+      name: memberByUserId.get(row.userId)?.user.displayName ?? "—",
+      points: row.points,
     }));
 
     const phaseNames = PHASE_DISPLAY_NAMES[completedPhaseId];
 
-    const emailItems = sortedMembers.map((member, idx) => ({ member, rank: idx + 1 }));
+    // Recipients respect the user's email preference; the ranking
+    // CONTENT still covers everyone.
+    const emailItems = rankedRows
+      .map((row) => ({ row, member: memberByUserId.get(row.userId) }))
+      .filter(
+        (x): x is { row: typeof x.row; member: NonNullable<typeof x.member> } =>
+          !!x.member && x.member.user.emailNotificationsEnabled,
+      );
     const { sent, failed } = await batchSendEmails(emailItems, (item) => {
       const locale = resolveUserLocale(item.member.user);
       const phaseName = phaseNames?.[locale] ?? phaseNames?.en ?? completedPhaseId;
@@ -407,9 +373,9 @@ async function sendPhaseCompletionNotifications(
         poolName,
         poolId,
         phaseName,
-        userRank: item.rank,
-        userPoints: item.member.points,
-        totalParticipants: sortedMembers.length,
+        userRank: item.row.rank,
+        userPoints: item.row.points,
+        totalParticipants: rankedRows.length,
         top10,
         locale,
       });

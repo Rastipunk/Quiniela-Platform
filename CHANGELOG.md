@@ -8,6 +8,27 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Score pipeline — Etapas 3C + 4: plan de auditoría COMPLETO (2026-06-11)
+
+Cierre del plan aprobado en `SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1 — las 6 etapas (0, 1, 2, 3A, 3B, 3C, 4) quedaron desplegadas el mismo día de la auditoría.
+
+#### Added (Etapa 3C — acciones rápidas del monitor)
+- **`POST /admin/matches/retrack`**: re-registra un fixture con el scraper inmediatamente (limpia `trackedAtUtc` + dispara el job real) — el procedimiento manual de esta mañana, ahora un botón.
+- **`POST /admin/matches/master-scoring-override`**: excluye un partido del scoring (o lo rehabilita) en TODAS las pools ACTIVE de la instancia — la herramienta para partidos abandonados/anulados (audit F1-6). Razón obligatoria + audit `MASTER_SCORING_DISABLED/ENABLED`.
+- Botones "🔄 Re-track" y "🚫 Scoring" (con modal explicativo) en cada card de `/admin/monitor`.
+
+#### Added (Etapa 4 — visibilidad para jugadores)
+- **Badge de procedencia honesto (audit F4-3):** un resultado `SCRAPER_PROVISIONAL`/en vivo ya no se rotula "Resultado oficial" — muestra "En vivo · Provisional" (la llave i18n muerta por fin cableada).
+- **La prórroga dejó de ser invisible (audit F4-2):** MatchCard y KnockoutMatchCard muestran "Hubo prórroga — marcador a los 90 min: X-X" cuando `goals90` existe (el dato llegaba al cliente y nadie lo leía).
+- **Estados en vivo diferenciados (audit F4-5):** prórroga (ámbar) y tanda de penales (rojo) ya no se colapsan al badge genérico "EN VIVO".
+- **El jugador por fin sabe contra qué marcador puntúa (audit F4-4):** las Reglas muestran por fase "Tus marcadores se evalúan a los 90 minutos / incluyendo prórroga" según la elección del creador (decisión del owner F2-9: la regla del creador manda — solo visibilidad).
+
+#### Fixed (Etapa 4 — limpieza backend)
+- **Email de fase completada unificado con ADR-069 (audit F2-3):** puntuaba inline con 3/5 hardcodeados contra goles con prórroga ignorando `pickTypesConfig`; ahora delega en `getPoolOverview` (mismo ranking que el leaderboard) y respeta `emailNotificationsEnabled`.
+- **`scoreLegacy` con selector 90'/120' (audit F2-4):** el email de resultado puntuaba pools legacy y picks OUTCOME contra los goles finales; ahora aplica el mismo selector del leaderboard.
+- **`GET /pools/:poolId/leaderboard` deprecado a 410 (audit F2-5):** scoring hardcodeado 3/2 que solo podía contradecir al leaderboard real; el frontend no lo usaba (verificado).
+- **`includeExtraTime` validado por Zod (audit F2-10):** un string `"false"` (truthy) ya no puede activar prórroga silenciosamente.
+
 ### Admin — Override master + acceso desde el menú (Etapa 3B) (2026-06-11)
 
 #### Added
