@@ -83,6 +83,33 @@ export default function MatchMonitorContent() {
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<string>("");
   const [overrideTarget, setOverrideTarget] = useState<MonitorRow | null>(null);
+  const [scoringTarget, setScoringTarget] = useState<MonitorRow | null>(null);
+  const [retracking, setRetracking] = useState<string | null>(null);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+
+  const retrack = useCallback(async (row: MonitorRow) => {
+    const token = getToken();
+    if (!token) return;
+    setRetracking(row.matchId);
+    setActionMsg(null);
+    try {
+      const res = await fetch(`${API_URL}/admin/matches/retrack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        credentials: "include",
+        body: JSON.stringify({ instanceId: row.instanceId, matchId: row.matchId }),
+      });
+      setActionMsg(
+        res.ok
+          ? `🔄 Re-track disparado para ${row.homeTeamName} vs ${row.awayTeamName} — verifica el chip "Track" en ~30s`
+          : `❌ Re-track falló (HTTP ${res.status})`,
+      );
+    } catch {
+      setActionMsg("❌ Re-track falló (red)");
+    } finally {
+      setRetracking(null);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     const token = getToken();
@@ -135,12 +162,30 @@ export default function MatchMonitorContent() {
         <div style={{ color: "#6b7280" }}>Sin partidos en la ventana operativa.</div>
       )}
 
+      {actionMsg && (
+        <div style={{ padding: 10, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, color: "#1e40af", fontSize: "0.8rem", marginBottom: 12 }}>
+          {actionMsg}
+        </div>
+      )}
+
       {overrideTarget && (
         <MasterOverrideModal
           row={overrideTarget}
           onClose={() => setOverrideTarget(null)}
           onApplied={() => {
             setOverrideTarget(null);
+            load();
+          }}
+        />
+      )}
+
+      {scoringTarget && (
+        <ScoringExclusionModal
+          row={scoringTarget}
+          onClose={() => setScoringTarget(null)}
+          onApplied={(msg) => {
+            setScoringTarget(null);
+            setActionMsg(msg);
             load();
           }}
         />
@@ -189,7 +234,29 @@ export default function MatchMonitorContent() {
               </div>
 
               {/* Actions */}
-              <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+              <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => retrack(row)}
+                  disabled={retracking === row.matchId}
+                  title="Re-registra el fixture con el scraper inmediatamente (si perdió el tracking)"
+                  style={{
+                    padding: "6px 14px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700,
+                    background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af",
+                    cursor: retracking === row.matchId ? "wait" : "pointer",
+                  }}
+                >
+                  {retracking === row.matchId ? "Re-trackeando…" : "🔄 Re-track"}
+                </button>
+                <button
+                  onClick={() => setScoringTarget(row)}
+                  title="Excluir el partido del scoring en todas las pools (caso abandonado/anulado)"
+                  style={{
+                    padding: "6px 14px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700,
+                    background: "#f9fafb", border: "1px solid #d1d5db", color: "#374151", cursor: "pointer",
+                  }}
+                >
+                  🚫 Scoring
+                </button>
                 <button
                   onClick={() => setOverrideTarget(row)}
                   style={{
@@ -509,6 +576,136 @@ function MasterOverrideModal({
               )}
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Scoring exclusion modal (Etapa 3C — the ABD tool): excludes a match
+ * from scoring across every ACTIVE pool of the instance (or lifts the
+ * exclusion). Picks stay visible but pay 0 points while excluded.
+ */
+function ScoringExclusionModal({
+  row,
+  onClose,
+  onApplied,
+}: {
+  row: MonitorRow;
+  onClose: () => void;
+  onApplied: (msg: string) => void;
+}) {
+  const [mode, setMode] = useState<"disable" | "enable">("disable");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canSubmit = reason.trim().length >= 5 && !busy;
+
+  async function submit() {
+    const token = getToken();
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/admin/matches/master-scoring-override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        credentials: "include",
+        body: JSON.stringify({
+          instanceId: row.instanceId,
+          matchId: row.matchId,
+          scoringEnabled: mode === "enable",
+          reason: reason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data?.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      onApplied(
+        mode === "disable"
+          ? `🚫 ${row.homeTeamName} vs ${row.awayTeamName} excluido del scoring en ${data.applied} pools`
+          : `✅ Scoring rehabilitado para ${row.homeTeamName} vs ${row.awayTeamName} en ${data.totalPools} pools`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error de red");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+      onClick={onClose}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "white", borderRadius: 14, padding: 20, width: "100%", maxWidth: 440 }}>
+        <h2 style={{ fontSize: "1rem", fontWeight: 800, margin: "0 0 6px" }}>
+          🚫 Scoring — {row.homeTeamName} vs {row.awayTeamName}
+        </h2>
+        <p style={{ fontSize: "0.78rem", color: "#6b7280", margin: "0 0 14px", lineHeight: 1.5 }}>
+          Para partidos <b>abandonados o anulados</b>: al excluirlo, el partido deja de pagar
+          puntos en las <b>{row.activePools} pools activas</b> (los picks quedan visibles pero
+          valen 0). Reversible en cualquier momento.
+        </p>
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button
+            onClick={() => setMode("disable")}
+            style={{
+              flex: 1, padding: 10, borderRadius: 8, fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
+              border: mode === "disable" ? "2px solid #dc2626" : "1px solid #d1d5db",
+              background: mode === "disable" ? "#fef2f2" : "white",
+              color: mode === "disable" ? "#991b1b" : "#6b7280",
+            }}
+          >
+            🚫 Excluir del scoring
+          </button>
+          <button
+            onClick={() => setMode("enable")}
+            style={{
+              flex: 1, padding: 10, borderRadius: 8, fontWeight: 700, fontSize: "0.8rem", cursor: "pointer",
+              border: mode === "enable" ? "2px solid #16a34a" : "1px solid #d1d5db",
+              background: mode === "enable" ? "#f0fdf4" : "white",
+              color: mode === "enable" ? "#166534" : "#6b7280",
+            }}
+          >
+            ✅ Rehabilitar scoring
+          </button>
+        </div>
+
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Razón (obligatoria, mín. 5 caracteres) — Ej: Partido abandonado al minuto 60 por seguridad."
+          rows={2}
+          style={{ width: "100%", padding: 10, borderRadius: 8, border: "2px solid #d1d5db", fontSize: "0.85rem", boxSizing: "border-box", fontFamily: "inherit", marginBottom: 10 }}
+        />
+
+        {error && (
+          <div style={{ padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b", fontSize: "0.78rem", marginBottom: 10 }}>
+            ❌ {error}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: 10, borderRadius: 8, border: "2px solid #d1d5db", background: "white", color: "#374151", cursor: "pointer", fontWeight: 700, fontSize: "0.82rem" }}>
+            ✕ Cancelar
+          </button>
+          <button
+            disabled={!canSubmit}
+            onClick={submit}
+            style={{
+              flex: 2, padding: 10, borderRadius: 8, border: "none", fontWeight: 800, fontSize: "0.82rem",
+              background: canSubmit ? (mode === "disable" ? "#991b1b" : "#166534") : "#e5e7eb",
+              color: canSubmit ? "white" : "#9ca3af",
+              cursor: canSubmit ? "pointer" : "not-allowed",
+            }}
+          >
+            {busy ? "Aplicando…" : mode === "disable" ? `Excluir en ${row.activePools} pools` : `Rehabilitar en ${row.activePools} pools`}
+          </button>
         </div>
       </div>
     </div>

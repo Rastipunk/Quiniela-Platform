@@ -403,3 +403,106 @@ export async function applyMasterOverride(
 
   return summary;
 }
+
+// ============================================================================
+// Quick actions (Etapa 3C — audit §6)
+// ============================================================================
+
+/**
+ * Force re-registration of one fixture with picks4all-scores: clears
+ * the trackedAtUtc stamp (so the monitor reflects reality) and runs
+ * the real fixtureTrackingJob immediately. Since f7f27f0 the hourly
+ * job re-sends idempotently anyway — this button buys IMMEDIACY when
+ * the scraper lost a fixture mid-match.
+ */
+export async function retrackMatch(
+  instanceId: string,
+  matchId: string,
+  actorUserId: string,
+): Promise<{ triggered: true }> {
+  await prisma.matchSyncState.updateMany({
+    where: { tournamentInstanceId: instanceId, internalMatchId: matchId },
+    data: { trackedAtUtc: null },
+  });
+
+  const { triggerFixtureTracking } = await import("../jobs/fixtureTrackingJob");
+  await triggerFixtureTracking();
+
+  await writeAuditEvent({
+    actorUserId,
+    action: "MATCH_RETRACK_TRIGGERED",
+    entityType: "MatchSyncState",
+    entityId: matchId,
+    dataJson: { instanceId, matchId },
+  });
+
+  return { triggered: true };
+}
+
+/**
+ * Instance-wide scoring exclusion (the ABD tool — audit F1-6): apply
+ * PoolMatchOverride.scoringEnabled=false to EVERY ACTIVE pool of the
+ * instance (or lift it everywhere). Per-pool overrides set by hosts are
+ * replaced — this is deliberate: an abandoned/annulled match is a
+ * tournament-level fact, not a per-pool opinion.
+ */
+export async function applyMasterScoringExclusion(input: {
+  instanceId: string;
+  matchId: string;
+  scoringEnabled: boolean;
+  reason: string;
+  actorUserId: string;
+}): Promise<{ totalPools: number; applied: number }> {
+  const instance = await prisma.tournamentInstance.findUnique({
+    where: { id: input.instanceId },
+    select: { id: true, dataJson: true },
+  });
+  if (!instance) throw new Error("INSTANCE_NOT_FOUND");
+  const fixture = parseFixtureData(instance.dataJson);
+  if (!fixture.matches.some((m) => m.id === input.matchId)) {
+    throw new Error("MATCH_NOT_FOUND_IN_INSTANCE");
+  }
+
+  const pools = await prisma.pool.findMany({
+    where: { tournamentInstanceId: input.instanceId, status: "ACTIVE" },
+    select: { id: true },
+  });
+  const poolIds = pools.map((p) => p.id);
+
+  let applied = 0;
+  if (poolIds.length > 0) {
+    // Reset existing rows first so enable/disable are both idempotent.
+    await prisma.poolMatchOverride.deleteMany({
+      where: { matchId: input.matchId, poolId: { in: poolIds } },
+    });
+    if (!input.scoringEnabled) {
+      const created = await prisma.poolMatchOverride.createMany({
+        data: poolIds.map((poolId) => ({
+          poolId,
+          matchId: input.matchId,
+          scoringEnabled: false,
+          reason: input.reason,
+          setByUserId: input.actorUserId,
+        })),
+      });
+      applied = created.count;
+    } else {
+      applied = poolIds.length;
+    }
+  }
+
+  await writeAuditEvent({
+    actorUserId: input.actorUserId,
+    action: input.scoringEnabled ? "MASTER_SCORING_ENABLED" : "MASTER_SCORING_DISABLED",
+    entityType: "TournamentInstance",
+    entityId: input.instanceId,
+    dataJson: {
+      matchId: input.matchId,
+      scoringEnabled: input.scoringEnabled,
+      reason: input.reason,
+      totalPools: poolIds.length,
+    },
+  });
+
+  return { totalPools: poolIds.length, applied };
+}

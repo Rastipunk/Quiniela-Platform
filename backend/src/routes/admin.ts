@@ -206,6 +206,55 @@ adminRouter.post("/matches/master-override", requireAuth, requireAdmin, async (r
   }
 });
 
+// POST /admin/matches/retrack — Force one fixture's re-registration with
+// the scraper, immediately (audit §6, Etapa 3C).
+const retrackSchema = z.object({
+  instanceId: z.string().min(1),
+  matchId: z.string().min(1),
+});
+adminRouter.post("/matches/retrack", requireAuth, requireAdmin, async (req, res) => {
+  const parsed = retrackSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+  try {
+    const { retrackMatch } = await import("../services/matchMonitorService");
+    const result = await retrackMatch(parsed.data.instanceId, parsed.data.matchId, req.auth!.userId);
+    return sendData(res, result as unknown as Record<string, unknown>);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /admin/matches/master-scoring-override — Exclude a match from
+// scoring (or re-enable it) across EVERY ACTIVE pool of the instance —
+// the ABD tool (audit §6, Etapa 3C / F1-6).
+const masterScoringSchema = z.object({
+  instanceId: z.string().min(1),
+  matchId: z.string().min(1),
+  scoringEnabled: z.boolean(),
+  reason: z.string().trim().min(5).max(500),
+});
+adminRouter.post("/matches/master-scoring-override", requireAuth, requireAdmin, async (req, res) => {
+  const parsed = masterScoringSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+  try {
+    const { applyMasterScoringExclusion } = await import("../services/matchMonitorService");
+    const result = await applyMasterScoringExclusion({
+      ...parsed.data,
+      actorUserId: req.auth!.userId,
+    });
+    return sendData(res, result as unknown as Record<string, unknown>);
+  } catch (err) {
+    if (err instanceof Error && (err.message === "INSTANCE_NOT_FOUND" || err.message === "MATCH_NOT_FOUND_IN_INSTANCE")) {
+      return sendNotFound(res, err.message);
+    }
+    return handleServiceError(res, err);
+  }
+});
+
 // POST /admin/jobs/trigger-fixture-tracking — Manually trigger fixtureTrackingJob
 // Used to test the picks4all-scores integration end-to-end without waiting for the hourly cron.
 adminRouter.post("/jobs/trigger-fixture-tracking", requireAuth, requireAdmin, async (req, res) => {
