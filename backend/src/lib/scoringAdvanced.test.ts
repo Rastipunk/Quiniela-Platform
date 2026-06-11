@@ -291,18 +291,19 @@ describe("scoreMatchPick - CUMULATIVE system", () => {
     }
 
     it("awards EXACT_SCORE bonus when prediction matches exactly (regression for Bug 1)", () => {
-      // 2-1 vs 2-1: outcome + home + away + diff + exact (NOT partial — XOR fails when both match)
+      // 2-1 vs 2-1: ALL criteria pay — partial included (inclusive, ADR-073)
       const result = scoreMatchPick(
         { homeGoals: 2, awayGoals: 1 },
         { homeGoals: 2, awayGoals: 1 },
         customConfig()
       );
-      expect(result.totalPoints).toBe(10 + 4 + 4 + 2 + 15); // 35
+      expect(result.totalPoints).toBe(10 + 4 + 4 + 2 + 15 + 3); // 38 = advertised max
       const exact = result.evaluations.find((e) => e.matchPickType === "EXACT_SCORE");
       expect(exact?.matched).toBe(true);
       expect(exact?.points).toBe(15);
       const partial = result.evaluations.find((e) => e.matchPickType === "PARTIAL_SCORE");
-      expect(partial?.matched).toBe(false);
+      expect(partial?.matched).toBe(true);
+      expect(partial?.points).toBe(3);
     });
 
     it("awards PARTIAL_SCORE when only one side matches", () => {
@@ -325,13 +326,13 @@ describe("scoreMatchPick - CUMULATIVE system", () => {
 
     it("does NOT short-circuit on EXACT_SCORE in cumulative mode", () => {
       // Confirms exact-score is additive (single engine — ADR-072).
-      // 1-1 vs 1-1: outcome(DRAW=DRAW) + home + away + diff + exact (no partial, XOR)
+      // 1-1 vs 1-1: outcome(DRAW=DRAW) + home + away + diff + exact + partial
       const result = scoreMatchPick(
         { homeGoals: 1, awayGoals: 1 },
         { homeGoals: 1, awayGoals: 1 },
         customConfig()
       );
-      expect(result.totalPoints).toBe(10 + 4 + 4 + 2 + 15); // 35, not 15
+      expect(result.totalPoints).toBe(10 + 4 + 4 + 2 + 15 + 3); // 38, not 15
     });
   });
 });
@@ -384,8 +385,8 @@ describe("scoreMatchPick - configs without HOME/AWAY goals", () => {
         { homeGoals: 2, awayGoals: 1 },
         config
       );
-      // outcome(4) + diff(5) + total(2) + exact(10) = 21; partial is XOR → no
-      expect(result.totalPoints).toBe(21);
+      // outcome(4) + diff(5) + total(2) + exact(10) + partial(3) = 24 = sum of enabled
+      expect(result.totalPoints).toBe(24);
       const exact = result.evaluations.find((e) => e.matchPickType === "EXACT_SCORE");
       expect(exact?.matched).toBe(true);
       expect(exact?.points).toBe(10);
@@ -425,17 +426,19 @@ describe("scoreMatchPick - configs without HOME/AWAY goals", () => {
       expect(result.totalPoints).toBe(3);
     });
 
-    it("does NOT give PARTIAL_SCORE when both goals match (that's EXACT)", () => {
+    it("PARTIAL_SCORE also pays when both sides match (inclusive — ADR-073)", () => {
       const config = makeLegacyMultiConfig();
-      // Pick: 2-1, Result: 2-1 → exact + outcome + diff + total, partial XOR fails
+      // Pick: 2-1, Result: 2-1 → matching both sides satisfies "at least one
+      // side" — the exact pick reaches the advertised max (sum of enabled).
       const result = scoreMatchPick(
         { homeGoals: 2, awayGoals: 1 },
         { homeGoals: 2, awayGoals: 1 },
         config
       );
-      expect(result.totalPoints).toBe(21);
+      expect(result.totalPoints).toBe(24);
       const partial = result.evaluations.find((e) => e.matchPickType === "PARTIAL_SCORE");
-      expect(partial?.matched).toBe(false);
+      expect(partial?.matched).toBe(true);
+      expect(partial?.points).toBe(3);
     });
   });
 

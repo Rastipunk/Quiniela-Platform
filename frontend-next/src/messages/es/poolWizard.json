@@ -203,7 +203,7 @@
       "GOAL_DIFFERENCE": "Acertar la diferencia entre ambos",
       "EXACT_SCORE": "Bonus por acertar ambos marcadores",
       "TOTAL_GOALS": "Acertar la suma total de goles",
-      "PARTIAL_SCORE": "Acertar uno de los dos marcadores"
+      "PARTIAL_SCORE": "Acertar al menos uno de los marcadores"
     },
 
     "toggleScoresLabel": "Marcadores",

@@ -33,8 +33,11 @@ type MatchPick = {
  * presentó como "Bonus por acertar ambos marcadores"; el antiguo
  * short-circuit "legacy" podía pagar MENOS al que acertaba el marcador
  * exacto que a quien casi acierta (reporte de soporte 2026-06-11).
- * PARTIAL_SCORE es XOR por definición, así que nunca paga junto con
- * EXACT_SCORE.
+ * PARTIAL_SCORE es INCLUSIVO (ADR-073): paga al acertar los goles de AL
+ * MENOS un lado — el pick exacto también lo cumple, así que el máximo
+ * anunciado (suma de criterios habilitados) es alcanzable. El antiguo
+ * XOR hacía ese máximo imposible (2.º reporte de soporte 2026-06-11; la
+ * calculadora del wizard siempre fue inclusiva).
  *
  * @param pick - Predicción del usuario
  * @param result - Resultado oficial del partido
@@ -130,8 +133,8 @@ export function scoreMatchPick(
     if (matched) totalPoints += exactScoreType.points;
   }
 
-  // 7. PARTIAL_SCORE — XOR (acierta un solo lado, no ambos). Si acierta
-  // ambos lados aplica EXACT_SCORE, no este criterio.
+  // 7. PARTIAL_SCORE — inclusivo (ADR-073): acertar al menos un lado.
+  // Un pick exacto también lo cumple y suma este criterio.
   const partialScoreType = enabledTypes.find((t) => t.key === "PARTIAL_SCORE");
   if (partialScoreType) {
     const matched = evaluatePartialScore(pick, result);
@@ -170,15 +173,15 @@ function evaluateGoalDifference(pick: MatchPick, result: MatchScore): boolean {
 }
 
 /**
- * Evalúa PARTIAL_SCORE: acierta goles del local O visitante (no ambos)
- * Si acierta ambos, NO cuenta (eso es EXACT_SCORE)
+ * Evalúa PARTIAL_SCORE: acierta los goles de AL MENOS un lado (inclusivo —
+ * ADR-073). Acertar ambos lados (marcador exacto) también lo cumple: la
+ * calculadora del wizard y el máximo anunciado siempre asumieron esta
+ * semántica, y el antiguo XOR hacía el máximo inalcanzable.
  */
 function evaluatePartialScore(pick: MatchPick, result: MatchScore): boolean {
   const homeMatch = pick.homeGoals === result.homeGoals;
   const awayMatch = pick.awayGoals === result.awayGoals;
-
-  // Solo uno debe coincidir (XOR lógico)
-  return homeMatch !== awayMatch;
+  return homeMatch || awayMatch;
 }
 
 /**

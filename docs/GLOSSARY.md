@@ -454,10 +454,10 @@ There is NO separate `PoolMemberRequest` table — the entire workflow uses `Poo
 | `MATCH_OUTCOME_90MIN` | Same winner / draw outcome at 90 min |
 | `HOME_GOALS` | Correct number of home goals (independent of away) |
 | `AWAY_GOALS` | Correct number of away goals (independent of home) |
-| `PARTIAL_SCORE` | Exactly one of the two scores matches (XOR) |
+| `PARTIAL_SCORE` | At least one of the two scores matches (inclusive OR — ADR-073) |
 | `TOTAL_GOALS` | `pick.home + pick.away === result.home + result.away` |
 
-**Cumulative vs legacy:** when `HOME_GOALS` or `AWAY_GOALS` is enabled the engine sums points across all matched criteria (cumulative system). With only the legacy types it terminates on `EXACT_SCORE` if matched.
+**Single additive engine (ADR-072):** every enabled criterion is evaluated independently and matched criteria sum — `EXACT_SCORE` is an additive bonus and never terminates evaluation, so the per-match maximum (sum of enabled criteria) is reachable with an exact pick.
 
 **Note:** earlier versions of this glossary listed `MATCH_OUTCOME`, `BOTH_TEAMS_SCORE`, and `WINNING_MARGIN` — those names never existed in the engine. The real outcome type is `MATCH_OUTCOME_90MIN`; the others are not implemented.
 

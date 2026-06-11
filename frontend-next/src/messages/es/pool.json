@@ -808,9 +808,9 @@
     },
     "PARTIAL_SCORE": {
       "title": "Marcador Parcial",
-      "description": "Acierta SOLO los goles de UN equipo (local O visitante), pero NO ambos a la vez. Si aciertas ambos, eso cuenta como marcador exacto (que vale más puntos). Este tipo es útil cuando aciertas parcialmente.",
-      "shortDesc": "Acertar goles de un equipo.",
-      "example": "Ejemplo con 8 pts: Predices 2-1, sale 2-3 → GANAS 8 PTS (los 2 del local) | Sale 3-3 → 0 pts | Sale 2-1 → GANAS 20 PTS del exacto"
+      "description": "Acierta los goles de AL MENOS un equipo (local o visitante). Si aciertas ambos (marcador exacto), este criterio también suma — cada criterio que cumplas paga sus puntos.",
+      "shortDesc": "Acertar goles de al menos un equipo.",
+      "example": "Ejemplo con 8 pts: Predices 2-1, sale 2-3 → GANAS 8 PTS (los 2 del local) | Sale 3-3 → 0 pts | Sale 2-1 (exacto) → GANAS estos 8 PTS además del bonus de marcador exacto"
     },
     "TOTAL_GOALS": {
       "title": "Goles Totales",

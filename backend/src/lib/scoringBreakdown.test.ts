@@ -208,15 +208,17 @@ describe("generateMatchPickBreakdown - multi-type without HOME/AWAY goals", () =
 
     expect(result.type).toBe("MATCH");
     if (result.type === "MATCH") {
-      // exact(10) + diff(5) + total(2) + outcome(4) = 21; partial XOR → no
-      expect(result.totalPointsEarned).toBe(21);
+      // exact(10) + diff(5) + total(2) + outcome(4) + partial(3) = 24 —
+      // the advertised max (sum of enabled) is reachable (ADR-073)
+      expect(result.totalPointsEarned).toBe(24);
       const exact = result.rules.find((r) => r.ruleKey === "EXACT_SCORE");
       expect(exact?.matched).toBe(true);
       expect(exact?.pointsEarned).toBe(10);
 
-      // Every rule keeps its real pointsMax (no N/A masking)
+      // Partial pays on both-sides too (inclusive), keeping its real pointsMax
       const partial = result.rules.find((r) => r.ruleKey === "PARTIAL_SCORE");
-      expect(partial?.matched).toBe(false);
+      expect(partial?.matched).toBe(true);
+      expect(partial?.pointsEarned).toBe(3);
       expect(partial?.pointsMax).toBe(3);
     }
   });
@@ -234,7 +236,7 @@ describe("generateMatchPickBreakdown - multi-type without HOME/AWAY goals", () =
 
     expect(result.type).toBe("MATCH");
     if (result.type === "MATCH") {
-      // EXACT: miss, DIFF: +2=+2 (5), PARTIAL: neither XOR (0), TOTAL: 2≠4 (0), OUTCOME: HOME=HOME (4)
+      // EXACT: miss, DIFF: +2=+2 (5), PARTIAL: no side matches (0), TOTAL: 2≠4 (0), OUTCOME: HOME=HOME (4)
       expect(result.totalPointsEarned).toBe(9);
     }
   });

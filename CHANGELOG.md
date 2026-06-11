@@ -8,6 +8,17 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Scoring — Marcador parcial inclusivo: el máximo anunciado por fin es alcanzable (ADR-073) (2026-06-11)
+
+Segundo reporte de soporte del inaugural ("Slaski Szpil WC 2026"): los 5 miembros acertaron el 2-0 exacto y recibieron 16 de un máximo anunciado de 21.
+
+#### Fixed
+- **`PARTIAL_SCORE` pasa de XOR a inclusivo** (`evaluatePartialScore` = al menos un lado): un pick exacto también cumple "acertar al menos un marcador" y suma ese criterio. Antes el máximo anunciado (suma de criterios habilitados, el "/21" del modal) era inalcanzable por construcción — y la **calculadora de ejemplo del wizard siempre fue inclusiva**, prometiendo lo que el motor negaba. La calculadora no se toca: ya hacía lo correcto.
+- **Breakdown espejado** (caso ambos-lados ahora dice "Acertaste ambos marcadores") y **textos unificados ×3 idiomas** (descripción extendida decía "NO ambos a la vez"; el wizard decía "uno de los dos" — ahora todo dice "al menos uno").
+- **Docs reconciliados**: PRD ya decía inclusivo mientras BUSINESS_RULES/GLOSSARY decían XOR; §6.3 reescrito al motor aditivo único (ADR-072/073).
+
+Alcance verificado en prod antes de codificar: 5 pools con parcial habilitado (2 ACTIVE, 0 COMPLETED → cero impacto histórico); simulación sobre las 5 configs reales probó que ningún pick no-exacto cambia ni un punto y el máximo se vuelve alcanzable en todas. Slaski: 5 × (16 → 21).
+
 ### Estratega — Tabla de grupo provisional honesta (2026-06-11)
 
 #### Fixed

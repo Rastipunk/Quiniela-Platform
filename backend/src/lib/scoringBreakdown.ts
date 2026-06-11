@@ -167,7 +167,8 @@ const MATCH_PICK_TYPE_NAMES: Record<MatchPickTypeKey, string> = {
  * MOTOR ÚNICO ADITIVO (ADR-072): espejo exacto de scoreMatchPick —
  * cada criterio habilitado se evalúa de forma independiente y los
  * puntos de los cumplidos se SUMAN. EXACT_SCORE es bonus aditivo (sin
- * short-circuit) y PARTIAL_SCORE es XOR. Máximo = suma de habilitados.
+ * short-circuit) y PARTIAL_SCORE es inclusivo: al menos un lado
+ * (ADR-073). Máximo = suma de habilitados — alcanzable con el exacto.
  */
 export function generateMatchPickBreakdown(
   pick: { homeGoals: number; awayGoals: number } | null,
@@ -363,14 +364,14 @@ export function generateMatchPickBreakdown(
       if (matched) totalEarned += exactScoreCumType.points;
     }
 
-    // 7. PARTIAL_SCORE — XOR: acierta los goles de UN solo lado
-    //    (si acierta ambos NO aplica — eso es EXACT_SCORE). Mismo
-    //    criterio que scoringAdvanced (audit F2-2).
+    // 7. PARTIAL_SCORE — inclusivo (ADR-073): acertar los goles de AL
+    //    MENOS un lado. El exacto también lo cumple y suma. Mismo
+    //    criterio que scoringAdvanced.
     const partialScoreCumType = enabledTypes.find(t => t.key === "PARTIAL_SCORE");
     if (partialScoreCumType) {
       const homeRight = pick.homeGoals === result.homeGoals;
       const awayRight = pick.awayGoals === result.awayGoals;
-      const matched = homeRight !== awayRight;
+      const matched = homeRight || awayRight;
 
       rules.push({
         ruleKey: "PARTIAL_SCORE",
@@ -380,10 +381,10 @@ export function generateMatchPickBreakdown(
         pointsEarned: matched ? partialScoreCumType.points : 0,
         pointsMax: partialScoreCumType.points,
         details: matched
-          ? `Acertaste los goles ${homeRight ? "del local" : "del visitante"}`
-          : homeRight && awayRight
-            ? "Acertaste ambos lados (aplica marcador exacto, no parcial)"
-            : "No acertaste los goles de ningún lado",
+          ? homeRight && awayRight
+            ? "Acertaste ambos marcadores"
+            : `Acertaste los goles ${homeRight ? "del local" : "del visitante"}`
+          : "No acertaste los goles de ningún lado",
       });
 
       if (matched) totalEarned += partialScoreCumType.points;

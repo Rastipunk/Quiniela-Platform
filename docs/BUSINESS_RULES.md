@@ -507,25 +507,20 @@ Host provides full `PhasePickConfig[]` array, validated by `validatePoolPickType
 
 ### 6.3 Advanced Scoring Engine
 
-The engine (`scoringAdvanced.ts`) auto-detects scoring mode:
-
-**Cumulative system** (when HOME_GOALS or AWAY_GOALS types are enabled):
-
-- Evaluates ALL criteria independently and sums points.
-- Criteria: MATCH_OUTCOME_90MIN, HOME_GOALS, AWAY_GOALS, GOAL_DIFFERENCE, TOTAL_GOALS.
-
-**Legacy system** (when using EXACT_SCORE):
-
-- EXACT_SCORE evaluated first; if matched, terminates evaluation (no accumulation).
-- If missed, evaluates in order: GOAL_DIFFERENCE, PARTIAL_SCORE, TOTAL_GOALS, MATCH_OUTCOME_90MIN.
+The engine (`scoringAdvanced.ts`) is a **single additive engine** (ADR-072): every
+enabled criterion is evaluated independently and the points of every matched
+criterion SUM. There is no mode detection and no short-circuit — an exact-score
+pick also earns outcome, goal difference, total goals and partial score, so the
+**advertised per-match maximum (sum of all enabled criteria) is always reachable**.
+`generateMatchPickBreakdown` (the player-facing modal) mirrors the engine exactly.
 
 **Evaluation functions:**
 
 | Type | Logic |
 |------|-------|
-| `EXACT_SCORE` | `pick.home === result.home && pick.away === result.away` |
+| `EXACT_SCORE` | `pick.home === result.home && pick.away === result.away` (additive bonus — never terminates evaluation, ADR-072) |
 | `GOAL_DIFFERENCE` | `(pick.home - pick.away) === (result.home - result.away)` |
-| `PARTIAL_SCORE` | Exactly one of home/away goals matches (XOR) |
+| `PARTIAL_SCORE` | At least one of home/away goals matches (inclusive OR — ADR-073; an exact pick satisfies it too) |
 | `TOTAL_GOALS` | `(pick.home + pick.away) === (result.home + result.away)` |
 | `MATCH_OUTCOME_90MIN` | Same outcome (HOME/DRAW/AWAY) |
 | `HOME_GOALS` | `pick.homeGoals === result.homeGoals` |

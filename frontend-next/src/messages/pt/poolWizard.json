@@ -203,7 +203,7 @@
       "GOAL_DIFFERENCE": "Acertar a diferença de gols",
       "EXACT_SCORE": "Bônus por acertar os dois placares",
       "TOTAL_GOALS": "Acertar o total de gols da partida",
-      "PARTIAL_SCORE": "Acertar um dos dois placares"
+      "PARTIAL_SCORE": "Acertar pelo menos um dos dois placares"
     },
 
     "toggleScoresLabel": "Placares",

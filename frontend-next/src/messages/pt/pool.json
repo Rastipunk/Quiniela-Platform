@@ -808,9 +808,9 @@
     },
     "PARTIAL_SCORE": {
       "title": "Placar Parcial",
-      "description": "Acertar APENAS os gols de UM time (mandante OU visitante), mas NÃO ambos ao mesmo tempo. Se acertar ambos, isso conta como placar exato (que vale mais pontos). Este tipo é útil quando você acerta parcialmente.",
-      "shortDesc": "Acertar gols de um time.",
-      "example": "Exemplo com 8 pts: Você prevê 2-1, resultado 2-3 → GANHA 8 PTS (os 2 do mandante) | Resultado 3-3 → 0 pts | Resultado 2-1 → GANHA 20 PTS do exato"
+      "description": "Acerte os gols de PELO MENOS um time (mandante ou visitante). Se acertar ambos (placar exato), este critério também soma — cada critério que você cumprir paga seus pontos.",
+      "shortDesc": "Acertar gols de pelo menos um time.",
+      "example": "Exemplo com 8 pts: Você prevê 2-1, resultado 2-3 → GANHA 8 PTS (os 2 do mandante) | Resultado 3-3 → 0 pts | Resultado 2-1 (exato) → GANHA estes 8 PTS além do bônus de placar exato"
     },
     "TOTAL_GOALS": {
       "title": "Total de Gols",

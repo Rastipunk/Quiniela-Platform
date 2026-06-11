@@ -203,7 +203,7 @@
       "GOAL_DIFFERENCE": "Pick the goal difference",
       "EXACT_SCORE": "Bonus for picking both scores",
       "TOTAL_GOALS": "Pick the total goals in the match",
-      "PARTIAL_SCORE": "Pick one of the two scores"
+      "PARTIAL_SCORE": "Pick at least one of the two scores"
     },
 
     "toggleScoresLabel": "Scores",

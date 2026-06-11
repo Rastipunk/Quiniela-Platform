@@ -5063,4 +5063,24 @@ matchLockUtc = kickoffUtc - deadlineMinutes
 
 ---
 
+## ADR-073: PARTIAL_SCORE is inclusive — "at least one side", not XOR
+
+**Date:** 2026-06-11 | **Status:** Accepted
+
+**Context:** Second support report of the inaugural matchday (host of pool "Slaski Szpil World Cup 2026", 6 members): all five players hit the exact 2-0 and earned **16 of an advertised 21** (`MATCH_OUTCOME=10, EXACT=5, TOTAL_GOALS=1, PARTIAL=5`). The host demonstrated — with screenshots of the wizard's **Example calculator** — that the product itself promised an exact pick earns ALL criteria including partial. Investigation confirmed a three-way contradiction: the engine and breakdown treated `PARTIAL_SCORE` as **XOR** (one side only; both sides = pays nothing), the **calculator** evaluated it as inclusive OR ([ScoringEditor.tsx] `realHome === predHome || realAway === predAway`), and the copy disagreed with itself (`pickTypeDescriptions`: "al menos uno" = inclusive; `pickTypeExtended`: "NO ambos a la vez" = XOR; PRD said inclusive, BUSINESS_RULES/GLOSSARY said XOR). Under XOR the advertised per-match maximum (sum of enabled criteria — shown as "/21" in the breakdown header and used by `calculateMaxPointsForPhase`) was **unreachable by construction**.
+
+**Decision:** `evaluatePartialScore` = `homeMatch || awayMatch` (inclusive). An exact pick satisfies "at least one side" and earns the partial points too, making the advertised maximum reachable. The calculator is the contract hosts design their rules with — it already behaved this way and is untouched. Copy unified to inclusive ×3 locales (`pickTypeExtended.PARTIAL_SCORE`, `poolWizard.criteriaDesc.PARTIAL_SCORE`); breakdown detail for the both-sides case now reads "Acertaste ambos marcadores".
+
+**Verified blast radius (read-only prod probes before coding):** only **5 pools ever enabled PARTIAL_SCORE** (3 DRAFT with no results, 2 ACTIVE, **0 COMPLETED → zero historical impact**). Simulation over all 5 real configs proved the three invariants: (I1) exact pick = advertised max in every pool; (I2) **non-exact picks are bit-identical under both semantics** — nobody loses a point; (I3) monotonicity holds. Slaski's five exact hitters: 16 → 21, uniform.
+
+**Consequences:**
+- ✅ Engine, breakdown, calculator, copy, PRD, BUSINESS_RULES and GLOSSARY now state the same rule.
+- ✅ `maxPoints` (naive sum of enabled) is truthful everywhere; the leaderboard's probe-derived max and the modal max reconcile automatically.
+- ⚠️ "Partial as consolation prize" (XOR) is no longer expressible; hosts who want that effect can price EXACT_SCORE higher.
+
+**Related code:** `backend/src/lib/scoringAdvanced.ts` (`evaluatePartialScore`), `backend/src/lib/scoringBreakdown.ts`, `frontend-next/src/messages/{es,en,pt}/{pool,poolWizard}.json`, `docs/BUSINESS_RULES.md` §6.3, `docs/GLOSSARY.md`.
+**Support report:** email "Points rules problem" (Poiu, siptrenujemy@gmail.com), 2026-06-11.
+
+---
+
 **END OF DOCUMENT**

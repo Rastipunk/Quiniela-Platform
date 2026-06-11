@@ -808,9 +808,9 @@
     },
     "PARTIAL_SCORE": {
       "title": "Partial Score",
-      "description": "Get ONLY the goals of ONE team (home OR away) right, but NOT both at once. If you get both right, that counts as exact score (worth more points). This type is useful when you partially get it right.",
-      "shortDesc": "Get one team's goals right.",
-      "example": "Example with 8 pts: You predict 2-1, result is 2-3 -> WIN 8 PTS (the 2 from home) | Result 3-3 -> 0 pts | Result 2-1 -> WIN 20 PTS for exact"
+      "description": "Get the goals of AT LEAST one team (home or away) right. If you get both right (exact score), this criterion pays too — every criterion you match earns its points.",
+      "shortDesc": "Get at least one team's goals right.",
+      "example": "Example with 8 pts: You predict 2-1, result is 2-3 -> WIN 8 PTS (the 2 from home) | Result 3-3 -> 0 pts | Result 2-1 (exact) -> WIN these 8 PTS on top of the exact score bonus"
     },
     "TOTAL_GOALS": {
       "title": "Total Goals",
