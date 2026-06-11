@@ -10,6 +10,7 @@
 
 import * as cron from "node-cron";
 import { processDeadlineReminders } from "../services/deadlineReminderService";
+import { recordHeartbeat } from "../lib/cronHeartbeat";
 
 // ============================================================================
 // Configuration
@@ -53,6 +54,7 @@ async function runDeadlineReminders(): Promise<void> {
         `[DeadlineReminderJob] Skipped — ${result.errors.join(", ")}`
       );
     }
+    recordHeartbeat("DeadlineReminderJob");
   } catch (error) {
     console.error("[DeadlineReminderJob] Error:", error);
   } finally {

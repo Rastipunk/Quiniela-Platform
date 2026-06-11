@@ -1,8 +1,24 @@
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import rateLimit, {
+  ipKeyGenerator,
+  type Options as RateLimitOptions,
+} from "express-rate-limit";
+import type { Request, Response } from "express";
+import { recordRateLimitHit } from "../lib/rateLimitMetrics";
 
 // ── Helpers ─────────────────────────────────────────────────
 const envInt = (key: string, fallback: number): number =>
   parseInt(process.env[key] || String(fallback), 10);
+
+/**
+ * Each emitted 429 is counted by the platform-health monitor (sliding
+ * 60 s window). The counter is independent of express-rate-limit's
+ * internal bookkeeping so a metrics regression in one cannot mask the
+ * other.
+ */
+const handler = (_req: Request, res: Response, _next: unknown, opts: RateLimitOptions) => {
+  recordRateLimitHit();
+  res.status(opts.statusCode).send(opts.message);
+};
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -17,6 +33,7 @@ export const apiLimiter = rateLimit({
   message: { error: "RATE_LIMIT_EXCEEDED" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
   skip: (req) => req.path === "/health",
 });
 
@@ -27,6 +44,7 @@ export const authLimiter = rateLimit({
   message: { error: "TOO_MANY_LOGIN_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });
 
 // Password reset — default 5 req/hour per IP
@@ -36,6 +54,7 @@ export const passwordResetLimiter = rateLimit({
   message: { error: "TOO_MANY_RESET_REQUESTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });
 
 // Email verification resend — default 3 req/hour per IP
@@ -45,6 +64,7 @@ export const verificationResendLimiter = rateLimit({
   message: { error: "TOO_MANY_RESEND_REQUESTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });
 
 // Pool join — default 10 attempts / 15 min per IP
@@ -54,6 +74,7 @@ export const poolJoinLimiter = rateLimit({
   message: { error: "TOO_MANY_JOIN_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });
 
 // Per-IP limit on the public corporate invite check endpoint.
@@ -69,6 +90,7 @@ export const corporateInviteCheckLimiter = rateLimit({
   message: { error: "TOO_MANY_INVITE_CHECKS" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });
 
 // Per-IP limit on the actual activation endpoint. The token entropy makes
@@ -81,6 +103,7 @@ export const corporateActivateLimiter = rateLimit({
   message: { error: "TOO_MANY_ACTIVATION_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });
 
 // Per-user invitation send (corporate or regular). Keyed by req.auth.userId
@@ -99,6 +122,7 @@ export const inviteSendLimiter = rateLimit({
   message: { error: "TOO_MANY_INVITE_REQUESTS_PER_HOUR" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });
 
 // Hard daily ceiling — defends against compromised host accounts spamming
@@ -116,4 +140,5 @@ export const inviteSendDailyLimiter = rateLimit({
   message: { error: "DAILY_INVITE_LIMIT_EXCEEDED" },
   standardHeaders: true,
   legacyHeaders: false,
+  handler,
 });

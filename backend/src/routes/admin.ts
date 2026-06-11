@@ -89,6 +89,36 @@ adminRouter.get("/ping", requireAuth, requireAdmin, (_req, res) => {
   sendOk(res, { admin: true });
 });
 
+// GET /admin/health/deep — on-demand platform health snapshot.
+// Same collectors/thresholds the cron uses, evaluated synchronously.
+// Useful to confirm a recovery before the next 5-min tick, or to
+// drill into the value that triggered an alert email.
+adminRouter.get(
+  "/health/deep",
+  requireAuth,
+  requireAdmin,
+  async (_req, res) => {
+    try {
+      const { collectSnapshot, evaluateSnapshot } = await import(
+        "../services/platformHealthService"
+      );
+      const snapshot = evaluateSnapshot(await collectSnapshot());
+      const summary = {
+        ok: snapshot.metrics.filter((m) => m.severity === "OK").length,
+        warn: snapshot.metrics.filter((m) => m.severity === "WARN").length,
+        critical: snapshot.metrics.filter((m) => m.severity === "CRITICAL").length,
+      };
+      sendOk(res, { ...snapshot, summary });
+    } catch (err) {
+      console.error("[GET /admin/health/deep] failed:", err);
+      res.status(500).json({
+        error: "HEALTH_SNAPSHOT_FAILED",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+);
+
 // GET /admin/stats — platform stats (users, pools, feedback)
 adminRouter.get("/stats", requireAuth, requireAdmin, async (_req, res) => {
   try {

@@ -1868,15 +1868,23 @@ async function buildDashboardData(): Promise<DashboardPayload> {
 // Coalesce concurrent builds: whoever needs a (re)build awaits the
 // single in-flight promise instead of firing a second full pass.
 let inFlightBuild: Promise<DashboardPayload> | null = null;
+let lastBuildDurationMs = 0;
+
+/** Last observed build duration in ms (0 before the first build completes). */
+export function getLastDashboardBuildMs(): number {
+  return lastBuildDurationMs;
+}
 
 function startBuild(): Promise<DashboardPayload> {
   if (!inFlightBuild) {
     const startedAt = Date.now();
     inFlightBuild = buildDashboardData()
       .then((data) => {
+        const durationMs = Date.now() - startedAt;
+        lastBuildDurationMs = durationMs;
         cache = { data, timestamp: Date.now() };
         console.log(
-          `[admin analytics] dashboard built in ${Date.now() - startedAt}ms` +
+          `[admin analytics] dashboard built in ${durationMs}ms` +
             (data.errors.length > 0 ? ` (${data.errors.length} section errors)` : ""),
         );
         return data;

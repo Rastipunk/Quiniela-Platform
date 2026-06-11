@@ -12,6 +12,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { getScoresServiceClient, LiveScore } from "../services/scoresService";
+import { recordHeartbeat } from "../lib/cronHeartbeat";
 import {
   deriveNinetyMinuteScore,
   terminalConfirmationCount,
@@ -622,6 +623,8 @@ async function pollLiveScores(): Promise<void> {
         `(sources: ${response.activeSources}/${response.totalSources})`
     );
   }
+
+  recordHeartbeat("LiveScoresJob");
 }
 
 // ============================================================================

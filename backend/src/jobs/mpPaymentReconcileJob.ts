@@ -36,6 +36,7 @@
 
 import * as cron from "node-cron";
 import { prisma } from "../db";
+import { recordHeartbeat } from "../lib/cronHeartbeat";
 import {
   findStaleMpPayments,
   reconcileStaleMpPayment,
@@ -109,6 +110,7 @@ async function runOnce(): Promise<void> {
         .map(([k, v]) => `${k}=${v}`)
         .join(" ");
       console.log(`[MpReconciler] Batch done: ${summary}`);
+      recordHeartbeat("MpPaymentReconcileJob");
     });
   } finally {
     isRunning = false;

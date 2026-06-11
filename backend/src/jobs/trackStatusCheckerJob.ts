@@ -12,6 +12,7 @@
 
 import * as cron from "node-cron";
 import { prisma } from "../db";
+import { recordHeartbeat } from "../lib/cronHeartbeat";
 import { getScoresServiceClient, TrackFixture } from "../services/scoresService";
 import { sendAdminNotification } from "../lib/email";
 
@@ -180,6 +181,7 @@ async function runTrackStatusCheck(): Promise<void> {
         category: "error",
       }).catch(() => {});
     }
+    recordHeartbeat("TrackStatusCheckerJob");
   } catch (err) {
     console.error(
       "[TrackStatusCheck] Error:",

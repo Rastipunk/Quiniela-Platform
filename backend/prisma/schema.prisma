@@ -1631,3 +1631,58 @@ enum DocumentKind {
   QUOTE
   ACCOUNT_RECEIVABLE
 }
+
+// =========================================================================
+// PLATFORM HEALTH - cron-driven monitoring (platformHealthJob)
+// =========================================================================
+
+/**
+ * One row per active or recently-resolved (alertKey, severity) pair.
+ * The cron upserts a row when a metric crosses into WARN/CRITICAL, sets
+ * resolvedAt when it returns to OK, and uses notifiedAt to dedupe
+ * outbound emails — one fire-email + one recovery-email per incident
+ * regardless of cron tick frequency.
+ */
+model PlatformHealthAlert {
+  id String @id @default(uuid())
+
+  // Stable identifier of the metric (e.g. "db_connections", "event_loop_lag").
+  alertKey String
+
+  severity PlatformHealthSeverity
+
+  // Numeric value at first observation (% for ratios, ms for durations, count for sizes).
+  observedValue Float
+
+  // Threshold the value crossed.
+  threshold Float
+
+  // Human-readable snapshot included verbatim in the alert email.
+  details String?
+
+  firstObservedAt DateTime @default(now())
+  lastObservedAt  DateTime @default(now())
+
+  // Set when the alert email was last sent. Re-sends suppressed while
+  // (now - notifiedAt) < ALERT_COOLDOWN_HOURS.
+  notifiedAt DateTime?
+
+  // Set on the tick where the metric returns to OK.
+  resolvedAt DateTime?
+
+  // Set when the recovery email was sent (avoids re-sending recovery).
+  resolutionNotifiedAt DateTime?
+
+  // (alertKey, severity, resolvedAt) — only one OPEN row per (key,sev)
+  // because Postgres treats NULL as distinct. Historical resolved rows
+  // accumulate (different resolvedAt values), supplying a permanent
+  // audit trail.
+  @@unique([alertKey, severity, resolvedAt])
+  @@index([alertKey])
+  @@index([resolvedAt])
+}
+
+enum PlatformHealthSeverity {
+  WARN
+  CRITICAL
+}

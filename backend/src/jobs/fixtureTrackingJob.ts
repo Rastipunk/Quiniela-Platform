@@ -15,6 +15,7 @@ import * as cron from "node-cron";
 import { prisma } from "../db";
 import { getScoresServiceClient, TrackFixture } from "../services/scoresService";
 import { sendAdminNotification } from "../lib/email";
+import { recordHeartbeat } from "../lib/cronHeartbeat";
 
 // ============================================================================
 // Configuration
@@ -237,6 +238,11 @@ async function runFixtureTracking(): Promise<void> {
         console.error("[FixtureTrackingJob] sendAdminNotification failed:", err instanceof Error ? err.message : String(err));
       });
     }
+
+    // Mark this run as successful for the platform-health monitor. We
+    // record the heartbeat even when zero fixtures qualified — the job
+    // ran end-to-end without throwing, which is the signal that matters.
+    recordHeartbeat("FixtureTrackingJob");
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("[FixtureTrackingJob] Error:", errMsg);

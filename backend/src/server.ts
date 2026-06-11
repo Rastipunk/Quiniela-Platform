@@ -22,6 +22,8 @@ import { sendOk, sendForbidden, sendInternal, sendNotFound } from "./lib/apiResp
 import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteCheckLimiter, corporateActivateLimiter } from "./middleware/rateLimit";
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
+import { startPlatformHealthJob, stopPlatformHealthJob } from "./jobs/platformHealthJob";
+import { startEventLoopMonitor, stopEventLoopMonitor } from "./lib/eventLoopMonitor";
 import { prewarmAdminDashboardCache } from "./routes/adminAnalyticsDashboard";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 import { startNewMemberDigestJob, stopNewMemberDigestJob } from "./jobs/newMemberDigestJob";
@@ -341,6 +343,10 @@ const server = app.listen(PORT, () => {
   // admin load after a deploy serves instantly instead of paying the
   // full cold-build cost (40 s measured under WC-eve DB load).
   prewarmAdminDashboardCache();
+  // Event-loop monitor must come up BEFORE the health job so the p99
+  // it reports on the first tick reflects real activity, not zero.
+  startEventLoopMonitor();
+  startPlatformHealthJob();
 });
 
 // Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)
@@ -368,6 +374,8 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopMpPaymentReconcileJob();
   stopAccountReceivableExpiryJob();
   stopWelcomeEmailFallbackJob();
+  stopPlatformHealthJob();
+  stopEventLoopMonitor();
 
   // 3. Disconnect Prisma (closes DB connection pool)
   try {
