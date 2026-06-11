@@ -318,12 +318,12 @@ siendo el 409 del backend (E4 + ruta protegida existente).
 - [ ] 2.7 Verificación: dry-run del reminder en producción + banner en pool Estratega real (tras deploy)
 
 ### Entrega 3 — UX de deadline
-- [ ] 3.1 Plumbing de `deadlineMinutesBeforeKickoff` + TZ (D3) hasta las cards
-- [ ] 3.2 `GroupStandingsCard`: fecha de cierre + lock client-side + mapeo `DEADLINE_PASSED`
-- [ ] 3.3 `KnockoutMatchCard`: ídem con `kickoffUtc`
-- [ ] 3.4 `PickRulesDisplay`: textos Estratega ×3 locales (+ fix opcional `lockDateWarning`)
-- [ ] 3.5 Responsive 360-430px verificado
-- [ ] 3.6 Verificación manual en pool Estratega real (grupo abierto, grupo cerrado)
+- [x] 3.1 Plumbing de `deadlineMinutesBeforeKickoff` + `userTimezone` (D3) hasta las cards
+- [x] 3.2 `GroupStandingsCard`: fecha de cierre + lock client-side (`useDeadlineLock`) + mapeo `DEADLINE_PASSED`
+- [x] 3.3 `KnockoutMatchCard`: ídem con `kickoffUtc` (dejó de descartarse)
+- [x] 3.4 `PickRulesDisplay`: cuadros de deadline en ramas estructurales ×3 locales + fix `lockDateWarning` a TZ de pool
+- [x] 3.5 Responsive: chips/banners con `flexWrap`, tamaños mobile-first heredados del patrón de las cards (sin anchos fijos ni 100vw)
+- [ ] 3.6 Verificación manual en pool Estratega real (grupo abierto, grupo cerrado) — tras deploy
 
 ---
 

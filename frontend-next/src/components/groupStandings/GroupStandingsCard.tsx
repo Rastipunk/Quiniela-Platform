@@ -20,7 +20,7 @@
 //          published.
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { colors } from "@/lib/theme";
 import {
   saveGroupStandingsPick,
@@ -31,7 +31,10 @@ import {
   type GroupSingleBreakdown,
   type GroupStandingsStats,
 } from "../../lib/api";
+import { isApiError } from "../../lib/apiError";
+import { formatMatchDateTime } from "../../lib/timezone";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../../hooks/useIsMobile";
+import { computeLockTimeMs, useDeadlinePassed, resolveDisplayTimezone } from "../../hooks/useDeadlineLock";
 import type { Team, Match, TeamStanding } from "./types";
 import { BreakdownModal } from "./BreakdownModal";
 import { StaticTeamList, DraggableTeamList } from "./TeamListComponents";
@@ -49,6 +52,10 @@ type GroupStandingsCardProps = {
   token: string;
   isHost: boolean;
   isLocked: boolean;
+  /** Pool deadline buffer — the group locks at its earliest kickoff minus this (ADR-070). */
+  deadlineMinutesBeforeKickoff: number;
+  /** Display timezone for the lock time (falls back to the browser's). */
+  userTimezone?: string | null;
 };
 
 export function GroupStandingsCard({
@@ -57,13 +64,29 @@ export function GroupStandingsCard({
   groupId,
   groupName,
   teams,
+  matches,
   token,
   isHost,
   isLocked,
+  deadlineMinutesBeforeKickoff,
+  userTimezone,
 }: GroupStandingsCardProps) {
   const isMobile = useIsMobile();
   const t = useTranslations("pool");
+  const locale = useLocale();
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Client-side mirror of the group lock (earliest kickoff − buffer).
+  // UX only — the backend 409 stays the source of truth.
+  const lockTimeMs = useMemo(
+    () => computeLockTimeMs(matches.map((m) => m.kickoffUtc), deadlineMinutesBeforeKickoff),
+    [matches, deadlineMinutesBeforeKickoff],
+  );
+  const deadlinePassed = useDeadlinePassed(lockTimeMs);
+  const picksLocked = isLocked || deadlinePassed;
+  const lockTimeFormatted = Number.isFinite(lockTimeMs)
+    ? formatMatchDateTime(new Date(lockTimeMs).toISOString(), resolveDisplayTimezone(userTimezone), locale)
+    : null;
 
   useEffect(() => () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -135,7 +158,11 @@ export function GroupStandingsCard({
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
     } catch (err: any) {
-      setError(err?.message || t("groupStandings.errorSaving"));
+      if (isApiError(err) && err.code === "DEADLINE_PASSED") {
+        setError(t("groupStandings.deadlinePassedError"));
+      } else {
+        setError(err?.message || t("groupStandings.errorSaving"));
+      }
     } finally {
       setSavingPick(false);
     }
@@ -231,16 +258,46 @@ export function GroupStandingsCard({
             {t("groupStandings.yourPrediction")}
           </div>
 
+          {/* Group lock time — visible BEFORE the save fails (ADR-070) */}
+          {lockTimeFormatted && !deadlinePassed && (
+            <div style={{
+              fontSize: isMobile ? 12 : 11,
+              color: colors.textLighter,
+              marginBottom: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              flexWrap: "wrap",
+            }}>
+              <span>🔒</span>
+              <span>{t("groupStandings.deadlineLabel", { date: lockTimeFormatted })}</span>
+            </div>
+          )}
+          {deadlinePassed && !isLocked && (
+            <div style={{
+              fontSize: isMobile ? 13 : 12,
+              fontWeight: 600,
+              color: "#92400e",
+              background: "#fef3c7",
+              border: "1px solid #fcd34d",
+              borderRadius: 6,
+              padding: "0.5rem 0.65rem",
+              marginBottom: "0.75rem",
+            }}>
+              🔒 {t("groupStandings.groupClosed")}
+            </div>
+          )}
+
           {isEditingPick ? (
             <>
               <DraggableTeamList
                 teams={teams}
                 orderedTeamIds={playerPick}
                 onOrderChange={setPlayerPick}
-                disabled={savingPick}
+                disabled={savingPick || picksLocked}
                 isMobile={isMobile}
               />
-              {!isLocked && (
+              {!picksLocked && (
                 <button
                   onClick={handleSavePlayerPick}
                   disabled={savingPick}
@@ -281,7 +338,7 @@ export function GroupStandingsCard({
                 {t("groupStandings.pickSavedBanner")}
               </div>
               <StaticTeamList teams={teams} orderedTeamIds={playerPick} isMobile={isMobile} />
-              {!isLocked && (
+              {!picksLocked && (
                 <button
                   onClick={() => setIsEditingPick(true)}
                   style={{

@@ -345,6 +345,8 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
             token={token!}
             isHost={overview.permissions.canManageResults}
             isLocked={getPhaseStatus(activePhase!) === "COMPLETED" || overview.myMembership.status === "LEFT"}
+            deadlineMinutesBeforeKickoff={overview.pool.deadlineMinutesBeforeKickoff}
+            userTimezone={userTimezone}
             matchResults={phaseMatchResults}
             onDataChanged={() => reload()}
             onShowBreakdown={() => setBreakdownModalData({

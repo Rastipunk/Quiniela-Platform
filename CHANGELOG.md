@@ -8,6 +8,19 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Estratega deadlines — deadline visibility + client-side lock (2026-06-10)
+
+Players now SEE when each group/knockout pick closes instead of discovering it via a raw `DEADLINE_PASSED` error. Delivery 3 of ADR-070.
+
+#### Added
+- **Lock time shown on the cards**: `GroupStandingsCard` and `KnockoutMatchCard` display "Cierre de predicciones: {fecha}" (user's timezone, `formatMatchDateTime` — consistent with `MatchCard`; emails keep the pool timezone per D3) and freeze the UI at the lock instant (`useDeadlineLock` hook, client-side mirror of `buildGroupLockTimes`; the backend 409 stays authoritative). A "grupo/partido cerrado" banner replaces the silent dead buttons.
+- **Friendly `DEADLINE_PASSED` mapping** in both cards (was the raw error code), ES/EN/PT.
+- **Rules tab deadline notes for structural phases** (`PickRulesDisplay`): "Debes guardar el orden completo de cada grupo hasta {X} min antes del primer partido de ese grupo" + knockout equivalent, ES/EN/PT — the deadline box previously existed only for score-based phases.
+
+#### Fixed
+- `rulesDisplay.lockDateWarning` (GLOBAL_QUALIFIERS) now formats `lockDateTime` in the **pool's** timezone (was the browser's), with the timezone named.
+- `GroupStandingsCard` finally consumes its `matches` prop (it arrived but was ignored); `KnockoutMatchCard` finally consumes `kickoffUtc` (was `void`-discarded).
+
 ### Estratega deadlines — structural notifications + reminders (2026-06-10)
 
 Estratega members now get warned about unsaved groups and unpicked knockout winners — banner and reminder emails were blind to structural units (the banner stayed blank, zero reminders). Delivery 2 of ADR-070.

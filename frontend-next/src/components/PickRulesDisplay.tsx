@@ -3,9 +3,10 @@
 // Componente para mostrar las reglas de picks en PoolPage
 // Sprint 2 - Advanced Pick Types System
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { colors } from "@/lib/theme";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
+import { formatMatchDateTime } from "../lib/timezone";
 import { formatPhaseFullName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 interface StructuralConfig {
@@ -36,6 +37,7 @@ export function PickRulesDisplay({
   poolTimeZone,
 }: PickRulesDisplayProps) {
   const t = useTranslations("pool");
+  const locale = useLocale();
   // next-intl doesn't support computed keys at type level
   const tDynamic = t as (key: string) => string;
 
@@ -237,6 +239,19 @@ export function PickRulesDisplay({
                       • {t("rulesDisplay.globalQualifiersAdditional", { points: cfg.globalQualifiersPoints })}
                     </div>
                   )}
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: 10,
+                      background: colors.warningBg,
+                      borderRadius: 8,
+                      border: "1px solid #ffeeba",
+                    }}
+                  >
+                    <div style={{ fontSize: 13, color: colors.warningDark }}>
+                      ⏰ <b>{t("deadlineInfo")}:</b> {t("rulesDisplay.groupDeadlineNote", { minutes: poolDeadlineMinutes })}
+                    </div>
+                  </div>
                 </div>
                 );
               })()}
@@ -264,7 +279,7 @@ export function PickRulesDisplay({
                     • {t("rulesDisplay.ptsPerExactPosition", { points: cfg.pointsPerExactPosition })}
                   </div>
                   <div style={{ marginTop: 8, fontSize: 12, color: colors.warningDark }}>
-                    ⚠️ {t("rulesDisplay.lockDateWarning", { date: new Date(cfg.lockDateTime!).toLocaleString() })}
+                    ⚠️ {t("rulesDisplay.lockDateWarning", { date: formatMatchDateTime(cfg.lockDateTime!, poolTimeZone, locale) })} ({t("timezoneInfo", { timezone: poolTimeZone })})
                   </div>
                 </div>
                 );
@@ -289,6 +304,19 @@ export function PickRulesDisplay({
                   </div>
                   <div style={{ color: colors.textMuted, fontSize: 13, marginTop: 4 }}>
                     {t("rulesDisplay.knockoutWinnerNote")}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: 10,
+                      background: colors.warningBg,
+                      borderRadius: 8,
+                      border: "1px solid #ffeeba",
+                    }}
+                  >
+                    <div style={{ fontSize: 13, color: colors.warningDark }}>
+                      ⏰ <b>{t("deadlineInfo")}:</b> {t("rulesDisplay.knockoutDeadlineNote", { minutes: poolDeadlineMinutes })}
+                    </div>
                   </div>
                 </div>
               )}

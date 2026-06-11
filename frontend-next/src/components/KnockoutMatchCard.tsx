@@ -21,11 +21,13 @@ import { colors } from "@/lib/theme";
 // PLAYER → picks who they think will advance.
 // HOST   → same picker, plus the override button when applicable.
 
-import { useState, useEffect, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { upsertStructuralPick, publishKnockoutMatchWinner } from "../lib/api";
 import { isApiError } from "../lib/apiError";
+import { formatMatchDateTime } from "../lib/timezone";
 import { useIsMobile, TOUCH_TARGET, mobileInteractiveStyles } from "../hooks/useIsMobile";
+import { computeLockTimeMs, useDeadlinePassed, resolveDisplayTimezone } from "../hooks/useDeadlineLock";
 import { getTeamName } from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
 
 type Team = {
@@ -64,6 +66,10 @@ type KnockoutMatchCardProps = {
   publishedWinnerId?: string | null;
   /** User's current pick (winnerId), if any. */
   existingPick?: string | null;
+  /** Pool deadline buffer — the match locks at kickoff minus this (ADR-070). */
+  deadlineMinutesBeforeKickoff: number;
+  /** Display timezone for the lock time (falls back to the browser's). */
+  userTimezone?: string | null;
   onResultSaved?: () => void;
   onPickSaved?: () => void;
 };
@@ -76,21 +82,35 @@ export function KnockoutMatchCard({
   matchId,
   homeTeam,
   awayTeam,
-  kickoffUtc: _kickoffUtc,
+  kickoffUtc,
   token,
   isHost,
   isLocked,
   existingResult,
   publishedWinnerId,
   existingPick,
+  deadlineMinutesBeforeKickoff,
+  userTimezone,
   onResultSaved,
   onPickSaved,
 }: KnockoutMatchCardProps) {
-  void _kickoffUtc;
   const isMobile = useIsMobile();
   const t = useTranslations("pool");
   const tTeams = useTranslations("teams");
+  const locale = useLocale();
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Client-side mirror of the per-match lock (kickoff − buffer).
+  // UX only — the backend 409 stays the source of truth.
+  const lockTimeMs = useMemo(
+    () => computeLockTimeMs([kickoffUtc], deadlineMinutesBeforeKickoff),
+    [kickoffUtc, deadlineMinutesBeforeKickoff],
+  );
+  const deadlinePassed = useDeadlinePassed(lockTimeMs);
+  const picksLocked = isLocked || deadlinePassed;
+  const lockTimeFormatted = Number.isFinite(lockTimeMs)
+    ? formatMatchDateTime(new Date(lockTimeMs).toISOString(), resolveDisplayTimezone(userTimezone), locale)
+    : null;
 
   useEffect(() => () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -147,7 +167,11 @@ export function KnockoutMatchCard({
       successTimerRef.current = setTimeout(() => setSuccessMessage(null), 2000);
       onPickSaved?.();
     } catch (err: any) {
-      setError(err?.message || t("knockoutCard.errorSavingPick"));
+      if (isApiError(err) && err.code === "DEADLINE_PASSED") {
+        setError(t("knockoutCard.deadlinePassedError"));
+      } else {
+        setError(err?.message || t("knockoutCard.errorSavingPick"));
+      }
     } finally {
       setSavingPick(false);
     }
@@ -234,24 +258,55 @@ export function KnockoutMatchCard({
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "1rem" : "1.5rem" }}>
         {/* LEFT: Player pick */}
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.75rem", color: colors.textLighter }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: "0.5rem", color: colors.textLighter }}>
             {t("knockoutCard.yourPrediction")} {pickSaved && <span style={{ color: colors.successAlt }}>✓</span>}
           </div>
+
+          {/* Match lock time — visible BEFORE the save fails (ADR-070) */}
+          {lockTimeFormatted && !deadlinePassed && (
+            <div style={{
+              fontSize: isMobile ? 12 : 11,
+              color: colors.textLighter,
+              marginBottom: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              flexWrap: "wrap",
+            }}>
+              <span>🔒</span>
+              <span>{t("knockoutCard.deadlineLabel", { date: lockTimeFormatted })}</span>
+            </div>
+          )}
+          {deadlinePassed && !isLocked && (
+            <div style={{
+              fontSize: isMobile ? 13 : 12,
+              fontWeight: 600,
+              color: "#92400e",
+              background: "#fef3c7",
+              border: "1px solid #fcd34d",
+              borderRadius: 6,
+              padding: "0.5rem 0.65rem",
+              marginBottom: "0.75rem",
+            }}>
+              🔒 {t("knockoutCard.matchClosed")}
+            </div>
+          )}
+
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             <TeamPickButton
               team={homeTeam}
               isSelected={selectedWinner === homeTeam.id}
-              onClick={() => !isLocked && setSelectedWinner(homeTeam.id)}
-              disabled={isLocked}
+              onClick={() => !picksLocked && setSelectedWinner(homeTeam.id)}
+              disabled={picksLocked}
             />
             <TeamPickButton
               team={awayTeam}
               isSelected={selectedWinner === awayTeam.id}
-              onClick={() => !isLocked && setSelectedWinner(awayTeam.id)}
-              disabled={isLocked}
+              onClick={() => !picksLocked && setSelectedWinner(awayTeam.id)}
+              disabled={picksLocked}
             />
           </div>
-          {!isLocked && selectedWinner && !pickSaved && (
+          {!picksLocked && selectedWinner && !pickSaved && (
             <button
               onClick={handleSavePick}
               disabled={savingPick}
@@ -273,7 +328,7 @@ export function KnockoutMatchCard({
               {savingPick ? t("knockoutCard.saving") : t("knockoutCard.save")}
             </button>
           )}
-          {pickSaved && !isLocked && (
+          {pickSaved && !picksLocked && (
             <button
               onClick={() => setPickSaved(false)}
               style={{

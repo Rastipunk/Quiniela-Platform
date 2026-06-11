@@ -65,6 +65,11 @@ type StructuralPicksManagerProps = {
   token: string;
   isHost: boolean;
   isLocked: boolean; // Si ya se publico resultado oficial
+  // Buffer de deadline de la pool — cada unidad cierra a su kickoff
+  // (o primer kickoff del grupo) menos este valor (ADR-070)
+  deadlineMinutesBeforeKickoff: number;
+  // TZ de display para la hora de cierre (fallback: TZ del navegador)
+  userTimezone?: string | null;
   // Resultados existentes de partidos (por matchId)
   matchResults?: Map<string, MatchResult>;
   // Callback para refrescar datos despues de cambios
@@ -83,6 +88,8 @@ export function StructuralPicksManager({
   token,
   isHost,
   isLocked,
+  deadlineMinutesBeforeKickoff,
+  userTimezone,
   matchResults,
   onDataChanged,
   onShowBreakdown: _onShowBreakdown,
@@ -336,6 +343,8 @@ export function StructuralPicksManager({
               token={token}
               isHost={isHost}
               isLocked={isLocked}
+              deadlineMinutesBeforeKickoff={deadlineMinutesBeforeKickoff}
+              userTimezone={userTimezone}
             />
           ))}
         </div>
@@ -355,6 +364,8 @@ export function StructuralPicksManager({
                 token={token}
                 isHost={isHost}
                 isLocked={isLocked}
+                deadlineMinutesBeforeKickoff={deadlineMinutesBeforeKickoff}
+                userTimezone={userTimezone}
                 existingResult={existingResult || null}
                 publishedWinnerId={publishedWinners.get(match.id) ?? null}
                 existingPick={knockoutPicks.get(match.id) || null}
