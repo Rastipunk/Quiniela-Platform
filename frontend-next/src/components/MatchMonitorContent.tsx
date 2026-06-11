@@ -308,125 +308,250 @@ function MasterOverrideModal({
   }
 
   const inputStyle: React.CSSProperties = {
-    width: 56, padding: 8, borderRadius: 8, border: "1px solid #d1d5db",
-    textAlign: "center", fontSize: 18, fontWeight: 700,
+    width: 60, padding: 10, borderRadius: 10, border: "2px solid #d1d5db",
+    textAlign: "center", fontSize: 20, fontWeight: 800, background: "white",
   };
+
+  // Hint for the disabled submit button — the admin should never have
+  // to guess why the action isn't available.
+  const submitHint =
+    hNum === null || aNum === null
+      ? "Falta el marcador final"
+      : et90Invalid
+        ? "Completa el marcador al 90' (no puede superar al final)"
+        : reason.trim().length < 5
+          ? "Escribe la razón (mínimo 5 caracteres)"
+          : null;
+
+  const previewParts = [
+    hNum !== null && aNum !== null ? `Final ${hNum}-${aNum}` : null,
+    wentToExtraTime && h90 !== null && a90 !== null ? `90': ${h90}-${a90}` : null,
+    isDraw && homePens.trim() !== "" && awayPens.trim() !== ""
+      ? `Penales ${homePens}-${awayPens}`
+      : null,
+  ].filter(Boolean);
 
   return (
     <div
       style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100,
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
       }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: "white", borderRadius: 14, padding: 20, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto" }}
+        style={{ background: "#f9fafb", borderRadius: 16, width: "100%", maxWidth: 520, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
       >
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 800, margin: 0 }}>⚡ Override master</h2>
-        <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "6px 0 14px" }}>
-          {row.homeTeamName} vs {row.awayTeamName} — se aplica como <b>HOST_OVERRIDE</b> a las{" "}
-          <b>{row.activePools} pools activas</b> de {row.instanceName}. El scraper no podrá
-          sobreescribirlo. Sin emails a miembros.
-        </p>
-
-        {summary ? (
-          <div style={{ fontSize: "0.85rem" }}>
-            <div style={{ padding: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, marginBottom: 12 }}>
-              ✅ <b>{summary.updated}</b> pools actualizadas · {summary.unchanged} sin cambios ·{" "}
-              {summary.skippedHostOverride.length} respetadas (override de host) ·{" "}
-              {summary.failed.length} fallidas
-            </div>
-            {summary.failed.length > 0 && (
-              <div style={{ padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, marginBottom: 12, color: "#991b1b" }}>
-                Fallidas: {summary.failed.map((f) => f.poolId.slice(0, 8)).join(", ")}
-              </div>
-            )}
-            <button onClick={onApplied} style={{ width: "100%", padding: 10, borderRadius: 8, border: "none", background: "#111", color: "white", fontWeight: 700, cursor: "pointer" }}>
-              Cerrar y refrescar
-            </button>
+        {/* Header */}
+        <div style={{ padding: "18px 20px", background: "#1f2937", borderRadius: "16px 16px 0 0", color: "white" }}>
+          <h2 style={{ fontSize: "1.05rem", fontWeight: 800, margin: 0 }}>
+            ⚡ Override master — {row.homeTeamName} vs {row.awayTeamName}
+          </h2>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            <HeaderChip>📦 {row.activePools} pools activas</HeaderChip>
+            <HeaderChip>🔒 El scraper no podrá sobreescribirlo</HeaderChip>
+            <HeaderChip>🔕 Sin emails a miembros</HeaderChip>
+            <HeaderChip>📝 Queda auditado</HeaderChip>
           </div>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 12 }}>
-              <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>{row.homeTeamName}</span>
-              <input type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} style={inputStyle} />
-              <span style={{ fontWeight: 900 }}>-</span>
-              <input type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} style={inputStyle} />
-              <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>{row.awayTeamName}</span>
-            </div>
+        </div>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.82rem", marginBottom: 8, cursor: "pointer" }}>
-              <input type="checkbox" checked={wentToExtraTime} onChange={(e) => setWentToExtraTime(e.target.checked)} />
-              El partido tuvo prórroga (capturar marcador al 90&apos;)
-            </label>
-            {wentToExtraTime && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8, padding: 10, background: "#f9fafb", borderRadius: 8 }}>
-                <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>90&apos;:</span>
-                <input type="number" min={0} value={homeGoals90} onChange={(e) => setHomeGoals90(e.target.value)} style={inputStyle} />
-                <span style={{ fontWeight: 900 }}>-</span>
-                <input type="number" min={0} value={awayGoals90} onChange={(e) => setAwayGoals90(e.target.value)} style={inputStyle} />
+        <div style={{ padding: 20 }}>
+          {summary ? (
+            <div style={{ fontSize: "0.9rem" }}>
+              <div style={{ padding: 16, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, marginBottom: 12, lineHeight: 1.7 }}>
+                <div style={{ fontWeight: 800, marginBottom: 4 }}>✅ Override aplicado</div>
+                <div><b>{summary.updated}</b> pools actualizadas</div>
+                {summary.unchanged > 0 && <div>{summary.unchanged} ya tenían este resultado (sin cambios)</div>}
+                {summary.skippedHostOverride.length > 0 && (
+                  <div>{summary.skippedHostOverride.length} respetadas — su host ya había corregido manualmente</div>
+                )}
+                {summary.failed.length > 0 && <div style={{ color: "#dc2626" }}>{summary.failed.length} fallidas</div>}
               </div>
-            )}
-            {et90Invalid && (
-              <div style={{ fontSize: "0.75rem", color: "#dc2626", marginBottom: 8 }}>
-                Con prórroga, ambos marcadores del 90&apos; son obligatorios y no pueden superar al final.
-              </div>
-            )}
-
-            {isDraw && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8, padding: 10, background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8 }}>
-                <span style={{ fontSize: "0.75rem", color: "#92400e" }}>Penales:</span>
-                <input type="number" min={0} value={homePens} onChange={(e) => setHomePens(e.target.value)} style={inputStyle} />
-                <span style={{ fontWeight: 900 }}>-</span>
-                <input type="number" min={0} value={awayPens} onChange={(e) => setAwayPens(e.target.value)} style={inputStyle} />
-              </div>
-            )}
-
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Razón del override (obligatoria, mín. 5 caracteres) — queda en la auditoría"
-              rows={2}
-              style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #d1d5db", fontSize: "0.85rem", boxSizing: "border-box", marginBottom: 8 }}
-            />
-
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "#9a3412", marginBottom: 12, cursor: "pointer" }}>
-              <input type="checkbox" checked={overwriteHosts} onChange={(e) => setOverwriteHosts(e.target.checked)} />
-              Sobrescribir también pools donde el HOST ya hizo su propio override
-            </label>
-
-            {error && (
-              <div style={{ padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b", fontSize: "0.78rem", marginBottom: 10 }}>
-                {error}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={onClose}
-                style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontWeight: 600 }}
-              >
-                Cancelar
-              </button>
-              <button
-                disabled={!canSubmit}
-                onClick={submit}
-                style={{
-                  flex: 2, padding: 10, borderRadius: 8, border: "none", fontWeight: 800,
-                  background: canSubmit ? "#9a3412" : "#e5e7eb",
-                  color: canSubmit ? "white" : "#9ca3af",
-                  cursor: canSubmit ? "pointer" : "not-allowed",
-                }}
-              >
-                {busy ? "Aplicando…" : `Aplicar a ${row.activePools} pools`}
+              {summary.failed.length > 0 && (
+                <div style={{ padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, marginBottom: 12, color: "#991b1b", fontSize: "0.78rem" }}>
+                  Pools fallidas: {summary.failed.map((f) => f.poolId.slice(0, 8)).join(", ")} — revisa logs del backend.
+                </div>
+              )}
+              <button onClick={onApplied} style={{ width: "100%", padding: 12, borderRadius: 10, border: "none", background: "#111827", color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" }}>
+                Cerrar y refrescar el monitor
               </button>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              {/* Paso 1 — Marcador final */}
+              <Section
+                number={1}
+                title="Marcador FINAL del partido"
+                help="Goles totales al terminar el partido — incluyendo prórroga si la hubo, SIN contar la tanda de penales. Este marcador puntúa en las pools configuradas para incluir prórroga y define quién avanza de ronda."
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 700, width: 90, textAlign: "right" }}>{row.homeTeamName}</span>
+                  <input type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} style={inputStyle} placeholder="0" />
+                  <span style={{ fontWeight: 900, fontSize: 20, color: "#9ca3af" }}>–</span>
+                  <input type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} style={inputStyle} placeholder="0" />
+                  <span style={{ fontSize: "0.85rem", fontWeight: 700, width: 90 }}>{row.awayTeamName}</span>
+                </div>
+              </Section>
+
+              {/* Paso 2 — Prórroga / minuto 90 */}
+              <Section
+                number={2}
+                title="¿Hubo prórroga (tiempo extra)?"
+                help="La mayoría de las pools puntúan con el marcador de los 90 minutos reglamentarios. Si el partido se definió en prórroga, necesitamos AMBOS marcadores: el final (arriba) para las pools que incluyen prórroga, y el del minuto 90 para las demás. Si NO hubo prórroga, deja esto apagado — ambos marcadores son el mismo."
+              >
+                <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}>
+                  <input type="checkbox" checked={wentToExtraTime} onChange={(e) => setWentToExtraTime(e.target.checked)} style={{ width: 18, height: 18 }} />
+                  Sí, el partido se fue a prórroga
+                </label>
+                {wentToExtraTime && (
+                  <div style={{ marginTop: 12, padding: 12, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10 }}>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af", marginBottom: 8, textAlign: "center" }}>
+                      ¿Cómo iba el partido al MINUTO 90 (antes de la prórroga)?
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+                      <input type="number" min={0} value={homeGoals90} onChange={(e) => setHomeGoals90(e.target.value)} style={inputStyle} placeholder="0" />
+                      <span style={{ fontWeight: 900, fontSize: 20, color: "#9ca3af" }}>–</span>
+                      <input type="number" min={0} value={awayGoals90} onChange={(e) => setAwayGoals90(e.target.value)} style={inputStyle} placeholder="0" />
+                    </div>
+                    {et90Invalid && (
+                      <div style={{ marginTop: 8, fontSize: "0.75rem", color: "#dc2626", textAlign: "center", fontWeight: 600 }}>
+                        Ambos marcadores del 90&apos; son obligatorios y no pueden superar al marcador final.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Section>
+
+              {/* Paso 3 — Penales (solo con empate) */}
+              {isDraw && (
+                <Section
+                  number={3}
+                  title="Tanda de penales"
+                  help="Los penales NUNCA suman goles ni puntos de marcador. Solo definen quién avanza de ronda (y los puntos de 'acertar quién pasa' en pools Estratega). Déjalos vacíos solo si el partido permite empate."
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+                    <span style={{ fontSize: "0.85rem", fontWeight: 700, width: 90, textAlign: "right" }}>{row.homeTeamName}</span>
+                    <input type="number" min={0} value={homePens} onChange={(e) => setHomePens(e.target.value)} style={{ ...inputStyle, borderColor: "#fcd34d", background: "#fffbeb" }} placeholder="0" />
+                    <span style={{ fontWeight: 900, fontSize: 20, color: "#9ca3af" }}>–</span>
+                    <input type="number" min={0} value={awayPens} onChange={(e) => setAwayPens(e.target.value)} style={{ ...inputStyle, borderColor: "#fcd34d", background: "#fffbeb" }} placeholder="0" />
+                    <span style={{ fontSize: "0.85rem", fontWeight: 700, width: 90 }}>{row.awayTeamName}</span>
+                  </div>
+                </Section>
+              )}
+
+              {/* Paso 4 — Razón */}
+              <Section
+                number={isDraw ? 4 : 3}
+                title="Razón de la corrección"
+                help="Obligatoria. Queda registrada en la auditoría junto con tu usuario y el resumen de pools afectadas."
+              >
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Ej: El scraper congeló el marcador en 1-0; resultado oficial FIFA 2-1."
+                  rows={2}
+                  style={{ width: "100%", padding: 12, borderRadius: 10, border: "2px solid #d1d5db", fontSize: "0.85rem", boxSizing: "border-box", fontFamily: "inherit" }}
+                />
+              </Section>
+
+              {/* Opción avanzada */}
+              <div style={{ padding: "10px 12px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 10, marginBottom: 14 }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: "0.78rem", color: "#9a3412", cursor: "pointer", lineHeight: 1.5 }}>
+                  <input type="checkbox" checked={overwriteHosts} onChange={(e) => setOverwriteHosts(e.target.checked)} style={{ marginTop: 2 }} />
+                  <span>
+                    <b>Sobrescribir también las pools donde el HOST ya corrigió manualmente.</b>{" "}
+                    Por defecto se respeta el criterio del host de cada pool (se te informa cuántas se respetaron).
+                  </span>
+                </label>
+              </div>
+
+              {error && (
+                <div style={{ padding: 12, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, color: "#991b1b", fontSize: "0.8rem", marginBottom: 12 }}>
+                  ❌ {error}
+                </div>
+              )}
+
+              {/* Resumen en vivo de lo que se va a aplicar */}
+              <div style={{ padding: "10px 12px", background: "#f3f4f6", borderRadius: 10, marginBottom: 14, fontSize: "0.85rem", textAlign: "center" }}>
+                {previewParts.length > 0 ? (
+                  <>Se aplicará: <b>{previewParts.join(" · ")}</b> a <b>{row.activePools} pools</b></>
+                ) : (
+                  <span style={{ color: "#9ca3af" }}>Ingresa el marcador final para ver el resumen</span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={onClose}
+                  style={{ flex: 1, padding: 12, borderRadius: 10, border: "2px solid #d1d5db", background: "white", color: "#374151", cursor: "pointer", fontWeight: 700, fontSize: "0.85rem" }}
+                >
+                  ✕ Cancelar
+                </button>
+                <button
+                  disabled={!canSubmit}
+                  onClick={submit}
+                  title={submitHint ?? undefined}
+                  style={{
+                    flex: 2, padding: 12, borderRadius: 10, border: "none", fontWeight: 800, fontSize: "0.85rem",
+                    background: canSubmit ? "#9a3412" : "#e5e7eb",
+                    color: canSubmit ? "white" : "#9ca3af",
+                    cursor: canSubmit ? "pointer" : "not-allowed",
+                  }}
+                >
+                  {busy ? "Aplicando…" : `⚡ Aplicar a ${row.activePools} pools`}
+                </button>
+              </div>
+              {submitHint && (
+                <div style={{ marginTop: 8, fontSize: "0.75rem", color: "#9ca3af", textAlign: "center" }}>
+                  {submitHint}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+function Section({
+  number,
+  title,
+  help,
+  children,
+}: {
+  number: number;
+  title: string;
+  help: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <span style={{
+          width: 22, height: 22, borderRadius: "50%", background: "#111827", color: "white",
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          fontSize: "0.72rem", fontWeight: 800, flexShrink: 0,
+        }}>
+          {number}
+        </span>
+        <span style={{ fontWeight: 800, fontSize: "0.9rem" }}>{title}</span>
+      </div>
+      <p style={{ fontSize: "0.76rem", color: "#6b7280", margin: "4px 0 12px", lineHeight: 1.55 }}>{help}</p>
+      {children}
+    </div>
+  );
+}
+
+function HeaderChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      padding: "3px 10px", borderRadius: 12, background: "rgba(255,255,255,0.12)",
+      fontSize: "0.7rem", fontWeight: 600, color: "#e5e7eb",
+    }}>
+      {children}
+    </span>
   );
 }
 
