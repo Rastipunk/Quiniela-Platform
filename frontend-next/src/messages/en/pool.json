@@ -420,6 +420,8 @@
     "awaitingResult": "Result pending",
     "autoUpdateHint": "Will update automatically when the match ends",
     "provisional": "Live · Provisional",
+    "finishedProvisional": "Finished · Provisional result",
+    "finishedOfficial": "Finished · Official result",
     "correctResult": "Modify result",
     "publishCorrection": "Confirm modification",
     "publishResult": "Publish result",

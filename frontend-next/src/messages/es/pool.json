@@ -420,6 +420,8 @@
     "awaitingResult": "Resultado pendiente",
     "autoUpdateHint": "Se actualizará automáticamente al finalizar el partido",
     "provisional": "En vivo · Provisional",
+    "finishedProvisional": "Finalizado · Resultado provisional",
+    "finishedOfficial": "Finalizado · Resultado oficial",
     "correctResult": "Modificar resultado",
     "publishCorrection": "Confirmar modificación",
     "publishResult": "Publicar resultado",

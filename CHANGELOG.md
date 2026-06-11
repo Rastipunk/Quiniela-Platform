@@ -8,6 +8,12 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### UI — Estados del resultado + colores de empate (reportes del inaugural) (2026-06-11)
+
+#### Fixed
+- **Footer del resultado con estados honestos:** en juego → sin etiqueta (el ticker en vivo ya lo comunica); terminado en periodo de gracia → "Finalizado · Resultado provisional"; confirmado → "Finalizado · Resultado oficial". Antes un partido recién terminado decía "En vivo · Provisional" y el sufijo "(v2)" exponía versiones internas al jugador (las correcciones del host ya se señalan con la caja de razón). El ticker animado del minuto también se apaga al llegar a FT/AET/PEN/ABD.
+- **Leaderboard móvil: color de tarjeta y círculo por `rank` compartido, no por índice del array** — dos jugadores empatados en el 2.º puesto salían uno plata y otro bronce (la medalla ya usaba rank; fondo/borde/círculo/etiqueta "Líder" no). Bonus: en páginas >1 el primer renglón ya no se pinta dorado.
+
 ### Scoring — Motor aditivo único: el marcador exacto nunca paga menos (ADR-072) (2026-06-11)
 
 Primer reporte de soporte del Mundial (host de "Apuesta Familia", durante el México–Sudáfrica): con reglas Resultado=3 / Diferencia=1 / Exacto=1, quien acertó el 1-0 exacto veía **1 punto** y quien puso 2-1 veía **4**.

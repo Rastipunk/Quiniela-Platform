@@ -110,11 +110,14 @@ export function MobileLeaderboard({
         </div>
       )}
 
-      {rows.map((r, idx) => {
+      {rows.map((r) => {
         const diff = leaderPoints - r.points;
-        // Medal by (possibly shared) rank, not array index — ties share it.
+        // Medal AND card styling by (possibly shared) rank, not array
+        // index — two players tied for 2nd must BOTH look silver. The
+        // index-based palette painted the second of two tied silvers
+        // as bronze (reported 2026-06-11, inaugural matchday).
         const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : null;
-        const isTopThree = idx < 3;
+        const isTopThree = r.rank <= 3;
 
         return (
           <div
@@ -126,14 +129,14 @@ export function MobileLeaderboard({
             aria-label={`${r.displayName} - ${r.points} pts`}
             style={{
               background: isTopThree
-                ? idx === 0
+                ? r.rank === 1
                   ? "linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%)"
-                  : idx === 1
+                  : r.rank === 2
                   ? "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"
                   : "linear-gradient(135deg, #fff8f0 0%, #ffede0 100%)"
                 : colors.white,
               border: isTopThree
-                ? `2px solid ${idx === 0 ? colors.warning : idx === 1 ? colors.disabled : "#fd7e14"}`
+                ? `2px solid ${r.rank === 1 ? colors.warning : r.rank === 2 ? colors.disabled : "#fd7e14"}`
                 : "1px solid #e0e0e0",
               borderRadius: 12,
               padding: 16,
@@ -151,9 +154,9 @@ export function MobileLeaderboard({
                   height: 44,
                   borderRadius: "50%",
                   background: isTopThree
-                    ? idx === 0
+                    ? r.rank === 1
                       ? "linear-gradient(135deg, #ffc107 0%, #ffca28 100%)"
-                      : idx === 1
+                      : r.rank === 2
                       ? "linear-gradient(135deg, #adb5bd 0%, #ced4da 100%)"
                       : "linear-gradient(135deg, #fd7e14 0%, #ff922b 100%)"
                     : "#f0f0f0",
@@ -263,7 +266,7 @@ export function MobileLeaderboard({
                   {r.points}
                 </div>
                 <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
-                  {idx === 0 ? (
+                  {r.rank === 1 ? (
                     <span style={{ color: colors.success, fontWeight: 600 }}>{t("mobileLeaderboard.leader")}</span>
                   ) : (
                     <span>-{diff} pts</span>

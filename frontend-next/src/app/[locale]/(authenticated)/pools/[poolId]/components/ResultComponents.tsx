@@ -149,9 +149,15 @@ function ResultDisplay(props: {
   const homeName = getTeamName(props.homeTeam, tTeams);
   const awayName = getTeamName(props.awayTeam, tTeams);
 
+  // Terminal scraper statuses: the match is over even though the result
+  // may still be provisional (confirmation grace period). In that window
+  // the card must read "finished, confirming" — not "live".
+  const isFinished = ["FT", "AET", "PEN", "ABD"].includes(props.matchStatus ?? "");
+  const inPlay = props.isLive && !isFinished;
+
   // Live ticker label: "45+3", "HT", or just elapsed minute
   const isHalftime = props.matchStatus === "HT";
-  const showLiveTicker = props.isLive && !isHalftime && props.elapsed != null;
+  const showLiveTicker = inPlay && !isHalftime && props.elapsed != null;
   const elapsedLabel = props.elapsed != null
     ? (props.extra != null && props.extra > 0 ? `${props.elapsed}+${props.extra}'` : `${props.elapsed}'`)
     : "";
@@ -206,7 +212,7 @@ function ResultDisplay(props: {
       </div>
 
       {/* Live ticker — minute + indeterminate progress bar (only while match is in play) */}
-      {(props.isLive && (showLiveTicker || isHalftime)) && (
+      {(inPlay && (showLiveTicker || isHalftime)) && (
         <div style={{ marginTop: 8 }}>
           <div style={{
             display: "flex",
@@ -284,15 +290,18 @@ function ResultDisplay(props: {
         </div>
       )}
 
-      {/* Footer: be honest about provenance (audit F4-3) — a live
-          SCRAPER_PROVISIONAL used to be labeled "Resultado oficial". */}
-      {props.resultSource === "SCRAPER_PROVISIONAL" || props.isLive ? (
+      {/* Footer: be honest about provenance (audit F4-3) without noise.
+          In play → nothing (the live ticker says it all). Finished but
+          inside the confirmation grace → "Finalizado · provisional".
+          Confirmed → "Finalizado · oficial". No version suffix — host
+          corrections already surface via the reason box below. */}
+      {inPlay ? null : props.resultSource === "SCRAPER_PROVISIONAL" ? (
         <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: "#b45309", textAlign: "center" }}>
-          {t("result.provisional")}
+          {t("result.finishedProvisional")}
         </div>
       ) : (
         <div style={{ marginTop: 6, fontSize: 10, color: colors.textLight, textAlign: "center" }}>
-          {t("result.officialResult")}{result.version > 1 ? ` (v${result.version})` : ""}
+          {t("result.finishedOfficial")}
         </div>
       )}
       {result.reason && (
