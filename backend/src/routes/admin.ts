@@ -147,6 +147,65 @@ adminRouter.get("/matches/monitor", requireAuth, requireAdmin, async (_req, res)
   }
 });
 
+// POST /admin/matches/master-override — Apply a result override to EVERY
+// ACTIVE pool of an instance at once (audit §6, Etapa 3B). Writes
+// source=HOST_OVERRIDE (the scraper can never undo it), reason
+// mandatory, silent by design (no member emails — scraper-correction
+// path). Pools whose host already overrode are skipped unless
+// overwriteHostOverrides=true.
+const masterOverrideSchema = z
+  .object({
+    instanceId: z.string().min(1),
+    matchId: z.string().min(1),
+    homeGoals: z.number().int().min(0).max(99),
+    awayGoals: z.number().int().min(0).max(99),
+    homeGoals90: z.number().int().min(0).max(99).nullish(),
+    awayGoals90: z.number().int().min(0).max(99).nullish(),
+    homePenalties: z.number().int().min(0).max(99).nullish(),
+    awayPenalties: z.number().int().min(0).max(99).nullish(),
+    reason: z.string().trim().min(5).max(500),
+    overwriteHostOverrides: z.boolean().optional(),
+  })
+  .superRefine((d, ctx) => {
+    const has90 = d.homeGoals90 != null || d.awayGoals90 != null;
+    if (has90 && (d.homeGoals90 == null || d.awayGoals90 == null)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "goals90 requires BOTH sides" });
+    }
+    if (d.homeGoals90 != null && d.homeGoals90 > d.homeGoals) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "homeGoals90 cannot exceed homeGoals" });
+    }
+    if (d.awayGoals90 != null && d.awayGoals90 > d.awayGoals) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "awayGoals90 cannot exceed awayGoals" });
+    }
+    const hasPens = d.homePenalties != null || d.awayPenalties != null;
+    if (hasPens && (d.homePenalties == null || d.awayPenalties == null)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "penalties require BOTH sides" });
+    }
+    if (hasPens && d.homeGoals !== d.awayGoals) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "penalties only apply to a drawn match" });
+    }
+  });
+
+adminRouter.post("/matches/master-override", requireAuth, requireAdmin, async (req, res) => {
+  const parsed = masterOverrideSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+  try {
+    const { applyMasterOverride } = await import("../services/matchMonitorService");
+    const summary = await applyMasterOverride({
+      ...parsed.data,
+      actorUserId: req.auth!.userId,
+    });
+    return sendData(res, summary as unknown as Record<string, unknown>);
+  } catch (err) {
+    if (err instanceof Error && (err.message === "INSTANCE_NOT_FOUND" || err.message === "MATCH_NOT_FOUND_IN_INSTANCE")) {
+      return sendNotFound(res, err.message);
+    }
+    return handleServiceError(res, err);
+  }
+});
+
 // POST /admin/jobs/trigger-fixture-tracking — Manually trigger fixtureTrackingJob
 // Used to test the picks4all-scores integration end-to-end without waiting for the hourly cron.
 adminRouter.post("/jobs/trigger-fixture-tracking", requireAuth, requireAdmin, async (req, res) => {

@@ -8,6 +8,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Admin — Override master + acceso desde el menú (Etapa 3B) (2026-06-11)
+
+#### Added
+- **`POST /admin/matches/master-override`** (admin-only): aplica un resultado a **TODAS las pools ACTIVE de una instancia** en una operación — el mecanismo que el flujo por-pool nunca tuvo (audit F1-10). Escribe `source=HOST_OVERRIDE` (tope de la jerarquía: el scraper no puede deshacerlo), con marcador final + 90' + penales, **razón obligatoria** (auditada), **silencioso por diseño** (sin emails masivos — precedente del override del 30-may), y **respeta los overrides de host existentes** por defecto (`overwriteHostOverrides` para forzar). Crea el resultado incluso en pools donde el scraper nunca publicó (ruta de emergencia). Hooks post-escritura (derivaciones estructurales, advancement, cierre de pool) con concurrencia acotada a 4. Validación Zod (90' ≤ final, pares completos, penales solo en empate). 7 tests de la decisión por pool (`decideMasterOverrideAction`).
+- **Modal de override en `/admin/monitor`**: marcador + toggle prórroga + penales (en empate) + razón + checkbox de sobrescritura, con resumen post-aplicación (actualizadas / sin cambios / respetadas / fallidas).
+- **"Monitor de Partidos" en el menú de admin** del NavBar (desktop + móvil, ES/EN/PT) + ruta registrada en `routing.ts`.
+
 ### Admin — Monitor de partidos en vivo (Etapa 3A) (2026-06-11)
 
 #### Added

@@ -414,14 +414,26 @@ Verificación Etapa 2: backend `1dbd855` (typecheck limpio, 720 pass /
 19 pre-existentes) vivo 17:40Z; frontend (build de producción OK).
 
 ### Etapa 3 — Panel admin (semanas 16-29 jun, ~3 días, ideal ANTES de R32)
-- **3A (~1 día):** monitoreo read-only — `GET /admin/matches/monitor`
-  (partidos del día × {syncStatus, marcador, confianza, fuentes, minuto,
-  grace, última actualización}) + página admin con auto-refresh.
-- **3B (~1.5 días):** override master instancia-wide — marcador + goals90 +
-  penales + razón obligatoria, fan-out a todas las pools ACTIVE
-  (reutilizando `publishResult` por pool), opción "silencioso" (sin email
-  masivo), **respeta pools donde el host ya hizo override** (los lista),
-  audit completo. Cierra la decisión A2 del brief.
+- **3A — ✅ EJECUTADA (2026-06-11, `41c28be`, viva 17:58Z):** monitoreo
+  read-only — `GET /admin/matches/monitor` (ventana −12h/+36h sobre
+  instancias AUTO: snapshot vivo del scraper desde `lastLiveDataJson`,
+  frescura de track/poll, countdown de grace, y distribución de
+  resultados por fuente a través de las pools ACTIVE) + página
+  `/admin/monitor` con cards auto-refresh 15s, badges de estado (incl.
+  prórroga/penales/ABANDONADO) y chips de señal. Deliberadamente
+  solo-BD (sin llamadas extra al scraper).
+- **3B — ✅ EJECUTADA (2026-06-11):** override master instancia-wide —
+  `POST /admin/matches/master-override` (Zod: 90'≤final, pares completos,
+  penales solo en empate; razón ≥5 chars). Fan-out secuencial con tx +
+  FOR UPDATE por pool, `HOST_OVERRIDE` (el scraper no lo pisa), crea el
+  header si el scraper nunca publicó (emergencia), **silencioso** (sin
+  emails masivos — precedente 30-may), **respeta overrides de host** por
+  defecto (flag explícito para forzar; decisión pura
+  `decideMasterOverrideAction` con 7 tests), hooks post-escritura con
+  `createLimiter(4)` (lección del incidente de conexiones), audit
+  `MASTER_RESULT_OVERRIDE` con resumen. Modal en `/admin/monitor` +
+  acceso desde el menú admin del NavBar (×3 locales). Cierra la decisión
+  A2 del brief.
 - **3C (~½ día):** acciones rápidas — re-track, excluir de scoring (ABD),
   ver fuentes del scraper.
 

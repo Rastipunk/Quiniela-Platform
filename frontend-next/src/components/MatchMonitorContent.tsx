@@ -70,10 +70,19 @@ function freshness(iso: string | null): { label: string; ok: boolean } {
   return { label: `hace ${Math.round(ageSec / 3600)}h`, ok: false };
 }
 
+interface OverrideSummary {
+  totalPools: number;
+  updated: number;
+  unchanged: number;
+  skippedHostOverride: string[];
+  failed: Array<{ poolId: string; error: string }>;
+}
+
 export default function MatchMonitorContent() {
   const [rows, setRows] = useState<MonitorRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<string>("");
+  const [overrideTarget, setOverrideTarget] = useState<MonitorRow | null>(null);
 
   const load = useCallback(async () => {
     const token = getToken();
@@ -126,6 +135,17 @@ export default function MatchMonitorContent() {
         <div style={{ color: "#6b7280" }}>Sin partidos en la ventana operativa.</div>
       )}
 
+      {overrideTarget && (
+        <MasterOverrideModal
+          row={overrideTarget}
+          onClose={() => setOverrideTarget(null)}
+          onApplied={() => {
+            setOverrideTarget(null);
+            load();
+          }}
+        />
+      )}
+
       <div style={{ display: "grid", gap: 12 }}>
         {(rows ?? []).map((row) => {
           const badge = statusBadge(row);
@@ -168,6 +188,19 @@ export default function MatchMonitorContent() {
                 {new Date(row.kickoffUtc).toLocaleString()} · sync {row.syncStatus ?? "—"}
               </div>
 
+              {/* Actions */}
+              <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setOverrideTarget(row)}
+                  style={{
+                    padding: "6px 14px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700,
+                    background: "#fff7ed", border: "1px solid #fdba74", color: "#9a3412", cursor: "pointer",
+                  }}
+                >
+                  ⚡ Override master
+                </button>
+              </div>
+
               {/* Signals */}
               <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, fontSize: "0.78rem" }}>
                 <Chip ok={!!row.live && row.live.sourcesAgreeing >= 3} label={
@@ -192,6 +225,206 @@ export default function MatchMonitorContent() {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Master override modal (Etapa 3B): applies a result to EVERY ACTIVE
+ * pool of the instance as HOST_OVERRIDE (the scraper can never undo
+ * it). Silent — no member emails. Pools whose host already overrode
+ * are respected unless the checkbox says otherwise.
+ */
+function MasterOverrideModal({
+  row,
+  onClose,
+  onApplied,
+}: {
+  row: MonitorRow;
+  onClose: () => void;
+  onApplied: () => void;
+}) {
+  const [homeGoals, setHomeGoals] = useState(row.live ? String(row.live.homeGoals) : "");
+  const [awayGoals, setAwayGoals] = useState(row.live ? String(row.live.awayGoals) : "");
+  const [wentToExtraTime, setWentToExtraTime] = useState(false);
+  const [homeGoals90, setHomeGoals90] = useState("");
+  const [awayGoals90, setAwayGoals90] = useState("");
+  const [homePens, setHomePens] = useState(row.live?.penaltyHome != null ? String(row.live.penaltyHome) : "");
+  const [awayPens, setAwayPens] = useState(row.live?.penaltyAway != null ? String(row.live.penaltyAway) : "");
+  const [reason, setReason] = useState("");
+  const [overwriteHosts, setOverwriteHosts] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<OverrideSummary | null>(null);
+
+  const hNum = homeGoals.trim() !== "" ? Number(homeGoals) : null;
+  const aNum = awayGoals.trim() !== "" ? Number(awayGoals) : null;
+  const isDraw = hNum !== null && aNum !== null && hNum === aNum;
+  const h90 = homeGoals90.trim() !== "" ? Number(homeGoals90) : null;
+  const a90 = awayGoals90.trim() !== "" ? Number(awayGoals90) : null;
+  const et90Invalid =
+    wentToExtraTime &&
+    (h90 === null || a90 === null || (hNum !== null && h90 > hNum) || (aNum !== null && a90 > aNum));
+  const canSubmit =
+    hNum !== null && aNum !== null && reason.trim().length >= 5 && !et90Invalid && !busy;
+
+  async function submit() {
+    const token = getToken();
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/admin/matches/master-override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        credentials: "include",
+        body: JSON.stringify({
+          instanceId: row.instanceId,
+          matchId: row.matchId,
+          homeGoals: hNum,
+          awayGoals: aNum,
+          ...(wentToExtraTime && h90 !== null && a90 !== null
+            ? { homeGoals90: h90, awayGoals90: a90 }
+            : {}),
+          ...(isDraw && homePens.trim() !== "" && awayPens.trim() !== ""
+            ? { homePenalties: Number(homePens), awayPenalties: Number(awayPens) }
+            : {}),
+          reason: reason.trim(),
+          overwriteHostOverrides: overwriteHosts,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data?.error ? JSON.stringify(data.details ?? data.error) : `HTTP ${res.status}`);
+        return;
+      }
+      setSummary(data as OverrideSummary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error de red");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: 56, padding: 8, borderRadius: 8, border: "1px solid #d1d5db",
+    textAlign: "center", fontSize: 18, fontWeight: 700,
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "white", borderRadius: 14, padding: 20, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto" }}
+      >
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 800, margin: 0 }}>⚡ Override master</h2>
+        <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "6px 0 14px" }}>
+          {row.homeTeamName} vs {row.awayTeamName} — se aplica como <b>HOST_OVERRIDE</b> a las{" "}
+          <b>{row.activePools} pools activas</b> de {row.instanceName}. El scraper no podrá
+          sobreescribirlo. Sin emails a miembros.
+        </p>
+
+        {summary ? (
+          <div style={{ fontSize: "0.85rem" }}>
+            <div style={{ padding: 12, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 8, marginBottom: 12 }}>
+              ✅ <b>{summary.updated}</b> pools actualizadas · {summary.unchanged} sin cambios ·{" "}
+              {summary.skippedHostOverride.length} respetadas (override de host) ·{" "}
+              {summary.failed.length} fallidas
+            </div>
+            {summary.failed.length > 0 && (
+              <div style={{ padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, marginBottom: 12, color: "#991b1b" }}>
+                Fallidas: {summary.failed.map((f) => f.poolId.slice(0, 8)).join(", ")}
+              </div>
+            )}
+            <button onClick={onApplied} style={{ width: "100%", padding: 10, borderRadius: 8, border: "none", background: "#111", color: "white", fontWeight: 700, cursor: "pointer" }}>
+              Cerrar y refrescar
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 12 }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>{row.homeTeamName}</span>
+              <input type="number" min={0} value={homeGoals} onChange={(e) => setHomeGoals(e.target.value)} style={inputStyle} />
+              <span style={{ fontWeight: 900 }}>-</span>
+              <input type="number" min={0} value={awayGoals} onChange={(e) => setAwayGoals(e.target.value)} style={inputStyle} />
+              <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>{row.awayTeamName}</span>
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.82rem", marginBottom: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={wentToExtraTime} onChange={(e) => setWentToExtraTime(e.target.checked)} />
+              El partido tuvo prórroga (capturar marcador al 90&apos;)
+            </label>
+            {wentToExtraTime && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8, padding: 10, background: "#f9fafb", borderRadius: 8 }}>
+                <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>90&apos;:</span>
+                <input type="number" min={0} value={homeGoals90} onChange={(e) => setHomeGoals90(e.target.value)} style={inputStyle} />
+                <span style={{ fontWeight: 900 }}>-</span>
+                <input type="number" min={0} value={awayGoals90} onChange={(e) => setAwayGoals90(e.target.value)} style={inputStyle} />
+              </div>
+            )}
+            {et90Invalid && (
+              <div style={{ fontSize: "0.75rem", color: "#dc2626", marginBottom: 8 }}>
+                Con prórroga, ambos marcadores del 90&apos; son obligatorios y no pueden superar al final.
+              </div>
+            )}
+
+            {isDraw && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8, padding: 10, background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 8 }}>
+                <span style={{ fontSize: "0.75rem", color: "#92400e" }}>Penales:</span>
+                <input type="number" min={0} value={homePens} onChange={(e) => setHomePens(e.target.value)} style={inputStyle} />
+                <span style={{ fontWeight: 900 }}>-</span>
+                <input type="number" min={0} value={awayPens} onChange={(e) => setAwayPens(e.target.value)} style={inputStyle} />
+              </div>
+            )}
+
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Razón del override (obligatoria, mín. 5 caracteres) — queda en la auditoría"
+              rows={2}
+              style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #d1d5db", fontSize: "0.85rem", boxSizing: "border-box", marginBottom: 8 }}
+            />
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.78rem", color: "#9a3412", marginBottom: 12, cursor: "pointer" }}>
+              <input type="checkbox" checked={overwriteHosts} onChange={(e) => setOverwriteHosts(e.target.checked)} />
+              Sobrescribir también pools donde el HOST ya hizo su propio override
+            </label>
+
+            {error && (
+              <div style={{ padding: 10, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b", fontSize: "0.78rem", marginBottom: 10 }}>
+                {error}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={onClose}
+                style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #d1d5db", background: "white", cursor: "pointer", fontWeight: 600 }}
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={!canSubmit}
+                onClick={submit}
+                style={{
+                  flex: 2, padding: 10, borderRadius: 8, border: "none", fontWeight: 800,
+                  background: canSubmit ? "#9a3412" : "#e5e7eb",
+                  color: canSubmit ? "white" : "#9ca3af",
+                  cursor: canSubmit ? "pointer" : "not-allowed",
+                }}
+              >
+                {busy ? "Aplicando…" : `Aplicar a ${row.activePools} pools`}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

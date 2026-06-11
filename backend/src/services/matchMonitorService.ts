@@ -15,6 +15,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { parseFixtureData } from "../lib/fixture";
+import { writeAuditEvent } from "../lib/audit";
+import { createLimiter } from "../lib/asyncHelpers";
+import { autoPublishStructuralResults } from "./structuralAutoPublish";
+import { checkAndTriggerAdvancement } from "./advancementTrigger";
+import { transitionToCompleted } from "./poolStateMachine";
 
 /** Monitor window relative to now: covers the operational match day. */
 const WINDOW_BEFORE_HOURS = 12;
@@ -173,4 +178,228 @@ export async function getMatchMonitor(): Promise<MatchMonitorRow[]> {
 
   rows.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
   return rows;
+}
+
+// ============================================================================
+// Master override (Etapa 3B — audit §6)
+// ============================================================================
+
+export interface MasterOverrideInput {
+  instanceId: string;
+  matchId: string;
+  homeGoals: number;
+  awayGoals: number;
+  homeGoals90?: number | null;
+  awayGoals90?: number | null;
+  homePenalties?: number | null;
+  awayPenalties?: number | null;
+  reason: string;
+  /** When false (default), pools whose host already overrode keep their value. */
+  overwriteHostOverrides?: boolean;
+  actorUserId: string;
+}
+
+export interface MasterOverrideSummary {
+  totalPools: number;
+  updated: number;
+  unchanged: number;
+  skippedHostOverride: string[];
+  failed: Array<{ poolId: string; error: string }>;
+}
+
+type CurrentVersionLike = {
+  source: string;
+  homeGoals: number;
+  awayGoals: number;
+  homeGoals90: number | null;
+  awayGoals90: number | null;
+  homePenalties: number | null;
+  awayPenalties: number | null;
+} | null;
+
+/**
+ * Per-pool decision, pure and unit-tested:
+ * - "skip_host": the pool's host already overrode and the admin didn't
+ *   opt into overwriting — the host's judgment wins by default.
+ * - "unchanged": an identical HOST_OVERRIDE already exists — no churn.
+ * - "write": create a new HOST_OVERRIDE version (also when the values
+ *   match a non-override source: the override FREEZES the result
+ *   against any further scraper write per the source hierarchy).
+ */
+export function decideMasterOverrideAction(
+  cv: CurrentVersionLike,
+  input: Pick<MasterOverrideInput, "homeGoals" | "awayGoals" | "homeGoals90" | "awayGoals90" | "homePenalties" | "awayPenalties" | "overwriteHostOverrides">,
+): "skip_host" | "unchanged" | "write" {
+  if (!cv) return "write";
+  const identical =
+    cv.homeGoals === input.homeGoals &&
+    cv.awayGoals === input.awayGoals &&
+    cv.homeGoals90 === (input.homeGoals90 ?? null) &&
+    cv.awayGoals90 === (input.awayGoals90 ?? null) &&
+    cv.homePenalties === (input.homePenalties ?? null) &&
+    cv.awayPenalties === (input.awayPenalties ?? null);
+  if (cv.source === "HOST_OVERRIDE") {
+    if (identical) return "unchanged";
+    if (!input.overwriteHostOverrides) return "skip_host";
+  }
+  return "write";
+}
+
+/** Post-write hooks run with bounded concurrency: unbounded fan-out
+ *  across hundreds of pools exhausted Postgres connections before
+ *  (admin-dashboard incident, 2026-06-10). */
+const HOOK_CONCURRENCY = 4;
+
+/**
+ * Applies an admin result override to EVERY ACTIVE pool of an instance
+ * in one operation — the "master override" the per-pool host flow never
+ * had (audit F1-10). Writes source=HOST_OVERRIDE (top of the hierarchy:
+ * the scraper will never overwrite it), reason mandatory, NO member
+ * emails by design (this is the scraper-correction path — precedent:
+ * the silent 30-may override; hosts who override answer to their own
+ * members, the platform admin does not mass-email 300 pools).
+ */
+export async function applyMasterOverride(
+  input: MasterOverrideInput,
+): Promise<MasterOverrideSummary> {
+  const instance = await prisma.tournamentInstance.findUnique({
+    where: { id: input.instanceId },
+    select: { id: true, name: true, dataJson: true },
+  });
+  if (!instance) throw new Error("INSTANCE_NOT_FOUND");
+
+  const fixture = parseFixtureData(instance.dataJson);
+  const match = fixture.matches.find((m) => m.id === input.matchId);
+  if (!match) throw new Error("MATCH_NOT_FOUND_IN_INSTANCE");
+
+  const pools = await prisma.pool.findMany({
+    where: { tournamentInstanceId: input.instanceId, status: "ACTIVE" },
+    select: { id: true },
+  });
+
+  const summary: MasterOverrideSummary = {
+    totalPools: pools.length,
+    updated: 0,
+    unchanged: 0,
+    skippedHostOverride: [],
+    failed: [],
+  };
+  const updatedPoolIds: string[] = [];
+
+  // Sequential writes: each tx is tiny; parallelizing hundreds of
+  // row-locked transactions buys little and risks the connection pool.
+  for (const pool of pools) {
+    try {
+      const action = await prisma.$transaction(async (tx) => {
+        let header = await tx.poolMatchResult.findUnique({
+          where: { poolId_matchId: { poolId: pool.id, matchId: input.matchId } },
+          include: { currentVersion: true },
+        });
+
+        const decision = decideMasterOverrideAction(
+          header?.currentVersion ?? null,
+          input,
+        );
+        if (decision !== "write") return decision;
+
+        if (header) {
+          await tx.$queryRaw`SELECT id FROM "PoolMatchResult" WHERE id = ${header.id} FOR UPDATE`;
+        } else {
+          // Emergency path: the scraper never published for this pool —
+          // the master override must still be able to set the result.
+          header = await tx.poolMatchResult.create({
+            data: { poolId: pool.id, matchId: input.matchId },
+            include: { currentVersion: true },
+          });
+        }
+
+        const lastVersion = await tx.poolMatchResultVersion.findFirst({
+          where: { resultId: header.id },
+          orderBy: { versionNumber: "desc" },
+          select: { versionNumber: true },
+        });
+
+        const version = await tx.poolMatchResultVersion.create({
+          data: {
+            resultId: header.id,
+            versionNumber: (lastVersion?.versionNumber ?? 0) + 1,
+            status: "PUBLISHED",
+            homeGoals: input.homeGoals,
+            awayGoals: input.awayGoals,
+            homeGoals90: input.homeGoals90 ?? null,
+            awayGoals90: input.awayGoals90 ?? null,
+            homePenalties: input.homePenalties ?? null,
+            awayPenalties: input.awayPenalties ?? null,
+            source: "HOST_OVERRIDE",
+            reason: input.reason,
+            createdByUserId: input.actorUserId,
+          },
+        });
+        await tx.poolMatchResult.update({
+          where: { id: header.id },
+          data: { currentVersionId: version.id },
+        });
+        return "write" as const;
+      });
+
+      if (action === "skip_host") summary.skippedHostOverride.push(pool.id);
+      else if (action === "unchanged") summary.unchanged++;
+      else {
+        summary.updated++;
+        updatedPoolIds.push(pool.id);
+      }
+    } catch (err) {
+      summary.failed.push({
+        poolId: pool.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Downstream hooks for every updated pool (structural derivations,
+  // advancement, pool completion) — bounded concurrency.
+  const limit = createLimiter(HOOK_CONCURRENCY);
+  await Promise.all(
+    updatedPoolIds.map((poolId) =>
+      limit(async () => {
+        try {
+          await autoPublishStructuralResults(poolId, input.matchId);
+          await checkAndTriggerAdvancement(poolId, input.matchId, input.actorUserId);
+          await transitionToCompleted(poolId, input.actorUserId);
+        } catch (err) {
+          console.error(
+            `[MasterOverride] post-hooks failed for pool ${poolId}:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      }),
+    ),
+  );
+
+  await writeAuditEvent({
+    actorUserId: input.actorUserId,
+    action: "MASTER_RESULT_OVERRIDE",
+    entityType: "TournamentInstance",
+    entityId: input.instanceId,
+    dataJson: {
+      matchId: input.matchId,
+      homeGoals: input.homeGoals,
+      awayGoals: input.awayGoals,
+      homeGoals90: input.homeGoals90 ?? null,
+      awayGoals90: input.awayGoals90 ?? null,
+      homePenalties: input.homePenalties ?? null,
+      awayPenalties: input.awayPenalties ?? null,
+      reason: input.reason,
+      overwriteHostOverrides: !!input.overwriteHostOverrides,
+      summary: {
+        totalPools: summary.totalPools,
+        updated: summary.updated,
+        unchanged: summary.unchanged,
+        skippedHostOverride: summary.skippedHostOverride.length,
+        failed: summary.failed.length,
+      },
+    },
+  });
+
+  return summary;
 }
