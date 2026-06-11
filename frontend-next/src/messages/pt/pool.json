@@ -877,7 +877,7 @@
     "publishStandings": "Publicar classificação oficial",
     "hostInitialHint": "Arraste os times para montar a classificação oficial do grupo. Ao publicar, será visível para todos os jogadores.",
     "tablePending": "Classificação pendente — nenhum jogo finalizado",
-    "tablePartial": "Classificação parcial · {completed} de {total} jogos",
+    "tablePartial": "Classificação provisória · {completed} de {total} jogos finalizados",
     "tableComplete": "Classificação final · {total} jogos disputados",
     "tableOverridden": "Modificada pelo organizador",
     "colTeam": "Time",

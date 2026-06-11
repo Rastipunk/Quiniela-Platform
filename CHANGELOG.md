@@ -8,6 +8,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Estratega — Tabla de grupo provisional honesta (2026-06-11)
+
+#### Fixed
+- **`getGroupStandingsStats` solo cuenta resultados CONFIRMADOS** (`FINAL_RESULT_SOURCES`, mismo gate del auto-publish — audit F3-3): un `SCRAPER_PROVISIONAL` en vivo al minuto 13 ya no cuenta como "partido finalizado" en la tabla clásica del grupo. La tabla se llena minutos después de cada pitazo final, al confirmarse el resultado.
+- **Wording:** "Tabla parcial · X de Y partidos" → "Tabla provisional · X de Y partidos finalizados" ×3 idiomas.
+
+Nota: el reporte original venía de una pool DRAFT (que por diseño no recibe resultados del scraper — solo las ACTIVE); en las 23 pools Estratega ACTIVE la tabla ya se llenaba correctamente.
+
 ### UI — Estados del resultado + colores de empate (reportes del inaugural) (2026-06-11)
 
 #### Fixed

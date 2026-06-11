@@ -14,6 +14,7 @@ import { canMakePicks } from "./poolStateMachine";
 import { advanceToRoundOf32, validateCanAutoAdvance } from "./instanceAdvancement";
 import { requirePoolAdmin } from "../lib/roles";
 import { extractMatches, parseFixtureData } from "../lib/fixture";
+import { FINAL_RESULT_SOURCES } from "../lib/constants";
 import { buildGroupLockTimes } from "../lib/poolHelpers";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
@@ -551,7 +552,14 @@ export async function getGroupStandingsStats(
     include: { currentVersion: true },
   });
 
-  const finalised = results.filter((r) => r.currentVersion);
+  // Only CONFIRMED results feed the provisional table (same gate as the
+  // official auto-publish — audit F3-3): a live SCRAPER_PROVISIONAL at
+  // minute 13 must not count as a "finalised" match. The table fills a
+  // few minutes after each final whistle, once the grace period seals
+  // the score.
+  const finalised = results.filter(
+    (r) => r.currentVersion && FINAL_RESULT_SOURCES.has(r.currentVersion.source),
+  );
   const standingsInput = finalised
     .map((r) => {
       const m = groupMatches.find((gm) => gm.id === r.matchId);

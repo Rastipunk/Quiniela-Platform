@@ -877,7 +877,7 @@
     "publishStandings": "Publicar tabla oficial",
     "hostInitialHint": "Arrastra los equipos para armar la tabla oficial del grupo. Al publicar, será visible para todos los jugadores.",
     "tablePending": "Tabla pendiente — sin partidos finalizados",
-    "tablePartial": "Tabla parcial · {completed} de {total} partidos",
+    "tablePartial": "Tabla provisional · {completed} de {total} partidos finalizados",
     "tableComplete": "Tabla final · {total} partidos jugados",
     "tableOverridden": "Sobrescrita por el organizador",
     "colTeam": "Equipo",

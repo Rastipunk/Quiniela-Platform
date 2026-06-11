@@ -877,7 +877,7 @@
     "publishStandings": "Publish official standings",
     "hostInitialHint": "Drag the teams to build the group's official standings. Once published, all players will see it.",
     "tablePending": "Standings pending — no matches finalised yet",
-    "tablePartial": "Partial standings · {completed} of {total} matches",
+    "tablePartial": "Provisional standings · {completed} of {total} matches finished",
     "tableComplete": "Final standings · {total} matches played",
     "tableOverridden": "Overridden by the host",
     "colTeam": "Team",
