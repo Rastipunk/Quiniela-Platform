@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { updatePoolSettings } from "@/lib/api";
 import type { PoolOverview } from "@/lib/api";
@@ -28,6 +29,14 @@ export function AdminSettingsToggles({
   busyKey, setBusyKey, setError, friendlyError, reload,
 }: AdminSettingsTogglesProps) {
   const t = useTranslations("pool");
+  const capricho = overview.pool.caprichoSan;
+  const [caprichoMin, setCaprichoMin] = useState<number>(capricho?.min ?? 0);
+  const [caprichoMax, setCaprichoMax] = useState<number>(capricho?.max ?? 4);
+  const caprichoRangeDirty =
+    !!capricho && (caprichoMin !== capricho.min || caprichoMax !== capricho.max);
+  const caprichoRangeValid =
+    Number.isInteger(caprichoMin) && Number.isInteger(caprichoMax) &&
+    caprichoMin >= 0 && caprichoMax <= 9 && caprichoMin <= caprichoMax;
 
   return (
     <>
@@ -111,6 +120,109 @@ export function AdminSettingsToggles({
           </div>
         </label>
       </div>
+
+      {/* Capricho San (gifted feature) — only rendered when the backend
+          marks this pool as allowlisted. Random score for players who
+          let the deadline pass without predicting. */}
+      {capricho?.available && (
+        <div style={{ ...adminSectionStyle, border: "2px solid #8b5cf6", background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)" }}>
+          <h4 style={adminHeadingStyle}>
+            🎲 {t("admin.caprichoSan.title")}
+          </h4>
+          <div style={{ fontSize: fontSize.base, lineHeight: 1.8, color: colors.textMuted, marginBottom: spacing.md }}>
+            {t("admin.caprichoSan.description")}
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
+            <ToggleSwitch
+              checked={capricho.enabled}
+              disabled={busyKey === "capricho-san-toggle"}
+              onChange={async () => {
+                if (busyKey === "capricho-san-toggle" || !token || !poolId) return;
+                setBusyKey("capricho-san-toggle");
+                setError(null);
+                try {
+                  await updatePoolSettings(token, poolId, { caprichoSanEnabled: !capricho.enabled });
+                  await reload();
+                } catch (err: any) {
+                  setError(friendlyError(err));
+                } finally {
+                  setBusyKey(null);
+                }
+              }}
+            />
+            <div>
+              <div style={{ fontWeight: fontWeight.semibold, color: colors.textDark }}>
+                {capricho.enabled ? `✅ ${t("admin.caprichoSan.enabled")}` : `❌ ${t("admin.caprichoSan.disabled")}`}
+              </div>
+              <div style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>
+                {capricho.enabled
+                  ? t("admin.caprichoSan.enabledDesc", { min: capricho.min, max: capricho.max })
+                  : t("admin.caprichoSan.disabledDesc")}
+              </div>
+            </div>
+          </label>
+
+          {capricho.enabled && (
+            <div style={{ marginTop: spacing.md, padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
+              <div style={{ fontWeight: fontWeight.semibold, fontSize: fontSize.md, color: colors.textDark, marginBottom: spacing.sm }}>
+                {t("admin.caprichoSan.rangeTitle")}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <label style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
+                  {t("admin.caprichoSan.rangeMin")}{" "}
+                  <input
+                    type="number" min={0} max={9} step={1} value={caprichoMin}
+                    onChange={(e) => setCaprichoMin(parseInt(e.target.value, 10))}
+                    style={{ width: 64, padding: "6px 8px", borderRadius: 8, border: `1px solid ${colors.borderDark}`, fontSize: fontSize.md, fontWeight: fontWeight.semibold, textAlign: "center" }}
+                  />
+                </label>
+                <label style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
+                  {t("admin.caprichoSan.rangeMax")}{" "}
+                  <input
+                    type="number" min={0} max={9} step={1} value={caprichoMax}
+                    onChange={(e) => setCaprichoMax(parseInt(e.target.value, 10))}
+                    style={{ width: 64, padding: "6px 8px", borderRadius: 8, border: `1px solid ${colors.borderDark}`, fontSize: fontSize.md, fontWeight: fontWeight.semibold, textAlign: "center" }}
+                  />
+                </label>
+                {caprichoRangeDirty && (
+                  <button
+                    disabled={!caprichoRangeValid || busyKey === "capricho-san-range"}
+                    onClick={async () => {
+                      if (!caprichoRangeValid || busyKey === "capricho-san-range" || !token || !poolId) return;
+                      setBusyKey("capricho-san-range");
+                      setError(null);
+                      try {
+                        await updatePoolSettings(token, poolId, { caprichoSanMin: caprichoMin, caprichoSanMax: caprichoMax });
+                        await reload();
+                      } catch (err: any) {
+                        setError(friendlyError(err));
+                      } finally {
+                        setBusyKey(null);
+                      }
+                    }}
+                    style={{
+                      padding: "8px 16px", borderRadius: 8, border: "none",
+                      background: caprichoRangeValid ? "#8b5cf6" : colors.disabled,
+                      color: colors.white, fontWeight: fontWeight.semibold,
+                      cursor: caprichoRangeValid ? "pointer" : "not-allowed", fontSize: fontSize.sm,
+                    }}
+                  >
+                    {t("admin.caprichoSan.saveRange")}
+                  </button>
+                )}
+              </div>
+              {!caprichoRangeValid && (
+                <div style={{ fontSize: fontSize.xs, color: colors.errorAlt, marginTop: 6 }}>
+                  {t("admin.caprichoSan.rangeInvalid")}
+                </div>
+              )}
+              <div style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 8 }}>
+                {t("admin.caprichoSan.transparencyNote")}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Extra Time Configuration */}
       {overview.pool.pickTypesConfig && (() => {

@@ -18,6 +18,7 @@ import {
   type StructuralPickJson,
 } from "../lib/fixture";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
+import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
@@ -605,6 +606,14 @@ export async function getPoolOverview(
       pickTypesConfig: pool.pickTypesConfig,
       autoAdvanceEnabled: pool.autoAdvanceEnabled,
       requireApproval: pool.requireApproval,
+      // Capricho San (ADR-075): `available` is env-gated (gifted pools
+      // only) — the host settings card renders only when true.
+      caprichoSan: {
+        available: isCaprichoSanPool(pool.id),
+        enabled: pool.caprichoSanEnabled,
+        min: pool.caprichoSanMin,
+        max: pool.caprichoSanMax,
+      },
       maxParticipants: pool.maxParticipants,
       lockedPhases: pool.lockedPhases as string[],
       organizationId: pool.organizationId ?? null,

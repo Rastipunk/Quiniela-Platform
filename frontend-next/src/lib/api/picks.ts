@@ -44,7 +44,7 @@ export type MatchPicksResponse = {
   picks: Array<{
     userId: string;
     displayName: string;
-    pick: { type: string; homeGoals?: number; awayGoals?: number; outcome?: string } | null;
+    pick: { type: string; homeGoals?: number; awayGoals?: number; outcome?: string; autoAssigned?: boolean } | null;
     isCurrentUser: boolean;
   }>;
 };

@@ -109,7 +109,7 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
                     border: p.isCurrentUser ? "2px solid #007bff" : "1px solid #eee"
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: p.isCurrentUser ? 700 : 500 }}>
                       {p.displayName}
                     </span>
@@ -122,6 +122,24 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
                         color: colors.white
                       }}>
                         {t("matchPicks.you")}
+                      </span>
+                    )}
+                    {/* Capricho San: the pick was randomly auto-assigned at
+                        deadline — every player must be able to tell. */}
+                    {p.pick?.autoAssigned && (
+                      <span
+                        title={t("matchPicks.randomPickTooltip")}
+                        style={{
+                          fontSize: 10,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: "#f3e8ff",
+                          border: "1px solid #8b5cf6",
+                          color: "#6d28d9",
+                          fontWeight: 700,
+                        }}
+                      >
+                        🎲 {t("matchPicks.randomPick")}
                       </span>
                     )}
                   </div>

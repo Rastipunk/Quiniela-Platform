@@ -135,6 +135,20 @@
       "fullDismiss": "Entendido",
       "fullDontShow": "Não mostrar novamente"
     },
+    "caprichoSan": {
+      "title": "Capricho San",
+      "description": "Se um jogador não enviar seu palpite antes do prazo, o sistema atribui um placar ALEATÓRIO para aquele jogo. O placar fica marcado com 🎲, visível para todos os jogadores. Os lembretes por e-mail continuam funcionando normalmente.",
+      "enabled": "Capricho San ATIVADO",
+      "disabled": "Capricho San DESATIVADO",
+      "enabledDesc": "No prazo de cada jogo, quem não palpitou recebe gols aleatórios entre {min} e {max}",
+      "disabledDesc": "Quem não palpitar simplesmente fica sem pontos naquele jogo",
+      "rangeTitle": "Intervalo de gols aleatórios (por time)",
+      "rangeMin": "Mínimo",
+      "rangeMax": "Máximo",
+      "saveRange": "Salvar intervalo",
+      "rangeInvalid": "O intervalo deve ser entre 0 e 9, e o mínimo não pode superar o máximo.",
+      "transparencyNote": "Transparência: todo placar atribuído ao acaso mostra o selo 🎲 para você e para todos os jogadores do bolão."
+    },
     "autoAdvance": {
       "title": "Avanço Automático de Fases",
       "description": "Quando habilitado, o sistema avançará automaticamente para a próxima fase quando todos os jogos da fase atual forem completados.",
@@ -404,6 +418,7 @@
     "myPick": "Meu Palpite",
     "noPick": "Sem palpite (prazo encerrado)",
     "noPickYet": "Sem palpite ainda",
+    "randomAssigned": "Placar atribuído ao acaso (Capricho San) — você não palpitou antes do prazo",
     "modify": "Modificar",
     "save": "Salvar",
     "cancel": "Cancelar",
@@ -496,7 +511,9 @@
     "drawLabel": "Empate",
     "away": "Visitante",
     "noPick": "Sem palpite",
-    "empty": "Sem palpites para este jogo"
+    "empty": "Sem palpites para este jogo",
+    "randomPick": "Aleatório",
+    "randomPickTooltip": "Este placar foi atribuído ao acaso pelo Capricho San porque o jogador não palpitou antes do prazo"
   },
 
   "playerSummary": {

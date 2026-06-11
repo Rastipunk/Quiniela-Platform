@@ -107,6 +107,7 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
 
   if (pick.type === "SCORE") {
     return (
+      <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
         {/* Home team flag + score */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -151,6 +152,14 @@ function PickDisplay(props: { pick: any; homeTeam: any; awayTeam: any; tournamen
             </div>
           )}
         </div>
+      </div>
+      {/* Capricho San: the score was randomly auto-assigned because the
+          deadline passed without a pick — the owner must see it too. */}
+      {pick.autoAssigned && (
+        <div style={{ marginTop: 8, padding: "6px 10px", background: "#f3e8ff", border: "1px solid #8b5cf6", borderRadius: 8, fontSize: 11, fontWeight: 600, color: "#6d28d9", textAlign: "center" }}>
+          🎲 {t("pick.randomAssigned")}
+        </div>
+      )}
       </div>
     );
   }

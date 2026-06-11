@@ -410,6 +410,15 @@ model Pool {
   // Si true, esta pool no envía deadline reminders por email
   muteReminders Boolean @default(false)
 
+  // "Capricho San" (ADR-075): feature regalo, disponible solo para pools
+  // en la lista env CAPRICHO_SAN_POOL_IDS. Si el host la activa, los
+  // jugadores que lleguen al deadline sin predicción reciben un marcador
+  // ALEATORIO (entero uniforme en [min, max] por equipo), marcado como
+  // autoAssigned en el pickJson y visible para toda la pool.
+  caprichoSanEnabled Boolean @default(false)
+  caprichoSanMin     Int     @default(0)
+  caprichoSanMax     Int     @default(4)
+
   // Comentario en español: configuración avanzada de tipos de picks por fase (PhasePickConfig[])
   // Define qué tipos de predicciones están permitidos y sus puntos en cada fase
   // null = usa scoring preset clásico (retrocompatibilidad)

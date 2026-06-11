@@ -135,6 +135,20 @@
       "fullDismiss": "Got it",
       "fullDontShow": "Don't show again"
     },
+    "caprichoSan": {
+      "title": "Capricho San",
+      "description": "If a player doesn't submit a pick before the deadline, the system assigns a RANDOM score for that match. The score is marked with 🎲, visible to every player. Email reminders keep working as usual.",
+      "enabled": "Capricho San ENABLED",
+      "disabled": "Capricho San DISABLED",
+      "enabledDesc": "At each match's deadline, players without a pick get random goals between {min} and {max}",
+      "disabledDesc": "Players who don't pick simply earn no points for that match",
+      "rangeTitle": "Random goals range (per team)",
+      "rangeMin": "Minimum",
+      "rangeMax": "Maximum",
+      "saveRange": "Save range",
+      "rangeInvalid": "The range must be between 0 and 9, and the minimum cannot exceed the maximum.",
+      "transparencyNote": "Transparency: every randomly-assigned score shows the 🎲 badge to you and to every player in the pool."
+    },
     "autoAdvance": {
       "title": "Auto-Advance Phases",
       "description": "When enabled, the system will automatically advance to the next phase when all matches in the current phase are completed.",
@@ -404,6 +418,7 @@
     "myPick": "My Pick",
     "noPick": "No pick made (deadline passed)",
     "noPickYet": "No pick yet",
+    "randomAssigned": "Randomly assigned score (Capricho San) — you didn't pick before the deadline",
     "modify": "Modify",
     "save": "Save",
     "cancel": "Cancel",
@@ -496,7 +511,9 @@
     "drawLabel": "Draw",
     "away": "Away",
     "noPick": "No pick",
-    "empty": "No picks for this match"
+    "empty": "No picks for this match",
+    "randomPick": "Random",
+    "randomPickTooltip": "This score was randomly assigned by Capricho San because the player didn't pick before the deadline"
   },
 
   "playerSummary": {

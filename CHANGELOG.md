@@ -8,6 +8,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Pools — "Capricho San": marcador aleatorio al perder el deadline (feature regalo, ADR-075) (2026-06-11)
+
+#### Added
+- **Patrón de features regaladas por pool:** allowlist `CAPRICHO_SAN_POOL_IDS` en env (cero IDs en código); el overview expone `pool.caprichoSan.available` y la card de settings del host solo se renderiza para pools regaladas. La ruta de settings rechaza escrituras de pools no autorizadas.
+- **Capricho San:** toggle del host + rango de goles configurable (0–9, min≤max). Job cada 60s (no arranca si la allowlist está vacía): al pasar el deadline de un partido, los miembros ACTIVE sin predicción reciben un marcador aleatorio (entero uniforme por equipo, `crypto.randomInt`), `createMany skipDuplicates` (un pick real siempre gana), nunca si el partido ya tiene resultado, nunca con backfill de partidos viejos (ventana 6h), solo fases de marcadores. Audit `CAPRICHO_SAN_ASSIGNED`.
+- **Transparencia total:** el pick lleva `autoAssigned` en su `pickJson` y se muestra con insignia 🎲 en el modal de predicciones de otros y en el pick propio, ×3 idiomas. Los reminders de deadline siguen intactos (avisan ANTES; el capricho actúa DESPUÉS).
+- Migración: 3 columnas nuevas en `Pool` (aditivas con default — cero impacto).
+
 ### Pools — Backfill de resultados confirmados al activar (ADR-074) (2026-06-11)
 
 #### Fixed

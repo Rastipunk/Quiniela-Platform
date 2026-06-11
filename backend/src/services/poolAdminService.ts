@@ -43,6 +43,7 @@ import {
 } from "../lib/fixture";
 import type { PhasePickConfig } from "../types/pickConfig";
 import { fireAndForget } from "../lib/asyncHelpers";
+import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { ServiceError, type AuditContext } from "./authService";
 
 // ─── Scoring Override ────────────────────────────────────────
@@ -197,6 +198,9 @@ export async function updatePoolSettings(
     autoAdvanceEnabled?: boolean;
     requireApproval?: boolean;
     extraTimePhases?: string[];
+    caprichoSanEnabled?: boolean;
+    caprichoSanMin?: number;
+    caprichoSanMax?: number;
   },
   ctx: AuditContext,
 ) {
@@ -207,7 +211,23 @@ export async function updatePoolSettings(
     throw new ServiceError("OWNER_ONLY", 403);
   }
 
-  const { autoAdvanceEnabled, requireApproval, extraTimePhases } = changes;
+  const {
+    autoAdvanceEnabled, requireApproval, extraTimePhases,
+    caprichoSanEnabled, caprichoSanMin, caprichoSanMax,
+  } = changes;
+
+  // Capricho San (ADR-075) is a gifted feature: its settings only exist
+  // for env-allowlisted pools. Reject silently-impossible writes.
+  const touchesCaprichoSan =
+    caprichoSanEnabled !== undefined ||
+    caprichoSanMin !== undefined ||
+    caprichoSanMax !== undefined;
+  if (touchesCaprichoSan && !isCaprichoSanPool(poolId)) {
+    throw new ServiceError("FEATURE_NOT_AVAILABLE", 403);
+  }
+  if (caprichoSanMin !== undefined && caprichoSanMax !== undefined && caprichoSanMin > caprichoSanMax) {
+    throw new ServiceError("INVALID_RANGE", 400);
+  }
 
   let pickTypesConfigUpdate: PhasePickConfig[] | undefined;
   if (extraTimePhases !== undefined) {
@@ -276,6 +296,9 @@ export async function updatePoolSettings(
       ...(autoAdvanceEnabled !== undefined ? { autoAdvanceEnabled } : {}),
       ...(requireApproval !== undefined ? { requireApproval } : {}),
       ...(pickTypesConfigUpdate ? { pickTypesConfig: pickTypesConfigUpdate as Prisma.InputJsonValue } : {}),
+      ...(caprichoSanEnabled !== undefined ? { caprichoSanEnabled } : {}),
+      ...(caprichoSanMin !== undefined ? { caprichoSanMin } : {}),
+      ...(caprichoSanMax !== undefined ? { caprichoSanMax } : {}),
     },
   });
 
@@ -292,6 +315,9 @@ export async function updatePoolSettings(
       autoAdvanceEnabled: updatedPool.autoAdvanceEnabled,
       requireApproval: updatedPool.requireApproval,
       pickTypesConfig: updatedPool.pickTypesConfig,
+      caprichoSanEnabled: updatedPool.caprichoSanEnabled,
+      caprichoSanMin: updatedPool.caprichoSanMin,
+      caprichoSanMax: updatedPool.caprichoSanMax,
     },
   };
 }

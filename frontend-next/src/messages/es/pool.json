@@ -135,6 +135,20 @@
       "fullDismiss": "Entendido",
       "fullDontShow": "No volver a mostrar"
     },
+    "caprichoSan": {
+      "title": "Capricho San",
+      "description": "Si un jugador no pone su predicción antes del cierre, el sistema le asigna un marcador ALEATORIO para ese partido. El marcador queda marcado con 🎲 visible para todos los jugadores. Los recordatorios por correo siguen funcionando normal.",
+      "enabled": "Capricho San ACTIVADO",
+      "disabled": "Capricho San DESACTIVADO",
+      "enabledDesc": "Al cierre de cada partido, los que no predijeron reciben goles aleatorios entre {min} y {max}",
+      "disabledDesc": "Quien no prediga simplemente queda sin puntos en ese partido",
+      "rangeTitle": "Rango de goles aleatorios (por equipo)",
+      "rangeMin": "Mínimo",
+      "rangeMax": "Máximo",
+      "saveRange": "Guardar rango",
+      "rangeInvalid": "El rango debe ser entre 0 y 9, y el mínimo no puede superar al máximo.",
+      "transparencyNote": "Transparencia: todo marcador asignado al azar aparece con la insignia 🎲 para ti y para todos los jugadores de la pool."
+    },
     "autoAdvance": {
       "title": "Avance Automático de Fases",
       "description": "Cuando está habilitado, el sistema avanzará automáticamente a la siguiente fase cuando se completen todos los partidos de la fase actual.",
@@ -404,6 +418,7 @@
     "myPick": "Mi Predicción",
     "noPick": "No hiciste predicción (deadline pasado)",
     "noPickYet": "Sin predicción aún",
+    "randomAssigned": "Marcador asignado al azar (Capricho San) — no predijiste antes del cierre",
     "modify": "Modificar",
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -496,7 +511,9 @@
     "drawLabel": "Empate",
     "away": "Visitante",
     "noPick": "Sin predicción",
-    "empty": "No hay predicciones para este partido"
+    "empty": "No hay predicciones para este partido",
+    "randomPick": "Aleatorio",
+    "randomPickTooltip": "Este marcador fue asignado al azar por Capricho San porque el jugador no predijo antes del cierre"
   },
 
   "playerSummary": {

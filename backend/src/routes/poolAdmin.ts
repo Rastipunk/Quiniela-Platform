@@ -30,6 +30,7 @@ import {
   getPoolNotifications,
 } from "../services/poolAdminService";
 import { PoolPickTypesConfigSchema } from "../validation/pickConfig";
+import { CAPRICHO_SAN_RANGE } from "../lib/caprichoSan";
 import { ServiceError } from "../services/authService";
 import type { AuditContext } from "../services/authService";
 
@@ -75,7 +76,15 @@ const updatePoolSettingsSchema = z.object({
   autoAdvanceEnabled: z.boolean().optional(),
   requireApproval: z.boolean().optional(),
   extraTimePhases: z.array(z.string()).optional(),
-});
+  // Capricho San (ADR-075) — only honored for env-allowlisted pools;
+  // the service rejects writes for any other pool.
+  caprichoSanEnabled: z.boolean().optional(),
+  caprichoSanMin: z.number().int().min(CAPRICHO_SAN_RANGE.MIN).max(CAPRICHO_SAN_RANGE.MAX).optional(),
+  caprichoSanMax: z.number().int().min(CAPRICHO_SAN_RANGE.MIN).max(CAPRICHO_SAN_RANGE.MAX).optional(),
+}).refine(
+  (d) => d.caprichoSanMin === undefined || d.caprichoSanMax === undefined || d.caprichoSanMin <= d.caprichoSanMax,
+  { message: "caprichoSanMin must be <= caprichoSanMax" },
+);
 
 const lockPhaseSchema = z.object({
   phaseId: z.string().min(1),

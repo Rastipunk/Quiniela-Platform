@@ -43,6 +43,7 @@ import {
   startWelcomeEmailFallbackJob,
   stopWelcomeEmailFallbackJob,
 } from "./jobs/welcomeEmailFallbackJob";
+import { startCaprichoSanJob, stopCaprichoSanJob } from "./jobs/caprichoSanJob";
 import { prisma } from "./db";
 
 const app = express();
@@ -348,6 +349,7 @@ const server = app.listen(PORT, () => {
   startMpPaymentReconcileJob();
   startAccountReceivableExpiryJob();
   startWelcomeEmailFallbackJob();
+  startCaprichoSanJob();
   // Build the admin dashboard cache in the background so the first
   // admin load after a deploy serves instantly instead of paying the
   // full cold-build cost (40 s measured under WC-eve DB load).
@@ -395,6 +397,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopMpPaymentReconcileJob();
   stopAccountReceivableExpiryJob();
   stopWelcomeEmailFallbackJob();
+  stopCaprichoSanJob();
   stopPlatformHealthJob();
   stopEventLoopMonitor();
 

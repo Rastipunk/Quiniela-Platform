@@ -5106,4 +5106,26 @@ matchLockUtc = kickoffUtc - deadlineMinutes
 
 ---
 
+## ADR-075: "Capricho San" — env-allowlisted gifted features; random score on missed deadline
+
+**Date:** 2026-06-11 | **Status:** Accepted
+
+**Context:** The owner wanted to gift a friend's pool a playful house rule: players who let a match's pick deadline pass without predicting receive a RANDOM score (uniform integer per team, host-configurable range, e.g. 0–4) instead of simply earning nothing. The feature must exist ONLY in that pool, never silently affect anyone else, and be unmistakably transparent to every player.
+
+**Decision:**
+1. **Env-allowlist gating pattern:** `CAPRICHO_SAN_POOL_IDS` (comma-separated pool IDs) is the single availability switch — no pool IDs in code (per the zero-hardcode standard), gifting another pool is a Railway variable change. The backend exposes `pool.caprichoSan.available` in the overview; the host settings card renders only when true. The settings route rejects writes for non-allowlisted pools (`FEATURE_NOT_AVAILABLE`), and the job re-checks the allowlist per pool (defence in depth).
+2. **Host controls:** toggle + min/max goals (hard bounds 0–9, min ≤ max) via the existing `PATCH /pools/:poolId/settings` (OWNER only, audited as `POOL_SETTINGS_UPDATED`). Stored in three new `Pool` columns (`caprichoSanEnabled/Min/Max`, additive defaults).
+3. **Assignment job** (`caprichoSanJob`, 60 s; does not even start when the allowlist is empty): for enabled ACTIVE pools, matches in `requiresScore` phases whose deadline passed within the lookback window (default 6 h — enabling mid-tournament never backfills old matches) and which have **no result version yet** (never assigns once any score is known), every ACTIVE member without a prediction gets `pickJson = { type:"SCORE", homeGoals/awayGoals: random[min..max], autoAssigned:true, autoSource:"CAPRICHO_SAN" }` via `createMany skipDuplicates` (a real pick always wins races). Audited per match (`CAPRICHO_SAN_ASSIGNED`). Crypto-backed randomness (`crypto.randomInt`).
+4. **Transparency is non-negotiable:** the `autoAssigned` flag rides inside `pickJson` (no schema change; flows through every existing endpoint untouched) and renders as a 🎲 badge in the others-picks modal and on the player's own pick, ×3 locales. Scoring treats the pick like any other — that's the game.
+5. **Deadline reminders are untouched:** reminders fire BEFORE the deadline; Capricho San acts only AFTER it. Same timeline, different phases.
+
+**Consequences:**
+- ✅ Zero impact outside allowlisted pools (job doesn't start without the env var).
+- ✅ The pattern (env allowlist + `available` in overview + gated settings) is reusable for future gifted/experimental per-pool features.
+- ⚠️ Random picks are created post-deadline by design; the picks route still rejects human post-deadline writes — the job writes via Prisma directly.
+
+**Related code:** `backend/src/lib/caprichoSan.ts`, `backend/src/services/caprichoSanService.ts`, `backend/src/jobs/caprichoSanJob.ts`, `backend/src/services/poolAdminService.ts` (`updatePoolSettings`), `backend/src/services/poolOverviewService.ts`, `frontend-next/.../admin/AdminSettingsToggles.tsx`, `MatchPicksModal.tsx`, `PickComponents.tsx`.
+
+---
+
 **END OF DOCUMENT**

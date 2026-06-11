@@ -36,6 +36,14 @@ export interface PoolInfo {
   pickTypesConfig: PhasePickConfigItem[] | null;
   autoAdvanceEnabled: boolean;
   requireApproval: boolean;
+  /** Capricho San (gifted per-pool feature): random score for players
+   *  who miss the deadline. `available` only for env-allowlisted pools. */
+  caprichoSan?: {
+    available: boolean;
+    enabled: boolean;
+    min: number;
+    max: number;
+  };
   maxParticipants: number | null;
   lockedPhases: string[];
   organizationId: string | null;
