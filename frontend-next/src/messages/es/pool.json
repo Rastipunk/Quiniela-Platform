@@ -972,6 +972,11 @@
     "expired": "Esta invitación ya no es válida o ha expirado.",
     "invalidTitle": "Invitación no encontrada",
     "invalidDesc": "El enlace de invitación puede ser inválido o haber expirado. Pide a quien te invitó que te envíe uno nuevo.",
+    "rateLimitTitle": "Estamos recibiendo muchas peticiones",
+    "rateLimitDesc": "Hubo demasiados intentos desde tu red en muy poco tiempo. Espera un minuto y reintenta — el enlace sigue siendo válido.",
+    "serverErrorTitle": "No pudimos cargar la invitación",
+    "serverErrorDesc": "Tuvimos un problema temporal en nuestros servidores. Reintenta en unos segundos.",
+    "tryAgain": "Reintentar",
     "goHome": "Ir al inicio"
   }
 }

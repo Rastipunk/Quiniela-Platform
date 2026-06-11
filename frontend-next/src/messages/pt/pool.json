@@ -972,6 +972,11 @@
     "expired": "Este convite não é mais válido ou expirou.",
     "invalidTitle": "Convite não encontrado",
     "invalidDesc": "Este link de convite pode ser inválido ou ter expirado. Peça a quem te convidou para enviar um novo.",
+    "rateLimitTitle": "Muitas requisições",
+    "rateLimitDesc": "Houve muitas tentativas da sua rede em pouco tempo. Aguarde um minuto e tente novamente — o link continua válido.",
+    "serverErrorTitle": "Não foi possível carregar o convite",
+    "serverErrorDesc": "Tivemos um problema temporário em nossos servidores. Tente novamente em alguns segundos.",
+    "tryAgain": "Tentar novamente",
     "goHome": "Ir para o início"
   }
 }

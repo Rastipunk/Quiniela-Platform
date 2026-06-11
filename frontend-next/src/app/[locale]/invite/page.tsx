@@ -46,6 +46,14 @@ function resolveBrandColors(
   return { primary: "#4f46e5", secondary: "#8b5cf6", isCustom: false };
 }
 
+/**
+ * Distinguished error states so the landing renders honest copy
+ * instead of always claiming "Invitation not found" — the rate-limit
+ * case used to look identical to a truly-invalid code and made
+ * corporate hosts look like they sent broken links to their teams.
+ */
+type InviteError = "INVALID" | "RATE_LIMITED" | "SERVER_ERROR";
+
 function InviteContent() {
   const searchParams = useSearchParams();
   const t = useTranslations("pool");
@@ -53,7 +61,8 @@ function InviteContent() {
 
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<InviteError | null>(null);
+  const [attempt, setAttempt] = useState(0); // bump → re-fetch
 
   const isLoggedIn = typeof window !== "undefined" && !!getToken();
   const joinUrl = `/pools/join?code=${code}`;
@@ -62,22 +71,36 @@ function InviteContent() {
   useEffect(() => {
     if (!code) {
       setLoading(false);
-      setError(true);
+      setError("INVALID");
       return;
     }
+    setLoading(true);
+    setError(null);
 
     fetch(`${API_URL}/invite-preview/${encodeURIComponent(code)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.poolName) {
+      .then(async (r) => {
+        // Inspect status BEFORE parsing — a 429 has a JSON body whose
+        // shape (just { error: "RATE_LIMIT_EXCEEDED" }) used to fall
+        // through the !data.poolName branch and surface as
+        // "Invitation not found", an outright wrong message.
+        if (r.status === 429) {
+          setError("RATE_LIMITED");
+          return;
+        }
+        if (r.status >= 500) {
+          setError("SERVER_ERROR");
+          return;
+        }
+        const data = await r.json().catch(() => null);
+        if (data && data.poolName) {
           setPreview(data);
         } else {
-          setError(true);
+          setError("INVALID");
         }
       })
-      .catch(() => setError(true))
+      .catch(() => setError("SERVER_ERROR"))
       .finally(() => setLoading(false));
-  }, [code]);
+  }, [code, attempt]);
 
   if (loading) {
     return (
@@ -88,23 +111,57 @@ function InviteContent() {
   }
 
   if (error || !preview) {
+    // Map the discriminated error → specific copy. The retryable
+    // branches expose a "Try again" CTA in addition to "Go home" so
+    // the user has a one-click path that doesn't lose the link.
+    const isRetryable = error === "RATE_LIMITED" || error === "SERVER_ERROR";
+    const titleKey =
+      error === "RATE_LIMITED"
+        ? "inviteLanding.rateLimitTitle"
+        : error === "SERVER_ERROR"
+          ? "inviteLanding.serverErrorTitle"
+          : "inviteLanding.invalidTitle";
+    const descKey =
+      error === "RATE_LIMITED"
+        ? "inviteLanding.rateLimitDesc"
+        : error === "SERVER_ERROR"
+          ? "inviteLanding.serverErrorDesc"
+          : "inviteLanding.invalidDesc";
+    const emoji = error === "RATE_LIMITED" ? "⏳" : error === "SERVER_ERROR" ? "⚠️" : "😕";
+
     return (
       <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{
           background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: 20, padding: "48px 32px", maxWidth: 440, width: "100%", textAlign: "center",
         }}>
-          <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>😕</div>
+          <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>{emoji}</div>
           <h1 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 8 }}>
-            {t("inviteLanding.invalidTitle")}
+            {t(titleKey)}
           </h1>
           <p style={{ color: "var(--muted)", fontSize: "0.95rem", marginBottom: 24, lineHeight: 1.6 }}>
-            {t("inviteLanding.invalidDesc")}
+            {t(descKey)}
           </p>
+          {isRetryable && (
+            <button
+              type="button"
+              onClick={() => setAttempt((n) => n + 1)}
+              style={{
+                display: "inline-block", background: "var(--primary)", color: "white",
+                padding: "12px 24px", borderRadius: 12, fontWeight: 700, border: "none",
+                cursor: "pointer", marginRight: 8, marginBottom: 8,
+              }}
+            >
+              {t("inviteLanding.tryAgain")}
+            </button>
+          )}
           <Link
             href="/"
             style={{
-              display: "inline-block", background: "var(--primary)", color: "white",
+              display: "inline-block",
+              background: isRetryable ? "transparent" : "var(--primary)",
+              color: isRetryable ? "var(--text)" : "white",
+              border: isRetryable ? "1px solid var(--border)" : "none",
               padding: "12px 24px", borderRadius: 12, fontWeight: 700, textDecoration: "none",
             }}
           >

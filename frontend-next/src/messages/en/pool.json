@@ -972,6 +972,11 @@
     "expired": "This invitation is no longer valid or has expired.",
     "invalidTitle": "Invitation not found",
     "invalidDesc": "This invitation link may be invalid or expired. Ask the person who invited you to send a new one.",
+    "rateLimitTitle": "Too many requests",
+    "rateLimitDesc": "There were too many requests from your network in a short time. Wait a minute and try again — the link is still valid.",
+    "serverErrorTitle": "We couldn't load the invitation",
+    "serverErrorDesc": "We had a temporary problem on our servers. Please retry in a few seconds.",
+    "tryAgain": "Try again",
     "goHome": "Go to homepage"
   }
 }
