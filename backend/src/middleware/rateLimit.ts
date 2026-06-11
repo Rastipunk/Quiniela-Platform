@@ -23,6 +23,14 @@ const handler = (_req: Request, res: Response, _next: unknown, opts: RateLimitOp
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 
+/**
+ * IPv6 clients are bucketed by subnet. The library default (/56) can
+ * span hundreds of subscribers on IPv6-first mobile carriers (CO:
+ * Claro/Tigo/Movistar) — collective punishment. /64 is the standard
+ * per-subscriber assignment. See ADR-071.
+ */
+const IPV6_SUBNET = 64;
+
 // ── Rate limit configuration ────────────────────────────────
 // All values are overridable via environment variables.
 
@@ -33,6 +41,7 @@ export const apiLimiter = rateLimit({
   message: { error: "RATE_LIMIT_EXCEEDED" },
   standardHeaders: true,
   legacyHeaders: false,
+  ipv6Subnet: IPV6_SUBNET,
   handler,
   skip: (req) => req.path === "/health",
 });
@@ -44,6 +53,7 @@ export const authLimiter = rateLimit({
   message: { error: "TOO_MANY_LOGIN_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  ipv6Subnet: IPV6_SUBNET,
   handler,
 });
 
@@ -54,6 +64,7 @@ export const passwordResetLimiter = rateLimit({
   message: { error: "TOO_MANY_RESET_REQUESTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  ipv6Subnet: IPV6_SUBNET,
   handler,
 });
 
@@ -64,6 +75,7 @@ export const verificationResendLimiter = rateLimit({
   message: { error: "TOO_MANY_RESEND_REQUESTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  ipv6Subnet: IPV6_SUBNET,
   handler,
 });
 
@@ -74,6 +86,7 @@ export const poolJoinLimiter = rateLimit({
   message: { error: "TOO_MANY_JOIN_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  ipv6Subnet: IPV6_SUBNET,
   handler,
 });
 
@@ -90,6 +103,7 @@ export const corporateInviteCheckLimiter = rateLimit({
   message: { error: "TOO_MANY_INVITE_CHECKS" },
   standardHeaders: true,
   legacyHeaders: false,
+  ipv6Subnet: IPV6_SUBNET,
   handler,
 });
 
@@ -103,6 +117,7 @@ export const corporateActivateLimiter = rateLimit({
   message: { error: "TOO_MANY_ACTIVATION_ATTEMPTS" },
   standardHeaders: true,
   legacyHeaders: false,
+  ipv6Subnet: IPV6_SUBNET,
   handler,
 });
 
@@ -117,7 +132,7 @@ export const inviteSendLimiter = rateLimit({
     // Per-user when auth'd; fall back to IP normalized for IPv6 (/64 prefix)
     // so attackers can't bypass the limit by rotating addresses in the same block.
     const u = (req as { auth?: { userId?: string } }).auth?.userId;
-    return u ?? ipKeyGenerator(req.ip ?? "");
+    return u ?? ipKeyGenerator(req.ip ?? "", IPV6_SUBNET);
   },
   message: { error: "TOO_MANY_INVITE_REQUESTS_PER_HOUR" },
   standardHeaders: true,
@@ -135,7 +150,7 @@ export const inviteSendDailyLimiter = rateLimit({
     // Per-user when auth'd; fall back to IP normalized for IPv6 (/64 prefix)
     // so attackers can't bypass the limit by rotating addresses in the same block.
     const u = (req as { auth?: { userId?: string } }).auth?.userId;
-    return u ?? ipKeyGenerator(req.ip ?? "");
+    return u ?? ipKeyGenerator(req.ip ?? "", IPV6_SUBNET);
   },
   message: { error: "DAILY_INVITE_LIMIT_EXCEEDED" },
   standardHeaders: true,

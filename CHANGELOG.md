@@ -8,6 +8,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Rate limiting — real client IP resolution (2026-06-11)
+
+Root-cause fix for the all-day WC-eve blocking (`TOO_MANY_LOGIN_ATTEMPTS` / `RATE_LIMIT_EXCEEDED` / failed joins). See **ADR-071** and the forensic log `RATE_LIMIT_INCIDENT_2026-06-10.md`.
+
+#### Fixed
+- **`trust proxy` 1 → 2**: Railway's chain has two hops (`X-Forwarded-For: client, edge` — verified by injection test), so `req.ip` was resolving to the **edge node** and every user routed through it shared one rate-limit bucket (production evidence: 37 distinct IPs for 1,950 users in 24h of `AuditEvent`; the morning env raise could never fix a shared bucket). `req.ip` is now the real client — also repairs `AuditEvent.ip` forensics and payment fraud signals.
+- **`ipv6Subnet: 64`** on every limiter (library default /56 spans hundreds of subscribers on IPv6-first CO mobile carriers).
+- Ops (no commit): `RATE_LIMIT_POOL_JOIN_MAX` was never set during the morning mitigation — pool joins were still 10/15min per (shared) bucket, the exact reported bug. Set via env as immediate mitigation, then re-tuned with the rest to per-client scale.
+
 ### Estratega deadlines — deadline visibility + client-side lock (2026-06-10)
 
 Players now SEE when each group/knockout pick closes instead of discovering it via a raw `DEADLINE_PASSED` error. Delivery 3 of ADR-070.

@@ -5014,4 +5014,30 @@ matchLockUtc = kickoffUtc - deadlineMinutes
 
 ---
 
+## ADR-071: Rate limiting — client IP resolution (trust proxy 2) + per-identity bucket keying
+
+**Date:** 2026-06-11 | **Status:** Accepted
+
+**Context:** During WC-eve (2026-06-10) users were blocked all day by `TOO_MANY_LOGIN_ATTEMPTS` / `RATE_LIMIT_EXCEEDED` / join failures, despite a morning mitigation that raised limits via Railway env vars. Forensic investigation (full evidence log: `RATE_LIMIT_INCIDENT_2026-06-10.md`) **proved** the root cause: `app.set("trust proxy", 1)` while Railway's proxy chain has TWO hops. The edge (CDN77/DataCamp "hikari") appends itself to `X-Forwarded-For`, so the chain arrives as `"client_ip, edge_ip"`; with `1`, Express resolved `req.ip` to the **edge node**. Production data: 24h of `AuditEvent` showed **37 distinct IPs for 1,950 distinct users** (top edge IP: 967 users). Every "per-IP" limit was effectively a near-global limit per edge node — `authLimiter` 10/15min and `poolJoinLimiter` 10/15min (never raised by env) throttled the whole platform. Raising bucket sizes could never fix a shared-bucket problem. Collateral: `AuditEvent.ip` forensics polluted; API traffic verified NOT behind Cloudflare (`cf-ipcountry` undefined → see pending payments-country issue).
+
+**Decision:**
+1. **`trust proxy = 2`** — with the verified 2-hop chain, `req.ip` becomes the entry the edge wrote: the real client. Spoof-safe: a client-forged XFF lands further left and is never reached while the trusted hop count ≤ real honest hops. Verified empirically before AND after deploy by injecting a request and reading the logged chain / `RateLimit-Remaining` headers.
+2. **`ipv6Subnet: 64`** on every limiter (library default /56 can span hundreds of subscribers on IPv6-first CO mobile carriers).
+3. **Per-identity keying where identity exists** (phase 2 of the fix):
+   - `poolJoinLimiter` → keyed by `userId` (endpoint is authenticated; `poolsRouter.use(requireAuth)` runs first), IP fallback.
+   - `authLimiter` → keyed by `email|IP` (express.json runs before it, so `req.body.email` is available): brute force on one account from one IP is capped without collectively punishing a CGNAT/NAT/VPN crowd. A separate **per-IP ceiling** (`authIpLimiter`) bounds email-rotation credential stuffing from a single IP.
+   - `apiLimiter` stays per-IP (it runs before any auth middleware, so no identity is available) sized as a **CGNAT ceiling** — app-level rate limiting is abuse throttling, not DoS protection (that belongs at the edge).
+4. **Env values re-tuned to per-client scale** after the keying fix (the morning's 2000-5000 values were calibrated for shared edge buckets and are brute-force-friendly per client).
+
+**Consequences:**
+- ✅ A user's limits depend on their own behavior, not on how many neighbors share their carrier IP or edge node.
+- ✅ `AuditEvent.ip`, payment fraud signals (CAPI) and any `req.ip` consumer now record the real client. Historical rows before 2026-06-11 contain edge IPs — flagged for forensics.
+- ⚠️ If Railway ever changes its proxy chain depth, `trust proxy` must be re-verified (test: `GET /payments/country` logs the full XFF chain).
+- ⚠️ In-memory store: counters are per-replica (single replica today).
+
+**Related code:** `backend/src/server.ts` (trust proxy), `backend/src/middleware/rateLimit.ts` (all limiters + keying).
+**Forensic log:** `RATE_LIMIT_INCIDENT_2026-06-10.md`.
+
+---
+
 **END OF DOCUMENT**

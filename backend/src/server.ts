@@ -47,8 +47,15 @@ import { prisma } from "./db";
 
 const app = express();
 
-// Trust proxy — needed behind Railway's reverse proxy so rate-limit sees real client IP
-app.set("trust proxy", 1);
+// Trust proxy — Railway's chain has TWO hops, not one. Verified
+// empirically 2026-06-11 (RATE_LIMIT_INCIDENT_2026-06-10.md §E3): the
+// edge (CDN77/DataCamp "hikari") appends itself to X-Forwarded-For, so
+// the chain arrives as "client_ip, edge_ip". With `1`, Express resolved
+// req.ip to the EDGE node and every user routed through it shared one
+// rate-limit bucket (37 IPs for 1,950 users in AuditEvent). `2` makes
+// req.ip the entry the edge wrote — the real client, spoof-safe (a
+// client-forged XFF lands further left and is never reached).
+app.set("trust proxy", 2);
 
 // CORS — only allow our frontend origins (configurable via env)
 const SITE_DOMAIN = process.env.SITE_DOMAIN || "picks4all.com";
