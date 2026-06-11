@@ -19,6 +19,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { sendData, sendInternal } from "../lib/apiResponse";
 import { prisma } from "../db";
+import { createLimiter } from "../lib/asyncHelpers";
 
 export const adminAnalyticsDashboardRouter = Router();
 
@@ -375,14 +376,27 @@ interface CommunicationsHealth {
 type SectionError = { section: string; message: string };
 
 /**
+ * How many dashboard sections may execute their query bundles at the
+ * same time. Sections internally fan out to up to ~17 parallel queries
+ * (topLine), so unbounded section concurrency (26 at once) opened more
+ * connections than Postgres allows — every section past the limit died
+ * with "FATAL: sorry, too many clients already" and the dashboard
+ * rendered all zeros. Fully serial is the other extreme (sum of all
+ * section latencies ≈ 40 s under load). 4 keeps the worst-case burst
+ * near what the pre-parallel code already produced, at ~¼ the wall time.
+ */
+const SECTION_CONCURRENCY = parseInt(process.env.ADMIN_DASHBOARD_SECTION_CONCURRENCY || "4", 10);
+
+/**
  * Builds a per-call section runner. The error collector is scoped to a
  * single buildDashboardData() invocation — a module-level array would
- * interleave (and reset) errors across concurrent builds.
+ * interleave (and reset) errors across concurrent builds. The limiter
+ * bounds how many sections hit the database simultaneously.
  */
-function makeSafeRun(errors: SectionError[]) {
+function makeSafeRun(errors: SectionError[], limiter: ReturnType<typeof createLimiter>) {
   return async function safeRun<T>(section: string, fallback: T, fn: () => Promise<T>): Promise<T> {
     try {
-      return await fn();
+      return await limiter(fn);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[admin analytics] section "${section}" failed:`, err);
@@ -509,7 +523,7 @@ const DEFAULT_WEEK_AGO: TopLineWeekAgo = {
 
 async function buildDashboardData(): Promise<DashboardPayload> {
   const errors: SectionError[] = [];
-  const safeRun = makeSafeRun(errors);
+  const safeRun = makeSafeRun(errors, createLimiter(SECTION_CONCURRENCY));
   const now = new Date();
   const day7Ago = new Date(now.getTime() - 7 * 86_400_000);
   const day30Ago = new Date(now.getTime() - 30 * 86_400_000);
@@ -1755,11 +1769,11 @@ async function buildDashboardData(): Promise<DashboardPayload> {
     },
   );
 
-  // Await every section at once. Sections are mutually independent, so
-  // running them concurrently makes the wall time ≈ the slowest section
-  // instead of the sum of all 26 (which is what pushed cold loads past
-  // the frontend's 30 s request timeout). Queries beyond the Prisma
-  // connection-pool size simply queue.
+  // Sections are mutually independent and run SECTION_CONCURRENCY at a
+  // time (see createLimiter): full-serial summed every section's latency
+  // (≈40 s cold under load), while fully unbounded opened more Postgres
+  // connections than max_connections allows. The limiter is the middle
+  // ground; this Promise.all only gathers the already-bounded promises.
   const [
     topLine,
     topLineWeekAgo,
