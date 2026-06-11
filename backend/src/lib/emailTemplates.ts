@@ -509,19 +509,64 @@ export interface DeadlineReminderEmailParams {
   displayName: string;
   poolName: string;
   matchesCount: number;
+  /** Estratega: groups without a saved standings order (ADR-070). */
+  groupsCount?: number;
+  /** Estratega: knockout matches without a winner pick (ADR-070). */
+  knockoutsCount?: number;
   deadlineTime: string;
   poolId: string;
   locale?: string;
 }
 
+/**
+ * Human list of the user's pending pick units ("2 partidos sin
+ * pronóstico y 3 grupos sin guardar"), per locale. Shared by the email
+ * body, preheader and subject so they can never disagree.
+ */
+export function buildPendingUnitsList(
+  matchesCount: number,
+  groupsCount: number,
+  knockoutsCount: number,
+  locale: string,
+): string {
+  const fragments: Record<string, { matches: string; groups: string; knockouts: string; conj: string }> = {
+    es: {
+      matches: `${matchesCount} partido${matchesCount > 1 ? "s" : ""} sin pronóstico`,
+      groups: `${groupsCount} grupo${groupsCount > 1 ? "s" : ""} sin guardar`,
+      knockouts: `${knockoutsCount} ganador${knockoutsCount > 1 ? "es" : ""} de eliminatoria sin elegir`,
+      conj: "y",
+    },
+    en: {
+      matches: `${matchesCount} match${matchesCount > 1 ? "es" : ""} without a prediction`,
+      groups: `${groupsCount} group${groupsCount > 1 ? "s" : ""} without a saved order`,
+      knockouts: `${knockoutsCount} knockout winner${knockoutsCount > 1 ? "s" : ""} not picked`,
+      conj: "and",
+    },
+    pt: {
+      matches: `${matchesCount} partida${matchesCount > 1 ? "s" : ""} sem palpite`,
+      groups: `${groupsCount} grupo${groupsCount > 1 ? "s" : ""} sem ordem salva`,
+      knockouts: `${knockoutsCount} vencedor${knockoutsCount > 1 ? "es" : ""} de mata-mata sem escolher`,
+      conj: "e",
+    },
+  };
+  const f = fragments[locale] ?? fragments.en!;
+  const parts: string[] = [];
+  if (matchesCount > 0) parts.push(f.matches);
+  if (groupsCount > 0) parts.push(f.groups);
+  if (knockoutsCount > 0) parts.push(f.knockouts);
+  if (parts.length <= 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} ${f.conj} ${parts[parts.length - 1]}`;
+}
+
 export function getDeadlineReminderTemplate({
-  displayName, poolName, matchesCount, deadlineTime, poolId, locale = "es",
+  displayName, poolName, matchesCount, groupsCount = 0, knockoutsCount = 0,
+  deadlineTime, poolId, locale = "es",
 }: DeadlineReminderEmailParams): string {
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${poolId}`, emailUtm("deadline_reminder"));
-  const plural = matchesCount > 1;
   // XSS defence — host (poolName) + user (displayName) controlled.
   const safeDisplayName = escapeHtml(displayName);
   const safePoolName = escapeHtml(poolName);
+  const pendingList = buildPendingUnitsList(matchesCount, groupsCount, knockoutsCount, locale);
 
   const i18n: Record<string, {
     heading: string; greeting: string; pending: string;
@@ -530,29 +575,29 @@ export function getDeadlineReminderTemplate({
     es: {
       heading: "¡No olvides hacer tus pronósticos!",
       greeting: `Hola ${safeDisplayName},`,
-      pending: `Tienes <strong>${matchesCount} partido${plural ? "s" : ""}</strong> sin pronóstico en la quiniela <strong>${safePoolName}</strong>.`,
-      warning: "Después del deadline no podrás modificar tus pronósticos para estos partidos.",
+      pending: `Tienes <strong>${pendingList}</strong> en la quiniela <strong>${safePoolName}</strong>.`,
+      warning: "Después del cierre no podrás modificar estas selecciones.",
       cta: "Hacer mis Pronósticos",
       optout: "Puedes desactivar estos recordatorios desde tu perfil en Preferencias de Email.",
-      preheader: `Tienes ${matchesCount} partido${plural ? "s" : ""} pendiente${plural ? "s" : ""} en "${safePoolName}". Deadline: ${deadlineTime}`,
+      preheader: `Tienes ${pendingList} en "${safePoolName}". Cierre: ${deadlineTime}`,
     },
     en: {
       heading: "Don't forget to make your predictions!",
       greeting: `Hi ${safeDisplayName},`,
-      pending: `You have <strong>${matchesCount} match${plural ? "es" : ""}</strong> without a prediction in the pool <strong>${safePoolName}</strong>.`,
-      warning: "After the deadline, you won't be able to modify your predictions for these matches.",
+      pending: `You have <strong>${pendingList}</strong> in the pool <strong>${safePoolName}</strong>.`,
+      warning: "After the deadline, you won't be able to change these picks.",
       cta: "Make my Predictions",
       optout: "You can disable these reminders from your profile in Email Preferences.",
-      preheader: `You have ${matchesCount} pending match${plural ? "es" : ""} in "${safePoolName}". Deadline: ${deadlineTime}`,
+      preheader: `You have ${pendingList} in "${safePoolName}". Deadline: ${deadlineTime}`,
     },
     pt: {
       heading: "Não esqueça de fazer seus palpites!",
       greeting: `Olá ${safeDisplayName},`,
-      pending: `Você tem <strong>${matchesCount} partida${plural ? "s" : ""}</strong> sem palpite no bolão <strong>${safePoolName}</strong>.`,
-      warning: "Após o prazo, você não poderá modificar seus palpites para essas partidas.",
+      pending: `Você tem <strong>${pendingList}</strong> no bolão <strong>${safePoolName}</strong>.`,
+      warning: "Após o prazo, você não poderá alterar essas escolhas.",
       cta: "Fazer meus Palpites",
       optout: "Você pode desativar esses lembretes no seu perfil em Preferências de Email.",
-      preheader: `Você tem ${matchesCount} partida${plural ? "s" : ""} pendente${plural ? "s" : ""} em "${safePoolName}". Prazo: ${deadlineTime}`,
+      preheader: `Você tem ${pendingList} em "${safePoolName}". Prazo: ${deadlineTime}`,
     },
   };
   const t = i18n[locale] ?? i18n.en!;

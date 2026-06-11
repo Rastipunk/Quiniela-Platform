@@ -29,7 +29,7 @@ import {
   generateKnockoutWinnerBreakdown,
 } from "../lib/scoringBreakdown";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
-import { outcomeFromScore, buildPhaseTakesMatchPicks } from "../lib/poolHelpers";
+import { outcomeFromScore, buildPhaseTakesMatchPicks, buildGroupLockTimes } from "../lib/poolHelpers";
 import {
   extractMatches,
   extractTeams,
@@ -1414,6 +1414,11 @@ export async function getPoolNotifications(
     return teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
   };
 
+  // Banner window: a pending unit becomes "urgent" when its deadline
+  // is less than this many hours away (reminder emails use a wider,
+  // env-configurable window — see deadlineReminderService).
+  const URGENT_WINDOW_HOURS = 24;
+
   // Structural phases (Estratega) take group/knockout picks, not
   // per-match Prediction rows — counting their matches here would
   // flag "missing" picks that cannot exist (false-positive banner).
@@ -1437,7 +1442,7 @@ export async function getPoolNotifications(
 
     if (deadline > now) {
       const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
-      if (hoursUntilDeadline < 24 && !pickedMatchIds.has(match.id)) {
+      if (hoursUntilDeadline < URGENT_WINDOW_HOURS && !pickedMatchIds.has(match.id)) {
         urgentDeadlines.push({
           matchId: match.id,
           phaseId: match.phaseId,
@@ -1452,7 +1457,111 @@ export async function getPoolNotifications(
 
   urgentDeadlines.sort((a, b) => new Date(a.deadlineUtc).getTime() - new Date(b.deadlineUtc).getTime());
 
-  const pendingPicks = urgentDeadlines.length;
+  // ── Structural units (Estratega — ADR-070) ──────────────────
+  // Unsaved groups and unpicked knockout winners with a deadline
+  // inside the urgent window. "Saved" consults BOTH storages because
+  // both score (GroupStandingsPrediction rows + StructuralPrediction
+  // pickJson.groups).
+  const urgentGroups: Array<{
+    phaseId: string;
+    groupId: string;
+    deadlineUtc: string;
+    firstKickoffUtc: string;
+  }> = [];
+  const urgentKnockouts: Array<{
+    matchId: string;
+    phaseId: string;
+    deadlineUtc: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    kickoffUtc: string;
+  }> = [];
+
+  const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
+  const structuralConfigs = (pickTypesConfig ?? []).filter((pc) => pc.structuralPicks);
+  if (structuralConfigs.length > 0) {
+    const [groupPickRows, structuralPickRows] = await Promise.all([
+      prisma.groupStandingsPrediction.findMany({
+        where: { poolId, userId },
+        select: { phaseId: true, groupId: true },
+      }),
+      prisma.structuralPrediction.findMany({
+        where: { poolId, userId },
+        select: { phaseId: true, pickJson: true },
+      }),
+    ]);
+    const savedGroupKeys = new Set(
+      groupPickRows.map((g) => `${g.phaseId}:${g.groupId}`),
+    );
+    const pickedWinnerMatchIds = new Set<string>();
+    for (const sp of structuralPickRows) {
+      const pickJson = typed<StructuralPickJson>(sp.pickJson);
+      for (const g of pickJson.groups ?? []) {
+        savedGroupKeys.add(`${sp.phaseId}:${g.groupId}`);
+      }
+      for (const m of pickJson.matches ?? []) {
+        if (m.winnerId) pickedWinnerMatchIds.add(m.matchId);
+      }
+    }
+
+    const groupLocks = buildGroupLockTimes(matches, deadlineMinutes);
+
+    for (const phaseConfig of structuralConfigs) {
+      const sp = phaseConfig.structuralPicks!;
+      if (sp.type === "GROUP_STANDINGS") {
+        const seen = new Set<string>();
+        for (const match of matches) {
+          if (match.phaseId !== phaseConfig.phaseId) continue;
+          const gid = match.groupId;
+          if (!gid || seen.has(gid)) continue;
+          seen.add(gid);
+          if (savedGroupKeys.has(`${phaseConfig.phaseId}:${gid}`)) continue;
+          const lock = groupLocks.get(gid);
+          if (!lock || lock.firstKickoffUtc === null) continue;
+          if (lock.lockTimeMs <= now.getTime()) continue; // already locked — nothing actionable
+          const hoursUntilLock = (lock.lockTimeMs - now.getTime()) / (1000 * 60 * 60);
+          if (hoursUntilLock < URGENT_WINDOW_HOURS) {
+            urgentGroups.push({
+              phaseId: phaseConfig.phaseId,
+              groupId: gid,
+              deadlineUtc: new Date(lock.lockTimeMs).toISOString(),
+              firstKickoffUtc: lock.firstKickoffUtc,
+            });
+          }
+        }
+      } else if (sp.type === "KNOCKOUT_WINNER") {
+        for (const match of matches) {
+          if (match.phaseId !== phaseConfig.phaseId) continue;
+          if (isPlaceholder(match.homeTeamId) || isPlaceholder(match.awayTeamId)) continue;
+          if (pickedWinnerMatchIds.has(match.id)) continue;
+          const kickoff = new Date(match.kickoffUtc);
+          const deadline = new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000);
+          if (deadline <= now) continue;
+          const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+          if (hoursUntilDeadline < URGENT_WINDOW_HOURS) {
+            urgentKnockouts.push({
+              matchId: match.id,
+              phaseId: match.phaseId,
+              deadlineUtc: deadline.toISOString(),
+              homeTeamId: match.homeTeamId,
+              awayTeamId: match.awayTeamId,
+              kickoffUtc: match.kickoffUtc,
+            });
+          }
+        }
+      }
+    }
+
+    urgentGroups.sort((a, b) => new Date(a.deadlineUtc).getTime() - new Date(b.deadlineUtc).getTime());
+    urgentKnockouts.sort((a, b) => new Date(a.deadlineUtc).getTime() - new Date(b.deadlineUtc).getTime());
+  }
+
+  // Per-kind full counts (the detail arrays below are capped at 5) +
+  // total pending units (ADR-070 / D2 — the tab badge sums the total).
+  const pendingMatchPicks = urgentDeadlines.length;
+  const pendingGroupPicks = urgentGroups.length;
+  const pendingKnockoutPicks = urgentKnockouts.length;
+  const pendingPicks = pendingMatchPicks + pendingGroupPicks + pendingKnockoutPicks;
 
   let pendingJoins = 0;
   let pendingResults = 0;
@@ -1505,7 +1614,12 @@ export async function getPoolNotifications(
 
   return {
     pendingPicks,
+    pendingMatchPicks,
+    pendingGroupPicks,
+    pendingKnockoutPicks,
     urgentDeadlines: urgentDeadlines.slice(0, 5),
+    urgentGroups: urgentGroups.slice(0, 5),
+    urgentKnockouts: urgentKnockouts.slice(0, 5),
     pendingJoins: isHostOrCoAdmin ? pendingJoins : 0,
     pendingResults: isHostOrCoAdmin ? pendingResults : 0,
     phasesReadyToAdvance: isHostOrCoAdmin ? phasesReadyToAdvance : [],

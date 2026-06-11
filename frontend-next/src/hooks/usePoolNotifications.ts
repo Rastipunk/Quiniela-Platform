@@ -136,7 +136,12 @@ export function calculateTabBadges(notifications: PoolNotifications | null) {
   };
 }
 
-// Helper para determinar si hay deadlines urgentes (< 24h)
+// Helper para determinar si hay deadlines urgentes (< 24h) —
+// incluye unidades estructurales Estratega (grupos / eliminatorias)
 export function hasUrgentDeadlines(notifications: PoolNotifications | null): boolean {
-  return (notifications?.urgentDeadlines?.length ?? 0) > 0;
+  return (
+    (notifications?.urgentDeadlines?.length ?? 0) +
+    (notifications?.urgentGroups?.length ?? 0) +
+    (notifications?.urgentKnockouts?.length ?? 0)
+  ) > 0;
 }

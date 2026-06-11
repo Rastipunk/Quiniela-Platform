@@ -560,6 +560,10 @@
   "notifications": {
     "urgentPicks": "Tienes {count} partido sin predicción que cierra en las próximas horas ({details}).",
     "urgentPicksPlural": "Tienes {count} partidos sin predicción que cierran en las próximas horas ({details}).",
+    "urgentGroups": "Tienes {count} grupo sin guardar que cierra en las próximas horas (Grupo {groups}).",
+    "urgentGroupsPlural": "Tienes {count} grupos sin guardar que cierran en las próximas horas (Grupos {groups}).",
+    "urgentKnockouts": "Tienes {count} partido de eliminatoria sin ganador elegido que cierra en las próximas horas ({details}).",
+    "urgentKnockoutsPlural": "Tienes {count} partidos de eliminatoria sin ganador elegido que cierran en las próximas horas ({details}).",
     "countInPhase": "{count} en {phase}",
     "pendingResults": "{count} partido jugado sin resultado publicado.",
     "pendingResultsPlural": "{count} partidos jugados sin resultado publicado."

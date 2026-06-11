@@ -560,6 +560,10 @@
   "notifications": {
     "urgentPicks": "You have {count} match without a pick closing in the next few hours ({details}).",
     "urgentPicksPlural": "You have {count} matches without picks closing in the next few hours ({details}).",
+    "urgentGroups": "You have {count} group without a saved order closing in the next few hours (Group {groups}).",
+    "urgentGroupsPlural": "You have {count} groups without a saved order closing in the next few hours (Groups {groups}).",
+    "urgentKnockouts": "You have {count} knockout match without a winner pick closing in the next few hours ({details}).",
+    "urgentKnockoutsPlural": "You have {count} knockout matches without winner picks closing in the next few hours ({details}).",
     "countInPhase": "{count} in {phase}",
     "pendingResults": "{count} played match without a published result.",
     "pendingResultsPlural": "{count} played matches without published results."

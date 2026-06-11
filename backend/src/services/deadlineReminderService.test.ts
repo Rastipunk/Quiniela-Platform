@@ -32,6 +32,12 @@ vi.mock("../db", () => ({
       count: vi.fn(),
       groupBy: vi.fn(),
     },
+    groupStandingsPrediction: {
+      findMany: vi.fn(),
+    },
+    structuralPrediction: {
+      findMany: vi.fn(),
+    },
     user: {
       findUnique: vi.fn(),
     },
@@ -115,6 +121,10 @@ const createMockPool = (overrides: Partial<{
 describe("processDeadlineReminders", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Structural-pick lookups default to "no picks saved" — individual
+    // tests override when they need saved groups/winners.
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([]);
   });
 
   describe("Platform Settings Check", () => {
@@ -436,6 +446,8 @@ describe("Integration Scenarios", () => {
     vi.mocked(emailModule.isEmailEnabled).mockResolvedValue({
       enabled: true,
     });
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([]);
   });
 
   it("should handle multiple pools with multiple users", async () => {
@@ -608,6 +620,281 @@ describe("Integration Scenarios", () => {
     expect(emailModule.sendDeadlineReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         matchesCount: 1, // only the score-phase match
+      })
+    );
+  });
+
+  it("should remind unsaved groups in structural pools (groupsCount, synthetic log key)", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-simple",
+          name: "Estratega Pool",
+          predictions: [],
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                {
+                  id: "match-1",
+                  phaseId: "group_stage",
+                  groupId: "A",
+                  kickoffTime: in6Hours.toISOString(),
+                  homeTeam: "A1",
+                  awayTeam: "A2",
+                },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          {
+            phaseId: "group_stage",
+            phaseName: "Fase de Grupos",
+            requiresScore: false,
+            structuralPicks: {
+              type: "GROUP_STANDINGS",
+              config: { pointsPerExactPosition: 10 },
+            },
+          },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(emailModule.sendDeadlineReminderEmail).mockResolvedValue({
+      success: true,
+    });
+
+    const result = await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchesCount: 0,
+        groupsCount: 1,
+        knockoutsCount: 0,
+      })
+    );
+    expect(prisma.deadlineReminderLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          matchId: "group:group_stage:A",
+          success: true,
+        }),
+      })
+    );
+    expect(result.emailsSent).toBe(1);
+  });
+
+  it("should NOT remind a group saved in GroupStandingsPrediction", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-simple",
+          predictions: [],
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                { id: "match-1", phaseId: "group_stage", groupId: "A", kickoffTime: in6Hours.toISOString(), homeTeam: "A1", awayTeam: "A2" },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          { phaseId: "group_stage", phaseName: "Grupos", requiresScore: false, structuralPicks: { type: "GROUP_STANDINGS", config: { pointsPerExactPosition: 10 } } },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([
+      { userId: "user-1", phaseId: "group_stage", groupId: "A" },
+    ] as any);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([]);
+
+    const result = await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).not.toHaveBeenCalled();
+    expect(result.emailsSent).toBe(0);
+  });
+
+  it("should NOT remind a group saved via StructuralPrediction.pickJson.groups (second storage)", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-simple",
+          predictions: [],
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                { id: "match-1", phaseId: "group_stage", groupId: "A", kickoffTime: in6Hours.toISOString(), homeTeam: "A1", awayTeam: "A2" },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          { phaseId: "group_stage", phaseName: "Grupos", requiresScore: false, structuralPicks: { type: "GROUP_STANDINGS", config: { pointsPerExactPosition: 10 } } },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([
+      {
+        userId: "user-1",
+        phaseId: "group_stage",
+        pickJson: { groups: [{ groupId: "A", teamIds: ["t1", "t2", "t3", "t4"] }] },
+      },
+    ] as any);
+
+    const result = await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).not.toHaveBeenCalled();
+    expect(result.emailsSent).toBe(0);
+  });
+
+  it("should dedupe group reminders via the synthetic log key", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-simple",
+          predictions: [],
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                { id: "match-1", phaseId: "group_stage", groupId: "A", kickoffTime: in6Hours.toISOString(), homeTeam: "A1", awayTeam: "A2" },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          { phaseId: "group_stage", phaseName: "Grupos", requiresScore: false, structuralPicks: { type: "GROUP_STANDINGS", config: { pointsPerExactPosition: 10 } } },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([
+      { matchId: "group:group_stage:A" },
+    ] as any);
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([]);
+
+    const result = await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).not.toHaveBeenCalled();
+    expect(result.emailsSent).toBe(0);
+  });
+
+  it("should remind knockout winners pending, skipping placeholder matches", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-ko",
+          predictions: [],
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                // Real teams — must be reminded
+                { id: "ko-1", phaseId: "round_of_16", homeTeamId: "t_BRA", awayTeamId: "t_ARG", kickoffTime: in6Hours.toISOString() },
+                // Placeholder — cannot be picked yet, must be skipped
+                { id: "ko-2", phaseId: "round_of_16", homeTeamId: "W_A", awayTeamId: "RU_B", kickoffTime: in6Hours.toISOString() },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          { phaseId: "round_of_16", phaseName: "Octavos", requiresScore: false, structuralPicks: { type: "KNOCKOUT_WINNER", config: { pointsPerCorrectAdvance: 20 } } },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(emailModule.sendDeadlineReminderEmail).mockResolvedValue({
+      success: true,
+    });
+
+    await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchesCount: 0,
+        groupsCount: 0,
+        knockoutsCount: 1,
+      })
+    );
+    expect(prisma.deadlineReminderLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ matchId: "ko-1" }),
+      })
+    );
+  });
+
+  it("should combine score matches and structural units in MIXED pools without double counting", async () => {
+    const now = new Date();
+    const in6Hours = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+    const in8Hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+
+    const pools = [
+      {
+        ...createMockPool({
+          id: "pool-mixed",
+          predictions: [],
+          tournamentInstance: {
+            dataJson: {
+              matches: [
+                { id: "match-score", phaseId: "group_stage", kickoffTime: in6Hours.toISOString(), homeTeam: "A", awayTeam: "B" },
+                { id: "ko-1", phaseId: "round_of_16", groupId: undefined, homeTeamId: "t_BRA", awayTeamId: "t_ARG", kickoffTime: in8Hours.toISOString() },
+              ],
+            },
+          } as any,
+        }),
+        pickTypesConfig: [
+          { phaseId: "group_stage", phaseName: "Grupos", requiresScore: true, matchPicks: { types: [{ key: "EXACT_SCORE", enabled: true, points: 20 }] } },
+          { phaseId: "round_of_16", phaseName: "Octavos", requiresScore: false, structuralPicks: { type: "KNOCKOUT_WINNER", config: { pointsPerCorrectAdvance: 20 } } },
+        ],
+      },
+    ];
+
+    vi.mocked(prisma.pool.findMany).mockResolvedValue(pools as any);
+    vi.mocked(prisma.deadlineReminderLog.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.groupStandingsPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.structuralPrediction.findMany).mockResolvedValue([]);
+    vi.mocked(emailModule.sendDeadlineReminderEmail).mockResolvedValue({
+      success: true,
+    });
+
+    await processDeadlineReminders();
+
+    expect(emailModule.sendDeadlineReminderEmail).toHaveBeenCalledTimes(1);
+    expect(emailModule.sendDeadlineReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        matchesCount: 1,
+        groupsCount: 0,
+        knockoutsCount: 1,
       })
     );
   });

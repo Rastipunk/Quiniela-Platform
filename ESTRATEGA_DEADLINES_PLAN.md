@@ -309,13 +309,13 @@ siendo el 409 del backend (E4 + ruta protegida existente).
 - [ ] 4.5 Verificación en producción: PUT directo con grupo bloqueado → 409 (tras deploy)
 
 ### Entrega 2 — Avisos de grupos
-- [ ] 2.1 `getPoolNotifications`: `urgentGroups` + `urgentKnockouts` + `pendingPicks` (D2)
-- [ ] 2.2 `deadlineReminderService`: unidades estructurales en ventana + dedupe (D1)
-- [ ] 2.3 Email: params + template variante Estratega (ES/EN/PT)
-- [ ] 2.4 Frontend: tipo `PoolNotifications` + bannerItems + keys i18n ×3 locales
-- [ ] 2.5 Tests: reminder (grupo pendiente / guardado en cada tabla / dedupe / MIXED)
-- [ ] 2.6 API_SPEC.md: response de notifications
-- [ ] 2.7 Verificación: dry-run del reminder en producción + banner en pool Estratega real
+- [x] 2.1 `getPoolNotifications`: `urgentGroups` + `urgentKnockouts` + `pendingPicks` total + conteos por tipo (`pendingMatchPicks`/`pendingGroupPicks`/`pendingKnockoutPicks`)
+- [x] 2.2 `deadlineReminderService`: unidades estructurales en ventana + dedupe sintético `group:{phaseId}:{groupId}` (D1)
+- [x] 2.3 Email: `buildPendingUnitsList` compartido (subject+body+preheader) + copy ES/EN/PT
+- [x] 2.4 Frontend: tipo `PoolNotifications` (prop dejó de ser `any`) + bannerItems grupos/KO + keys i18n ×3
+- [x] 2.5 Tests: 6 regresiones nuevas (pendiente/guardado en cada tabla/dedupe/placeholder/MIXED) — suite 702 pass, 19 pre-existentes
+- [x] 2.6 API_SPEC.md: response completo de notifications
+- [ ] 2.7 Verificación: dry-run del reminder en producción + banner en pool Estratega real (tras deploy)
 
 ### Entrega 3 — UX de deadline
 - [ ] 3.1 Plumbing de `deadlineMinutesBeforeKickoff` + TZ (D3) hasta las cards

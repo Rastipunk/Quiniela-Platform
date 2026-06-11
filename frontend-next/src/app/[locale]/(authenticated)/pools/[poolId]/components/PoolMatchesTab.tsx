@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { StructuralPicksManager } from "@/components/StructuralPicksManager";
 import { NotificationBanner } from "@/components/NotificationBanner";
-import { getMatchPicks, setScoringOverride, type MatchPicksResponse } from "@/lib/api";
+import { getMatchPicks, setScoringOverride, type MatchPicksResponse, type PoolNotifications } from "@/lib/api";
 import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { formatPhaseName, formatPhaseFullName, isPlaceholder } from "./poolHelpers";
 import { MatchCard } from "./MatchCard";
@@ -58,7 +58,7 @@ interface PoolMatchesTabProps {
   onCreateInvite: () => Promise<void>;
   inviteCode: string | null;
   // Notifications
-  notifications: any;
+  notifications: PoolNotifications | null;
   tabBadges: Record<string, number>;
   // Modals
   setBreakdownModalData: (data: any) => void;
@@ -214,11 +214,46 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
             .map(([phaseId, count]) => t("notifications.countInPhase", { count, phase: formatPhaseFullName(phaseId, t) }))
             .join(", ");
 
+          // pendingPicks ahora es el TOTAL de unidades (ADR-070) — este
+          // item solo cubre picks de partido, usar su conteo propio.
+          const matchPickCount = notifications.pendingMatchPicks ?? notifications.pendingPicks;
           bannerItems.push({
             icon: "⏰",
-            message: notifications.pendingPicks > 1
-              ? t("notifications.urgentPicksPlural", { count: notifications.pendingPicks, details: phaseDetails })
-              : t("notifications.urgentPicks", { count: notifications.pendingPicks, details: phaseDetails })
+            message: matchPickCount > 1
+              ? t("notifications.urgentPicksPlural", { count: matchPickCount, details: phaseDetails })
+              : t("notifications.urgentPicks", { count: matchPickCount, details: phaseDetails })
+          });
+        }
+
+        // Estratega: grupos sin guardar con cierre próximo (ADR-070)
+        const urgentGroups = notifications.urgentGroups ?? [];
+        if (urgentGroups.length > 0) {
+          const groupCount = notifications.pendingGroupPicks ?? urgentGroups.length;
+          const groupList = urgentGroups.map((g) => g.groupId).join(", ");
+          bannerItems.push({
+            icon: "📋",
+            message: groupCount > 1
+              ? t("notifications.urgentGroupsPlural", { count: groupCount, groups: groupList })
+              : t("notifications.urgentGroups", { count: groupCount, groups: groupList })
+          });
+        }
+
+        // Estratega: eliminatorias sin ganador con cierre próximo (ADR-070)
+        const urgentKnockouts = notifications.urgentKnockouts ?? [];
+        if (urgentKnockouts.length > 0) {
+          const knockoutCount = notifications.pendingKnockoutPicks ?? urgentKnockouts.length;
+          const byPhase: Record<string, number> = {};
+          for (const d of urgentKnockouts) {
+            byPhase[d.phaseId] = (byPhase[d.phaseId] || 0) + 1;
+          }
+          const phaseDetails = Object.entries(byPhase)
+            .map(([phaseId, count]) => t("notifications.countInPhase", { count, phase: formatPhaseFullName(phaseId, t) }))
+            .join(", ");
+          bannerItems.push({
+            icon: "🏆",
+            message: knockoutCount > 1
+              ? t("notifications.urgentKnockoutsPlural", { count: knockoutCount, details: phaseDetails })
+              : t("notifications.urgentKnockouts", { count: knockoutCount, details: phaseDetails })
           });
         }
 

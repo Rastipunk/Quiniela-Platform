@@ -58,8 +58,29 @@ export type CreatePoolInput = {
 };
 
 export type PoolNotifications = {
+  /** Total pending pick units: match picks + unsaved groups + unpicked knockout winners (ADR-070). */
   pendingPicks: number;
+  /** Per-kind full counts (the detail arrays are capped at 5). Optional: older backends omit them. */
+  pendingMatchPicks?: number;
+  pendingGroupPicks?: number;
+  pendingKnockoutPicks?: number;
   urgentDeadlines: Array<{
+    matchId: string;
+    phaseId: string;
+    deadlineUtc: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    kickoffUtc: string;
+  }>;
+  /** Estratega: groups without a saved standings order whose lock is near (ADR-070). */
+  urgentGroups?: Array<{
+    phaseId: string;
+    groupId: string;
+    deadlineUtc: string;
+    firstKickoffUtc: string;
+  }>;
+  /** Estratega: knockout matches without a winner pick whose deadline is near (ADR-070). */
+  urgentKnockouts?: Array<{
     matchId: string;
     phaseId: string;
     deadlineUtc: string;

@@ -707,7 +707,7 @@ All require HOST or CO_ADMIN role.
 | GET | `/pools/:poolId/breakdown/phase/:phaseId` | Yes (admin) | Phase scoring breakdown |
 | GET | `/pools/:poolId/breakdown/group/:groupId` | Yes (admin) | Group standings breakdown |
 | GET | `/pools/:poolId/players/:userId/summary` | Yes (admin) | Player scoring summary |
-| GET | `/pools/:poolId/notifications` | Yes (admin) | Pool notification history |
+| GET | `/pools/:poolId/notifications` | Yes (member) | Pending picks + admin counters for the banner/badges |
 
 #### PUT /pools/:poolId/matches/:matchId/scoring-override
 
@@ -731,6 +731,32 @@ All require HOST or CO_ADMIN role.
 #### POST /pools/:poolId/lock-phase
 
 **Body:** `{ "phaseId": "r16", "locked": true }`
+
+#### GET /pools/:poolId/notifications
+
+Pending pick units for the current member (urgent = deadline < 24h away), plus host/co-admin counters. Structural units (Estratega) per ADR-070.
+
+```json
+{
+  "pendingPicks": 4,
+  "pendingMatchPicks": 1,
+  "pendingGroupPicks": 2,
+  "pendingKnockoutPicks": 1,
+  "urgentDeadlines": [{ "matchId": "m1", "phaseId": "group_stage", "deadlineUtc": "...", "homeTeamId": "t1", "awayTeamId": "t2", "kickoffUtc": "..." }],
+  "urgentGroups": [{ "phaseId": "group_stage", "groupId": "A", "deadlineUtc": "...", "firstKickoffUtc": "..." }],
+  "urgentKnockouts": [{ "matchId": "ko1", "phaseId": "round_of_16", "deadlineUtc": "...", "homeTeamId": "t1", "awayTeamId": "t2", "kickoffUtc": "..." }],
+  "pendingJoins": 0,
+  "pendingResults": 0,
+  "phasesReadyToAdvance": [],
+  "isHostOrCoAdmin": false,
+  "updatedAt": "..."
+}
+```
+
+- `pendingPicks` = total pending units (match picks + unsaved groups + unpicked knockout winners) — the tab badge sums this.
+- The three `urgent*` detail arrays are capped at 5 entries each; the `pending*Picks` counters carry the full counts.
+- A group is "saved" if a pick exists in EITHER storage (`GroupStandingsPrediction` or `StructuralPrediction.pickJson.groups`).
+- `pendingJoins`/`pendingResults`/`phasesReadyToAdvance` are zero/empty for non-admin members.
 
 ---
 

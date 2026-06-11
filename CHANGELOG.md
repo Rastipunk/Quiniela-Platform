@@ -8,6 +8,18 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Estratega deadlines — structural notifications + reminders (2026-06-10)
+
+Estratega members now get warned about unsaved groups and unpicked knockout winners — banner and reminder emails were blind to structural units (the banner stayed blank, zero reminders). Delivery 2 of ADR-070.
+
+#### Added
+- **`GET /pools/:poolId/notifications`** now returns `urgentGroups[]` / `urgentKnockouts[]` (deadline < 24h, capped at 5) + full per-kind counters (`pendingMatchPicks` / `pendingGroupPicks` / `pendingKnockoutPicks`). A group is "saved" if a pick exists in EITHER storage. `pendingPicks` becomes the **total** of pending units, so the tab badge covers Estratega pools with no frontend formula change.
+- **Deadline-reminder emails cover structural units**: groups whose lock falls in the 48h window + knockout matches without a winner (placeholders skipped). Dedupe reuses `DeadlineReminderLog.matchId` with the synthetic key `group:{phaseId}:{groupId}` — no migration. Email copy lists the pending units per kind ("2 grupos sin guardar y 1 ganador de eliminatoria sin elegir") in ES/EN/PT (`buildPendingUnitsList`, shared by subject, body and preheader).
+- **Banner items** for groups ("X grupos sin guardar (Grupos A, B)") and knockouts, in the three locales. 6 new reminder-service regression tests (fires/suppresses per storage, synthetic dedupe, placeholder skip, MIXED pools).
+
+#### Changed
+- `PoolMatchesTab.notifications` prop typed (`PoolNotifications | null`, was `any`); the match banner item uses `pendingMatchPicks` instead of the now-total `pendingPicks`.
+
 ### Estratega deadlines — integrity lock on structural-picks (2026-06-10)
 
 Closes the fairness hole where group-standings picks sent through `PUT /structural-picks/:phaseId` after kickoff were saved without any deadline check **and still scored** (both group-pick storages feed the leaderboard). See **ADR-070** (delivery 1 of 3; notifications and deadline UX follow). Spec: `ESTRATEGA_DEADLINES_PLAN.md`.

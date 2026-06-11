@@ -560,6 +560,10 @@
   "notifications": {
     "urgentPicks": "Você tem {count} jogo sem palpite que fecha nas próximas horas ({details}).",
     "urgentPicksPlural": "Você tem {count} jogos sem palpite que fecham nas próximas horas ({details}).",
+    "urgentGroups": "Você tem {count} grupo sem ordem salva que fecha nas próximas horas (Grupo {groups}).",
+    "urgentGroupsPlural": "Você tem {count} grupos sem ordem salva que fecham nas próximas horas (Grupos {groups}).",
+    "urgentKnockouts": "Você tem {count} jogo de mata-mata sem vencedor escolhido que fecha nas próximas horas ({details}).",
+    "urgentKnockoutsPlural": "Você tem {count} jogos de mata-mata sem vencedor escolhido que fecham nas próximas horas ({details}).",
     "countInPhase": "{count} em {phase}",
     "pendingResults": "{count} jogo disputado sem resultado publicado.",
     "pendingResultsPlural": "{count} jogos disputados sem resultado publicado."

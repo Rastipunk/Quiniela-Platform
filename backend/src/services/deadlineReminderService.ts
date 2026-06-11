@@ -11,7 +11,9 @@
 import { prisma } from "../db";
 import { sendDeadlineReminderEmail, isEmailEnabled } from "../lib/email";
 import { resolveUserLocale } from "../lib/constants";
-import { buildPhaseTakesMatchPicks } from "../lib/poolHelpers";
+import { buildPhaseTakesMatchPicks, buildGroupLockTimes } from "../lib/poolHelpers";
+import { typed, type StructuralPickJson } from "../lib/fixture";
+import type { PhasePickConfig } from "../types/pickConfig";
 
 // =========================================================================
 // TIPOS
@@ -34,6 +36,8 @@ interface ReminderDetail {
   userId: string;
   userEmail: string;
   matchesCount: number;
+  groupsCount?: number;
+  knockoutsCount?: number;
   status: "sent" | "skipped" | "failed";
   reason?: string;
 }
@@ -45,11 +49,22 @@ interface MatchWithDeadline {
   homeTeamId?: string;
   awayTeamId?: string;
   kickoffUtc?: string;
+  groupId?: string;
   // Legacy field names (fallback)
   homeTeam?: string;
   awayTeam?: string;
   kickoffTime?: string;
   group?: string;
+}
+
+/** Structural pick unit (Estratega) whose deadline falls in the window. */
+interface StructuralUnitWithDeadline {
+  /** DeadlineReminderLog.matchId value — real matchId for knockouts, synthetic key for groups. */
+  reminderKey: string;
+  phaseId: string;
+  groupId?: string;
+  matchId?: string;
+  deadline: Date;
 }
 
 interface TournamentData {
@@ -112,6 +127,28 @@ function getMatchDeadline(
 ): Date {
   const kickoff = new Date(kickoffTime);
   return new Date(kickoff.getTime() - deadlineMinutesBeforeKickoff * 60 * 1000);
+}
+
+/**
+ * Synthetic DeadlineReminderLog.matchId for group units (ADR-070 / D1).
+ * Group reminders dedupe on (poolId, userId, "group:{phaseId}:{groupId}")
+ * via the existing unique index — no migration. No collision with real
+ * matchIds: knockout structural units use the matchId itself, and a
+ * phase is either match-based or structural, never both.
+ */
+function groupReminderKey(phaseId: string, groupId: string): string {
+  return `group:${phaseId}:${groupId}`;
+}
+
+/** Placeholder teams (W_A, RU_B, L_x, 3rd_*) cannot be picked yet. */
+function isPlaceholderTeam(teamId: string | undefined): boolean {
+  if (!teamId) return false;
+  return (
+    teamId.startsWith("W_") ||
+    teamId.startsWith("RU_") ||
+    teamId.startsWith("L_") ||
+    teamId.startsWith("3rd_")
+  );
 }
 
 /**
@@ -236,10 +273,109 @@ export async function processDeadlineReminders(
       return deadline > now && deadline <= reminderWindowEnd;
     });
 
-    if (upcomingMatches.length === 0) continue;
+    // ── Structural units (Estratega — ADR-070) ────────────────
+    // Groups whose lock falls in the window + knockout matches whose
+    // deadline falls in the window. "Saved" consults BOTH storages
+    // because both score (GroupStandingsPrediction rows +
+    // StructuralPrediction.pickJson.groups).
+    const pickTypesConfig = pool.pickTypesConfig as PhasePickConfig[] | null;
+    const structuralConfigs = (pickTypesConfig ?? []).filter((pc) => pc.structuralPicks);
+
+    const upcomingGroupUnits: StructuralUnitWithDeadline[] = [];
+    const upcomingKnockoutUnits: StructuralUnitWithDeadline[] = [];
+    const savedGroupKeysByUser = new Map<string, Set<string>>();
+    const pickedWinnersByUser = new Map<string, Set<string>>();
+
+    if (structuralConfigs.length > 0) {
+      const groupLocks = buildGroupLockTimes(
+        matches.map((m) => ({ groupId: m.groupId, kickoffUtc: getKickoff(m) ?? "" })),
+        pool.deadlineMinutesBeforeKickoff,
+      );
+
+      for (const phaseConfig of structuralConfigs) {
+        const sp = phaseConfig.structuralPicks!;
+        if (sp.type === "GROUP_STANDINGS") {
+          const seen = new Set<string>();
+          for (const match of matches) {
+            if (match.phaseId !== phaseConfig.phaseId) continue;
+            const gid = match.groupId;
+            if (!gid || seen.has(gid)) continue;
+            seen.add(gid);
+            const lock = groupLocks.get(gid);
+            if (!lock || !Number.isFinite(lock.lockTimeMs)) continue;
+            const deadline = new Date(lock.lockTimeMs);
+            if (deadline > now && deadline <= reminderWindowEnd) {
+              upcomingGroupUnits.push({
+                reminderKey: groupReminderKey(phaseConfig.phaseId, gid),
+                phaseId: phaseConfig.phaseId,
+                groupId: gid,
+                deadline,
+              });
+            }
+          }
+        } else if (sp.type === "KNOCKOUT_WINNER") {
+          for (const match of matches) {
+            if (match.phaseId !== phaseConfig.phaseId) continue;
+            if (isPlaceholderTeam(match.homeTeamId) || isPlaceholderTeam(match.awayTeamId)) continue;
+            const kickoff = getKickoff(match);
+            if (!kickoff) continue;
+            const deadline = getMatchDeadline(kickoff, pool.deadlineMinutesBeforeKickoff);
+            if (deadline > now && deadline <= reminderWindowEnd) {
+              upcomingKnockoutUnits.push({
+                reminderKey: match.id,
+                phaseId: phaseConfig.phaseId,
+                matchId: match.id,
+                deadline,
+              });
+            }
+          }
+        }
+      }
+
+      if (upcomingGroupUnits.length > 0 || upcomingKnockoutUnits.length > 0) {
+        const [groupRows, structRows] = await Promise.all([
+          prisma.groupStandingsPrediction.findMany({
+            where: { poolId: pool.id },
+            select: { userId: true, phaseId: true, groupId: true },
+          }),
+          prisma.structuralPrediction.findMany({
+            where: { poolId: pool.id },
+            select: { userId: true, phaseId: true, pickJson: true },
+          }),
+        ]);
+        for (const row of groupRows) {
+          const set = savedGroupKeysByUser.get(row.userId) ?? new Set<string>();
+          set.add(`${row.phaseId}:${row.groupId}`);
+          savedGroupKeysByUser.set(row.userId, set);
+        }
+        for (const row of structRows) {
+          const pickJson = typed<StructuralPickJson>(row.pickJson);
+          if (pickJson.groups) {
+            const set = savedGroupKeysByUser.get(row.userId) ?? new Set<string>();
+            for (const g of pickJson.groups) set.add(`${row.phaseId}:${g.groupId}`);
+            savedGroupKeysByUser.set(row.userId, set);
+          }
+          if (pickJson.matches) {
+            const set = pickedWinnersByUser.get(row.userId) ?? new Set<string>();
+            for (const m of pickJson.matches) {
+              if (m.winnerId) set.add(m.matchId);
+            }
+            pickedWinnersByUser.set(row.userId, set);
+          }
+        }
+      }
+    }
+
+    if (
+      upcomingMatches.length === 0 &&
+      upcomingGroupUnits.length === 0 &&
+      upcomingKnockoutUnits.length === 0
+    ) {
+      continue;
+    }
 
     console.log(
-      `   Pool "${pool.name}": ${upcomingMatches.length} partidos con deadline próximo`
+      `   Pool "${pool.name}": ${upcomingMatches.length} partidos, ${upcomingGroupUnits.length} grupos, ${upcomingKnockoutUnits.length} eliminatorias con deadline próximo`
     );
 
     // Para cada miembro activo
@@ -261,38 +397,68 @@ export async function processDeadlineReminders(
         (match) => !predictedMatchIds.has(match.id)
       );
 
-      if (matchesWithoutPick.length === 0) continue;
+      // Unidades estructurales sin pick para este usuario
+      const userSavedGroupKeys = savedGroupKeysByUser.get(user.id) ?? new Set<string>();
+      const groupsWithoutPick = upcomingGroupUnits.filter(
+        (u) => !userSavedGroupKeys.has(`${u.phaseId}:${u.groupId}`)
+      );
+      const userPickedWinners = pickedWinnersByUser.get(user.id) ?? new Set<string>();
+      const knockoutsWithoutPick = upcomingKnockoutUnits.filter(
+        (u) => !userPickedWinners.has(u.matchId!)
+      );
 
-      // Verificar si ya enviamos recordatorio para estos partidos
+      const pendingUnitKeys = [
+        ...matchesWithoutPick.map((m) => m.id),
+        ...groupsWithoutPick.map((u) => u.reminderKey),
+        ...knockoutsWithoutPick.map((u) => u.reminderKey),
+      ];
+      if (pendingUnitKeys.length === 0) continue;
+
+      // Verificar si ya enviamos recordatorio para estas unidades
       const existingReminders = await prisma.deadlineReminderLog.findMany({
         where: {
           poolId: pool.id,
           userId: user.id,
-          matchId: { in: matchesWithoutPick.map((m) => m.id) },
+          matchId: { in: pendingUnitKeys },
         },
         select: { matchId: true },
       });
 
-      const alreadyRemindedMatchIds = new Set(
+      const alreadyReminded = new Set(
         existingReminders.map((r) => r.matchId)
       );
       const matchesToRemind = matchesWithoutPick.filter(
-        (m) => !alreadyRemindedMatchIds.has(m.id)
+        (m) => !alreadyReminded.has(m.id)
       );
+      const groupsToRemind = groupsWithoutPick.filter(
+        (u) => !alreadyReminded.has(u.reminderKey)
+      );
+      const knockoutsToRemind = knockoutsWithoutPick.filter(
+        (u) => !alreadyReminded.has(u.reminderKey)
+      );
+      const unitKeysToLog = [
+        ...matchesToRemind.map((m) => m.id),
+        ...groupsToRemind.map((u) => u.reminderKey),
+        ...knockoutsToRemind.map((u) => u.reminderKey),
+      ];
 
-      if (matchesToRemind.length === 0) continue;
+      if (unitKeysToLog.length === 0) continue;
 
-      // Calcular el deadline más próximo para el email
-      const firstMatch = matchesToRemind[0]!; // Safe: we already checked length > 0
-      const nearestDeadline = matchesToRemind.reduce((nearest, match) => {
+      // Calcular el deadline más próximo entre TODAS las unidades
+      const candidateDeadlines: Date[] = [];
+      for (const match of matchesToRemind) {
         const kickoff = getKickoff(match);
-        if (!kickoff) return nearest;
-        const deadline = getMatchDeadline(
-          kickoff,
-          pool.deadlineMinutesBeforeKickoff
-        );
-        return deadline < nearest ? deadline : nearest;
-      }, new Date(getKickoff(firstMatch)!));
+        if (kickoff) {
+          candidateDeadlines.push(getMatchDeadline(kickoff, pool.deadlineMinutesBeforeKickoff));
+        }
+      }
+      for (const u of groupsToRemind) candidateDeadlines.push(u.deadline);
+      for (const u of knockoutsToRemind) candidateDeadlines.push(u.deadline);
+      let nearestDeadline: Date | null = null;
+      for (const d of candidateDeadlines) {
+        if (!nearestDeadline || d < nearestDeadline) nearestDeadline = d;
+      }
+      if (!nearestDeadline) continue; // defensive: every unit lacked a parseable deadline
 
       const userLocale = resolveUserLocale(user);
       const deadlineFormatted = formatDeadlineTime(nearestDeadline, pool.timeZone, userLocale);
@@ -304,6 +470,8 @@ export async function processDeadlineReminders(
         userId: user.id,
         userEmail: user.email,
         matchesCount: matchesToRemind.length,
+        groupsCount: groupsToRemind.length,
+        knockoutsCount: knockoutsToRemind.length,
         status: "sent",
       };
 
@@ -323,6 +491,8 @@ export async function processDeadlineReminders(
           displayName: user.displayName,
           poolName: pool.name,
           matchesCount: matchesToRemind.length,
+          groupsCount: groupsToRemind.length,
+          knockoutsCount: knockoutsToRemind.length,
           deadlineTime: deadlineFormatted,
           poolId: pool.id,
           locale: userLocale,
@@ -337,13 +507,14 @@ export async function processDeadlineReminders(
           result.emailsSent++;
           result.usersNotified++;
 
-          // Guardar logs para cada partido recordado
-          for (const match of matchesToRemind) {
+          // Guardar logs para cada unidad recordada (partido, grupo
+          // sintético o eliminatoria — ver groupReminderKey)
+          for (const unitKey of unitKeysToLog) {
             await prisma.deadlineReminderLog.create({
               data: {
                 poolId: pool.id,
                 userId: user.id,
-                matchId: match.id,
+                matchId: unitKey,
                 sentToEmail: user.email,
                 success: true,
                 hoursBeforeDeadline,
@@ -356,12 +527,12 @@ export async function processDeadlineReminders(
           result.emailsFailed++;
 
           // Guardar log de fallo
-          for (const match of matchesToRemind) {
+          for (const unitKey of unitKeysToLog) {
             await prisma.deadlineReminderLog.create({
               data: {
                 poolId: pool.id,
                 userId: user.id,
-                matchId: match.id,
+                matchId: unitKey,
                 sentToEmail: user.email,
                 success: false,
                 error: emailResult.error,

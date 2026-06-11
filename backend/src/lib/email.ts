@@ -16,6 +16,7 @@ import {
   getWelcomeTemplate,
   getPoolInvitationTemplate,
   getDeadlineReminderTemplate,
+  buildPendingUnitsList,
   getResultPublishedTemplate,
   getPoolCompletedTemplate,
   getPoolFullTemplate,
@@ -567,6 +568,10 @@ export async function sendDeadlineReminderEmail(params: {
   displayName: string;
   poolName: string;
   matchesCount: number;
+  /** Estratega: groups without a saved standings order (ADR-070). */
+  groupsCount?: number;
+  /** Estratega: knockout matches without a winner pick (ADR-070). */
+  knockoutsCount?: number;
   deadlineTime: string;
   poolId: string;
   locale?: string;
@@ -584,11 +589,16 @@ export async function sendDeadlineReminderEmail(params: {
   if (!ready) return { success: false, error: "Email service not configured" };
 
   const loc = params.locale || DEFAULT_LOCALE;
-  const n = params.matchesCount;
+  const pendingList = buildPendingUnitsList(
+    params.matchesCount,
+    params.groupsCount ?? 0,
+    params.knockoutsCount ?? 0,
+    loc,
+  );
   const subjects: Record<string, string> = {
-    es: `⏰ ${n} partido${n > 1 ? "s" : ""} sin pronóstico en "${params.poolName}"`,
-    en: `⏰ ${n} match${n > 1 ? "es" : ""} without predictions in "${params.poolName}"`,
-    pt: `⏰ ${n} partida${n > 1 ? "s" : ""} sem palpite em "${params.poolName}"`,
+    es: `⏰ ${pendingList} en "${params.poolName}"`,
+    en: `⏰ ${pendingList} in "${params.poolName}"`,
+    pt: `⏰ ${pendingList} em "${params.poolName}"`,
   };
 
   try {
@@ -599,6 +609,8 @@ export async function sendDeadlineReminderEmail(params: {
         displayName: params.displayName,
         poolName: params.poolName,
         matchesCount: params.matchesCount,
+        groupsCount: params.groupsCount,
+        knockoutsCount: params.knockoutsCount,
         deadlineTime: params.deadlineTime,
         poolId: params.poolId,
         locale: loc,
