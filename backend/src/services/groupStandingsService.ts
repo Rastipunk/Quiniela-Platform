@@ -14,6 +14,7 @@ import { canMakePicks } from "./poolStateMachine";
 import { advanceToRoundOf32, validateCanAutoAdvance } from "./instanceAdvancement";
 import { requirePoolAdmin } from "../lib/roles";
 import { extractMatches, parseFixtureData } from "../lib/fixture";
+import { buildGroupLockTimes } from "../lib/poolHelpers";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
 
@@ -68,26 +69,25 @@ export async function upsertGroupStandingsPick(
   // hits its pool-level deadline window — once the first match
   // starts, the standings begin to be revealed and predictions can
   // no longer be edited honestly. Read from fixtureSnapshot first
-  // (CLAUDE.md §6 invariant 6).
+  // (CLAUDE.md §6 invariant 6). The lock rule is shared with the
+  // structural-picks route via buildGroupLockTimes.
   const fixtureData = pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson;
   const allMatches = extractMatches(fixtureData);
-  const groupMatches = allMatches.filter((m) => m.groupId === groupId);
-  if (groupMatches.length === 0) {
+  const lockInfo = buildGroupLockTimes(
+    allMatches,
+    pool.deadlineMinutesBeforeKickoff,
+  ).get(groupId);
+  if (!lockInfo) {
     throw new ServiceError("NOT_FOUND", 404, {
       message: "Group not found in pool fixture",
       groupId,
     });
   }
-  const earliestKickoff = Math.min(
-    ...groupMatches.map((m) => new Date(m.kickoffUtc).getTime()),
-  );
-  const lockTime =
-    earliestKickoff - pool.deadlineMinutesBeforeKickoff * 60_000;
-  if (Date.now() >= lockTime) {
+  if (Date.now() >= lockInfo.lockTimeMs) {
     throw new ServiceError("DEADLINE_PASSED", 409, {
       message: "Group standings prediction is locked",
       groupId,
-      lockTimeUtc: new Date(lockTime).toISOString(),
+      lockTimeUtc: new Date(lockInfo.lockTimeMs).toISOString(),
       nowUtc: new Date().toISOString(),
     });
   }

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { CRYPTO_BYTES } from "./constants";
 import { isMatchBasedScoring } from "./scoringAdvanced";
 import type { PhasePickConfig } from "../types/pickConfig";
+import type { FixtureMatch } from "./fixture";
 
 export function outcomeFromScore(homeGoals: number, awayGoals: number): "HOME" | "DRAW" | "AWAY" {
   if (homeGoals > awayGoals) return "HOME";
@@ -38,6 +39,106 @@ export function buildPhaseTakesMatchPicks(
     if (!phaseId) return true;
     return matchPickPhaseIds.has(phaseId);
   };
+}
+
+export interface GroupLockInfo {
+  /**
+   * Epoch ms after which the group's standings pick is locked.
+   * `Infinity` when the group has matches but none with a parseable
+   * kickoff — such a group can never lock (fail-open, matching the
+   * behavior of match-based deadlines on malformed fixtures).
+   */
+  lockTimeMs: number;
+  /** ISO kickoff of the group's earliest match; null when unparseable. */
+  firstKickoffUtc: string | null;
+}
+
+/**
+ * Computes the lock time of every group in a fixture: the group's
+ * earliest kickoff minus the pool's deadline buffer. A group-standings
+ * prediction locks at that instant because the first result starts
+ * revealing the real table (single source of this rule — used by the
+ * dedicated group-standings endpoint, the generic structural-picks
+ * endpoint, notifications, and deadline reminders).
+ */
+export function buildGroupLockTimes(
+  matches: Array<Pick<FixtureMatch, "groupId" | "kickoffUtc">>,
+  deadlineMinutesBeforeKickoff: number,
+): Map<string, GroupLockInfo> {
+  const earliestByGroup = new Map<string, number>();
+  const groupsSeen = new Set<string>();
+  for (const m of matches) {
+    if (!m.groupId) continue;
+    groupsSeen.add(m.groupId);
+    const kickoffMs = new Date(m.kickoffUtc ?? "").getTime();
+    if (Number.isNaN(kickoffMs)) continue;
+    const prev = earliestByGroup.get(m.groupId);
+    if (prev === undefined || kickoffMs < prev) {
+      earliestByGroup.set(m.groupId, kickoffMs);
+    }
+  }
+  const bufferMs = deadlineMinutesBeforeKickoff * 60_000;
+  const lockTimes = new Map<string, GroupLockInfo>();
+  for (const groupId of groupsSeen) {
+    const earliest = earliestByGroup.get(groupId);
+    lockTimes.set(
+      groupId,
+      earliest === undefined
+        ? { lockTimeMs: Number.POSITIVE_INFINITY, firstKickoffUtc: null }
+        : {
+            lockTimeMs: earliest - bufferMs,
+            firstKickoffUtc: new Date(earliest).toISOString(),
+          },
+    );
+  }
+  return lockTimes;
+}
+
+export interface GroupPick {
+  groupId: string;
+  teamIds: string[];
+}
+
+/**
+ * Splits incoming group-standings picks into saveable vs locked.
+ * A pick is locked when its group's lock time has passed — or when the
+ * groupId is unknown to the fixture (stale UI / forged payload), the
+ * same drop rule the knockout path applies to unknown matchIds.
+ */
+export function partitionGroupPicksByLock(
+  incoming: GroupPick[],
+  lockTimes: Map<string, GroupLockInfo>,
+  nowMs: number,
+): { valid: GroupPick[]; lockedGroupIds: string[] } {
+  const valid: GroupPick[] = [];
+  const lockedGroupIds: string[] = [];
+  for (const pick of incoming) {
+    const lock = lockTimes.get(pick.groupId);
+    if (!lock || nowMs >= lock.lockTimeMs) {
+      lockedGroupIds.push(pick.groupId);
+      continue;
+    }
+    valid.push(pick);
+  }
+  return { valid, lockedGroupIds };
+}
+
+/**
+ * Merges saveable incoming group picks over the existing ones so picks
+ * for already-locked groups are preserved verbatim — a full replace
+ * would let a client erase a locked group's pick after kickoff.
+ */
+export function mergeGroupPicks(
+  existing: GroupPick[] | undefined,
+  incoming: GroupPick[],
+): GroupPick[] {
+  const byGroupId = new Map<string, string[]>();
+  for (const g of existing ?? []) byGroupId.set(g.groupId, g.teamIds);
+  for (const g of incoming) byGroupId.set(g.groupId, g.teamIds);
+  return Array.from(byGroupId.entries()).map(([groupId, teamIds]) => ({
+    groupId,
+    teamIds,
+  }));
 }
 
 export function makeInviteCode() {

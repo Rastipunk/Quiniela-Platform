@@ -4982,4 +4982,36 @@ Leg (B) was broken in half. `PATCH /admin/sales/account-receivables/:id/status �
 
 ---
 
+## ADR-070: Estratega deadlines — per-group lock on every write path, structural notifications, deadline UX
+
+**Date:** 2026-06-10 | **Status:** Accepted
+
+**Context:** Estratega (SIMPLE preset) pools take structural picks — group standings order and knockout winners — never per-match `Prediction` rows. After `9481d63` stopped counting structural-phase matches as "missing picks" (false positives), three gaps remained. **(1) Integrity:** group picks live in TWO storages that both score (`GroupStandingsPrediction` rows and `StructuralPrediction.pickJson.groups`, merged in `poolAdminService`/`poolOverviewService`), but only the dedicated `PUT /group-standings/:phaseId/:groupId` endpoint enforced the group deadline — `PUT /structural-picks/:phaseId` with a `{groups}` payload saved without any lock AND replaced the whole `pickJson`, so a direct API call after kickoff could add or erase group picks and still score. **(2) Utility:** neither the notifications banner nor the deadline-reminder emails knew about structural units — Estratega members got zero warnings. **(3) UX:** the cards never showed the lock time; users discovered the deadline only when the save failed with a raw `DEADLINE_PASSED` code.
+
+**Decision:** One shared lock rule, enforced on every write path and surfaced everywhere:
+
+```
+groupLockUtc = min(kickoffUtc of the group's matches) - deadlineMinutes
+matchLockUtc = kickoffUtc - deadlineMinutes
+```
+
+- **Single source:** `buildGroupLockTimes` in `lib/poolHelpers.ts` (+ `partitionGroupPicksByLock`, `mergeGroupPicks`) — consumed by the dedicated group-standings endpoint (refactored), the structural-picks route, notifications, and reminders. A group locks at its **earliest** kickoff because the first result starts revealing the real table.
+- **Mirror semantics with the knockout path:** locked/unknown units in a payload are dropped, the rest saved; merge preserves locked units verbatim (no post-lock erase); `409 DEADLINE_PASSED` + `lockedGroupIds` only when every submitted unit is locked.
+- **Fail-open on malformed fixtures:** a group with no parseable kickoff never locks (`lockTimeMs = Infinity`), matching match-based behavior; a previously latent quirk where ONE bad kickoff date disabled the lock for the whole group (NaN via `Math.min`) is fixed — the earliest *parseable* kickoff governs.
+- **Notifications/reminders (delivery 2):** `pendingPicks` becomes the total of pending units (match picks + unsaved groups + unpicked knockouts); detail arrays `urgentGroups[]` / `urgentKnockouts[]` are additive (backward-compatible). Reminder dedupe reuses `DeadlineReminderLog.matchId` with the synthetic key `group:{phaseId}:{groupId}` — no migration.
+- **UX (delivery 3):** cards show the lock time in the **user's** timezone (consistent with `MatchCard`; emails keep the pool's timezone), lock client-side at `lockTime`, and map `DEADLINE_PASSED` to friendly copy (ES/EN/PT).
+
+**Owner decisions (2026-06-10):** D1 synthetic dedupe key (no migration); D2 `pendingPicks` = total units; D3 user TZ in cards / pool TZ in emails; D4 keep the `{groups}` route, protected (option A); D5 ship order: integrity → notifications → UX.
+
+**Consequences:**
+- ✅ The fairness hole closes: no write path can score a post-kickoff group pick, and locked picks cannot be erased.
+- ✅ The lock rule lives in one helper — drift between paths is no longer possible.
+- ⚠️ The first reminder tick after deploy will email every Estratega member with unsaved groups inside the 48h window (intended — World Cup opener); dedupe caps it at one email per user/group.
+- ⚠️ `{groups}` saves now merge instead of replace: a client can no longer clear a group pick by omitting it (clearing was never a product feature; the dedicated endpoint never allowed it).
+
+**Related code:** `backend/src/lib/poolHelpers.ts`, `backend/src/routes/structuralPicks.ts`, `backend/src/services/{groupStandingsService,poolAdminService,deadlineReminderService}.ts`, `backend/src/lib/{email,emailTemplates}.ts`, `frontend-next/src/components/{groupStandings/GroupStandingsCard,KnockoutMatchCard,PickRulesDisplay}.tsx`.
+**Spec:** `ESTRATEGA_DEADLINES_PLAN.md`.
+
+---
+
 **END OF DOCUMENT**

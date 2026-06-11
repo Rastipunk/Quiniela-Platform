@@ -8,6 +8,19 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Estratega deadlines — integrity lock on structural-picks (2026-06-10)
+
+Closes the fairness hole where group-standings picks sent through `PUT /structural-picks/:phaseId` after kickoff were saved without any deadline check **and still scored** (both group-pick storages feed the leaderboard). See **ADR-070** (delivery 1 of 3; notifications and deadline UX follow). Spec: `ESTRATEGA_DEADLINES_PLAN.md`.
+
+#### Added
+- **Shared group-lock helpers** in `lib/poolHelpers.ts` — `buildGroupLockTimes` (earliest group kickoff − deadline buffer; single source of the rule), `partitionGroupPicksByLock`, `mergeGroupPicks`. 13 new unit tests.
+
+#### Fixed
+- **`PUT /structural-picks/:phaseId` with `{groups}` now enforces the per-group deadline** — mirror of the per-match knockout filter: locked/unknown groups are dropped, the rest saved; `409 DEADLINE_PASSED` + `lockedGroupIds` when every submitted group is locked.
+- **`{groups}` saves now merge per group instead of replacing the whole pick** — a client can no longer erase a locked group's pick after kickoff.
+- **One unparseable kickoff no longer disables a group's lock** (`Math.min` → NaN quirk in `upsertGroupStandingsPick`, now refactored onto the shared helper): the earliest *parseable* kickoff governs.
+- Repaired 3 stale tests in `groupStandingsService.test.ts` (missing `extractMatches` mock; asserts on the pre-refactor return shape of `publishGroupStandingsResult`).
+
 ### Leaderboard tiebreakers + shared positions (2026-06-08)
 
 Resolves point ties fairly and transparently. See **ADR-069**. No scoring formula changed.

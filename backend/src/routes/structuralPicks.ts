@@ -6,6 +6,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { Prisma } from "@prisma/client";
 import { canMakePicks } from "../services/poolStateMachine";
 import { extractMatches, extractPhases, typed, type StructuralPickJson } from "../lib/fixture";
+import { buildGroupLockTimes, partitionGroupPicksByLock, mergeGroupPicks } from "../lib/poolHelpers";
 import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const structuralPicksRouter = Router();
@@ -142,7 +143,32 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
     }
   }
 
-  // Obtener pick existente para hacer merge si es knockout
+  // Per-group deadline filter for group-standings picks — mirror of the
+  // per-match knockout filter above. A group locks when its earliest
+  // match reaches the pool's deadline window, the same rule the
+  // dedicated /group-standings endpoint enforces. Without this, picks
+  // sent through this route after kickoff would still score.
+  let validIncomingGroups: { groupId: string; teamIds: string[] }[] = [];
+  if ("groups" in parsed.data) {
+    const groupLocks = buildGroupLockTimes(
+      allMatches,
+      pool.deadlineMinutesBeforeKickoff,
+    );
+    const partitioned = partitionGroupPicksByLock(
+      parsed.data.groups,
+      groupLocks,
+      Date.now(),
+    );
+    validIncomingGroups = partitioned.valid;
+    if (parsed.data.groups.length > 0 && validIncomingGroups.length === 0) {
+      return sendConflict(res, "DEADLINE_PASSED", {
+        message: "All submitted groups are past their lock time",
+        lockedGroupIds: partitioned.lockedGroupIds,
+      });
+    }
+  }
+
+  // Obtener pick existente para hacer merge
   const existingPick = await prisma.structuralPrediction.findUnique({
     where: {
       poolId_userId_phaseId: {
@@ -153,14 +179,16 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
     },
   });
 
-  // Para knockout picks, hacer merge con picks existentes
+  // Merge con picks existentes: los picks de unidades ya bloqueadas
+  // (partidos o grupos) se preservan verbatim — un replace total
+  // permitiría borrarlos después del kickoff.
   let finalPickData =
     "matches" in parsed.data
       ? { matches: validIncomingMatches }
-      : parsed.data;
-  if ("matches" in parsed.data && existingPick?.pickJson) {
+      : { groups: validIncomingGroups };
+  if (existingPick?.pickJson) {
     const existingData = typed<StructuralPickJson>(existingPick.pickJson);
-    if (existingData.matches && Array.isArray(existingData.matches)) {
+    if ("matches" in parsed.data && existingData.matches && Array.isArray(existingData.matches)) {
       // Crear un map de picks existentes
       const matchesMap = new Map<string, string>();
       for (const m of existingData.matches) {
@@ -176,6 +204,11 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
           matchId,
           winnerId,
         })),
+      };
+    }
+    if ("groups" in parsed.data && Array.isArray(existingData.groups)) {
+      finalPickData = {
+        groups: mergeGroupPicks(existingData.groups, validIncomingGroups),
       };
     }
   }

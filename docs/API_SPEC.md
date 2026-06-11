@@ -794,7 +794,13 @@ Phase-level picks (knockout winners, group standings). All require auth and pool
 { "matches": [{ "matchId": "m1", "winnerId": "t_BRA" }] }
 ```
 
-Knockout picks support incremental merge: new picks are merged with existing ones, not replaced entirely.
+Both formats support incremental merge: new picks are merged with existing ones, not replaced entirely. Picks for already-locked units are preserved verbatim.
+
+**Deadline enforcement (per unit, ADR-070):**
+
+- **Knockout matches** lock individually at `kickoffUtc - deadlineMinutesBeforeKickoff`. Locked or unknown matchIds in the payload are dropped; the rest are saved.
+- **Groups** lock when the group's **earliest** match reaches the pool's deadline window — same rule as `PUT /group-standings/:phaseId/:groupId`. Locked or unknown groupIds in the payload are dropped; the rest are saved.
+- If every submitted unit is locked → `409 DEADLINE_PASSED` with `lockedMatchIds` / `lockedGroupIds`.
 
 ---
 

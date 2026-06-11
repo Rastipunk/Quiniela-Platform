@@ -320,6 +320,18 @@ For SIMPLE preset and custom configs with structural picks:
 - Per phase: `{ matches: [{ matchId, winnerId }] }`.
 - Unique: `(poolId, userId, phaseId)`.
 
+**Deadline enforcement (per unit, ADR-070):**
+
+```
+groupLockUtc   = min(kickoffUtc of the group's matches) - (pool.deadlineMinutesBeforeKickoff * 60000)
+matchLockUtc   = kickoffUtc - (pool.deadlineMinutesBeforeKickoff * 60000)
+if (now >= lockUtc) → pick for that unit is rejected/dropped; 409 DEADLINE_PASSED when ALL submitted units are locked
+```
+
+- A group locks when its **earliest** match reaches the deadline window, because the first result starts revealing the real table.
+- The rule is enforced identically on every write path (`PUT /group-standings/:phaseId/:groupId` and `PUT /structural-picks/:phaseId` with `{groups}`), via the shared `buildGroupLockTimes` helper. Scoring reads picks from both storages, so an unguarded path would allow post-kickoff picks to score.
+- Locked units already saved are preserved verbatim on merge — a client cannot erase or overwrite them after the lock.
+
 ---
 
 ## 5. Result Rules

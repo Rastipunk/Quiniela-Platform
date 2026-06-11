@@ -38,6 +38,7 @@ vi.mock("../lib/roles", () => ({
 
 vi.mock("../lib/fixture", () => ({
   parseFixtureData: vi.fn(),
+  extractMatches: vi.fn(),
 }));
 
 vi.mock("../lib/asyncHelpers", () => ({
@@ -47,7 +48,7 @@ vi.mock("../lib/asyncHelpers", () => ({
 import { prisma } from "../db";
 import { canMakePicks } from "./poolStateMachine";
 import { requirePoolAdmin } from "../lib/roles";
-import { parseFixtureData } from "../lib/fixture";
+import { parseFixtureData, extractMatches } from "../lib/fixture";
 import { validateCanAutoAdvance } from "./instanceAdvancement";
 import {
   upsertGroupStandingsPick,
@@ -68,14 +69,28 @@ beforeEach(() => {
 // ─── upsertGroupStandingsPick ─────────────────────────────────
 
 describe("upsertGroupStandingsPick", () => {
-  it("creates a prediction when user is active member and pool allows picks", async () => {
+  const futureKickoff = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const pastKickoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  const mockOpenPool = (overrides: Record<string, unknown> = {}) => {
     vi.mocked(prisma.poolMember.findFirst).mockResolvedValue({ id: "pm1" } as any);
     vi.mocked(prisma.pool.findUnique).mockResolvedValue({
       id: "pool1",
       status: "ACTIVE",
-      tournamentInstance: { status: "ACTIVE" },
+      deadlineMinutesBeforeKickoff: 10,
+      lockedPhases: null,
+      fixtureSnapshot: null,
+      tournamentInstance: { status: "ACTIVE", dataJson: {} },
+      ...overrides,
     } as any);
     vi.mocked(canMakePicks).mockReturnValue(true);
+  };
+
+  it("creates a prediction when user is active member and pool allows picks", async () => {
+    mockOpenPool();
+    vi.mocked(extractMatches).mockReturnValue([
+      { id: "m1", phaseId: "gs", groupId: "A", kickoffUtc: futureKickoff, homeTeamId: "t1", awayTeamId: "t2" },
+    ]);
     vi.mocked(prisma.groupStandingsPrediction.upsert).mockResolvedValue({
       id: "pred1",
       poolId: "pool1",
@@ -89,6 +104,31 @@ describe("upsertGroupStandingsPick", () => {
 
     expect(result.id).toBe("pred1");
     expect(prisma.groupStandingsPrediction.upsert).toHaveBeenCalledOnce();
+  });
+
+  it("throws DEADLINE_PASSED once the group's earliest kickoff is inside the deadline window", async () => {
+    mockOpenPool();
+    vi.mocked(extractMatches).mockReturnValue([
+      // Later match still in the future — the EARLIEST kickoff governs the lock.
+      { id: "m1", phaseId: "gs", groupId: "A", kickoffUtc: pastKickoff, homeTeamId: "t1", awayTeamId: "t2" },
+      { id: "m2", phaseId: "gs", groupId: "A", kickoffUtc: futureKickoff, homeTeamId: "t3", awayTeamId: "t4" },
+    ]);
+
+    await expect(
+      upsertGroupStandingsPick("user1", "pool1", "gs", "A", ["t1", "t2", "t3", "t4"], ctx),
+    ).rejects.toThrow("DEADLINE_PASSED");
+    expect(prisma.groupStandingsPrediction.upsert).not.toHaveBeenCalled();
+  });
+
+  it("throws NOT_FOUND when the group does not exist in the fixture", async () => {
+    mockOpenPool();
+    vi.mocked(extractMatches).mockReturnValue([
+      { id: "m1", phaseId: "gs", groupId: "B", kickoffUtc: futureKickoff, homeTeamId: "t1", awayTeamId: "t2" },
+    ]);
+
+    await expect(
+      upsertGroupStandingsPick("user1", "pool1", "gs", "A", ["t1", "t2", "t3", "t4"], ctx),
+    ).rejects.toThrow("NOT_FOUND");
   });
 
   it("throws FORBIDDEN when user is not a pool member", async () => {
@@ -211,7 +251,9 @@ describe("publishGroupStandingsResult", () => {
       "host1", "pool1", "gs", "A", ["t1", "t2", "t3", "t4"], undefined, ctx,
     );
 
-    expect(result.id).toBe("res1");
+    // publishGroupStandingsResult returns { result, isErrata, previousTeamIds, autoAdvance }
+    expect(result.result.id).toBe("res1");
+    expect(result.isErrata).toBe(false);
   });
 
   it("throws FORBIDDEN for non-admin users", async () => {
@@ -254,7 +296,8 @@ describe("publishGroupStandingsResult", () => {
       "host1", "pool1", "gs", "A", ["t1"], "Corrección de posiciones", ctx,
     );
 
-    expect(result.version).toBe(2);
+    expect(result.result.version).toBe(2);
+    expect(result.isErrata).toBe(true);
   });
 });
 
