@@ -8,6 +8,17 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Score pipeline — Etapa 1: derivaciones a prueba de última jornada (2026-06-11)
+
+Segunda tanda del plan aprobado (`SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1), pensada para la última jornada simultánea de grupos (~24-27 jun).
+
+#### Fixed
+- **Structural derivations only consume FINAL results (audit F3-3 🔴):** group tables and knockout winners were derived from `SCRAPER_PROVISIONAL` versions — i.e. live snapshots. During simultaneous last-matchday games the table published with a mid-game partial score (and Estratega scoring paid against it); a live knockout merged the currently-leading team as "advances". New shared `FINAL_RESULT_SOURCES` constant (API_CONFIRMED / HOST_OVERRIDE / HOST_MANUAL) gates `structuralAutoPublish` (both paths), `transitionToCompleted` and de-duplicates `advancementTrigger`'s inline sets.
+- **Host structural overrides are no longer clobbered (audit F3-5):** the auto-recompute now skips host-authored publications — group tables detected via the mandatory errata `reason` (system never writes one), knockout entries via a new `source:"HOST"` marker written by the dedicated PUT — leaving an audit trail (`*_AUTO_RECOMPUTE_SKIPPED`) instead of silently overwriting e.g. a fair-play-decided table.
+- **Knockout winner merge race (audit F3-2 🔴):** the read→merge→upsert on `StructuralPhaseResult.resultJson.matches[]` now runs inside a transaction holding `pg_advisory_xact_lock(pool:phase)` (both the auto-publisher and the host PUT) — two matches of the same phase finalising in the same poll cycle could permanently drop one winner.
+- **Pool completion hardened (audit F3-6):** `transitionToCompleted` now requires a FINAL source on every result (a live provisional could close the pool mid-match), uses a conditional `updateMany WHERE status=ACTIVE` so concurrent invocations can't double-send the completion emails, and respects `User.emailNotificationsEnabled` (recipients only — the ranking still comes from `getPoolOverview`). 3 new regression tests.
+- **No more provisional 0-0 before kickoff (brief A4):** `liveScoresJob` skips result publication while the scraper reports `NS` (MatchSyncState keeps updating, so live windows/badges are unaffected). The pre-match card no longer shows "Resultado oficial 0-0".
+
 ### Score pipeline — Etapa 0 del plan de auditoría (2026-06-11)
 
 Primera tanda del plan aprobado en `SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1.

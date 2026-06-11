@@ -389,13 +389,17 @@ Verificación Etapa 0: typecheck limpio; suite 4 archivos fallando = los
 pre-existentes conocidos (email/pickPresets/serializers/paymentService),
 cero fallas nuevas.
 
-### Etapa 1 — Esta semana, antes del 16-jun (~1 día): derivaciones a prueba de última jornada
-| Ítem | Hallazgo |
-|---|---|
-| Gate de fuente autoritativa para publicar tablas/winners estructurales | F3-3 🔴 |
-| No pisar overrides estructurales del host (guard + alerta en vez de clobber) | F3-5 🟡 |
-| `transitionToCompleted`: fuente autoritativa + update condicional + filtrar `emailNotificationsEnabled` (cierra también el pendiente "completion-email safety net" parcialmente) | F3-6 🟡 |
-| Tx/lock en el merge de `StructuralPhaseResult.matches[]` | F3-2 🔴 |
+### Etapa 1 — Esta semana, antes del 16-jun (~1 día): derivaciones a prueba de última jornada — ✅ EJECUTADA (mismo día)
+| Ítem | Hallazgo | Estado |
+|---|---|---|
+| Gate de fuentes FINALES (`FINAL_RESULT_SOURCES` en constants — incluye HOST_MANUAL para pools MANUAL; dedupea también los sets inline de advancementTrigger) en tablas Y winners | F3-3 🔴 | ✅ |
+| No pisar overrides estructurales del host: tablas detectadas por `reason` (errata obligatoria; el sistema nunca lo escribe), winners por marker `source:"HOST"` en el entry del PUT; skip + audit `*_AUTO_RECOMPUTE_SKIPPED` | F3-5 🟡 | ✅ |
+| `transitionToCompleted`: fuente FINAL + `updateMany WHERE status=ACTIVE` (carrera de doble email) + filtro `emailNotificationsEnabled` (solo destinatarios; ranking sigue saliendo de getPoolOverview) | F3-6 🟡 | ✅ + 3 tests de regresión |
+| Tx + `pg_advisory_xact_lock(pool:phase)` en el merge de `StructuralPhaseResult.matches[]` (auto-publisher Y PUT del host) | F3-2 🔴 | ✅ |
+| Suprimir publicación provisional con status `NS` (0-0 pre-kickoff) | A4 brief | ✅ |
+
+Verificación Etapa 1: typecheck limpio; suite 720 pass / 19 fallas
+pre-existentes conocidas (cero nuevas).
 
 ### Etapa 2 — Semana 16-22 jun (~1.5 días): listos para eliminatorias (R32 28-jun)
 | Ítem | Hallazgo |

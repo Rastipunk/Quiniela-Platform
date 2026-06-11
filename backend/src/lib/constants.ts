@@ -80,6 +80,21 @@ export const ADVANCEMENT = {
   DELAY_MS: envInt("ADVANCEMENT_DELAY_MS", 10 * 60_000), // 10 min
 } as const;
 
+/**
+ * Result sources that represent a FINAL (non-live) result. Anything
+ * derived from results — group tables, knockout winners, advancement,
+ * pool completion — must gate on this set: SCRAPER_PROVISIONAL /
+ * HOST_PROVISIONAL are live snapshots of a match still in progress and
+ * deriving from them publishes premature data (audit F3-3/F3-6).
+ * Single source of truth — advancementTrigger, structuralAutoPublish
+ * and poolStateMachine all consume this set.
+ */
+export const FINAL_RESULT_SOURCES: ReadonlySet<string> = new Set([
+  "API_CONFIRMED",
+  "HOST_OVERRIDE",
+  "HOST_MANUAL",
+]);
+
 // ── Capacity warnings ───────────────────────────────────────
 // Default percentage of maxParticipants at which the host receives the
 // "near full" email. Can be overridden per pool via Pool.capacityWarningThresholdPct.

@@ -272,6 +272,13 @@ async function processLiveScore(
     // MatchSyncState may not exist for all matches — non-critical
   }
 
+  // A match that hasn't kicked off yet (NS — the scraper reports
+  // tracked fixtures from kickoff−5min) must NOT create a provisional
+  // 0-0 result row: it rendered as "Resultado oficial 0-0" before the
+  // game started (audit A4). MatchSyncState was already updated above,
+  // so the live badge / window logic is unaffected.
+  if (score.status === "NS") return;
+
   // For each pool, create/update result
   for (const poolId of entry.poolIds) {
     try {

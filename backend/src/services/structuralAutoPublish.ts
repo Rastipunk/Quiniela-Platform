@@ -35,6 +35,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { extractMatches, parseFixtureData } from "../lib/fixture";
+import { FINAL_RESULT_SOURCES } from "../lib/constants";
 import { calculateGroupStandings } from "./tournamentAdvancement";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { sendAdminNotification } from "../lib/email";
@@ -178,9 +179,15 @@ async function autoPublishGroupStandings(
     include: { currentVersion: true },
   });
 
-  const finalised = results.filter((r) => r.currentVersion);
+  // Only FINAL results count (audit F3-3): a SCRAPER_PROVISIONAL
+  // version is a snapshot of a match still in progress — deriving the
+  // table from it published premature standings during simultaneous
+  // last-matchday games (and Estratega scoring paid against them).
+  const finalised = results.filter(
+    (r) => r.currentVersion && FINAL_RESULT_SOURCES.has(r.currentVersion.source),
+  );
   if (finalised.length < groupMatches.length) {
-    // Group not complete yet — wait for more matches to confirm.
+    // Group not complete yet (or some matches still live) — wait.
     return;
   }
 
@@ -208,6 +215,32 @@ async function autoPublishGroupStandings(
     where: { poolId_phaseId_groupId: { poolId, phaseId, groupId } },
   });
   if (existing && arraysEqual(existing.teamIds as string[], orderedTeamIds)) {
+    return;
+  }
+
+  // Host-override protection (audit F3-5): a host errata always carries
+  // a `reason` (mandatory in publishGroupStandingsResult) and the system
+  // never writes one — so reason != null marks the row as host-authored
+  // (e.g. a table fixed by fair-play/drawing-of-lots that the calculator
+  // can't know). Never clobber it silently; leave an audit trail instead.
+  if (existing && existing.reason != null) {
+    fireAndForget(
+      "audit:auto-recompute-skipped-host-override",
+      writeAuditEvent({
+        actorUserId: "SYSTEM",
+        action: "GROUP_STANDINGS_AUTO_RECOMPUTE_SKIPPED",
+        entityType: "GroupStandingsResult",
+        entityId: existing.id,
+        dataJson: {
+          poolId, phaseId, groupId,
+          reason: "host_override_protected",
+          hostTeamIds: existing.teamIds,
+          computedTeamIds: orderedTeamIds,
+        },
+        ip: null,
+        userAgent: null,
+      }),
+    );
     return;
   }
 
@@ -270,6 +303,11 @@ async function autoPublishKnockoutWinner(
   });
   if (!result?.currentVersion) return;
 
+  // Only FINAL results derive a winner (audit F3-3): with a
+  // SCRAPER_PROVISIONAL version the match is still live — the old code
+  // merged the currently-leading team as "advances" mid-match.
+  if (!FINAL_RESULT_SOURCES.has(result.currentVersion.source)) return;
+
   const pool = await prisma.pool.findUnique({
     where: { id: poolId },
     include: { tournamentInstance: true },
@@ -320,50 +358,90 @@ async function autoPublishKnockoutWinner(
     return;
   }
 
-  // Merge into StructuralPhaseResult.resultJson.matches[].
-  type WinnerEntry = { matchId: string; winnerId: string };
-  const existing = await prisma.structuralPhaseResult.findUnique({
-    where: { poolId_phaseId: { poolId, phaseId } },
+  // Merge into StructuralPhaseResult.resultJson.matches[] under a
+  // per-(pool, phase) advisory lock (audit F3-2): the read→merge→upsert
+  // used to run unlocked, so two matches of the same phase finalising
+  // in the same poll cycle could each read the same array and the last
+  // upsert silently dropped the other one's winner — unrecoverable
+  // because the idempotent skip then prevented a re-publish.
+  type WinnerEntry = { matchId: string; winnerId: string; source?: string };
+
+  const outcome = await prisma.$transaction(async (tx) => {
+    // pg_advisory_xact_lock releases automatically at tx end.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`structural:${poolId}:${phaseId}`}))`;
+
+    const existing = await tx.structuralPhaseResult.findUnique({
+      where: { poolId_phaseId: { poolId, phaseId } },
+    });
+    const existingMatches: WinnerEntry[] =
+      ((existing?.resultJson as { matches?: WinnerEntry[] } | null)?.matches) ?? [];
+    const previousEntry = existingMatches.find((m) => m.matchId === matchId);
+
+    // Idempotent skip.
+    if (previousEntry && previousEntry.winnerId === winnerId) return null;
+
+    // Host-override protection (audit F3-5): entries written via the
+    // dedicated PUT carry source:"HOST" — never clobber them silently.
+    if (previousEntry?.source === "HOST") {
+      return { skippedHostOverride: true, existingId: existing!.id, previousEntry } as const;
+    }
+
+    const mergedMatches: WinnerEntry[] = previousEntry
+      ? existingMatches.map((m) => (m.matchId === matchId ? { matchId, winnerId } : m))
+      : [...existingMatches, { matchId, winnerId }];
+
+    const saved = await tx.structuralPhaseResult.upsert({
+      where: { poolId_phaseId: { poolId, phaseId } },
+      update: {
+        resultJson: { matches: mergedMatches } as Prisma.InputJsonValue,
+        publishedAtUtc: new Date(),
+      },
+      create: {
+        poolId,
+        phaseId,
+        resultJson: { matches: mergedMatches } as Prisma.InputJsonValue,
+        // createdByUserId is required by the schema in the create path;
+        // we attribute system-generated rows to the pool creator so
+        // audit foreign keys stay clean.
+        createdByUserId: pool.createdByUserId,
+      },
+    });
+    return { saved, isRecomputation: !!previousEntry, previousEntry } as const;
   });
-  const existingMatches: WinnerEntry[] =
-    ((existing?.resultJson as { matches?: WinnerEntry[] } | null)?.matches) ?? [];
-  const previousEntry = existingMatches.find((m) => m.matchId === matchId);
 
-  // Idempotent skip.
-  if (previousEntry && previousEntry.winnerId === winnerId) return;
+  if (!outcome) return; // idempotent skip
 
-  const isRecomputation = !!previousEntry;
-  const mergedMatches: WinnerEntry[] = previousEntry
-    ? existingMatches.map((m) => (m.matchId === matchId ? { matchId, winnerId } : m))
-    : [...existingMatches, { matchId, winnerId }];
-
-  const saved = await prisma.structuralPhaseResult.upsert({
-    where: { poolId_phaseId: { poolId, phaseId } },
-    update: {
-      resultJson: { matches: mergedMatches } as Prisma.InputJsonValue,
-      publishedAtUtc: new Date(),
-    },
-    create: {
-      poolId,
-      phaseId,
-      resultJson: { matches: mergedMatches } as Prisma.InputJsonValue,
-      // createdByUserId is required by the schema in the create path;
-      // we attribute system-generated rows to the pool creator so
-      // audit foreign keys stay clean.
-      createdByUserId: pool.createdByUserId,
-    },
-  });
+  if ("skippedHostOverride" in outcome) {
+    fireAndForget(
+      "audit:auto-recompute-skipped-host-override",
+      writeAuditEvent({
+        actorUserId: "SYSTEM",
+        action: "KNOCKOUT_WINNER_AUTO_RECOMPUTE_SKIPPED",
+        entityType: "StructuralPhaseResult",
+        entityId: outcome.existingId,
+        dataJson: {
+          poolId, phaseId, matchId,
+          reason: "host_override_protected",
+          hostWinnerId: outcome.previousEntry?.winnerId ?? null,
+          computedWinnerId: winnerId,
+        },
+        ip: null,
+        userAgent: null,
+      }),
+    );
+    return;
+  }
 
   fireAndForget(
     "audit:auto-published-winner",
     writeAuditEvent({
       actorUserId: "SYSTEM",
-      action: isRecomputation ? "KNOCKOUT_WINNER_AUTO_RECOMPUTED" : "KNOCKOUT_WINNER_AUTO_PUBLISHED",
+      action: outcome.isRecomputation ? "KNOCKOUT_WINNER_AUTO_RECOMPUTED" : "KNOCKOUT_WINNER_AUTO_PUBLISHED",
       entityType: "StructuralPhaseResult",
-      entityId: saved.id,
+      entityId: outcome.saved.id,
       dataJson: {
         poolId, phaseId, matchId, winnerId,
-        previousWinnerId: previousEntry?.winnerId ?? null,
+        previousWinnerId: outcome.previousEntry?.winnerId ?? null,
         source: "scraper",
       },
       ip: null,

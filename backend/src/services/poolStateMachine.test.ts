@@ -6,6 +6,7 @@ vi.mock("../db", () => ({
     pool: {
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     poolMatchResult: {
       findMany: vi.fn(),
@@ -45,6 +46,7 @@ vi.mock("../lib/asyncHelpers", () => ({
 vi.mock("../lib/constants", () => ({
   countryToLocale: vi.fn(() => "es"),
   resolveUserLocale: vi.fn(() => "es"),
+  FINAL_RESULT_SOURCES: new Set(["API_CONFIRMED", "HOST_OVERRIDE", "HOST_MANUAL"]),
 }));
 
 vi.mock("../lib/fixture", () => ({
@@ -192,7 +194,7 @@ describe("transitionToActive", () => {
 // ─── transitionToCompleted ─────────────────────────────────────
 
 describe("transitionToCompleted", () => {
-  it("transitions ACTIVE → COMPLETED when all matches have results", async () => {
+  it("transitions ACTIVE → COMPLETED when all matches have FINAL results", async () => {
     const matches = [{ id: "m1" }, { id: "m2" }];
     (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       status: "ACTIVE",
@@ -200,10 +202,10 @@ describe("transitionToCompleted", () => {
     });
     (extractMatches as ReturnType<typeof vi.fn>).mockReturnValue(matches);
     (prisma.poolMatchResult.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { matchId: "m1" },
-      { matchId: "m2" },
+      { matchId: "m1", currentVersion: { source: "API_CONFIRMED" } },
+      { matchId: "m2", currentVersion: { source: "HOST_OVERRIDE" } },
     ]);
-    (prisma.pool.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
+    (prisma.pool.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 1 });
     (writeAuditEvent as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
     // Mock for the async email block
     (prisma.poolMember.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
@@ -211,8 +213,10 @@ describe("transitionToCompleted", () => {
 
     await transitionToCompleted("pool-1", "user-1");
 
-    expect(prisma.pool.update).toHaveBeenCalledWith({
-      where: { id: "pool-1" },
+    // Conditional update (audit F3-6): WHERE includes status ACTIVE so a
+    // concurrent invocation can't double-complete / double-email.
+    expect(prisma.pool.updateMany).toHaveBeenCalledWith({
+      where: { id: "pool-1", status: "ACTIVE" },
       data: { status: "COMPLETED" },
     });
     expect(writeAuditEvent).toHaveBeenCalledWith(
@@ -220,6 +224,40 @@ describe("transitionToCompleted", () => {
         dataJson: expect.objectContaining({ from: "ACTIVE", to: "COMPLETED" }),
       })
     );
+  });
+
+  it("does NOT complete while a result is still SCRAPER_PROVISIONAL (live match — F3-6)", async () => {
+    const matches = [{ id: "m1" }, { id: "m2" }];
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      status: "ACTIVE",
+      tournamentInstance: { dataJson: {} },
+    });
+    (extractMatches as ReturnType<typeof vi.fn>).mockReturnValue(matches);
+    (prisma.poolMatchResult.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { matchId: "m1", currentVersion: { source: "API_CONFIRMED" } },
+      { matchId: "m2", currentVersion: { source: "SCRAPER_PROVISIONAL" } }, // still live
+    ]);
+
+    await transitionToCompleted("pool-1");
+
+    expect(prisma.pool.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("stops (no audit, no emails) when another invocation won the race", async () => {
+    const matches = [{ id: "m1" }];
+    (prisma.pool.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      status: "ACTIVE",
+      tournamentInstance: { dataJson: {} },
+    });
+    (extractMatches as ReturnType<typeof vi.fn>).mockReturnValue(matches);
+    (prisma.poolMatchResult.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { matchId: "m1", currentVersion: { source: "API_CONFIRMED" } },
+    ]);
+    (prisma.pool.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 0 });
+
+    await transitionToCompleted("pool-1");
+
+    expect(writeAuditEvent).not.toHaveBeenCalled();
   });
 
   it("does nothing if not all matches have results", async () => {
@@ -230,12 +268,12 @@ describe("transitionToCompleted", () => {
     });
     (extractMatches as ReturnType<typeof vi.fn>).mockReturnValue(matches);
     (prisma.poolMatchResult.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { matchId: "m1" },
+      { matchId: "m1", currentVersion: { source: "API_CONFIRMED" } },
     ]);
 
     await transitionToCompleted("pool-1");
 
-    expect(prisma.pool.update).not.toHaveBeenCalled();
+    expect(prisma.pool.updateMany).not.toHaveBeenCalled();
   });
 
   it("does nothing if pool is not ACTIVE", async () => {
@@ -246,7 +284,7 @@ describe("transitionToCompleted", () => {
 
     await transitionToCompleted("pool-1");
 
-    expect(prisma.pool.update).not.toHaveBeenCalled();
+    expect(prisma.pool.updateMany).not.toHaveBeenCalled();
   });
 
   it("throws if pool not found", async () => {

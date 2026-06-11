@@ -20,7 +20,7 @@ import {
   sendPoolRevertedToDraftEmail,
   batchSendEmails,
 } from "../lib/email";
-import { resolveUserLocale } from "../lib/constants";
+import { resolveUserLocale, FINAL_RESULT_SOURCES } from "../lib/constants";
 import { extractMatches, typed, type PickJson } from "../lib/fixture";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { getPoolOverview } from "./poolOverviewService";
@@ -137,24 +137,39 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
   // COMPLETED while the scoring loop below silently ignores the match
   // (`if (r.currentVersion)` guard) — producing a completed pool with
   // wrong leaderboard.
+  //
+  // The version must also be a FINAL source (audit F3-6): a
+  // SCRAPER_PROVISIONAL is a live snapshot — counting it could close
+  // the pool (and email everyone) while the last match is still being
+  // played.
   const results = await prisma.poolMatchResult.findMany({
     where: {
       poolId,
       matchId: { in: allMatches.map((m) => m.id) },
       currentVersionId: { not: null },
-    }
+    },
+    include: { currentVersion: { select: { source: true } } },
   });
 
-  if (results.length !== allMatches.length) {
-    // Some matches don't have a published result yet — remain ACTIVE.
+  const finalResults = results.filter(
+    (r) => r.currentVersion && FINAL_RESULT_SOURCES.has(r.currentVersion.source),
+  );
+  if (finalResults.length !== allMatches.length) {
+    // Some matches don't have a FINAL published result yet — remain ACTIVE.
     return;
   }
 
-  // Transición a COMPLETED
-  await prisma.pool.update({
-    where: { id: poolId },
+  // Transición a COMPLETED — conditional update (audit F3-6): two
+  // concurrent invocations (e.g. two matches finalising together) used
+  // to both pass the read check and double-send the completion emails.
+  // updateMany WHERE status=ACTIVE lets exactly one win.
+  const transitioned = await prisma.pool.updateMany({
+    where: { id: poolId, status: "ACTIVE" },
     data: { status: "COMPLETED" }
   });
+  if (transitioned.count === 0) {
+    return; // another invocation completed the pool first
+  }
 
   await writeAuditEvent({
     actorUserId: actorUserId || "SYSTEM",
@@ -173,9 +188,15 @@ export async function transitionToCompleted(poolId: string, actorUserId: string 
   // Calcular leaderboard y enviar notificaciones (async, no bloquea)
   (async () => {
     try {
-      // Obtener miembros con sus picks puntuados
+      // Obtener miembros con sus picks puntuados. Solo se emaila a
+      // quienes tienen las notificaciones habilitadas (audit F3-6 —
+      // antes se ignoraba la preferencia del usuario).
       const members = await prisma.poolMember.findMany({
-        where: { poolId, status: "ACTIVE" },
+        where: {
+          poolId,
+          status: "ACTIVE",
+          user: { emailNotificationsEnabled: true },
+        },
         include: {
           user: { select: { id: true, email: true, displayName: true, country: true } }
         },

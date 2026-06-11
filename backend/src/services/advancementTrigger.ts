@@ -15,7 +15,7 @@
  */
 
 import { prisma } from "../db";
-import { ADVANCEMENT, PHASE_DISPLAY_NAMES, resolveUserLocale } from "../lib/constants";
+import { ADVANCEMENT, PHASE_DISPLAY_NAMES, resolveUserLocale, FINAL_RESULT_SOURCES } from "../lib/constants";
 import { advanceToRoundOf32, advanceKnockoutPhase } from "./instanceAdvancement";
 import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification, sendPhaseCompletionSummaryEmail, batchSendEmails } from "../lib/email";
@@ -84,7 +84,7 @@ export async function checkAndTriggerAdvancement(
       include: { currentVersion: { select: { source: true } } },
     });
 
-    const confirmedSources = new Set(["API_CONFIRMED", "HOST_OVERRIDE", "HOST_MANUAL"]);
+    const confirmedSources = FINAL_RESULT_SOURCES;
     const allConfirmed =
       results.length === phaseMatches.length &&
       results.every((r) => r.currentVersion && confirmedSources.has(r.currentVersion.source));
@@ -148,7 +148,7 @@ async function executeAdvancement(
       where: { poolId, matchId: { in: phaseMatches.map((m) => m.id) } },
       include: { currentVersion: { select: { source: true } } },
     });
-    const confirmedSources = new Set(["API_CONFIRMED", "HOST_OVERRIDE", "HOST_MANUAL"]);
+    const confirmedSources = FINAL_RESULT_SOURCES;
     const stillComplete =
       results.length === phaseMatches.length &&
       results.every((r) => r.currentVersion && confirmedSources.has(r.currentVersion.source));

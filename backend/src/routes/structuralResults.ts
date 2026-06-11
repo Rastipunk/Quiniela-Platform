@@ -177,42 +177,62 @@ structuralResultsRouter.put(
       });
     }
 
-    // Merge into StructuralPhaseResult.resultJson.matches[].
-    const existing = await prisma.structuralPhaseResult.findUnique({
-      where: { poolId_phaseId: { poolId, phaseId } },
-    });
-    type WinnerEntry = { matchId: string; winnerId: string };
-    const existingMatches: WinnerEntry[] =
-      ((existing?.resultJson as { matches?: WinnerEntry[] } | null)?.matches) ?? [];
-    const previousEntry = existingMatches.find((m) => m.matchId === matchId);
-    const isOverride = !!previousEntry && previousEntry.winnerId !== winnerId;
+    // Merge into StructuralPhaseResult.resultJson.matches[] under the
+    // same per-(pool, phase) advisory lock the auto-publisher uses
+    // (audit F3-2) so a concurrent scraper merge can't drop this entry.
+    type WinnerEntry = { matchId: string; winnerId: string; source?: string };
 
-    if (isOverride && !reason?.trim()) {
+    const merged = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`structural:${poolId}:${phaseId}`}))`;
+
+      const existing = await tx.structuralPhaseResult.findUnique({
+        where: { poolId_phaseId: { poolId, phaseId } },
+      });
+      const existingMatches: WinnerEntry[] =
+        ((existing?.resultJson as { matches?: WinnerEntry[] } | null)?.matches) ?? [];
+      const previousEntry = existingMatches.find((m) => m.matchId === matchId);
+      const isOverride = !!previousEntry && previousEntry.winnerId !== winnerId;
+
+      if (isOverride && !reason?.trim()) {
+        return { needsReason: true } as const;
+      }
+
+      // source:"HOST" protects this entry from silent clobbering by the
+      // scraper's auto-recompute (audit F3-5; structuralAutoPublish skips
+      // HOST entries and leaves an audit trail instead).
+      const mergedMatches: WinnerEntry[] = previousEntry
+        ? existingMatches.map((m) =>
+            m.matchId === matchId ? { matchId, winnerId, source: "HOST" } : m,
+          )
+        : [...existingMatches, { matchId, winnerId, source: "HOST" }];
+
+      const updatedResultJson = { matches: mergedMatches };
+
+      const result = await tx.structuralPhaseResult.upsert({
+        where: { poolId_phaseId: { poolId, phaseId } },
+        update: {
+          resultJson: updatedResultJson as Prisma.InputJsonValue,
+          createdByUserId: req.auth!.userId,
+          publishedAtUtc: new Date(),
+        },
+        create: {
+          poolId,
+          phaseId,
+          resultJson: updatedResultJson as Prisma.InputJsonValue,
+          createdByUserId: req.auth!.userId,
+        },
+      });
+      return { result, previousEntry, isOverride } as const;
+    });
+
+    if ("needsReason" in merged) {
       return sendBadRequest(res, "REASON_REQUIRED_FOR_OVERRIDE", {
         message: "Changing an already-published winner requires a reason. All members will be notified.",
       });
     }
-
-    const mergedMatches: WinnerEntry[] = previousEntry
-      ? existingMatches.map((m) => (m.matchId === matchId ? { matchId, winnerId } : m))
-      : [...existingMatches, { matchId, winnerId }];
-
-    const updatedResultJson = { matches: mergedMatches };
-
-    const result = await prisma.structuralPhaseResult.upsert({
-      where: { poolId_phaseId: { poolId, phaseId } },
-      update: {
-        resultJson: updatedResultJson as Prisma.InputJsonValue,
-        createdByUserId: req.auth!.userId,
-        publishedAtUtc: new Date(),
-      },
-      create: {
-        poolId,
-        phaseId,
-        resultJson: updatedResultJson as Prisma.InputJsonValue,
-        createdByUserId: req.auth!.userId,
-      },
-    });
+    const { result, previousEntry, isOverride } = merged;
+    const mergedMatches =
+      ((result.resultJson as { matches?: WinnerEntry[] } | null)?.matches) ?? [];
 
     await writeAuditEvent({
       actorUserId: req.auth!.userId,
