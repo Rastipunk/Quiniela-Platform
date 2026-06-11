@@ -31,7 +31,7 @@
 
 | Job | Archivo | Cadencia | Qué hace (verificado) |
 |---|---|---|---|
-| `FixtureTrackingJob` | `backend/src/jobs/fixtureTrackingJob.ts` | cada hora + al boot | Envía a `POST /api/v1/track` los fixtures con kickoff en las próximas 24h (y hasta 3h pasadas), CON NOMBRES EN ESPAÑOL del `dataJson`. **Dedup permanente**: si `matchSyncState.trackedAtUtc` está seteado, NUNCA re-envía (líneas 171-186) |
+| `FixtureTrackingJob` | `backend/src/jobs/fixtureTrackingJob.ts` | cada hora + al boot | Envía a `POST /api/v1/track` los fixtures con kickoff en las próximas 24h (y hasta 3h pasadas), CON NOMBRES EN ESPAÑOL del `dataJson`. **Fix 2026-06-11:** re-envía SIEMPRE (idempotente) — el dedup permanente por `trackedAtUtc` fue eliminado porque convertía cualquier restart del scraper en pérdida permanente |
 | `LiveScoresJob` | `backend/src/jobs/liveScoresJob.ts` | cada 15s (`SCORES_POLL_INTERVAL_MS`) | Consume `GET /api/v1/scores/live`; procesa matches con confianza ≥ `MEDIUM` cuyo kickoff esté en ventana `[now − 3h, now + 5min]` (líneas 127-132). Publica `SCRAPER_PROVISIONAL`; al detectar status terminal con ≥3 confirmaciones (`terminalConfirmationCount`, timeline-based) arma grace period de 5 min y luego finaliza a `API_CONFIRMED` (líneas 213-249, 455-556) |
 | `TrackStatusCheckerJob` | `backend/src/jobs/trackStatusCheckerJob.ts` | cada minuto | Para partidos con kickoff en `[now − 5min, now + 10min]` y syncStatus PENDING/IN_PROGRESS: consulta `/api/v1/track/status`; si UNTRACKED → **re-trackea automáticamente** y alerta admin (líneas 47-166) |
 | `staleDetector` | `backend/src/services/scoresService/staleDetector.ts` | cada 5 min (dentro del poll) | Alerta (SOLO email, una vez por partido) si un match AUTO sigue sin COMPLETED 210 min después del kickoff |
@@ -98,7 +98,7 @@ El código está bien; lo que nadie ha verificado HOY es la configuración de ru
 - [ ] Revisar el diff (`git diff` de `trackStatusCheckerJob.ts`) y correr los checks del repo.
 - [ ] Deployar el backend y verificar en logs que el job corre con la ventana nueva.
 - [ ] Probar el ciclo completo si hay oportunidad: redeploy del scraper en momento sin partido → confirmar `[TrackStatusCheck] Re-tracked N fixtures` ≤60s después (con un partido dentro de la ventana −240 min).
-- [ ] Opcional (cinturón y tirantes): en `fixtureTrackingJob`, reenviar siempre en vez de dedup permanente (es idempotente y son ≤6 fixtures/día).
+- [x] ~~Opcional (cinturón y tirantes)~~ **TAMBIÉN IMPLEMENTADO (2026-06-11):** `fixtureTrackingJob` ahora reenvía SIEMPRE (dedup permanente eliminado). Cobertura combinada: pérdida pre-kickoff sanada ≤1h (job horario) y pérdida desde kickoff−10min hasta kickoff+4h sanada ≤60s (checker).
 
 ### A2 — ✅ DOCUMENTADO EN CÓDIGO / queda DECISIÓN de producto: no existe fallback automático
 

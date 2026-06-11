@@ -168,24 +168,15 @@ async function runFixtureTracking(): Promise<void> {
       return;
     }
 
-    // 4. Dedup: skip fixtures already tracked (trackedAtUtc is set)
-    const alreadyTracked = await prisma.matchSyncState.findMany({
-      where: {
-        internalMatchId: { in: fixtures.map((f) => f._internalMatchId!) },
-        trackedAtUtc: { not: null },
-      },
-      select: { internalMatchId: true },
-    });
-    const trackedSet = new Set(alreadyTracked.map((s) => s.internalMatchId));
-    const newFixtures = fixtures.filter((f) => !trackedSet.has(f._internalMatchId!));
-
-    // Clean internal-only field before sending to external API
-    const toSend: TrackFixture[] = newFixtures.map(({ _internalMatchId, ...rest }) => rest);
-
-    if (toSend.length === 0) {
-      console.log(`[FixtureTrackingJob] All ${fixtures.length} fixtures already tracked, skipping`);
-      return;
-    }
+    // 4. Re-send EVERY fixture in the window, including already-tracked
+    // ones. POST /track is idempotent (ALREADY_TRACKING) and the scraper
+    // keeps its tracking IN MEMORY ONLY — a restart silently drops it.
+    // The old trackedAtUtc dedup turned any scraper restart into a
+    // permanent loss (nothing ever re-sent the fixture); now every hourly
+    // run (and the startup run) doubles as periodic re-registration, on
+    // top of trackStatusCheckerJob's per-minute check around/during
+    // matches. Cost: one idempotent POST with a handful of fixtures.
+    const toSend: TrackFixture[] = fixtures.map(({ _internalMatchId, ...rest }) => rest);
 
     // 5. Send to scores service
     const result = await client.trackFixtures(toSend);
@@ -196,7 +187,7 @@ async function runFixtureTracking(): Promise<void> {
 
     // 6. Process per-fixture details — only mark fixtures that were actually accepted
     const fixtureIdToInternalId = new Map(
-      newFixtures.map((f) => [f.fixtureId, f._internalMatchId!])
+      fixtures.map((f) => [f.fixtureId, f._internalMatchId!])
     );
     const acceptedInternalIds: string[] = [];
     const rejectedDetails: Array<{ fixtureId: number; reason: string; internalId?: string }> = [];
