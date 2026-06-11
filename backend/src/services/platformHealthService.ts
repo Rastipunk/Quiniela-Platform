@@ -41,6 +41,17 @@ export interface MetricResult {
   details?: string;
   /** Severity derived in evaluateSnapshot; populated for the API/email. */
   severity?: Severity;
+  /**
+   * "No measurement available right now" sentinel. Distinct from OK:
+   * an OK metric resolves any open alert (a true recovery signal),
+   * while a skipped metric must NOT change open-alert state in either
+   * direction. Set by collectors when the underlying source hasn't
+   * produced a value yet (e.g. dashboard_build before the first build
+   * completes after boot) — without it, every restart looked like a
+   * recovery and the next build looked like a fresh regression,
+   * producing redundant resolve+fire emails per deploy.
+   */
+  skip?: boolean;
 }
 
 export interface HealthSnapshot {
@@ -95,9 +106,12 @@ const T = {
   scoresLatencyWarnMs:     envInt("HEALTH_SCORES_LATENCY_WARN_MS", 2000),
   scoresLatencyCriticalMs: envInt("HEALTH_SCORES_LATENCY_CRIT_MS", 10000),
 
-  // Last analytics dashboard build duration.
-  dashboardBuildWarnMs:     envInt("HEALTH_DASHBOARD_BUILD_WARN_MS", 20_000),
-  dashboardBuildCriticalMs: envInt("HEALTH_DASHBOARD_BUILD_CRIT_MS", 45_000),
+  // Last analytics dashboard build duration. Tuned for WC-eve DB load:
+  // a healthy build under that load measures 35-40 s, so 45/70 s flags
+  // a *degradation* rather than the steady state. After the tournament
+  // the floor should drop and these thresholds can be tightened.
+  dashboardBuildWarnMs:     envInt("HEALTH_DASHBOARD_BUILD_WARN_MS", 45_000),
+  dashboardBuildCriticalMs: envInt("HEALTH_DASHBOARD_BUILD_CRIT_MS", 70_000),
 
   // Anti-spam: re-send the same alert at most every N hours.
   alertCooldownHours: envInt("HEALTH_ALERT_COOLDOWN_HOURS", 6),
@@ -116,11 +130,11 @@ async function safeCollect(
   unit: MetricResult["unit"],
   warn: number,
   crit: number,
-  fn: () => Promise<{ value: number; details?: string }>,
+  fn: () => Promise<{ value: number; details?: string; skip?: boolean }>,
 ): Promise<MetricResult> {
   try {
-    const { value, details } = await fn();
-    return { key, label, unit, value, warnThreshold: warn, criticalThreshold: crit, details };
+    const { value, details, skip } = await fn();
+    return { key, label, unit, value, warnThreshold: warn, criticalThreshold: crit, details, skip };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return {
@@ -368,7 +382,13 @@ async function dashboardBuildMetric(): Promise<MetricResult> {
     T.dashboardBuildCriticalMs,
     async () => {
       const ms = getLastDashboardBuildMs();
-      if (ms === 0) return { value: 0, details: "aún no se ha construido (post-boot)" };
+      // 0 is the post-boot sentinel before the first prewarm completes
+      // — treat as "no measurement", not OK, so deploy boots don't
+      // ping-pong open alerts: resolve-on-boot followed by re-fire on
+      // first build produced two unnecessary emails per restart.
+      if (ms === 0) {
+        return { value: 0, details: "aún no se ha construido (post-boot)", skip: true };
+      }
       return { value: ms, details: `${ms}ms en la última corrida` };
     },
   );
@@ -394,6 +414,13 @@ export async function collectSnapshot(): Promise<HealthSnapshot> {
 
 export function evaluateSnapshot(snapshot: HealthSnapshot): HealthSnapshot {
   for (const m of snapshot.metrics) {
+    // Skipped collectors deliberately have no severity — neither OK
+    // nor WARN/CRITICAL — so neither maybeFireAlert nor maybeResolveAlert
+    // touches the open-alert table when seen.
+    if (m.skip) {
+      m.severity = undefined;
+      continue;
+    }
     if (m.unit === "boolean" || m.details?.startsWith("scores service no configurado")) {
       m.severity = "OK";
       continue;
@@ -419,7 +446,11 @@ export async function processSnapshotAlerts(snapshot: HealthSnapshot): Promise<P
   const counters: ProcessedAlerts = { fired: 0, resolved: 0, suppressedByCooldown: 0 };
 
   for (const m of snapshot.metrics) {
-    const sev = m.severity ?? "OK";
+    // Skipped collectors leave severity undefined intentionally.
+    // Treat as no-op: neither fire (no signal to escalate) nor resolve
+    // (we can't claim recovery from a non-measurement).
+    if (m.skip || m.severity === undefined) continue;
+    const sev = m.severity;
     if (sev === "OK") {
       await maybeResolveAlert(m, now, counters);
       continue;

@@ -158,6 +158,41 @@ describe("processSnapshotAlerts", () => {
     );
   });
 
+  it("does NOT fire or resolve when a metric is marked skip (no measurement)", async () => {
+    // dashboard_build returns skip:true when getLastDashboardBuildMs is 0
+    // (the post-boot sentinel). Without skip semantics, every deploy
+    // produced a redundant resolve-on-boot then fire-on-first-build
+    // pair of emails — the test below would have caught that.
+    vi.mocked(prisma.platformHealthAlert.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.platformHealthAlert.findMany).mockResolvedValue([
+      // Stage an existing OPEN alert. If skip were broken, this would
+      // get resolved against a non-measurement, producing a fake
+      // recovery email.
+      { id: "open-1", severity: "WARN" } as never,
+    ]);
+
+    const m = baseMetric({
+      key: "dashboard_build",
+      unit: "ms",
+      warnThreshold: 45_000,
+      criticalThreshold: 70_000,
+      value: 0,
+      skip: true,
+    });
+    const s = evaluateSnapshot(snapshot([m]));
+
+    // Skipped metric leaves severity undefined (not OK).
+    expect(s.metrics[0]?.severity).toBeUndefined();
+
+    const result = await processSnapshotAlerts(s);
+    expect(result.fired).toBe(0);
+    expect(result.resolved).toBe(0);
+    expect(result.suppressedByCooldown).toBe(0);
+    expect(sendAdminNotification).not.toHaveBeenCalled();
+    expect(prisma.platformHealthAlert.update).not.toHaveBeenCalled();
+    expect(prisma.platformHealthAlert.create).not.toHaveBeenCalled();
+  });
+
   it("does nothing when a metric is OK and no open alert exists", async () => {
     vi.mocked(prisma.platformHealthAlert.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.platformHealthAlert.findMany).mockResolvedValue([]);
