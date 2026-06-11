@@ -504,8 +504,18 @@ export async function getMatchPickBreakdown(
     ? { homeGoals: pickJson.homeGoals, awayGoals: pickJson.awayGoals }
     : null;
 
+  // Same 90'/120' selector the leaderboard uses (audit F2-1): without
+  // it, an AET match showed the breakdown evaluated against the
+  // with-extra-time score while the leaderboard paid against the 90'.
   const resultData = result?.currentVersion
-    ? { homeGoals: result.currentVersion.homeGoals, awayGoals: result.currentVersion.awayGoals }
+    ? {
+        homeGoals: phaseConfig.includeExtraTime
+          ? result.currentVersion.homeGoals
+          : (result.currentVersion.homeGoals90 ?? result.currentVersion.homeGoals),
+        awayGoals: phaseConfig.includeExtraTime
+          ? result.currentVersion.awayGoals
+          : (result.currentVersion.awayGoals90 ?? result.currentVersion.awayGoals),
+      }
     : null;
 
   const breakdown = generateMatchPickBreakdown(pickData, resultData, phaseConfig, matchId);

@@ -18,6 +18,7 @@ import {
   terminalConfirmationCount,
 } from "../services/scoresService/timeline";
 import { writeAuditEvent } from "../lib/audit";
+import { sendAdminNotification } from "../lib/email";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { FINISHED_STATUSES } from "../services/apiFootball/types";
 import { SCORES } from "../lib/constants";
@@ -279,6 +280,24 @@ async function processLiveScore(
   // so the live badge / window logic is unaffected.
   if (score.status === "NS") return;
 
+  // ET-family terminal about to finalize with NO derivable minute-90
+  // score (audit F1-1): the match will finalize anyway (goals90 stays
+  // null and the includeExtraTime=false scoring falls back to the
+  // with-ET score). That fallback is silent by design — surface it
+  // ONCE per match so a human can backfill goals90 via override.
+  if (
+    shouldFinalize &&
+    (score.status === "AET" || score.status === "PEN")
+  ) {
+    const derived = deriveNinetyMinuteScore(score.timeline, score.status);
+    if (derived.homeGoals90 == null) {
+      fireAndForget(
+        "LiveScoresJob:goals90-missing-alert",
+        alertGoals90MissingAtFinalize(entry.internalMatchId, score),
+      );
+    }
+  }
+
   // For each pool, create/update result
   for (const poolId of entry.poolIds) {
     try {
@@ -295,6 +314,61 @@ async function processLiveScore(
         error instanceof Error ? error.message : String(error)
       );
     }
+  }
+}
+
+/** Audit action / once-per-match idempotency key for the goals90 gap alert. */
+const GOALS90_MISSING_ACTION = "GOALS90_MISSING_AT_FINALIZE";
+
+/**
+ * One-time admin alert: an AET/PEN match is finalizing but the timeline
+ * never delivered the ET milestone, so goals90 will stay null and every
+ * includeExtraTime=false phase will silently score against the with-ET
+ * goals (audit F1-1). Idempotent via auditEvent lookup (same pattern as
+ * the stale detector).
+ */
+async function alertGoals90MissingAtFinalize(
+  internalMatchId: string,
+  score: LiveScore,
+): Promise<void> {
+  try {
+    const already = await prisma.auditEvent.findFirst({
+      where: { action: GOALS90_MISSING_ACTION, entityId: internalMatchId },
+      select: { id: true },
+    });
+    if (already) return;
+
+    await writeAuditEvent({
+      actorUserId: null,
+      action: GOALS90_MISSING_ACTION,
+      entityType: "MatchSyncState",
+      entityId: internalMatchId,
+      dataJson: {
+        internalMatchId,
+        fixtureId: score.apiFootballFixtureId,
+        status: score.status,
+        homeGoals: score.homeGoals,
+        awayGoals: score.awayGoals,
+        timelineLength: score.timeline?.length ?? 0,
+      },
+    });
+
+    await sendAdminNotification({
+      category: "error",
+      subject: `goals90 indisponible al finalizar: ${internalMatchId}`,
+      body:
+        `El partido <strong>${internalMatchId}</strong> (${score.homeTeamName} vs ` +
+        `${score.awayTeamName}) finaliza como <strong>${score.status}</strong> pero el ` +
+        `timeline del scraper no trae el milestone <code>ET</code> — el marcador de ` +
+        `90 minutos quedará null y las fases con scoring a 90' puntuarán contra el ` +
+        `marcador CON prórroga.<br><br>` +
+        `Acción: verificar el 90' real y cargarlo vía override (goals90) en cuanto sea posible.`,
+    });
+  } catch (err) {
+    console.error(
+      "[LiveScoresJob] goals90-missing alert failed:",
+      err instanceof Error ? err.message : String(err),
+    );
   }
 }
 
@@ -320,28 +394,34 @@ async function publishScraperResult(
     return;
   }
 
-  // c. Skip if SCRAPER_PROVISIONAL with same score already exists (no change)
+  // c. For matches that went to extra time, store the minute-90 score
+  //    separately. The scores service no longer fills fulltime/extratime
+  //    (always null) — derive end-of-regulation from the timeline[] (the
+  //    `ET` milestone carries the score with which ET began). See
+  //    FOR-PICKS4ALL-INTEGRATION §4-§5 and scoresService/timeline.ts.
+  //    Derived BEFORE the dedupe (audit F1-2): the old order skipped the
+  //    new version when goals/penalties were unchanged even if the
+  //    timeline finally delivered the ET milestone — an AET with no
+  //    later score change stayed frozen with goals90 = null forever.
+  const { homeGoals90, awayGoals90 } = deriveNinetyMinuteScore(
+    score.timeline,
+    score.status,
+  );
+
+  // d. Skip if SCRAPER_PROVISIONAL with same score already exists (no change)
   if (existingResult?.currentVersion?.source === "SCRAPER_PROVISIONAL") {
     const cv = existingResult.currentVersion;
     if (
       cv.homeGoals === score.homeGoals &&
       cv.awayGoals === score.awayGoals &&
       cv.homePenalties === score.penaltyHome &&
-      cv.awayPenalties === score.penaltyAway
+      cv.awayPenalties === score.penaltyAway &&
+      cv.homeGoals90 === homeGoals90 &&
+      cv.awayGoals90 === awayGoals90
     ) {
       return; // Score unchanged — no new version needed
     }
   }
-
-  // d. For matches that went to extra time, store the minute-90 score
-  //    separately. The scores service no longer fills fulltime/extratime
-  //    (always null) — derive end-of-regulation from the timeline[] (the
-  //    `ET` milestone carries the score with which ET began). See
-  //    FOR-PICKS4ALL-INTEGRATION §4-§5 and scoresService/timeline.ts.
-  const { homeGoals90, awayGoals90 } = deriveNinetyMinuteScore(
-    score.timeline,
-    score.status,
-  );
 
   // Build externalDataJson snapshot
   const externalDataJson: Prisma.InputJsonValue = {
@@ -479,6 +559,16 @@ async function finalizeResult(
 
   const cv = existingResult.currentVersion;
 
+  // Finalize from the LIVE payload, not from the last provisional copy
+  // (audit F1-3): a scraper correction landing exactly on the poll that
+  // finalizes used to survive only inside externalDataJson while the
+  // scoring columns kept the stale provisional values. goals90 is
+  // re-derived here too (the timeline is append-only, so by terminal
+  // time the ET milestone is at its most complete); cv values remain as
+  // fallback only.
+  const { homeGoals90: finalHome90, awayGoals90: finalAway90 } =
+    deriveNinetyMinuteScore(score.timeline, score.status);
+
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "PoolMatchResult" WHERE id = ${existingResult.id} FOR UPDATE`;
 
@@ -493,12 +583,12 @@ async function finalizeResult(
         resultId: existingResult.id,
         versionNumber: nextVersion,
         status: "PUBLISHED",
-        homeGoals: cv.homeGoals,
-        awayGoals: cv.awayGoals,
-        homeGoals90: cv.homeGoals90,
-        awayGoals90: cv.awayGoals90,
-        homePenalties: cv.homePenalties,
-        awayPenalties: cv.awayPenalties,
+        homeGoals: score.homeGoals,
+        awayGoals: score.awayGoals,
+        homeGoals90: finalHome90 ?? cv.homeGoals90,
+        awayGoals90: finalAway90 ?? cv.awayGoals90,
+        homePenalties: score.penaltyHome ?? cv.homePenalties,
+        awayPenalties: score.penaltyAway ?? cv.awayPenalties,
         source: "API_CONFIRMED",
         externalFixtureId: cv.externalFixtureId,
         externalDataJson: score as unknown as Prisma.InputJsonValue,
@@ -522,8 +612,8 @@ async function finalizeResult(
       poolId,
       dataJson: {
         matchId: entry.internalMatchId,
-        homeGoals: cv.homeGoals,
-        awayGoals: cv.awayGoals,
+        homeGoals: score.homeGoals,
+        awayGoals: score.awayGoals,
         status: score.status,
         confidence: score.confidence,
       },

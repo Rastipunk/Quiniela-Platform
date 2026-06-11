@@ -356,6 +356,18 @@ const server = app.listen(PORT, () => {
   // it reports on the first tick reflects real activity, not zero.
   startEventLoopMonitor();
   startPlatformHealthJob();
+  // Advancement timers live in memory — re-arm any advancement lost to
+  // this restart (audit F3-7). Delayed so boot queries don't compete.
+  setTimeout(() => {
+    import("./services/advancementTrigger")
+      .then(({ rearmPendingAdvancements }) => rearmPendingAdvancements())
+      .catch((err) =>
+        console.error(
+          "[Server] rearmPendingAdvancements failed:",
+          err instanceof Error ? err.message : String(err),
+        ),
+      );
+  }, 45_000).unref();
 });
 
 // Graceful shutdown — clean up on SIGTERM (Railway redeploy) and SIGINT (Ctrl+C)

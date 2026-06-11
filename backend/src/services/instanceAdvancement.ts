@@ -234,14 +234,14 @@ export async function calculateAllGroupStandings(
     poolForStructuralCheck = pools[0]!;
   }
 
-  // Detect structural-grupos: in Estratega the host publishes the
-  // final standings by drag-and-drop. There are no scores to compute,
-  // so we read GroupStandingsResult.teamIds directly and synthesize
-  // TeamStanding rows with position information (the only field
-  // determineQualifiers needs for winners/runners-up). Stats like
-  // points, goalDifference, goalsFor are zero — best-thirds ranking
-  // in Estratega falls back to alphabetical groupId order, which is
-  // an accepted limitation for tournaments using "best thirds" gates.
+  // Detect structural-grupos: in Estratega the published
+  // GroupStandingsResult.teamIds is the POSITION authority (it may
+  // include host overrides for fair-play/drawing-of-lots the calculator
+  // can't know). But the underlying matches DO have scraper-published
+  // scores, so the per-team stats (points/GD/GF) are computed from them
+  // — best-thirds ranking needs real performance (audit F3-8: zeroed
+  // stats made rankThirdPlaceTeams fall back to ALPHABETICAL groupId
+  // order, resolving the R32 bracket arbitrarily in SIMPLE pools).
   const phaseConfigs = (poolForStructuralCheck?.pickTypesConfig ?? []) as Array<{
     phaseId: string;
     requiresScore?: boolean;
@@ -253,6 +253,31 @@ export async function calculateAllGroupStandings(
     groupPhaseConfig.structuralPicks?.type === "GROUP_STANDINGS";
 
   const allStandings = new Map<string, TeamStanding[]>();
+
+  // Match scores are needed by BOTH paths (Estratega for stats,
+  // score-based for the full computation). 90' goals govern group
+  // tables (consistent with structuralAutoPublish — audit F3-9; in a
+  // pure round-robin goals === goals90).
+  const results = await prisma.poolMatchResult.findMany({
+    where: {
+      poolId: targetPoolId,
+      matchId: { in: groupMatches.map((m) => m.id) },
+    },
+    include: {
+      currentVersion: true,
+    },
+  });
+
+  const resultsMap = new Map();
+  for (const r of results) {
+    if (r.currentVersion) {
+      resultsMap.set(r.matchId, {
+        matchId: r.matchId,
+        homeGoals: r.currentVersion.homeGoals90 ?? r.currentVersion.homeGoals,
+        awayGoals: r.currentVersion.awayGoals90 ?? r.currentVersion.awayGoals,
+      });
+    }
+  }
 
   if (isStructuralGroups) {
     const groupResults = await prisma.groupStandingsResult.findMany({
@@ -269,19 +294,48 @@ export async function calculateAllGroupStandings(
       if (!ordered) {
         throw new Error(`Grupo ${groupId} no tiene tabla publicada (Estratega)`);
       }
-      const standings: TeamStanding[] = ordered.map((teamId, idx) => ({
-        teamId,
-        groupId,
-        position: idx + 1,
-        played: 0,
-        won: 0,
-        drawn: 0,
-        lost: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        goalDifference: 0,
-        points: 0,
-      }));
+
+      // Real stats from available match scores (best-effort: matches
+      // without a result are simply not counted — still strictly
+      // better than all-zeros). Order is NOT taken from here.
+      const groupTeamIds = data.teams.filter((t) => t.groupId === groupId).map((t) => t.id);
+      const scoredMatches = data.matches
+        .filter((m) => m.groupId === groupId && resultsMap.has(m.id))
+        .map((m) => {
+          const result = resultsMap.get(m.id)!;
+          return {
+            matchId: m.id,
+            homeTeamId: m.homeTeamId,
+            awayTeamId: m.awayTeamId,
+            homeGoals: result.homeGoals,
+            awayGoals: result.awayGoals,
+          };
+        });
+      const statsByTeam = new Map<string, TeamStanding>();
+      if (scoredMatches.length > 0) {
+        for (const s of calculateGroupStandings(groupId, groupTeamIds, scoredMatches)) {
+          statsByTeam.set(s.teamId, s);
+        }
+      }
+
+      // Positions come from the PUBLISHED order (host overrides win);
+      // stats come from the real scores.
+      const standings: TeamStanding[] = ordered.map((teamId, idx) => {
+        const stats = statsByTeam.get(teamId);
+        return {
+          teamId,
+          groupId,
+          position: idx + 1,
+          played: stats?.played ?? 0,
+          won: stats?.won ?? 0,
+          drawn: stats?.drawn ?? 0,
+          lost: stats?.lost ?? 0,
+          goalsFor: stats?.goalsFor ?? 0,
+          goalsAgainst: stats?.goalsAgainst ?? 0,
+          goalDifference: stats?.goalDifference ?? 0,
+          points: stats?.points ?? 0,
+        };
+      });
       allStandings.set(groupId, standings);
     }
 
@@ -289,26 +343,6 @@ export async function calculateAllGroupStandings(
   }
 
   // Score-based path: original computation from match scores.
-  const results = await prisma.poolMatchResult.findMany({
-    where: {
-      poolId: targetPoolId,
-      matchId: { in: groupMatches.map((m) => m.id) },
-    },
-    include: {
-      currentVersion: true,
-    },
-  });
-
-  const resultsMap = new Map();
-  for (const r of results) {
-    if (r.currentVersion) {
-      resultsMap.set(r.matchId, {
-        matchId: r.matchId,
-        homeGoals: r.currentVersion.homeGoals,
-        awayGoals: r.currentVersion.awayGoals,
-      });
-    }
-  }
 
   for (const groupId of groups) {
     if (!groupId) continue;

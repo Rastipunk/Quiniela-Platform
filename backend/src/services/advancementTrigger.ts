@@ -160,6 +160,23 @@ async function executeAdvancement(
       return;
     }
 
+    // Respect the same gates the host path honors (audit F3-7): the
+    // timer path used to bypass pool.autoAdvanceEnabled AND the <24h
+    // errata freeze, advancing pools whose hosts had explicitly opted
+    // out or were mid-correction.
+    const { validateCanAutoAdvance } = await import("./instanceAdvancement");
+    const validation = await validateCanAutoAdvance(
+      pool.tournamentInstanceId,
+      completedPhaseId,
+      poolId,
+    );
+    if (!validation.canAdvance) {
+      console.log(
+        `[AdvancementTrigger] Advancement blocked for pool ${poolId} (${completedPhaseId}): ${validation.reason}`
+      );
+      return;
+    }
+
     // Execute advancement
     if (completedPhaseId === "group_stage") {
       await advanceToRoundOf32(pool.tournamentInstanceId, poolId);
@@ -216,6 +233,69 @@ async function executeAdvancement(
       body: `<p>Pool <code>${poolId}</code> failed to advance automatically.</p><p><strong>Error:</strong> ${errMsg}</p><p>Manual intervention required.</p>`,
       category: "error",
     }).catch(() => {});
+  }
+}
+
+/**
+ * Re-arm advancement checks after a process restart (audit F3-7).
+ * Timers live in memory: a deploy/restart inside the 10-min delay lost
+ * the scheduled advancement, and if the lost timer belonged to the
+ * phase's LAST match there was no later trigger — the bracket stayed
+ * stuck until manual intervention. On boot we sweep ACTIVE pools of
+ * AUTO instances with a cheap snapshot-only prefilter (phase fully
+ * resolved + next phase still has placeholders) and delegate the real
+ * completeness check + scheduling to checkAndTriggerAdvancement.
+ */
+export async function rearmPendingAdvancements(): Promise<void> {
+  try {
+    const pools = await prisma.pool.findMany({
+      where: {
+        status: "ACTIVE",
+        tournamentInstance: { resultSourceMode: "AUTO", status: "ACTIVE" },
+      },
+      select: { id: true, fixtureSnapshot: true },
+    });
+
+    let rearmed = 0;
+    for (const pool of pools) {
+      const snapshot = pool.fixtureSnapshot as PoolFixtureSnapshot | null;
+      if (!snapshot?.matches) continue;
+
+      const byPhase = new Map<string, PoolFixtureMatch[]>();
+      for (const m of snapshot.matches) {
+        const arr = byPhase.get(m.phaseId) ?? [];
+        arr.push(m);
+        byPhase.set(m.phaseId, arr);
+      }
+
+      for (const [phaseId, matches] of byPhase) {
+        const nextPhaseId = getNextPhaseId(pool.fixtureSnapshot, phaseId);
+        if (!nextPhaseId) continue;
+
+        const nextMatches = byPhase.get(nextPhaseId) ?? [];
+        const nextStillUnresolved =
+          nextMatches.length > 0 &&
+          nextMatches.some((m) => isPlaceholder(m.homeTeamId) || isPlaceholder(m.awayTeamId));
+        if (!nextStillUnresolved) continue;
+
+        const thisPhaseResolved =
+          matches.length > 0 &&
+          matches.every((m) => !isPlaceholder(m.homeTeamId) && !isPlaceholder(m.awayTeamId));
+        if (!thisPhaseResolved) continue;
+
+        const res = await checkAndTriggerAdvancement(pool.id, matches[0]!.id, null);
+        if (res.scheduled) rearmed++;
+      }
+    }
+
+    if (rearmed > 0) {
+      console.log(`[AdvancementTrigger] Re-armed ${rearmed} pending advancement(s) after boot`);
+    }
+  } catch (err) {
+    console.error(
+      "[AdvancementTrigger] rearmPendingAdvancements failed:",
+      err instanceof Error ? err.message : String(err),
+    );
   }
 }
 

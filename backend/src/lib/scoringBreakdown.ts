@@ -350,6 +350,55 @@ export function generateMatchPickBreakdown(
       if (matched) totalEarned += totalGoalsType.points;
     }
 
+    // 6. EXACT_SCORE — en el sistema acumulativo es un BONUS aditivo
+    //    (scoringAdvanced lo suma encima de los demás criterios, sin
+    //    short-circuit). Omitirlo aquí hacía que el desglose mostrara
+    //    menos puntos que los que el leaderboard pagó (audit F2-2).
+    const exactScoreCumType = enabledTypes.find(t => t.key === "EXACT_SCORE");
+    if (exactScoreCumType) {
+      const matched = pick.homeGoals === result.homeGoals && pick.awayGoals === result.awayGoals;
+
+      rules.push({
+        ruleKey: "EXACT_SCORE",
+        ruleName: MATCH_PICK_TYPE_NAMES.EXACT_SCORE,
+        enabled: true,
+        matched,
+        pointsEarned: matched ? exactScoreCumType.points : 0,
+        pointsMax: exactScoreCumType.points,
+        details: matched
+          ? `Marcador exacto: ${pick.homeGoals}-${pick.awayGoals}`
+          : `Predijiste ${pick.homeGoals}-${pick.awayGoals}, fue ${result.homeGoals}-${result.awayGoals}`,
+      });
+
+      if (matched) totalEarned += exactScoreCumType.points;
+    }
+
+    // 7. PARTIAL_SCORE — XOR: acierta los goles de UN solo lado
+    //    (si acierta ambos NO aplica — eso es EXACT_SCORE). Mismo
+    //    criterio que scoringAdvanced (audit F2-2).
+    const partialScoreCumType = enabledTypes.find(t => t.key === "PARTIAL_SCORE");
+    if (partialScoreCumType) {
+      const homeRight = pick.homeGoals === result.homeGoals;
+      const awayRight = pick.awayGoals === result.awayGoals;
+      const matched = homeRight !== awayRight;
+
+      rules.push({
+        ruleKey: "PARTIAL_SCORE",
+        ruleName: MATCH_PICK_TYPE_NAMES.PARTIAL_SCORE,
+        enabled: true,
+        matched,
+        pointsEarned: matched ? partialScoreCumType.points : 0,
+        pointsMax: partialScoreCumType.points,
+        details: matched
+          ? `Acertaste los goles ${homeRight ? "del local" : "del visitante"}`
+          : homeRight && awayRight
+            ? "Acertaste ambos lados (aplica marcador exacto, no parcial)"
+            : "No acertaste los goles de ningún lado",
+      });
+
+      if (matched) totalEarned += partialScoreCumType.points;
+    }
+
     return {
       type: "MATCH",
       matchId,

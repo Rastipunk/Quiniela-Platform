@@ -8,6 +8,17 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Score pipeline — Etapa 2 (backend): prórroga/penales robustos + advancement resiliente (2026-06-11)
+
+Tercera tanda del plan (`SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1), lista antes de la primera eliminatoria (R32 ~28-jun).
+
+#### Fixed
+- **`goals90` robusto (audit F1-1/2/3 🔴):** se deriva ANTES del dedupe y entra en la comparación (un AET sin cambios posteriores de marcador quedaba congelado con `goals90 = null`); la finalización escribe las columnas desde el **payload vivo** (una corrección del scraper en el poll final solo sobrevivía en `externalDataJson`) re-derivando `goals90` con fallback a la versión previa; y si un AET/PEN finaliza sin milestone `ET` en el timeline, se dispara una **alerta admin one-time** (`GOALS90_MISSING_AT_FINALIZE`) — el fallback silencioso a marcador-con-prórroga ahora es visible y corregible.
+- **El desglose por partido usa el mismo selector 90'/120' que el leaderboard (audit F2-1 🔴):** en fases `includeExtraTime=false` el modal evaluaba contra el marcador con prórroga mientras el leaderboard pagaba al 90'.
+- **El desglose acumulativo evalúa EXACT_SCORE y PARTIAL_SCORE (audit F2-2 🔴):** el motor los suma; el modal los omitía → puntos mostrados ≠ puntos pagados.
+- **Mejores terceros Estratega con rendimiento real (audit F3-8 🔴):** la rama estructural sintetizaba standings con stats en CERO y el ranking de terceros caía a orden alfabético de grupo — el bracket de R32 se resolvía arbitrariamente en pools SIMPLE. Ahora las posiciones siguen saliendo de la tabla publicada (los overrides del host mandan) pero los stats (puntos/DG/GF) se computan de los marcadores reales. De paso, todas las derivaciones de tablas usan `goals90 ?? goals` (audit F3-9).
+- **Advancement resiliente (audit F3-7):** el camino del timer ahora respeta `autoAdvanceEnabled` y el bloqueo de erratas <24h (`validateCanAutoAdvance`, antes solo lo honraba el camino del host), y al boot un barrido (`rearmPendingAdvancements`) re-arma cualquier avance perdido por un restart dentro de la ventana de 10 min — antes quedaba atascado sin re-trigger si era el último partido de la fase.
+
 ### Score pipeline — Etapa 1: derivaciones a prueba de última jornada (2026-06-11)
 
 Segunda tanda del plan aprobado (`SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1), pensada para la última jornada simultánea de grupos (~24-27 jun).
