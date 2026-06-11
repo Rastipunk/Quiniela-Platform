@@ -401,14 +401,17 @@ cero fallas nuevas.
 Verificación Etapa 1: typecheck limpio; suite 720 pass / 19 fallas
 pre-existentes conocidas (cero nuevas).
 
-### Etapa 2 — Semana 16-22 jun (~1.5 días): listos para eliminatorias (R32 28-jun)
-| Ítem | Hallazgo |
-|---|---|
-| Terceros Estratega con stats reales (derivar de marcadores, no ceros) | F3-8 🔴 |
-| goals90 robusto: finalize re-deriva del payload vivo + dedupe incluye goals90 + alerta si AET con goals90 null | F1-1/2/3 🔴 |
-| Breakdown: selector includeExtraTime/goals90 + tipos faltantes en acumulativo | F2-1/F2-2 🔴 |
-| Editor de override del host: campos goals90 + penales | F2-7/F4-7 🟡 |
-| Advancement resiliente: re-arme al boot + respetar autoAdvanceEnabled/erratas en camino del timer | F3-7 🟡 |
+### Etapa 2 — Semana 16-22 jun (~1.5 días): listos para eliminatorias (R32 28-jun) — ✅ EJECUTADA (mismo día, 2026-06-11)
+| Ítem | Hallazgo | Estado |
+|---|---|---|
+| Terceros Estratega con stats reales: posiciones de la tabla publicada (overrides del host mandan) + stats de los marcadores reales; toda derivación de tablas usa `goals90 ?? goals` (F3-9) | F3-8 🔴 | ✅ |
+| goals90 robusto: derive ANTES del dedupe + en la comparación; finalize escribe desde el payload VIVO re-derivando goals90; alerta admin one-time `GOALS90_MISSING_AT_FINALIZE` si AET/PEN finaliza sin milestone ET | F1-1/2/3 🔴 | ✅ |
+| Breakdown: selector includeExtraTime/goals90 (igual al leaderboard) + EXACT_SCORE/PARTIAL_SCORE en la rama acumulativa | F2-1/F2-2 🔴 | ✅ |
+| Editor de override del host: toggle prórroga + inputs 90' (obligatorios, ≤ final) cableados hasta la API; i18n ×3 | F2-7/F4-7 🟡 | ✅ |
+| Advancement resiliente: `validateCanAutoAdvance` en el camino del timer (autoAdvanceEnabled + erratas <24h) + `rearmPendingAdvancements()` al boot | F3-7 🟡 | ✅ |
+
+Verificación Etapa 2: backend `1dbd855` (typecheck limpio, 720 pass /
+19 pre-existentes) vivo 17:40Z; frontend (build de producción OK).
 
 ### Etapa 3 — Panel admin (semanas 16-29 jun, ~3 días, ideal ANTES de R32)
 - **3A (~1 día):** monitoreo read-only — `GET /admin/matches/monitor`
@@ -456,4 +459,20 @@ resultSync goals90 (F2-6, inerte).
 - 15:3x-16:0xZ — Informes F1-F4 recibidos; spot-check manual de los 7
   hallazgos más críticos (F1-1/2, F2-1, F3-1 [confirmado contra los
   phaseIds reales de producción], F3-3, F3-4, F2-5-frontend). Documento
-  completado. **A LA ESPERA DE APROBACIÓN DEL OWNER — cero código tocado.**
+  completado.
+- ~15:10Z — **GO del owner al plan completo** (decisión F2-9: la elección
+  del creador manda — solo visibilidad; seguridad máxima; documentación
+  continua).
+- 15:2x-15:35Z — **Etapa 0 ejecutada y desplegada** (`2a521f3`, viva
+  15:35Z): env A3 + getNextPhaseId (F3-1, derivación por orden del
+  fixture tras verificar que UCL ACTIVE usa `final` singular + legs) +
+  F3-4 + F1-9. Suite sin fallas nuevas.
+- 15:40-15:52Z — **Etapa 1 ejecutada y desplegada** (`35f6392`, viva
+  15:52Z): F3-3 (gate FINAL_RESULT_SOURCES), F3-5 (protección de
+  overrides del host), F3-2 (advisory lock en ambos writers), F3-6
+  (cierre de pool endurecido + 3 tests), A4 (sin 0-0 NS). Suite 720
+  pass / 19 pre-existentes.
+- **Siguiente: Etapa 2** (terceros Estratega reales, goals90 robusto,
+  breakdown con selector, editor host con goals90, advancement
+  resiliente) — deadline R32 28-jun. Luego Etapa 3 (panel admin) y
+  Etapa 4 (visibilidad UI).

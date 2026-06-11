@@ -17,7 +17,7 @@ export function ResultSection(props: {
   elapsed?: number | null;
   extra?: number | null;
   matchStatus?: string | null;
-  onSave: (homeGoals: number, awayGoals: number, reason?: string, homePenalties?: number, awayPenalties?: number) => void;
+  onSave: (homeGoals: number, awayGoals: number, reason?: string, homePenalties?: number, awayPenalties?: number, homeGoals90?: number, awayGoals90?: number) => void;
   disabled: boolean;
   homeTeam: any;
   awayTeam: any;
@@ -112,8 +112,8 @@ export function ResultSection(props: {
           <ResultEditor
             result={props.result}
             requireReason={true}
-            onSave={(homeGoals, awayGoals, reason, homePenalties, awayPenalties) => {
-              props.onSave(homeGoals, awayGoals, reason, homePenalties, awayPenalties);
+            onSave={(homeGoals, awayGoals, reason, homePenalties, awayPenalties, homeGoals90, awayGoals90) => {
+              props.onSave(homeGoals, awayGoals, reason, homePenalties, awayPenalties, homeGoals90, awayGoals90);
               setEditMode(false);
             }}
             onCancel={() => setEditMode(false)}
@@ -298,7 +298,7 @@ function ResultDisplay(props: {
 function ResultEditor(props: {
   result: any;
   requireReason: boolean;
-  onSave: (homeGoals: number, awayGoals: number, reason?: string, homePenalties?: number, awayPenalties?: number) => void;
+  onSave: (homeGoals: number, awayGoals: number, reason?: string, homePenalties?: number, awayPenalties?: number, homeGoals90?: number, awayGoals90?: number) => void;
   onCancel?: () => void;
   disabled: boolean;
   homeTeam: any;
@@ -312,6 +312,13 @@ function ResultEditor(props: {
   const [awayGoals, setAwayGoals] = useState(props.result ? String(props.result.awayGoals) : "");
   const [homePenalties, setHomePenalties] = useState(props.result?.homePenalties ? String(props.result.homePenalties) : "");
   const [awayPenalties, setAwayPenalties] = useState(props.result?.awayPenalties ? String(props.result.awayPenalties) : "");
+  // Marcador al minuto 90 (audit F2-7/F4-7): sin estos campos, un
+  // override del host en partido con prórroga borraba el goals90 de la
+  // versión nueva y las fases con scoring a 90' puntuaban contra el
+  // marcador con prórroga.
+  const [wentToExtraTime, setWentToExtraTime] = useState(props.result?.homeGoals90 != null);
+  const [homeGoals90, setHomeGoals90] = useState(props.result?.homeGoals90 != null ? String(props.result.homeGoals90) : "");
+  const [awayGoals90, setAwayGoals90] = useState(props.result?.awayGoals90 != null ? String(props.result.awayGoals90) : "");
   const [reason, setReason] = useState("");
 
   // Detectar si es fase eliminatoria (no puede haber empates)
@@ -321,6 +328,15 @@ function ResultEditor(props: {
   const awayNum = awayGoals.trim() !== "" ? Number(awayGoals) : null;
   const isDraw = homeNum !== null && awayNum !== null && homeNum === awayNum;
   const showPenalties = isKnockoutPhase && isDraw;
+
+  const home90Num = homeGoals90.trim() !== "" ? Number(homeGoals90) : null;
+  const away90Num = awayGoals90.trim() !== "" ? Number(awayGoals90) : null;
+  // Con prórroga activada: ambos 90' obligatorios y nunca mayores al final.
+  const et90Invalid =
+    !!wentToExtraTime &&
+    (home90Num === null || away90Num === null ||
+      (homeNum !== null && home90Num > homeNum) ||
+      (awayNum !== null && away90Num > awayNum));
 
   const homeFlag = getTeamFlag(props.homeTeam.id.replace("t_", ""), props.tournamentKey);
   const awayFlag = getTeamFlag(props.awayTeam.id.replace("t_", ""), props.tournamentKey);
@@ -369,6 +385,43 @@ function ResultEditor(props: {
         </div>
       </div>
 
+      {/* Extra time (solo eliminatorias): captura el marcador al 90' */}
+      {isKnockoutPhase && (
+        <div style={{ marginTop: 8 }}>
+          <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: colors.textMuted, cursor: "pointer", minHeight: isMobile ? TOUCH_TARGET.minimum : undefined }}>
+            <input
+              type="checkbox"
+              checked={!!wentToExtraTime}
+              onChange={(e) => setWentToExtraTime(e.target.checked)}
+            />
+            {t("result.extraTimeToggle")}
+          </label>
+          {wentToExtraTime && (
+            <div style={{ marginTop: 8, padding: 12, background: colors.bgLighter, border: "1px solid #d1d5db", borderRadius: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, marginBottom: 8, textAlign: "center" }}>
+                {t("result.ninetyMinLabel")}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+                <input
+                  type="number" min={0} value={homeGoals90} onChange={(e) => setHomeGoals90(e.target.value)} placeholder="0"
+                  style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #d1d5db", textAlign: "center", fontSize: 16, fontWeight: 700 }}
+                />
+                <span style={{ fontWeight: 900, fontSize: 16, color: colors.textMuted }}>-</span>
+                <input
+                  type="number" min={0} value={awayGoals90} onChange={(e) => setAwayGoals90(e.target.value)} placeholder="0"
+                  style={{ width: 52, padding: 8, borderRadius: 8, border: "1px solid #d1d5db", textAlign: "center", fontSize: 16, fontWeight: 700 }}
+                />
+              </div>
+              {et90Invalid && (
+                <div style={{ marginTop: 8, fontSize: 11, color: colors.error, textAlign: "center" }}>
+                  {t("result.ninetyMinInvalid")}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Penalties Section (solo para fases eliminatorias con empate) */}
       {showPenalties && (
         <div style={{ marginTop: 12, padding: 12, background: colors.warningBg, border: "1px solid #ffc107", borderRadius: 8 }}>
@@ -416,16 +469,20 @@ function ResultEditor(props: {
 
       <div style={{ display: "flex", gap: 8 }}>
         <button
-          disabled={props.disabled || needReason}
+          disabled={props.disabled || needReason || et90Invalid}
           onClick={() => {
             const hp = showPenalties && homePenalties ? Number(homePenalties) : undefined;
             const ap = showPenalties && awayPenalties ? Number(awayPenalties) : undefined;
+            const hg90 = wentToExtraTime && home90Num !== null ? home90Num : undefined;
+            const ag90 = wentToExtraTime && away90Num !== null ? away90Num : undefined;
             props.onSave(
               Number(homeGoals),
               Number(awayGoals),
               props.requireReason ? reason.trim() : undefined,
               hp,
-              ap
+              ap,
+              hg90,
+              ag90
             );
           }}
           style={{
@@ -433,9 +490,9 @@ function ResultEditor(props: {
             padding: 10,
             borderRadius: 10,
             border: "1px solid #111",
-            background: needReason ? colors.disabled : colors.text,
+            background: needReason || et90Invalid ? colors.disabled : colors.text,
             color: colors.white,
-            cursor: needReason ? "not-allowed" : "pointer",
+            cursor: needReason || et90Invalid ? "not-allowed" : "pointer",
             fontWeight: 600,
             minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
             ...mobileInteractiveStyles.tapHighlight,

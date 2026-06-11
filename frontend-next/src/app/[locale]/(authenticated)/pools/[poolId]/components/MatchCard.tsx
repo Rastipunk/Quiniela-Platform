@@ -279,13 +279,15 @@ export function MatchCard({
             elapsed={m.elapsed}
             extra={m.extra}
             matchStatus={m.matchStatus}
-            onSave={(homeGoals, awayGoals, reason, homePenalties, awayPenalties) =>
+            onSave={(homeGoals, awayGoals, reason, homePenalties, awayPenalties, homeGoals90, awayGoals90) =>
               saveResult({
                 homeGoals,
                 awayGoals,
                 ...(reason ? { reason } : {}),
                 ...(homePenalties !== undefined ? { homePenalties } : {}),
                 ...(awayPenalties !== undefined ? { awayPenalties } : {}),
+                ...(homeGoals90 !== undefined ? { homeGoals90 } : {}),
+                ...(awayGoals90 !== undefined ? { awayGoals90 } : {}),
               })
             }
             disabled={busyRes}

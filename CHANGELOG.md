@@ -8,6 +8,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Score pipeline — Etapa 2 (frontend): editor de resultados con prórroga (2026-06-11)
+
+#### Added
+- **El editor de resultados del host captura el marcador al minuto 90 (audit F2-7/F4-7):** en fases eliminatorias, un toggle "El partido tuvo prórroga" revela los inputs del 90' (obligatorios y ≤ marcador final cuando está activo). La API ya lo aceptaba (`homeGoals90/awayGoals90`) pero el formulario nunca lo enviaba — un override del host en partido con prórroga borraba el 90' y el scoring de fases a 90 minutos pagaba contra el marcador con prórroga. Keys i18n ES/EN/PT.
+
 ### Score pipeline — Etapa 2 (backend): prórroga/penales robustos + advancement resiliente (2026-06-11)
 
 Tercera tanda del plan (`SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1), lista antes de la primera eliminatoria (R32 ~28-jun).
