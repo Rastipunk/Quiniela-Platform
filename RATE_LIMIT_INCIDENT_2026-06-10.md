@@ -150,6 +150,50 @@ los "unirme con link/código" de toda la plataforma con solo 10 joins cada
   `DATABASE_URL` tomada de `backend/.env.production.local` (sin exponerla).
 - 2026-06-11 ~04:30-04:45Z — E1-E6 recolectadas. H2 confirmada como causa
   raíz vía test de inyección (E3). Diagnóstico cerrado.
+- 2026-06-11 04:32Z — **Fase 0 aplicada**: `RATE_LIMIT_POOL_JOIN_MAX=5000`
+  vía CLI; rearranque verificado en logs (`API started commit=a03c481`).
+- 2026-06-11 ~04:35Z — **Línea base pre-fix capturada** (experimento
+  controlado): `GET /payments/country` → `ratelimit-remaining: 1973/2000`
+  a segundos de abrir la ventana de 60s — 27 peticiones de extraños
+  consumidas en MI bucket (compartido por nodo edge).
+- 2026-06-11 ~04:40Z — **Fase 1 desplegada** (`1ea5a0e`: trust proxy 2 +
+  ipv6Subnet 64). Verificación: (a) mismo probe → `ratelimit-remaining:
+  1998/2000` a mitad de ventana — bucket personal; (b) `AuditEvent` empieza
+  a registrar IPs reales diversas con 1 usuario/IP (CO/MX/EC/ES); las IPs
+  edge residuales coinciden con el drain del proceso viejo en el overlap
+  de deploy (verificación final §9).
+- 2026-06-11 04:44Z — **Fase 2 desplegada** (`f826e38`: poolJoin por
+  userId; auth por email|IP + techo por IP `authIpLimiter` 300/15min;
+  passwordReset por email|IP; helpers `emailIpBucketKey`/`userOrIpBucketKey`
+  exportados con 12 tests). **Env re-tuneada a escala por-cliente** y
+  verificada: `AUTH_MAX=10` (por email|IP), `AUTH_IP_MAX=300`,
+  `POOL_JOIN_MAX=30` (por usuario), `API_MAX=2000` (techo CGNAT por IP
+  real), `INVITE_CHECK_MAX=300`, `INVITE_ACTIVATE_MAX=300`. Rearranque
+  verificado (`API started commit=f826e38` 04:44:34Z).
+
+## 9. Verificación final (2026-06-11 ~04:50Z) — INCIDENTE RESUELTO
+
+- **`AuditEvent` en ventana limpia post-Fase 2 (últimos 6 min):** 13 IPs /
+  13 usuarios — **exactamente 1 usuario por IP**, cero IPs de edge. IPs
+  reales de clientes (CO/MX/EC/BE/…). Contraste con el estado pre-fix:
+  37 IPs para 1,950 usuarios.
+- **Experimento de bucket:** pre-fix `ratelimit-remaining: 1973/2000` a
+  segundos de ventana (consumido por extraños); post-fix `1998/2000` —
+  bucket personal.
+- **Monitor:** cero alertas `rate_limit_hits` desde la 01:30Z (las últimas
+  tres son las del incidente: 82/55/114 429s por minuto a las 00:55-01:25Z).
+- **Estado:** Fases 0, 1 y 2 desplegadas y verificadas. Queda en
+  observación el primer pico real de tráfico (partido inaugural).
+
+## 10. Pendientes derivados (NO bloquean el cierre)
+
+- **Detección de país de pagos (E6):** sin proxy CF, `cf-ipcountry` no
+  existe y `GET /payments/country` devuelve `US` por defecto — auditar el
+  flujo real CO→MercadoPago (¿qué señal usa de verdad el checkout?).
+- **Forense histórica:** `AuditEvent.ip` anterior al 2026-06-11 04:40Z
+  contiene IPs de edge, no de clientes.
+- **Si Railway cambia su cadena de proxies**, `trust proxy=2` debe
+  re-verificarse: `GET /payments/country` loggea la XFF completa.
 
 ## 8. Plan de acción (pendiente de "go")
 
