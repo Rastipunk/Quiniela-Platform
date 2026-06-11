@@ -1,12 +1,18 @@
 /**
  * Smart Sync Job
  *
- * Optimized cron job that only checks matches at strategic times:
+ * ⚠️ INERT IN PRODUCTION (2026-06-11): this job depends on API-Football,
+ * which the platform NO LONGER USES. smartSyncService.isAvailable()
+ * returns false without an API-Football client, so every run exits
+ * without doing anything. It is NOT a fallback for picks4all-scores —
+ * do not count on it closing matches. The only live result source is
+ * the scraper (liveScoresJob); the only backstop is the stale-detector
+ * alert + manual host override.
+ *
+ * Original behavior (when API-Football existed):
  * - 5 minutes after kickoff (to verify match started)
  * - 110 minutes after kickoff (to check if finished)
  * - Every 5 minutes for matches that should have finished but haven't
- *
- * This runs every minute but only makes API calls for matches that need checking.
  */
 
 import * as cron from "node-cron";

@@ -38,18 +38,30 @@ export const MATCH_SYNC = {
 } as const;
 
 // ── Scores service (picks4all-scores integration) ────────────
+//
+// ⚠️ NO AUTOMATIC FALLBACK EXISTS (2026-06-11). API-Football is no longer
+// used: smartSync.isAvailable() is false, so every code path that calls it
+// is inert. Live scraping (picks4all-scores) is the ONLY result source.
+// If it cannot finalize a match, the recovery chain is: stale-detector
+// ALERT (email, STALE_THRESHOLD_MS) → manual HOST_OVERRIDE. Any comment
+// or doc claiming "API-Football fallback" describes a dead mechanism.
 export const SCORES = {
   /** Grace period after FT before finalizing result (ms) */
   GRACE_PERIOD_MS: envInt("SCORES_GRACE_PERIOD_MS", 5 * 60_000), // 5 min
-  /** Delay after estimated FT before API-Football fallback activates (ms) */
+  /**
+   * LEGACY — only read by the inert smartSync/resultSync gates. Kept so
+   * those modules still compile; it gates nothing in production because
+   * smartSync.isAvailable() is false without API-Football.
+   */
   FALLBACK_DELAY_MS: envInt("SCORES_FALLBACK_DELAY_MS", 30 * 60_000), // 30 min
   /**
    * Minimum independent sources that must confirm the terminal milestone
    * (timeline confirmedBy[]) before the scraper finalizes a result to
-   * API_CONFIRMED. Below this we keep polling; the API-Football fallback
-   * (FALLBACK_DELAY_MS) and the stale detector are the backstops if the
-   * scraper never reaches the threshold. Falls back to live
-   * sourcesAgreeing when the terminal milestone has no timeline entry.
+   * API_CONFIRMED. Below this we keep polling; if the threshold is never
+   * reached the ONLY backstops are the stale-detector alert and a manual
+   * host override (no automatic fallback — see banner above). Falls back
+   * to live sourcesAgreeing when the terminal milestone has no timeline
+   * entry.
    */
   MIN_CONFIRMATIONS_TO_FINALIZE: envInt("SCORES_MIN_CONFIRMATIONS", 3),
   /**

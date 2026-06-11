@@ -213,8 +213,10 @@ async function processLiveScore(
   if (isFinished) {
     // Require enough independent sources to have confirmed the terminal
     // milestone before we treat the match as finalizable. Below the
-    // threshold we keep polling (the API-Football fallback + stale
-    // detector are the backstops if it never reaches it).
+    // threshold we keep polling. ⚠️ If it never reaches the threshold the
+    // ONLY backstops are the stale-detector ALERT (email at 210 min) and a
+    // manual HOST_OVERRIDE — there is NO automatic fallback: API-Football
+    // is no longer used and smartSync is inert (isAvailable() === false).
     const confirmations = terminalConfirmationCount(
       score.timeline,
       score.sourcesAgreeing,

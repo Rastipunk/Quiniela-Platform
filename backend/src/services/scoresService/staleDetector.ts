@@ -9,8 +9,13 @@
  *
  * This module scans for such matches and notifies the team exactly once
  * per match (idempotent via an audit event), so a human can override /
- * investigate. The API-Football fallback (smartSync) remains the
- * automatic recovery path; this is the safety net + visibility layer.
+ * investigate.
+ *
+ * ⚠️ THIS ALERT IS THE LAST LINE OF DEFENSE — there is NO automatic
+ * recovery path behind it. API-Football is no longer used (smartSync is
+ * inert), so a stale match is resolved by exactly one thing: a human
+ * acting on this alert (host override / investigation). If this email
+ * goes nowhere, nothing closes the match. Keep the recipient list alive.
  */
 
 import { MatchSyncStatus } from "@prisma/client";

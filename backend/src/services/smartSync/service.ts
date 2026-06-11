@@ -1,13 +1,17 @@
 /**
  * Smart Sync Service
  *
- * Optimized result synchronization that minimizes API calls by:
+ * ⚠️ INERT IN PRODUCTION (2026-06-11): requires API-Football, which the
+ * platform NO LONGER USES — isAvailable() is false, so nothing here runs.
+ * This service is NOT an automatic fallback for the live scraper. Kept
+ * for reference / potential future provider; if a result provider is ever
+ * re-introduced, re-audit before re-enabling.
+ *
+ * Original behavior (when API-Football existed):
  * 1. Only checking matches 5 minutes after kickoff (to verify they started)
  * 2. Waiting until estimated end time (kickoff + 110min) before checking for results
  * 3. Polling only matches that should be finishing (not all matches)
  * 4. Never re-checking completed matches
- *
- * Expected API calls per match: 2-4 (vs unlimited with periodic polling)
  */
 
 import { prisma } from "../../db";

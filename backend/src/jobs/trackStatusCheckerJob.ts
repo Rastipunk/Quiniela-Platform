@@ -1,13 +1,20 @@
 /**
  * Track Status Checker Job
  *
- * Runs every minute. For each match starting in the next 5-10 minutes,
+ * Runs every minute. For each match about to start OR currently in play
+ * (kickoff within the last TRACK_STATUS_CHECK_WINDOW_BEFORE_MIN minutes),
  * verifies that picks4all-scores has it tracked AND has at least one
- * source already reporting data. If not, re-sends the track request
- * and alerts the admin.
+ * source reporting data. If untracked, re-sends the track request and
+ * alerts the admin.
  *
- * This is the "last line of defense" — if a match is about to start
- * and the scraper isn't ready, we want to know NOW, not after kickoff.
+ * Why full-match coverage matters (2026-06-11): picks4all-scores keeps
+ * its tracked fixtures IN MEMORY ONLY — any restart/redeploy silently
+ * drops them — and fixtureTrackingJob never re-sends a fixture once
+ * trackedAtUtc is set. Without this job re-tracking mid-match, a scraper
+ * restart at minute 30 would blind the match until the stale alert
+ * (210 min), and there is NO automatic fallback: API-Football is no
+ * longer used (smartSync is inert), so live scraping is the ONLY result
+ * source. This job is the self-healing layer that keeps it alive.
  */
 
 import * as cron from "node-cron";
@@ -21,8 +28,15 @@ const CHECK_WINDOW_MIN = parseInt(
   process.env.TRACK_STATUS_CHECK_WINDOW_MIN || "10",
   10
 );
+/**
+ * How far back (minutes after kickoff) tracking keeps being verified.
+ * Must cover the WHOLE match — 90' + ET + penalties + kickoff delays +
+ * the finalization grace period — because a scraper restart mid-match
+ * drops the fixture and this job is the only thing that re-registers it.
+ * 240 min matches the scraper's own fixture expiry (kickoff + 4h).
+ */
 const CHECK_WINDOW_BEFORE_MIN = parseInt(
-  process.env.TRACK_STATUS_CHECK_WINDOW_BEFORE_MIN || "5",
+  process.env.TRACK_STATUS_CHECK_WINDOW_BEFORE_MIN || "240",
   10
 );
 
@@ -48,10 +62,13 @@ async function runTrackStatusCheck(): Promise<void> {
     const windowStart = new Date(now - CHECK_WINDOW_BEFORE_MIN * 60_000);
     const windowEnd = new Date(now + CHECK_WINDOW_MIN * 60_000);
 
+    // AWAITING_FINISH included: a match in its finalization grace period
+    // still needs the scraper tracking it (the finalize step is driven by
+    // /scores/live data — an untracked fixture would never finalize).
     const upcomingStates = await prisma.matchSyncState.findMany({
       where: {
         kickoffUtc: { gte: windowStart, lte: windowEnd },
-        syncStatus: { in: ["PENDING", "IN_PROGRESS"] },
+        syncStatus: { in: ["PENDING", "IN_PROGRESS", "AWAITING_FINISH"] },
       },
       include: {
         tournamentInstance: {
