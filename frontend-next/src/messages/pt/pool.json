@@ -644,7 +644,7 @@
     "notePhaseRules": "Cada fase do torneio pode ter diferentes tipos de palpites e pontuações.",
     "noteReadCarefully": "Leia atentamente as regras de CADA FASE antes de fazer suas previsões.",
     "notePointsIncrease": "Os pontos geralmente aumentam nas fases mais avançadas do torneio (oitavas, quartas, semifinais, final).",
-    "cumulativeSystem": "<strong>Sistema acumulativo:</strong> Os pontos se SOMAM por cada critério que você acertar. Se acertar o placar exato, ganha a soma de todos os critérios (máx 10 pts nos grupos, 20 pts nas eliminatórias).",
+    "cumulativeSystem": "<strong>Sistema acumulativo:</strong> Os pontos se SOMAM por cada critério que você acertar. Se acertar o placar exato, ganha a soma de todos os critérios da fase — os pontos de cada critério aparecem na lista acima.",
     "nonCumulativeNote": "Os pontos se somam: se você acertar o placar exato, ganha o bônus dele mais os pontos dos demais critérios que cumprir (resultado, diferença, total de gols).",
     "deadlineNote": "Os palpites são bloqueados conforme o prazo configurado para este pool: <strong>{minutes} minutos antes do início de cada jogo</strong>.",
     "tiebreakerNote": "<strong>Em caso de empate de pontos</strong>, a posição é decidida por: (1) maior número de jogos com acerto perfeito, depois (2) maior número de jogos com acerto parcial. Se o empate continuar, os jogadores compartilham a posição e o desempate final é decidido pela organização."

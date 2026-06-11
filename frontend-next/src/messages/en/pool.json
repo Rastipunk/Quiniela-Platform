@@ -644,7 +644,7 @@
     "notePhaseRules": "Each tournament phase can have different pick types and scoring.",
     "noteReadCarefully": "Read the rules of EACH PHASE carefully before making your predictions.",
     "notePointsIncrease": "Points usually increase in later tournament phases (round of 16, quarter-finals, semi-finals, final).",
-    "cumulativeSystem": "<strong>Cumulative system:</strong> Points ADD UP for each criterion you get right. If you get the exact score, you earn the sum of all criteria (max 10 pts in groups, 20 pts in knockouts).",
+    "cumulativeSystem": "<strong>Cumulative system:</strong> Points ADD UP for each criterion you get right. If you get the exact score, you earn the sum of all the phase's criteria — each criterion's points are listed above.",
     "nonCumulativeNote": "Points add up: if you get the exact score, you earn its bonus plus the points for every other criterion you match (outcome, goal difference, total goals).",
     "deadlineNote": "Picks are locked based on the deadline configured for this pool: <strong>{minutes} minutes before each match starts</strong>.",
     "tiebreakerNote": "<strong>In case of a points tie</strong>, the position is decided by: (1) more matches with a perfect hit, then (2) more matches with a partial hit. If the tie persists, the players share the position and the final tiebreak is decided by the organization."
