@@ -246,7 +246,11 @@ export async function getPoolOverview(
         } else {
           const homePens = result.homePenalties ?? 0;
           const awayPens = result.awayPenalties ?? 0;
-          if (homePens > 0 || awayPens > 0) {
+          // Tied penalties (or missing data) must NOT invent a winner —
+          // the old ternary silently declared the AWAY team on a tie
+          // (audit F3-4). Leave winnerId null; the authoritative path
+          // (structuralAutoPublish) owns the undecidable alert.
+          if (homePens !== awayPens) {
             winnerId = homePens > awayPens ? match.homeTeamId : match.awayTeamId;
           }
         }

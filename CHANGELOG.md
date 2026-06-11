@@ -8,6 +8,16 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Score pipeline — Etapa 0 del plan de auditoría (2026-06-11)
+
+Primera tanda del plan aprobado en `SCORE_PIPELINE_AUDIT_2026-06-11.md` §7.1.
+
+#### Fixed
+- **Auto-advancement into the final was silently broken (audit F3-1 🔴🔴):** `advancementTrigger` mapped `semi_finals → "final"` but the real WC2026 instance uses `"finals"` — completing the semis would have "advanced" zero matches while reporting success. Root cause: THREE duplicated hardcoded phase-name maps (one diverged). All replaced by **`getNextPhaseId` in `lib/fixture.ts`**, which derives the next phase from the fixture's own `phases[].order` — works for WC (`finals`), UCL (two-legged + singular `final`, verified against prod) and any future tournament. 7 new tests incl. the F3-1 regression.
+- **Tied penalty shootout no longer invents a winner (audit F3-4 🔴):** the overview fallback declared the AWAY team winner when penalties were equal; now it leaves the winner undecided (the authoritative path owns the undecidable alert).
+- **Stale-alert email text (audit F1-9):** no longer claims a dead API-Football fallback will close the match; now states explicitly there is NO automatic fallback and points at the scraper diagnostics.
+- Ops (no code): `SCORES_WINDOW_POST_HOURS=4` set in Railway (audit F1-4 / brief A3) — polling window now matches the scraper's kickoff+4h lifetime.
+
 ### Platform health — alert email kill switch (2026-06-11)
 
 #### Added

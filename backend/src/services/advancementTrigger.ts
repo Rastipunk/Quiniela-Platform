@@ -19,20 +19,17 @@ import { ADVANCEMENT, PHASE_DISPLAY_NAMES, resolveUserLocale } from "../lib/cons
 import { advanceToRoundOf32, advanceKnockoutPhase } from "./instanceAdvancement";
 import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification, sendPhaseCompletionSummaryEmail, batchSendEmails } from "../lib/email";
-import { typed, type PickJson } from "../lib/fixture";
+import { typed, getNextPhaseId, type PickJson } from "../lib/fixture";
 
 // In-memory map of pending advancement timers (per pool+phase).
 // Key: `${poolId}:${phaseId}`
 const pendingTimers = new Map<string, NodeJS.Timeout>();
 
-const NEXT_PHASE_MAP: Record<string, string | null> = {
-  group_stage: "round_of_32",
-  round_of_32: "round_of_16",
-  round_of_16: "quarter_finals",
-  quarter_finals: "semi_finals",
-  semi_finals: "final",
-  final: null, // tournament complete
-};
+// Next-phase resolution lives in lib/fixture.getNextPhaseId (derived
+// from the fixture's own phases[].order). The hardcoded map that used
+// to live here pointed semi_finals at "final" while the WC2026 fixture
+// uses "finals" — auto-advancement into the final silently no-oped
+// (audit F3-1).
 
 interface PoolFixtureMatch {
   id: string;
@@ -69,7 +66,7 @@ export async function checkAndTriggerAdvancement(
     const completedMatch = snapshot.matches.find((m) => m.id === matchId);
     if (!completedMatch) return { scheduled: false };
     const phaseId = completedMatch.phaseId;
-    const nextPhaseId = NEXT_PHASE_MAP[phaseId];
+    const nextPhaseId = getNextPhaseId(pool.fixtureSnapshot, phaseId);
     if (!nextPhaseId) return { scheduled: false }; // final or unknown phase
 
     // Check if all matches of this phase have a confirmed result

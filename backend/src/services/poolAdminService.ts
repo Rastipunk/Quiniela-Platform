@@ -35,6 +35,7 @@ import {
   extractTeams,
   extractPhases,
   parseFixtureData,
+  getNextPhaseId,
   typed,
   type FixtureMatch,
   type PickJson,
@@ -1583,23 +1584,15 @@ export async function getPoolNotifications(
       phaseMatches[match.phaseId]!.push(match);
     }
 
-    const nextPhaseMap: Record<string, string | null> = {
-      group_stage: "round_of_32",
-      round_of_32: "round_of_16",
-      round_of_16: "quarter_finals",
-      quarter_finals: "semi_finals",
-      semi_finals: "finals",
-      third_place: null,
-      finals: null,
-    };
-
     const lockedPhases = Array.isArray(pool.lockedPhases) ? pool.lockedPhases as string[] : [];
 
     for (const [phaseId, phaseMatchList] of Object.entries(phaseMatches)) {
       if (lockedPhases.includes(phaseId)) continue;
       const allHaveResults = phaseMatchList.every((m) => resultsMap.has(m.id));
       if (allHaveResults && phaseMatchList.length > 0) {
-        const nextPhaseId = nextPhaseMap[phaseId];
+        // Next phase derived from the fixture's own order — never a
+        // hardcoded name map (audit F3-1: the duplicated maps diverged).
+        const nextPhaseId = getNextPhaseId(snapshotData, phaseId);
         if (!nextPhaseId) continue;
         const nextPhaseMatches = phaseMatches[nextPhaseId] || [];
         if (nextPhaseMatches.length > 0) {

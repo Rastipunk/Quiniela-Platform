@@ -4,6 +4,7 @@ import {
   extractMatches,
   extractTeams,
   extractPhases,
+  getNextPhaseId,
   typed,
 } from "./fixture";
 import type { FixtureData, PickJson } from "./fixture";
@@ -161,6 +162,74 @@ describe("fixture utilities", () => {
       const raw = { a: 1 };
       const result = typed<{ a: number }>(raw);
       expect(result).toBe(raw);
+    });
+  });
+
+  // ── getNextPhaseId ────────────────────────────────────────
+
+  describe("getNextPhaseId", () => {
+    // Mirrors the REAL production WC2026 instance phases (verified
+    // against prod 2026-06-11 — SCORE_PIPELINE_AUDIT F3-1: the old
+    // hardcoded map pointed semi_finals at "final", which doesn't exist).
+    const wc2026 = {
+      phases: [
+        { id: "group_stage", name: "Grupos", type: "GROUP", order: 1 },
+        { id: "round_of_32", name: "32avos", type: "KNOCKOUT", order: 2 },
+        { id: "round_of_16", name: "Octavos", type: "KNOCKOUT", order: 3 },
+        { id: "quarter_finals", name: "Cuartos", type: "KNOCKOUT", order: 4 },
+        { id: "semi_finals", name: "Semis", type: "KNOCKOUT", order: 5 },
+        { id: "finals", name: "Final", type: "KNOCKOUT_FINAL", order: 6 },
+      ],
+      teams: [],
+      matches: [],
+    };
+
+    // Mirrors the REAL production UCL 2025-26 instance (two-legged
+    // phases, singular "final") — a static name map can't serve both.
+    const ucl = {
+      phases: [
+        { id: "sf_leg1", name: "", type: "KNOCKOUT_LEG", order: 7 },
+        { id: "sf_leg2", name: "", type: "KNOCKOUT_LEG", order: 8 },
+        { id: "final", name: "", type: "KNOCKOUT_FINAL", order: 9 },
+      ],
+      teams: [],
+      matches: [],
+    };
+
+    it("chains the WC2026 bracket — including semi_finals → finals (F3-1 regression)", () => {
+      expect(getNextPhaseId(wc2026, "group_stage")).toBe("round_of_32");
+      expect(getNextPhaseId(wc2026, "round_of_32")).toBe("round_of_16");
+      expect(getNextPhaseId(wc2026, "round_of_16")).toBe("quarter_finals");
+      expect(getNextPhaseId(wc2026, "quarter_finals")).toBe("semi_finals");
+      expect(getNextPhaseId(wc2026, "semi_finals")).toBe("finals"); // THE bug
+    });
+
+    it("returns null for the last phase (tournament complete)", () => {
+      expect(getNextPhaseId(wc2026, "finals")).toBeNull();
+      expect(getNextPhaseId(ucl, "final")).toBeNull();
+    });
+
+    it("returns null for a phaseId unknown to the fixture", () => {
+      expect(getNextPhaseId(wc2026, "final")).toBeNull(); // singular doesn't exist in WC
+      expect(getNextPhaseId(wc2026, "third_place")).toBeNull();
+      expect(getNextPhaseId(wc2026, "")).toBeNull();
+    });
+
+    it("chains UCL two-legged phases", () => {
+      expect(getNextPhaseId(ucl, "sf_leg1")).toBe("sf_leg2");
+      expect(getNextPhaseId(ucl, "sf_leg2")).toBe("final");
+    });
+
+    it("sorts by order even when the phases array arrives unordered", () => {
+      const shuffled = { ...wc2026, phases: [...wc2026.phases].reverse() };
+      expect(getNextPhaseId(shuffled, "semi_finals")).toBe("finals");
+      expect(getNextPhaseId(shuffled, "group_stage")).toBe("round_of_32");
+    });
+
+    it("is null-safe on malformed fixture data", () => {
+      expect(getNextPhaseId(null, "group_stage")).toBeNull();
+      expect(getNextPhaseId({}, "group_stage")).toBeNull();
+      expect(getNextPhaseId({ phases: "garbage" }, "group_stage")).toBeNull();
     });
   });
 });

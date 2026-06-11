@@ -108,8 +108,10 @@ export async function detectAndAlertStaleMatches(
         `no tiene resultado final.<br><br>` +
         `Estado de sync: <strong>${m.syncStatus}</strong><br>` +
         `Último estado reportado: <strong>${m.lastApiStatus ?? "—"}</strong><br><br>` +
-        `El fallback de API-Football debería haberlo cerrado; revisa si hace ` +
-        `falta publicar/override el resultado manualmente.`,
+        `<strong>NO existe ningún fallback automático</strong> (API-Football está ` +
+        `desactivado): si el scraper no finaliza este partido, la única vía es ` +
+        `el override manual del host/admin. Revisa el scraper ` +
+        `(/fixtures/tracked, /scrapers/status) y publica el resultado si es necesario.`,
     });
 
     await writeAuditEvent({

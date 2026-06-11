@@ -102,6 +102,26 @@ export function extractPhases(dataJson: unknown): FixturePhase[] {
   return parseFixtureData(dataJson).phases;
 }
 
+/**
+ * Next phase by the fixture's own `phases[].order` — the ONLY safe way
+ * to chain phases. Hardcoded name maps drifted across tournaments
+ * (WC2026 uses "finals", UCL uses "final" + per-leg phases) and one of
+ * the three duplicated maps pointed semis at a phase that doesn't
+ * exist, silently breaking auto-advancement into the final
+ * (SCORE_PIPELINE_AUDIT_2026-06-11.md F3-1).
+ *
+ * Returns null when `phaseId` is the last phase or unknown to the
+ * fixture. Stable for equal/missing `order` values (keeps array order).
+ */
+export function getNextPhaseId(dataJson: unknown, phaseId: string): string | null {
+  const phases = extractPhases(dataJson)
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const idx = phases.findIndex((p) => p.id === phaseId);
+  if (idx === -1 || idx === phases.length - 1) return null;
+  return phases[idx + 1]!.id;
+}
+
 // ─── Typed JSON field interfaces ────────────────────────────
 // Use these instead of `as any` when accessing Prisma JSON fields.
 

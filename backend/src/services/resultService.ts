@@ -27,6 +27,7 @@ import {
   extractMatches,
   extractTeams,
   parseFixtureData,
+  getNextPhaseId,
   typed,
   type FixtureMatch,
   type PickJson,
@@ -431,16 +432,10 @@ export async function handleAutoAdvance(data: HandleAutoAdvanceInput, ctx: Audit
 
       console.log(`[AUTO-ADVANCE SUCCESS] Advanced to Round of 32`);
     } else if (phaseId.startsWith("round_of_") || phaseId.includes("finals") || phaseId === "quarter_finals" || phaseId === "semi_finals") {
-      // Avanzar fases knockout
-      const phaseOrder: Record<string, string | null> = {
-        round_of_32: "round_of_16",
-        round_of_16: "quarter_finals",
-        quarter_finals: "semi_finals",
-        semi_finals: "finals",
-        finals: null, // Torneo terminado
-      };
-
-      const nextPhaseId = phaseOrder[phaseId];
+      // Avanzar fases knockout — la fase siguiente se deriva del orden
+      // real del fixture (getNextPhaseId), nunca de un mapa hardcodeado
+      // de nombres (audit F3-1: los mapas duplicados divergieron).
+      const nextPhaseId = getNextPhaseId(pool.tournamentInstance.dataJson, phaseId);
       if (nextPhaseId) {
         const result = await advanceKnockoutPhase(
           pool.tournamentInstance.id,
