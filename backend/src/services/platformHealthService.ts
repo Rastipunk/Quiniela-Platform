@@ -264,20 +264,37 @@ async function rateLimitMetric(): Promise<MetricResult> {
 async function stuckWebhooksMetric(): Promise<MetricResult> {
   return safeCollect(
     "stuck_webhooks",
-    "Pagos PENDING con webhook viejo",
+    "Pagos PENDING con webhook estancado",
     "count",
     T.stuckWebhooksWarn,
     T.stuckWebhooksCritical,
     async () => {
+      // The signal of interest is "we ingested a PaymentEvent but never
+      // closed the PoolPayment". We must (a) count distinct payments,
+      // not events — a normal MP flow generates pending → in_process
+      // → approved and the first iteration of this query counted each
+      // separately; and (b) look at the LATEST event per payment, not
+      // any event — otherwise a payment in mid-flow that already
+      // received `approved` 30s ago but had a pending event 12 min ago
+      // would falsely register as stuck.
+      //
+      // Payments with zero PaymentEvents are abandoned-cart scenarios,
+      // not stuck webhooks; the NULL → "not stuck" semantics fall out
+      // because MAX(...) returns NULL and `NULL < timestamp` is NULL.
       const rows = await prisma.$queryRaw<{ count: bigint }[]>`
         SELECT COUNT(*)::bigint AS count
-        FROM "PaymentEvent" pe
-        JOIN "PoolPayment" pp ON pp.id = pe."poolPaymentId"
-        WHERE pe."createdAtUtc" < NOW() - INTERVAL '10 minutes'
-          AND pp.status = 'PENDING'
+        FROM "PoolPayment" pp
+        WHERE pp.status = 'PENDING'
+          AND (
+            SELECT MAX("createdAtUtc") FROM "PaymentEvent"
+            WHERE "poolPaymentId" = pp.id
+          ) < NOW() - INTERVAL '10 minutes'
       `;
       const n = Number(rows[0]?.count ?? 0);
-      return { value: n, details: `${n} PoolPayment PENDING con PaymentEvent > 10min` };
+      return {
+        value: n,
+        details: `${n} PoolPayment PENDING cuyo evento más reciente es >10min`,
+      };
     },
   );
 }
