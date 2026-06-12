@@ -117,13 +117,17 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
   // Match picks modal state
   const [matchPicksModal, setMatchPicksModal] = useState<MatchPicksModalData | null>(null);
 
-  // ── Sort mode: by groups (default, current behavior) or by date ──
+  // ── Sort mode: by date (default) or by groups ──
   // Persisted globally so the preference sticks across pools/visits.
+  // Default lives in state and localStorage is applied post-mount so
+  // server and client first paint identically (no hydration mismatch).
   const SORT_STORAGE_KEY = "p4a-matches-sort";
-  const [sortMode, setSortMode] = useState<"groups" | "date">(() => {
-    if (typeof window === "undefined") return "groups";
-    return window.localStorage.getItem(SORT_STORAGE_KEY) === "date" ? "date" : "groups";
-  });
+  const [sortMode, setSortMode] = useState<"groups" | "date">("date");
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(SORT_STORAGE_KEY) === "groups") setSortMode("groups");
+    } catch { /* private mode */ }
+  }, []);
   function changeSortMode(mode: "groups" | "date") {
     setSortMode(mode);
     try { window.localStorage.setItem(SORT_STORAGE_KEY, mode); } catch { /* private mode */ }
@@ -531,7 +535,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
           phase actually has groups (knockouts are already flat). */}
       {!requiresStructuralPicks && !focusedMatch && hasRealGroups && (
         <div style={{ marginTop: 14, display: "flex", gap: 0, background: colors.bgLight, borderRadius: radii.lg, padding: 4, border: `1px solid ${colors.borderLight}`, width: "fit-content", maxWidth: "100%" }}>
-          {(["groups", "date"] as const).map((mode) => (
+          {(["date", "groups"] as const).map((mode) => (
             <button
               key={mode}
               onClick={() => changeSortMode(mode)}
