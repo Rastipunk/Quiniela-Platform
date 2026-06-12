@@ -501,6 +501,17 @@
     "next": "Siguiente"
   },
 
+  "pendingPicks": {
+    "title": "Te falta 1 predicción que cierra en las próximas 24 horas",
+    "titlePlural": "Te faltan {count} predicciones que cierran en las próximas 24 horas",
+    "plays": "juega {time}",
+    "closes": "cierra {time}",
+    "showMore": "+{count} más — ver todos",
+    "showLess": "Ver menos",
+    "focusChip": "Mostrando solo tu partido pendiente",
+    "showAllMatches": "Ver todos los partidos"
+  },
+
   "matchPicks": {
     "title": "Predicciones",
     "loading": "Cargando predicciones...",

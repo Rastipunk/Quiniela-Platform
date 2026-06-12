@@ -8,6 +8,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### UX — Banner detallado de predicciones pendientes + filtro de enfoque (2026-06-12)
+
+#### Added
+- **El banner de "te faltan predicciones" ahora lista los partidos exactos** (banderas + equipos, grupo/jornada, hora de juego y hora de cierre en la zona horaria del usuario) para los que cierran en las próximas 24 h, en todas las fases. Tope de 4 líneas con "+N más — ver todos" expandible. Cada línea desaparece al guardar su pick y el banner se desvanece al quedar en cero (deriva en vivo del overview — misma fuente de verdad que las cards).
+- **Filtro de enfoque:** tocar una línea muestra SOLO ese partido con un chip "Mostrando solo tu partido pendiente · ✕ Ver todos"; al guardar el pick, el filtro se quita solo. Cambia de fase automáticamente si el partido pendiente está en otra. Mobile-first (líneas apiladas, targets 44px).
+- El contador genérico del backend queda como fallback solo cuando la lista cliente está vacía (sin duplicación).
+
 ### Pools — "Capricho San": marcador aleatorio al perder el deadline (feature regalo, ADR-075) (2026-06-11)
 
 #### Added

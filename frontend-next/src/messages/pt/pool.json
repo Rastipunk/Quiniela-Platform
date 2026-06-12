@@ -501,6 +501,17 @@
     "next": "Próximo"
   },
 
+  "pendingPicks": {
+    "title": "Falta 1 palpite que fecha nas próximas 24 horas",
+    "titlePlural": "Faltam {count} palpites que fecham nas próximas 24 horas",
+    "plays": "joga {time}",
+    "closes": "fecha {time}",
+    "showMore": "+{count} mais — ver todos",
+    "showLess": "Ver menos",
+    "focusChip": "Mostrando apenas seu jogo pendente",
+    "showAllMatches": "Ver todos os jogos"
+  },
+
   "matchPicks": {
     "title": "Palpites",
     "loading": "Carregando palpites...",

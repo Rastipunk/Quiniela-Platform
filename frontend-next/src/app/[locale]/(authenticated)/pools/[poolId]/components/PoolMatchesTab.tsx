@@ -2,7 +2,7 @@
 
 import { colors, radii } from "@/lib/theme";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { StructuralPicksManager } from "@/components/StructuralPicksManager";
 import { NotificationBanner } from "@/components/NotificationBanner";
@@ -10,6 +10,7 @@ import { getMatchPicks, setScoringOverride, type MatchPicksResponse, type PoolNo
 import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { formatPhaseName, formatPhaseFullName, isPlaceholder } from "./poolHelpers";
 import { MatchCard } from "./MatchCard";
+import { PendingPicksBanner } from "./PendingPicksBanner";
 import { MatchPicksModal, type MatchPicksModalData } from "./MatchPicksModal";
 import { ScoringOverrideModal, type ScoringOverrideModalData } from "./ScoringOverrideModal";
 
@@ -115,6 +116,43 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
   // Match picks modal state
   const [matchPicksModal, setMatchPicksModal] = useState<MatchPicksModalData | null>(null);
 
+  // ── Pending-picks banner + focus filter ───────────────────────
+  // Matches the member can still predict, closing within 24 h, across
+  // ALL phases (the banner must warn about tomorrow even while you
+  // browse today's phase). Derives live from the overview, so saving a
+  // pick removes its row on the next reload — and the banner vanishes
+  // when nothing is pending.
+  const PENDING_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const pendingSoon = useMemo(() => {
+    const now = Date.now();
+    const cfgs = overview.pool.pickTypesConfig ?? [];
+    return (overview.matches as PoolMatchCard[])
+      .filter((m: any) => {
+        if (m.myPick || m.isLocked || !m.deadlineUtc) return false;
+        if (isPlaceholder(m.homeTeam?.id ?? "") || isPlaceholder(m.awayTeam?.id ?? "")) return false;
+        // Structural phases (Estratega) have no per-match picks.
+        const pc = cfgs.find((p) => p.phaseId === m.phaseId);
+        if (pc && !pc.requiresScore) return false;
+        const deadline = new Date(m.deadlineUtc).getTime();
+        return deadline > now && deadline - now <= PENDING_WINDOW_MS;
+      })
+      .sort((a: any, b: any) => new Date(a.deadlineUtc).getTime() - new Date(b.deadlineUtc).getTime());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overview.matches, overview.pool.pickTypesConfig]);
+
+  // Focused match (tapping a banner row): the list shows only that
+  // card. Auto-clears once the pick is saved (the reload removes it
+  // from pendingSoon) or if its deadline passes.
+  const [focusMatchId, setFocusMatchId] = useState<string | null>(null);
+  const focusedMatch = focusMatchId
+    ? (overview.matches as any[]).find((m) => m.id === focusMatchId) ?? null
+    : null;
+  useEffect(() => {
+    if (!focusMatchId) return;
+    const stillPending = pendingSoon.some((m: any) => m.id === focusMatchId);
+    if (!stillPending) setFocusMatchId(null);
+  }, [focusMatchId, pendingSoon]);
+
   // Scoring override modal state
   const [scoringOverrideModal, setScoringOverrideModal] = useState<ScoringOverrideModalData | null>(null);
   const [scoringOverrideReason, setScoringOverrideReason] = useState("");
@@ -200,11 +238,28 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         </div>
       )}
 
+      {/* Detailed pending-picks banner: which matches, group and times.
+          Tapping a row focuses that match below. */}
+      <PendingPicksBanner
+        matches={pendingSoon}
+        tournamentKey={overview.tournamentInstance.templateKey ?? "wc_2026_sandbox"}
+        userTimezone={userTimezone}
+        isMobile={isMobile}
+        onSelect={(matchId, phaseId) => {
+          setFocusMatchId(matchId);
+          if (activePhase !== phaseId) setActivePhase(phaseId);
+        }}
+      />
+
       {/* Notification Banner for Partidos tab */}
       {notifications && (tabBadges.partidos > 0) && (() => {
         const bannerItems: { icon: string; message: string }[] = [];
 
-        if (notifications.urgentDeadlines.length > 0) {
+        // The ⏰ urgent-picks summary is superseded by the detailed
+        // PendingPicksBanner above whenever it has rows — only fall
+        // back to the counter when our client-side list is empty
+        // (e.g. timezone edge where backend and client windows differ).
+        if (notifications.urgentDeadlines.length > 0 && pendingSoon.length === 0) {
           const byPhase: Record<string, number> = {};
           for (const d of notifications.urgentDeadlines) {
             byPhase[d.phaseId] = (byPhase[d.phaseId] || 0) + 1;
@@ -359,8 +414,65 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
 
       {/* Group selector removed — collapsed group cards below serve as both selector and content */}
 
+      {/* Focused mode: a banner row was tapped — show ONLY that match
+          with a clear way back. Clears itself when the pick is saved. */}
+      {!requiresStructuralPicks && focusedMatch && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            padding: "10px 12px",
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: 12,
+            flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1d4ed8" }}>
+              🎯 {t("pendingPicks.focusChip")}
+            </span>
+            <button
+              onClick={() => setFocusMatchId(null)}
+              style={{
+                padding: "8px 12px",
+                minHeight: 44,
+                border: "1px solid #93c5fd",
+                borderRadius: 8,
+                background: colors.white,
+                color: "#1d4ed8",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              ✕ {t("pendingPicks.showAllMatches")}
+            </button>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <MatchCard
+              match={focusedMatch}
+              overview={overview}
+              isMobile={isMobile}
+              busyPick={busyKey === `pick:${focusedMatch.id}`}
+              busyRes={busyKey === `res:${focusedMatch.id}`}
+              userTimezone={userTimezone}
+              allowScorePick={allowScorePick}
+              savePick={(pick) => savePick(focusedMatch.id, pick)}
+              saveResult={(input) => saveResult(focusedMatch.id, input)}
+              onViewBreakdown={(matchId, matchTitle) => setBreakdownModalData({ matchId, matchTitle })}
+              onViewMatchPicks={(matchId, matchTitle) => loadMatchPicks(matchId, matchTitle)}
+              onToggleScoring={(matchId, matchTitle, currentEnabled) => {
+                setScoringOverrideModal({ matchId, matchTitle, currentEnabled });
+                setScoringOverrideReason("");
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Tab Content: Partidos - Matches by group (each group is a collapsible card) */}
-      {!requiresStructuralPicks && (
+      {!requiresStructuralPicks && !focusedMatch && (
         <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
           {groupOrder.map((g) => {
             const noGroups = groupOrder.length === 1 && groupOrder[0] === "SIN_GRUPO";

@@ -501,6 +501,17 @@
     "next": "Next"
   },
 
+  "pendingPicks": {
+    "title": "You're missing 1 pick that closes in the next 24 hours",
+    "titlePlural": "You're missing {count} picks that close in the next 24 hours",
+    "plays": "plays {time}",
+    "closes": "closes {time}",
+    "showMore": "+{count} more — show all",
+    "showLess": "Show less",
+    "focusChip": "Showing only your pending match",
+    "showAllMatches": "Show all matches"
+  },
+
   "matchPicks": {
     "title": "Picks",
     "loading": "Loading picks...",
