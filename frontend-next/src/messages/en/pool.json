@@ -501,6 +501,25 @@
     "next": "Next"
   },
 
+  "pdf": {
+    "download": "PDF",
+    "generating": "Generating…",
+    "leaderboardDoc": "Standings",
+    "matchDoc": "Match predictions",
+    "posHeader": "#",
+    "playerHeader": "Player",
+    "totalHeader": "Total",
+    "diffHeader": "Diff",
+    "pickHeader": "Prediction",
+    "pointsHeader": "Pts",
+    "resultLine": "Result: {score}",
+    "noResultYet": "No result yet",
+    "generatedLine": "Generated: {date}",
+    "footerPlayers": "{count} players",
+    "footerCounts": "{players} players · {matches} matches",
+    "randomFootnote": "* Randomly assigned score (Capricho San) — no pick before the deadline"
+  },
+
   "matchSort": {
     "byGroups": "By group",
     "byDate": "By date",

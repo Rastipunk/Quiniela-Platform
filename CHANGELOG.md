@@ -8,6 +8,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### UX — PDFs compartibles: tabla de posiciones y predicciones por partido (2026-06-12)
+
+#### Added
+- **PDF de posiciones** (botón en la pestaña Posiciones, disponible para TODOS los miembros): lista completa ordenada por posición con puntos por fase, columna Total resaltada, podio coloreado, marca Picks4All con logo y paginación. Espeja las columnas del export Excel existente (que sigue siendo host-only).
+- **PDF de predicciones del partido** (botón en el modal "Ver predicciones de otros", solo post-deadline por construcción — usa los mismos datos ya revelados): Pos en la leaderboard · Jugador · Predicción · Pts totales, ordenado por posición; marca los picks aleatorios de Capricho San con asterisco y leyenda.
+- Generación 100% client-side con jsPDF + autotable **cargados bajo demanda** (cero peso en el bundle inicial) y **fuente Roboto embebida** (los nombres con caracteres no Latin-1 — p. ej. polacos — renderizan bien). Helpers de logo y nombres de fase compartidos con el exporter Excel.
+
 ### UX — Vista "Por fecha" en la pestaña Partidos (2026-06-12)
 
 #### Added

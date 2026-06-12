@@ -619,12 +619,26 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
       )}
 
       {/* Match Picks Modal */}
-      {matchPicksModal && (
-        <MatchPicksModal
-          data={matchPicksModal}
-          onClose={() => setMatchPicksModal(null)}
-        />
-      )}
+      {matchPicksModal && (() => {
+        // Context for the shareable PDF: leaderboard positions + the
+        // match's current result (if any), joined client-side.
+        const modalMatch = (overview.matches as any[]).find((m) => m.id === matchPicksModal.matchId);
+        const resultLabel = modalMatch?.result
+          ? `${modalMatch.result.homeGoals} - ${modalMatch.result.awayGoals}`
+          : null;
+        return (
+          <MatchPicksModal
+            data={matchPicksModal}
+            onClose={() => setMatchPicksModal(null)}
+            pdfContext={{
+              poolName: overview.pool.name,
+              tournamentName: overview.tournamentInstance?.name ?? null,
+              resultLabel,
+              leaderboardRows: overview.leaderboard.rows,
+            }}
+          />
+        );
+      })()}
     </>
   );
 }

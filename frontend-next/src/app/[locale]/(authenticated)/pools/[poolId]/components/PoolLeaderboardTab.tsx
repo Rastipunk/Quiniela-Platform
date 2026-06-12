@@ -115,6 +115,51 @@ export function PoolLeaderboardTab({
     }
   };
 
+  // Share-friendly PDF: full standings with per-phase points, ordered by
+  // position — available to EVERY member (it's the artifact people drop
+  // in the group chat). Mirrors the Excel column layout.
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const { generateBrandedTablePdf } = await import("@/lib/exportPdf");
+      const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+      await generateBrandedTablePdf({
+        docTitle: t("pdf.leaderboardDoc"),
+        poolName: overview.pool.name,
+        subtitleLines: [
+          ...(overview.tournamentInstance?.name ? [overview.tournamentInstance.name] : []),
+          t("pdf.generatedLine", { date: dateStr }),
+        ],
+        head: [
+          t("pdf.posHeader"),
+          t("pdf.playerHeader"),
+          t("pdf.totalHeader"),
+          ...phases.map((p) => formatPhaseName(p, t)),
+          t("pdf.diffHeader"),
+        ],
+        body: allRows.map((r, idx) => [
+          r.isTied ? `${r.rank}=` : String(r.rank),
+          r.displayName,
+          r.points,
+          ...phases.map((p) => {
+            const v = r.pointsByPhase?.[p] ?? 0;
+            return v === 0 ? "-" : v;
+          }),
+          idx === 0 ? "-" : `-${leaderPoints - r.points}`,
+        ]),
+        totalColIndex: 2,
+        podiumRows: true,
+        footerText: t("pdf.footerCounts", { players: allRows.length, matches: overview.matches.length }),
+        filenameBase: `${t("pdf.leaderboardDoc")}_${overview.pool.name}`,
+      });
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   // ── Render a single table row ──────────────────────────────
   const renderRow = (r: typeof allRows[0], isPinned = false) => {
     const diff = leaderPoints - r.points;
@@ -285,6 +330,25 @@ export function PoolLeaderboardTab({
         <div style={{ marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <h3 style={{ margin: 0, fontSize: isMobile ? 18 : 20, fontWeight: 900 }}>{t("leaderboard.title")}</h3>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* PDF: available to every member — the share artifact. */}
+            <button
+              onClick={handleExportPdf}
+              disabled={exportingPdf}
+              title={t("pdf.download")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: isMobile ? "8px 12px" : "6px 12px", borderRadius: 8,
+                border: `1px solid ${colors.brand}`, background: colors.brand,
+                color: colors.white, cursor: exportingPdf ? "not-allowed" : "pointer",
+                fontSize: 12, fontWeight: 600, opacity: exportingPdf ? 0.6 : 1,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              {exportingPdf ? t("pdf.generating") : t("pdf.download")}
+            </button>
             {isHostOrAdmin && (
               <button
                 onClick={handleExport}

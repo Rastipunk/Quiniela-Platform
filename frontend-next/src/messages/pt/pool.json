@@ -501,6 +501,25 @@
     "next": "Próximo"
   },
 
+  "pdf": {
+    "download": "PDF",
+    "generating": "Gerando…",
+    "leaderboardDoc": "Classificação",
+    "matchDoc": "Palpites da partida",
+    "posHeader": "#",
+    "playerHeader": "Jogador",
+    "totalHeader": "Total",
+    "diffHeader": "Dif",
+    "pickHeader": "Palpite",
+    "pointsHeader": "Pts",
+    "resultLine": "Resultado: {score}",
+    "noResultYet": "Sem resultado ainda",
+    "generatedLine": "Gerado: {date}",
+    "footerPlayers": "{count} jogadores",
+    "footerCounts": "{players} jogadores · {matches} jogos",
+    "randomFootnote": "* Placar atribuído ao acaso (Capricho San) — sem palpite antes do prazo"
+  },
+
   "matchSort": {
     "byGroups": "Por grupos",
     "byDate": "Por data",

@@ -59,13 +59,13 @@ const PHASE_LABELS: Record<string, string> = {
   final_leg2: "Final Vuelta",
 };
 
-function phaseLabel(phaseId: string): string {
+export function phaseLabel(phaseId: string): string {
   return PHASE_LABELS[phaseId] ?? phaseId.replace(/_/g, " ");
 }
 
-// ── Logo fetch helper ──────────────────────────────────────────
+// ── Logo fetch helper (shared with the PDF exporter) ───────────
 
-async function fetchLogoAsBase64(): Promise<string | null> {
+export async function fetchLogoAsBase64(): Promise<string | null> {
   try {
     const res = await fetch("/brand/logotipo-degradado-120.png");
     if (!res.ok) return null;

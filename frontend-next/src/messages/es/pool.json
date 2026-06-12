@@ -501,6 +501,25 @@
     "next": "Siguiente"
   },
 
+  "pdf": {
+    "download": "PDF",
+    "generating": "Generando…",
+    "leaderboardDoc": "Tabla de posiciones",
+    "matchDoc": "Predicciones del partido",
+    "posHeader": "#",
+    "playerHeader": "Jugador",
+    "totalHeader": "Total",
+    "diffHeader": "Dif",
+    "pickHeader": "Predicción",
+    "pointsHeader": "Pts",
+    "resultLine": "Resultado: {score}",
+    "noResultYet": "Sin resultado aún",
+    "generatedLine": "Generado: {date}",
+    "footerPlayers": "{count} jugadores",
+    "footerCounts": "{players} jugadores · {matches} partidos",
+    "randomFootnote": "* Marcador asignado al azar (Capricho San) por no predecir antes del cierre"
+  },
+
   "matchSort": {
     "byGroups": "Por grupos",
     "byDate": "Por fecha",

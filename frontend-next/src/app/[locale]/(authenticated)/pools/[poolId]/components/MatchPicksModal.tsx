@@ -2,6 +2,7 @@
 
 import { colors } from "@/lib/theme";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { MatchPicksResponse } from "@/lib/api";
 
@@ -13,13 +14,96 @@ export interface MatchPicksModalData {
   error: string | null;
 }
 
+/** Context for the shareable PDF (joined with leaderboard position). */
+export interface MatchPicksPdfContext {
+  poolName: string;
+  tournamentName: string | null;
+  /** "2-0" when a result exists for the match, null otherwise. */
+  resultLabel: string | null;
+  leaderboardRows: Array<{
+    userId: string;
+    displayName: string;
+    rank: number;
+    isTied?: boolean;
+    points: number;
+  }>;
+}
+
 interface MatchPicksModalProps {
   data: MatchPicksModalData;
   onClose: () => void;
+  pdfContext: MatchPicksPdfContext;
 }
 
-export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
+export function MatchPicksModal({ data, onClose, pdfContext }: MatchPicksModalProps) {
   const t = useTranslations("pool");
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  // PDF rows: every member with their pick, ordered by leaderboard
+  // position (the host's ask: "ordenado por posición en la leaderboard").
+  async function handleDownloadPdf() {
+    if (!data.picks) return;
+    setExportingPdf(true);
+    try {
+      const { generateBrandedTablePdf } = await import("@/lib/exportPdf");
+      const lbByUser = new Map(pdfContext.leaderboardRows.map((r) => [r.userId, r]));
+      const entries = data.picks.picks
+        .map((p) => {
+          const lb = lbByUser.get(p.userId);
+          let pickLabel = t("matchPicks.noPick");
+          let isRandom = false;
+          if (p.pick?.type === "SCORE") {
+            pickLabel = `${p.pick.homeGoals} - ${p.pick.awayGoals}`;
+            isRandom = !!p.pick.autoAssigned;
+          } else if (p.pick?.type === "OUTCOME") {
+            pickLabel = p.pick.outcome === "HOME"
+              ? t("matchPicks.home")
+              : p.pick.outcome === "DRAW"
+                ? t("matchPicks.drawLabel")
+                : t("matchPicks.away");
+          }
+          return {
+            rank: lb?.rank ?? null,
+            isTied: lb?.isTied ?? false,
+            name: p.displayName,
+            pickLabel: isRandom ? `${pickLabel} *` : pickLabel,
+            points: lb?.points ?? null,
+            hasRandom: isRandom,
+          };
+        })
+        .sort((a, b) => (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) || a.name.localeCompare(b.name));
+
+      const anyRandom = entries.some((e) => e.hasRandom);
+      const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+      await generateBrandedTablePdf({
+        docTitle: t("pdf.matchDoc"),
+        poolName: pdfContext.poolName,
+        subtitleLines: [
+          data.matchTitle,
+          pdfContext.resultLabel ? t("pdf.resultLine", { score: pdfContext.resultLabel }) : t("pdf.noResultYet"),
+          ...(pdfContext.tournamentName ? [pdfContext.tournamentName] : []),
+          t("pdf.generatedLine", { date: dateStr }),
+        ],
+        head: [t("pdf.posHeader"), t("pdf.playerHeader"), t("pdf.pickHeader"), t("pdf.pointsHeader")],
+        body: entries.map((e) => [
+          e.rank == null ? "—" : e.isTied ? `${e.rank}=` : String(e.rank),
+          e.name,
+          e.pickLabel,
+          e.points ?? "—",
+        ]),
+        totalColIndex: 3,
+        podiumRows: true,
+        ...(anyRandom ? { footnote: t("pdf.randomFootnote") } : {}),
+        footerText: t("pdf.footerPlayers", { count: entries.length }),
+        filenameBase: `${t("pdf.matchDoc")}_${pdfContext.poolName}_${data.matchTitle}`,
+      });
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   return (
     <div
@@ -64,19 +148,42 @@ export function MatchPicksModal({ data, onClose }: MatchPicksModalProps) {
           <h3 style={{ margin: 0, fontSize: 18 }}>
             {t("matchPicks.title")}: {data.matchTitle}
           </h3>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: 24,
-              cursor: "pointer",
-              color: colors.textMuted,
-              padding: "4px 8px"
-            }}
-          >
-            ×
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {/* Shareable PDF — only once picks are revealed (post-deadline). */}
+            {data.picks?.isUnlocked && data.picks.picks.length > 0 && (
+              <button
+                onClick={handleDownloadPdf}
+                disabled={exportingPdf}
+                title={t("pdf.download")}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "8px 12px", minHeight: 44, borderRadius: 8,
+                  border: `1px solid ${colors.brand}`, background: colors.brand,
+                  color: colors.white, cursor: exportingPdf ? "not-allowed" : "pointer",
+                  fontSize: 12, fontWeight: 600, opacity: exportingPdf ? 0.6 : 1,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                {exportingPdf ? t("pdf.generating") : t("pdf.download")}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: 24,
+                cursor: "pointer",
+                color: colors.textMuted,
+                padding: "4px 8px"
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
         <div style={{ padding: 20 }}>
           {data.loading && (
