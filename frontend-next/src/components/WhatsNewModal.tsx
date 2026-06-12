@@ -20,8 +20,9 @@ const WHATS_NEW_VERSION = "2026-06-12";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
 
 /** Staged rollout: when non-null, ONLY these accounts see the modal.
- *  Set to null to release the announcement to every user. */
-const TEST_EMAILS: string[] | null = ["juan.k.chacon9729@gmail.com"];
+ *  Set to null to release the announcement to every user.
+ *  2026-06-12 announcement: owner approved → released to everyone. */
+const TEST_EMAILS: string[] | null = null;
 
 export function WhatsNewModal() {
   const t = useTranslations("whatsNew");
