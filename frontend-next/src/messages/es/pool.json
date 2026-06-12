@@ -501,6 +501,13 @@
     "next": "Siguiente"
   },
 
+  "matchSort": {
+    "byGroups": "Por grupos",
+    "byDate": "Por fecha",
+    "today": "HOY",
+    "tomorrow": "MAÑANA"
+  },
+
   "pendingPicks": {
     "title": "Te falta 1 predicción que cierra en las próximas 24 horas",
     "titlePlural": "Te faltan {count} predicciones que cierran en las próximas 24 horas",

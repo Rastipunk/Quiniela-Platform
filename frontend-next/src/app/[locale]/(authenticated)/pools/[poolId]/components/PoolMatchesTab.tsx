@@ -3,7 +3,7 @@
 import { colors, radii } from "@/lib/theme";
 
 import { useState, useEffect, useMemo } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { StructuralPicksManager } from "@/components/StructuralPicksManager";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { getMatchPicks, setScoringOverride, type MatchPicksResponse, type PoolNotifications } from "@/lib/api";
@@ -112,9 +112,58 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
   } = props;
 
   const t = useTranslations("pool");
+  const locale = useLocale();
 
   // Match picks modal state
   const [matchPicksModal, setMatchPicksModal] = useState<MatchPicksModalData | null>(null);
+
+  // ── Sort mode: by groups (default, current behavior) or by date ──
+  // Persisted globally so the preference sticks across pools/visits.
+  const SORT_STORAGE_KEY = "p4a-matches-sort";
+  const [sortMode, setSortMode] = useState<"groups" | "date">(() => {
+    if (typeof window === "undefined") return "groups";
+    return window.localStorage.getItem(SORT_STORAGE_KEY) === "date" ? "date" : "groups";
+  });
+  function changeSortMode(mode: "groups" | "date") {
+    setSortMode(mode);
+    try { window.localStorage.setItem(SORT_STORAGE_KEY, mode); } catch { /* private mode */ }
+  }
+  // The toggle only makes sense when the active phase actually has groups.
+  const hasRealGroups = groupOrder.some((g) => g !== "SIN_GRUPO");
+
+  // Chronological view: same filtered matches, sorted by kickoff and
+  // bucketed by calendar day in the user's display timezone, so "which
+  // matches come next" is answerable at a glance.
+  const displayTz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const chronoDays = useMemo(() => {
+    if (sortMode !== "date") return [];
+    // en-CA yields YYYY-MM-DD — a stable, sortable day key per timezone.
+    const dayKeyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: displayTz, year: "numeric", month: "2-digit", day: "2-digit" });
+    const dayLabelFmt = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: displayTz });
+    const todayKey = dayKeyFmt.format(new Date());
+    const tomorrowKey = dayKeyFmt.format(new Date(Date.now() + 24 * 60 * 60 * 1000));
+
+    const sorted = [...(filteredMatches as any[])]
+      .filter((m) => m.kickoffUtc)
+      .sort((a, b) => new Date(a.kickoffUtc).getTime() - new Date(b.kickoffUtc).getTime());
+
+    const days: { key: string; label: string; relative: "today" | "tomorrow" | null; matches: any[] }[] = [];
+    for (const m of sorted) {
+      const key = dayKeyFmt.format(new Date(m.kickoffUtc));
+      let bucket = days[days.length - 1];
+      if (!bucket || bucket.key !== key) {
+        bucket = {
+          key,
+          label: dayLabelFmt.format(new Date(m.kickoffUtc)),
+          relative: key === todayKey ? "today" : key === tomorrowKey ? "tomorrow" : null,
+          matches: [],
+        };
+        days.push(bucket);
+      }
+      bucket.matches.push(m);
+    }
+    return days;
+  }, [sortMode, filteredMatches, displayTz, locale]);
 
   // ── Pending-picks banner + focus filter ───────────────────────
   // Matches the member can still predict, closing within 24 h, across
@@ -157,6 +206,29 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
   const [scoringOverrideModal, setScoringOverrideModal] = useState<ScoringOverrideModalData | null>(null);
   const [scoringOverrideReason, setScoringOverrideReason] = useState("");
   const [scoringOverrideBusy, setScoringOverrideBusy] = useState(false);
+
+  // Single MatchCard renderer shared by the group view, the date view
+  // and the focused mode — keeps the three call sites identical.
+  const renderMatchCard = (m: any) => (
+    <MatchCard
+      key={m.id}
+      match={m}
+      overview={overview}
+      isMobile={isMobile}
+      busyPick={busyKey === `pick:${m.id}`}
+      busyRes={busyKey === `res:${m.id}`}
+      userTimezone={userTimezone}
+      allowScorePick={allowScorePick}
+      savePick={(pick) => savePick(m.id, pick)}
+      saveResult={(input) => saveResult(m.id, input)}
+      onViewBreakdown={(matchId, matchTitle) => setBreakdownModalData({ matchId, matchTitle })}
+      onViewMatchPicks={(matchId, matchTitle) => loadMatchPicks(matchId, matchTitle)}
+      onToggleScoring={(matchId, matchTitle, currentEnabled) => {
+        setScoringOverrideModal({ matchId, matchTitle, currentEnabled });
+        setScoringOverrideReason("");
+      }}
+    />
+  );
 
   async function loadMatchPicks(matchId: string, matchTitle: string) {
     if (!token || !poolId) return;
@@ -450,54 +522,66 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
             </button>
           </div>
           <div style={{ marginTop: 12 }}>
-            <MatchCard
-              match={focusedMatch}
-              overview={overview}
-              isMobile={isMobile}
-              busyPick={busyKey === `pick:${focusedMatch.id}`}
-              busyRes={busyKey === `res:${focusedMatch.id}`}
-              userTimezone={userTimezone}
-              allowScorePick={allowScorePick}
-              savePick={(pick) => savePick(focusedMatch.id, pick)}
-              saveResult={(input) => saveResult(focusedMatch.id, input)}
-              onViewBreakdown={(matchId, matchTitle) => setBreakdownModalData({ matchId, matchTitle })}
-              onViewMatchPicks={(matchId, matchTitle) => loadMatchPicks(matchId, matchTitle)}
-              onToggleScoring={(matchId, matchTitle, currentEnabled) => {
-                setScoringOverrideModal({ matchId, matchTitle, currentEnabled });
-                setScoringOverrideReason("");
-              }}
-            />
+            {renderMatchCard(focusedMatch)}
           </div>
         </div>
       )}
 
+      {/* Sort toggle: by groups (default) vs by date — only where the
+          phase actually has groups (knockouts are already flat). */}
+      {!requiresStructuralPicks && !focusedMatch && hasRealGroups && (
+        <div style={{ marginTop: 14, display: "flex", gap: 0, background: colors.bgLight, borderRadius: radii.lg, padding: 4, border: `1px solid ${colors.borderLight}`, width: "fit-content", maxWidth: "100%" }}>
+          {(["groups", "date"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => changeSortMode(mode)}
+              style={{
+                padding: "10px 14px",
+                minHeight: 44,
+                border: "none",
+                borderRadius: radii.md,
+                background: sortMode === mode ? colors.white : "transparent",
+                color: sortMode === mode ? colors.brand : colors.textMuted,
+                fontWeight: sortMode === mode ? 700 : 500,
+                fontSize: 13,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                boxShadow: sortMode === mode ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              {mode === "groups" ? `📁 ${t("matchSort.byGroups")}` : `🕐 ${t("matchSort.byDate")}`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Date view: same cards, chronological, bucketed by calendar day
+          in the user's timezone with HOY/MAÑANA markers. */}
+      {!requiresStructuralPicks && !focusedMatch && hasRealGroups && sortMode === "date" && (
+        <div style={{ marginTop: 14, display: "grid", gap: 14 }}>
+          {chronoDays.map((day) => (
+            <div key={day.key}>
+              <div style={{ padding: "8px 12px", background: colors.bgLight, border: `1px solid ${colors.borderLight}`, borderRadius: 10, fontWeight: 800, fontSize: 13, color: colors.textDark }}>
+                {day.relative === "today" && <span style={{ color: colors.brand }}>{t("matchSort.today")} · </span>}
+                {day.relative === "tomorrow" && <span style={{ color: colors.brand }}>{t("matchSort.tomorrow")} · </span>}
+                <span style={{ textTransform: "capitalize" }}>{day.label}</span>
+              </div>
+              <div style={{ marginTop: 10, display: "grid", gap: 12 }}>
+                {day.matches.map(renderMatchCard)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Tab Content: Partidos - Matches by group (each group is a collapsible card) */}
-      {!requiresStructuralPicks && !focusedMatch && (
+      {!requiresStructuralPicks && !focusedMatch && (!hasRealGroups || sortMode === "groups") && (
         <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
           {groupOrder.map((g) => {
             const noGroups = groupOrder.length === 1 && groupOrder[0] === "SIN_GRUPO";
             const matchList = (
               <div key={g} style={noGroups ? { display: "grid", gap: 12 } : { marginTop: 12, display: "grid", gap: 12 }}>
-                {matchesByGroup[g].map((m: any) => (
-                  <MatchCard
-                    key={m.id}
-                    match={m}
-                    overview={overview}
-                    isMobile={isMobile}
-                    busyPick={busyKey === `pick:${m.id}`}
-                    busyRes={busyKey === `res:${m.id}`}
-                    userTimezone={userTimezone}
-                    allowScorePick={allowScorePick}
-                    savePick={(pick) => savePick(m.id, pick)}
-                    saveResult={(input) => saveResult(m.id, input)}
-                    onViewBreakdown={(matchId, matchTitle) => setBreakdownModalData({ matchId, matchTitle })}
-                    onViewMatchPicks={(matchId, matchTitle) => loadMatchPicks(matchId, matchTitle)}
-                    onToggleScoring={(matchId, matchTitle, currentEnabled) => {
-                      setScoringOverrideModal({ matchId, matchTitle, currentEnabled });
-                      setScoringOverrideReason("");
-                    }}
-                  />
-                ))}
+                {matchesByGroup[g].map(renderMatchCard)}
               </div>
             );
             if (noGroups) return matchList;

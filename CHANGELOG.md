@@ -8,6 +8,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### UX — Vista "Por fecha" en la pestaña Partidos (2026-06-12)
+
+#### Added
+- **Toggle "📁 Por grupos · 🕐 Por fecha"** en fases con grupos: la vista cronológica ordena las mismas cards por kickoff y las agrupa con **separadores por día calendario en la zona horaria del usuario** (con marcadores HOY/MAÑANA), para encontrar los próximos partidos de un vistazo entre los 72 de la fase de grupos. Default "Por grupos" (cero cambio de comportamiento); preferencia persistida en localStorage. Búsqueda/filtros aplican igual en ambas vistas; eliminatorias (ya planas) no muestran el toggle. Refactor: render de MatchCard unificado en un helper (3 call sites idénticos).
+
 ### UX — Banner detallado de predicciones pendientes + filtro de enfoque (2026-06-12)
 
 #### Added

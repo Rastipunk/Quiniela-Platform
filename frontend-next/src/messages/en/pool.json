@@ -501,6 +501,13 @@
     "next": "Next"
   },
 
+  "matchSort": {
+    "byGroups": "By group",
+    "byDate": "By date",
+    "today": "TODAY",
+    "tomorrow": "TOMORROW"
+  },
+
   "pendingPicks": {
     "title": "You're missing 1 pick that closes in the next 24 hours",
     "titlePlural": "You're missing {count} picks that close in the next 24 hours",

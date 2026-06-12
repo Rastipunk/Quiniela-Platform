@@ -501,6 +501,13 @@
     "next": "Próximo"
   },
 
+  "matchSort": {
+    "byGroups": "Por grupos",
+    "byDate": "Por data",
+    "today": "HOJE",
+    "tomorrow": "AMANHÃ"
+  },
+
   "pendingPicks": {
     "title": "Falta 1 palpite que fecha nas próximas 24 horas",
     "titlePlural": "Faltam {count} palpites que fecham nas próximas 24 horas",
