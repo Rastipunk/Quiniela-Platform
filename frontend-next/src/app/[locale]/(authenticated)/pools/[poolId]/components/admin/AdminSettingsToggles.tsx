@@ -40,90 +40,10 @@ export function AdminSettingsToggles({
 
   return (
     <>
-      {/* Auto-Advance Configuration */}
-      <div style={adminSectionStyle}>
-        <h4 style={adminHeadingStyle}>
-          🤖 {t("admin.autoAdvance.title")}
-        </h4>
-        <div style={{ fontSize: fontSize.base, lineHeight: 1.8, color: colors.textMuted, marginBottom: spacing.md }}>
-          {t("admin.autoAdvance.description")}
-        </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
-          <ToggleSwitch
-            checked={overview.pool.autoAdvanceEnabled}
-            disabled={busyKey === "auto-advance-toggle"}
-            onChange={async () => {
-              if (busyKey === "auto-advance-toggle" || !token || !poolId) return;
-              setBusyKey("auto-advance-toggle");
-              setError(null);
-              try {
-                const newValue = !overview.pool.autoAdvanceEnabled;
-                await updatePoolSettings(token, poolId, { autoAdvanceEnabled: newValue });
-                await reload();
-              } catch (err: any) {
-                console.error('[TOGGLE] Error:', err);
-                setError(friendlyError(err));
-              } finally {
-                setBusyKey(null);
-              }
-            }}
-          />
-          <div>
-            <div style={{ fontWeight: fontWeight.semibold, color: colors.textDark }}>
-              {overview.pool.autoAdvanceEnabled ? `✅ ${t("admin.autoAdvance.enabled")}` : `❌ ${t("admin.autoAdvance.disabled")}`}
-            </div>
-            <div style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>
-              {overview.pool.autoAdvanceEnabled
-                ? t("admin.autoAdvance.enabledDesc")
-                : t("admin.autoAdvance.disabledDesc")}
-            </div>
-          </div>
-        </label>
-      </div>
-
-      {/* Require Approval Configuration */}
-      <div style={adminSectionStyle}>
-        <h4 style={adminHeadingStyle}>
-          🔐 {t("admin.approval.title")}
-        </h4>
-        <div style={{ fontSize: fontSize.base, lineHeight: 1.8, color: colors.textMuted, marginBottom: spacing.md }}>
-          {t("admin.approval.description")}
-        </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
-          <ToggleSwitch
-            checked={overview.pool.requireApproval}
-            disabled={busyKey === "require-approval-toggle"}
-            onChange={async () => {
-              if (busyKey === "require-approval-toggle" || !token || !poolId) return;
-              setBusyKey("require-approval-toggle");
-              setError(null);
-              try {
-                const newValue = !overview.pool.requireApproval;
-                await updatePoolSettings(token, poolId, { requireApproval: newValue });
-                await reload();
-              } catch (err: any) {
-                setError(friendlyError(err));
-              } finally {
-                setBusyKey(null);
-              }
-            }}
-          />
-          <div>
-            <div style={{ fontWeight: fontWeight.semibold, color: colors.textDark }}>
-              {overview.pool.requireApproval ? `✅ ${t("admin.approval.required")}` : `❌ ${t("admin.approval.direct")}`}
-            </div>
-            <div style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>
-              {overview.pool.requireApproval
-                ? t("admin.approval.requiredDesc")
-                : t("admin.approval.directDesc")}
-            </div>
-          </div>
-        </label>
-      </div>
-
-      {/* Capricho San (gifted feature) — only rendered when the backend
-          marks this pool as allowlisted. Random score for players who
-          let the deadline pass without predicting. */}
+      {/* Capricho San (gifted feature) — FIRST card by owner request:
+          only rendered when the backend marks this pool as allowlisted.
+          Random score for players who let the deadline pass without
+          predicting. */}
       {capricho?.available && (
         <div style={{ ...adminSectionStyle, border: "2px solid #8b5cf6", background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)" }}>
           <h4 style={adminHeadingStyle}>
@@ -223,6 +143,87 @@ export function AdminSettingsToggles({
           )}
         </div>
       )}
+
+      {/* Auto-Advance Configuration */}
+      <div style={adminSectionStyle}>
+        <h4 style={adminHeadingStyle}>
+          🤖 {t("admin.autoAdvance.title")}
+        </h4>
+        <div style={{ fontSize: fontSize.base, lineHeight: 1.8, color: colors.textMuted, marginBottom: spacing.md }}>
+          {t("admin.autoAdvance.description")}
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
+          <ToggleSwitch
+            checked={overview.pool.autoAdvanceEnabled}
+            disabled={busyKey === "auto-advance-toggle"}
+            onChange={async () => {
+              if (busyKey === "auto-advance-toggle" || !token || !poolId) return;
+              setBusyKey("auto-advance-toggle");
+              setError(null);
+              try {
+                const newValue = !overview.pool.autoAdvanceEnabled;
+                await updatePoolSettings(token, poolId, { autoAdvanceEnabled: newValue });
+                await reload();
+              } catch (err: any) {
+                console.error('[TOGGLE] Error:', err);
+                setError(friendlyError(err));
+              } finally {
+                setBusyKey(null);
+              }
+            }}
+          />
+          <div>
+            <div style={{ fontWeight: fontWeight.semibold, color: colors.textDark }}>
+              {overview.pool.autoAdvanceEnabled ? `✅ ${t("admin.autoAdvance.enabled")}` : `❌ ${t("admin.autoAdvance.disabled")}`}
+            </div>
+            <div style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>
+              {overview.pool.autoAdvanceEnabled
+                ? t("admin.autoAdvance.enabledDesc")
+                : t("admin.autoAdvance.disabledDesc")}
+            </div>
+          </div>
+        </label>
+      </div>
+
+      {/* Require Approval Configuration */}
+      <div style={adminSectionStyle}>
+        <h4 style={adminHeadingStyle}>
+          🔐 {t("admin.approval.title")}
+        </h4>
+        <div style={{ fontSize: fontSize.base, lineHeight: 1.8, color: colors.textMuted, marginBottom: spacing.md }}>
+          {t("admin.approval.description")}
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
+          <ToggleSwitch
+            checked={overview.pool.requireApproval}
+            disabled={busyKey === "require-approval-toggle"}
+            onChange={async () => {
+              if (busyKey === "require-approval-toggle" || !token || !poolId) return;
+              setBusyKey("require-approval-toggle");
+              setError(null);
+              try {
+                const newValue = !overview.pool.requireApproval;
+                await updatePoolSettings(token, poolId, { requireApproval: newValue });
+                await reload();
+              } catch (err: any) {
+                setError(friendlyError(err));
+              } finally {
+                setBusyKey(null);
+              }
+            }}
+          />
+          <div>
+            <div style={{ fontWeight: fontWeight.semibold, color: colors.textDark }}>
+              {overview.pool.requireApproval ? `✅ ${t("admin.approval.required")}` : `❌ ${t("admin.approval.direct")}`}
+            </div>
+            <div style={{ fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 }}>
+              {overview.pool.requireApproval
+                ? t("admin.approval.requiredDesc")
+                : t("admin.approval.directDesc")}
+            </div>
+          </div>
+        </label>
+      </div>
 
       {/* Extra Time Configuration */}
       {overview.pool.pickTypesConfig && (() => {
