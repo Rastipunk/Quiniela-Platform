@@ -283,15 +283,13 @@
     "ctaNameWorldCup": "Criar Penca Grátis"
   },
   "whatsNew": {
-    "title": "Novidades",
-    "subtitle": "Veja o que há de novo no Picks4All",
-    "item1Title": "Sorteio das Oitavas UCL",
-    "item1Desc": "Os confrontos das oitavas de final da Champions League já estão disponíveis. Todas as pencas foram atualizadas automaticamente com os jogos reais.",
-    "item2Title": "Placar aos 90' ou +PE por fase",
-    "item2Desc": "Agora você pode escolher por fase se o resultado conta aos 90 minutos ou inclui prorrogação. Configure ao criar seu {term}.",
-    "item3Title": "Prazos e horários melhorados",
-    "item3Desc": "Agora você pode ver com mais clareza o prazo para enviar suas previsões e o horário de início de cada partida.",
-    "dismiss": "Entendi"
+    "title": "Novidades no Picks4All!",
+    "subtitle": "Veja o que lançamos hoje",
+    "item1Title": "Organize os jogos do seu jeito",
+    "item1Desc": "Na aba Jogos agora você pode vê-los por data — com separadores de HOJE e AMANHÃ para encontrar de relance o que vem aí — ou por grupos, como sempre. Troque com um toque e lembramos sua preferência.",
+    "item2Title": "Compartilhe em PDF",
+    "item2Desc": "Baixe a classificação completa (com pontos por fase) ou os palpites de qualquer jogo já fechado em um PDF elegante, pronto para compartilhar com seus amigos ou família. Procure o botão PDF na Classificação e em \"Ver palpites dos outros\".",
+    "dismiss": "Entendi!"
   },
   "pool": {
     "scoringEnabled": "Pontua",

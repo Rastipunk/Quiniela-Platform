@@ -283,15 +283,13 @@
     "ctaNameWorldCup": "Crear mi polla del Mundial gratis"
   },
   "whatsNew": {
-    "title": "Novedades",
-    "subtitle": "Mira lo nuevo en Picks4All",
-    "item1Title": "Sorteo de Octavos UCL",
-    "item1Desc": "Los cruces de octavos de final de la Champions League ya están disponibles. Todas las pools se actualizaron automáticamente con los partidos reales.",
-    "item2Title": "Marcador al 90' o +ET por fase",
-    "item2Desc": "Ahora puedes elegir fase por fase si el resultado cuenta al minuto 90 o incluye tiempo extra. Configúralo al crear tu {term}.",
-    "item3Title": "Deadline y horarios mejorados",
-    "item3Desc": "Ahora puedes ver con más claridad el deadline para enviar tus predicciones y la hora de inicio de cada partido.",
-    "dismiss": "Entendido"
+    "title": "¡Novedades en Picks4All!",
+    "subtitle": "Esto es lo que estrenamos hoy",
+    "item1Title": "Ordena los partidos a tu manera",
+    "item1Desc": "En la pestaña Partidos ahora puedes verlos por fecha — con separadores de HOY y MAÑANA para encontrar de un vistazo lo que viene — o por grupos, como siempre. Cambia con un toque y recordamos tu preferencia.",
+    "item2Title": "Comparte en PDF",
+    "item2Desc": "Descarga la tabla de posiciones completa (con los puntos por fase) o las predicciones de cualquier partido ya cerrado en un PDF elegante, listo para compartir con tus amigos o tu familia. Busca el botón PDF en Posiciones y en \"Ver predicciones de otros\".",
+    "dismiss": "¡Entendido!"
   },
   "pool": {
     "scoringEnabled": "Puntúa",

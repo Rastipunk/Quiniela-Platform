@@ -283,15 +283,13 @@
     "ctaNameWorldCup": "Create Free Pool"
   },
   "whatsNew": {
-    "title": "What's New",
-    "subtitle": "See what's new in Picks4All",
-    "item1Title": "UCL Round of 16 Draw",
-    "item1Desc": "The Champions League Round of 16 matchups are now available. All pools have been automatically updated with the real fixtures.",
-    "item2Title": "90' or +ET score per phase",
-    "item2Desc": "You can now choose per phase whether the score counts at 90 minutes or includes extra time. Set it up when creating your {term}.",
-    "item3Title": "Improved deadlines & schedules",
-    "item3Desc": "You can now see more clearly the deadline to submit your predictions and the kickoff time for each match.",
-    "dismiss": "Got it"
+    "title": "What's new in Picks4All!",
+    "subtitle": "Here's what we shipped today",
+    "item1Title": "Sort matches your way",
+    "item1Desc": "In the Matches tab you can now view them by date — with TODAY and TOMORROW separators to spot what's coming at a glance — or by group, as always. Switch with one tap and we remember your choice.",
+    "item2Title": "Share as PDF",
+    "item2Desc": "Download the full standings (with per-phase points) or the predictions for any closed match as a polished PDF, ready to share with your friends or family. Look for the PDF button in Standings and in \"View other picks\".",
+    "dismiss": "Got it!"
   },
   "pool": {
     "scoringEnabled": "Scoring on",

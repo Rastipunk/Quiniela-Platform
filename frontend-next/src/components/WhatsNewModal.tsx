@@ -1,28 +1,52 @@
 "use client";
 
+// One-time "what's new" announcement modal (versioned).
+//
+// Shows once per device after a deploy that bumps WHATS_NEW_VERSION —
+// the seen-version is stored in localStorage, so it never reappears
+// until the next announcement. Supports a staged rollout: while
+// TEST_EMAILS is non-null only those accounts see it (the owner
+// approves the copy/visuals in production before everyone else does).
+
 import { colors } from "@/lib/theme";
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { usePoolTerm } from "@/contexts/PoolTermContext";
+import { getUserProfile } from "@/lib/api/user";
+import { getToken } from "@/lib/auth";
 
-const WHATS_NEW_VERSION = "2026-02-27";
+const WHATS_NEW_VERSION = "2026-06-12";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
-const TOKEN_KEY = "quiniela.token";
+
+/** Staged rollout: when non-null, ONLY these accounts see the modal.
+ *  Set to null to release the announcement to every user. */
+const TEST_EMAILS: string[] | null = ["juan.k.chacon9729@gmail.com"];
 
 export function WhatsNewModal() {
   const t = useTranslations("whatsNew");
   const isMobile = useIsMobile();
-  const { params: poolParams } = usePoolTerm();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = getToken();
     const seenVersion = localStorage.getItem(STORAGE_KEY);
-    if (token && seenVersion !== WHATS_NEW_VERSION) {
+    if (!token || seenVersion === WHATS_NEW_VERSION) return;
+
+    if (!TEST_EMAILS) {
       setShow(true);
+      return;
     }
+    // Staged rollout — one cheap profile fetch, never blocks the app.
+    let cancelled = false;
+    void getUserProfile(token)
+      .then((r) => {
+        if (!cancelled && TEST_EMAILS.includes(r.user.email.toLowerCase())) {
+          setShow(true);
+        }
+      })
+      .catch(() => { /* transient API issue — skip silently */ });
+    return () => { cancelled = true; };
   }, []);
 
   const handleDismiss = () => {
@@ -38,7 +62,7 @@ export function WhatsNewModal() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(0,0,0,0.55)",
         zIndex: 300,
         display: "flex",
         alignItems: "center",
@@ -50,127 +74,103 @@ export function WhatsNewModal() {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: colors.white,
-          borderRadius: 16,
+          borderRadius: 18,
           width: "100%",
-          maxWidth: 440,
-          padding: isMobile ? 24 : 32,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          border: "1px solid #e5e7eb",
+          maxWidth: 460,
+          maxHeight: "90vh",
+          overflowY: "auto",
+          boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
+          overflow: "hidden",
         }}
       >
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ fontSize: "2rem", marginBottom: 8 }}>&#127881;</div>
-          <h2
-            style={{
-              fontSize: "1.35rem",
-              fontWeight: 700,
-              color: "#111827",
-              margin: 0,
-            }}
-          >
+        {/* Brand gradient header */}
+        <div
+          style={{
+            background: colors.brandGradient,
+            padding: isMobile ? "22px 20px 18px" : "26px 28px 22px",
+            textAlign: "center",
+            color: colors.white,
+          }}
+        >
+          <div style={{ fontSize: "2.2rem", lineHeight: 1, marginBottom: 8 }}>✨</div>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 800, margin: 0 }}>
             {t("title")}
           </h2>
-          <p
-            style={{
-              fontSize: "0.9rem",
-              color: colors.textLighter,
-              marginTop: 4,
-            }}
-          >
+          <p style={{ fontSize: "0.9rem", margin: "6px 0 0", opacity: 0.9 }}>
             {t("subtitle")}
           </p>
         </div>
 
-        {/* Items */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 28 }}>
-          {/* Item 1: UCL R16 Draw */}
-          <div
-            style={{
-              display: "flex",
-              gap: 14,
-              alignItems: "flex-start",
-              background: "#eef2ff",
-              border: "1px solid #c7d2fe",
-              borderRadius: 12,
-              padding: 16,
-            }}
-          >
-            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#9917;</div>
-            <div>
-              <div style={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}>
-                {t("item1Title")}
+        <div style={{ padding: isMobile ? 20 : 26 }}>
+          {/* Items */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
+            {/* Item 1: sort by date or group */}
+            <div
+              style={{
+                display: "flex",
+                gap: 14,
+                alignItems: "flex-start",
+                background: "#eef2ff",
+                border: "1px solid #c7d2fe",
+                borderRadius: 12,
+                padding: 16,
+              }}
+            >
+              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>🕐</div>
+              <div>
+                <div style={{ fontWeight: 700, color: "#111827", marginBottom: 3 }}>
+                  {t("item1Title")}
+                </div>
+                <div style={{ fontSize: "0.86rem", color: "#4b5563", lineHeight: 1.5 }}>
+                  {t("item1Desc")}
+                </div>
               </div>
-              <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4 }}>
-                {t("item1Desc")}
+            </div>
+
+            {/* Item 2: shareable PDFs */}
+            <div
+              style={{
+                display: "flex",
+                gap: 14,
+                alignItems: "flex-start",
+                background: "#faf5ff",
+                border: "1px solid #ddd6fe",
+                borderRadius: 12,
+                padding: 16,
+              }}
+            >
+              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>📄</div>
+              <div>
+                <div style={{ fontWeight: 700, color: "#111827", marginBottom: 3 }}>
+                  {t("item2Title")}
+                </div>
+                <div style={{ fontSize: "0.86rem", color: "#4b5563", lineHeight: 1.5 }}>
+                  {t("item2Desc")}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Item 2: 90 min or +ET per phase */}
-          <div
+          {/* Dismiss button */}
+          <button
+            onClick={handleDismiss}
             style={{
-              display: "flex",
-              gap: 14,
-              alignItems: "flex-start",
-              background: "#fefce8",
-              border: "1px solid #fde68a",
+              width: "100%",
+              minHeight: 48,
+              background: colors.brandGradient,
+              color: colors.white,
+              border: "none",
               borderRadius: 12,
-              padding: 16,
+              padding: "13px 24px",
+              fontSize: "0.95rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 4px 14px rgba(79,70,229,0.35)",
             }}
           >
-            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#9201;</div>
-            <div>
-              <div style={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}>
-                {t("item2Title")}
-              </div>
-              <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4 }}>
-                {t("item2Desc", poolParams)}
-              </div>
-            </div>
-          </div>
-
-          {/* Item 3: Deadline & kickoff info */}
-          <div
-            style={{
-              display: "flex",
-              gap: 14,
-              alignItems: "flex-start",
-              background: colors.successBgAlt,
-              border: "1px solid #bbf7d0",
-              borderRadius: 12,
-              padding: 16,
-            }}
-          >
-            <div style={{ fontSize: "1.5rem", flexShrink: 0 }}>&#128197;</div>
-            <div>
-              <div style={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}>
-                {t("item3Title")}
-              </div>
-              <div style={{ fontSize: "0.85rem", color: "#4b5563", lineHeight: 1.4 }}>
-                {t("item3Desc")}
-              </div>
-            </div>
-          </div>
+            {t("dismiss")}
+          </button>
         </div>
-
-        {/* Dismiss button */}
-        <button
-          onClick={handleDismiss}
-          style={{
-            width: "100%",
-            background: "#111827",
-            color: colors.white,
-            border: "none",
-            borderRadius: 10,
-            padding: "12px 24px",
-            fontSize: "0.95rem",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          {t("dismiss")}
-        </button>
       </div>
     </div>
   );
