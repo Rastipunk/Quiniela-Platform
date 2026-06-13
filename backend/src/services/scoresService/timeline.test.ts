@@ -110,6 +110,26 @@ describe("deriveNinetyMinuteScore", () => {
       expect(terminalConfirmationCount(timeline, 0)).toBe(5);
     });
 
+    // Regression — USA–Paraguay 2026-06-13. The FT milestone froze with only
+    // 2 sources (onefootball, livescore crossed to FINISHED first) while 4
+    // sources agreed live on the FT 4-1. The old code returned 2 < 3 and the
+    // match never finalized. Must now use the live count (4) so it finalizes.
+    it("prefers live sourcesAgreeing when it beats the frozen terminal milestone", () => {
+      const timeline = [
+        ev({ status: "HT", confirmedBy: ["onefootball", "livescore"] }),
+        ev({ status: "2H", confirmedBy: ["espn", "livescore"] }),
+        ev({ status: "FT", confirmedBy: ["onefootball", "livescore"] }),
+      ];
+      expect(terminalConfirmationCount(timeline, 4)).toBe(4);
+    });
+
+    it("keeps the frozen milestone count when it beats live sourcesAgreeing", () => {
+      const timeline = [ev({ status: "FT", confirmedBy: ["a", "b", "c", "d"] })];
+      // A late-arriving cycle where fewer sources currently agree must not
+      // drop a strongly-confirmed terminal milestone below its real level.
+      expect(terminalConfirmationCount(timeline, 2)).toBe(4);
+    });
+
     it("falls back to sourcesAgreeing when there is no terminal milestone", () => {
       const timeline = [ev({ status: "2H", confirmedBy: ["a", "b"] })];
       expect(terminalConfirmationCount(timeline, 4)).toBe(4);
