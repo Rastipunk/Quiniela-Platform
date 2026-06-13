@@ -524,7 +524,10 @@
     "byGroups": "By group",
     "byDate": "By date",
     "today": "TODAY",
-    "tomorrow": "TOMORROW"
+    "tomorrow": "TOMORROW",
+    "showFinished": "Show finished matches",
+    "allFinishedHidden": "All matches in this phase are finished ({count}).",
+    "noMatches": "No matches match the current filters."
   },
 
   "pendingPicks": {

@@ -8,6 +8,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### UX — Checkbox "Mostrar partidos finalizados" en la pestaña Partidos (2026-06-13)
+
+#### Added
+- Checkbox junto al toggle de orden: por defecto **apagado**, oculta los partidos finalizados (con resultado y ya no en vivo) para que el jugador vea solo lo próximo/en juego; al marcarlo reaparecen. Persistido en localStorage (default off). Filtro inyectado en la única fuente `filteredMatches`, así que ambas vistas (grupos/fecha) y todos los conteos quedan coherentes; grupos/días que quedan vacíos desaparecen solos. Partidos en vivo o pasados-sin-resultado (atascados) **siempre** se ven. Estado vacío explicativo cuando una fase ya está toda jugada. Cero impacto en scoring/datos (filtro de presentación).
+
 ### UX — PDFs compartibles: tabla de posiciones y predicciones por partido (2026-06-12)
 
 #### Added

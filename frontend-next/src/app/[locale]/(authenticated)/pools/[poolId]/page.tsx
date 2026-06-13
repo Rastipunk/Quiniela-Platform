@@ -131,6 +131,20 @@ export default function PoolPage() {
   const [onlyNoPick, setOnlyNoPick] = useState(false);
   const [search, setSearch] = useState("");
   const [onlyNoResult, setOnlyNoResult] = useState(false);
+  // "Show finished matches" — default OFF (declutters the list down to
+  // upcoming/in-play). Persisted like the sort mode; applied post-mount
+  // so SSR and first client paint agree (no hydration mismatch).
+  const SHOW_FINALIZED_KEY = "p4a-matches-show-finalized";
+  const [showFinalized, setShowFinalized] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(SHOW_FINALIZED_KEY) === "1") setShowFinalized(true);
+    } catch { /* private mode */ }
+  }, []);
+  const changeShowFinalized = (v: boolean) => {
+    setShowFinalized(v);
+    try { window.localStorage.setItem(SHOW_FINALIZED_KEY, v ? "1" : "0"); } catch { /* private mode */ }
+  };
 
   // Invite
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -329,6 +343,10 @@ export default function PoolPage() {
       if (onlyOpen && m.isLocked) return false;
       if (onlyNoPick && m.myPick) return false;
       if (onlyNoResult && m.result) return false;
+      // Hide finished matches by default (Option A): a match with a
+      // published result that is no longer live. In-play/grace matches
+      // (isLive) and past-but-resultless (stuck) matches stay visible.
+      if (!showFinalized && m.result && !m.isLive) return false;
       if (q) {
         const ht = norm(m.homeTeam?.name ?? m.homeTeam?.code ?? m.homeTeam?.id ?? "");
         const at = norm(m.awayTeam?.name ?? m.awayTeam?.code ?? m.awayTeam?.id ?? "");
@@ -339,7 +357,7 @@ export default function PoolPage() {
       }
       return true;
     });
-  }, [overview, activePhase, onlyOpen, onlyNoPick, onlyNoResult, search]);
+  }, [overview, activePhase, onlyOpen, onlyNoPick, onlyNoResult, search, showFinalized]);
 
   const matchesByGroup = useMemo(() => {
     const by: Record<string, typeof filteredMatches> = {};
@@ -839,6 +857,7 @@ export default function PoolPage() {
                   search={search} setSearch={setSearch} onlyOpen={onlyOpen} setOnlyOpen={setOnlyOpen}
                   onlyNoPick={onlyNoPick} setOnlyNoPick={setOnlyNoPick}
                   onlyNoResult={onlyNoResult} setOnlyNoResult={setOnlyNoResult}
+                  showFinalized={showFinalized} setShowFinalized={changeShowFinalized}
                   selectedGroup={selectedGroup} setSelectedGroup={setSelectedGroup}
                   savePick={savePick} saveResult={saveResult}
                   onCreateInvite={onCreateInvite} inviteCode={inviteCode}

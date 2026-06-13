@@ -524,7 +524,10 @@
     "byGroups": "Por grupos",
     "byDate": "Por fecha",
     "today": "HOY",
-    "tomorrow": "MAÑANA"
+    "tomorrow": "MAÑANA",
+    "showFinished": "Mostrar partidos finalizados",
+    "allFinishedHidden": "Todos los partidos de esta fase ya finalizaron ({count}).",
+    "noMatches": "No hay partidos que coincidan con los filtros."
   },
 
   "pendingPicks": {

@@ -51,6 +51,8 @@ interface PoolMatchesTabProps {
   setOnlyNoPick: (v: boolean) => void;
   onlyNoResult: boolean;
   setOnlyNoResult: (v: boolean) => void;
+  showFinalized: boolean;
+  setShowFinalized: (v: boolean) => void;
   selectedGroup: string | null;
   setSelectedGroup: (g: string | null) => void;
   // Actions
@@ -100,6 +102,8 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
     setOnlyNoPick,
     onlyNoResult,
     setOnlyNoResult,
+    showFinalized,
+    setShowFinalized,
     selectedGroup,
     setSelectedGroup,
     savePick,
@@ -192,6 +196,17 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
       .sort((a: any, b: any) => new Date(a.deadlineUtc).getTime() - new Date(b.deadlineUtc).getTime());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overview.matches, overview.pool.pickTypesConfig]);
+
+  // How many matches in the active phase are currently hidden by the
+  // "show finished" filter — drives the empty-state hint so a blank list
+  // (a fully-played phase) explains itself instead of looking broken.
+  const hiddenFinalizedCount = useMemo(() => {
+    if (showFinalized) return 0;
+    return (overview.matches as PoolMatchCard[]).filter(
+      (m: any) => (!activePhase || m.phaseId === activePhase) && m.result && !m.isLive,
+    ).length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overview.matches, activePhase, showFinalized]);
 
   // Focused match (tapping a banner row): the list shows only that
   // card. Auto-clears once the pick is saved (the reload removes it
@@ -531,31 +546,45 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         </div>
       )}
 
-      {/* Sort toggle: by groups (default) vs by date — only where the
-          phase actually has groups (knockouts are already flat). */}
-      {!requiresStructuralPicks && !focusedMatch && hasRealGroups && (
-        <div style={{ marginTop: 14, display: "flex", gap: 0, background: colors.bgLight, borderRadius: radii.lg, padding: 4, border: `1px solid ${colors.borderLight}`, width: "fit-content", maxWidth: "100%" }}>
-          {(["date", "groups"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => changeSortMode(mode)}
-              style={{
-                padding: "10px 14px",
-                minHeight: 44,
-                border: "none",
-                borderRadius: radii.md,
-                background: sortMode === mode ? colors.white : "transparent",
-                color: sortMode === mode ? colors.brand : colors.textMuted,
-                fontWeight: sortMode === mode ? 700 : 500,
-                fontSize: 13,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                boxShadow: sortMode === mode ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-              }}
-            >
-              {mode === "groups" ? `📁 ${t("matchSort.byGroups")}` : `🕐 ${t("matchSort.byDate")}`}
-            </button>
-          ))}
+      {/* Controls row: sort toggle (only where the phase has groups —
+          knockouts are flat) + "show finished" checkbox (always, when a
+          match list exists). Wraps on mobile. */}
+      {!requiresStructuralPicks && !focusedMatch && (
+        <div style={{ marginTop: 14, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          {hasRealGroups && (
+            <div style={{ display: "flex", gap: 0, background: colors.bgLight, borderRadius: radii.lg, padding: 4, border: `1px solid ${colors.borderLight}` }}>
+              {(["date", "groups"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => changeSortMode(mode)}
+                  style={{
+                    padding: "10px 14px",
+                    minHeight: 44,
+                    border: "none",
+                    borderRadius: radii.md,
+                    background: sortMode === mode ? colors.white : "transparent",
+                    color: sortMode === mode ? colors.brand : colors.textMuted,
+                    fontWeight: sortMode === mode ? 700 : 500,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    boxShadow: sortMode === mode ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  }}
+                >
+                  {mode === "groups" ? `📁 ${t("matchSort.byGroups")}` : `🕐 ${t("matchSort.byDate")}`}
+                </button>
+              ))}
+            </div>
+          )}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 44, padding: "0 4px", cursor: "pointer", fontSize: 13, color: colors.textDark }}>
+            <input
+              type="checkbox"
+              checked={showFinalized}
+              onChange={(e) => setShowFinalized(e.target.checked)}
+              style={{ width: 18, height: 18, cursor: "pointer" }}
+            />
+            {t("matchSort.showFinished")}
+          </label>
         </div>
       )}
 
@@ -603,6 +632,28 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               </details>
             );
           })}
+        </div>
+      )}
+
+      {/* Empty state: the filtered list is empty. If it's because finished
+          matches are hidden, offer to reveal them; otherwise a neutral note. */}
+      {!requiresStructuralPicks && !focusedMatch && filteredMatches.length === 0 && (
+        <div style={{ marginTop: 14, padding: 24, background: colors.bgLight, border: `1px solid ${colors.borderLight}`, borderRadius: 14, textAlign: "center" }}>
+          {hiddenFinalizedCount > 0 ? (
+            <>
+              <div style={{ fontSize: 14, color: colors.textMuted, marginBottom: 12 }}>
+                {t("matchSort.allFinishedHidden", { count: hiddenFinalizedCount })}
+              </div>
+              <button
+                onClick={() => setShowFinalized(true)}
+                style={{ minHeight: 44, padding: "10px 16px", borderRadius: 10, border: `1px solid ${colors.brand}`, background: colors.white, color: colors.brand, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                {t("matchSort.showFinished")}
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: 14, color: colors.textMuted }}>{t("matchSort.noMatches")}</div>
+          )}
         </div>
       )}
 
