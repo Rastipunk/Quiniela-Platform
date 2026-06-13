@@ -24,12 +24,20 @@ const STORAGE_KEY = "quiniela.whatsNewVersion";
  *  2026-06-12 announcement: owner approved → released to everyone. */
 const TEST_EMAILS: string[] | null = null;
 
+/** Hard cutoff: after this instant the announcement never shows again
+ *  for anyone, regardless of whether they dismissed it. Set to 2:00 PM
+ *  Colombia time (UTC-5) on 2026-06-13 = 19:00 UTC. (Uses the device
+ *  clock — fine for an announcement; a badly-skewed clock is the only
+ *  edge case.) */
+const WHATS_NEW_EXPIRES_AT = new Date("2026-06-13T19:00:00Z").getTime();
+
 export function WhatsNewModal() {
   const t = useTranslations("whatsNew");
   const isMobile = useIsMobile();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    if (Date.now() >= WHATS_NEW_EXPIRES_AT) return; // announcement retired
     const token = getToken();
     const seenVersion = localStorage.getItem(STORAGE_KEY);
     if (!token || seenVersion === WHATS_NEW_VERSION) return;
