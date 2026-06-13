@@ -383,6 +383,28 @@ export async function applyMasterOverride(
     }
   }
 
+  // The admin has declared this match final — clear the instance-level
+  // live state. Otherwise a match the scraper left stuck in
+  // AWAITING_FINISH stays isLive=true forever, which (a) keeps the "FINAL"
+  // live badge on the card and (b) HIDES the host's "Modificar resultado"
+  // button (gated on !isLive). Both are symptoms of the same dangling
+  // sync state. Best-effort + cosmetic — never fail the override over it.
+  await prisma.matchSyncState
+    .updateMany({
+      where: {
+        tournamentInstanceId: input.instanceId,
+        internalMatchId: input.matchId,
+        syncStatus: { not: "COMPLETED" },
+      },
+      data: { syncStatus: "COMPLETED", completedAtUtc: new Date() },
+    })
+    .catch((err) =>
+      console.error(
+        "[MasterOverride] MatchSyncState completion update failed:",
+        err instanceof Error ? err.message : String(err),
+      ),
+    );
+
   // Downstream hooks for every updated pool (structural derivations,
   // advancement, pool completion) — bounded concurrency.
   const limit = createLimiter(HOOK_CONCURRENCY);
