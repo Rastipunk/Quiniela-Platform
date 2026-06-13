@@ -8,6 +8,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### UX — Lock vivo en las tarjetas de partido (deadline) (2026-06-13)
+
+#### Fixed
+- El botón "Modificar predicción" (y el badge LOCKED/Abierto + la fila de acciones) ahora se bloquean **en vivo** al pasar el deadline, incluso en una pestaña dejada abierta desde antes del cierre. Antes, `m.isLocked` se calculaba en el servidor al hacer fetch (booleano estático) y no se recomputaba en cliente para los match cards, así que el botón quedaba visible en páginas viejas (reporte de Paola: el botón seguía activo pero el guardado fallaba). Ahora MatchCard usa el mismo patrón vivo de los picks estructurales (`useDeadlinePassed`, kickoff − deadline de la pool, timer one-shot por card) combinado con el `isLocked` del servidor. **Solo UX** — el servidor ya rechazaba todo guardado tardío (409 DEADLINE_PASSED en los 3 caminos de escritura); la integridad nunca estuvo comprometida. Auditoría: `DEADLINE_INTEGRITY_AUDIT_2026-06-13.md`.
+
 ### UX — Checkbox "Mostrar partidos finalizados" en la pestaña Partidos (2026-06-13)
 
 #### Added

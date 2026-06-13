@@ -3,6 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { getTeamFlag } from "@/data/teamFlags";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
+import { computeLockTimeMs, useDeadlinePassed } from "@/hooks/useDeadlineLock";
 import type { PoolOverview, PoolMatchCard } from "@/lib/poolTypes";
 import { fmtUtc, isPlaceholder, getPlaceholderName, getMatchLabel, getTeamName } from "./poolHelpers";
 import { colors } from "@/lib/theme";
@@ -46,6 +47,21 @@ export function MatchCard({
   const locale = useLocale();
   const isHost = overview.permissions.canManageResults;
   const tournamentKey = overview.tournamentInstance.templateKey ?? "wc_2026_sandbox";
+
+  // Client-side live lock: the server's `m.isLocked` is computed at fetch
+  // time (a static boolean), so a page left open from BEFORE the deadline
+  // keeps showing the editable state until a refetch. This mirrors the
+  // backend rule (kickoff − pool deadline buffer) and flips the moment the
+  // deadline passes, even on an idle tab, so the "Modificar" button (and
+  // the locked/open badge) match reality. UX only — the backend 409
+  // DEADLINE_PASSED remains the authoritative gate. One-shot timer per
+  // card (fires once at the lock instant), so it is cheap at scale.
+  const lockTimeMs = computeLockTimeMs(
+    [m.kickoffUtc],
+    overview.pool.deadlineMinutesBeforeKickoff,
+  );
+  const deadlinePassed = useDeadlinePassed(lockTimeMs);
+  const isLocked = m.isLocked || deadlinePassed;
 
   // Check if match has placeholders
   const homeIsPlaceholder = isPlaceholder(m.homeTeam?.id || "");
@@ -151,7 +167,7 @@ export function MatchCard({
         </div>
 
         <div style={{ fontSize: 12, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          {m.isLocked ? (
+          {isLocked ? (
             <span style={{ padding: "4px 10px", border: "1px solid #f99", borderRadius: 999, background: "#fee" }}>
               🔒 {t("matchCard.locked")}
             </span>
@@ -225,7 +241,7 @@ export function MatchCard({
         <div>
           {getMatchLabel(m, t)} • {t("matchCard.kickoff")}: {fmtUtc(m.kickoffUtc, userTimezone, locale)}
         </div>
-        <div style={{ color: m.isLocked ? colors.textLight : "#c0392b" }}>
+        <div style={{ color: isLocked ? colors.textLight : "#c0392b" }}>
           {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone, locale)}
         </div>
       </div>
@@ -270,7 +286,7 @@ export function MatchCard({
           {/* Pick */}
           <PickSection
             pick={m.myPick}
-            isLocked={m.isLocked || overview.myMembership.status === "LEFT"}
+            isLocked={isLocked || overview.myMembership.status === "LEFT"}
             allowScorePick={allowScorePick}
             onSave={(pick: any) => savePick(pick)}
             disabled={busyPick}
@@ -309,7 +325,7 @@ export function MatchCard({
       )}
 
       {/* Botones de acción - en una sola línea */}
-      {(m.isLocked && !isPlaceholder(m.homeTeam?.id ?? "") && !isPlaceholder(m.awayTeam?.id ?? "")) && (
+      {(isLocked && !isPlaceholder(m.homeTeam?.id ?? "") && !isPlaceholder(m.awayTeam?.id ?? "")) && (
         <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
           {/* Botón Ver Desglose - solo si hay resultado y la fase usa requiresScore */}
           {m.result && overview.pool.pickTypesConfig && (() => {
