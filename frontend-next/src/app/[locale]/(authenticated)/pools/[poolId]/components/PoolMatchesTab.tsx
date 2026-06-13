@@ -576,14 +576,33 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
               ))}
             </div>
           )}
-          <label style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 44, padding: "0 4px", cursor: "pointer", fontSize: 13, color: colors.textDark }}>
+          {/* Prominent pill (not a bare checkbox) so it doesn't go
+              unnoticed — bordered + colour-fills when active; the whole
+              pill is one tap target (native label↔checkbox). */}
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              minHeight: 48,
+              padding: "10px 16px",
+              borderRadius: radii.lg,
+              cursor: "pointer",
+              border: `2px solid ${showFinalized ? colors.brand : colors.borderDark}`,
+              background: showFinalized ? "#eef2ff" : colors.white,
+              fontSize: 14,
+              fontWeight: 700,
+              color: showFinalized ? colors.brand : colors.textDark,
+              transition: "background 0.15s, border-color 0.15s, color 0.15s",
+            }}
+          >
             <input
               type="checkbox"
               checked={showFinalized}
               onChange={(e) => setShowFinalized(e.target.checked)}
-              style={{ width: 18, height: 18, cursor: "pointer" }}
+              style={{ width: 22, height: 22, cursor: "pointer", accentColor: colors.brand, flexShrink: 0 }}
             />
-            {t("matchSort.showFinished")}
+            <span>🏁 {t("matchSort.showFinished")}</span>
           </label>
         </div>
       )}
