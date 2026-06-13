@@ -79,9 +79,15 @@ export function WhatsNewModal() {
           width: "100%",
           maxWidth: 460,
           maxHeight: "90vh",
-          overflowY: "auto",
-          boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
+          // Flex column so the header + footer stay fixed and ONLY the
+          // middle body scrolls — the dismiss button is always reachable.
+          // (A plain `overflow:auto` here was overridden by a later
+          // `overflow:hidden`, trapping mobile users who couldn't reach
+          // the button when content exceeded 90vh.)
+          display: "flex",
+          flexDirection: "column",
           overflow: "hidden",
+          boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
         }}
       >
         {/* Brand gradient header */}
@@ -91,6 +97,7 @@ export function WhatsNewModal() {
             padding: isMobile ? "22px 20px 18px" : "26px 28px 22px",
             textAlign: "center",
             color: colors.white,
+            flexShrink: 0,
           }}
         >
           <div style={{ fontSize: "2.2rem", lineHeight: 1, marginBottom: 8 }}>✨</div>
@@ -102,9 +109,11 @@ export function WhatsNewModal() {
           </p>
         </div>
 
-        <div style={{ padding: isMobile ? 20 : 26 }}>
+        {/* Scrollable body — the ONLY part that scrolls when content is
+            taller than the viewport. */}
+        <div style={{ padding: isMobile ? 20 : 26, overflowY: "auto", flex: 1, minHeight: 0 }}>
           {/* Items */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {/* Item 1: sort by date or group */}
             <div
               style={{
@@ -152,7 +161,11 @@ export function WhatsNewModal() {
             </div>
           </div>
 
-          {/* Dismiss button */}
+        </div>
+
+        {/* Fixed footer — the dismiss button is ALWAYS visible and
+            reachable, regardless of how tall the body is. */}
+        <div style={{ padding: isMobile ? "14px 20px 20px" : "16px 26px 26px", flexShrink: 0, borderTop: "1px solid #f1f1f4" }}>
           <button
             onClick={handleDismiss}
             style={{
