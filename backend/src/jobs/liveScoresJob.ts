@@ -251,7 +251,15 @@ async function processLiveScore(
     }
   }
 
-  // Update MatchSyncState with live data + status
+  // Update MatchSyncState. Split into two writes:
+  //   1. Telemetry (always) — last status/elapsed/snapshot for the monitor.
+  //   2. Lifecycle state (guarded) — syncStatus/grace/completed only while
+  //      NOT already COMPLETED. A match an admin finalized via master
+  //      override is set COMPLETED out-of-band; without this guard the
+  //      next poll would recompute IN_PROGRESS/AWAITING_FINISH from the
+  //      live payload and REVERT it, making isLive flip back to true (the
+  //      "FINAL" badge returns, the host's "Modificar resultado" button
+  //      hides again — bug B regressing). COMPLETED is terminal here.
   try {
     await prisma.matchSyncState.updateMany({
       where: {
@@ -264,6 +272,15 @@ async function processLiveScore(
         lastElapsed: score.elapsed,
         lastExtra: score.extra,
         lastLiveDataJson: score as unknown as Prisma.InputJsonValue,
+      },
+    });
+    await prisma.matchSyncState.updateMany({
+      where: {
+        tournamentInstanceId: entry.tournamentInstanceId,
+        internalMatchId: entry.internalMatchId,
+        syncStatus: { not: "COMPLETED" },
+      },
+      data: {
         syncStatus: newSyncStatus as any,
         graceEndUtc: newGraceEndUtc,
         ...(newCompletedAtUtc ? { completedAtUtc: newCompletedAtUtc } : {}),
