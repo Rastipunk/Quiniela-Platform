@@ -71,7 +71,16 @@ interface LiveDataJson {
   lastUpdated?: string;
 }
 
-export async function getMatchMonitor(): Promise<MatchMonitorRow[]> {
+/**
+ * @param scope "near" (default) = the operational window [-12h, +36h]
+ *   relative to now, polled live by the admin UI. "past" = every match
+ *   whose kickoff is OLDER than the window's lower edge (-12h) — the
+ *   historical list used to override matches that already dropped off
+ *   the live monitor (e.g. a match that never finalized hours ago).
+ */
+export async function getMatchMonitor(
+  scope: "near" | "past" = "near",
+): Promise<MatchMonitorRow[]> {
   const instances = await prisma.tournamentInstance.findMany({
     where: { resultSourceMode: "AUTO", syncEnabled: true, status: "ACTIVE" },
     select: {
@@ -101,7 +110,13 @@ export async function getMatchMonitor(): Promise<MatchMonitorRow[]> {
     const windowMatches = fixture.matches.filter((m) => {
       if (!m.kickoffUtc) return false;
       const ko = new Date(m.kickoffUtc).getTime();
-      return !Number.isNaN(ko) && ko >= windowStart && ko <= windowEnd;
+      if (Number.isNaN(ko)) return false;
+      // "near" = inside the live window; "past" = everything that already
+      // fell off the window's lower edge (older than -12h). No floor on
+      // "past" — the admin asked to see them all.
+      return scope === "past"
+        ? ko < windowStart
+        : ko >= windowStart && ko <= windowEnd;
     });
     if (windowMatches.length === 0) continue;
 
@@ -176,7 +191,13 @@ export async function getMatchMonitor(): Promise<MatchMonitorRow[]> {
     }
   }
 
-  rows.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
+  // "near": chronological (next up last). "past": most recent first —
+  // the match that just dropped off the live monitor sits at the top.
+  rows.sort((a, b) =>
+    scope === "past"
+      ? b.kickoffUtc.localeCompare(a.kickoffUtc)
+      : a.kickoffUtc.localeCompare(b.kickoffUtc),
+  );
   return rows;
 }
 
@@ -331,7 +352,13 @@ export async function applyMasterOverride(
             homePenalties: input.homePenalties ?? null,
             awayPenalties: input.awayPenalties ?? null,
             source: "HOST_OVERRIDE",
-            reason: input.reason,
+            // SILENT by design: the master override is a platform-admin
+            // action, not a pool-host correction. The player-facing
+            // "Razón del cambio" box must NOT appear (that box is only for
+            // genuine pool-HOST overrides, which also email members). The
+            // admin's justification lives in the MASTER_RESULT_OVERRIDE
+            // audit event below — never on the player-visible version.
+            reason: null,
             createdByUserId: input.actorUserId,
           },
         });
