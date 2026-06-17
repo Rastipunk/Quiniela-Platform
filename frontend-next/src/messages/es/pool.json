@@ -575,6 +575,12 @@
     "filterLabel": "Filtro"
   },
 
+  "predictionStatusBanner": {
+    "title": "✨ Novedad: ¿quién ya hizo su predicción?",
+    "body": "En cada partido abierto verás el botón 📊 con cuántos jugadores ya guardaron su predicción. Ábrelo para ver quiénes faltan y recordarles que la hagan antes del cierre, así nadie pierde puntos por olvido. Además puedes exportar la lista a PDF para compartirla en tus grupos de familia, amigos o trabajo.",
+    "close": "Cerrar"
+  },
+
   "playerSummary": {
     "title": "Resumen de {name}"
   },
