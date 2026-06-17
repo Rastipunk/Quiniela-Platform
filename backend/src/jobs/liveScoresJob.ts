@@ -222,12 +222,26 @@ async function processLiveScore(
       score.timeline,
       score.sourcesAgreeing,
     );
+    // Plausibility guard (Argentina–Argelia, 2026-06-17): one rogue source
+    // reported FT at minute 17 while 3 sources trivially agreed on the
+    // still-0-0 score, so terminalConfirmationCount's max() saw 3 and
+    // finalized a live match. A real terminal status only happens late —
+    // require the match to have plausibly run before finalizing. ABD is
+    // exempt (legitimate early abandonment). Use the feed's elapsed when
+    // present, else wall-clock since scheduled kickoff (unspoofable).
+    const minutesSinceKickoff =
+      (now.getTime() - new Date(entry.kickoffUtc).getTime()) / 60_000;
+    const elapsedPlausible =
+      score.status === "ABD" ||
+      (score.elapsed != null
+        ? score.elapsed >= SCORES.MIN_ELAPSED_FOR_TERMINAL
+        : minutesSinceKickoff >= SCORES.MIN_ELAPSED_FOR_TERMINAL);
     const enoughConfirmations =
-      confirmations >= SCORES.MIN_CONFIRMATIONS_TO_FINALIZE;
+      confirmations >= SCORES.MIN_CONFIRMATIONS_TO_FINALIZE && elapsedPlausible;
 
     if (!enoughConfirmations) {
-      // Terminal status but not yet enough confirmations — hold in
-      // AWAITING_FINISH without arming the grace period.
+      // Terminal status but not yet enough confirmations (or implausibly
+      // early) — hold in AWAITING_FINISH without arming the grace period.
       newSyncStatus = "AWAITING_FINISH";
     } else if (!syncState?.graceEndUtc) {
       // FT detected (and confirmed) for the first time → start grace period

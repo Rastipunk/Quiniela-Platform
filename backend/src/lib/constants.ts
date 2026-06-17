@@ -65,6 +65,17 @@ export const SCORES = {
    */
   MIN_CONFIRMATIONS_TO_FINALIZE: envInt("SCORES_MIN_CONFIRMATIONS", 3),
   /**
+   * Minimum match-minute before a FT/AET/PEN terminal status may finalize.
+   * Guards against a single rogue source reporting a premature terminal
+   * status (e.g. one feed emitting FT at minute 17 while others trivially
+   * agree on the still-0-0 scoreline — Argentina–Argelia, 2026-06-17).
+   * A real FT happens at ~90, AET/PEN at ~120 — all well above this floor.
+   * ABD (abandoned) is exempt: a match can legitimately be abandoned early.
+   * Checked against the feed's `elapsed` when present, else wall-clock
+   * minutes since the scheduled kickoff (can't be poisoned by a bad feed).
+   */
+  MIN_ELAPSED_FOR_TERMINAL: envInt("SCORES_MIN_ELAPSED_FOR_TERMINAL", 80),
+  /**
    * A match is considered "stale" (should have ended but no authoritative
    * result) this long after kickoff. Covers 90' + halftime + stoppage +
    * full extra time + penalties + margin. Triggers an admin alert.
