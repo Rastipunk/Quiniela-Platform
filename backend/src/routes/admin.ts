@@ -36,8 +36,17 @@ import { adminCorporateRouter } from "./adminCorporate";
 import { analyticsHealthRouter } from "./analyticsHealth";
 import { adminAnalyticsDashboardRouter } from "./adminAnalyticsDashboard";
 import { adminSalesRouter } from "./adminSales";
+import { adminQueryRouter } from "./adminQuery";
 
 export const adminRouter = Router();
+
+// Mount the ad-hoc query router FIRST. It only defines POST /query and
+// authenticates via its own static token (X-Admin-Query-Token), NOT the
+// admin JWT. Mounting it ahead of the JWT-gated sub-routers below (which
+// apply requireAuth/requireAdmin at router level on "/") ensures the
+// token-auth path isn't pre-empted by a 401 from the JWT middleware.
+// Every other path falls straight through to the routers that follow.
+adminRouter.use("/", adminQueryRouter);
 
 // Mount sub-routers
 adminRouter.use("/", adminTemplatesRouter);

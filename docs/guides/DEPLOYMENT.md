@@ -104,6 +104,16 @@ NIXPACKS_NODE_VERSION = "22"
 | `PORT` | Server port | `3000` |
 | `FRONTEND_URL` | Frontend URL for CORS and email links | `https://picks4all.com` |
 
+#### Admin read-only query endpoint (optional — see ADR-070)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_READONLY_URL` | Connection string for the `picks4all_readonly` SELECT-only role. Enables `POST /admin/query`. Unset → endpoint returns 503. | `postgresql://picks4all_readonly:xxx@postgres.railway.internal:5432/railway` |
+| `ADMIN_QUERY_TOKEN` | Bearer token for `POST /admin/query` (`X-Admin-Query-Token`). Generate with `openssl rand -hex 32`. | Long random string |
+| `ADMIN_QUERY_MAX_ROWS` | Max rows returned per query (default 1000) | `1000` |
+
+> Role setup is a one-time manual step in the Railway console — see `docs/guides/ADMIN_QUERY_ENDPOINT.md`. The role password must never be committed.
+
 #### Domain and CORS
 
 | Variable | Description | Default |

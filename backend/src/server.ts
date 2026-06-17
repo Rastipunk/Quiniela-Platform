@@ -25,6 +25,7 @@ import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startPlatformHealthJob, stopPlatformHealthJob } from "./jobs/platformHealthJob";
 import { startEventLoopMonitor, stopEventLoopMonitor } from "./lib/eventLoopMonitor";
 import { prewarmAdminDashboardCache } from "./routes/adminAnalyticsDashboard";
+import { disconnectReadonlyDb } from "./lib/readonlyDb";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 import { startNewMemberDigestJob, stopNewMemberDigestJob } from "./jobs/newMemberDigestJob";
 import { startPhaseSyncJob, stopPhaseSyncJob } from "./jobs/phaseSyncJob";
@@ -400,6 +401,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopCaprichoSanJob();
   stopPlatformHealthJob();
   stopEventLoopMonitor();
+  await disconnectReadonlyDb();
 
   // 3. Disconnect Prisma (closes DB connection pool)
   try {

@@ -1206,6 +1206,8 @@ All admin endpoints are under `/admin` and require `platformRole === "ADMIN"`.
 |--------|------|------|-------------|
 | GET | `/admin/ping` | Admin | RBAC validation check |
 | GET | `/admin/stats` | Admin | Platform-wide statistics |
+| GET | `/admin/health/deep` | Admin | On-demand platform health snapshot (10 metrics) |
+| POST | `/admin/query` | `X-Admin-Query-Token` | Run one read-only SQL `SELECT`; returns rows. Read-only role + secret-column redaction + audit. See ADR-070 / `guides/ADMIN_QUERY_ENDPOINT.md` |
 | POST | `/admin/bootstrap-admin` | No (one-shot) | Bootstrap the first ADMIN user when the table is empty |
 | POST | `/admin/jobs/trigger-fixture-tracking` | Admin | Manually trigger the fixture-tracking cron once |
 | POST | `/admin/prediction-update` | Admin | Push an AI prediction update to subscribed users |

@@ -5125,6 +5125,56 @@ matchLockUtc = kickoffUtc - deadlineMinutes
 - ⚠️ Random picks are created post-deadline by design; the picks route still rejects human post-deadline writes — the job writes via Prisma directly.
 
 **Related code:** `backend/src/lib/caprichoSan.ts`, `backend/src/services/caprichoSanService.ts`, `backend/src/jobs/caprichoSanJob.ts`, `backend/src/services/poolAdminService.ts` (`updatePoolSettings`), `backend/src/services/poolOverviewService.ts`, `frontend-next/.../admin/AdminSettingsToggles.tsx`, `MatchPicksModal.tsx`, `PickComponents.tsx`.
+---
+
+## ADR-076 — Read-only ad-hoc query endpoint for operational diagnostics
+
+**Status:** Accepted (2026-06-17)
+
+**Context:** Operational support recurrently needs ad-hoc reads of
+production data ("what pool does user X have", "did these emails
+register", "are picks being saved"). Direct DB access (psql, `railway
+ssh`) is unavailable from some operator environments because only
+HTTPS/443 egress is allowed; the Postgres proxy port is firewalled.
+Building a structured lookup endpoint per question doesn't scale.
+
+**Decision:** A single admin endpoint `POST /admin/query` accepts one
+**read-only** SQL statement and returns rows as JSON. The backend (which
+is co-located with the DB) proxies the query, so HTTPS-only callers can
+use it. Defense in depth:
+1. A dedicated Postgres role `picks4all_readonly` with SELECT-only grants
+   — the real write-protection boundary (the DB cannot mutate via this
+   client regardless of any app-layer bypass).
+2. App-layer validation: single statement, `SELECT`/`WITH` only, DML/DDL
+   keyword denylist.
+3. Sensitive-identifier rejection + output redaction for `passwordHash`,
+   `resetToken`, `emailVerificationToken`, `activationToken`.
+4. Row cap (`ADMIN_QUERY_MAX_ROWS`) + role `statement_timeout`.
+5. `AuditEvent` (`ADMIN_QUERY_EXECUTED`) on every call.
+6. Dedicated static token auth (`ADMIN_QUERY_TOKEN`, `X-Admin-Query-Token`,
+   constant-time compare) — independent of the 4 h human JWT so the tool
+   can be driven programmatically.
+
+**Explicitly out of scope — WRITES.** Any mutation of production data
+stays a reviewed SQL statement executed by a human in the Railway
+console. An autonomous arbitrary-write endpoint is rejected: the
+risk/reward is unacceptable when the Railway console already provides the
+human checkpoint for the rare, high-stakes write.
+
+**Consequences:**
+- ✅ Any diagnostic read is one HTTPS call; no DB port needed.
+- ✅ The read-only role bounds the worst case to information disclosure,
+  itself bounded by secret-column blocking + redaction + row cap.
+- ⚠️ The role/grants must be created once manually in Railway (password
+  out of git) and kept in sync (`ALTER DEFAULT PRIVILEGES` covers new
+  tables; new secret columns must be added to the denylist).
+- ⚠️ `ADMIN_QUERY_TOKEN` is a real bearer credential — rotate on
+  suspicion; unset either env var to disable instantly.
+
+**Related code:** `backend/src/routes/adminQuery.ts`,
+`backend/src/services/adminQueryService.ts`,
+`backend/src/lib/readonlyDb.ts`, `backend/src/routes/admin.ts`.
+**Guide:** `docs/guides/ADMIN_QUERY_ENDPOINT.md`.
 
 ---
 

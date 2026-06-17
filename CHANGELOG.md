@@ -8,6 +8,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Read-only ad-hoc query endpoint (2026-06-17)
+
+Operational diagnostics over HTTPS without a database port. See **ADR-076** and `docs/guides/ADMIN_QUERY_ENDPOINT.md`.
+
+#### Added
+- **`POST /admin/query`** — runs a single read-only SQL statement against a dedicated SELECT-only Postgres role (`picks4all_readonly`) and returns rows as JSON. Defense in depth: role-enforced read-only + statement validation + secret-column blocking/redaction (`passwordHash`, `resetToken`, `emailVerificationToken`, `activationToken`) + row cap + `statement_timeout` + an `AuditEvent` per call. Auth via a dedicated `ADMIN_QUERY_TOKEN` (`X-Admin-Query-Token`, constant-time), independent of the human JWT. Writes remain out of scope — production changes stay reviewed SQL run by a human in the Railway console.
+- New env vars (Backend): `DATABASE_READONLY_URL`, `ADMIN_QUERY_TOKEN`, optional `ADMIN_QUERY_MAX_ROWS` (default 1000). Endpoint returns `503` until configured.
+
 ### UX — Lock vivo en las tarjetas de partido (deadline) (2026-06-13)
 
 #### Fixed
