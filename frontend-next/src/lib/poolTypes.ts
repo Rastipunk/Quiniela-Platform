@@ -148,6 +148,11 @@ export interface PoolMatchCard {
   matchSyncStatus: string | null;
   scoringEnabled: boolean;
   scoringOverrideReason: string | null;
+  // Prediction-status feature (ADR-045): predictedCount = ACTIVE members who
+  // have submitted a pick for this match (denominator = counts.membersActive).
+  // predictionStatusEnabled gates the badge client-side (rollout flag).
+  predictedCount: number;
+  predictionStatusEnabled: boolean;
   // Live data from picks4all-scores
   elapsed: number | null;
   extra: number | null;

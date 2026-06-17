@@ -53,6 +53,31 @@ export async function getMatchPicks(token: string, poolId: string, matchId: stri
   return requestJson(`/pools/${poolId}/matches/${matchId}/picks`, { method: "GET" });
 }
 
+// ── Prediction status (ADR-045) ──
+// Per-match list of ACTIVE members with a boolean "hasPredicted" — NEVER the
+// pick contents. Gated server-side by a rollout feature flag (404 if disabled).
+
+export type PredictionStatusMember = {
+  userId: string;
+  displayName: string;
+  role: string;
+  hasPredicted: boolean;
+  isCurrentUser: boolean;
+};
+
+export type PredictionStatusResponse = {
+  matchId: string;
+  deadlineUtc: string;
+  isLocked: boolean;
+  predictedCount: number;
+  totalMembers: number;
+  members: PredictionStatusMember[];
+};
+
+export async function getPredictionStatus(token: string, poolId: string, matchId: string): Promise<PredictionStatusResponse> {
+  return requestJson(`/pools/${poolId}/matches/${matchId}/prediction-status`, { method: "GET" });
+}
+
 // ── Structural picks ──
 
 export async function upsertStructuralPick(token: string, poolId: string, phaseId: string, pickData: StructuralPickData): Promise<UpsertResponse> {

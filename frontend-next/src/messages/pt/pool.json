@@ -353,6 +353,22 @@
     "empty": "Sem palpites para este jogo"
   },
 
+  "predictionStatus": {
+    "badge": "{count}/{total} palpites",
+    "title": "Status dos palpites",
+    "summary": "{ready} de {total} já palpitaram",
+    "filterAll": "Todos",
+    "filterPending": "Pendentes",
+    "filterReady": "Prontos",
+    "searchPlaceholder": "Buscar jogador...",
+    "ready": "Pronto",
+    "pending": "Pendente",
+    "you": "Você",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "empty": "Nenhum jogador corresponde ao filtro"
+  },
+
   "playerSummary": {
     "title": "Resumo de {name}"
   },

@@ -353,6 +353,22 @@
     "empty": "No picks for this match"
   },
 
+  "predictionStatus": {
+    "badge": "{count}/{total} predictions",
+    "title": "Prediction status",
+    "summary": "{ready} of {total} have predicted",
+    "filterAll": "All",
+    "filterPending": "Pending",
+    "filterReady": "Done",
+    "searchPlaceholder": "Search player...",
+    "ready": "Done",
+    "pending": "Pending",
+    "you": "You",
+    "loading": "Loading...",
+    "error": "Error",
+    "empty": "No players match the filter"
+  },
+
   "playerSummary": {
     "title": "{name}'s Summary"
   },

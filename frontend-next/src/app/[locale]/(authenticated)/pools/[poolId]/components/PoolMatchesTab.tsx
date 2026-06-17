@@ -6,12 +6,13 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { StructuralPicksManager } from "@/components/StructuralPicksManager";
 import { NotificationBanner } from "@/components/NotificationBanner";
-import { getMatchPicks, setScoringOverride, type MatchPicksResponse } from "@/lib/api";
+import { getMatchPicks, getPredictionStatus, setScoringOverride, type MatchPicksResponse } from "@/lib/api";
 import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
 import { formatPhaseName, formatPhaseFullName, isPlaceholder } from "./poolHelpers";
 import { ShareButtons } from "@/components/ShareButtons";
 import { MatchCard } from "./MatchCard";
 import { MatchPicksModal, type MatchPicksModalData } from "./MatchPicksModal";
+import { PredictionStatusModal, type PredictionStatusModalData } from "./PredictionStatusModal";
 import { ScoringOverrideModal, type ScoringOverrideModalData } from "./ScoringOverrideModal";
 
 interface PoolMatchesTabProps {
@@ -116,6 +117,9 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
   // Match picks modal state
   const [matchPicksModal, setMatchPicksModal] = useState<MatchPicksModalData | null>(null);
 
+  // Prediction-status modal state (ADR-045)
+  const [predictionStatusModal, setPredictionStatusModal] = useState<PredictionStatusModalData | null>(null);
+
   // Scoring override modal state
   const [scoringOverrideModal, setScoringOverrideModal] = useState<ScoringOverrideModalData | null>(null);
   const [scoringOverrideReason, setScoringOverrideReason] = useState("");
@@ -129,6 +133,17 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
       setMatchPicksModal({ matchId, matchTitle, picks: data, loading: false, error: null });
     } catch (e: any) {
       setMatchPicksModal({ matchId, matchTitle, picks: null, loading: false, error: e?.message ?? "Error" });
+    }
+  }
+
+  async function loadPredictionStatus(matchId: string, matchTitle: string) {
+    if (!token || !poolId) return;
+    setPredictionStatusModal({ matchId, matchTitle, status: null, loading: true, error: null });
+    try {
+      const data = await getPredictionStatus(token, poolId, matchId);
+      setPredictionStatusModal({ matchId, matchTitle, status: data, loading: false, error: null });
+    } catch (e: any) {
+      setPredictionStatusModal({ matchId, matchTitle, status: null, loading: false, error: e?.message ?? "Error" });
     }
   }
 
@@ -344,6 +359,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                     saveResult={(input) => saveResult(m.id, input)}
                     onViewBreakdown={(matchId, matchTitle) => setBreakdownModalData({ matchId, matchTitle })}
                     onViewMatchPicks={(matchId, matchTitle) => loadMatchPicks(matchId, matchTitle)}
+                    onViewPredictionStatus={(matchId, matchTitle) => loadPredictionStatus(matchId, matchTitle)}
                     onToggleScoring={(matchId, matchTitle, currentEnabled) => {
                       setScoringOverrideModal({ matchId, matchTitle, currentEnabled });
                       setScoringOverrideReason("");
@@ -387,6 +403,14 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         <MatchPicksModal
           data={matchPicksModal}
           onClose={() => setMatchPicksModal(null)}
+        />
+      )}
+
+      {/* Prediction Status Modal (ADR-045) */}
+      {predictionStatusModal && (
+        <PredictionStatusModal
+          data={predictionStatusModal}
+          onClose={() => setPredictionStatusModal(null)}
         />
       )}
     </>
