@@ -37,7 +37,7 @@ muestra los marcadores).
 | 2 | ¿HOST/CO_ADMIN cuentan como predictores? | **Sí.** Aparecen en el listado y en el denominador. |
 | 3 | ¿`PENDING_APPROVAL` cuenta? | **No.** Solo miembros `ACTIVE`. |
 | 4 | Granularidad del PDF | **Por partido**, exporta la lista completa de lo que esté en el filtro activo (Todos / Pendientes / Listos). |
-| 5 | Escala (cientos de jugadores) | **ABIERTA** — ver §8. Recomendación adoptada por defecto, redirigible. |
+| 5 | Escala (cientos de jugadores) | **CERRADA.** El modal scrollea normal desde el primer jugador (con search + filtros). Virtualización por debajo (invisible al usuario) para no trabar con cientos. Sin paginación cursor en v1. |
 
 ### Rollout gradual (requisito confirmado)
 La feature arranca **activa SOLO en las pools donde `juan.k.chacon9729@gmail.com`
@@ -154,17 +154,12 @@ Nuevo helper `backend/src/lib/featureFlags.ts`:
 const raw = process.env.PREDICTION_STATUS_HOST_ALLOWLIST ?? "";
 
 export function isPredictionStatusEnabled(
-  pool: { ... },
-  members: Array<{ role: PoolMemberRole; status: string; user: { email: string } }>,
+  pool: { creatorEmail: string | null },   // email de pool.createdByUserId
 ): boolean {
   if (raw.trim() === "*") return true;                 // rollout total
   const allow = new Set(raw.split(",").map(s => s.trim().toLowerCase()).filter(Boolean));
   if (allow.size === 0) return false;                  // default seguro: off
-  return members.some(m =>
-    m.status === "ACTIVE" &&
-    isPoolAdmin(m.role) &&                              // HOST / CO_ADMIN / CORPORATE_HOST
-    allow.has(m.user.email.toLowerCase())
-  );
+  return pool.creatorEmail != null && allow.has(pool.creatorEmail.toLowerCase());
 }
 ```
 
@@ -174,10 +169,9 @@ export function isPredictionStatusEnabled(
 - El gate se evalúa **en backend** (overview + endpoint detalle). El front solo
   reacciona al booleano `predictionStatusEnabled` — nunca decide por su cuenta
   (defensa en profundidad).
-- **Semántica a confirmar:** "host" = pool con un miembro ACTIVE de rol admin
-  (HOST/CO_ADMIN/CORPORATE_HOST) cuyo email está en la allowlist. Esto cubre tanto
-  pools creadas por Juan como pools donde sea co-admin. Si prefieres restringir a
-  **solo creador** (`pool.createdByUserId`), es un cambio de una línea.
+- **Semántica (confirmada):** "host" = **solo el creador de la pool**
+  (`pool.createdByUserId`). El flag compara el email de ese usuario contra la
+  allowlist. No basta con ser co-admin de la pool de otro.
 
 ---
 
@@ -196,18 +190,17 @@ export function isPredictionStatusEnabled(
 
 ---
 
-## 8. Punto abierto #5 — Escala (cientos de jugadores)
+## 8. Escala (cientos de jugadores) — CERRADA
 
-**Recomendación adoptada por defecto (redirigible):**
 - El endpoint devuelve **todos** los miembros activos en una sola respuesta (un
   pool real hoy no pasa de ~cientos; las dos queries están indexadas).
-- El modal renderiza con **search + filtros**; si la lista supera ~150 filas,
-  activamos **scroll virtual** (lista virtualizada) para mantener fluidez en mobile.
+- El modal **scrollea de forma normal desde el primer jugador** (altura máxima
+  80vh, `overflow-y: auto`) con **search + filtros** para acotar la lista.
+- **Virtualización por debajo** (lista virtualizada, p. ej. solo renderiza las
+  filas visibles): es una optimización **invisible al usuario** — scrollea igual,
+  solo evita lag con cientos de filas en el DOM en mobile.
 - **Sin paginación cursor** en v1. Si Picks4All llega a pools de 1000+, se añade
   en una v2 sin cambiar el contrato (se versiona el endpoint).
-
-**Si prefieres** un tope distinto (p. ej. paginar desde 200, o cap duro de 500 con
-aviso), dilo y lo ajusto antes de la Fase 1.
 
 ---
 
