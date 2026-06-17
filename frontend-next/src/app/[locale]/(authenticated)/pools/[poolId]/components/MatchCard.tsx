@@ -22,6 +22,7 @@ interface MatchCardProps {
   saveResult: (input: any) => Promise<void>;
   onViewBreakdown: (matchId: string, matchTitle: string) => void;
   onViewMatchPicks: (matchId: string, matchTitle: string) => void;
+  onViewPredictionStatus: (matchId: string, matchTitle: string) => void;
   onToggleScoring: (matchId: string, matchTitle: string, currentEnabled: boolean) => void;
 }
 
@@ -37,6 +38,7 @@ export function MatchCard({
   saveResult,
   onViewBreakdown,
   onViewMatchPicks,
+  onViewPredictionStatus,
   onToggleScoring,
 }: MatchCardProps) {
   const t = useTranslations("pool");
@@ -245,6 +247,37 @@ export function MatchCard({
           {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone, locale)}
         </div>
       </div>
+
+      {/* Prediction-status badge (ADR-077) — who has/hasn't submitted a pick.
+          Visible always (pre + post deadline); never shows pick contents.
+          Gated by the rollout feature flag (predictionStatusEnabled). */}
+      {m.predictionStatusEnabled && !hasAnyPlaceholder && (
+        <div style={{ marginBottom: 12, paddingLeft: 4 }}>
+          <button
+            onClick={() => onViewPredictionStatus(m.id, matchTitle)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: isMobile ? "8px 12px" : "5px 10px",
+              borderRadius: 999,
+              border: "1px solid #cdd9e5",
+              background: colors.bgLight,
+              color: colors.textDark,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+              ...mobileInteractiveStyles.tapHighlight,
+            }}
+          >
+            📊 {t("predictionStatus.badge", {
+              count: m.predictedCount,
+              total: overview.counts.membersActive,
+            })}
+          </button>
+        </div>
+      )}
 
       {/* Scoring disabled banner */}
       {m.scoringEnabled === false && (
