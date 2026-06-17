@@ -16,15 +16,23 @@ export interface PredictionStatusModalData {
 
 type Filter = "all" | "pending" | "ready";
 
+/** Context for the shareable PDF. */
+export interface PredictionStatusPdfContext {
+  poolName: string;
+  tournamentName: string | null;
+}
+
 interface PredictionStatusModalProps {
   data: PredictionStatusModalData;
   onClose: () => void;
+  pdfContext: PredictionStatusPdfContext;
 }
 
-export function PredictionStatusModal({ data, onClose }: PredictionStatusModalProps) {
+export function PredictionStatusModal({ data, onClose, pdfContext }: PredictionStatusModalProps) {
   const t = useTranslations("pool");
   const [filter, setFilter] = useState<Filter>("pending");
   const [search, setSearch] = useState("");
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const status = data.status;
 
@@ -38,6 +46,45 @@ export function PredictionStatusModal({ data, onClose }: PredictionStatusModalPr
       return true;
     });
   }, [status, filter, search]);
+
+  // Exports the CURRENTLY filtered list (All / Pending / Ready) — the host's
+  // ask: "saca la lista de lo que esté en el filtro".
+  async function handleDownloadPdf() {
+    if (!status) return;
+    setExportingPdf(true);
+    try {
+      const { generateBrandedTablePdf } = await import("@/lib/exportPdf");
+      const dateStr = new Intl.DateTimeFormat("es", { dateStyle: "long" }).format(new Date());
+      const filterLabel =
+        filter === "pending"
+          ? t("predictionStatus.filterPending")
+          : filter === "ready"
+            ? t("predictionStatus.filterReady")
+            : t("predictionStatus.filterAll");
+      await generateBrandedTablePdf({
+        docTitle: t("pdf.predictionStatusDoc"),
+        poolName: pdfContext.poolName,
+        subtitleLines: [
+          data.matchTitle,
+          t("predictionStatus.summary", { ready: status.predictedCount, total: status.totalMembers }),
+          `${t("predictionStatus.filterLabel")}: ${filterLabel}`,
+          ...(pdfContext.tournamentName ? [pdfContext.tournamentName] : []),
+          t("pdf.generatedLine", { date: dateStr }),
+        ],
+        head: [t("pdf.playerHeader"), t("pdf.statusHeader")],
+        body: visibleMembers.map((m) => [
+          m.displayName,
+          m.hasPredicted ? t("predictionStatus.ready") : t("predictionStatus.pending"),
+        ]),
+        totalColIndex: null,
+        podiumRows: false,
+        footerText: t("pdf.footerPlayers", { count: visibleMembers.length }),
+        filenameBase: `${t("pdf.predictionStatusDoc")}_${pdfContext.poolName}_${data.matchTitle}`,
+      });
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   const filterChips: Array<{ key: Filter; label: string }> = [
     { key: "all", label: t("predictionStatus.filterAll") },
@@ -92,19 +139,42 @@ export function PredictionStatusModal({ data, onClose }: PredictionStatusModalPr
             <h3 style={{ margin: 0, fontSize: 18 }}>{t("predictionStatus.title")}</h3>
             <span style={{ fontSize: 12, color: colors.textMuted }}>{data.matchTitle}</span>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              fontSize: 24,
-              cursor: "pointer",
-              color: colors.textMuted,
-              padding: "4px 8px",
-            }}
-          >
-            ×
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {status && !data.loading && !data.error && (
+              <button
+                onClick={handleDownloadPdf}
+                disabled={exportingPdf}
+                title={t("pdf.download")}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: `1px solid ${colors.brand}`,
+                  background: colors.brand,
+                  color: colors.white,
+                  cursor: exportingPdf ? "not-allowed" : "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  opacity: exportingPdf ? 0.7 : 1,
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {exportingPdf ? t("pdf.generating") : t("pdf.download")}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: 24,
+                cursor: "pointer",
+                color: colors.textMuted,
+                padding: "4px 8px",
+              }}
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {/* Body */}

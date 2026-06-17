@@ -731,6 +731,10 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         <PredictionStatusModal
           data={predictionStatusModal}
           onClose={() => setPredictionStatusModal(null)}
+          pdfContext={{
+            poolName: overview.pool.name,
+            tournamentName: overview.tournamentInstance?.name ?? null,
+          }}
         />
       )}
     </>

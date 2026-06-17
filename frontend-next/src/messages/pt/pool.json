@@ -512,6 +512,8 @@
     "diffHeader": "Dif",
     "pickHeader": "Palpite",
     "pointsHeader": "Pts",
+    "predictionStatusDoc": "Status dos palpites",
+    "statusHeader": "Status",
     "resultLine": "Resultado: {score}",
     "noResultYet": "Sem resultado ainda",
     "generatedLine": "Gerado: {date}",
@@ -569,7 +571,8 @@
     "you": "Você",
     "loading": "Carregando...",
     "error": "Erro",
-    "empty": "Nenhum jogador corresponde ao filtro"
+    "empty": "Nenhum jogador corresponde ao filtro",
+    "filterLabel": "Filtro"
   },
 
   "playerSummary": {
