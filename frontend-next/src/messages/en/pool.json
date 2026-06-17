@@ -575,12 +575,6 @@
     "filterLabel": "Filter"
   },
 
-  "predictionStatusBanner": {
-    "title": "✨ New: see who's already predicted",
-    "body": "On every open match you'll find a 📊 button showing how many players have saved their prediction. Open it to see who's still missing and remind them before the deadline, so no one loses points by forgetting. You can also export the list to PDF to share it in your family, friends, or work groups.",
-    "close": "Close"
-  },
-
   "playerSummary": {
     "title": "{name}'s Summary"
   },

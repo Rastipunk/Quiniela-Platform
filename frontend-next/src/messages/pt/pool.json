@@ -575,12 +575,6 @@
     "filterLabel": "Filtro"
   },
 
-  "predictionStatusBanner": {
-    "title": "✨ Novidade: quem já fez o palpite?",
-    "body": "Em cada jogo aberto você verá o botão 📊 com quantos jogadores já salvaram o palpite. Abra para ver quem ainda falta e lembrá-los antes do prazo, assim ninguém perde pontos por esquecimento. Você também pode exportar a lista em PDF para compartilhar nos seus grupos de família, amigos ou trabalho.",
-    "close": "Fechar"
-  },
-
   "playerSummary": {
     "title": "Resumo de {name}"
   },

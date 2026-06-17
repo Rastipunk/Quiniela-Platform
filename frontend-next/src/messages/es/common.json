@@ -283,12 +283,12 @@
     "ctaNameWorldCup": "Crear mi polla del Mundial gratis"
   },
   "whatsNew": {
-    "title": "¡Novedades en Picks4All!",
-    "subtitle": "Esto es lo que estrenamos hoy",
-    "item1Title": "Ordena los partidos a tu manera",
-    "item1Desc": "En la pestaña Partidos ahora puedes verlos por fecha — con separadores de HOY y MAÑANA para encontrar de un vistazo lo que viene — o por grupos, como siempre. Cambia con un toque y recordamos tu preferencia.",
-    "item2Title": "Comparte en PDF",
-    "item2Desc": "Descarga la tabla de posiciones completa (con los puntos por fase) o las predicciones de cualquier partido ya cerrado en un PDF listo para compartir con tus amigos o tu familia. Busca el botón PDF en Posiciones y en \"Ver predicciones de otros\".",
+    "title": "¿Quién ya hizo su predicción?",
+    "subtitle": "Una nueva forma de que nadie se quede sin puntos",
+    "item1Title": "Mira quién ya predijo",
+    "item1Desc": "En cada partido abierto, el botón 📊 te muestra cuántos jugadores ya guardaron su predicción y quiénes faltan. Recuérdales que la hagan antes del cierre, así nadie pierde puntos por olvido.",
+    "item2Title": "Compártelo en PDF",
+    "item2Desc": "Exporta la lista a PDF para compartirla en tus grupos de familia, amigos o trabajo.",
     "dismiss": "¡Entendido!"
   },
   "pool": {
