@@ -22,6 +22,7 @@ import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
+import { isPredictionStatusEnabled } from "../lib/featureFlags";
 import type { PhasePickConfig } from "../types/pickConfig";
 import { ServiceError } from "./authService";
 
@@ -57,6 +58,7 @@ export async function getPoolOverview(
     include: {
       tournamentInstance: { include: { template: { select: { key: true } } } },
       organization: { select: { id: true, name: true, logoBase64: true, welcomeMessage: true, invitationMessage: true, primaryColor: true, secondaryColor: true, invitationLocale: true } },
+      createdByUser: { select: { email: true } },
     },
   });
   if (!pool) throw new ServiceError("NOT_FOUND", 404);
@@ -64,6 +66,10 @@ export async function getPoolOverview(
 
   const preset = getScoringPreset(pool.scoringPresetKey);
   const membersActive = await prisma.poolMember.count({ where: { poolId, status: "ACTIVE" } });
+
+  // Prediction-status feature (ADR-077): per-pool gate by creator email.
+  // Constant for every match card in this pool.
+  const predictionStatusEnabled = isPredictionStatusEnabled(pool.createdByUser?.email ?? null);
 
   // 3) Snapshot
   const snapshot = pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson;
@@ -172,6 +178,20 @@ export async function getPoolOverview(
     const byMatch = predsByUserMatch.get(p.userId) ?? new Map<string, PickJson>();
     byMatch.set(p.matchId, typed<PickJson>(p.pickJson));
     predsByUserMatch.set(p.userId, byMatch);
+  }
+
+  // Prediction-status counts (ADR-077): how many ACTIVE members have submitted
+  // a pick per match. Derived in-memory from data already loaded above — no
+  // extra DB query. `allPredictions` also includes LEFT members' preserved
+  // picks, so intersect with the ACTIVE set to keep numerator and denominator
+  // (membersActive) consistent.
+  const activeUserIds = new Set(
+    members.filter((m) => m.status === "ACTIVE").map((m) => m.userId),
+  );
+  const predictedCountByMatch = new Map<string, number>();
+  for (const p of allPredictions) {
+    if (!activeUserIds.has(p.userId)) continue;
+    predictedCountByMatch.set(p.matchId, (predictedCountByMatch.get(p.matchId) ?? 0) + 1);
   }
 
   // Load structural picks and results in parallel
@@ -651,7 +671,14 @@ export async function getPoolOverview(
       canManageResults: isPoolAdmin(myMembership.role),
       canInvite: isPoolAdmin(myMembership.role),
     },
-    matches: matchCards,
+    matches: matchCards.map((c) => ({
+      ...c,
+      // Prediction-status badge data (ADR-077). predictionStatusEnabled gates
+      // visibility client-side; predictedCount is the badge numerator (the
+      // denominator is counts.membersActive).
+      predictedCount: predictedCountByMatch.get(c.id) ?? 0,
+      predictionStatusEnabled,
+    })),
     leaderboard: {
       scoring: { outcomePoints: preset.outcomePoints, exactScoreBonus: preset.exactScoreBonus },
       scoringPreset: {

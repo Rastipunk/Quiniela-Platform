@@ -204,6 +204,12 @@ All rate limit values are configurable via environment variables:
 |----------|-------------|
 | `BRAND_COLORS_JSON` | JSON override for brand colors (e.g., `{"primary":"#ff0000"}`) |
 
+#### Feature Flags (Optional)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PREDICTION_STATUS_HOST_ALLOWLIST` | Gradual rollout for the per-match prediction-status feature (ADR-077). `""`/unset → off everywhere; `*` → on for all pools; comma-separated emails → on only for pools whose creator's email is listed. | `""` (off) |
+
 #### Payments — Mercado Pago (Colombia / COP)
 
 | Variable | Description | Default |
