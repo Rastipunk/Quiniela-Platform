@@ -512,6 +512,8 @@
     "diffHeader": "Dif",
     "pickHeader": "Predicción",
     "pointsHeader": "Pts",
+    "predictionStatusDoc": "Estado de predicciones",
+    "statusHeader": "Estado",
     "resultLine": "Resultado: {score}",
     "noResultYet": "Sin resultado aún",
     "generatedLine": "Generado: {date}",
@@ -569,7 +571,8 @@
     "you": "Tú",
     "loading": "Cargando...",
     "error": "Error",
-    "empty": "No hay jugadores que coincidan con el filtro"
+    "empty": "No hay jugadores que coincidan con el filtro",
+    "filterLabel": "Filtro"
   },
 
   "playerSummary": {

@@ -248,37 +248,6 @@ export function MatchCard({
         </div>
       </div>
 
-      {/* Prediction-status badge (ADR-077) — who has/hasn't submitted a pick.
-          Visible always (pre + post deadline); never shows pick contents.
-          Gated by the rollout feature flag (predictionStatusEnabled). */}
-      {m.predictionStatusEnabled && !hasAnyPlaceholder && (
-        <div style={{ marginBottom: 12, paddingLeft: 4 }}>
-          <button
-            onClick={() => onViewPredictionStatus(m.id, matchTitle)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: isMobile ? "8px 12px" : "5px 10px",
-              borderRadius: 999,
-              border: "1px solid #cdd9e5",
-              background: colors.bgLight,
-              color: colors.textDark,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 600,
-              minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
-              ...mobileInteractiveStyles.tapHighlight,
-            }}
-          >
-            📊 {t("predictionStatus.badge", {
-              count: m.predictedCount,
-              total: overview.counts.membersActive,
-            })}
-          </button>
-        </div>
-      )}
-
       {/* Scoring disabled banner */}
       {m.scoringEnabled === false && (
         <div style={{
@@ -357,11 +326,38 @@ export function MatchCard({
         </div>
       )}
 
-      {/* Botones de acción - en una sola línea */}
-      {(isLocked && !isPlaceholder(m.homeTeam?.id ?? "") && !isPlaceholder(m.awayTeam?.id ?? "")) && (
+      {/* Botones de acción - en una sola línea.
+          Pre-lock: solo "estado de predicciones" (quién ya pickeó). Cuando el
+          partido inicia (isLocked) ese botón desaparece y quedan "Ver Desglose"
+          + "Ver predicciones de otros". Nunca conviven (ADR-077). */}
+      {(!isPlaceholder(m.homeTeam?.id ?? "") && !isPlaceholder(m.awayTeam?.id ?? "") && (isLocked || m.predictionStatusEnabled)) && (
         <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-          {/* Botón Ver Desglose - solo si hay resultado y la fase usa requiresScore */}
-          {m.result && overview.pool.pickTypesConfig && (() => {
+          {/* Pre-lock: estado de predicciones — desaparece al iniciar el partido */}
+          {!isLocked && m.predictionStatusEnabled && (
+            <button
+              onClick={() => onViewPredictionStatus(m.id, matchTitle)}
+              style={{
+                padding: isMobile ? "10px 16px" : "6px 12px",
+                borderRadius: 6,
+                border: "1px solid #cdd9e5",
+                background: colors.bgLight,
+                color: colors.textDark,
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+                minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+                ...mobileInteractiveStyles.tapHighlight,
+              }}
+            >
+              📊 {t("predictionStatus.badge", {
+                count: m.predictedCount,
+                total: overview.counts.membersActive,
+              })}
+            </button>
+          )}
+
+          {/* Post-lock: Ver Desglose - solo si hay resultado y la fase usa requiresScore */}
+          {isLocked && m.result && overview.pool.pickTypesConfig && (() => {
             const phaseConfig = overview.pool.pickTypesConfig?.find(
               (p) => p.phaseId === m.phaseId
             );
@@ -386,24 +382,26 @@ export function MatchCard({
             </button>
           )}
 
-          {/* Botón Ver picks de otros */}
-          <button
-            onClick={() => onViewMatchPicks(m.id, matchTitle)}
-            style={{
-              padding: isMobile ? "10px 16px" : "6px 12px",
-              borderRadius: 6,
-              border: "1px solid #17a2b8",
-              background: "#e7f6f8",
-              color: colors.info,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 600,
-              minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
-              ...mobileInteractiveStyles.tapHighlight,
-            }}
-          >
-            {t("matchCard.viewOtherPicks")}
-          </button>
+          {/* Post-lock: Ver picks de otros */}
+          {isLocked && (
+            <button
+              onClick={() => onViewMatchPicks(m.id, matchTitle)}
+              style={{
+                padding: isMobile ? "10px 16px" : "6px 12px",
+                borderRadius: 6,
+                border: "1px solid #17a2b8",
+                background: "#e7f6f8",
+                color: colors.info,
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+                minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
+                ...mobileInteractiveStyles.tapHighlight,
+              }}
+            >
+              {t("matchCard.viewOtherPicks")}
+            </button>
+          )}
 
           {/* Host: Toggle scoring for this match — disabled by product decision (kept commented for future reactivation)
           {isHost && (
