@@ -16,7 +16,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
 
-const WHATS_NEW_VERSION = "2026-06-17";
+const WHATS_NEW_VERSION = "2026-06-17.1";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
 
 /** Staged rollout: when non-null, ONLY these accounts see the modal.
@@ -114,7 +114,7 @@ export function WhatsNewModal() {
           <h2 style={{ fontSize: "1.3rem", fontWeight: 800, margin: 0 }}>
             {t("title")}
           </h2>
-          <p style={{ fontSize: "0.9rem", margin: "6px 0 0", opacity: 0.9 }}>
+          <p style={{ fontSize: "0.9rem", margin: "6px 0 0", color: colors.white, fontWeight: 600 }}>
             {t("subtitle")}
           </p>
         </div>
