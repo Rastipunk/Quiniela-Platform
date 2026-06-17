@@ -4019,4 +4019,27 @@ The platform is approaching its April 1st launch. Critical security and stabilit
 
 ---
 
+## ADR-045: Per-Match Prediction Status (privacy-preserving, flag-gated rollout)
+
+**Date:** 2026-06-17 | **Status:** Accepted
+
+**Context:** Host feedback (Felipe Hincapié): hosts have no way to know which players already saved a prediction for a match. Several users typed a score but forgot to click "save" and silently lost points. Hosts need to see who is still pending so they can remind them before the deadline — without seeing the actual predictions (the existing "ver predicciones de otros" flow already exposes scores, but only after the deadline).
+
+**Decision:**
+- New feature surfaces, per match, the list of ACTIVE members with a boolean `hasPredicted` (✓/✗) and a `count/total` badge on each match card. It NEVER exposes pick contents.
+- **Privacy guarantee enforced in code:** the read query selects `userId` only (`prisma.prediction.findMany({ where: { poolId, matchId }, select: { userId: true } })`) — `pickJson` is never read. This is what makes it safe to show *before* the deadline without leaking scores.
+- **Denominator** = ACTIVE pool members (`status='ACTIVE'`), consistent with `counts.membersActive`. Excludes `PENDING_APPROVAL`, `LEFT`, `BANNED`. Includes HOST/CO_ADMIN (they predict too).
+- **Badge count is free:** `predictedCount` per match is derived in-memory in `poolOverviewService` from the `allPredictions` already loaded for the leaderboard — no extra DB query. `allPredictions` includes LEFT members' preserved picks, so the numerator intersects with the ACTIVE user set.
+- **Detail endpoint:** `GET /pools/:poolId/matches/:matchId/prediction-status` (auth + `requirePoolMemberReadAccess`). Indexed by `Prediction @@index([poolId, matchId])` and `PoolMember @@index([poolId, status])`.
+- **Gradual rollout via feature flag** `PREDICTION_STATUS_HOST_ALLOWLIST` (`lib/featureFlags.ts`): `""`/unset → off everywhere (safe default); `*` → on for all pools; comma-separated emails → on only for pools whose **creator** (`Pool.createdByUserId`) email is listed. Evaluated server-side in both the overview (`predictionStatusEnabled` flag per pool) and the detail endpoint (404 when disabled — never reveals existence). Frontend only reacts to the boolean.
+- **Frontend:** clickable badge on `MatchCard` (always visible when enabled, pre + post deadline) → `PredictionStatusModal` with filters (All / Pending / Ready), name search, ✓/✗ per member.
+
+**Consequences:**
+- ✅ Solves the real problem (pre-deadline visibility) without breaking the hidden-score rule
+- ✅ Badge adds zero DB queries; detail endpoint is indexed
+- ✅ Beta-safe: defaults off; rollout is an env-var change, not a deploy
+- ⚠️ PDF export of the list (requested) deferred — this branch lacks the `jspdf` infra that exists on `main`; to be added as a fast-follow
+
+---
+
 **END OF DOCUMENT**

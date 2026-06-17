@@ -19,6 +19,7 @@ import {
   getMatchPicks,
   getMyPicks,
 } from "../services/pickService";
+import { getPredictionStatus } from "../services/predictionStatusService";
 import { ServiceError } from "../services/authService";
 import type { AuditContext } from "../services/authService";
 
@@ -75,6 +76,13 @@ const upsertPickSchema = z.object({
   pick: pickSchema,
 });
 
+// Path params for the prediction-status endpoint. poolId is a UUID; matchId is
+// a fixture-snapshot id (a non-empty string, not necessarily a UUID).
+const predictionStatusParamsSchema = z.object({
+  poolId: z.string().uuid(),
+  matchId: z.string().min(1),
+});
+
 // ─── Routes ──────────────────────────────────────────────────
 
 // GET /pools/:poolId/matches
@@ -119,6 +127,28 @@ picksRouter.get("/:poolId/matches/:matchId/picks", async (req, res) => {
 
   try {
     const result = await getMatchPicks({ userId: req.auth!.userId, poolId, matchId });
+    return sendData(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// GET /pools/:poolId/matches/:matchId/prediction-status
+// Comentario en español: devuelve, por miembro ACTIVE, si ya guardó predicción
+// para el partido (booleano). NUNCA expone el contenido del pick (ADR-045).
+// Gateado por feature flag (PREDICTION_STATUS_HOST_ALLOWLIST).
+picksRouter.get("/:poolId/matches/:matchId/prediction-status", async (req, res) => {
+  const parsed = predictionStatusParamsSchema.safeParse(req.params);
+  if (!parsed.success) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { details: parsed.error.flatten() });
+  }
+
+  try {
+    const result = await getPredictionStatus(
+      req.auth!.userId,
+      parsed.data.poolId,
+      parsed.data.matchId,
+    );
     return sendData(res, result);
   } catch (err) {
     return handleServiceError(res, err);
