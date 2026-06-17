@@ -283,12 +283,12 @@
     "ctaNameWorldCup": "Criar Penca Grátis"
   },
   "whatsNew": {
-    "title": "Novidades no Picks4All!",
-    "subtitle": "Veja o que lançamos hoje",
-    "item1Title": "Organize os jogos do seu jeito",
-    "item1Desc": "Na aba Jogos agora você pode vê-los por data — com separadores de HOJE e AMANHÃ para encontrar de relance o que vem aí — ou por grupos, como sempre. Troque com um toque e lembramos sua preferência.",
+    "title": "Quem já fez o palpite?",
+    "subtitle": "Um jeito novo de garantir que ninguém perca pontos",
+    "item1Title": "Veja quem já palpitou",
+    "item1Desc": "Em cada jogo aberto, o botão 📊 mostra quantos jogadores já salvaram o palpite e quem ainda falta. Lembre-os antes do prazo, assim ninguém perde pontos por esquecimento.",
     "item2Title": "Compartilhe em PDF",
-    "item2Desc": "Baixe a classificação completa (com pontos por fase) ou os palpites de qualquer jogo já fechado em um PDF pronto para compartilhar com seus amigos ou família. Procure o botão PDF na Classificação e em \"Ver palpites dos outros\".",
+    "item2Desc": "Exporte a lista em PDF para compartilhar nos seus grupos de família, amigos ou trabalho.",
     "dismiss": "Entendi!"
   },
   "pool": {

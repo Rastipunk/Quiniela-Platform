@@ -283,12 +283,12 @@
     "ctaNameWorldCup": "Create Free Pool"
   },
   "whatsNew": {
-    "title": "What's new in Picks4All!",
-    "subtitle": "Here's what we shipped today",
-    "item1Title": "Sort matches your way",
-    "item1Desc": "In the Matches tab you can now view them by date — with TODAY and TOMORROW separators to spot what's coming at a glance — or by group, as always. Switch with one tap and we remember your choice.",
-    "item2Title": "Share as PDF",
-    "item2Desc": "Download the full standings (with per-phase points) or the predictions for any closed match as a PDF, ready to share with your friends or family. Look for the PDF button in Standings and in \"View other picks\".",
+    "title": "Who's already predicted?",
+    "subtitle": "A new way to make sure no one misses out on points",
+    "item1Title": "See who has predicted",
+    "item1Desc": "On every open match, the 📊 button shows how many players have saved their prediction and who's still missing. Remind them before the deadline, so no one loses points by forgetting.",
+    "item2Title": "Share it as PDF",
+    "item2Desc": "Export the list to PDF to share it in your family, friends, or work groups.",
     "dismiss": "Got it!"
   },
   "pool": {

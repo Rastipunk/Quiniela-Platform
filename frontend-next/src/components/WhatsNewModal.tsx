@@ -16,20 +16,22 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
 
-const WHATS_NEW_VERSION = "2026-06-12";
+const WHATS_NEW_VERSION = "2026-06-17";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
 
 /** Staged rollout: when non-null, ONLY these accounts see the modal.
  *  Set to null to release the announcement to every user.
- *  2026-06-12 announcement: owner approved → released to everyone. */
-const TEST_EMAILS: string[] | null = null;
+ *  2026-06-17 (prediction status): owner previews first. Release to
+ *  everyone (TEST_EMAILS = null) must happen together with the feature
+ *  flag PREDICTION_STATUS_HOST_ALLOWLIST = "*", so the modal doesn't
+ *  advertise a feature users can't see yet. */
+const TEST_EMAILS: string[] | null = ["juan.k.chacon9729@gmail.com"];
 
 /** Hard cutoff: after this instant the announcement never shows again
- *  for anyone, regardless of whether they dismissed it. Set to 2:00 PM
- *  Colombia time (UTC-5) on 2026-06-13 = 19:00 UTC. (Uses the device
- *  clock — fine for an announcement; a badly-skewed clock is the only
- *  edge case.) */
-const WHATS_NEW_EXPIRES_AT = new Date("2026-06-13T19:00:00Z").getTime();
+ *  for anyone, regardless of whether they dismissed it. One week window
+ *  so latecomers still catch it: 2026-06-24 19:00 UTC (2:00 PM Colombia).
+ *  (Uses the device clock — fine for an announcement.) */
+const WHATS_NEW_EXPIRES_AT = new Date("2026-06-24T19:00:00Z").getTime();
 
 export function WhatsNewModal() {
   const t = useTranslations("whatsNew");
@@ -134,7 +136,7 @@ export function WhatsNewModal() {
                 padding: 16,
               }}
             >
-              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>🕐</div>
+              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>📊</div>
               <div>
                 <div style={{ fontWeight: 700, color: "#111827", marginBottom: 3 }}>
                   {t("item1Title")}
