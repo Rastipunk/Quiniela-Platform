@@ -126,6 +126,20 @@ export default function PoolPage() {
     return localStorage.getItem(`ucl_incident_banner_${poolId}`) === "1";
   });
 
+  // Prediction-status feature announcement (ADR-077). Robust dismissal: the
+  // read is wrapped in try/catch (private mode / blocked storage must never
+  // crash the page) and the close handler flips state BEFORE touching
+  // localStorage, so the × always closes even if storage write throws.
+  const [predStatusBannerDismissed, setPredStatusBannerDismissed] = useState(() => {
+    if (typeof window === "undefined") return true;
+    try { return localStorage.getItem(`prediction_status_banner_${poolId}`) === "1"; }
+    catch { return false; }
+  });
+  function dismissPredStatusBanner() {
+    setPredStatusBannerDismissed(true);
+    try { localStorage.setItem(`prediction_status_banner_${poolId}`, "1"); } catch { /* storage blocked — closed for the session anyway */ }
+  }
+
   // Match filters
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyNoPick, setOnlyNoPick] = useState(false);
@@ -657,6 +671,22 @@ export default function PoolPage() {
               <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.xl, marginBottom: 8, color: colors.white }}>{t("uclIncidentBanner.title")}</div>
               <div style={{ fontSize: fontSize.md, lineHeight: 1.6 }}>{t("uclIncidentBanner.body")}</div>
               <div style={{ fontSize: fontSize.md, marginTop: 10, color: "#93c5fd", fontWeight: fontWeight.semibold }}>{t("uclIncidentBanner.thanks")}</div>
+            </div>
+          )}
+
+          {/* Prediction-status feature announcement (ADR-077). One-time, per
+              pool, dismissible. Shown only where the feature is enabled. */}
+          {!predStatusBannerDismissed && overview.matches?.some((m) => m.predictionStatusEnabled) && (
+            <div style={{ marginTop: 12, marginBottom: 12, padding: "16px 52px 16px 20px", background: "linear-gradient(135deg, #0e7490 0%, #155e63 100%)", borderRadius: radii["3xl"], border: "1px solid #2aa3b0", color: "#e6fbff", position: "relative" }}>
+              <button
+                onClick={dismissPredStatusBanner}
+                aria-label={t("predictionStatusBanner.close")}
+                style={{ position: "absolute", top: 6, right: 6, minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#bdeef5", fontSize: 24, cursor: "pointer", lineHeight: 1 }}
+              >
+                ×
+              </button>
+              <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.xl, marginBottom: 8, color: colors.white }}>{t("predictionStatusBanner.title")}</div>
+              <div style={{ fontSize: fontSize.md, lineHeight: 1.6 }}>{t("predictionStatusBanner.body")}</div>
             </div>
           )}
 
