@@ -21,11 +21,9 @@ const STORAGE_KEY = "quiniela.whatsNewVersion";
 
 /** Staged rollout: when non-null, ONLY these accounts see the modal.
  *  Set to null to release the announcement to every user.
- *  2026-06-17 (prediction status): owner previews first. Release to
- *  everyone (TEST_EMAILS = null) must happen together with the feature
- *  flag PREDICTION_STATUS_HOST_ALLOWLIST = "*", so the modal doesn't
- *  advertise a feature users can't see yet. */
-const TEST_EMAILS: string[] | null = ["juan.k.chacon9729@gmail.com"];
+ *  2026-06-17 (prediction status): owner approved → released to everyone,
+ *  together with the feature flag PREDICTION_STATUS_HOST_ALLOWLIST = "*". */
+const TEST_EMAILS: string[] | null = null;
 
 /** Hard cutoff: after this instant the announcement never shows again
  *  for anyone, regardless of whether they dismissed it. One week window
