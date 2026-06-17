@@ -556,6 +556,22 @@
     "randomPickTooltip": "Este marcador fue asignado al azar por Capricho San porque el jugador no predijo antes del cierre"
   },
 
+  "predictionStatus": {
+    "badge": "{count}/{total} predicciones",
+    "title": "Estado de predicciones",
+    "summary": "{ready} de {total} ya predijeron",
+    "filterAll": "Todos",
+    "filterPending": "Pendientes",
+    "filterReady": "Listos",
+    "searchPlaceholder": "Buscar jugador...",
+    "ready": "Listo",
+    "pending": "Pendiente",
+    "you": "Tú",
+    "loading": "Cargando...",
+    "error": "Error",
+    "empty": "No hay jugadores que coincidan con el filtro"
+  },
+
   "playerSummary": {
     "title": "Resumen de {name}"
   },

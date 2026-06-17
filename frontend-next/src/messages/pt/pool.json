@@ -556,6 +556,22 @@
     "randomPickTooltip": "Este placar foi atribuído ao acaso pelo Capricho San porque o jogador não palpitou antes do prazo"
   },
 
+  "predictionStatus": {
+    "badge": "{count}/{total} palpites",
+    "title": "Status dos palpites",
+    "summary": "{ready} de {total} já palpitaram",
+    "filterAll": "Todos",
+    "filterPending": "Pendentes",
+    "filterReady": "Prontos",
+    "searchPlaceholder": "Buscar jogador...",
+    "ready": "Pronto",
+    "pending": "Pendente",
+    "you": "Você",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "empty": "Nenhum jogador corresponde ao filtro"
+  },
+
   "playerSummary": {
     "title": "Resumo de {name}"
   },
