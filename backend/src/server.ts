@@ -150,6 +150,12 @@ app.get("/invite-preview/:code", async (req, res) => {
                 primaryColor: true,
                 secondaryColor: true,
                 welcomeMessage: true,
+                // Drives the invite landing's locale (ADR-062): the corporate
+                // host's chosen invitation language. The landing redirects to
+                // this locale's URL prefix so an English/PT invite never lands
+                // on the Spanish default. Personal pools have no organization →
+                // invitationLocale stays null → no redirect (unchanged).
+                invitationLocale: true,
               },
             },
           },
@@ -180,6 +186,9 @@ app.get("/invite-preview/:code", async (req, res) => {
             welcomeMessage: invite.pool.organization.welcomeMessage ?? null,
           }
         : null,
+      // Locale the invite landing should render in. Only set for corporate
+      // pools (personal pools → null → landing keeps the URL's locale).
+      invitationLocale: invite.pool.organization?.invitationLocale ?? null,
     });
   } catch {
     return sendInternal(res, "INTERNAL_ERROR");

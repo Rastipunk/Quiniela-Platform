@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getToken } from "@/lib/auth";
 import { colors } from "@/lib/theme";
@@ -17,6 +17,12 @@ interface InvitePreview {
   memberCount: number;
   status: string;
   valid: boolean;
+  /**
+   * Locale the landing should render in — the corporate host's chosen
+   * invitation language. Null for personal pools (landing keeps the URL's
+   * locale, as before). See ADR-062.
+   */
+  invitationLocale: string | null;
   /**
    * Present when the pool belongs to an Organization (corporate
    * pool). Used to swap Picks4All default branding for the
@@ -57,6 +63,7 @@ type InviteError = "INVALID" | "RATE_LIMITED" | "SERVER_ERROR";
 function InviteContent() {
   const searchParams = useSearchParams();
   const t = useTranslations("pool");
+  const locale = useLocale();
   const code = searchParams.get("code");
 
   const [preview, setPreview] = useState<InvitePreview | null>(null);
@@ -102,7 +109,25 @@ function InviteContent() {
       .finally(() => setLoading(false));
   }, [code, attempt]);
 
-  if (loading) {
+  // Corporate invite locale handoff (ADR-062): a corporate host's invite link
+  // is shared prefix-less, so it lands on the Spanish default and the browser
+  // tab shows the Spanish title. If the pool's invitation language differs from
+  // the current locale, hard-redirect to that locale's URL so the page AND the
+  // tab title render in the right language — fixing even links already shared.
+  // Scoped to corporate pools: personal pools return invitationLocale=null →
+  // no redirect (behaviour unchanged). No loop: after the redirect the URL's
+  // locale matches invitationLocale.
+  const target = preview?.invitationLocale ?? null;
+  const needsLocaleRedirect =
+    !!target && ["es", "en", "pt"].includes(target) && target !== locale && !!code;
+
+  useEffect(() => {
+    if (!needsLocaleRedirect || !code || !target) return;
+    const prefix = target === "es" ? "" : `/${target}`;
+    window.location.replace(`${prefix}/invite?code=${encodeURIComponent(code)}`);
+  }, [needsLocaleRedirect, code, target]);
+
+  if (loading || needsLocaleRedirect) {
     return (
       <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ color: "var(--muted)", fontSize: "1rem" }}>...</div>
