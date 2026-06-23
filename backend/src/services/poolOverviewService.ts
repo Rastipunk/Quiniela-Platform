@@ -23,8 +23,45 @@ import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
 import { isPredictionStatusEnabled } from "../lib/featureFlags";
+import { getOrComputeLeaderboard } from "./poolLeaderboardCache";
 import type { PhasePickConfig } from "../types/pickConfig";
 import { ServiceError } from "./authService";
+
+// ─── Leaderboard fingerprint (ADR-079) ───────────────────────
+// Cheap signature of every input the leaderboard depends on. When it changes,
+// the per-pool leaderboard cache recomputes; otherwise the cached bundle is
+// served. All aggregates are on poolId-indexed columns (ms-fast), vs the
+// multi-second heavy computation they gate. `results` and `matchOverrides`
+// are already loaded for the match cards, so they're fingerprinted in-memory
+// (no extra query).
+async function computeLeaderboardFingerprint(
+  poolId: string,
+  results: Array<{ updatedAtUtc: Date }>,
+  matchOverrides: Array<{ scoringEnabled: boolean }>,
+): Promise<string> {
+  const [membersCount, predictionsCount, structuralPhase, groupStandings] = await Promise.all([
+    // Membership set that forms the leaderboard rows (entries/leaves/bans).
+    prisma.poolMember.count({ where: { poolId, status: { in: ["ACTIVE", "LEFT"] } } }),
+    // New predictors (badge freshness + a member's first pick).
+    prisma.prediction.count({ where: { poolId } }),
+    prisma.structuralPhaseResult.aggregate({ where: { poolId }, _count: { _all: true }, _max: { updatedAtUtc: true } }),
+    prisma.groupStandingsResult.aggregate({ where: { poolId }, _count: { _all: true }, _max: { updatedAtUtc: true } }),
+  ]);
+
+  const resultsCount = results.length;
+  const resultsMaxUpdated = results.reduce((mx, r) => Math.max(mx, r.updatedAtUtc.getTime()), 0);
+  const overridesCount = matchOverrides.length;
+  const overridesDisabled = matchOverrides.reduce((n, o) => n + (o.scoringEnabled ? 0 : 1), 0);
+
+  return [
+    `r:${resultsCount}:${resultsMaxUpdated}`,
+    `o:${overridesCount}:${overridesDisabled}`,
+    `m:${membersCount}`,
+    `p:${predictionsCount}`,
+    `sp:${structuralPhase._count._all}:${structuralPhase._max.updatedAtUtc?.getTime() ?? 0}`,
+    `gs:${groupStandings._count._all}:${groupStandings._max.updatedAtUtc?.getTime() ?? 0}`,
+  ].join("|");
+}
 
 // ─── Pool Overview ───────────────────────────────────────────
 
@@ -33,11 +70,6 @@ export async function getPoolOverview(
   poolId: string,
   leaderboardVerbose: boolean,
 ) {
-  // TEMP perf instrumentation (ADR-079 investigation): split DB+setup time
-  // from the in-memory leaderboard computation so we can see, with real
-  // production numbers, where the seconds go on big pools. Logged only when
-  // total exceeds the threshold; removed once the bottleneck is fixed.
-  const __t0 = Date.now();
   // 1) Permission: must be ACTIVE or LEFT (LEFT = read-only)
   const myMembership = await prisma.poolMember.findFirst({
     where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
@@ -166,7 +198,13 @@ export async function getPoolOverview(
     };
   });
 
-  // 7) Leaderboard
+  // 7) Leaderboard — heavy, pool-global, IDENTICAL for every user of the pool.
+  // Cached per pool (ADR-079): the fingerprint forces a recompute the moment
+  // any match input changes (results/membership/picks/overrides); otherwise
+  // the shared bundle is served instantly. Verbose (admin debug) bypasses the
+  // cache so the per-row breakdown is always fresh.
+  const leaderboardFingerprint = await computeLeaderboardFingerprint(poolId, results, matchOverrides);
+  const computeLeaderboardBundle = async () => {
   const [members, allPredictions] = await Promise.all([
     prisma.poolMember.findMany({
       where: { poolId, status: { in: ["ACTIVE", "LEFT"] } },
@@ -432,7 +470,6 @@ export async function getPoolOverview(
     }
   }
 
-  const __tPreCompute = Date.now();
   const leaderboardRows = members.map((m) => {
     let points = 0;
     let scoredMatches = 0;
@@ -608,23 +645,15 @@ export async function getPoolOverview(
     };
   });
 
-  const __tPostCompute = Date.now();
   // Single source of truth: sort by tiebreakers and assign shared ranks
   // (TIEBREAKER_PLAN.md). Same function used by the pool-completed email.
   const rankedRows = rankLeaderboardRows(leaderboardRows);
 
-  // TEMP perf log: surface slow overviews with a query-vs-compute breakdown.
-  const __total = Date.now() - __t0;
-  const __SLOW_MS = parseInt(process.env.OVERVIEW_SLOW_LOG_MS || "1500", 10);
-  if (__total >= __SLOW_MS) {
-    console.log(
-      `[perf overview] pool=${poolId} total=${__total}ms ` +
-        `dbSetup=${__tPreCompute - __t0}ms leaderboardCompute=${__tPostCompute - __tPreCompute}ms ` +
-        `rank=${Date.now() - __tPostCompute}ms members=${members.length} ` +
-        `predictions=${allPredictions.length} matches=${matches.length} ` +
-        `structuralPicks=${allStructuralPicks.length + allGroupStandingsPicks.length}`,
-    );
-  }
+    return { rankedRows, predictedCountByMatch, phaseOrder, presetMode, partialApplicable };
+  };
+  const leaderboardBundle = leaderboardVerbose
+    ? await computeLeaderboardBundle()
+    : await getOrComputeLeaderboard(poolId, leaderboardFingerprint, computeLeaderboardBundle);
 
   // 8) Final response
   const includeEmails = isPoolAdmin(myMembership.role);
@@ -696,7 +725,7 @@ export async function getPoolOverview(
       // Prediction-status badge data (ADR-077). predictionStatusEnabled gates
       // visibility client-side; predictedCount is the badge numerator (the
       // denominator is counts.membersActive).
-      predictedCount: predictedCountByMatch.get(c.id) ?? 0,
+      predictedCount: leaderboardBundle.predictedCountByMatch.get(c.id) ?? 0,
       predictionStatusEnabled,
     })),
     leaderboard: {
@@ -708,11 +737,11 @@ export async function getPoolOverview(
         allowScorePick: preset.allowScorePick,
       },
       verbose: leaderboardVerbose,
-      phases: phaseOrder,
-      presetMode,
+      phases: leaderboardBundle.phaseOrder,
+      presetMode: leaderboardBundle.presetMode,
       // Which tiebreaker columns are meaningful for this pool (D4).
-      tiebreakers: { perfect: true, partial: partialApplicable },
-      rows: rankedRows.map(({ row: r, rank, tiedGroupSize }) => ({
+      tiebreakers: { perfect: true, partial: leaderboardBundle.partialApplicable },
+      rows: leaderboardBundle.rankedRows.map(({ row: r, rank, tiedGroupSize }) => ({
         rank,
         isTied: tiedGroupSize > 1,
         userId: r.userId,

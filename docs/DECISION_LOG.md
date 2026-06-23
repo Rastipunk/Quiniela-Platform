@@ -5222,4 +5222,27 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-079: Per-pool cache for the pool-overview leaderboard
+
+**Date:** 2026-06-23 | **Status:** Accepted
+
+**Context:** `GET /pools/:id/overview` is ≈43% of all backend traffic. Railway proxy logs (`totalDuration ≈ upstreamRqDuration`, p50 2.4 s, max 55 s) proved the time is spent in the Node app: it recomputed the FULL leaderboard (load every member's predictions + an O(members × matches) scoring loop + structural breakdown) on EVERY request. The result is identical for every user of a pool, yet was recomputed per request. During live matches everyone refreshes at once → dozens of multi-second synchronous computations queue on Node's single event loop → the whole platform (logins included) freezes.
+
+**Decision:**
+- Cache the heavy leaderboard bundle **per pool** in memory (`poolLeaderboardCache.ts`). Only the pool-global leaderboard is cached — `matchCards` (live scores), the user's own pick, membership and permissions are still computed fresh per request, and emails are still filtered by the requester's role at response time.
+- **Invalidation follows the data, not a clock.** Each request computes a cheap `fingerprint` from the leaderboard's inputs (results count + max(updatedAtUtc), structural-result aggregates, member count, prediction count, override count/disabled-count — all on poolId-indexed columns). A cached entry is served only if its fingerprint still matches. So a freshly published result is reflected on the very next request. A max-age TTL (`POOL_LEADERBOARD_CACHE_TTL_MS`, default 20 s) is a pure safety net for the rare input a fingerprint can't capture; it self-heals within the window.
+- **Refresh-storm safety:** concurrent misses for the same pool coalesce onto a single computation (`inFlight`).
+- **Verbose** (`?verbose=true`, admin debug) bypasses the cache so the per-row breakdown is always fresh.
+- The leaderboard scoring code is byte-identical — it was wrapped in a closure, not rewritten, so points cannot change.
+- **Read-only derived cache:** it never writes to the DB, so it cannot lose or corrupt data. Kill-switch: `POOL_LEADERBOARD_CACHE_TTL_MS=0` disables it entirely (recompute-every-time, exactly as before) — instant, no code change.
+
+**Consequences:**
+- ✅ Overview drops from 2–55 s to ms on cache hits; the event loop stops being blocked, so the whole platform speeds up.
+- ✅ The table refreshes the instant a result changes (fingerprint), not on a fixed timer.
+- ✅ No schema change, no migration, no frontend change.
+- ⚠️ A rare edge (member status flip that nets a zero count change, or an override toggled off-then-on) can be ≤20 s stale until the TTL net fires.
+- ⚠️ The underlying single-pass cost is still high on huge pools (it just runs far less often now) — query/algorithm optimisation remains a future cleanup.
+
+---
+
 **END OF DOCUMENT**
