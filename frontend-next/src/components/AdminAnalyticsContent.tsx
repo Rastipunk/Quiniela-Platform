@@ -31,7 +31,9 @@ import {
 import { Link } from "@/i18n/navigation";
 import {
   getAdminAnalyticsDashboard,
+  triggerAdminAnalyticsRebuild,
   type AnalyticsDashboardResponse,
+  type AnalyticsDashboardNotReady,
 } from "@/lib/api";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import {
@@ -43,16 +45,12 @@ import {
   shadows,
 } from "@/lib/theme";
 
-// ─── Polling intervals ──────────────────────────────────────
-
-const REFRESH_INTERVALS_MS: { label: string; ms: number | null }[] = [
-  { label: "10s", ms: 10_000 },
-  { label: "30s", ms: 30_000 },
-  { label: "1min", ms: 60_000 },
-  { label: "5min", ms: 300_000 },
-  { label: "Off", ms: null },
-];
-const DEFAULT_REFRESH_INDEX = 1; // 30s
+// ─── Rebuild polling ────────────────────────────────────────
+// After a manual rebuild is triggered, poll the snapshot every POLL_MS until
+// it reports done (building:false + a newer generatedAtUtc), giving up after
+// REBUILD_MAX_MS so a stuck build can't spin forever.
+const REBUILD_POLL_MS = 5_000;
+const REBUILD_MAX_MS = 15 * 60 * 1000; // 15 min hard cap
 
 // ─── Chart palette ──────────────────────────────────────────
 
@@ -310,28 +308,33 @@ function KpiCard({
 
 export default function AdminAnalyticsContent() {
   const isMobile = useIsMobile();
-  const [data, setData] = useState<AnalyticsDashboardResponse | null>(null);
+  const [data, setData] = useState<
+    AnalyticsDashboardResponse | AnalyticsDashboardNotReady | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [refreshIndex, setRefreshIndex] = useState(DEFAULT_REFRESH_INDEX);
   const [lastFetchAt, setLastFetchAt] = useState<Date | null>(null);
-  const [forcedRefreshing, setForcedRefreshing] = useState(false);
+  // True while a manual rebuild runs (after the button → POST → polling).
+  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildError, setRebuildError] = useState<string | null>(null);
   const fetchSeqRef = useRef(0);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Fetch ───────────────────────────────────────────────
+  // ── Fetch (read-only: serves the stored snapshot, never recomputes) ──
 
-  async function fetchDashboard(force = false) {
+  async function fetchDashboard() {
     const seq = ++fetchSeqRef.current;
-    if (force) setForcedRefreshing(true);
     try {
-      const result = await getAdminAnalyticsDashboard(force);
-      // Stale-fetch guard: if a newer fetch already returned, drop this one
-      if (seq !== fetchSeqRef.current) return;
+      const result = await getAdminAnalyticsDashboard();
+      if (seq !== fetchSeqRef.current) return; // a newer fetch already won
       setData(result);
       setError(null);
       setAccessDenied(false);
       setLastFetchAt(new Date());
+      // If the server reports a build already in flight (e.g. the boot seed),
+      // reflect it so the UI shows the building state and starts polling.
+      if (result.building && !rebuilding) startRebuildPolling(currentGeneratedAt(result));
     } catch (err: any) {
       if (err.status === 403) {
         setAccessDenied(true);
@@ -340,25 +343,73 @@ export default function AdminAnalyticsContent() {
       }
     } finally {
       setLoading(false);
-      if (force) setForcedRefreshing(false);
     }
+  }
+
+  // ── Manual rebuild: trigger async build, then poll until it lands ──
+
+  function currentGeneratedAt(
+    d: AnalyticsDashboardResponse | AnalyticsDashboardNotReady | null,
+  ): string | null {
+    return d && d.ready !== false ? d.generatedAtUtc : null;
+  }
+
+  function stopPolling() {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }
+
+  function startRebuildPolling(baselineGeneratedAt: string | null) {
+    setRebuilding(true);
+    setRebuildError(null);
+    const startedAt = Date.now();
+    const poll = async () => {
+      if (Date.now() - startedAt > REBUILD_MAX_MS) {
+        setRebuilding(false);
+        setRebuildError("El cálculo está tardando demasiado. Intenta de nuevo más tarde.");
+        return;
+      }
+      try {
+        const r = await getAdminAnalyticsDashboard();
+        if (r.ready !== false) {
+          setData(r);
+          setLastFetchAt(new Date());
+          const isNewer = baselineGeneratedAt === null || r.generatedAtUtc !== baselineGeneratedAt;
+          if (!r.building && isNewer) {
+            setRebuilding(false);
+            return; // fresh snapshot landed — done
+          }
+        }
+      } catch {
+        /* transient — keep polling */
+      }
+      pollTimerRef.current = setTimeout(poll, REBUILD_POLL_MS);
+    };
+    pollTimerRef.current = setTimeout(poll, REBUILD_POLL_MS);
+  }
+
+  async function handleRebuild() {
+    if (rebuilding) return;
+    const baseline = currentGeneratedAt(data);
+    setRebuilding(true);
+    setRebuildError(null);
+    try {
+      await triggerAdminAnalyticsRebuild();
+    } catch (err: any) {
+      setRebuilding(false);
+      setRebuildError(err?.message ?? "No se pudo iniciar el cálculo");
+      return;
+    }
+    startRebuildPolling(baseline);
   }
 
   useEffect(() => {
     fetchDashboard();
+    return stopPolling; // clean up the poll timer on unmount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Auto-refresh polling
-  useEffect(() => {
-    const ms = REFRESH_INTERVALS_MS[refreshIndex]?.ms;
-    if (!ms) return;
-    const id = setInterval(() => {
-      fetchDashboard(false);
-    }, ms);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshIndex]);
 
   // Force re-render every 5s so "hace Xs" stays accurate
   const [, setTick] = useState(0);
@@ -432,7 +483,16 @@ export default function AdminAnalyticsContent() {
   }
   if (!data) return null;
 
-  // ─────────────────────────────────────────────────────────
+  // ── No snapshot ever built (brand-new install) ──────────
+  if (data.ready === false) {
+    return (
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: spacing.xl }}>
+        <FirstReportState onRebuild={handleRebuild} rebuilding={rebuilding} error={rebuildError} />
+      </div>
+    );
+  }
+
+  // From here `data` is a full (ready) snapshot.
 
   return (
     <div
@@ -449,10 +509,9 @@ export default function AdminAnalyticsContent() {
       <DashboardHeader
         data={data}
         lastFetchAt={lastFetchAt}
-        forcedRefreshing={forcedRefreshing}
-        onRefresh={() => fetchDashboard(true)}
-        refreshIndex={refreshIndex}
-        onChangeRefresh={setRefreshIndex}
+        rebuilding={rebuilding}
+        rebuildError={rebuildError}
+        onRebuild={handleRebuild}
         isMobile={isMobile}
       />
 
@@ -713,18 +772,16 @@ function SectionErrorsBanner({
 function DashboardHeader({
   data,
   lastFetchAt,
-  forcedRefreshing,
-  onRefresh,
-  refreshIndex,
-  onChangeRefresh,
+  rebuilding,
+  rebuildError,
+  onRebuild,
   isMobile,
 }: {
   data: AnalyticsDashboardResponse;
   lastFetchAt: Date | null;
-  forcedRefreshing: boolean;
-  onRefresh: () => void;
-  refreshIndex: number;
-  onChangeRefresh: (i: number) => void;
+  rebuilding: boolean;
+  rebuildError: string | null;
+  onRebuild: () => void;
   isMobile: boolean;
 }) {
   return (
@@ -756,63 +813,84 @@ function DashboardHeader({
             fontSize: fontSize.sm,
           }}
         >
-          Generado {fmtRelativeTime(data.generatedAtUtc)}
+          Última actualización: {fmtRelativeTime(data.generatedAtUtc)}
           {lastFetchAt && ` · cargado ${fmtRelativeTime(lastFetchAt.toISOString())}`}
         </p>
       </div>
 
-      <div style={{ display: "flex", gap: spacing.sm, alignItems: "center", flexWrap: "wrap" }}>
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            padding: 4,
-            background: colors.bgLight,
-            borderRadius: radii.lg,
-          }}
-        >
-          {REFRESH_INTERVALS_MS.map((opt, idx) => {
-            const active = idx === refreshIndex;
-            return (
-              <button
-                key={opt.label}
-                type="button"
-                onClick={() => onChangeRefresh(idx)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: radii.md,
-                  border: "none",
-                  background: active ? colors.white : "transparent",
-                  color: active ? colors.text : colors.textMuted,
-                  fontSize: fontSize.xs,
-                  fontWeight: fontWeight.semibold,
-                  cursor: "pointer",
-                  boxShadow: active ? shadows.sm : "none",
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: isMobile ? "flex-start" : "flex-end", gap: spacing.xs }}>
         <button
           type="button"
-          onClick={onRefresh}
-          disabled={forcedRefreshing}
+          onClick={onRebuild}
+          disabled={rebuilding}
           style={{
-            padding: "8px 16px",
+            padding: "10px 18px",
             borderRadius: radii.lg,
-            border: `1px solid ${colors.brand}`,
-            background: forcedRefreshing ? colors.disabled : colors.white,
-            color: colors.brand,
+            border: "none",
+            background: rebuilding ? colors.disabled : colors.brand,
+            color: colors.white,
             fontSize: fontSize.sm,
-            fontWeight: fontWeight.semibold,
-            cursor: forcedRefreshing ? "wait" : "pointer",
+            fontWeight: fontWeight.bold,
+            cursor: rebuilding ? "wait" : "pointer",
+            boxShadow: rebuilding ? "none" : shadows.sm,
+            whiteSpace: "nowrap",
           }}
         >
-          {forcedRefreshing ? "⏳..." : "🔄 Refresh"}
+          {rebuilding ? "⏳ Recalculando…" : "🔄 Recalcular ahora"}
         </button>
+        <span style={{ fontSize: fontSize.xs, color: rebuildError ? colors.error : colors.textMuted, maxWidth: 280, textAlign: isMobile ? "left" : "right" }}>
+          {rebuildError
+            ? rebuildError
+            : rebuilding
+              ? "Puede tardar varios minutos; los datos se actualizan al terminar."
+              : "Los datos no se recalculan solos — usa este botón."}
+        </span>
       </div>
+    </div>
+  );
+}
+
+// ─── First-report (no snapshot yet) ─────────────────────────
+
+function FirstReportState({
+  onRebuild,
+  rebuilding,
+  error,
+}: {
+  onRebuild: () => void;
+  rebuilding: boolean;
+  error: string | null;
+}) {
+  return (
+    <div style={{ textAlign: "center", padding: `${spacing["3xl"]}px ${spacing.xl}px` }}>
+      <div style={{ fontSize: 48, marginBottom: spacing.md }}>📊</div>
+      <h2 style={{ margin: 0, fontSize: fontSize["3xl"], fontWeight: fontWeight.bold }}>
+        Aún no hay reporte
+      </h2>
+      <p style={{ margin: `${spacing.md}px auto`, maxWidth: 460, color: colors.textMuted, lineHeight: 1.6 }}>
+        El reporte de analítica se calcula bajo demanda. Genera el primero ahora;
+        puede tardar varios minutos y luego quedará disponible al instante.
+      </p>
+      <button
+        type="button"
+        onClick={onRebuild}
+        disabled={rebuilding}
+        style={{
+          padding: "12px 24px",
+          borderRadius: radii.lg,
+          border: "none",
+          background: rebuilding ? colors.disabled : colors.brand,
+          color: colors.white,
+          fontSize: fontSize.md,
+          fontWeight: fontWeight.bold,
+          cursor: rebuilding ? "wait" : "pointer",
+        }}
+      >
+        {rebuilding ? "⏳ Calculando…" : "Generar reporte"}
+      </button>
+      {error && (
+        <p style={{ marginTop: spacing.md, color: colors.error, fontSize: fontSize.sm }}>{error}</p>
+      )}
     </div>
   );
 }

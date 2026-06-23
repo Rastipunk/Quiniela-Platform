@@ -865,6 +865,20 @@ model PlatformSettings {
   updatedById String? // userId del admin que hizo el último cambio
 }
 
+/// Persisted snapshot of the admin analytics dashboard (singleton row).
+/// The dashboard is expensive to build (minutes of heavy SQL), so it is
+/// recomputed ONLY on explicit admin request and the result is stored here
+/// so it survives restarts/deploys. Every plain GET serves this snapshot
+/// without recomputing — decoupling user-facing latency from the build and
+/// preventing the auto-refresh rebuild loop. See ADR-078.
+model AnalyticsDashboardSnapshot {
+  id              String   @id @default("singleton")
+  dataJson        Json
+  generatedAtUtc  DateTime
+  buildDurationMs Int      @default(0)
+  updatedAt       DateTime @updatedAt
+}
+
 // =========================================================================
 // DEADLINE REMINDER LOG - Tracking de recordatorios enviados
 // Comentario en español: evita duplicados y permite auditoría de emails enviados
