@@ -33,6 +33,11 @@ export async function getPoolOverview(
   poolId: string,
   leaderboardVerbose: boolean,
 ) {
+  // TEMP perf instrumentation (ADR-079 investigation): split DB+setup time
+  // from the in-memory leaderboard computation so we can see, with real
+  // production numbers, where the seconds go on big pools. Logged only when
+  // total exceeds the threshold; removed once the bottleneck is fixed.
+  const __t0 = Date.now();
   // 1) Permission: must be ACTIVE or LEFT (LEFT = read-only)
   const myMembership = await prisma.poolMember.findFirst({
     where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
@@ -427,6 +432,7 @@ export async function getPoolOverview(
     }
   }
 
+  const __tPreCompute = Date.now();
   const leaderboardRows = members.map((m) => {
     let points = 0;
     let scoredMatches = 0;
@@ -602,9 +608,23 @@ export async function getPoolOverview(
     };
   });
 
+  const __tPostCompute = Date.now();
   // Single source of truth: sort by tiebreakers and assign shared ranks
   // (TIEBREAKER_PLAN.md). Same function used by the pool-completed email.
   const rankedRows = rankLeaderboardRows(leaderboardRows);
+
+  // TEMP perf log: surface slow overviews with a query-vs-compute breakdown.
+  const __total = Date.now() - __t0;
+  const __SLOW_MS = parseInt(process.env.OVERVIEW_SLOW_LOG_MS || "1500", 10);
+  if (__total >= __SLOW_MS) {
+    console.log(
+      `[perf overview] pool=${poolId} total=${__total}ms ` +
+        `dbSetup=${__tPreCompute - __t0}ms leaderboardCompute=${__tPostCompute - __tPreCompute}ms ` +
+        `rank=${Date.now() - __tPostCompute}ms members=${members.length} ` +
+        `predictions=${allPredictions.length} matches=${matches.length} ` +
+        `structuralPicks=${allStructuralPicks.length + allGroupStandingsPicks.length}`,
+    );
+  }
 
   // 8) Final response
   const includeEmails = isPoolAdmin(myMembership.role);
