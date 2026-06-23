@@ -210,6 +210,14 @@ All rate limit values are configurable via environment variables:
 |----------|-------------|---------|
 | `PREDICTION_STATUS_HOST_ALLOWLIST` | Gradual rollout for the per-match prediction-status feature (ADR-077). `""`/unset → off everywhere; `*` → on for all pools; comma-separated emails → on only for pools whose creator's email is listed. | `""` (off) |
 
+#### Performance — Caching (Optional)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ADMIN_DASHBOARD_CACHE_TTL_MS` | Max age of the persisted admin analytics snapshot before the UI marks it stale (ADR-078). | `300000` (5 min) |
+| `POOL_LEADERBOARD_CACHE_TTL_MS` | Max-age safety net for the per-pool overview leaderboard cache (ADR-079). Invalidation is primarily by data fingerprint; this only bounds the rare uncaptured change. **Set to `0` to disable the cache entirely (recompute every request, pre-ADR-079 behaviour) — instant kill-switch.** | `20000` (20 s) |
+| `POOL_LEADERBOARD_CACHE_MAX` | Hard cap on the number of pools held in the overview leaderboard cache (memory bound). | `1000` |
+
 #### Payments — Mercado Pago (Colombia / COP)
 
 | Variable | Description | Default |
