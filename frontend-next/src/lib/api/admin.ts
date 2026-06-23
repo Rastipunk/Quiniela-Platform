@@ -155,6 +155,12 @@ export interface AnalyticsLocaleRow {
 }
 
 export interface AnalyticsDashboardResponse {
+  /** Discriminant: a full (ready) snapshot. */
+  ready?: true;
+  /** A manual rebuild is currently running — poll until it flips to false. */
+  building?: boolean;
+  /** The snapshot is older than the cache TTL (purely informational now). */
+  stale?: boolean;
   generatedAtUtc: string;
   cacheTtlSeconds: number;
   cached: boolean;
@@ -301,9 +307,42 @@ export interface AnalyticsDashboardResponse {
   errors: { section: string; message: string }[];
 }
 
-export async function getAdminAnalyticsDashboard(
-  forceRefresh = false,
-): Promise<AnalyticsDashboardResponse> {
-  const path = `/admin/analytics/dashboard${forceRefresh ? "?refresh=true" : ""}`;
-  return requestJson<AnalyticsDashboardResponse>(path, { method: "GET" });
+/** No snapshot has ever been built yet (brand-new install before the first
+ *  seed completes). The UI shows a "generate first report" state. */
+export interface AnalyticsDashboardNotReady {
+  ready: false;
+  building: boolean;
+  generatedAtUtc: null;
+  cacheTtlSeconds: number;
+}
+
+/**
+ * GET the last analytics snapshot. NEVER triggers a recompute — the server
+ * serves the stored snapshot instantly. Recompute is explicit via
+ * {@link triggerAdminAnalyticsRebuild}. Returns a not-ready marker only on a
+ * brand-new install before the first seed finishes.
+ */
+export async function getAdminAnalyticsDashboard(): Promise<
+  AnalyticsDashboardResponse | AnalyticsDashboardNotReady
+> {
+  return requestJson<AnalyticsDashboardResponse | AnalyticsDashboardNotReady>(
+    "/admin/analytics/dashboard",
+    { method: "GET" },
+  );
+}
+
+/**
+ * Trigger an asynchronous rebuild of the analytics snapshot and return
+ * immediately (the build takes minutes — far past the 30 s HTTP timeout).
+ * Poll {@link getAdminAnalyticsDashboard} until `building` is false with a
+ * newer `generatedAtUtc`.
+ */
+export async function triggerAdminAnalyticsRebuild(): Promise<{
+  building: boolean;
+  alreadyRunning: boolean;
+}> {
+  return requestJson<{ building: boolean; alreadyRunning: boolean }>(
+    "/admin/analytics/dashboard/rebuild",
+    { method: "POST" },
+  );
 }

@@ -5201,4 +5201,25 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-078: Admin analytics dashboard is recomputed on demand, persisted, and served from a snapshot
+
+**Date:** 2026-06-22 | **Status:** Accepted
+
+**Context:** The admin analytics dashboard build is a heavy multi-minute SQL pass. The frontend auto-refreshed every 30 s while the backend cache TTL was 5 min and a build took 4–5 min, so a single open admin tab produced **back-to-back rebuilds forever** — saturating Node's event loop and Postgres connections and making the whole platform slow (users couldn't even log in). The cache was also in-memory only, so every deploy paid a fresh cold build.
+
+**Decision:**
+- **Recompute is manual only.** A plain `GET /admin/analytics/dashboard` NEVER rebuilds — it serves the last snapshot instantly. Rebuild is an explicit `POST /admin/analytics/dashboard/rebuild` that fires the build and returns immediately (a 4–5 min build far exceeds the 30 s HTTP client timeout, so a synchronous refresh was impossible — the original source of the WC-eve timeouts).
+- **Async rebuild + polling.** The "🔄 Recalcular ahora" button POSTs the trigger, then the client polls GET every 5 s (15 min cap) until `building:false` with a newer `generatedAtUtc`. The old snapshot stays on screen meanwhile.
+- **Persisted snapshot.** New singleton model `AnalyticsDashboardSnapshot` stores the last payload, so the view survives restarts/deploys. Boot restores it into memory (no recompute); a one-time background seed runs only on a brand-new install (DB empty).
+- **No auto-poll on the frontend.** The interval selector and 30 s polling are removed entirely.
+- The immediate incident mitigation was raising `ADMIN_DASHBOARD_CACHE_TTL_MS` 5 min → 1 h; this code change is the permanent fix.
+
+**Consequences:**
+- ✅ The rebuild loop is structurally impossible — builds happen only on button press (or one-time seed)
+- ✅ User-facing latency is fully decoupled from the build; the dashboard survives deploys
+- ⚠️ The displayed data is only as fresh as the last manual rebuild (by design) — the header shows "Última actualización: hace X"
+- ⚠️ The underlying ~4–5 min build time is a separate perf debt (N+1 / missing indexes) to address later
+
+---
+
 **END OF DOCUMENT**

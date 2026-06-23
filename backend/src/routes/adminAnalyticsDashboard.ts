@@ -19,7 +19,11 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { sendData, sendInternal } from "../lib/apiResponse";
 import { prisma } from "../db";
+import { Prisma } from "@prisma/client";
 import { createLimiter } from "../lib/asyncHelpers";
+
+// Singleton row id for the persisted dashboard snapshot.
+const SNAPSHOT_ID = "singleton";
 
 export const adminAnalyticsDashboardRouter = Router();
 
@@ -1879,14 +1883,39 @@ function startBuild(): Promise<DashboardPayload> {
   if (!inFlightBuild) {
     const startedAt = Date.now();
     inFlightBuild = buildDashboardData()
-      .then((data) => {
+      .then(async (data) => {
         const durationMs = Date.now() - startedAt;
+        const builtAt = new Date();
         lastBuildDurationMs = durationMs;
-        cache = { data, timestamp: Date.now() };
+        cache = { data, timestamp: builtAt.getTime() };
         console.log(
           `[admin analytics] dashboard built in ${durationMs}ms` +
             (data.errors.length > 0 ? ` (${data.errors.length} section errors)` : ""),
         );
+        // Persist so the snapshot survives restarts/deploys — every plain
+        // GET serves this without recomputing. A persistence failure must
+        // not fail the build (the in-memory cache still works this run).
+        try {
+          await prisma.analyticsDashboardSnapshot.upsert({
+            where: { id: SNAPSHOT_ID },
+            create: {
+              id: SNAPSHOT_ID,
+              dataJson: data as unknown as Prisma.InputJsonValue,
+              generatedAtUtc: builtAt,
+              buildDurationMs: durationMs,
+            },
+            update: {
+              dataJson: data as unknown as Prisma.InputJsonValue,
+              generatedAtUtc: builtAt,
+              buildDurationMs: durationMs,
+            },
+          });
+        } catch (err) {
+          console.error(
+            "[admin analytics] failed to persist snapshot:",
+            err instanceof Error ? err.message : String(err),
+          );
+        }
         return data;
       })
       .finally(() => {
@@ -1897,51 +1926,109 @@ function startBuild(): Promise<DashboardPayload> {
 }
 
 /**
- * Pre-warm the dashboard cache on boot (called from server.ts).
- * Without it the first admin to load Analítica after every deploy
- * pays the full cold-build cost — the exact scenario that produced
- * the 30 s timeouts on WC eve. Fire-and-forget: a pre-warm failure
- * must never block server startup.
+ * Load the persisted dashboard snapshot into memory on boot (called from
+ * server.ts). Builds are MANUAL (POST /dashboard/rebuild) — boot never
+ * recomputes; it only restores the last snapshot so the view survives
+ * deploys. The single exception: if no snapshot has ever been built, seed
+ * one in the background so the dashboard isn't empty on a brand-new
+ * install. Fire-and-forget: failures must never block server startup.
  */
-export function prewarmAdminDashboardCache(): void {
+export async function initAdminDashboardCache(): Promise<void> {
+  try {
+    const row = await prisma.analyticsDashboardSnapshot.findUnique({
+      where: { id: SNAPSHOT_ID },
+    });
+    if (row) {
+      cache = {
+        data: row.dataJson as unknown as DashboardPayload,
+        timestamp: row.generatedAtUtc.getTime(),
+      };
+      lastBuildDurationMs = row.buildDurationMs;
+      console.log(
+        `[admin analytics] snapshot restored from DB (generated ${row.generatedAtUtc.toISOString()})`,
+      );
+      return;
+    }
+  } catch (err) {
+    console.error(
+      "[admin analytics] failed to load snapshot from DB:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return; // don't seed on a transient DB error — a later manual build will
+  }
+  // No snapshot has ever been built — seed once in the background.
+  console.log("[admin analytics] no snapshot in DB — seeding once in background");
   startBuild().catch((err) => {
     console.error(
-      "[admin analytics] prewarm failed:",
+      "[admin analytics] seed build failed:",
       err instanceof Error ? err.message : String(err),
     );
   });
 }
 
+// GET /dashboard — serves the last snapshot. NEVER recomputes (a rebuild is
+// minutes long and would exceed the client's 30 s timeout). Recompute is
+// explicit via POST /dashboard/rebuild. `building` lets the client poll while
+// a manual rebuild runs; `ready:false` covers the brand-new-install window
+// before the first seed completes.
 adminAnalyticsDashboardRouter.get(
   "/dashboard",
   requireAuth,
   requireAdmin,
-  async (req, res) => {
-    const force = req.query.refresh === "true";
-    const now = Date.now();
-
-    if (cache && !force) {
-      const isFresh = now - cache.timestamp < CACHE_TTL_MS;
-      if (!isFresh) {
-        // Stale: serve it anyway, refresh in the background. The admin
-        // sees data instantly; the next load gets the fresh build.
-        startBuild().catch(() => {
-          /* already logged inside startBuild */
+  async (_req, res) => {
+    // Lazy-load from DB if the boot restore hasn't populated memory yet.
+    if (!cache) {
+      try {
+        const row = await prisma.analyticsDashboardSnapshot.findUnique({
+          where: { id: SNAPSHOT_ID },
         });
+        if (row) {
+          cache = {
+            data: row.dataJson as unknown as DashboardPayload,
+            timestamp: row.generatedAtUtc.getTime(),
+          };
+        }
+      } catch {
+        /* fall through to not-ready state */
       }
-      return sendData(res, { ...cache.data, cached: true, stale: !isFresh });
     }
 
-    // No cache at all (first hit after boot before prewarm finishes) or
-    // an explicit ?refresh=true: block on the build.
-    try {
-      const data = await startBuild();
-      return sendData(res, { ...data, cached: false });
-    } catch (err) {
-      console.error("[admin analytics dashboard] FAILED:", err);
-      return sendInternal(res, "INTERNAL_ERROR", {
-        message: err instanceof Error ? err.message : String(err),
+    const building = inFlightBuild !== null;
+
+    if (!cache) {
+      // Never built yet — the UI shows a "generate first report" state.
+      return sendData(res, {
+        ready: false,
+        building,
+        generatedAtUtc: null,
+        cacheTtlSeconds: CACHE_TTL_MS / 1000,
       });
     }
+
+    const stale = Date.now() - cache.timestamp >= CACHE_TTL_MS;
+    return sendData(res, {
+      ...cache.data,
+      ready: true,
+      cached: true,
+      stale,
+      building,
+    });
+  },
+);
+
+// POST /dashboard/rebuild — triggers an async rebuild and returns immediately.
+// The client polls GET /dashboard until `building` flips back to false with a
+// newer `generatedAtUtc`. Concurrent calls coalesce onto the single in-flight
+// build (startBuild), so spamming the button is harmless.
+adminAnalyticsDashboardRouter.post(
+  "/dashboard/rebuild",
+  requireAuth,
+  requireAdmin,
+  async (_req, res) => {
+    const alreadyRunning = inFlightBuild !== null;
+    startBuild().catch(() => {
+      /* already logged inside startBuild */
+    });
+    return sendData(res, { building: true, alreadyRunning });
   },
 );

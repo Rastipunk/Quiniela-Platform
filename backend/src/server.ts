@@ -24,7 +24,7 @@ import { apiLimiter, authLimiter, authIpLimiter, passwordResetLimiter, verificat
 import { startSmartSyncJob, stopSmartSyncJob } from "./jobs/smartSyncJob";
 import { startPlatformHealthJob, stopPlatformHealthJob } from "./jobs/platformHealthJob";
 import { startEventLoopMonitor, stopEventLoopMonitor } from "./lib/eventLoopMonitor";
-import { prewarmAdminDashboardCache } from "./routes/adminAnalyticsDashboard";
+import { initAdminDashboardCache } from "./routes/adminAnalyticsDashboard";
 import { disconnectReadonlyDb } from "./lib/readonlyDb";
 import { startDeadlineReminderJob, stopDeadlineReminderJob } from "./jobs/deadlineReminderJob";
 import { startNewMemberDigestJob, stopNewMemberDigestJob } from "./jobs/newMemberDigestJob";
@@ -360,10 +360,10 @@ const server = app.listen(PORT, () => {
   startAccountReceivableExpiryJob();
   startWelcomeEmailFallbackJob();
   startCaprichoSanJob();
-  // Build the admin dashboard cache in the background so the first
-  // admin load after a deploy serves instantly instead of paying the
-  // full cold-build cost (40 s measured under WC-eve DB load).
-  prewarmAdminDashboardCache();
+  // Restore the persisted admin dashboard snapshot into memory so the view
+  // survives deploys. Recompute is MANUAL (POST /dashboard/rebuild) — boot
+  // does NOT recompute (except a one-time seed on a brand-new install).
+  void initAdminDashboardCache();
   // Event-loop monitor must come up BEFORE the health job so the p99
   // it reports on the first tick reflects real activity, not zero.
   startEventLoopMonitor();
