@@ -21,10 +21,11 @@ const STORAGE_KEY = "quiniela.whatsNewVersion";
 
 /** Staged rollout: when non-null, ONLY these accounts see the modal.
  *  Set to null to release the announcement to every user.
- *  2026-06-25 (persistent sessions, ADR-081): staged to the owner first to
- *  review copy/visuals in prod; release to everyone (TEST_EMAILS = null)
- *  together with flipping PERSISTENT_SESSIONS_ALLOWLIST = "*". */
-const TEST_EMAILS: string[] | null = ["juan.k.chacon9729@gmail.com"];
+ *  2026-06-25 (persistent sessions, ADR-081): reviewed in prod by the owner,
+ *  now RELEASED to everyone (TEST_EMAILS = null), in lockstep with flipping
+ *  PERSISTENT_SESSIONS_ALLOWLIST = "*". Each device sees it once (localStorage)
+ *  until WHATS_NEW_EXPIRES_AT. */
+const TEST_EMAILS: string[] | null = null;
 
 /** Hard cutoff: after this instant the announcement never shows again for
  *  anyone, regardless of dismissal. One-week window so latecomers still catch
