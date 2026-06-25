@@ -19,7 +19,7 @@ export type RegisterConsentOptions = {
 export async function login(
   email: string,
   password: string,
-  rememberMe = true,
+  rememberMe = false,
 ): Promise<LoginResponse> {
   return requestJson<LoginResponse>("/auth/login", {
     method: "POST",
@@ -105,7 +105,8 @@ export async function resetPassword(token: string, newPassword: string): Promise
 export async function loginWithGoogle(
   idToken: string,
   timezone?: string,
-  consent?: RegisterConsentOptions
+  consent?: RegisterConsentOptions,
+  rememberMe = false,
 ): Promise<LoginResponse> {
   const { fbc, fbp } = getMetaCookies();
   const attribution = getAttributionPayload();
@@ -114,6 +115,7 @@ export async function loginWithGoogle(
     body: JSON.stringify({
       idToken,
       timezone,
+      rememberMe,
       acceptTerms: consent?.acceptTerms,
       acceptPrivacy: consent?.acceptPrivacy,
       acceptAge: consent?.acceptAge,

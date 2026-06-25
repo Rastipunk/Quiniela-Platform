@@ -13,6 +13,16 @@ next request, not after its access token lapses).
 - Clean, no-assumptions implementation; **the UX of users who don't opt in must
   not change**, and **no one is logged out by the deploy**.
 
+**UX revision (2026-06-25, post first review):** the persistence control is a
+**single checkbox at the very top of the login panel** (always visible, above
+the Google button), **default unchecked** (opt-in). One checkbox governs the
+whole panel — both Google sign-in and the email/password form read it; there is
+**no per-method checkbox**. Persistence is **exclusively opt-in via this
+checkbox**: registration (email or Google) and corporate activation issue a
+normal non-persistent 4h session, and the user opts in on their next login.
+Backend: `loginSchema.rememberMe` / `googleAuthSchema.rememberMe` default
+`false`; register + activate-corporate pass `persistent: false`.
+
 ---
 
 ## 1. Current state (verified in code, no assumptions)

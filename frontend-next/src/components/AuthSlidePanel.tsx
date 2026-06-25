@@ -70,8 +70,10 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   // "Mantener sesión abierta en este dispositivo" — persistent session (ADR-081).
-  // Default on to reduce re-login friction; unchecking keeps the 4h-only flow.
-  const [rememberMe, setRememberMe] = useState(true);
+  // Default OFF (opt-in): the session expires unless the user ticks it. Rendered
+  // at the TOP of the panel so one checkbox governs BOTH the email/password form
+  // and the Google button (not one per method).
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
@@ -132,7 +134,8 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
 
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const result = await loginWithGoogle(response.credential, timezone);
+      // rememberMe governs the whole panel (one checkbox at the top) — Google included.
+      const result = await loginWithGoogle(response.credential, timezone, undefined, rememberMe);
       setToken(result.token);
       acceptAnalyticsConsent();
       if (result.user?.id) {
@@ -183,7 +186,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         acceptMarketing,
       };
 
-      const result = await loginWithGoogle(pendingGoogleCredential, timezone, consent);
+      const result = await loginWithGoogle(pendingGoogleCredential, timezone, consent, rememberMe);
       setToken(result.token);
       acceptAnalyticsConsent();
       if (result.user?.id) {
@@ -468,6 +471,26 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
             <button type="button" onClick={() => setMode("register")} style={tabButtonStyle(mode === "register")}>{t("registerTab")}</button>
           </div>
 
+          {/* "Mantener sesión abierta" — ONE checkbox at the very top so it is
+              always visible and governs BOTH the Google button below AND the
+              email/password form. Login only, default OFF (opt-in). */}
+          {mode === "login" && (
+            <div style={{ marginBottom: 16, padding: "12px 14px", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: radii.lg }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13, fontWeight: fw.semibold, color: colors.varText }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={checkboxStyle}
+                />
+                {t("rememberMe")}
+              </label>
+              <div style={{ fontSize: 11, color: colors.varMuted, marginTop: 4, marginLeft: 30 }}>
+                {t("rememberMeHint")}
+              </div>
+            </div>
+          )}
+
           {/* Google Sign-In — prominent at top */}
           <div ref={googleButtonRef} style={{ display: "flex", justifyContent: "center", marginBottom: 8 }} />
           {googleLoadFailed && (
@@ -531,22 +554,11 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
             </label>
 
             {mode === "login" && (
-              <>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 13, color: "var(--text)", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={checkboxStyle}
-                  />
-                  {t("rememberMe")}
-                </label>
-                <div style={{ marginBottom: 16, textAlign: "right" }}>
-                  <Link href="/forgot-password" onClick={onClose} style={{ fontSize: 13, color: "#667eea", textDecoration: "none" }}>
-                    {t("forgotPassword")}
-                  </Link>
-                </div>
-              </>
+              <div style={{ marginBottom: 16, textAlign: "right" }}>
+                <Link href="/forgot-password" onClick={onClose} style={{ fontSize: 13, color: "#667eea", textDecoration: "none" }}>
+                  {t("forgotPassword")}
+                </Link>
+              </div>
             )}
 
             {mode === "register" && <ConsentCheckboxes />}

@@ -157,10 +157,10 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1).max(200),
-  // "Mantener sesión iniciada" (ADR-081). Default true to reduce re-login
-  // friction; the user can uncheck it on shared devices to keep the 4h-only
-  // behaviour (no refresh token, no persistent cookie).
-  rememberMe: z.boolean().optional().default(true),
+  // "Mantener sesión abierta" (ADR-081). Default FALSE: persistence is strictly
+  // opt-in via the top-of-panel checkbox. Unchecked → 4h-only (no refresh
+  // token, no persistent cookie); checked → 90d sliding session.
+  rememberMe: z.boolean().optional().default(false),
 });
 
 const forgotPasswordSchema = z.object({
@@ -175,6 +175,9 @@ const resetPasswordSchema = z.object({
 const googleAuthSchema = z.object({
   idToken: z.string().min(1),
   timezone: z.string().optional(),
+  // "Mantener sesión abierta" (ADR-081) — the single top-of-panel checkbox
+  // governs Google too. Default false: persistence is strictly opt-in.
+  rememberMe: z.boolean().optional().default(false),
   acceptTerms: z.boolean().optional(),
   acceptPrivacy: z.boolean().optional(),
   acceptAge: z.boolean().optional(),
@@ -209,7 +212,9 @@ authRouter.post("/register", async (req, res) => {
 
   try {
     const result = await registerUser(parsed.data, auditCtx(req));
-    await establishSession(res, result.user, { persistent: true, ctx: auditCtx(req) });
+    // Persistence is opt-in via the login checkbox only — a fresh signup gets a
+    // normal 4h session; the user opts in next time they log in. (ADR-081)
+    await establishSession(res, result.user, { persistent: false, ctx: auditCtx(req) });
     return sendCreated(res, result);
   } catch (err) {
     return handleServiceError(res, err);
@@ -264,7 +269,7 @@ authRouter.post("/google", async (req, res) => {
 
   try {
     const result = await authenticateWithGoogle(parsed.data, auditCtx(req));
-    await establishSession(res, result.user, { persistent: true, ctx: auditCtx(req) });
+    await establishSession(res, result.user, { persistent: parsed.data.rememberMe, ctx: auditCtx(req) });
     return sendData(res, { user: result.user, metaEventId: result.metaEventId });
   } catch (err) {
     return handleServiceError(res, err);
@@ -336,7 +341,9 @@ authRouter.post("/activate-corporate", async (req, res) => {
       { ...parsed.data, currentUserId },
       auditCtx(req),
     );
-    await establishSession(res, result.user, { persistent: true, ctx: auditCtx(req) });
+    // Persistence is opt-in via the login checkbox only (ADR-081) — activation
+    // gives a normal 4h session; the employee opts in on their next login.
+    await establishSession(res, result.user, { persistent: false, ctx: auditCtx(req) });
     const status = result.alreadyExisted ? sendData : sendCreated;
     return status(res, result);
   } catch (err) {
