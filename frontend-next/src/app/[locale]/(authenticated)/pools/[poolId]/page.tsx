@@ -39,10 +39,11 @@ import { PoolNavDrawer } from "./components/PoolNavDrawer";
 import { PoolSectionHeader } from "./components/PoolSectionHeader";
 import { PoolCapacityTab } from "./components/PoolCapacityTab";
 import { PoolBrandingTab } from "./components/PoolBrandingTab";
+import { PoolEvolutionTab } from "./components/PoolEvolutionTab";
 import { usePublishPoolNav } from "@/components/pool/PoolNav";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
-const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "capacidad", "personalizacion", "admin"] as const;
+const VALID_TABS = ["partidos", "leaderboard", "evolucion", "resumen", "reglas", "jugadores", "capacidad", "personalizacion", "admin"] as const;
 type PoolTab = typeof VALID_TABS[number];
 
 export default function PoolPage() {
@@ -168,6 +169,7 @@ export default function PoolPage() {
           showHostItems: overview.permissions.canManageResults,
           showBrandingTab:
             overview.permissions.canManageResults && !!overview.pool.organizationId,
+          showEvolutionTab: !!overview.evolutionEnabled,
           tabBadges,
           hasUrgent,
         }
@@ -786,6 +788,7 @@ export default function PoolPage() {
               showBrandingTab={
                 overview.permissions.canManageResults && !!overview.pool.organizationId
               }
+              showEvolutionTab={!!overview.evolutionEnabled}
               tabBadges={tabBadges}
               hasUrgent={hasUrgent}
             />
@@ -872,6 +875,10 @@ export default function PoolPage() {
                   playerSummaryModal={playerSummaryModal}
                   setPlayerSummaryModal={setPlayerSummaryModal}
                 />
+              )}
+
+              {activeTab === "evolucion" && overview.evolutionEnabled && (
+                <PoolEvolutionTab poolId={poolId!} token={token} isMobile={isMobile} />
               )}
             </main>
           </div>

@@ -33,6 +33,7 @@ import { trackEvent } from "@/lib/analytics";
 export type PoolNavTab =
   | "partidos"
   | "leaderboard"
+  | "evolucion"
   | "resumen"
   | "reglas"
   | "jugadores"
@@ -43,6 +44,7 @@ export type PoolNavTab =
 const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
   "partidos",
   "leaderboard",
+  "evolucion",
   "resumen",
   "reglas",
   "jugadores",
@@ -60,6 +62,7 @@ interface NavItem {
 const PLAYER_ITEMS: ReadonlyArray<NavItem> = [
   { key: "partidos", icon: "⚽", labelKey: "tabs.matches" },
   { key: "leaderboard", icon: "📊", labelKey: "tabs.leaderboard" },
+  { key: "evolucion", icon: "🏁", labelKey: "tabs.evolution" },
   { key: "resumen", icon: "📈", labelKey: "tabs.summary" },
   { key: "reglas", icon: "📋", labelKey: "tabs.rules" },
 ];
@@ -122,6 +125,8 @@ export interface PoolNavSnapshot {
    * with no editable fields behind it.
    */
   showBrandingTab: boolean;
+  /** Evolución tab — gated per-pool (EVOLUTION_POOL_ALLOWLIST) during rollout. */
+  showEvolutionTab: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
   hasUrgent: boolean;
 }
@@ -171,7 +176,7 @@ export function usePublishPoolNav(snapshot: PoolNavSnapshot | null) {
   snapshotRef.current = snapshot;
 
   const signature = snapshot
-    ? `${snapshot.showHostItems}|${snapshot.showBrandingTab}|${snapshot.hasUrgent}|${JSON.stringify(snapshot.tabBadges)}`
+    ? `${snapshot.showHostItems}|${snapshot.showBrandingTab}|${snapshot.showEvolutionTab}|${snapshot.hasUrgent}|${JSON.stringify(snapshot.tabBadges)}`
     : null;
 
   useEffect(() => {
@@ -195,6 +200,8 @@ interface PoolNavItemsProps {
    * branding entry is omitted from the host group entirely.
    */
   showBrandingTab: boolean;
+  /** Show the Evolución item — gated per-pool during rollout. */
+  showEvolutionTab: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
   hasUrgent: boolean;
   /** Fired after a tab is selected — typically to close a drawer. */
@@ -206,6 +213,7 @@ interface PoolNavItemsProps {
 export function PoolNavItems({
   showHostItems,
   showBrandingTab,
+  showEvolutionTab,
   tabBadges,
   hasUrgent,
   onAfterSelect,
@@ -304,7 +312,7 @@ export function PoolNavItems({
       style={{ display: "flex", flexDirection: "column" }}
     >
       {renderGroupLabel(t("nav.playerGroup"), false)}
-      {PLAYER_ITEMS.map(renderItem)}
+      {PLAYER_ITEMS.filter((it) => it.key !== "evolucion" || showEvolutionTab).map(renderItem)}
       {showHostItems && (
         <>
           {renderGroupLabel(t("nav.hostGroup"), true)}

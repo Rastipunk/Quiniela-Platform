@@ -22,8 +22,9 @@ import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
-import { isPredictionStatusEnabled } from "../lib/featureFlags";
+import { isPredictionStatusEnabled, isEvolutionEnabledForPool } from "../lib/featureFlags";
 import { getOrComputeLeaderboard } from "./poolLeaderboardCache";
+import { buildEvolutionSeries, curateEvolutionForViewer } from "./poolEvolution";
 import type { PhasePickConfig } from "../types/pickConfig";
 import { ServiceError } from "./authService";
 
@@ -69,6 +70,7 @@ export async function getPoolOverview(
   userId: string,
   poolId: string,
   leaderboardVerbose: boolean,
+  includeEvolution = false,
 ) {
   // 1) Permission: must be ACTIVE or LEFT (LEFT = read-only)
   const myMembership = await prisma.poolMember.findFirst({
@@ -470,6 +472,21 @@ export async function getPoolOverview(
     }
   }
 
+  // ── Evolución capture (rides this same cached compute, ADR-079) ──────────
+  // Record each member's per-MATCH points increment exactly as the loop below
+  // computes it, so the Evolución chart's cumulative series uses the SAME
+  // numbers as the leaderboard (zero divergence, zero extra scoring pass).
+  // Structural (per-phase) points are NOT captured here. userId → matchId → pts.
+  const evoPointsByUserMatch = new Map<string, Map<string, number>>();
+  const recordEvo = (userId: string, matchId: string, pts: number) => {
+    let byMatch = evoPointsByUserMatch.get(userId);
+    if (!byMatch) {
+      byMatch = new Map<string, number>();
+      evoPointsByUserMatch.set(userId, byMatch);
+    }
+    byMatch.set(matchId, pts);
+  };
+
   const leaderboardRows = members.map((m) => {
     let points = 0;
     let scoredMatches = 0;
@@ -532,6 +549,7 @@ export async function getPoolOverview(
               );
 
               points += advancedResult.totalPoints;
+              recordEvo(m.userId, match.id, advancedResult.totalPoints);
               pointsByPhase[match.phaseId] = (pointsByPhase[match.phaseId] ?? 0) + advancedResult.totalPoints;
               scoredMatches += 1;
 
@@ -564,6 +582,7 @@ export async function getPoolOverview(
       const legacyAway = phaseConfig2?.includeExtraTime ? r.awayGoals : (r.awayGoals90 ?? r.awayGoals);
       const scored = scorePick(pick, legacyHome, legacyAway);
       points += scored.totalPoints;
+      recordEvo(m.userId, match.id, scored.totalPoints);
       pointsByPhase[match.phaseId] = (pointsByPhase[match.phaseId] ?? 0) + scored.totalPoints;
       scoredMatches += 1;
 
@@ -649,7 +668,24 @@ export async function getPoolOverview(
   // (TIEBREAKER_PLAN.md). Same function used by the pool-completed email.
   const rankedRows = rankLeaderboardRows(leaderboardRows);
 
-    return { rankedRows, predictedCountByMatch, phaseOrder, presetMode, partialApplicable };
+  // Evolución series — cumulative points per finalized match, chronological
+  // (simultaneous kickoffs share a step). Built from the increments captured
+  // above, so it never diverges from the leaderboard and adds no scoring pass.
+  // Lives in the cached bundle (ADR-079); the per-viewer "isViewer" flag is
+  // applied by the read endpoint, NOT here (the bundle is user-agnostic).
+  const evolution = buildEvolutionSeries({
+    matches,
+    teamById,
+    finalizedMatchIds: new Set(resultByMatchId.keys()),
+    scoringDisabledMatchIds: new Set(
+      matchOverrides.filter((o) => !o.scoringEnabled).map((o) => o.matchId),
+    ),
+    members: members.map((m) => ({ userId: m.userId, displayName: m.user.displayName })),
+    pointsByUserMatch: evoPointsByUserMatch,
+    hasStructuralPhases: pickTypesConfig?.some((p) => !p.requiresScore) ?? false,
+  });
+
+    return { rankedRows, predictedCountByMatch, phaseOrder, presetMode, partialApplicable, evolution };
   };
   const leaderboardBundle = leaderboardVerbose
     ? await computeLeaderboardBundle()
@@ -720,6 +756,9 @@ export async function getPoolOverview(
       canManageResults: isPoolAdmin(myMembership.role),
       canInvite: isPoolAdmin(myMembership.role),
     },
+    // Evolución tab visibility (EVOLUTION_POOL_ALLOWLIST). Gated per-pool so we
+    // can review on one pool before opening to all.
+    evolutionEnabled: isEvolutionEnabledForPool(poolId),
     matches: matchCards.map((c) => ({
       ...c,
       // Prediction-status badge data (ADR-077). predictionStatusEnabled gates
@@ -762,5 +801,35 @@ export async function getPoolOverview(
         ...(leaderboardVerbose ? { breakdown: r.breakdown } : {}),
       })),
     },
+    // Evolución series (lazy — only when the dedicated endpoint asks for it, so
+    // normal overview calls stay lean). The bundle already holds the full,
+    // user-agnostic series; per-viewer curation/tagging happens in
+    // getPoolEvolution.
+    ...(includeEvolution && leaderboardBundle.evolution
+      ? { evolution: leaderboardBundle.evolution }
+      : {}),
+  };
+}
+
+/**
+ * Evolución series for a pool, curated for the requesting viewer (small pools:
+ * every line; big pools: viewer + top-K leaders + ±neighbours + a pack band).
+ * Reuses the cached leaderboard bundle (ADR-079) via `getPoolOverview` — no
+ * extra scoring pass; viewers only read. Standings ranks come from the same
+ * cached bundle. Permission / NOT_FOUND handling inherited from getPoolOverview.
+ */
+export async function getPoolEvolution(userId: string, poolId: string) {
+  const overview = await getPoolOverview(userId, poolId, false, true);
+  if (!overview.evolution) return { evolution: null };
+
+  const rankByUserId = new Map<string, number>(
+    overview.leaderboard.rows.map((r) => [r.userId, r.rank]),
+  );
+  return {
+    evolution: curateEvolutionForViewer({
+      series: overview.evolution,
+      rankByUserId,
+      viewerUserId: userId,
+    }),
   };
 }

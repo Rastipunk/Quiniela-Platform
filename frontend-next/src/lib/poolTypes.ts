@@ -262,6 +262,8 @@ export interface PoolOverview {
   counts: PoolCounts;
   tournamentInstance: PoolTournamentInstance;
   permissions: PoolPermissions;
+  /** Evolución tab gate (EVOLUTION_POOL_ALLOWLIST) — per-pool rollout. */
+  evolutionEnabled?: boolean;
   matches: PoolMatchCard[];
   leaderboard: PoolLeaderboard;
 }

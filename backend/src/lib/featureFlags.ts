@@ -36,6 +36,18 @@ export function isPersistentSessionsEnabled(email: string | null | undefined): b
   return emailInAllowlist(process.env.PERSISTENT_SESSIONS_ALLOWLIST, email);
 }
 
+/**
+ * Evolución tab (leaderboard race chart). Rollout scoped by POOL id via
+ * `EVOLUTION_POOL_ALLOWLIST`:
+ *   - "" / undefined        → tab hidden everywhere (safe default)
+ *   - "*"                   → enabled for every pool
+ *   - "<poolId>,<poolId>"   → enabled only for those pools
+ * Read at call time so flipping the env needs no redeploy.
+ */
+export function isEvolutionEnabledForPool(poolId: string | null | undefined): boolean {
+  return emailInAllowlist(process.env.EVOLUTION_POOL_ALLOWLIST, poolId);
+}
+
 /** Shared allowlist semantics: ""→none, "*"→all, else case-insensitive match. */
 function emailInAllowlist(raw: string | undefined, email: string | null | undefined): boolean {
   const v = (raw ?? "").trim();

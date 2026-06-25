@@ -104,7 +104,25 @@
     "admin": "Administração",
     "players": "Jogadores",
     "capacity": "Capacidade",
-    "branding": "Personalização"
+    "branding": "Personalização",
+    "evolution": "Evolução"
+  },
+
+  "evolution": {
+    "title": "Evolução",
+    "subtitle": "Como a classificação se moveu, jogo a jogo",
+    "loading": "Carregando evolução…",
+    "empty": "Ainda não há jogos disputados para mostrar a evolução.",
+    "error": "Não conseguimos carregar a evolução. Tente novamente.",
+    "you": "Você",
+    "pack": "Pelotão",
+    "packMore": "+{count} no pelotão",
+    "leadersLabel": "Líderes",
+    "neighborsLabel": "Sua zona",
+    "points": "pts",
+    "standingsAt": "Classificação neste ponto",
+    "downloadPdf": "Baixar PDF",
+    "scrollHint": "Deslize para ver toda a história"
   },
 
   "nav": {

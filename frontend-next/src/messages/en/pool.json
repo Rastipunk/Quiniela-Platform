@@ -104,7 +104,25 @@
     "admin": "Admin",
     "players": "Players",
     "capacity": "Capacity",
-    "branding": "Branding"
+    "branding": "Branding",
+    "evolution": "Evolution"
+  },
+
+  "evolution": {
+    "title": "Evolution",
+    "subtitle": "How the standings moved, match by match",
+    "loading": "Loading evolution…",
+    "empty": "No matches have been played yet to show the evolution.",
+    "error": "We couldn't load the evolution. Please try again.",
+    "you": "You",
+    "pack": "Pack",
+    "packMore": "+{count} in the pack",
+    "leadersLabel": "Leaders",
+    "neighborsLabel": "Your zone",
+    "points": "pts",
+    "standingsAt": "Standings at this point",
+    "downloadPdf": "Download PDF",
+    "scrollHint": "Swipe to see the full story"
   },
 
   "nav": {
