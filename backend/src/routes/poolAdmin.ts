@@ -23,6 +23,7 @@ import {
   updatePoolScoringConfig,
   setPhaselock,
   archivePool,
+  unarchivePool,
   getMatchPickBreakdown,
   getPhaseBreakdown,
   getGroupBreakdown,
@@ -205,6 +206,16 @@ poolAdminRouter.post("/:poolId/lock-phase", async (req, res) => {
 poolAdminRouter.post("/:poolId/archive", async (req, res) => {
   try {
     await archivePool(req.auth!.userId, req.params.poolId);
+    return sendOk(res);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /pools/:poolId/unarchive (solo HOST) — ADR-080
+poolAdminRouter.post("/:poolId/unarchive", async (req, res) => {
+  try {
+    await unarchivePool(req.auth!.userId, req.params.poolId);
     return sendOk(res);
   } catch (err) {
     return handleServiceError(res, err);

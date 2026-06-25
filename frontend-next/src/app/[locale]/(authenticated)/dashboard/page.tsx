@@ -9,6 +9,7 @@ import {
   joinPool,
   leavePool,
   archivePool,
+  unarchivePool,
   listCatalogInstances,
   type CatalogInstance,
   type MePoolRow,
@@ -148,6 +149,17 @@ export default function DashboardPage() {
     if (!confirm(msg)) return;
     try {
       await archivePool(token, poolRow.poolId);
+      await loadAll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error");
+    }
+  }
+
+  async function onUnarchivePool(poolRow: MePoolRow) {
+    if (!token) return;
+    if (!confirm("¿Desarchivar este pool? Los jugadores volverán a tener acceso y a jugar.")) return;
+    try {
+      await unarchivePool(token, poolRow.poolId);
       await loadAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -399,6 +411,7 @@ export default function DashboardPage() {
                 getPoolStatusBadge={getPoolStatusBadge}
                 onLeave={(row) => setLeaveModal(row)}
                 onArchive={onArchivePool}
+                onUnarchive={onUnarchivePool}
               />
             ))}
 

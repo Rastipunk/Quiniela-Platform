@@ -196,6 +196,11 @@ export async function archivePool(token: string, poolId: string): Promise<{ succ
   return requestJson<{ success: boolean }>(`/pools/${poolId}/archive`, { method: "POST" });
 }
 
+// Unarchive (ADR-080): restore an archived pool so players regain access.
+export async function unarchivePool(token: string, poolId: string): Promise<{ success: boolean }> {
+  return requestJson<{ success: boolean }>(`/pools/${poolId}/unarchive`, { method: "POST" });
+}
+
 // "Administrar reglas" — host can replace the pool's scoring config while
 // the pool is in DRAFT. The body shape mirrors the create-pool endpoint:
 // either a preset key string ("BASIC" | "SIMPLE" | "CUMULATIVE") that

@@ -77,6 +77,7 @@
   "leavePool": "🚪 Sair",
   "archivePool": "Arquivar bolão",
   "deletePool": "Excluir bolão",
+  "unarchivePool": "Desarquivar bolão",
   "leaveConfirmTitle": "⚠️ Sair do pool?",
   "leaveConfirmMessage": "Se sair, você manterá seus pontos mas não poderá fazer mais palpites. Esta ação é irreversível.",
   "leaveConfirmButton": "Sim, sair",

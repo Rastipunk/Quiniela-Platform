@@ -370,6 +370,73 @@ export async function transitionToArchived(poolId: string, actorUserId: string) 
 }
 
 /**
+ * Transición ARCHIVED → (status previo: ACTIVE o COMPLETED) — "desarchivar"
+ *
+ * Trigger: Manual por HOST desde la pestaña Archivadas (ADR-080).
+ * Archivar una pool ACTIVE/COMPLETED solo cambia `status` (conserva miembros,
+ * predicciones y resultados — ver transitionToArchived), así que desarchivar
+ * es seguro: devolvemos el status que tenía y los jugadores recuperan acceso
+ * automáticamente (sus membresías nunca se tocaron). Las DRAFT no llegan aquí:
+ * al "archivarse" se eliminan, no quedan en ARCHIVED.
+ *
+ * Restaura al status PREVIO (leído del último POOL_STATUS_CHANGED →ARCHIVED)
+ * para no disparar un correo de "pool completada" duplicado:
+ *   - era COMPLETED → la dejamos COMPLETED (sin email).
+ *   - era ACTIVE   → ACTIVE + backfill de los resultados que el job en vivo se
+ *                    perdió mientras estuvo archivada (ADR-074) + chequeo
+ *                    idempotente de completado (no-op si quedan partidos).
+ */
+export async function transitionFromArchived(poolId: string, actorUserId: string) {
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: { status: true },
+  });
+  if (!pool) throw new Error("Pool not found");
+  if (pool.status !== "ARCHIVED") throw new Error("Pool is not archived");
+
+  // The status the pool had BEFORE archiving lives in the archive audit
+  // event (transitionToArchived writes from/to). Default to ACTIVE so players
+  // resume; only COMPLETED is special-cased to avoid a duplicate completion
+  // email.
+  const lastChange = await prisma.auditEvent.findFirst({
+    where: { poolId, action: "POOL_STATUS_CHANGED" },
+    orderBy: { createdAtUtc: "desc" },
+    select: { dataJson: true },
+  });
+  const data = (lastChange?.dataJson ?? null) as { from?: string; to?: string } | null;
+  const target =
+    data?.to === "ARCHIVED" && data?.from === "COMPLETED" ? "COMPLETED" : "ACTIVE";
+
+  // Race-safe: only flip if still ARCHIVED (a concurrent caller wins once).
+  const updated = await prisma.pool.updateMany({
+    where: { id: poolId, status: "ARCHIVED" },
+    data: { status: target as "ACTIVE" | "COMPLETED" },
+  });
+  if (updated.count === 0) throw new Error("Pool is not archived");
+
+  await writeAuditEvent({
+    actorUserId,
+    action: "POOL_STATUS_CHANGED",
+    entityType: "Pool",
+    entityId: poolId,
+    poolId,
+    dataJson: { from: "ARCHIVED", to: target, reason: "Unarchived by host" },
+  });
+
+  // ACTIVE restore: seed results the live job missed while archived, THEN
+  // re-evaluate completion (idempotent — a no-op while matches are pending,
+  // a genuine first completion + email if the tournament finished meanwhile).
+  if (target === "ACTIVE") {
+    fireAndForget(
+      "PoolStateMachine:unarchive-backfill",
+      backfillConfirmedResultsForPool(poolId).then(() =>
+        transitionToCompleted(poolId, actorUserId),
+      ),
+    );
+  }
+}
+
+/**
  * Transición ACTIVE → DRAFT (revert)
  *
  * Trigger: el último miembro no-host (PLAYER o CO_ADMIN) fue removido.

@@ -15,9 +15,10 @@ export interface PoolCardProps {
   getPoolStatusBadge: (status: string) => { label: string; color: string; emoji: string };
   onLeave: (row: MePoolRow) => void;
   onArchive?: (row: MePoolRow) => void;
+  onUnarchive?: (row: MePoolRow) => void;
 }
 
-export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave, onArchive }: PoolCardProps) {
+export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave, onArchive, onUnarchive }: PoolCardProps) {
   const tTournaments = useTranslations("tournaments");
   return (
     <div
@@ -201,6 +202,33 @@ export function PoolCard({ row: r, isMobile, t, te, getPoolStatusBadge, onLeave,
                 }}
               >
                 {r.pool.status === "DRAFT" ? t("deletePool") ?? "Eliminar" : t("archivePool") ?? "Archivar"}
+              </button>
+            )}
+          {/* Unarchive button: only for hosts, on archived pools (ADR-080) */}
+          {onUnarchive &&
+            (r.role === "HOST" || r.role === "CORPORATE_HOST") &&
+            r.pool.status === "ARCHIVED" && (
+              <button
+                onClick={() => onUnarchive(r)}
+                style={{
+                  padding: isMobile ? 14 : 8,
+                  background: colors.white,
+                  color: colors.brand,
+                  border: `1px solid ${colors.brand}`,
+                  borderRadius: radii.lg,
+                  fontWeight: fw.semibold,
+                  fontSize: isMobile ? fs.base : fs.md,
+                  cursor: "pointer",
+                  textAlign: "center",
+                  minHeight: isMobile ? TOUCH_TARGET.minimum : "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  ...mobileInteractiveStyles.tapHighlight,
+                }}
+              >
+                {t("unarchivePool") ?? "Desarchivar"}
               </button>
             )}
         </div>

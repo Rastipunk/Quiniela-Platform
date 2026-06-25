@@ -18,7 +18,7 @@ import {
   advanceKnockoutPhase,
   validateGroupStageComplete,
 } from "./instanceAdvancement";
-import { transitionToArchived, canEditScoringConfig } from "./poolStateMachine";
+import { transitionToArchived, transitionFromArchived, canEditScoringConfig } from "./poolStateMachine";
 import { generateDynamicPresetConfig, getPresetByKey } from "../lib/pickPresets";
 import { validatePoolPickTypesConfig } from "../validation/pickConfig";
 import type { PoolPickTypesConfig } from "../types/pickConfig";
@@ -482,6 +482,30 @@ export async function archivePool(userId: string, poolId: string) {
   } catch (e: any) {
     if (e.message === "Pool not found") throw new ServiceError("NOT_FOUND", 404);
     if (e.message === "Pool must be COMPLETED to archive") throw new ServiceError(e.message, 409);
+    throw e;
+  }
+}
+
+// ─── Unarchive Pool (ADR-080) ────────────────────────────────
+//
+// Reactivate an archived pool: restores the pre-archive status (members,
+// predictions and results were preserved when archiving — see
+// transitionToArchived), so players regain access and keep playing. HOST-only,
+// mirroring archivePool. The host's membership stays ACTIVE on an archived
+// pool, so the ownership check still resolves.
+export async function unarchivePool(userId: string, poolId: string) {
+  const myMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId, status: "ACTIVE" },
+  });
+  if (!myMembership || !isPoolOwner(myMembership.role)) {
+    throw new ServiceError("OWNER_ONLY", 403);
+  }
+
+  try {
+    await transitionFromArchived(poolId, userId);
+  } catch (e: any) {
+    if (e.message === "Pool not found") throw new ServiceError("NOT_FOUND", 404);
+    if (e.message === "Pool is not archived") throw new ServiceError("NOT_ARCHIVED", 409);
     throw e;
   }
 }

@@ -77,6 +77,7 @@
   "leavePool": "🚪 Leave",
   "archivePool": "Archive",
   "deletePool": "Delete",
+  "unarchivePool": "Unarchive",
   "leaveConfirmTitle": "⚠️ Leave this pool?",
   "leaveConfirmMessage": "If you leave, you will keep your points but won't be able to make more predictions. This action is irreversible.",
   "leaveConfirmButton": "Yes, leave",

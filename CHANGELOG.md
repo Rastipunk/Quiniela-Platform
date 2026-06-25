@@ -8,6 +8,13 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Pools — Desarchivar una pool (ADR-080) (2026-06-23)
+
+#### Added
+- **Botón "Desarchivar"** en la pestaña Archivadas del dashboard (solo HOST/CO_ADMIN). Reactiva una pool archivada y **los jugadores recuperan acceso y siguen jugando**, sin perder nada. Antes archivar era un camino sin retorno (no existía transición de salida de `ARCHIVED`) y la única vía era un cambio manual en DB.
+- Backend: `transitionFromArchived` (poolStateMachine) restaura al **status previo** leído del audit `POOL_STATUS_CHANGED` (COMPLETED → COMPLETED sin reenviar correo; ACTIVE → ACTIVE + `backfillConfirmedResultsForPool` de los resultados que el job en vivo se perdió mientras estuvo archivada (ADR-074) + chequeo idempotente de completado). Update condicional `WHERE status=ARCHIVED` (race-safe). `unarchivePool` (HOST-only, espeja `archivePool`) + ruta `POST /pools/:poolId/unarchive`.
+- Seguro y aditivo: archivar una pool ACTIVE/COMPLETED solo cambia `status` (conserva miembros, predicciones y resultados), así que desarchivar solo devuelve el status. Las DRAFT no aplican (al archivarse se eliminan). i18n ES/EN/PT.
+
 ### Read-only ad-hoc query endpoint (2026-06-17)
 
 Operational diagnostics over HTTPS without a database port. See **ADR-076** and `docs/guides/ADMIN_QUERY_ENDPOINT.md`.

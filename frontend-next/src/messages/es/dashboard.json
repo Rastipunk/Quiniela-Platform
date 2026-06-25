@@ -77,6 +77,7 @@
   "leavePool": "Salir",
   "archivePool": "Archivar",
   "deletePool": "Eliminar",
+  "unarchivePool": "Desarchivar",
   "leaveConfirmTitle": "⚠️ ¿Salir de la pool?",
   "leaveConfirmMessage": "Si sales, conservarás tus puntos pero no podrás hacer más predicciones. Esta acción es irreversible.",
   "leaveConfirmButton": "Sí, salir",
