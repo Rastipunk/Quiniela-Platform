@@ -1,7 +1,12 @@
 import type { Response, CookieOptions } from "express";
+import { SESSION } from "./constants";
 
 const COOKIE_NAME = "p4a_token";
 const LOGGED_IN_COOKIE = "p4a_logged_in";
+// Opaque refresh token (ADR-081). httpOnly + path-scoped to /auth/refresh so
+// the browser only ever sends it on the refresh call — smaller attack surface.
+const REFRESH_COOKIE_NAME = "p4a_refresh";
+const REFRESH_PATH = "/auth/refresh";
 // Non-httpOnly hint that opens analytics debug mode (`?gtm_debug=1`)
 // only for platform admins. Not a security boundary — a curious user
 // cannot inspect PII from dataLayer anyway — just a UX guardrail so
@@ -55,11 +60,18 @@ function getLocaleCookieOptions(): CookieOptions {
 export function setAuthCookies(
   res: Response,
   jwt: string,
-  opts?: { isAdmin?: boolean; locale?: string | null },
+  opts?: { isAdmin?: boolean; locale?: string | null; persistent?: boolean },
 ): void {
-  res.cookie(COOKIE_NAME, jwt, getCookieOptions());
+  // Persistent ("remember me") sessions keep the token + UI-hint cookies
+  // alive for the long window. The JWT inside still expires in 4h, so on the
+  // next request after 4h requireAuth returns TOKEN_EXPIRED and the client
+  // silently refreshes — the long maxAge just keeps the cookie present so the
+  // refresh flow triggers (instead of the cookie vanishing). Non-persistent
+  // sessions keep the 4h maxAge → identical to today (logs out at 4h).
+  const ttl = opts?.persistent ? SESSION.PERSISTENT_MS : MAX_AGE_MS;
+  res.cookie(COOKIE_NAME, jwt, getCookieOptions({ maxAge: ttl }));
   // Non-httpOnly flag so frontend JS can check if logged in
-  res.cookie(LOGGED_IN_COOKIE, "1", getCookieOptions({ httpOnly: false }));
+  res.cookie(LOGGED_IN_COOKIE, "1", getCookieOptions({ httpOnly: false, maxAge: ttl }));
   if (opts?.isAdmin) {
     res.cookie(ADMIN_HINT_COOKIE, "1", getCookieOptions({ httpOnly: false }));
   }
@@ -80,6 +92,29 @@ export function setLocaleCookie(res: Response, locale: string): void {
   res.cookie(NEXT_LOCALE_COOKIE, locale, getLocaleCookieOptions());
 }
 
+/** Set the long-lived, path-scoped refresh cookie (persistent sessions only). */
+export function setRefreshCookie(res: Response, refreshToken: string): void {
+  res.cookie(
+    REFRESH_COOKIE_NAME,
+    refreshToken,
+    getCookieOptions({ maxAge: SESSION.PERSISTENT_MS, path: REFRESH_PATH }),
+  );
+}
+
+/** Read the refresh token. Only present on requests to /auth/refresh (path-scoped). */
+export function getRefreshFromCookies(cookies: Record<string, string> | undefined): string | null {
+  return cookies?.[REFRESH_COOKIE_NAME] || null;
+}
+
+/** Clear the refresh cookie (matching its path so the browser deletes it). */
+export function clearRefreshCookie(res: Response): void {
+  const isProduction = process.env.NODE_ENV === "production";
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    path: REFRESH_PATH,
+    ...(isProduction ? { domain: `.${process.env.SITE_DOMAIN || "picks4all.com"}` } : {}),
+  });
+}
+
 /** Clear all auth cookies AND the locale preference cookie. Without
  *  clearing NEXT_LOCALE, the next user logging in on the same browser
  *  would inherit the previous user's locale until they change it
@@ -94,6 +129,7 @@ export function clearAuthCookies(res: Response): void {
   res.clearCookie(LOGGED_IN_COOKIE, opts);
   res.clearCookie(ADMIN_HINT_COOKIE, opts);
   res.clearCookie(NEXT_LOCALE_COOKIE, opts);
+  clearRefreshCookie(res); // path-scoped to /auth/refresh
 }
 
 /** Read auth token from cookie (used by requireAuth middleware) */

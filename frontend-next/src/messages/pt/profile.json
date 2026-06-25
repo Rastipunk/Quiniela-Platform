@@ -88,5 +88,19 @@
     "completionsDesc": "Receba notificações quando um {term} terminar",
     "newMemberDigestLabel": "Resumo diário de novos membros",
     "newMemberDigestDesc": "Receba um resumo diário dos novos membros que entraram nos seus bolões (para hosts)"
+  },
+  "sessions": {
+    "title": "Sessões ativas",
+    "description": "Dispositivos onde sua conta está conectada. Encerre as que não reconhecer.",
+    "current": "Este dispositivo",
+    "lastUsed": "Última atividade",
+    "revoke": "Encerrar",
+    "revokeOthers": "Encerrar sessão nos outros dispositivos",
+    "onlyThisDevice": "Não há outras sessões ativas.",
+    "empty": "Nenhuma sessão ativa registrada.",
+    "unknownDevice": "Dispositivo desconhecido",
+    "loading": "Carregando...",
+    "loadError": "Não foi possível carregar as sessões.",
+    "revokeError": "Não foi possível encerrar a sessão."
   }
 }

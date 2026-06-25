@@ -16,10 +16,42 @@ export type RegisterConsentOptions = {
   acceptMarketing?: boolean;
 };
 
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export async function login(
+  email: string,
+  password: string,
+  rememberMe = true,
+): Promise<LoginResponse> {
   return requestJson<LoginResponse>("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, rememberMe }),
+  });
+}
+
+// ── Active sessions / devices (ADR-081) ──────────────────────
+export type ActiveSession = {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  persistent: boolean;
+  createdAtUtc: string;
+  lastUsedAtUtc: string;
+  expiresAtUtc: string;
+  current: boolean;
+};
+
+export async function getSessions(): Promise<{ sessions: ActiveSession[] }> {
+  return requestJson<{ sessions: ActiveSession[] }>("/auth/sessions", { method: "GET" });
+}
+
+export async function revokeSession(id: string): Promise<{ ok: boolean }> {
+  return requestJson<{ ok: boolean }>(`/auth/sessions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function revokeOtherSessions(): Promise<{ ok: boolean; revoked: number }> {
+  return requestJson<{ ok: boolean; revoked: number }>("/auth/sessions/revoke-others", {
+    method: "POST",
   });
 }
 

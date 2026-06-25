@@ -8,6 +8,18 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Auth — Sesiones persistentes "Mantener sesión abierta" + panel de dispositivos (ADR-081) (2026-06-25)
+
+#### Added
+- **"Mantener sesión abierta en este dispositivo"** en el login (checkbox, default marcado). Antes el JWT expiraba a las 4h sin renovación → había que volver a entrar cada vez. Ahora, al marcarlo, la sesión se renueva **silenciosamente** (el access token sigue siendo de 4h, pero un refresh token de 90 días lo renueva de forma transparente). Sin marcar → comportamiento idéntico al anterior (4h, sin refresh).
+- **Panel "Sesiones activas"** en el perfil (debajo de Notificaciones por e-mail): lista los dispositivos con sesión abierta (navegador · SO, última actividad, "este dispositivo"), permite **cerrar uno** o **cerrar sesión en los demás dispositivos**. i18n ES/EN/PT.
+- **Corte inmediato:** el access JWT lleva un `sessionId` y `requireAuth` valida la sesión en una sola query → revocar un dispositivo (panel, logout o "cerrar los demás") lo expulsa en su **siguiente request**, no al expirar el token.
+
+#### Changed / Technical
+- Modelo `Session` (refresh token guardado **solo como sha256**, rotación atómica en cada refresh, expiración deslizante de 90 días). Migración aditiva (cero impacto a datos).
+- `POST /auth/refresh` (rotación + reemisión), `GET /auth/sessions`, `POST /auth/sessions/revoke-others`, `DELETE /auth/sessions/:id`. `logout` ahora **revoca** la sesión del dispositivo. Cookie de refresh httpOnly con `path` acotado a `/auth/refresh`.
+- **Sin desloguear a nadie en el deploy:** los tokens viejos (sin `sessionId`) siguen válidos hasta sus 4h; al re-loguear se emite uno respaldado por sesión. Detalle completo: `PERSISTENT_SESSIONS_PLAN_2026-06-25.md`.
+
 ### Pools — Desarchivar una pool (ADR-080) (2026-06-23)
 
 #### Added

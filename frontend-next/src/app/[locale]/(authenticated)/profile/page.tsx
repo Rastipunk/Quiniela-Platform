@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from "react";
 import { getUserProfile, updateUserProfile, type UserProfile, type UpdateProfileInput } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import { EmailPreferencesSection } from "@/components/EmailPreferencesSection";
+import { SessionsPanel } from "@/components/SessionsPanel";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -610,6 +611,9 @@ export default function ProfilePage() {
 
       {/* Sección de preferencias de email (fuera del form principal) */}
       <EmailPreferencesSection />
+
+      {/* Sesiones activas / dispositivos (ADR-081) */}
+      <SessionsPanel />
     </div>
   );
 }

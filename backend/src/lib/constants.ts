@@ -37,6 +37,18 @@ export const MATCH_SYNC = {
   get FINISH_CHECK_MS() { return this.FINISH_CHECK_MINUTES * MS.MINUTE; },
 } as const;
 
+// ── Sessions (persistent login, ADR-081) ────────────────────
+export const SESSION = {
+  /** Lifetime of a "remember me" session + its refresh token. Each refresh
+   *  slides the expiry to now + this window, so a user who keeps using the
+   *  app stays logged in. Non-"remember me" logins ignore this entirely. */
+  PERSISTENT_DAYS: envInt("SESSION_PERSISTENT_DAYS", 90),
+  /** Non-persistent session lifetime — mirrors the 4h access-token JWT. */
+  ACCESS_TTL_HOURS: envInt("SESSION_ACCESS_TTL_HOURS", 4),
+  get ACCESS_TTL_MS(): number { return this.ACCESS_TTL_HOURS * MS.HOUR; },
+  get PERSISTENT_MS(): number { return this.PERSISTENT_DAYS * MS.DAY; },
+} as const;
+
 // ── Scores service (picks4all-scores integration) ────────────
 //
 // ⚠️ NO AUTOMATIC FALLBACK EXISTS (2026-06-11). API-Football is no longer

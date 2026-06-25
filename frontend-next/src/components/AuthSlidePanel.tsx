@@ -69,6 +69,9 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  // "Mantener sesión abierta en este dispositivo" — persistent session (ADR-081).
+  // Default on to reduce re-login friction; unchecking keeps the 4h-only flow.
+  const [rememberMe, setRememberMe] = useState(true);
 
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
@@ -312,7 +315,7 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
         trackMetaEvent("CompleteRegistration", { content_name: "email", status: true }, res.metaEventId);
         onLoggedIn();
       } else {
-        const res = await login(em, password);
+        const res = await login(em, password, rememberMe);
         setToken(res.token);
         acceptAnalyticsConsent();
         if (res.user?.id) {
@@ -528,11 +531,22 @@ export function AuthSlidePanel({ isOpen, onClose, onLoggedIn, initialMode }: Aut
             </label>
 
             {mode === "login" && (
-              <div style={{ marginBottom: 16, textAlign: "right" }}>
-                <Link href="/forgot-password" onClick={onClose} style={{ fontSize: 13, color: "#667eea", textDecoration: "none" }}>
-                  {t("forgotPassword")}
-                </Link>
-              </div>
+              <>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 13, color: "var(--text)", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={checkboxStyle}
+                  />
+                  {t("rememberMe")}
+                </label>
+                <div style={{ marginBottom: 16, textAlign: "right" }}>
+                  <Link href="/forgot-password" onClick={onClose} style={{ fontSize: 13, color: "#667eea", textDecoration: "none" }}>
+                    {t("forgotPassword")}
+                  </Link>
+                </div>
+              </>
             )}
 
             {mode === "register" && <ConsentCheckboxes />}

@@ -4,6 +4,13 @@ import type { PlatformRole } from "@prisma/client";
 export type AuthTokenPayload = {
   userId: string;
   platformRole: PlatformRole;
+  /**
+   * Session row id (ADR-081). Present on tokens minted after persistent
+   * sessions shipped; ABSENT on legacy tokens issued before the deploy —
+   * requireAuth handles both (legacy = the old user-lookup path). Carrying
+   * it here is what lets requireAuth reject a revoked device immediately.
+   */
+  sessionId?: string;
 };
 
 /** Sign a JWT with 4-hour expiry. */

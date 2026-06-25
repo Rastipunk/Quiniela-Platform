@@ -13,7 +13,49 @@ function getApiBase(): string {
 
 export const API_BASE = getApiBase();
 
-export async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+// Silent session refresh (ADR-081). A 401 on a normal call triggers ONE
+// /auth/refresh attempt — shared across concurrent 401s so a burst refreshes
+// once — then the original request is retried a single time. Persistent
+// ("remember me") sessions refresh transparently; non-persistent sessions have
+// no refresh cookie, so /auth/refresh 401s → the existing logout path runs
+// (unchanged 4h behaviour).
+let refreshInFlight: Promise<boolean> | null = null;
+
+function attemptRefresh(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const r = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      return r.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
+// Auth-flow endpoints must never trigger the refresh-retry (would loop or be
+// meaningless — these establish/clear the session themselves).
+function isAuthFlowPath(path: string): boolean {
+  return (
+    path.startsWith("/auth/refresh") ||
+    path.startsWith("/auth/login") ||
+    path.startsWith("/auth/logout") ||
+    path.startsWith("/auth/register") ||
+    path.startsWith("/auth/google")
+  );
+}
+
+export async function requestJson<T>(
+  path: string,
+  init: RequestInit = {},
+  _retried = false,
+): Promise<T> {
   const headers = new Headers(init.headers);
 
   headers.set("Accept", "application/json");
@@ -43,6 +85,19 @@ export async function requestJson<T>(path: string, init: RequestInit = {}): Prom
     throw err;
   }
   clearTimeout(timer);
+
+  // Silent refresh: a 401 on a normal call → refresh once → retry once.
+  if (
+    res.status === 401 &&
+    typeof window !== "undefined" &&
+    !_retried &&
+    !isAuthFlowPath(path)
+  ) {
+    const refreshed = await attemptRefresh();
+    if (refreshed) {
+      return requestJson<T>(path, init, true);
+    }
+  }
 
   const text = await res.text();
   let data: unknown = null;

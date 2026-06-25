@@ -88,5 +88,19 @@
     "completionsDesc": "Recibe notificaciones cuando termina {indefinite} {term}",
     "newMemberDigestLabel": "Resumen diario de nuevos miembros",
     "newMemberDigestDesc": "Recibe un resumen diario con los nuevos miembros que se unieron a tus pools (para hosts)"
+  },
+  "sessions": {
+    "title": "Sesiones activas",
+    "description": "Dispositivos donde tu cuenta tiene la sesión abierta. Cierra las que no reconozcas.",
+    "current": "Este dispositivo",
+    "lastUsed": "Última actividad",
+    "revoke": "Cerrar",
+    "revokeOthers": "Cerrar sesión en los demás dispositivos",
+    "onlyThisDevice": "No hay otras sesiones activas.",
+    "empty": "No hay sesiones activas registradas.",
+    "unknownDevice": "Dispositivo desconocido",
+    "loading": "Cargando...",
+    "loadError": "No se pudieron cargar las sesiones.",
+    "revokeError": "No se pudo cerrar la sesión."
   }
 }

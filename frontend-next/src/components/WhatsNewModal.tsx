@@ -16,20 +16,20 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
 
-const WHATS_NEW_VERSION = "2026-06-17.1";
+const WHATS_NEW_VERSION = "2026-06-25.1";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
 
 /** Staged rollout: when non-null, ONLY these accounts see the modal.
  *  Set to null to release the announcement to every user.
- *  2026-06-17 (prediction status): owner approved → released to everyone,
- *  together with the feature flag PREDICTION_STATUS_HOST_ALLOWLIST = "*". */
-const TEST_EMAILS: string[] | null = null;
+ *  2026-06-25 (persistent sessions, ADR-081): staged to the owner first to
+ *  review copy/visuals in prod; release to everyone (TEST_EMAILS = null)
+ *  together with flipping PERSISTENT_SESSIONS_ALLOWLIST = "*". */
+const TEST_EMAILS: string[] | null = ["juan.k.chacon9729@gmail.com"];
 
-/** Hard cutoff: after this instant the announcement never shows again
- *  for anyone, regardless of whether they dismissed it. One week window
- *  so latecomers still catch it: 2026-06-24 19:00 UTC (2:00 PM Colombia).
- *  (Uses the device clock — fine for an announcement.) */
-const WHATS_NEW_EXPIRES_AT = new Date("2026-06-24T19:00:00Z").getTime();
+/** Hard cutoff: after this instant the announcement never shows again for
+ *  anyone, regardless of dismissal. One-week window so latecomers still catch
+ *  it: 2026-07-02 19:00 UTC (2:00 PM Colombia). (Device clock — fine here.) */
+const WHATS_NEW_EXPIRES_AT = new Date("2026-07-02T19:00:00Z").getTime();
 
 export function WhatsNewModal() {
   const t = useTranslations("whatsNew");
@@ -122,7 +122,7 @@ export function WhatsNewModal() {
         <div style={{ padding: isMobile ? 20 : 26, overflowY: "auto", flex: 1, minHeight: 0 }}>
           {/* Items */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Item 1: sort by date or group */}
+            {/* Item 1: keep me signed in — with a checked-checkbox example */}
             <div
               style={{
                 display: "flex",
@@ -134,18 +134,41 @@ export function WhatsNewModal() {
                 padding: 16,
               }}
             >
-              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>📊</div>
-              <div>
+              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>🔓</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, color: "#111827", marginBottom: 3 }}>
                   {t("item1Title")}
                 </div>
                 <div style={{ fontSize: "0.86rem", color: "#4b5563", lineHeight: 1.5 }}>
                   {t("item1Desc")}
                 </div>
+                {/* Example of the checkbox as it appears at login (checked) */}
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: colors.white,
+                    border: "1px solid #c7d2fe",
+                    borderRadius: 8,
+                    padding: "10px 12px",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked
+                    readOnly
+                    style={{ width: 18, height: 18, minWidth: 18, accentColor: "#4f46e5", cursor: "default" }}
+                  />
+                  <span style={{ fontSize: "0.86rem", color: "#111827", fontWeight: 500 }}>
+                    {t("item1Example")}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Item 2: shareable PDFs */}
+            {/* Item 2: manage your devices */}
             <div
               style={{
                 display: "flex",
@@ -157,7 +180,7 @@ export function WhatsNewModal() {
                 padding: 16,
               }}
             >
-              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>📄</div>
+              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>📱</div>
               <div>
                 <div style={{ fontWeight: 700, color: "#111827", marginBottom: 3 }}>
                   {t("item2Title")}

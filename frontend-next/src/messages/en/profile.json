@@ -88,5 +88,19 @@
     "completionsDesc": "Receive notifications when a {term} ends",
     "newMemberDigestLabel": "Daily new member digest",
     "newMemberDigestDesc": "Receive a daily summary of new members who joined your pools (for hosts)"
+  },
+  "sessions": {
+    "title": "Active sessions",
+    "description": "Devices where your account is signed in. Sign out any you don't recognize.",
+    "current": "This device",
+    "lastUsed": "Last active",
+    "revoke": "Sign out",
+    "revokeOthers": "Sign out all other devices",
+    "onlyThisDevice": "No other active sessions.",
+    "empty": "No active sessions recorded.",
+    "unknownDevice": "Unknown device",
+    "loading": "Loading...",
+    "loadError": "Couldn't load sessions.",
+    "revokeError": "Couldn't sign out the session."
   }
 }

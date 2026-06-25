@@ -6,10 +6,26 @@
  */
 
 import { Router } from "express";
+import type { Response } from "express";
 import { z } from "zod";
+import type { PlatformRole } from "@prisma/client";
 import { signToken, verifyToken } from "../lib/jwt";
-import { requireAuth } from "../middleware/requireAuth";
-import { setAuthCookies, clearAuthCookies, getTokenFromCookies } from "../lib/authCookies";
+import { requireAuth, optionalAuth } from "../middleware/requireAuth";
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  getTokenFromCookies,
+  setRefreshCookie,
+  getRefreshFromCookies,
+} from "../lib/authCookies";
+import {
+  createSession,
+  rotateRefresh,
+  revokeSession,
+  revokeOthersForUser,
+  listSessions,
+} from "../services/sessionService";
+import { isPersistentSessionsEnabled } from "../lib/featureFlags";
 import {
   sendData, sendOk, sendCreated, sendBadRequest,
   sendUnauthorized, sendForbidden, sendNotFound,
@@ -56,6 +72,50 @@ function handleServiceError(res: any, err: unknown): void {
   throw err; // Re-throw unexpected errors → global error handler
 }
 
+/**
+ * Create a Session, mint a session-backed access token, and set cookies —
+ * the single path every login entry point uses (ADR-081), so behaviour stays
+ * identical across register / login / google / corporate activation.
+ * `persistent` ("remember me") also issues the long-lived refresh cookie; when
+ * false, this behaves exactly like the legacy 4h flow (no refresh token).
+ */
+async function establishSession(
+  res: Response,
+  user: { id: string; platformRole: PlatformRole; locale?: string | null; email: string },
+  opts: { persistent: boolean; ctx: AuditContext },
+): Promise<void> {
+  // Rollout gate (ADR-081, PERSISTENT_SESSIONS_ALLOWLIST). Outside the
+  // allowlist → a legacy token: no sessionId, no Session row, no refresh
+  // cookie → behaviour byte-for-byte identical to before this feature. Flip
+  // the env to "*" (no redeploy) to give every user session-backed tokens.
+  if (!isPersistentSessionsEnabled(user.email)) {
+    const token = signToken({ userId: user.id, platformRole: user.platformRole });
+    setAuthCookies(res, token, {
+      isAdmin: user.platformRole === "ADMIN",
+      locale: user.locale ?? null,
+    });
+    return;
+  }
+
+  const { sessionId, refreshToken } = await createSession({
+    userId: user.id,
+    persistent: opts.persistent,
+    userAgent: opts.ctx.userAgent,
+    ipAddress: opts.ctx.ip,
+  });
+  const token = signToken({
+    userId: user.id,
+    platformRole: user.platformRole,
+    sessionId,
+  });
+  setAuthCookies(res, token, {
+    isAdmin: user.platformRole === "ADMIN",
+    locale: user.locale ?? null,
+    persistent: opts.persistent,
+  });
+  if (refreshToken) setRefreshCookie(res, refreshToken);
+}
+
 // ─── Schemas ─────────────────────────────────────────────────
 
 // Attribution payload forwarded by the frontend's captureAttribution().
@@ -97,6 +157,10 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1).max(200),
+  // "Mantener sesión iniciada" (ADR-081). Default true to reduce re-login
+  // friction; the user can uncheck it on shared devices to keep the 4h-only
+  // behaviour (no refresh token, no persistent cookie).
+  rememberMe: z.boolean().optional().default(true),
 });
 
 const forgotPasswordSchema = z.object({
@@ -145,11 +209,7 @@ authRouter.post("/register", async (req, res) => {
 
   try {
     const result = await registerUser(parsed.data, auditCtx(req));
-    const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token, {
-      isAdmin: result.user.platformRole === "ADMIN",
-      locale: result.user.locale ?? null,
-    });
+    await establishSession(res, result.user, { persistent: true, ctx: auditCtx(req) });
     return sendCreated(res, result);
   } catch (err) {
     return handleServiceError(res, err);
@@ -162,10 +222,9 @@ authRouter.post("/login", async (req, res) => {
 
   try {
     const result = await loginUser(parsed.data.email, parsed.data.password, auditCtx(req));
-    const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token, {
-      isAdmin: result.user.platformRole === "ADMIN",
-      locale: result.user.locale ?? null,
+    await establishSession(res, result.user, {
+      persistent: parsed.data.rememberMe,
+      ctx: auditCtx(req),
     });
     return sendData(res, result);
   } catch (err) {
@@ -205,11 +264,7 @@ authRouter.post("/google", async (req, res) => {
 
   try {
     const result = await authenticateWithGoogle(parsed.data, auditCtx(req));
-    const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token, {
-      isAdmin: result.user.platformRole === "ADMIN",
-      locale: result.user.locale ?? null,
-    });
+    await establishSession(res, result.user, { persistent: true, ctx: auditCtx(req) });
     return sendData(res, { user: result.user, metaEventId: result.metaEventId });
   } catch (err) {
     return handleServiceError(res, err);
@@ -281,11 +336,7 @@ authRouter.post("/activate-corporate", async (req, res) => {
       { ...parsed.data, currentUserId },
       auditCtx(req),
     );
-    const token = signToken({ userId: result.user.id, platformRole: result.user.platformRole });
-    setAuthCookies(res, token, {
-      isAdmin: result.user.platformRole === "ADMIN",
-      locale: result.user.locale ?? null,
-    });
+    await establishSession(res, result.user, { persistent: true, ctx: auditCtx(req) });
     const status = result.alreadyExisted ? sendData : sendCreated;
     return status(res, result);
   } catch (err) {
@@ -303,8 +354,75 @@ authRouter.post("/resend-verification", requireAuth, async (req, res) => {
   }
 });
 
-// POST /auth/logout
-authRouter.post("/logout", (_req, res) => {
+// POST /auth/logout — revoke the current device's session (if any) + clear
+// cookies. optionalAuth (not requireAuth) so logout still clears cookies even
+// with an expired/invalid token.
+authRouter.post("/logout", optionalAuth, async (req, res) => {
+  if (req.auth?.sessionId) {
+    await revokeSession(req.auth.sessionId, req.auth.userId).catch(() => {});
+  }
   clearAuthCookies(res);
+  return sendOk(res);
+});
+
+// POST /auth/refresh — silent renewal (ADR-081). Validates + rotates the
+// refresh token, mints a fresh access JWT for the same session. The browser
+// only sends the refresh cookie here (path-scoped). No requireAuth: the access
+// token is expected to be expired.
+authRouter.post("/refresh", async (req, res) => {
+  const raw = getRefreshFromCookies(req.cookies);
+  if (!raw) return sendUnauthorized(res, "UNAUTHENTICATED", { reason: "NO_REFRESH_TOKEN" });
+
+  const result = await rotateRefresh(raw);
+  if (!result.ok) {
+    clearAuthCookies(res); // dead/rotated/expired refresh → fully log out
+    return sendUnauthorized(res, "UNAUTHENTICATED", { reason: "REFRESH_INVALID" });
+  }
+
+  const token = signToken({
+    userId: result.userId,
+    platformRole: result.platformRole,
+    sessionId: result.sessionId,
+  });
+  setAuthCookies(res, token, {
+    isAdmin: result.platformRole === "ADMIN",
+    persistent: true,
+  });
+  setRefreshCookie(res, result.newRefreshToken);
+  return sendOk(res);
+});
+
+// GET /auth/sessions — active sessions for the profile panel.
+authRouter.get("/sessions", requireAuth, async (req, res) => {
+  const sessions = await listSessions(req.auth!.userId);
+  const currentId = req.auth!.sessionId ?? null;
+  return sendData(res, {
+    sessions: sessions.map((s) => ({
+      id: s.id,
+      userAgent: s.userAgent,
+      ipAddress: s.ipAddress,
+      persistent: s.persistent,
+      createdAtUtc: s.createdAtUtc,
+      lastUsedAtUtc: s.lastUsedAtUtc,
+      expiresAtUtc: s.expiresAtUtc,
+      current: s.id === currentId,
+    })),
+  });
+});
+
+// POST /auth/sessions/revoke-others — "cerrar sesión en los demás dispositivos".
+// Declared before the :id route so the literal path wins.
+authRouter.post("/sessions/revoke-others", requireAuth, async (req, res) => {
+  const revoked = await revokeOthersForUser(req.auth!.userId, req.auth!.sessionId ?? null);
+  return sendData(res, { revoked });
+});
+
+// DELETE /auth/sessions/:id — revoke one device (scoped to the caller).
+authRouter.delete("/sessions/:id", requireAuth, async (req, res) => {
+  const sessionId = req.params.id;
+  if (typeof sessionId !== "string" || !sessionId) {
+    return sendBadRequest(res, "VALIDATION_ERROR", { reason: "SESSION_ID_REQUIRED" });
+  }
+  await revokeSession(sessionId, req.auth!.userId);
   return sendOk(res);
 });

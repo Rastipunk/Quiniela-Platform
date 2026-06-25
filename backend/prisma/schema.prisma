@@ -177,6 +177,7 @@ model User {
   poolMatchOverrides        PoolMatchOverride[]
   poolPayments              PoolPayment[]
   brandingAuditEntries      OrganizationBrandingAudit[]
+  sessions                  Session[]
 
   // Sales documents (issued by ADMIN users only; see SALES_AUDIT.md).
   // Back-references for the FKs on Quote.createdByUserId and the two
@@ -189,6 +190,32 @@ model User {
   @@index([resetToken])
   @@index([googleId])
   @@index([emailVerificationToken])
+}
+
+// Persistent login sessions (ADR-081). One row per device/login. The access
+// JWT carries this row's id (sessionId) so requireAuth can reject a revoked
+// device on its very next request (immediate revocation). refreshTokenHash is
+// the sha256 of the opaque refresh token and is set ONLY for "remember me"
+// sessions that receive a long-lived refresh cookie; non-persistent sessions
+// expire with the 4h access token and carry no refresh token.
+model Session {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String?  @unique
+  persistent       Boolean  @default(false)
+
+  userAgent String? @db.VarChar(512)
+  ipAddress String? @db.VarChar(64)
+
+  createdAtUtc  DateTime  @default(now())
+  lastUsedAtUtc DateTime  @default(now())
+  expiresAtUtc  DateTime
+  revokedAtUtc  DateTime?
+
+  @@index([userId])
 }
 
 model AuditEvent {

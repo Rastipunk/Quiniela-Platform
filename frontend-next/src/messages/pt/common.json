@@ -283,12 +283,13 @@
     "ctaNameWorldCup": "Criar Penca Grátis"
   },
   "whatsNew": {
-    "title": "Quem já fez o palpite?",
-    "subtitle": "Um jeito novo de garantir que ninguém perca pontos",
-    "item1Title": "Veja quem já palpitou",
-    "item1Desc": "Em cada jogo aberto, o botão 📊 mostra quantos jogadores já salvaram o palpite e quem ainda falta. Lembre-os antes do prazo, assim ninguém perde pontos por esquecimento.",
-    "item2Title": "Compartilhe em PDF",
-    "item2Desc": "Exporte a lista em PDF para compartilhar nos seus grupos de família, amigos ou trabalho.",
+    "title": "Mantenha sua sessão aberta",
+    "subtitle": "Não precisa mais entrar toda vez",
+    "item1Title": "Marque a caixa ao entrar",
+    "item1Desc": "Ao fazer login, deixe esta opção ativada e você continuará conectado na próxima vez — sem digitar a senha de novo.",
+    "item1Example": "Manter sessão aberta neste dispositivo",
+    "item2Title": "Seus dispositivos sob controle",
+    "item2Desc": "No seu perfil você pode ver em quais dispositivos está conectado e encerrar a sessão nos que quiser.",
     "dismiss": "Entendi!"
   },
   "pool": {

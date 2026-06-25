@@ -283,12 +283,13 @@
     "ctaNameWorldCup": "Create Free Pool"
   },
   "whatsNew": {
-    "title": "Who's already predicted?",
-    "subtitle": "A new way to make sure no one misses out on points",
-    "item1Title": "See who has predicted",
-    "item1Desc": "On every open match, the 📊 button shows how many players have saved their prediction and who's still missing. Remind them before the deadline, so no one loses points by forgetting.",
-    "item2Title": "Share it as PDF",
-    "item2Desc": "Export the list to PDF to share it in your family, friends, or work groups.",
+    "title": "Stay signed in",
+    "subtitle": "No more logging in every time",
+    "item1Title": "Check the box when you sign in",
+    "item1Desc": "When you log in, leave this option on and you'll stay signed in next time — no need to type your password again.",
+    "item1Example": "Keep me signed in on this device",
+    "item2Title": "Your devices, in your control",
+    "item2Desc": "From your profile you can see where you're signed in and sign out of any device you want.",
     "dismiss": "Got it!"
   },
   "pool": {

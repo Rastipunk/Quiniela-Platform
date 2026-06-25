@@ -18,16 +18,32 @@
  * flipped without a process restart and so tests can vary it per-case.
  */
 export function isPredictionStatusEnabled(creatorEmail: string | null | undefined): boolean {
-  const raw = (process.env.PREDICTION_STATUS_HOST_ALLOWLIST ?? "").trim();
-  if (raw === "") return false; // default: off for everyone
-  if (raw === "*") return true; // full rollout
-  if (!creatorEmail) return false;
+  return emailInAllowlist(process.env.PREDICTION_STATUS_HOST_ALLOWLIST, creatorEmail);
+}
 
+/**
+ * Persistent sessions ("mantener sesión abierta", ADR-081). Rollout scoped by
+ * the logging-in user's email via `PERSISTENT_SESSIONS_ALLOWLIST`:
+ *   - "" / undefined   → off for everyone (safe default — legacy 4h tokens)
+ *   - "*"              → full rollout (every user gets session-backed tokens)
+ *   - "a@x.com,b@y.com" → only those users get session-backed/persistent tokens
+ *
+ * Users OUTSIDE the allowlist get a legacy token (no sessionId, no refresh,
+ * no Session row) — behaviour identical to before this feature. Read at call
+ * time so flipping the env (me → "*") needs no redeploy.
+ */
+export function isPersistentSessionsEnabled(email: string | null | undefined): boolean {
+  return emailInAllowlist(process.env.PERSISTENT_SESSIONS_ALLOWLIST, email);
+}
+
+/** Shared allowlist semantics: ""→none, "*"→all, else case-insensitive match. */
+function emailInAllowlist(raw: string | undefined, email: string | null | undefined): boolean {
+  const v = (raw ?? "").trim();
+  if (v === "") return false;
+  if (v === "*") return true;
+  if (!email) return false;
   const allow = new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean),
+    v.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
   );
-  return allow.has(creatorEmail.toLowerCase());
+  return allow.has(email.toLowerCase());
 }

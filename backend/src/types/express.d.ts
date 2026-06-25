@@ -6,6 +6,10 @@ declare global {
       auth?: {
         userId: string;
         platformRole: PlatformRole;
+        /** Current session row id (ADR-081). Set when the access token carries
+         *  one; used by logout / session-management endpoints. Absent on
+         *  legacy tokens issued before persistent sessions shipped. */
+        sessionId?: string;
       };
     }
   }
