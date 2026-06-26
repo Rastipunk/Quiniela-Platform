@@ -195,12 +195,17 @@ export function ShareButtons({
 
   const channels = getChannels(t);
   const isSmall = size === "sm";
-  const btnPadding = showLabels
-    ? (isSmall ? "8px 12px" : "10px 16px")
-    : (isSmall ? "8px" : "10px");
+  const iconOnly = !showLabels;
+  // Icon-only buttons use a fixed SQUARE size so every channel renders as an
+  // identical circle. Padding-based sizing made the bordered native-share/copy
+  // buttons render as ovals next to the borderless coloured ones.
+  const iconDim = isSmall ? 36 : 42;
+  const btnPadding = showLabels ? (isSmall ? "8px 12px" : "10px 16px") : 0;
   const fontSize = isSmall ? "0.8rem" : "0.88rem";
   const iconGap = showLabels ? (isSmall ? 4 : 6) : 0;
-  const borderRadius = showLabels ? 10 : "50%";
+  const shapeStyle = iconOnly
+    ? { width: iconDim, height: iconDim, borderRadius: "50%", boxSizing: "border-box" as const, flexShrink: 0 }
+    : { borderRadius: 10 };
 
   // On mobile, try native share first
   const supportsNativeShare = typeof navigator !== "undefined" && !!navigator.share;
@@ -225,10 +230,10 @@ export function ShareButtons({
             justifyContent: "center",
             gap: iconGap,
             padding: btnPadding,
-            borderRadius,
-            border: "1px solid var(--border)",
-            background: "var(--surface)",
-            color: "var(--text)",
+            ...shapeStyle,
+            border: iconOnly ? "none" : "1px solid var(--border)",
+            background: iconOnly ? colors.brand : "var(--surface)",
+            color: iconOnly ? "white" : "var(--text)",
             cursor: "pointer",
             fontSize,
             fontWeight: 600,
@@ -259,7 +264,7 @@ export function ShareButtons({
             justifyContent: "center",
             gap: iconGap,
             padding: btnPadding,
-            borderRadius,
+            ...shapeStyle,
             border: "none",
             background: ch.color,
             color: "white",
@@ -283,10 +288,10 @@ export function ShareButtons({
           justifyContent: "center",
           gap: iconGap,
           padding: btnPadding,
-          borderRadius,
-          border: "1px solid var(--border)",
-          background: copied ? colors.successAlt : "var(--surface)",
-          color: copied ? "white" : "var(--text)",
+          ...shapeStyle,
+          border: iconOnly ? "none" : "1px solid var(--border)",
+          background: copied ? colors.successAlt : (iconOnly ? colors.textMuted : "var(--surface)"),
+          color: copied || iconOnly ? "white" : "var(--text)",
           cursor: "pointer",
           fontSize,
           fontWeight: 600,

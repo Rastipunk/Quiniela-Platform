@@ -79,6 +79,9 @@ export function BarChartRaceModal({
 
   const VISIBLE = isMobile ? 10 : 15;
   const ROW_H = isMobile ? 36 : 44;
+  // Cap the leader bar at this fraction of the track width so the external
+  // value label (e.g. "126") always fits — tighter on the narrow mobile view.
+  const MAX_BAR_FRAC = isMobile ? 0.72 : 0.84;
 
   const tRef = useRef(0);
   const rafRef = useRef(0);
@@ -168,7 +171,9 @@ export function BarChartRaceModal({
       // Dynamic scale zoomed to the visible field so the staircase stays legible.
       const range = Math.max(1, maxVal - minVisVal);
       const lo = Math.max(0, minVisVal - range * 0.45);
-      const span = Math.max(1, maxVal + range * 0.05 - lo);
+      // Normalize so the leader maps to MAX_BAR_FRAC (never ~100%), leaving room
+      // for the value label and preventing horizontal overflow on mobile.
+      const span = Math.max(1, (maxVal - lo) / MAX_BAR_FRAC);
 
       let viewerPinned = false;
       let viewerRank = 0;
@@ -207,7 +212,7 @@ export function BarChartRaceModal({
         scrubRef.current.value = String(tt);
       }
     },
-    [data, ranksByStep, lastStep, VISIBLE, ROW_H],
+    [data, ranksByStep, lastStep, VISIBLE, ROW_H, MAX_BAR_FRAC],
   );
 
   useEffect(() => {
@@ -303,7 +308,7 @@ export function BarChartRaceModal({
             <div style={{ fontSize: 12, opacity: 0.9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{poolNameState}</div>
           </div>
           {!isPage && (
-            <button onClick={onClose} aria-label={t("barRace.close")} style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.2)", color: colors.white, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon /></button>
+            <button onClick={onClose} aria-label={t("barRace.close")} style={{ width: 44, height: 44, borderRadius: "50%", border: "none", background: colors.white, color: colors.brand, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.18)" }}><CloseIcon /></button>
           )}
         </div>
 

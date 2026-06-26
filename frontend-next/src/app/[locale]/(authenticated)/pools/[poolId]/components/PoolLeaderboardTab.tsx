@@ -424,20 +424,27 @@ export function PoolLeaderboardTab({
           </div>
         </div>
 
-        {/* Evolución bar-chart-race call-to-action (beta-gated) */}
+        {/* Evolución bar-chart-race call-to-action (NEW — green glow + badge) */}
         {barRaceEnabled && (
-          <button
-            onClick={() => setShowBarRace(true)}
-            style={{
-              width: "100%", marginBottom: 12, padding: "12px 16px", borderRadius: radii.lg,
-              border: "none", background: colors.brandGradient, color: colors.white,
-              fontSize: isMobile ? 13 : 15, fontWeight: 800, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              boxShadow: `0 4px 16px ${colors.brand}44`,
-            }}
-          >
-            ▶ {t("barRace.openButton", { pool: overview.pool.name })}
-          </button>
+          <div style={{ position: "relative", marginBottom: 12 }}>
+            <style>{`@keyframes p4aBarRaceGlow{0%,100%{box-shadow:0 0 0 2px ${colors.successAlt},0 3px 14px ${colors.successAlt}55}50%{box-shadow:0 0 0 2px ${colors.successAlt},0 6px 22px ${colors.successAlt}aa}}@media(prefers-reduced-motion:reduce){.p4a-barrace-cta{animation:none!important}}`}</style>
+            <span style={{ position: "absolute", top: -9, right: 14, zIndex: 1, background: colors.successAlt, color: colors.white, fontSize: 10, fontWeight: 900, letterSpacing: 0.6, padding: "3px 9px", borderRadius: 999, textTransform: "uppercase", boxShadow: `0 2px 8px ${colors.successAlt}99` }}>
+              {t("barRace.badgeNew")}
+            </span>
+            <button
+              className="p4a-barrace-cta"
+              onClick={() => setShowBarRace(true)}
+              style={{
+                width: "100%", padding: "13px 16px", borderRadius: radii.lg,
+                border: `2px solid ${colors.successAlt}`, background: colors.brandGradient, color: colors.white,
+                fontSize: isMobile ? 13 : 15, fontWeight: 800, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                animation: "p4aBarRaceGlow 2.2s ease-in-out infinite",
+              }}
+            >
+              ▶ {t("barRace.openButton", { pool: overview.pool.name })}
+            </button>
+          </div>
         )}
 
         {/* Empate en el 1er lugar — lo decide la organización */}
