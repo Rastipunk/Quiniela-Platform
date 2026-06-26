@@ -104,33 +104,20 @@
     "admin": "Administração",
     "players": "Jogadores",
     "capacity": "Capacidade",
-    "branding": "Personalização",
-    "evolution": "Evolução"
+    "branding": "Personalização"
   },
 
-  "evolution": {
-    "title": "Evolução",
-    "subtitle": "Como a classificação se moveu, jogo a jogo",
-    "loading": "Carregando evolução…",
-    "empty": "Ainda não há jogos disputados para mostrar a evolução.",
-    "error": "Não conseguimos carregar a evolução. Tente novamente.",
-    "you": "Você",
-    "pack": "Pelotão",
-    "packMore": "+{count} no pelotão",
-    "leadersLabel": "Líderes",
-    "neighborsLabel": "Sua zona",
-    "points": "pts",
-    "standingsAt": "Classificação neste ponto",
+  "lastMatch": {
+    "gained": "Ganhou",
+    "moved": "Moveu",
+    "live": "Ao vivo",
+    "finished": "Finalizado",
+    "captionOne": "Movimento com: {match}",
+    "captionMany": "Movimento com os últimos jogos: {match}",
+    "gainedTooltip": "Pontos ganhos com {match}",
+    "movedTooltip": "Posições ganhas ou perdidas com {match}",
     "downloadPdf": "Baixar PDF",
-    "older": "Anteriores",
-    "newer": "Próximos",
-    "scrollHint": "Deslize para ver toda a história",
-    "gran": {
-      "match": "Por jogo",
-      "day": "Diário",
-      "3day": "A cada 3 dias",
-      "7day": "A cada 7 dias"
-    }
+    "printedAt": "Gerado em {date}"
   },
 
   "nav": {

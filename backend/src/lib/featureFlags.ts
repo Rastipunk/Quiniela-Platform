@@ -37,15 +37,15 @@ export function isPersistentSessionsEnabled(email: string | null | undefined): b
 }
 
 /**
- * Evolución tab (leaderboard race chart). Rollout scoped by POOL id via
- * `EVOLUTION_POOL_ALLOWLIST`:
- *   - "" / undefined        → tab hidden everywhere (safe default)
+ * Leaderboard "puntos ganados / posiciones movidas" delta columns. Rollout
+ * scoped by POOL id via `LEADERBOARD_DELTA_ALLOWLIST`:
+ *   - "" / undefined        → columns hidden everywhere (safe default)
  *   - "*"                   → enabled for every pool
  *   - "<poolId>,<poolId>"   → enabled only for those pools
  * Read at call time so flipping the env needs no redeploy.
  */
-export function isEvolutionEnabledForPool(poolId: string | null | undefined): boolean {
-  return emailInAllowlist(process.env.EVOLUTION_POOL_ALLOWLIST, poolId);
+export function isLeaderboardDeltaEnabledForPool(poolId: string | null | undefined): boolean {
+  return emailInAllowlist(process.env.LEADERBOARD_DELTA_ALLOWLIST, poolId);
 }
 
 /** Shared allowlist semantics: ""→none, "*"→all, else case-insensitive match. */

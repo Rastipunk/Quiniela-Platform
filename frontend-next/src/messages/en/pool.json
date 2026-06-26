@@ -104,33 +104,20 @@
     "admin": "Admin",
     "players": "Players",
     "capacity": "Capacity",
-    "branding": "Branding",
-    "evolution": "Evolution"
+    "branding": "Branding"
   },
 
-  "evolution": {
-    "title": "Evolution",
-    "subtitle": "How the standings moved, match by match",
-    "loading": "Loading evolution…",
-    "empty": "No matches have been played yet to show the evolution.",
-    "error": "We couldn't load the evolution. Please try again.",
-    "you": "You",
-    "pack": "Pack",
-    "packMore": "+{count} in the pack",
-    "leadersLabel": "Leaders",
-    "neighborsLabel": "Your zone",
-    "points": "pts",
-    "standingsAt": "Standings at this point",
+  "lastMatch": {
+    "gained": "Gained",
+    "moved": "Moved",
+    "live": "Live",
+    "finished": "Finished",
+    "captionOne": "Movement from: {match}",
+    "captionMany": "Movement from the latest matches: {match}",
+    "gainedTooltip": "Points gained from {match}",
+    "movedTooltip": "Positions gained or lost from {match}",
     "downloadPdf": "Download PDF",
-    "older": "Older",
-    "newer": "Newer",
-    "scrollHint": "Swipe to see the full story",
-    "gran": {
-      "match": "Per match",
-      "day": "Daily",
-      "3day": "Every 3 days",
-      "7day": "Every 7 days"
-    }
+    "printedAt": "Generated on {date}"
   },
 
   "nav": {

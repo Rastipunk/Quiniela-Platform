@@ -221,6 +221,10 @@ export interface LeaderboardRow {
   scoredMatches: number;
   joinedAtUtc: string;
   breakdown?: unknown[];
+  /** Points gained in the most recent match(es). */
+  lastGainPoints?: number;
+  /** Positions climbed (+) / dropped (−) since the most recent match(es). */
+  lastRankDelta?: number;
 }
 
 /**
@@ -239,6 +243,10 @@ export interface PoolLeaderboard {
   presetMode?: PoolPresetMode;
   /** Which tiebreaker columns are meaningful for this pool (D4). */
   tiebreakers?: { perfect: boolean; partial: boolean };
+  /** "Puntos ganados / posiciones movidas" columns — beta-gated per pool. */
+  deltaEnabled?: boolean;
+  /** The most recent match(es) the delta columns describe. */
+  lastStep?: { matchIds: string[]; label: string } | null;
   rows: LeaderboardRow[];
 }
 
@@ -262,8 +270,6 @@ export interface PoolOverview {
   counts: PoolCounts;
   tournamentInstance: PoolTournamentInstance;
   permissions: PoolPermissions;
-  /** Evolución tab gate (EVOLUTION_POOL_ALLOWLIST) — per-pool rollout. */
-  evolutionEnabled?: boolean;
   matches: PoolMatchCard[];
   leaderboard: PoolLeaderboard;
 }

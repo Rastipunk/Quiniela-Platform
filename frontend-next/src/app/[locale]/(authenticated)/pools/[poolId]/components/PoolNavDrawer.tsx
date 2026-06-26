@@ -25,12 +25,11 @@ const SIDEBAR_WIDTH_PX = 248;
 interface Props {
   showHostItems: boolean;
   showBrandingTab: boolean;
-  showEvolutionTab: boolean;
   tabBadges: Partial<Record<PoolNavTab, number>>;
   hasUrgent: boolean;
 }
 
-export function PoolNavDrawer({ showHostItems, showBrandingTab, showEvolutionTab, tabBadges, hasUrgent }: Props) {
+export function PoolNavDrawer({ showHostItems, showBrandingTab, tabBadges, hasUrgent }: Props) {
   const isCompact = useIsMobile({ breakpoint: BREAKPOINTS.tabletLg });
   if (isCompact) return null;
 
@@ -53,7 +52,6 @@ export function PoolNavDrawer({ showHostItems, showBrandingTab, showEvolutionTab
       <PoolNavItems
         showHostItems={showHostItems}
         showBrandingTab={showBrandingTab}
-        showEvolutionTab={showEvolutionTab}
         tabBadges={tabBadges}
         hasUrgent={hasUrgent}
       />

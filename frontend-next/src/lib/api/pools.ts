@@ -126,47 +126,6 @@ export async function getPoolOverview(token: string, poolId: string, leaderboard
   return requestJson<PoolOverview>(`/pools/${poolId}/overview${q}`, { method: "GET" });
 }
 
-// ── Evolución (leaderboard race chart) ──────────────────────────────────────
-export interface EvolutionStep {
-  index: number;
-  phaseId: string;
-  kickoffUtc: string;
-  matchIds: string[];
-  label: string;
-}
-export interface EvolutionBandPoint {
-  index: number;
-  min: number;
-  max: number;
-  median: number;
-}
-export interface EvolutionPlayerLine {
-  userId: string;
-  displayName: string;
-  cumulative: number[];
-  isViewer: boolean;
-  rank: number | null;
-}
-export interface PoolEvolution {
-  granularity: "match";
-  hasStructuralPhases: boolean;
-  steps: EvolutionStep[];
-  /** Lines to draw (all players for small pools; viewer + leaders + neighbours for big). */
-  players: EvolutionPlayerLine[];
-  /** Pack band (big pools only). */
-  band: EvolutionBandPoint[] | null;
-  curated: boolean;
-  totalPlayers: number;
-}
-
-export async function getPoolEvolution(
-  token: string,
-  poolId: string,
-): Promise<{ evolution: PoolEvolution | null }> {
-  return requestJson<{ evolution: PoolEvolution | null }>(`/pools/${poolId}/evolution`, {
-    method: "GET",
-  });
-}
 
 export async function createInvite(
   token: string,

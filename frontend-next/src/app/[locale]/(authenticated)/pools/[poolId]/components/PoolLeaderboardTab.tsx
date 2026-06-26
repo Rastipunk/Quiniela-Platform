@@ -50,6 +50,13 @@ export function PoolLeaderboardTab({
   const myRank = myRow?.rank;
   const leaderPoints = allRows[0]?.points ?? 0;
   const phases = overview.leaderboard.phases || [];
+  // "Puntos ganados / posiciones movidas" in the most recent match(es).
+  // Beta-gated per pool (deltaEnabled) — when off the table is unchanged.
+  const lastStep = overview.leaderboard.lastStep ?? null;
+  const showDelta = !!overview.leaderboard.deltaEnabled && !!lastStep && lastStep.matchIds.length > 0;
+  // Are the last-step match(es) still being played, or already finished?
+  const lastStepLive =
+    showDelta && overview.matches.some((m) => lastStep!.matchIds.includes(m.id) && m.isLive);
   // Per-phase type detection. Each phase column in the leaderboard
   // decides its own rendering based on how the host configured THAT
   // phase, so MIXED pools (some structural, some score) show the right
@@ -135,6 +142,7 @@ export function PoolLeaderboardTab({
           t("pdf.posHeader"),
           t("pdf.playerHeader"),
           t("pdf.totalHeader"),
+          ...(showDelta ? [t("lastMatch.gained"), t("lastMatch.moved")] : []),
           ...phases.map((p) => formatPhaseName(p, t)),
           t("pdf.diffHeader"),
         ],
@@ -142,6 +150,16 @@ export function PoolLeaderboardTab({
           r.isTied ? `${r.rank}=` : String(r.rank),
           r.displayName,
           r.points,
+          ...(showDelta
+            ? [
+                (r.lastGainPoints ?? 0) > 0 ? `+${r.lastGainPoints}` : "0",
+                (r.lastRankDelta ?? 0) > 0
+                  ? `+${r.lastRankDelta}`
+                  : (r.lastRankDelta ?? 0) < 0
+                    ? String(r.lastRankDelta)
+                    : "=",
+              ]
+            : []),
           ...phases.map((p) => {
             const v = r.pointsByPhase?.[p] ?? 0;
             return v === 0 ? "-" : v;
@@ -244,6 +262,19 @@ export function PoolLeaderboardTab({
         <td style={{ padding: "14px 8px", textAlign: "center", fontWeight: 900, fontSize: 18, color: colors.brand, background: isPinned ? "#dbeafe" : "#f8fbff" }}>
           {r.points}
         </td>
+        {showDelta && (
+          <td style={{ padding: "14px 8px", textAlign: "center", fontSize: 14, fontWeight: 700, color: (r.lastGainPoints ?? 0) > 0 ? "#16a34a" : colors.textMuted }}>
+            {(r.lastGainPoints ?? 0) > 0 ? `+${r.lastGainPoints}` : "0"}
+          </td>
+        )}
+        {showDelta && (() => {
+          const d = r.lastRankDelta ?? 0;
+          return (
+            <td style={{ padding: "14px 8px", textAlign: "center", fontSize: 14, fontWeight: 700, color: d > 0 ? "#16a34a" : d < 0 ? "#dc2626" : colors.textMuted }}>
+              {d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "—"}
+            </td>
+          );
+        })()}
         {phases.map((phaseId: string) => {
           const phasePoints = r.pointsByPhase?.[phaseId] ?? 0;
           const hasPoints = phasePoints > 0;
@@ -394,6 +425,26 @@ export function PoolLeaderboardTab({
           </div>
         )}
 
+        {/* Last-match delta caption + live/finished signal */}
+        {showDelta && (
+          <div style={{
+            marginBottom: 12, padding: "8px 12px", borderRadius: radii.lg,
+            background: colors.infoBgLight, border: `1px solid ${colors.infoBorder}`,
+            color: colors.infoDarker, fontSize: 13,
+            display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+          }}>
+            <span>🔄 {t(lastStep!.matchIds.length > 1 ? "lastMatch.captionMany" : "lastMatch.captionOne", { match: lastStep!.label })}</span>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700,
+              background: lastStepLive ? "#fee2e2" : "#dcfce7",
+              color: lastStepLive ? "#b91c1c" : "#15803d",
+            }}>
+              {lastStepLive ? `🔴 ${t("lastMatch.live")}` : `✅ ${t("lastMatch.finished")}`}
+            </span>
+          </div>
+        )}
+
         {/* Search */}
         {allRows.length > PAGE_SIZE && (
           <div style={{ marginBottom: 12 }}>
@@ -432,6 +483,7 @@ export function PoolLeaderboardTab({
               hasAnyStructural={hasAnyStructural}
               tiebreakers={tb}
               tiedPointsValues={[...tiedPointsValues]}
+              showDelta={showDelta}
             />
             <PaginationControls
               page={safePage} totalPages={totalPages}
@@ -449,6 +501,12 @@ export function PoolLeaderboardTab({
                     <th style={{ padding: "12px 8px", textAlign: "left", fontWeight: 700, color: colors.textDark }}>{t("leaderboard.pos")}</th>
                     <th style={{ padding: "12px 8px", textAlign: "left", fontWeight: 700, color: colors.textDark }}>{t("leaderboard.player")}</th>
                     <th style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: colors.brand, background: colors.infoBgLight, borderRadius: "8px 8px 0 0" }}>{t("leaderboard.total")}</th>
+                    {showDelta && (
+                      <>
+                        <th title={t("lastMatch.gainedTooltip", { match: lastStep!.label })} style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: colors.textDark }}>{t("lastMatch.gained")}</th>
+                        <th title={t("lastMatch.movedTooltip", { match: lastStep!.label })} style={{ padding: "12px 8px", textAlign: "center", fontWeight: 700, color: colors.textDark }}>{t("lastMatch.moved")}</th>
+                      </>
+                    )}
                     {phases.map((phaseId: string) => (
                       <th key={phaseId} title={formatPhaseFullName(phaseId, t)} style={{ padding: "12px 6px", textAlign: "center", fontWeight: 600, color: colors.textMuted, fontSize: 12, minWidth: 50 }}>
                         {formatPhaseName(phaseId, t)}

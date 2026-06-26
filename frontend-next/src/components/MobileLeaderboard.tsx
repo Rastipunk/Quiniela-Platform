@@ -28,6 +28,8 @@ type LeaderboardRow = {
   partialCount?: number;
   pointsByPhase?: Record<string, number>;
   structuralStats?: LeaderboardStructuralStats;
+  lastGainPoints?: number;
+  lastRankDelta?: number;
 };
 
 type PhaseType = "STRUCTURAL_GROUP" | "STRUCTURAL_KNOCKOUT" | "SCORE";
@@ -49,6 +51,8 @@ type MobileLeaderboardProps = {
   tiebreakers?: { perfect: boolean; partial: boolean };
   /** Points totals that are shared by >=2 players — counters show only for these. */
   tiedPointsValues?: number[];
+  /** Beta: show "puntos ganados / posiciones movidas" of the last match. */
+  showDelta?: boolean;
 };
 
 export function MobileLeaderboard({
@@ -63,10 +67,28 @@ export function MobileLeaderboard({
   hasAnyStructural,
   tiebreakers: tb,
   tiedPointsValues,
+  showDelta,
 }: MobileLeaderboardProps) {
   const t = useTranslations("pool");
   const tiedPoints = new Set(tiedPointsValues ?? []);
   const leaderPoints = rows[0]?.points ?? 0;
+
+  // "+N pts · ▲/▼N" for the most recent match(es) (beta).
+  const deltaLine = (r: LeaderboardRow) => {
+    if (!showDelta) return null;
+    const g = r.lastGainPoints ?? 0;
+    const d = r.lastRankDelta ?? 0;
+    return (
+      <div style={{ display: "flex", gap: 8, fontSize: 11, fontWeight: 700, marginTop: 2 }}>
+        <span style={{ color: g > 0 ? "#16a34a" : colors.textMuted }}>
+          {g > 0 ? `+${g}` : "0"} {t("lastMatch.gained").toLowerCase()}
+        </span>
+        <span style={{ color: d > 0 ? "#16a34a" : d < 0 ? "#dc2626" : colors.textMuted }}>
+          {d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "—"}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -98,6 +120,7 @@ export function MobileLeaderboard({
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: colors.textDark }}>{pinnedRow.displayName}</div>
                 <div style={{ fontSize: 10, color: colors.brand, fontWeight: 600 }}>{pinnedLabel}</div>
+                {deltaLine(pinnedRow)}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -187,6 +210,7 @@ export function MobileLeaderboard({
                 >
                   {r.displayName}
                 </div>
+                {deltaLine(r)}
                 {hasAnyStructural && r.structuralStats && r.structuralStats.positionsTotal > 0 && (
                   <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
                     {t("leaderboard.structuralSummary", {

@@ -15,7 +15,7 @@ import {
   sendInternal,
 } from "../lib/apiResponse";
 import { ServiceError } from "../services/authService";
-import { getPoolOverview, getPoolEvolution } from "../services/poolOverviewService";
+import { getPoolOverview } from "../services/poolOverviewService";
 
 export const poolOverviewRouter = Router();
 
@@ -48,19 +48,6 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
 
   try {
     const data = await getPoolOverview(req.auth!.userId, poolId, leaderboardVerbose);
-    return sendData(res, data);
-  } catch (err) {
-    return handleServiceError(res, err);
-  }
-});
-
-// GET /pools/:poolId/evolution — cumulative-points series for the Evolución tab.
-// Reuses the cached leaderboard bundle (ADR-079); members only.
-poolOverviewRouter.get("/:poolId/evolution", async (req, res) => {
-  const { poolId } = req.params;
-
-  try {
-    const data = await getPoolEvolution(req.auth!.userId, poolId);
     return sendData(res, data);
   } catch (err) {
     return handleServiceError(res, err);
