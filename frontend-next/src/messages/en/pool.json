@@ -122,6 +122,8 @@
     "points": "pts",
     "standingsAt": "Standings at this point",
     "downloadPdf": "Download PDF",
+    "older": "Older",
+    "newer": "Newer",
     "scrollHint": "Swipe to see the full story",
     "gran": {
       "match": "Per match",

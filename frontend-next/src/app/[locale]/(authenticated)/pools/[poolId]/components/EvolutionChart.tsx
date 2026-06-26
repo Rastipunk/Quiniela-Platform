@@ -1,13 +1,14 @@
 "use client";
 
 // Evolución race chart. Cumulative points over time with a granularity switch
-// (per match / daily / 3-day / 7-day). The Y scale auto-fits the lines visible
-// in the current scroll window so separation always reads well. Only the top-3
+// (per match / daily / 3-day / 7-day). Shows a WINDOW of the last 5 periods at a
+// time (page back for older); the Y scale fits exactly that window so the lines
+// always read well-separated. Straight segments (no smoothing). Only the top-3
 // (medal + name) and the viewer (name) are labelled at their line ends; everyone
-// else is a quiet grey line. Tooltip shows which matches scored in that period
+// else is a quiet grey line. Tooltip shows the matches that scored that period
 // plus each player's points / position change vs the previous period.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   ComposedChart,
@@ -17,6 +18,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  ResponsiveContainer,
 } from "recharts";
 import { colors, radii, fontWeight } from "@/lib/theme";
 import type { PoolEvolution } from "@/lib/api/pools";
@@ -27,10 +29,10 @@ const BRONZE = "#C2773F";
 const PACK_FILL = "#E2E8F0";
 const OTHER_LINE = "#D7DEE8";
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+const WINDOW = 5; // periods shown at once
 
 type Gran = "match" | "day" | "3day" | "7day";
 const GRAN_DAYS: Record<Gran, number> = { match: 0, day: 1, "3day": 3, "7day": 7 };
-const GRAN_PX: Record<Gran, number> = { match: 54, day: 60, "3day": 92, "7day": 124 };
 const GRAN_ORDER: Gran[] = ["match", "day", "3day", "7day"];
 
 type Player = PoolEvolution["players"][number];
@@ -51,7 +53,7 @@ const dayNum = (iso: string) => Math.floor(Date.parse(iso) / 86_400_000);
 interface Bucket {
   label: string;
   matches: string[];
-  lastIdx: number; // step index whose cumulative this bucket carries
+  lastIdx: number;
 }
 
 function buildBuckets(evo: PoolEvolution, gran: Gran, fmtDay: (iso: string) => string): Bucket[] {
@@ -79,8 +81,8 @@ function buildBuckets(evo: PoolEvolution, gran: Gran, fmtDay: (iso: string) => s
 }
 
 interface PlayerSeries extends Player {
-  values: number[]; // cumulative per bucket
-  ranks: number[]; // 1-based rank per bucket (over all players)
+  values: number[];
+  ranks: number[];
 }
 
 function buildPlayerSeries(evo: PoolEvolution, buckets: Bucket[]): PlayerSeries[] {
@@ -113,80 +115,53 @@ export function EvolutionChart({
   }, [locale]);
 
   const [gran, setGran] = useState<Gran>("day");
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [wrapW, setWrapW] = useState(0);
-  const [yDomain, setYDomain] = useState<[number, number]>([0, 10]);
+  const [winStart, setWinStart] = useState(0);
 
   const buckets = useMemo(() => buildBuckets(evolution, gran, fmtDay), [evolution, gran, fmtDay]);
   const players = useMemo(() => buildPlayerSeries(evolution, buckets), [evolution, buckets]);
   const emphasized = useMemo(() => players.filter(isEmphasized), [players]);
 
-  const data = useMemo(
-    () =>
-      buckets.map((b, i) => {
-        const row: Record<string, number | string> = { i, label: b.label };
-        for (const p of players) row[`p_${p.userId}`] = p.values[i]!;
-        if (evolution.band) {
-          const band = evolution.band[b.lastIdx];
-          row.bandLo = band?.min ?? 0;
-          row.bandRange = (band?.max ?? 0) - (band?.min ?? 0);
-        }
-        return row;
-      }),
-    [buckets, players, evolution.band],
-  );
-
-  // Measure the container so few-bucket views fill the width and many-bucket
-  // views overflow into a horizontal scroll.
+  // Default to the most recent window; reset when the granularity changes.
   useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => setWrapW(entries[0]!.contentRect.width));
-    ro.observe(el);
-    setWrapW(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
+    setWinStart(Math.max(0, buckets.length - WINDOW));
+  }, [buckets.length]);
 
-  const chartWidth = Math.max(wrapW || 320, buckets.length * GRAN_PX[gran]);
+  const winEnd = Math.min(buckets.length, winStart + WINDOW);
 
-  // Auto-fit Y to the emphasized lines inside the visible scroll window.
-  const recomputeY = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el || buckets.length === 0) return;
-    const px = GRAN_PX[gran];
-    const start = Math.max(0, Math.floor(el.scrollLeft / px) - 1);
-    const end = Math.min(buckets.length - 1, Math.ceil((el.scrollLeft + el.clientWidth) / px));
+  // recharts rows for the visible window only (so the Y fits exactly these).
+  // `i` stays the ABSOLUTE bucket index so deltas reach back past the window.
+  const data = useMemo(() => {
+    const rows: Record<string, number | string>[] = [];
+    for (let i = winStart; i < winEnd; i++) {
+      const b = buckets[i]!;
+      const row: Record<string, number | string> = { i, label: b.label };
+      for (const p of players) row[`p_${p.userId}`] = p.values[i]!;
+      if (evolution.band) {
+        const band = evolution.band[b.lastIdx];
+        row.bandLo = band?.min ?? 0;
+        row.bandRange = (band?.max ?? 0) - (band?.min ?? 0);
+      }
+      rows.push(row);
+    }
+    return rows;
+  }, [buckets, players, winStart, winEnd, evolution.band]);
+
+  // Y fits the emphasized lines inside the current window.
+  const yDomain = useMemo<[number, number]>(() => {
     const pool = emphasized.length > 0 ? emphasized : players;
     let lo = Infinity;
     let hi = -Infinity;
     for (const p of pool) {
-      for (let bi = start; bi <= end; bi++) {
-        lo = Math.min(lo, p.values[bi]!);
-        hi = Math.max(hi, p.values[bi]!);
+      for (let i = winStart; i < winEnd; i++) {
+        lo = Math.min(lo, p.values[i]!);
+        hi = Math.max(hi, p.values[i]!);
       }
     }
-    if (!isFinite(lo) || !isFinite(hi)) {
-      setYDomain([0, 10]);
-      return;
-    }
+    if (!isFinite(lo) || !isFinite(hi)) return [0, 10];
     const pad = Math.max(4, (hi - lo) * 0.12);
-    setYDomain([Math.max(0, Math.floor(lo - pad)), Math.ceil(hi + pad)]);
-  }, [buckets.length, gran, emphasized, players]);
+    return [Math.max(0, Math.floor(lo - pad)), Math.ceil(hi + pad)];
+  }, [emphasized, players, winStart, winEnd]);
 
-  // On mount / granularity change: pin to the most recent period, then fit Y.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
-    const id = requestAnimationFrame(recomputeY);
-    return () => cancelAnimationFrame(id);
-  }, [recomputeY, chartWidth]);
-
-  const onScroll = useCallback(() => {
-    requestAnimationFrame(recomputeY);
-  }, [recomputeY]);
-
-  // Draw order: pack, grey lines, podium, viewer on top.
   const ordered = useMemo(
     () =>
       [...players].sort((a, b) => {
@@ -197,7 +172,6 @@ export function EvolutionChart({
     [players],
   );
 
-  // End-of-line label (medal + name) for emphasized players only, last point only.
   const makeEndLabel = (p: PlayerSeries) => {
     const color = lineColor(p);
     const medal = p.rank && p.rank <= 3 ? MEDAL[p.rank] : "";
@@ -207,21 +181,13 @@ export function EvolutionChart({
     return (props: any) => {
       if (props.index !== data.length - 1) return null;
       return (
-        <text
-          x={props.x + 8}
-          y={props.y}
-          dy={4}
-          fontSize={isMobile ? 10 : 12}
-          fontWeight={700}
-          fill={color}
-        >
+        <text x={props.x + 8} y={props.y} dy={4} fontSize={isMobile ? 10 : 12} fontWeight={700} fill={color}>
           {text}
         </text>
       );
     };
   };
 
-  // Tooltip: matches that scored this period + each player's Δpts / Δpos.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ChartTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (!active || !payload?.length) return null;
@@ -283,11 +249,24 @@ export function EvolutionChart({
   };
 
   const CHART_H = isMobile ? 360 : 460;
+  const canOlder = winStart > 0;
+  const canNewer = winEnd < buckets.length;
+  const navBtn = (enabled: boolean): CSSProperties => ({
+    padding: "6px 12px",
+    borderRadius: 999,
+    border: `1px solid ${colors.borderLight}`,
+    background: colors.white,
+    color: enabled ? colors.brand : colors.textLight,
+    fontSize: 12,
+    fontWeight: fontWeight.semibold,
+    cursor: enabled ? "pointer" : "default",
+    opacity: enabled ? 1 : 0.5,
+  });
 
   return (
-    <div ref={wrapRef}>
+    <div>
       {/* Granularity switch */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
         {GRAN_ORDER.map((g) => {
           const active = g === gran;
           return (
@@ -313,81 +292,71 @@ export function EvolutionChart({
         })}
       </div>
 
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 4 }}
-      >
-        <div style={{ width: chartWidth, height: CHART_H }}>
-          <ComposedChart
-            width={chartWidth}
-            height={CHART_H}
-            data={data}
-            margin={{ top: 16, right: isMobile ? 76 : 96, left: 0, bottom: 8 }}
-          >
-            <defs>
-              <linearGradient id="evoViewerFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={colors.brand} stopOpacity={0.18} />
-                <stop offset="100%" stopColor={colors.brand} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.borderLight} />
-            <XAxis
-              dataKey="label"
-              interval="preserveStartEnd"
-              minTickGap={isMobile ? 28 : 36}
-              tick={{ fontSize: 10, fill: colors.textMuted }}
-              height={28}
-            />
-            <YAxis
-              domain={yDomain}
-              width={40}
-              tick={{ fontSize: 10, fill: colors.textMuted }}
-              allowDecimals={false}
-            />
-            <Tooltip content={<ChartTooltip />} cursor={{ stroke: colors.brand, strokeOpacity: 0.3 }} />
-
-            {evolution.band && (
-              <>
-                <Area dataKey="bandLo" stackId="band" stroke="none" fill="transparent" isAnimationActive={false} />
-                <Area dataKey="bandRange" stackId="band" stroke="none" fill={PACK_FILL} fillOpacity={0.6} isAnimationActive={false} />
-              </>
-            )}
-
-            {/* Soft gradient under the viewer's line for a highlighted feel. */}
-            {(() => {
-              const me = players.find((p) => p.isViewer);
-              return me ? (
-                <Area
-                  dataKey={`p_${me.userId}`}
-                  stroke="none"
-                  fill="url(#evoViewerFill)"
-                  isAnimationActive={false}
-                />
-              ) : null;
-            })()}
-
-            {ordered.map((p) => {
-              const emph = isEmphasized(p);
-              return (
-                <Line
-                  key={p.userId}
-                  type="monotone"
-                  dataKey={`p_${p.userId}`}
-                  stroke={lineColor(p)}
-                  strokeWidth={p.isViewer ? 3.5 : emph ? 2.5 : 1.25}
-                  strokeOpacity={emph ? 1 : 0.7}
-                  dot={false}
-                  activeDot={emph ? { r: 4 } : false}
-                  isAnimationActive
-                  animationDuration={1000}
-                  label={emph ? makeEndLabel(p) : undefined}
-                />
-              );
-            })}
-          </ComposedChart>
-        </div>
+      {/* Window navigation */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <button type="button" onClick={() => canOlder && setWinStart((s) => Math.max(0, s - WINDOW))} disabled={!canOlder} style={navBtn(canOlder)}>
+          ← {t("evolution.older")}
+        </button>
+        <span style={{ fontSize: 12, fontWeight: fontWeight.semibold, color: colors.textMuted }}>
+          {data.length > 0 ? `${data[0]!.label} – ${data[data.length - 1]!.label}` : ""}
+        </span>
+        <button
+          type="button"
+          onClick={() => canNewer && setWinStart((s) => Math.min(Math.max(0, buckets.length - WINDOW), s + WINDOW))}
+          disabled={!canNewer}
+          style={navBtn(canNewer)}
+        >
+          {t("evolution.newer")} →
+        </button>
       </div>
+
+      <ResponsiveContainer width="100%" height={CHART_H}>
+        <ComposedChart data={data} margin={{ top: 16, right: isMobile ? 80 : 104, left: 0, bottom: 8 }}>
+          <defs>
+            <linearGradient id="evoViewerFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={colors.brand} stopOpacity={0.18} />
+              <stop offset="100%" stopColor={colors.brand} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={colors.borderLight} />
+          <XAxis dataKey="label" interval={0} tick={{ fontSize: 11, fill: colors.textMuted }} height={28} />
+          <YAxis domain={yDomain} width={40} tick={{ fontSize: 10, fill: colors.textMuted }} allowDecimals={false} />
+          <Tooltip content={<ChartTooltip />} cursor={{ stroke: colors.brand, strokeOpacity: 0.3 }} />
+
+          {evolution.band && (
+            <>
+              <Area type="linear" dataKey="bandLo" stackId="band" stroke="none" fill="transparent" isAnimationActive={false} />
+              <Area type="linear" dataKey="bandRange" stackId="band" stroke="none" fill={PACK_FILL} fillOpacity={0.6} isAnimationActive={false} />
+            </>
+          )}
+
+          {(() => {
+            const me = players.find((p) => p.isViewer);
+            return me ? (
+              <Area type="linear" dataKey={`p_${me.userId}`} stroke="none" fill="url(#evoViewerFill)" isAnimationActive={false} />
+            ) : null;
+          })()}
+
+          {ordered.map((p) => {
+            const emph = isEmphasized(p);
+            return (
+              <Line
+                key={p.userId}
+                type="linear"
+                dataKey={`p_${p.userId}`}
+                stroke={lineColor(p)}
+                strokeWidth={p.isViewer ? 3.5 : emph ? 2.5 : 1.25}
+                strokeOpacity={emph ? 1 : 0.7}
+                dot={emph ? { r: 2.5 } : false}
+                activeDot={emph ? { r: 4 } : false}
+                isAnimationActive
+                animationDuration={800}
+                label={emph ? makeEndLabel(p) : undefined}
+              />
+            );
+          })}
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }

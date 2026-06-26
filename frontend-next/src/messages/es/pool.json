@@ -122,6 +122,8 @@
     "points": "pts",
     "standingsAt": "Tabla en este punto",
     "downloadPdf": "Descargar PDF",
+    "older": "Anteriores",
+    "newer": "Siguientes",
     "scrollHint": "Desliza para ver toda la historia",
     "gran": {
       "match": "Por partido",
