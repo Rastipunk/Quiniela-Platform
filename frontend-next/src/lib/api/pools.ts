@@ -127,10 +127,19 @@ export async function getPoolOverview(token: string, poolId: string, leaderboard
 }
 
 // ── Bar-chart-race ("Evolución") ────────────────────────────────────────────
+export interface BarRaceMatch {
+  homeId: string;
+  awayId: string;
+  home: string;
+  away: string;
+  hg: number | null;
+  ag: number | null;
+}
 export interface BarRaceStep {
   index: number;
   kickoffUtc: string;
   label: string;
+  matches: BarRaceMatch[];
 }
 export interface BarRacePlayer {
   userId: string;

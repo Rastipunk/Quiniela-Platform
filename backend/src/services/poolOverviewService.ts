@@ -709,6 +709,7 @@ export async function getPoolOverview(
     ),
     members: members.map((m) => ({ userId: m.userId, displayName: m.user.displayName })),
     pointsByUserMatch: matchPointsByUser,
+    resultByMatchId,
   });
 
     return { rankedRows, predictedCountByMatch, phaseOrder, presetMode, partialApplicable, lastStep, rankBeforeByUser, barRace };

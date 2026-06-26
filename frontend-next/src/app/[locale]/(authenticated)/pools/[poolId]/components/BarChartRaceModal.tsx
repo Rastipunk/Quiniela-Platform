@@ -13,7 +13,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslations, useLocale } from "next-intl";
 import { colors, zIndex } from "@/lib/theme";
 import { ShareButtons } from "@/components/ShareButtons";
-import { getPoolBarRace, type PoolBarRace } from "@/lib/api/pools";
+import { getTeamFlag } from "@/data/teamFlags";
+import { getPoolBarRace, type PoolBarRace, type BarRaceMatch } from "@/lib/api/pools";
 
 const OTHER_BAR = "#A5B4FC"; // constant bar colour for the pack
 const STEP_MS = 900; // base ms per match at 1x
@@ -23,18 +24,25 @@ const PODIUM_BG: Record<number, string> = { 1: "#F59E0B", 2: "#94A3B8", 3: "#C27
 
 const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
 
+const PlayIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z" /></svg>);
+const PauseIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>);
+const ReplayIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 3v5h-5" /></svg>);
+const CloseIcon = () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>);
+
 interface RowRefs { row: HTMLDivElement; bar: HTMLElement; val: HTMLElement }
 
 export function BarChartRaceModal({
   poolId,
   token,
   poolName,
+  tournamentKey,
   isMobile,
   onClose,
 }: {
   poolId: string;
   token: string | null;
   poolName: string;
+  tournamentKey: string;
   isMobile: boolean;
   onClose: () => void;
 }) {
@@ -48,9 +56,12 @@ export function BarChartRaceModal({
   const [data, setData] = useState<PoolBarRace | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [playing, setPlaying] = useState(false);
-  const [finished, setFinished] = useState(false);
+  const [reachedEnd, setReachedEnd] = useState(false); // race hit the last step
+  const [barsOut, setBarsOut] = useState(false); // bars fading out before the podium
+  const [finished, setFinished] = useState(false); // podium shown
   const [podiumRisen, setPodiumRisen] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // for the clock (flags + score)
 
   const VISIBLE = isMobile ? 10 : 15;
   const ROW_H = isMobile ? 36 : 44;
@@ -61,8 +72,6 @@ export function BarChartRaceModal({
   const playingRef = useRef(false);
   const speedRef = useRef(1);
   const rowRefs = useRef(new Map<string, RowRefs>());
-  const clockLabelRef = useRef<HTMLDivElement>(null);
-  const clockProgressRef = useRef<HTMLDivElement>(null);
   const scrubRef = useRef<HTMLInputElement>(null);
   const pinnedRankRef = useRef<HTMLDivElement>(null);
   const lastFloorRef = useRef(-1);
@@ -150,16 +159,13 @@ export function BarChartRaceModal({
 
       if (floor !== lastFloorRef.current) {
         lastFloorRef.current = floor;
-        if (clockLabelRef.current) clockLabelRef.current.textContent = d.steps[floor]?.label ?? "";
-        if (clockProgressRef.current) {
-          clockProgressRef.current.textContent = `${t("barRace.progress", { n: floor + 1, total: d.steps.length })} · ${fmtDate(d.steps[floor]?.kickoffUtc ?? "")}`;
-        }
+        setCurrentStep(floor); // clock re-renders (flags + score) only on step change
       }
       if (scrubRef.current && document.activeElement !== scrubRef.current) {
         scrubRef.current.value = String(tt);
       }
     },
-    [data, ranksByStep, lastStep, VISIBLE, ROW_H, t, fmtDate],
+    [data, ranksByStep, lastStep, VISIBLE, ROW_H],
   );
 
   useEffect(() => {
@@ -170,7 +176,7 @@ export function BarChartRaceModal({
       lastTsRef.current = ts;
       tRef.current = Math.min(lastStep, tRef.current + dt / (STEP_MS / speedRef.current));
       renderFrame(tRef.current);
-      if (tRef.current >= lastStep) { setPlaying(false); setFinished(true); return; }
+      if (tRef.current >= lastStep) { setPlaying(false); setReachedEnd(true); return; }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -185,6 +191,15 @@ export function BarChartRaceModal({
     }
   }, [status, data, finished, renderFrame]);
 
+  // End sequence: hold on the final frame ~1.2s, fade the bars out, then swap to
+  // the podium (so it doesn't feel abrupt).
+  useEffect(() => {
+    if (!reachedEnd || finished) return;
+    const t1 = setTimeout(() => setBarsOut(true), 1200);
+    const t2 = setTimeout(() => setFinished(true), 1750);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [reachedEnd, finished]);
+
   // Podium rise-in animation.
   useEffect(() => {
     if (!finished) { setPodiumRisen(false); return; }
@@ -192,14 +207,17 @@ export function BarChartRaceModal({
     return () => clearTimeout(id);
   }, [finished]);
 
+
   const togglePlay = useCallback(() => {
     if (!data) return;
-    if (tRef.current >= lastStep) { tRef.current = 0; setFinished(false); }
+    if (tRef.current >= lastStep) { tRef.current = 0; setReachedEnd(false); setBarsOut(false); setFinished(false); }
     setPlaying((p) => !p);
   }, [data, lastStep]);
 
   const onScrub = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPlaying(false);
+    setReachedEnd(false);
+    setBarsOut(false);
     setFinished(false);
     tRef.current = Number(e.target.value);
     renderFrame(tRef.current);
@@ -239,7 +257,7 @@ export function BarChartRaceModal({
             <div style={{ fontSize: isMobile ? 15 : 19, fontWeight: 800 }}>🏁 {t("barRace.title")}</div>
             <div style={{ fontSize: 12, opacity: 0.9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{poolName}</div>
           </div>
-          <button onClick={onClose} aria-label={t("barRace.close")} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.12)", color: colors.white, fontSize: 18, cursor: "pointer", flexShrink: 0 }}>✕</button>
+          <button onClick={onClose} aria-label={t("barRace.close")} style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.2)", color: colors.white, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon /></button>
         </div>
 
         {/* Body */}
@@ -252,7 +270,7 @@ export function BarChartRaceModal({
             <>
               {/* Share row */}
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-                <ShareButtons context="generic" url={shareUrl} size="sm" showLabels={false} />
+                <ShareButtons context="barRace" url={shareUrl} size="sm" showLabels={false} />
               </div>
 
               {finished ? (
@@ -284,12 +302,26 @@ export function BarChartRaceModal({
                   </div>
                 </div>
               ) : (
-                <>
-                  {/* Clock */}
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
-                    <div ref={clockLabelRef} style={{ fontSize: isMobile ? 14 : 16, fontWeight: 800, color: colors.text }} />
-                    <div ref={clockProgressRef} style={{ fontSize: 12, color: colors.textMuted, fontWeight: 600 }} />
-                  </div>
+                <div style={{ opacity: barsOut ? 0 : 1, transition: "opacity 0.5s ease" }}>
+                  {/* Clock: the match(es) of this step with flags + score */}
+                  {(() => {
+                    const cs = data!.steps[Math.min(currentStep, lastStep)];
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                          {cs?.matches.slice(0, 2).map((m, k) => (
+                            <ClockMatch key={k} m={m} tournamentKey={tournamentKey} isMobile={isMobile} />
+                          ))}
+                          {cs && cs.matches.length > 2 && (
+                            <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600 }}>+{cs.matches.length - 2}</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: colors.textMuted, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
+                          {t("barRace.progress", { n: Math.min(currentStep, lastStep) + 1, total: data!.steps.length })} · {fmtDate(cs?.kickoffUtc ?? "")}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Track: static position column + moving bars */}
                   <div style={{ position: "relative", height: trackH }}>
@@ -319,7 +351,7 @@ export function BarChartRaceModal({
                       </div>
                     ))}
                   </div>
-                </>
+                </div>
               )}
             </>
           )}
@@ -328,8 +360,8 @@ export function BarChartRaceModal({
         {/* Controls */}
         {ready && (
           <div style={{ flexShrink: 0, borderTop: `1px solid ${colors.borderLight}`, background: colors.bgLighter, padding: isMobile ? "12px 14px" : "14px 20px", display: "flex", alignItems: "center", gap: isMobile ? 12 : 14 }}>
-            <button onClick={togglePlay} aria-label={playing ? t("barRace.pause") : t("barRace.play")} style={{ width: 50, height: 50, borderRadius: "50%", border: "none", background: colors.brand, color: colors.white, fontSize: 20, cursor: "pointer", flexShrink: 0, boxShadow: `0 4px 14px ${colors.brand}66`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {playing ? "⏸" : finished ? "↻" : "▶"}
+            <button onClick={togglePlay} aria-label={playing ? t("barRace.pause") : t("barRace.play")} style={{ width: 50, height: 50, borderRadius: "50%", border: "none", background: colors.brand, color: colors.white, cursor: "pointer", flexShrink: 0, boxShadow: `0 4px 14px ${colors.brand}66`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {playing ? <PauseIcon /> : finished || reachedEnd ? <ReplayIcon /> : <PlayIcon />}
             </button>
             <input ref={scrubRef} type="range" min={0} max={lastStep} step={0.01} defaultValue={0} onChange={onScrub} aria-label={t("barRace.title")} style={{ flex: 1, height: 28, accentColor: colors.brand, cursor: "pointer" }} />
             <button onClick={() => setSpeed((s) => (s === 1 ? 2 : 1))} style={{ minWidth: 46, height: 40, borderRadius: 999, border: `1px solid ${colors.borderMedium}`, background: colors.white, color: colors.textDark, fontSize: 13, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>
@@ -344,4 +376,19 @@ export function BarChartRaceModal({
 
 function Centered({ children }: { children: ReactNode }) {
   return <div style={{ padding: "56px 16px", textAlign: "center", color: colors.textMuted }}>{children}</div>;
+}
+
+function ClockMatch({ m, tournamentKey, isMobile }: { m: BarRaceMatch; tournamentKey: string; isMobile: boolean }) {
+  const hf = getTeamFlag(m.homeId.replace("t_", ""), tournamentKey)?.flagUrl;
+  const af = getTeamFlag(m.awayId.replace("t_", ""), tournamentKey)?.flagUrl;
+  const flagStyle = { width: 22, height: 15, borderRadius: 2, objectFit: "cover" as const, flexShrink: 0 };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: isMobile ? 13 : 15, fontWeight: 800, color: colors.text }}>
+      {hf && <img src={hf} alt="" style={flagStyle} />}
+      <span>{m.home}</span>
+      <span style={{ color: colors.brand }}>{m.hg ?? "–"} - {m.ag ?? "–"}</span>
+      <span>{m.away}</span>
+      {af && <img src={af} alt="" style={flagStyle} />}
+    </div>
+  );
 }

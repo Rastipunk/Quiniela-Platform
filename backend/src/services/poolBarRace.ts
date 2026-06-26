@@ -19,10 +19,20 @@ import type { FixtureMatch, FixtureTeam } from "../lib/fixture";
  *  cracked this top-N (plus the viewer). */
 export const BAR_RACE_TOP_N = 15;
 
+export interface BarRaceMatch {
+  homeId: string;
+  awayId: string;
+  home: string; // short code/name for the label
+  away: string;
+  hg: number | null; // home goals (final result)
+  ag: number | null;
+}
 export interface BarRaceStep {
   index: number;
   kickoffUtc: string;
   label: string;
+  /** The match(es) resolved at this step, with their result (for flags + score). */
+  matches: BarRaceMatch[];
 }
 export interface BarRacePlayer {
   userId: string;
@@ -48,8 +58,9 @@ export function buildBarRaceSeries(args: {
   scoringDisabledMatchIds: Set<string>;
   members: Array<{ userId: string; displayName: string }>;
   pointsByUserMatch: Map<string, Map<string, number>>;
+  resultByMatchId: Map<string, { homeGoals: number; awayGoals: number }>;
 }): BarRaceSeries {
-  const { matches, teamById, finalizedMatchIds, scoringDisabledMatchIds, members, pointsByUserMatch } = args;
+  const { matches, teamById, finalizedMatchIds, scoringDisabledMatchIds, members, pointsByUserMatch, resultByMatchId } = args;
 
   const plotted = matches
     .filter((m) => finalizedMatchIds.has(m.id) && !scoringDisabledMatchIds.has(m.id))
@@ -62,7 +73,7 @@ export function buildBarRaceSeries(args: {
     });
 
   // Collapse equal-kickoff runs into one step each.
-  const grouped: Array<{ kickoffUtc: string; matchIds: string[]; label: string }> = [];
+  const grouped: Array<{ kickoffUtc: string; matchIds: string[]; label: string; matches: BarRaceMatch[] }> = [];
   let i = 0;
   while (i < plotted.length) {
     const t0 = dayMs(plotted[i]!.kickoffUtc);
@@ -75,10 +86,21 @@ export function buildBarRaceSeries(args: {
     const home = teamToken(teamById.get(first.homeTeamId), first.homeTeamId);
     const away = teamToken(teamById.get(first.awayTeamId), first.awayTeamId);
     const label = group.length > 1 ? `${home} vs ${away} +${group.length - 1}` : `${home} vs ${away}`;
-    grouped.push({ kickoffUtc: first.kickoffUtc, matchIds: group.map((g) => g.id), label });
+    const matchDetails: BarRaceMatch[] = group.map((g) => {
+      const r = resultByMatchId.get(g.id);
+      return {
+        homeId: g.homeTeamId,
+        awayId: g.awayTeamId,
+        home: teamToken(teamById.get(g.homeTeamId), g.homeTeamId),
+        away: teamToken(teamById.get(g.awayTeamId), g.awayTeamId),
+        hg: r ? r.homeGoals : null,
+        ag: r ? r.awayGoals : null,
+      };
+    });
+    grouped.push({ kickoffUtc: first.kickoffUtc, matchIds: group.map((g) => g.id), label, matches: matchDetails });
   }
 
-  const steps: BarRaceStep[] = grouped.map((g, idx) => ({ index: idx, kickoffUtc: g.kickoffUtc, label: g.label }));
+  const steps: BarRaceStep[] = grouped.map((g, idx) => ({ index: idx, kickoffUtc: g.kickoffUtc, label: g.label, matches: g.matches }));
 
   const players: BarRacePlayer[] = members.map((mem) => {
     const byMatch = pointsByUserMatch.get(mem.userId);

@@ -605,6 +605,7 @@ export function PoolLeaderboardTab({
           poolId={poolId}
           token={token}
           poolName={overview.pool.name}
+          tournamentKey={overview.tournamentInstance.templateKey ?? ""}
           isMobile={isMobile}
           onClose={() => setShowBarRace(false)}
         />

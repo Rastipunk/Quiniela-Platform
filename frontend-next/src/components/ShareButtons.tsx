@@ -91,6 +91,7 @@ export type ShareContext =
   | "predictions"
   | "worldCupHub"
   | "leaderboard"
+  | "barRace"
   | "generic";
 
 export interface ShareButtonsProps {
@@ -152,6 +153,8 @@ export function ShareButtons({
           poolName: data?.poolName || "",
           total: String(data?.totalMembers || 0),
         });
+      case "barRace":
+        return t("barRace");
       default:
         return t("generic");
     }
