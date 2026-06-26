@@ -14,21 +14,12 @@ import { useTranslations, useLocale } from "next-intl";
 import { colors, zIndex } from "@/lib/theme";
 import { getPoolBarRace, type PoolBarRace } from "@/lib/api/pools";
 
-const GOLD = "#F59E0B";
-const SILVER = "#94A3B8";
-const BRONZE = "#C2773F";
-const OTHER_BAR = "#A5B4FC";
+const OTHER_BAR = "#A5B4FC"; // constant bar colour for the pack (no rank recolour)
 const STEP_MS = 900; // base ms per match at 1x
+const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+const PODIUM_BG: Record<number, string> = { 1: "#F59E0B", 2: "#94A3B8", 3: "#C2773F" };
 
 const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
-
-function barColor(isViewer: boolean, rank: number): string {
-  if (isViewer) return colors.brand;
-  if (rank === 1) return GOLD;
-  if (rank === 2) return SILVER;
-  if (rank === 3) return BRONZE;
-  return OTHER_BAR;
-}
 
 interface RowRefs {
   row: HTMLDivElement;
@@ -122,13 +113,23 @@ export function BarChartRaceModal({
       const rC = ranksByStep[ceil]!;
       const pin = d.totalPlayers > VISIBLE;
 
-      let maxVal = 1;
+      let maxVal = 0;
+      let minVisVal = Infinity;
       const items = d.players.map((p) => {
         const v = lerp(p.cumulative[floor] ?? 0, p.cumulative[ceil] ?? 0, frac);
+        const rankI = lerp(rF.get(p.userId) ?? 999, rC.get(p.userId) ?? 999, frac);
         if (v > maxVal) maxVal = v;
-        return { p, v, rankI: lerp(rF.get(p.userId) ?? 999, rC.get(p.userId) ?? 999, frac) };
+        if (rankI < VISIBLE && v < minVisVal) minVisVal = v;
+        return { p, v, rankI };
       });
-      const scaleMax = maxVal * 1.15;
+      if (!isFinite(minVisVal)) minVisVal = 0;
+      // Dynamic scale zoomed to the VISIBLE field: the lowest visible bar keeps a
+      // solid ~30% and everyone scales up from there, so the staircase stays
+      // legible even once everyone has lots of points. The floor only lifts off
+      // zero once the field has separated (early on it stays 0-based).
+      const range = Math.max(1, maxVal - minVisVal);
+      const lo = Math.max(0, minVisVal - range * 0.45);
+      const span = Math.max(1, maxVal + range * 0.05 - lo);
 
       for (const it of items) {
         const refs = rowRefs.current.get(it.p.userId);
@@ -142,17 +143,24 @@ export function BarChartRaceModal({
           y = Math.min(it.rankI, VISIBLE + 1) * ROW_H; // slide; sink just past the edge
           opacity = it.rankI < VISIBLE ? 1 : Math.max(0, 1 - (it.rankI - VISIBLE));
         }
-        const widthPct = Math.max(2, (it.v / scaleMax) * 100);
+        const widthPct = Math.max(4, Math.min(100, ((it.v - lo) / span) * 100));
         const dispRank = Math.round(it.rankI) + 1;
         refs.row.style.transform = `translate3d(0, ${y}px, 0)`;
         refs.row.style.opacity = String(opacity);
-        refs.row.style.zIndex = it.p.isViewer ? "3" : dispRank <= 3 ? "2" : "1";
         refs.bar.style.width = `${widthPct}%`;
-        refs.bar.style.background = barColor(it.p.isViewer, dispRank);
         refs.val.textContent = String(Math.round(it.v));
         // max() so the label never lands inside a min-width-clamped bar.
         refs.val.style.left = `max(calc(${widthPct}% + 6px), 34px)`;
-        refs.rank.textContent = String(dispRank);
+        // Podium = colored box + medal (bar colour stays constant → names readable).
+        if (dispRank <= 3) {
+          refs.rank.textContent = MEDAL[dispRank]!;
+          refs.rank.style.background = PODIUM_BG[dispRank]!;
+          refs.rank.style.color = "#fff";
+        } else {
+          refs.rank.textContent = String(dispRank);
+          refs.rank.style.background = "transparent";
+          refs.rank.style.color = colors.textMuted;
+        }
       }
 
       if (floor !== lastFloorRef.current) {
@@ -269,11 +277,11 @@ export function BarChartRaceModal({
                   <div
                     key={p.userId}
                     ref={setRowRef(p.userId)}
-                    style={{ position: "absolute", left: 0, right: 0, top: 0, height: ROW_H - 6, transform: "translate3d(0,0,0)", opacity: 0, transition: "opacity 0.25s ease", display: "flex", alignItems: "center", gap: 8, pointerEvents: "none", willChange: "transform, opacity" }}
+                    style={{ position: "absolute", left: 0, right: 0, top: 0, height: ROW_H - 6, transform: "translate3d(0,0,0)", opacity: 0, transition: "opacity 0.25s ease", display: "flex", alignItems: "center", gap: 8, pointerEvents: "none", willChange: "transform, opacity", zIndex: p.isViewer ? 3 : 1 }}
                   >
-                    <div data-rank style={{ width: 22, textAlign: "right", fontSize: 12, fontWeight: 800, color: colors.textMuted, flexShrink: 0 }} />
+                    <div data-rank style={{ width: 24, height: 24, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: colors.textMuted, flexShrink: 0 }} />
                     <div style={{ flex: 1, position: "relative", height: "100%" }}>
-                      <div data-bar style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "2%", minWidth: 28, background: OTHER_BAR, borderRadius: 6, display: "flex", alignItems: "center", paddingLeft: 8, boxShadow: p.isViewer ? `0 0 0 2px ${colors.brand}66` : "none" }}>
+                      <div data-bar style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "4%", minWidth: 28, background: p.isViewer ? colors.brand : OTHER_BAR, borderRadius: 6, display: "flex", alignItems: "center", paddingLeft: 8, boxShadow: p.isViewer ? `0 0 0 2px ${colors.brand}66` : "none" }}>
                         <span style={{ fontSize: isMobile ? 11 : 12, fontWeight: 700, color: colors.white, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}>
                           {p.isViewer ? t("barRace.you") : p.displayName}
                         </span>
