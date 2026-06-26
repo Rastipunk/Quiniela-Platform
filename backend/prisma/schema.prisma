@@ -464,6 +464,10 @@ model Pool {
   createdByUserId String
   createdByUser   User   @relation(fields: [createdByUserId], references: [id])
 
+  // Comentario en español: código corto para el link público de "Evolución"
+  // (bar-chart-race). Se genera bajo demanda; null = aún no compartida.
+  shareCode String? @unique
+
   poolFullNotifiedAt DateTime?
 
   // Comentario en español: timestamp del último envío del email de "capacidad casi llena"

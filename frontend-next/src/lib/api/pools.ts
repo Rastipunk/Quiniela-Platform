@@ -163,6 +163,26 @@ export async function getPoolBarRace(
   });
 }
 
+// Get-or-create the public "Evolución" share code for a pool (member only).
+export async function getOrCreateShareCode(
+  token: string,
+  poolId: string,
+): Promise<{ shareCode: string }> {
+  return requestJson<{ shareCode: string }>(`/pools/${poolId}/share-code`, {
+    method: "POST",
+  });
+}
+
+// Public (no-auth) bar-race resolved by share code — used by the /e/[code] page.
+export async function getPublicBarRace(
+  code: string,
+): Promise<{ barRace: PoolBarRace | null; poolName: string; tournamentKey: string }> {
+  return requestJson<{ barRace: PoolBarRace | null; poolName: string; tournamentKey: string }>(
+    `/public/evolution/${encodeURIComponent(code)}`,
+    { method: "GET" },
+  );
+}
+
 
 export async function createInvite(
   token: string,

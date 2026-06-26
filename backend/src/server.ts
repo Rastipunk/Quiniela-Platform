@@ -18,6 +18,7 @@ import { legalRouter } from "./routes/legal";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
 import { salesRedemptionRouter } from "./routes/salesRedemption";
+import { publicRouter } from "./routes/publicRoutes";
 import { sendOk, sendForbidden, sendInternal, sendNotFound } from "./lib/apiResponse";
 import { logger } from "./lib/logger";
 import { apiLimiter, authLimiter, authIpLimiter, passwordResetLimiter, verificationResendLimiter, corporateInviteCheckLimiter, corporateActivateLimiter } from "./middleware/rateLimit";
@@ -294,6 +295,7 @@ app.use("/pools", poolsRouter);       // composes: picks, results, structural, g
 app.use("/me", meRouter);
 app.use("/users", userProfileRouter);
 app.use("/catalog", catalogRouter);
+app.use("/public", publicRouter); // no auth — shareable read-only artifacts (Evolución link)
 app.use("/pick-presets", pickPresetsRouter);
 app.use("/legal", legalRouter);
 app.use("/feedback", express.json({ limit: "2mb" }), feedbackRouter);

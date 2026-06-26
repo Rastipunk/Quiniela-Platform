@@ -15,7 +15,7 @@ import {
   sendInternal,
 } from "../lib/apiResponse";
 import { ServiceError } from "../services/authService";
-import { getPoolOverview, getPoolBarRace } from "../services/poolOverviewService";
+import { getPoolOverview, getPoolBarRace, getOrCreateShareCode } from "../services/poolOverviewService";
 
 export const poolOverviewRouter = Router();
 
@@ -59,6 +59,17 @@ poolOverviewRouter.get("/:poolId/bar-race", async (req, res) => {
   const { poolId } = req.params;
   try {
     const data = await getPoolBarRace(req.auth!.userId, poolId);
+    return sendData(res, data);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /pools/:poolId/share-code — get-or-create the public "Evolución" link code.
+poolOverviewRouter.post("/:poolId/share-code", async (req, res) => {
+  const { poolId } = req.params;
+  try {
+    const data = await getOrCreateShareCode(req.auth!.userId, poolId);
     return sendData(res, data);
   } catch (err) {
     return handleServiceError(res, err);

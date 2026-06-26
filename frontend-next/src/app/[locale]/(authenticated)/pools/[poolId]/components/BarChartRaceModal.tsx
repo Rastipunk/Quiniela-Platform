@@ -14,7 +14,13 @@ import { useTranslations, useLocale } from "next-intl";
 import { colors, zIndex } from "@/lib/theme";
 import { ShareButtons } from "@/components/ShareButtons";
 import { getTeamFlag } from "@/data/teamFlags";
-import { getPoolBarRace, type PoolBarRace, type BarRaceMatch } from "@/lib/api/pools";
+import {
+  getPoolBarRace,
+  getOrCreateShareCode,
+  getPublicBarRace,
+  type PoolBarRace,
+  type BarRaceMatch,
+} from "@/lib/api/pools";
 
 const OTHER_BAR = "#A5B4FC"; // constant bar colour for the pack
 const STEP_MS = 900; // base ms per match at 1x
@@ -36,15 +42,19 @@ export function BarChartRaceModal({
   token,
   poolName,
   tournamentKey,
+  code,
+  mode = "modal",
   isMobile,
   onClose,
 }: {
-  poolId: string;
-  token: string | null;
-  poolName: string;
-  tournamentKey: string;
+  poolId?: string;
+  token?: string | null;
+  poolName?: string;
+  tournamentKey?: string;
+  code?: string; // public mode: resolve the race by its share code (no auth)
+  mode?: "modal" | "page";
   isMobile: boolean;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const t = useTranslations("pool");
   const locale = useLocale();
@@ -62,6 +72,10 @@ export function BarChartRaceModal({
   const [podiumRisen, setPodiumRisen] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [currentStep, setCurrentStep] = useState(0); // for the clock (flags + score)
+  const [poolNameState, setPoolNameState] = useState(poolName ?? "");
+  const [tournamentKeyState, setTournamentKeyState] = useState(tournamentKey ?? "");
+  const [shareUrl, setShareUrl] = useState("");
+  const isPage = mode === "page";
 
   const VISIBLE = isMobile ? 10 : 15;
   const ROW_H = isMobile ? 36 : 44;
@@ -81,11 +95,39 @@ export function BarChartRaceModal({
 
   useEffect(() => {
     let cancelled = false;
-    getPoolBarRace(token ?? "", poolId)
-      .then((r) => { if (!cancelled) { setData(r.barRace); setStatus("ready"); } })
-      .catch(() => !cancelled && setStatus("error"));
+    const load = code
+      ? getPublicBarRace(code).then((r) => {
+          if (cancelled) return;
+          setData(r.barRace);
+          setPoolNameState(r.poolName);
+          setTournamentKeyState(r.tournamentKey);
+          setStatus("ready");
+        })
+      : getPoolBarRace(token ?? "", poolId ?? "").then((r) => {
+          if (cancelled) return;
+          setData(r.barRace);
+          setStatus("ready");
+        });
+    load.catch(() => !cancelled && setStatus("error"));
     return () => { cancelled = true; };
-  }, [poolId, token]);
+  }, [poolId, token, code]);
+
+  // Share URL: page mode shares the current public URL. Modal mode seeds the
+  // current URL immediately (so the share row never vanishes) then upgrades to
+  // the pretty /e/{code} public link once the share code resolves; on failure
+  // it keeps the seeded URL — no worse than before this feature.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShareUrl(window.location.href);
+    if (isPage || !poolId) return;
+    let cancelled = false;
+    getOrCreateShareCode(token ?? "", poolId)
+      .then((r) => {
+        if (!cancelled) setShareUrl(`${window.location.origin}/e/${r.shareCode}`);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isPage, poolId, token]);
 
   const lastStep = Math.max(0, (data?.steps.length ?? 1) - 1);
 
@@ -240,24 +282,29 @@ export function BarChartRaceModal({
   const trackH = (visibleCount + (pinRow ? 1.5 : 0)) * ROW_H + 4;
   const ready = status === "ready" && data && data.steps.length > 0;
   const top3 = ready ? [...data!.players].sort((a, b) => (b.cumulative[lastStep] ?? 0) - (a.cumulative[lastStep] ?? 0)).slice(0, 3) : [];
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   return (
     <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.62)", zIndex: zIndex.modalAbove, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 6 : 20 }}
+      onClick={isPage ? undefined : onClose}
+      style={
+        isPage
+          ? { minHeight: "100dvh", background: colors.bgLighter, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", padding: isMobile ? 10 : 24, gap: 14 }
+          : { position: "fixed", inset: 0, background: "rgba(15,23,42,0.62)", zIndex: zIndex.modalAbove, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 6 : 20 }
+      }
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: colors.white, borderRadius: 18, width: "100%", maxWidth: 760, maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 70px rgba(0,0,0,0.4)" }}
+        style={{ background: colors.white, borderRadius: 18, width: "100%", maxWidth: 760, maxHeight: isPage ? "92dvh" : "95vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 70px rgba(0,0,0,0.4)", marginTop: isPage && !isMobile ? 24 : 0 }}
       >
         {/* Header */}
         <div style={{ background: colors.brandGradient, color: colors.white, padding: isMobile ? "13px 14px" : "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, gap: 8 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: isMobile ? 15 : 19, fontWeight: 800 }}>🏁 {t("barRace.title")}</div>
-            <div style={{ fontSize: 12, opacity: 0.9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{poolName}</div>
+            <div style={{ fontSize: 12, opacity: 0.9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{poolNameState}</div>
           </div>
-          <button onClick={onClose} aria-label={t("barRace.close")} style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.2)", color: colors.white, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon /></button>
+          {!isPage && (
+            <button onClick={onClose} aria-label={t("barRace.close")} style={{ width: 34, height: 34, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.2)", color: colors.white, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><CloseIcon /></button>
+          )}
         </div>
 
         {/* Body */}
@@ -269,9 +316,11 @@ export function BarChartRaceModal({
           {ready && (
             <>
               {/* Share row */}
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-                <ShareButtons context="barRace" url={shareUrl} size="sm" showLabels={false} />
-              </div>
+              {shareUrl && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                  <ShareButtons context="barRace" url={shareUrl} size="sm" showLabels={false} />
+                </div>
+              )}
 
               {finished ? (
                 /* ── Podium ── */
@@ -310,7 +359,7 @@ export function BarChartRaceModal({
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 8, flexWrap: "wrap" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                           {cs?.matches.slice(0, 2).map((m, k) => (
-                            <ClockMatch key={k} m={m} tournamentKey={tournamentKey} isMobile={isMobile} />
+                            <ClockMatch key={k} m={m} tournamentKey={tournamentKeyState} isMobile={isMobile} />
                           ))}
                           {cs && cs.matches.length > 2 && (
                             <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600 }}>+{cs.matches.length - 2}</span>
@@ -370,6 +419,11 @@ export function BarChartRaceModal({
           </div>
         )}
       </div>
+      {isPage && (
+        <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: colors.brand, fontWeight: 700, fontSize: 13, textDecoration: "none", padding: "4px 14px 10px" }}>
+          🏆 Picks4All <span style={{ color: colors.textMuted, fontWeight: 600 }}>· {t("barRace.publicFooter")}</span>
+        </a>
+      )}
     </div>
   );
 }

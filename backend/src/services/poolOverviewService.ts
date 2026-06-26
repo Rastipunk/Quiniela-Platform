@@ -7,6 +7,7 @@
  *   - Side effects are fire-and-forget but logged on failure.
  */
 
+import crypto from "crypto";
 import { prisma } from "../db";
 import { getScoringPreset } from "../lib/scoringPresets";
 import { isPoolAdmin } from "../lib/roles";
@@ -24,6 +25,7 @@ import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSu
 import { outcomeFromScore } from "../lib/poolHelpers";
 import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool, isBarRaceEnabledForPool } from "../lib/featureFlags";
 import { getOrComputeLeaderboard } from "./poolLeaderboardCache";
+import type { PoolMemberRole } from "@prisma/client";
 import { computeLastStep } from "./poolMatchDelta";
 import { buildBarRaceSeries, curateBarRaceForViewer } from "./poolBarRace";
 import type { PhasePickConfig } from "../types/pickConfig";
@@ -72,11 +74,16 @@ export async function getPoolOverview(
   poolId: string,
   leaderboardVerbose: boolean,
   includeBarRace = false,
+  publicMode = false,
 ) {
-  // 1) Permission: must be ACTIVE or LEFT (LEFT = read-only)
-  const myMembership = await prisma.poolMember.findFirst({
-    where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
-  });
+  // 1) Permission: must be ACTIVE or LEFT (LEFT = read-only). publicMode (the
+  // shared "Evolución" link) is an anonymous read-only view → skip the check
+  // with a non-admin placeholder member (no emails exposed, no host powers).
+  const myMembership = publicMode
+    ? { id: "", userId: "", role: "PLAYER" as PoolMemberRole, status: "ACTIVE" as const, joinedAtUtc: new Date() }
+    : await prisma.poolMember.findFirst({
+        where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
+      });
   if (!myMembership) {
     // Check if user is pending approval — return a distinct code so the
     // frontend can show a friendly "waiting" message instead of an error.
@@ -856,5 +863,71 @@ export async function getPoolBarRace(userId: string, poolId: string) {
   if (!overview.barRace || overview.leaderboard.presetMode === "STRUCTURAL") return { barRace: null };
   return {
     barRace: curateBarRaceForViewer({ series: overview.barRace, viewerUserId: userId }),
+  };
+}
+
+/**
+ * Get-or-create the short public share code for a pool's "Evolución" link.
+ * Member-only, and only when the bar race is enabled for the pool. Returns just
+ * the code — the frontend builds the full `…/e/{code}` URL.
+ */
+export async function getOrCreateShareCode(userId: string, poolId: string): Promise<{ shareCode: string }> {
+  const member = await prisma.poolMember.findFirst({
+    where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
+    select: { id: true },
+  });
+  if (!member) throw new ServiceError("FORBIDDEN", 403);
+  if (!isBarRaceEnabledForPool(poolId)) throw new ServiceError("FORBIDDEN", 403, { message: "Bar race not enabled" });
+
+  const pool = await prisma.pool.findUnique({ where: { id: poolId }, select: { shareCode: true } });
+  if (!pool) throw new ServiceError("NOT_FOUND", 404);
+  if (pool.shareCode) return { shareCode: pool.shareCode };
+
+  // Generate a unique short code (retry on the rare unique collision).
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = crypto.randomBytes(6).toString("base64url"); // ~8 url-safe chars
+    try {
+      await prisma.pool.update({ where: { id: poolId }, data: { shareCode: code } });
+      return { shareCode: code };
+    } catch (e) {
+      // Only a unique-constraint collision (P2002) is retryable; surface any
+      // other DB error instead of masking it as a 409. Matches the
+      // `(err as any)?.code === "P2002"` convention used in paymentService.
+      if ((e as { code?: string })?.code !== "P2002") throw e;
+      const fresh = await prisma.pool.findUnique({ where: { id: poolId }, select: { shareCode: true } });
+      if (fresh?.shareCode) return { shareCode: fresh.shareCode }; // set concurrently
+    }
+  }
+  throw new ServiceError("CONFLICT", 409, { message: "Could not allocate share code" });
+}
+
+/**
+ * Public (no-auth) bar-race for a shared link. Resolves the pool by its share
+ * code and returns the curated race (anonymous: top-N, no viewer highlight),
+ * the pool name and tournament key (for flags). barRace=null when the feature
+ * is off or the pool is structural-only.
+ */
+export async function getPublicBarRace(shareCode: string) {
+  const pool = await prisma.pool.findUnique({ where: { shareCode }, select: { id: true } });
+  if (!pool) throw new ServiceError("NOT_FOUND", 404);
+
+  const overview = await getPoolOverview("", pool.id, false, true, true);
+  const enabled = isBarRaceEnabledForPool(pool.id) && overview.leaderboard.presetMode !== "STRUCTURAL";
+  const curated = enabled && overview.barRace
+    ? curateBarRaceForViewer({ series: overview.barRace, viewerUserId: "" })
+    : null;
+  // Anonymize: this is a no-auth payload, so strip real user IDs (used only as
+  // an opaque animation/React key client-side) and replace with synthetic
+  // indices. isViewer is always false in public mode, so nothing depends on them.
+  const barRace = curated
+    ? { ...curated, players: curated.players.map((p, i) => ({ ...p, userId: `p${i}` })) }
+    : null;
+  return {
+    barRace,
+    // Pool name / tournament key are intentionally public ONLY when the race is
+    // available (for the OG/WhatsApp preview); a de-allowlisted or structural
+    // pool with a stale shareCode discloses nothing.
+    poolName: enabled ? overview.pool.name : "",
+    tournamentKey: enabled ? overview.tournamentInstance.templateKey ?? "" : "",
   };
 }
