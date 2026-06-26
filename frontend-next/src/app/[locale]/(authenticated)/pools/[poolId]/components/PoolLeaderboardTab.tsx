@@ -158,11 +158,8 @@ export function PoolLeaderboardTab({
           ...(showDelta
             ? [
                 (r.lastGainPoints ?? 0) > 0 ? `+${r.lastGainPoints}` : "0",
-                (r.lastRankDelta ?? 0) > 0
-                  ? `▲${r.lastRankDelta}`
-                  : (r.lastRankDelta ?? 0) < 0
-                    ? `▼${-(r.lastRankDelta ?? 0)}`
-                    : "=",
+                // Magnitude only — the up/down triangle is drawn as a vector.
+                (r.lastRankDelta ?? 0) !== 0 ? `  ${Math.abs(r.lastRankDelta ?? 0)}` : "=",
               ]
             : []),
           ...phases.map((p) => {
@@ -173,6 +170,8 @@ export function PoolLeaderboardTab({
         ]),
         totalColIndex: 2,
         deltaColIndices: showDelta ? [3, 4] : undefined,
+        arrowColIndex: showDelta ? 4 : undefined,
+        arrowDirections: showDelta ? allRows.map((r) => Math.sign(r.lastRankDelta ?? 0)) : undefined,
         podiumRows: true,
         footerText: t("pdf.footerCounts", { players: allRows.length, matches: overview.matches.length }),
         filenameBase: `${t("pdf.leaderboardDoc")}_${overview.pool.name}`,

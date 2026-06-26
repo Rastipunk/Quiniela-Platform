@@ -68,6 +68,11 @@ export interface BrandedPdfSpec {
   /** Highlighted banner drawn right above the table header (e.g. "Movimiento
    *  con los últimos partidos: …"). */
   highlightBanner?: string;
+  /** Column whose direction is drawn as a VECTOR triangle (font-independent —
+   *  the PDF font lacks ▲▼). Pair with `arrowDirections` (1 up / -1 down / 0). */
+  arrowColIndex?: number;
+  /** Per-body-row direction for `arrowColIndex`: 1 = up, -1 = down, 0 = none. */
+  arrowDirections?: number[];
   /** Paint podium fills on the first three body rows (leaderboard order). */
   podiumRows: boolean;
   /** Optional footnote printed after the table (e.g. random-pick legend). */
@@ -175,14 +180,21 @@ export async function generateBrandedTablePdf(spec: BrandedPdfSpec): Promise<voi
         data.cell.styles.fontStyle = "bold";
         return;
       }
-      // Last-match delta columns: same box fill as Total, green/red by sign.
+      // Last-match delta columns: same box fill as Total, green/red text.
       if (spec.deltaColIndices?.includes(data.column.index)) {
         data.cell.styles.fillColor = TOTAL_COL_FILL;
         data.cell.styles.fontStyle = "bold";
-        const raw = String(data.cell.raw ?? "");
-        if (raw.startsWith("+") || raw.startsWith("▲") || raw.startsWith("↑")) data.cell.styles.textColor = [22, 163, 74];
-        else if (raw.startsWith("-") || raw.startsWith("▼") || raw.startsWith("↓")) data.cell.styles.textColor = [220, 38, 38];
-        else data.cell.styles.textColor = textMuted;
+        if (data.column.index === spec.arrowColIndex) {
+          // Direction column: colour by the supplied sign (the triangle is
+          // drawn later in didDrawCell), and pad left so it clears the arrow.
+          const dir = spec.arrowDirections?.[data.row.index] ?? 0;
+          data.cell.styles.textColor = dir > 0 ? [22, 163, 74] : dir < 0 ? [220, 38, 38] : textMuted;
+        } else {
+          const raw = String(data.cell.raw ?? "");
+          if (raw.startsWith("+")) data.cell.styles.textColor = [22, 163, 74];
+          else if (raw.startsWith("-")) data.cell.styles.textColor = [220, 38, 38];
+          else data.cell.styles.textColor = textMuted;
+        }
         return;
       }
       if (spec.podiumRows && data.row.index < ROW_FILLS.length) {
@@ -190,6 +202,20 @@ export async function generateBrandedTablePdf(spec: BrandedPdfSpec): Promise<voi
       } else if (data.row.index % 2 === 1) {
         data.cell.styles.fillColor = ZEBRA_FILL;
       }
+    },
+    didDrawCell: (data) => {
+      // Draw the position arrow as a vector (the PDF font has no ▲▼ glyph).
+      if (data.section !== "body" || data.column.index !== spec.arrowColIndex) return;
+      const dir = spec.arrowDirections?.[data.row.index] ?? 0;
+      if (dir === 0) return;
+      const cy = data.cell.y + data.cell.height / 2;
+      const cx = data.cell.x + data.cell.width / 2;
+      const s = 3.2; // half base
+      const tx = cx - 15; // sit just left of the centred number
+      const [r, g, b] = dir > 0 ? [22, 163, 74] : [220, 38, 38];
+      doc.setFillColor(r, g, b);
+      if (dir > 0) doc.triangle(tx, cy + s, tx + s * 2, cy + s, tx + s, cy - s, "F");
+      else doc.triangle(tx, cy - s, tx + s * 2, cy - s, tx + s, cy + s, "F");
     },
     didDrawPage: () => {
       const pageHeight = doc.internal.pageSize.getHeight();
