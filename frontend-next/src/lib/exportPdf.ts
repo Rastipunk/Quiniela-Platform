@@ -63,8 +63,11 @@ export interface BrandedPdfSpec {
   /** Column index to highlight as the "Total" column (null = none). */
   totalColIndex: number | null;
   /** Columns boxed with the Total fill + green/red by sign (e.g. last-match
-   *  "Puntos / Posiciones"). Cells starting with + or ↑ are green, − or ↓ red. */
+   *  "Puntos / Posiciones"). Cells starting with + ▲ ↑ are green, − ▼ ↓ red. */
   deltaColIndices?: number[];
+  /** Highlighted banner drawn right above the table header (e.g. "Movimiento
+   *  con los últimos partidos: …"). */
+  highlightBanner?: string;
   /** Paint podium fills on the first three body rows (leaderboard order). */
   podiumRows: boolean;
   /** Optional footnote printed after the table (e.g. random-pick legend). */
@@ -129,6 +132,20 @@ export async function generateBrandedTablePdf(spec: BrandedPdfSpec): Promise<voi
   }
   cursorY += 4;
 
+  // Highlighted banner right above the table header (e.g. the last-match
+  // movement caption). Boxed in the brand-light fill, bold brand-dark text.
+  if (spec.highlightBanner) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const bannerH = 20;
+    doc.setFillColor(...TOTAL_COL_FILL);
+    doc.roundedRect(PAGE_MARGIN, cursorY - 4, pageWidth - PAGE_MARGIN * 2, bannerH, 3, 3, "F");
+    doc.setFont(fontFamily, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...brandDark);
+    doc.text(spec.highlightBanner, PAGE_MARGIN + 8, cursorY + 9);
+    cursorY += bannerH + 8;
+  }
+
   // ── Table ────────────────────────────────────────────────────
   autoTable(doc, {
     startY: cursorY,
@@ -163,8 +180,8 @@ export async function generateBrandedTablePdf(spec: BrandedPdfSpec): Promise<voi
         data.cell.styles.fillColor = TOTAL_COL_FILL;
         data.cell.styles.fontStyle = "bold";
         const raw = String(data.cell.raw ?? "");
-        if (raw.startsWith("+") || raw.startsWith("↑")) data.cell.styles.textColor = [22, 163, 74];
-        else if (raw.startsWith("-") || raw.startsWith("↓")) data.cell.styles.textColor = [220, 38, 38];
+        if (raw.startsWith("+") || raw.startsWith("▲") || raw.startsWith("↑")) data.cell.styles.textColor = [22, 163, 74];
+        else if (raw.startsWith("-") || raw.startsWith("▼") || raw.startsWith("↓")) data.cell.styles.textColor = [220, 38, 38];
         else data.cell.styles.textColor = textMuted;
         return;
       }
