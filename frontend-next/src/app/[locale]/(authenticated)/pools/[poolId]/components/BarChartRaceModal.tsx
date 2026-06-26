@@ -323,7 +323,7 @@ export function BarChartRaceModal({
               {/* Share row */}
               {shareUrl && (
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-                  <ShareButtons context="barRace" url={shareUrl} size="sm" showLabels={false} />
+                  <ShareButtons context="barRace" url={shareUrl} size="sm" showLabels={false} trackUrl={false} />
                 </div>
               )}
 

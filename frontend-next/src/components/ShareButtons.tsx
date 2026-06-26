@@ -112,6 +112,9 @@ export interface ShareButtonsProps {
   showLabels?: boolean;
   /** Size variant */
   size?: "sm" | "md";
+  /** Append UTM tracking params to the shared URL (default: true). Set false
+   *  when the clean, short URL is the point (e.g. the public bar-race link). */
+  trackUrl?: boolean;
 }
 
 // ── Component ──────────────────────────────────────────────
@@ -123,17 +126,18 @@ export function ShareButtons({
   layout = "row",
   showLabels = false,
   size = "md",
+  trackUrl = true,
 }: ShareButtonsProps) {
   const t = useTranslations("share");
   const [copied, setCopied] = useState(false);
 
   const campaign = context === "poolInvite" ? "pool_invite" : "pool_share";
-  const tagUrl = useCallback((source: string) => appendUtm(url, {
+  const tagUrl = useCallback((source: string) => trackUrl ? appendUtm(url, {
     source,
     medium: "social",
     campaign,
     content: context,
-  }), [url, campaign, context]);
+  }) : url, [url, campaign, context, trackUrl]);
 
   // Build share text based on context
   const shareText = useCallback(() => {
