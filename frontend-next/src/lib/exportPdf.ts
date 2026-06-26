@@ -210,12 +210,13 @@ export async function generateBrandedTablePdf(spec: BrandedPdfSpec): Promise<voi
       if (dir === 0) return;
       const cy = data.cell.y + data.cell.height / 2;
       const cx = data.cell.x + data.cell.width / 2;
-      const s = 3.2; // half base
-      const tx = cx - 15; // sit just left of the centred number
+      const s = 4.5; // half base
+      const tx = cx - 16; // sit just left of the centred number
       const [r, g, b] = dir > 0 ? [22, 163, 74] : [220, 38, 38];
       doc.setFillColor(r, g, b);
-      if (dir > 0) doc.triangle(tx, cy + s, tx + s * 2, cy + s, tx + s, cy - s, "F");
-      else doc.triangle(tx, cy - s, tx + s * 2, cy - s, tx + s, cy + s, "F");
+      doc.setDrawColor(r, g, b);
+      if (dir > 0) doc.triangle(tx, cy + s, tx + s * 2, cy + s, tx + s, cy - s, "FD");
+      else doc.triangle(tx, cy - s, tx + s * 2, cy - s, tx + s, cy + s, "FD");
     },
     didDrawPage: () => {
       const pageHeight = doc.internal.pageSize.getHeight();
