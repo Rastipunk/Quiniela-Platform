@@ -8,7 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { colors, radii, fontSize, fontWeight } from "@/lib/theme";
 import { getPoolEvolution, type PoolEvolution } from "@/lib/api/pools";
-import { EvolutionChart, playerColor } from "./EvolutionChart";
+import { EvolutionChart } from "./EvolutionChart";
 
 function Centered({ children }: { children: ReactNode }) {
   return (
@@ -65,9 +65,6 @@ export function PoolEvolutionTab({
   if (status === "error") return card(<Centered>{t("evolution.error")}</Centered>);
   if (!data || data.steps.length === 0) return card(<Centered>{t("evolution.empty")}</Centered>);
 
-  const legendPlayers = [...data.players].sort(
-    (a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity),
-  );
   const hiddenCount = data.curated ? data.totalPlayers - data.players.length : 0;
 
   return card(
@@ -79,63 +76,12 @@ export function PoolEvolutionTab({
         </h2>
         <p style={{ margin: "4px 0 0", fontSize: fontSize.sm, color: colors.textMuted, lineHeight: 1.4 }}>
           {t("evolution.subtitle")}
+          {hiddenCount > 0 ? ` · ${t("evolution.packMore", { count: hiddenCount })}` : ""}
         </p>
       </div>
 
-      {/* Legend chips */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        {legendPlayers.map((p) => (
-          <span
-            key={p.userId}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 10px",
-              borderRadius: 999,
-              background: p.isViewer ? colors.brandBg : colors.bgLighter,
-              border: `1px solid ${p.isViewer ? colors.brand : colors.borderLight}`,
-              fontSize: 12,
-              fontWeight: p.isViewer ? fontWeight.bold : fontWeight.medium,
-              color: p.isViewer ? colors.brand : colors.textDark,
-              maxWidth: "100%",
-            }}
-          >
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: playerColor(p), flexShrink: 0 }} />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {p.rank ? `${p.rank}° ` : ""}
-              {p.isViewer ? t("evolution.you") : p.displayName}
-            </span>
-            <span style={{ color: colors.textMuted, flexShrink: 0 }}>{p.cumulative.at(-1) ?? 0}</span>
-          </span>
-        ))}
-        {hiddenCount > 0 && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 10px",
-              borderRadius: 999,
-              background: colors.bgLighter,
-              border: `1px dashed ${colors.borderMedium}`,
-              fontSize: 12,
-              color: colors.textMuted,
-            }}
-          >
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: "#E2E8F0", flexShrink: 0 }} />
-            {t("evolution.packMore", { count: hiddenCount })}
-          </span>
-        )}
-      </div>
-
-      {/* Chart */}
+      {/* Chart (granularity switch lives inside) */}
       <EvolutionChart evolution={data} isMobile={isMobile} />
-
-      {/* Scroll hint */}
-      <div style={{ textAlign: "center", marginTop: 8, fontSize: 11, color: colors.textMuted }}>
-        ← {t("evolution.scrollHint")} →
-      </div>
     </>,
   );
 }

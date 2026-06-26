@@ -122,7 +122,13 @@
     "points": "pts",
     "standingsAt": "Tabla en este punto",
     "downloadPdf": "Descargar PDF",
-    "scrollHint": "Desliza para ver toda la historia"
+    "scrollHint": "Desliza para ver toda la historia",
+    "gran": {
+      "match": "Por partido",
+      "day": "Diario",
+      "3day": "Cada 3 días",
+      "7day": "Cada 7 días"
+    }
   },
 
   "nav": {
