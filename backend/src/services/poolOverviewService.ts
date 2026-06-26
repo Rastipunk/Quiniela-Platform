@@ -22,9 +22,10 @@ import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
-import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool } from "../lib/featureFlags";
+import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool, isBarRaceEnabledForPool } from "../lib/featureFlags";
 import { getOrComputeLeaderboard } from "./poolLeaderboardCache";
 import { computeLastStep } from "./poolMatchDelta";
+import { buildBarRaceSeries, curateBarRaceForViewer } from "./poolBarRace";
 import type { PhasePickConfig } from "../types/pickConfig";
 import { ServiceError } from "./authService";
 
@@ -70,6 +71,7 @@ export async function getPoolOverview(
   userId: string,
   poolId: string,
   leaderboardVerbose: boolean,
+  includeBarRace = false,
 ) {
   // 1) Permission: must be ACTIVE or LEFT (LEFT = read-only)
   const myMembership = await prisma.poolMember.findFirst({
@@ -695,7 +697,21 @@ export async function getPoolOverview(
     for (const x of beforeRanked) rankBeforeByUser.set(x.row.userId, x.rank);
   }
 
-    return { rankedRows, predictedCountByMatch, phaseOrder, presetMode, partialApplicable, lastStep, rankBeforeByUser };
+  // Bar-chart-race series (cumulative points per finalized match) for the
+  // animated "Evolución" view. Full + user-agnostic; curated per viewer at the
+  // dedicated endpoint. Built from the same per-match increments (no extra pass).
+  const barRace = buildBarRaceSeries({
+    matches,
+    teamById,
+    finalizedMatchIds: new Set(resultByMatchId.keys()),
+    scoringDisabledMatchIds: new Set(
+      matchOverrides.filter((o) => !o.scoringEnabled).map((o) => o.matchId),
+    ),
+    members: members.map((m) => ({ userId: m.userId, displayName: m.user.displayName })),
+    pointsByUserMatch: matchPointsByUser,
+  });
+
+    return { rankedRows, predictedCountByMatch, phaseOrder, presetMode, partialApplicable, lastStep, rankBeforeByUser, barRace };
   };
   const leaderboardBundle = leaderboardVerbose
     ? await computeLeaderboardBundle()
@@ -790,6 +806,8 @@ export async function getPoolOverview(
       // "Puntos ganados / posiciones movidas" in the most recent match(es).
       // Gated per-pool (LEADERBOARD_DELTA_ALLOWLIST) while in beta.
       deltaEnabled: isLeaderboardDeltaEnabledForPool(poolId),
+      // Animated bar-chart-race "Evolución" — beta-gated per pool.
+      barRaceEnabled: isBarRaceEnabledForPool(poolId),
       lastStep: leaderboardBundle.lastStep,
       rows: leaderboardBundle.rankedRows.map(({ row: r, rank, tiedGroupSize }) => ({
         rank,
@@ -817,5 +835,22 @@ export async function getPoolOverview(
         ...(leaderboardVerbose ? { breakdown: r.breakdown } : {}),
       })),
     },
+    // Full bar-race series (lazy — only when the dedicated endpoint asks). The
+    // dedicated endpoint curates it per viewer before it reaches the client.
+    ...(includeBarRace ? { barRace: leaderboardBundle.barRace } : {}),
+  };
+}
+
+/**
+ * Bar-chart-race series for a pool, curated for the viewer (everyone who ever
+ * reached the top-N at any step, plus the viewer). Reuses the cached leaderboard
+ * bundle (ADR-079) — no extra scoring pass. Permission / NOT_FOUND inherited
+ * from getPoolOverview.
+ */
+export async function getPoolBarRace(userId: string, poolId: string) {
+  const overview = await getPoolOverview(userId, poolId, false, true);
+  if (!overview.barRace) return { barRace: null };
+  return {
+    barRace: curateBarRaceForViewer({ series: overview.barRace, viewerUserId: userId }),
   };
 }

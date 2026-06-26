@@ -121,6 +121,18 @@
     "printedAt": "Generated on {date}"
   },
 
+  "barRace": {
+    "title": "Evolution",
+    "openButton": "See {pool}'s evolution",
+    "close": "Close",
+    "loading": "Loading evolution…",
+    "error": "We couldn't load the evolution.",
+    "empty": "No matches have been played yet.",
+    "progress": "Match {n} of {total}",
+    "you": "You",
+    "winner": "{name} wins!"
+  },
+
   "nav": {
     "openMenu": "Open sections menu",
     "closeMenu": "Close menu",

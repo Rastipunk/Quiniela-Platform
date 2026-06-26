@@ -48,6 +48,14 @@ export function isLeaderboardDeltaEnabledForPool(poolId: string | null | undefin
   return emailInAllowlist(process.env.LEADERBOARD_DELTA_ALLOWLIST, poolId);
 }
 
+/**
+ * Animated "Evolución" bar-chart-race view. Rollout scoped by POOL id via
+ * `BAR_RACE_ALLOWLIST` ("" off / "*" all / csv of poolIds). Read at call time.
+ */
+export function isBarRaceEnabledForPool(poolId: string | null | undefined): boolean {
+  return emailInAllowlist(process.env.BAR_RACE_ALLOWLIST, poolId);
+}
+
 /** Shared allowlist semantics: ""→none, "*"→all, else case-insensitive match. */
 function emailInAllowlist(raw: string | undefined, email: string | null | undefined): boolean {
   const v = (raw ?? "").trim();

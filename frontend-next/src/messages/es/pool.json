@@ -121,6 +121,18 @@
     "printedAt": "Generado el {date}"
   },
 
+  "barRace": {
+    "title": "Evolución",
+    "openButton": "Ver la evolución de {pool}",
+    "close": "Cerrar",
+    "loading": "Cargando evolución…",
+    "error": "No pudimos cargar la evolución.",
+    "empty": "Aún no hay partidos jugados.",
+    "progress": "Partido {n} de {total}",
+    "you": "Tú",
+    "winner": "¡{name} gana!"
+  },
+
   "nav": {
     "openMenu": "Abrir menú de secciones",
     "closeMenu": "Cerrar menú",

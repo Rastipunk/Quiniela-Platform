@@ -15,7 +15,7 @@ import {
   sendInternal,
 } from "../lib/apiResponse";
 import { ServiceError } from "../services/authService";
-import { getPoolOverview } from "../services/poolOverviewService";
+import { getPoolOverview, getPoolBarRace } from "../services/poolOverviewService";
 
 export const poolOverviewRouter = Router();
 
@@ -48,6 +48,17 @@ poolOverviewRouter.get("/:poolId/overview", async (req, res) => {
 
   try {
     const data = await getPoolOverview(req.auth!.userId, poolId, leaderboardVerbose);
+    return sendData(res, data);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// GET /pools/:poolId/bar-race — cumulative-points race series (curated). Members only.
+poolOverviewRouter.get("/:poolId/bar-race", async (req, res) => {
+  const { poolId } = req.params;
+  try {
+    const data = await getPoolBarRace(req.auth!.userId, poolId);
     return sendData(res, data);
   } catch (err) {
     return handleServiceError(res, err);

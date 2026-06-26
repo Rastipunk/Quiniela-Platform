@@ -126,6 +126,34 @@ export async function getPoolOverview(token: string, poolId: string, leaderboard
   return requestJson<PoolOverview>(`/pools/${poolId}/overview${q}`, { method: "GET" });
 }
 
+// ── Bar-chart-race ("Evolución") ────────────────────────────────────────────
+export interface BarRaceStep {
+  index: number;
+  kickoffUtc: string;
+  label: string;
+}
+export interface BarRacePlayer {
+  userId: string;
+  displayName: string;
+  isViewer: boolean;
+  cumulative: number[];
+}
+export interface PoolBarRace {
+  steps: BarRaceStep[];
+  players: BarRacePlayer[];
+  topN: number;
+  totalPlayers: number;
+}
+
+export async function getPoolBarRace(
+  token: string,
+  poolId: string,
+): Promise<{ barRace: PoolBarRace | null }> {
+  return requestJson<{ barRace: PoolBarRace | null }>(`/pools/${poolId}/bar-race`, {
+    method: "GET",
+  });
+}
+
 
 export async function createInvite(
   token: string,

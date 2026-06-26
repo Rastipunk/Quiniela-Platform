@@ -11,6 +11,8 @@ import { PaginationControls } from "@/components/PaginationControls";
 import type { PoolOverview } from "@/lib/api";
 import type { PlayerSummaryModalData } from "./poolTypes";
 import { formatPhaseName, formatPhaseFullName } from "./poolHelpers";
+import { BarChartRaceModal } from "./BarChartRaceModal";
+import { getToken } from "@/lib/auth";
 import { TOUCH_TARGET } from "@/hooks/useIsMobile";
 
 const PAGE_SIZE = 20;
@@ -30,6 +32,9 @@ export function PoolLeaderboardTab({
   const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const [showBarRace, setShowBarRace] = useState(false);
+  const barRaceEnabled = !!overview.leaderboard.barRaceEnabled;
+  const token = useMemo(() => getToken(), []);
 
   const allRows = overview.leaderboard.rows;
   // Which tiebreaker columns to surface (D4: only where meaningful).
@@ -419,6 +424,22 @@ export function PoolLeaderboardTab({
           </div>
         </div>
 
+        {/* Evolución bar-chart-race call-to-action (beta-gated) */}
+        {barRaceEnabled && (
+          <button
+            onClick={() => setShowBarRace(true)}
+            style={{
+              width: "100%", marginBottom: 12, padding: "12px 16px", borderRadius: radii.lg,
+              border: "none", background: colors.brandGradient, color: colors.white,
+              fontSize: isMobile ? 13 : 15, fontWeight: 800, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              boxShadow: `0 4px 16px ${colors.brand}44`,
+            }}
+          >
+            ▶ {t("barRace.openButton", { pool: overview.pool.name })}
+          </button>
+        )}
+
         {/* Empate en el 1er lugar — lo decide la organización */}
         {anyTieAtTop && (
           <div style={{
@@ -577,6 +598,16 @@ export function PoolLeaderboardTab({
             </div>
           </div>
         </div>
+      )}
+
+      {showBarRace && (
+        <BarChartRaceModal
+          poolId={poolId}
+          token={token}
+          poolName={overview.pool.name}
+          isMobile={isMobile}
+          onClose={() => setShowBarRace(false)}
+        />
       )}
     </>
   );

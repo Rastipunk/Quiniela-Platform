@@ -245,6 +245,8 @@ export interface PoolLeaderboard {
   tiebreakers?: { perfect: boolean; partial: boolean };
   /** "Puntos ganados / posiciones movidas" columns — beta-gated per pool. */
   deltaEnabled?: boolean;
+  /** Animated bar-chart-race "Evolución" view — beta-gated per pool. */
+  barRaceEnabled?: boolean;
   /** The most recent match(es) the delta columns describe. */
   lastStep?: { matchIds: string[]; label: string } | null;
   rows: LeaderboardRow[];
