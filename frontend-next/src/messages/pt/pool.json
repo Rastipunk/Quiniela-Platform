@@ -130,7 +130,11 @@
     "empty": "Ainda não há jogos disputados.",
     "progress": "Jogo {n} de {total}",
     "you": "Você",
-    "winner": "{name} vence!"
+    "winner": "{name} vence!",
+    "play": "Reproduzir",
+    "pause": "Pausar",
+    "podiumTitle": "O pódio até agora",
+    "pts": "pts"
   },
 
   "nav": {

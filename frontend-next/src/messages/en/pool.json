@@ -130,7 +130,11 @@
     "empty": "No matches have been played yet.",
     "progress": "Match {n} of {total}",
     "you": "You",
-    "winner": "{name} wins!"
+    "winner": "{name} wins!",
+    "play": "Play",
+    "pause": "Pause",
+    "podiumTitle": "The podium so far",
+    "pts": "pts"
   },
 
   "nav": {
