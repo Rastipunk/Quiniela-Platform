@@ -98,7 +98,9 @@ export function BarChartRaceModal({
     const ranked = data.players
       .map((p) => ({ ...p, value: p.cumulative[s] ?? 0 }))
       .sort((a, b) => b.value - a.value || a.displayName.localeCompare(b.displayName));
-    const scaleMax = Math.max(1, ranked[0]?.value ?? 1);
+    // 15% headroom so the leader's bar never slams the right edge (the value
+    // label sits just past the bar end).
+    const scaleMax = Math.max(1, (ranked[0]?.value ?? 1) * 1.15);
     const pinViewer = data.totalPlayers > VISIBLE;
     const rows = ranked.map((p, j) => {
       const rank = j + 1;
@@ -197,7 +199,7 @@ export function BarChartRaceModal({
                           </span>
                         </div>
                         {/* Value at the bar end */}
-                        <span style={{ position: "absolute", left: `calc(${widthPct}% + 6px)`, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: isMobile ? 12 : 13, fontWeight: 800, color: color, transition: `left ${STEP_MS}ms linear`, whiteSpace: "nowrap" }}>
+                        <span style={{ position: "absolute", left: `calc(${widthPct}% + 6px)`, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: isMobile ? 12 : 13, fontWeight: 800, color: colors.text, transition: `left ${STEP_MS}ms linear`, whiteSpace: "nowrap" }}>
                           {Math.round(p.value)}
                         </span>
                       </div>
