@@ -806,8 +806,10 @@ export async function getPoolOverview(
       // "Puntos ganados / posiciones movidas" in the most recent match(es).
       // Gated per-pool (LEADERBOARD_DELTA_ALLOWLIST) while in beta.
       deltaEnabled: isLeaderboardDeltaEnabledForPool(poolId),
-      // Animated bar-chart-race "Evolución" — beta-gated per pool.
-      barRaceEnabled: isBarRaceEnabledForPool(poolId),
+      // Animated bar-chart-race "Evolución" — beta-gated per pool. Hidden for
+      // structural-only (Estratega) pools: their points are per-phase, not
+      // per-match, so the match-by-match race would be all zeros (review B1).
+      barRaceEnabled: isBarRaceEnabledForPool(poolId) && leaderboardBundle.presetMode !== "STRUCTURAL",
       lastStep: leaderboardBundle.lastStep,
       rows: leaderboardBundle.rankedRows.map(({ row: r, rank, tiedGroupSize }) => ({
         rank,
@@ -849,7 +851,8 @@ export async function getPoolOverview(
  */
 export async function getPoolBarRace(userId: string, poolId: string) {
   const overview = await getPoolOverview(userId, poolId, false, true);
-  if (!overview.barRace) return { barRace: null };
+  // Structural (Estratega) pools have no per-match points → would be all zeros.
+  if (!overview.barRace || overview.leaderboard.presetMode === "STRUCTURAL") return { barRace: null };
   return {
     barRace: curateBarRaceForViewer({ series: overview.barRace, viewerUserId: userId }),
   };
