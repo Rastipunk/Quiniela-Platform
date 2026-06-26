@@ -108,8 +108,9 @@
   },
 
   "lastMatch": {
-    "gained": "Gained",
-    "moved": "Moved",
+    "gained": "Points",
+    "moved": "Positions",
+    "ptsUnit": "pts",
     "live": "Live",
     "finished": "Finished",
     "captionOne": "Movement from: {match}",

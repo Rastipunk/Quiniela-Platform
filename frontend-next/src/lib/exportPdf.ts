@@ -62,6 +62,9 @@ export interface BrandedPdfSpec {
   body: RowInput[];
   /** Column index to highlight as the "Total" column (null = none). */
   totalColIndex: number | null;
+  /** Columns boxed with the Total fill + green/red by sign (e.g. last-match
+   *  "Puntos / Posiciones"). Cells starting with + or ↑ are green, − or ↓ red. */
+  deltaColIndices?: number[];
   /** Paint podium fills on the first three body rows (leaderboard order). */
   podiumRows: boolean;
   /** Optional footnote printed after the table (e.g. random-pick legend). */
@@ -137,7 +140,12 @@ export async function generateBrandedTablePdf(spec: BrandedPdfSpec): Promise<voi
     columnStyles: { 1: { halign: "left" } }, // player column left-aligned
     didParseCell: (data) => {
       if (data.section !== "body") {
-        if (data.section === "head" && data.column.index === spec.totalColIndex) {
+        if (
+          data.section === "head" &&
+          (data.column.index === spec.totalColIndex ||
+            spec.deltaColIndices?.includes(data.column.index))
+        ) {
+          // Box the Total + delta headers together with the brand-dark fill.
           data.cell.styles.fillColor = brandDark;
         }
         return;
@@ -148,6 +156,16 @@ export async function generateBrandedTablePdf(spec: BrandedPdfSpec): Promise<voi
         data.cell.styles.fillColor = TOTAL_COL_FILL;
         data.cell.styles.textColor = brandPrimary;
         data.cell.styles.fontStyle = "bold";
+        return;
+      }
+      // Last-match delta columns: same box fill as Total, green/red by sign.
+      if (spec.deltaColIndices?.includes(data.column.index)) {
+        data.cell.styles.fillColor = TOTAL_COL_FILL;
+        data.cell.styles.fontStyle = "bold";
+        const raw = String(data.cell.raw ?? "");
+        if (raw.startsWith("+") || raw.startsWith("↑")) data.cell.styles.textColor = [22, 163, 74];
+        else if (raw.startsWith("-") || raw.startsWith("↓")) data.cell.styles.textColor = [220, 38, 38];
+        else data.cell.styles.textColor = textMuted;
         return;
       }
       if (spec.podiumRows && data.row.index < ROW_FILLS.length) {

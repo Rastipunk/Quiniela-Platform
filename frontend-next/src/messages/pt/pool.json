@@ -108,8 +108,9 @@
   },
 
   "lastMatch": {
-    "gained": "Ganhou",
-    "moved": "Moveu",
+    "gained": "Pontos",
+    "moved": "Posições",
+    "ptsUnit": "pontos",
     "live": "Ao vivo",
     "finished": "Finalizado",
     "captionOne": "Movimento com: {match}",

@@ -53,6 +53,8 @@ type MobileLeaderboardProps = {
   tiedPointsValues?: number[];
   /** Beta: show "puntos ganados / posiciones movidas" of the last match. */
   showDelta?: boolean;
+  /** Short date of the last-step match(es), shown under the total on mobile. */
+  lastStepDate?: string;
 };
 
 export function MobileLeaderboard({
@@ -68,24 +70,27 @@ export function MobileLeaderboard({
   tiebreakers: tb,
   tiedPointsValues,
   showDelta,
+  lastStepDate,
 }: MobileLeaderboardProps) {
   const t = useTranslations("pool");
   const tiedPoints = new Set(tiedPointsValues ?? []);
   const leaderPoints = rows[0]?.points ?? 0;
 
-  // "+N pts · ▲/▼N" for the most recent match(es) (beta).
-  const deltaLine = (r: LeaderboardRow) => {
+  // Last-match delta under the total: "+N puntos" + "fecha · ▲/▼N". Bigger and
+  // on the right so it doesn't get lost (beta).
+  const deltaUnderTotal = (r: LeaderboardRow) => {
     if (!showDelta) return null;
     const g = r.lastGainPoints ?? 0;
     const d = r.lastRankDelta ?? 0;
     return (
-      <div style={{ display: "flex", gap: 8, fontSize: 11, fontWeight: 700, marginTop: 2 }}>
-        <span style={{ color: g > 0 ? "#16a34a" : colors.textMuted }}>
-          {g > 0 ? `+${g}` : "0"} {t("lastMatch.gained").toLowerCase()}
-        </span>
-        <span style={{ color: d > 0 ? "#16a34a" : d < 0 ? "#dc2626" : colors.textMuted }}>
+      <div style={{ marginTop: 6, paddingTop: 4, borderTop: `1px dashed ${colors.borderLight}` }}>
+        <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.1, color: g > 0 ? "#16a34a" : colors.textMuted }}>
+          {g > 0 ? `+${g}` : "0"} {t("lastMatch.ptsUnit")}
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 700, marginTop: 1, color: d > 0 ? "#16a34a" : d < 0 ? "#dc2626" : colors.textMuted }}>
+          {lastStepDate ? `${lastStepDate} · ` : ""}
           {d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "—"}
-        </span>
+        </div>
       </div>
     );
   };
@@ -120,7 +125,6 @@ export function MobileLeaderboard({
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: colors.textDark }}>{pinnedRow.displayName}</div>
                 <div style={{ fontSize: 10, color: colors.brand, fontWeight: 600 }}>{pinnedLabel}</div>
-                {deltaLine(pinnedRow)}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -128,6 +132,7 @@ export function MobileLeaderboard({
               <div style={{ fontSize: 11, color: colors.textMuted }}>
                 -{(leaderPoints || pinnedRow.points) - pinnedRow.points} pts
               </div>
+              {deltaUnderTotal(pinnedRow)}
             </div>
           </div>
         </div>
@@ -210,7 +215,6 @@ export function MobileLeaderboard({
                 >
                   {r.displayName}
                 </div>
-                {deltaLine(r)}
                 {hasAnyStructural && r.structuralStats && r.structuralStats.positionsTotal > 0 && (
                   <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 4 }}>
                     {t("leaderboard.structuralSummary", {
@@ -296,6 +300,7 @@ export function MobileLeaderboard({
                     <span>-{diff} pts</span>
                   )}
                 </div>
+                {deltaUnderTotal(r)}
               </div>
             </div>
 
