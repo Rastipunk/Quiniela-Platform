@@ -261,7 +261,24 @@ export async function sendPhaseSummaryTestToSelf(
     poolId = membership.poolId;
   }
 
-  const ov = (await getPoolOverview(userId, poolId, false)) as unknown as {
+  // Overview viewer: the requester if they're a member, else any active member of
+  // the pool (admins can preview ANY pool — getPoolOverview requires a member).
+  let viewerId = userId;
+  const ownMembership = await prisma.poolMember.findFirst({
+    where: { poolId, userId, status: "ACTIVE" },
+    select: { id: true },
+  });
+  if (!ownMembership) {
+    const anyMember = await prisma.poolMember.findFirst({
+      where: { poolId, status: "ACTIVE" },
+      select: { userId: true },
+      orderBy: { joinedAtUtc: "asc" },
+    });
+    if (!anyMember) throw new ServiceError("NO_MEMBERS", 400, { message: "La pool no tiene miembros activos" });
+    viewerId = anyMember.userId;
+  }
+
+  const ov = (await getPoolOverview(viewerId, poolId, false)) as unknown as {
     pool: { name: string; pickTypesConfig: unknown };
     matches: Array<{ phaseId: string; result: unknown }>;
     tournamentInstance: { dataJson: unknown };
