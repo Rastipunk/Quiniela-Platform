@@ -14,6 +14,7 @@ import { canMakePicks } from "./poolStateMachine";
 import { extractMatches, extractPhases } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES } from "../lib/constants";
 import { fireAndForget } from "../lib/asyncHelpers";
+import { isKickoffFloorLocked } from "../lib/poolHelpers";
 import { ServiceError, type AuditContext } from "./authService";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -154,7 +155,9 @@ export async function getPoolMatches(data: GetPoolMatchesInput): Promise<GetPool
   const enriched = matches.map((m) => {
     const deadlineUtc = computeDeadlineUtc(m.kickoffUtc, pool.deadlineMinutesBeforeKickoff);
     const isPhaseLocked = m.phaseId ? lockedPhases.includes(m.phaseId) : false;
-    const isLocked = isPhaseLocked || (deadlineUtc ? now.getTime() >= deadlineUtc.getTime() : false);
+    const isLocked = isPhaseLocked
+      || (deadlineUtc ? now.getTime() >= deadlineUtc.getTime() : false)
+      || isKickoffFloorLocked(m.kickoffUtc, pool.predictionLockFloorUtc);
 
     return {
       ...m,
@@ -260,7 +263,9 @@ export async function upsertPick(
   // rejected. The display-side `isLocked` flag below uses the same
   // operator, keeping UI and server agreement: once the deadline hits,
   // the form locks AND the save endpoint refuses.
-  if (now.getTime() >= deadlineUtc.getTime()) {
+  // The ADR-085 floor treats an already-revealed match as past-deadline even if
+  // a host later reduced the deadline (which would otherwise reopen it).
+  if (now.getTime() >= deadlineUtc.getTime() || isKickoffFloorLocked(match.kickoffUtc, pool.predictionLockFloorUtc)) {
     throw new ServiceError("DEADLINE_PASSED", 409, {
       deadlineUtc: deadlineUtc.toISOString(),
       nowUtc: now.toISOString(),
@@ -326,7 +331,10 @@ export async function getMatchPicks(data: GetMatchPicksInput): Promise<GetMatchP
   }
 
   const now = new Date();
-  const isUnlocked = now.getTime() > deadlineUtc.getTime();
+  // A floored (already-revealed) match stays revealed even after a deadline
+  // reduction — same "deadline effectively passed" rule (ADR-085).
+  const isUnlocked = now.getTime() > deadlineUtc.getTime()
+    || isKickoffFloorLocked(match.kickoffUtc, pool.predictionLockFloorUtc);
 
   // If deadline has not passed, only return the current user's pick
   if (!isUnlocked) {

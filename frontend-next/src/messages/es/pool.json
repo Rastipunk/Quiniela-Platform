@@ -259,8 +259,8 @@
       "minutes": "minutos antes",
       "save": "Guardar cambio",
       "saving": "Guardando…",
-      "confirm": "Al cambiar este tiempo se notificará por correo a TODOS los jugadores de la pool. ¿Continuar?",
-      "warningNote": "Cambiarlo notifica por correo a todos los jugadores de la pool (transparencia anti-trampas)."
+      "confirm": "Al cambiar este tiempo se notificará por correo a TODOS los jugadores de la pool. No reabrirá partidos ya cerrados de fases activas (sus predicciones ya son visibles). ¿Continuar?",
+      "warningNote": "Cambiarlo notifica por correo a todos los jugadores. No afecta a partidos ya cerrados de fases activas: sus predicciones ya son visibles y no se reabren (anti-trampas)."
     },
     "extraTime": {
       "title": "Medición del Resultado",

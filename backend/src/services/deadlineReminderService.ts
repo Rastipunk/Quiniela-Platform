@@ -290,6 +290,7 @@ export async function processDeadlineReminders(
       const groupLocks = buildGroupLockTimes(
         matches.map((m) => ({ groupId: m.groupId, kickoffUtc: getKickoff(m) ?? "" })),
         pool.deadlineMinutesBeforeKickoff,
+        pool.predictionLockFloorUtc,
       );
 
       for (const phaseConfig of structuralConfigs) {

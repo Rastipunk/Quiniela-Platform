@@ -77,6 +77,7 @@ export async function upsertGroupStandingsPick(
   const lockInfo = buildGroupLockTimes(
     allMatches,
     pool.deadlineMinutesBeforeKickoff,
+    pool.predictionLockFloorUtc,
   ).get(groupId);
   if (!lockInfo) {
     throw new ServiceError("NOT_FOUND", 404, {

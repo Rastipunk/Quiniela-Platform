@@ -6,7 +6,7 @@ import { writeAuditEvent } from "../lib/audit";
 import { Prisma } from "@prisma/client";
 import { canMakePicks } from "../services/poolStateMachine";
 import { extractMatches, extractPhases, typed, type StructuralPickJson } from "../lib/fixture";
-import { buildGroupLockTimes, partitionGroupPicksByLock, mergeGroupPicks } from "../lib/poolHelpers";
+import { buildGroupLockTimes, partitionGroupPicksByLock, mergeGroupPicks, isKickoffFloorLocked } from "../lib/poolHelpers";
 import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const structuralPicksRouter = Router();
@@ -142,7 +142,9 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
       }
       const lockTime =
         new Date(fixtureMatch.kickoffUtc).getTime() - lockBufferMs;
-      if (Date.now() >= lockTime) {
+      // ADR-085: an already-revealed match stays locked even if a host later
+      // reduced the deadline (which would otherwise reopen it).
+      if (Date.now() >= lockTime || isKickoffFloorLocked(fixtureMatch.kickoffUtc, pool.predictionLockFloorUtc)) {
         lockedMatchIds.push(incoming.matchId);
         continue;
       }
@@ -169,6 +171,7 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
     const groupLocks = buildGroupLockTimes(
       allMatches,
       pool.deadlineMinutesBeforeKickoff,
+      pool.predictionLockFloorUtc,
     );
     const partitioned = partitionGroupPicksByLock(
       parsed.data.groups,

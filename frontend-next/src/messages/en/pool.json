@@ -259,8 +259,8 @@
       "minutes": "minutes before",
       "save": "Save change",
       "saving": "Saving…",
-      "confirm": "Changing this time will email ALL players in the pool. Continue?",
-      "warningNote": "Changing it emails every player in the pool (anti-cheat transparency)."
+      "confirm": "Changing this time will email ALL players in the pool. It will NOT reopen already-closed matches of active phases (their predictions are already visible). Continue?",
+      "warningNote": "Changing it emails every player in the pool. It does not affect already-closed matches of active phases: their predictions are already visible and won't reopen (anti-cheat)."
     },
     "extraTime": {
       "title": "Result Measurement",

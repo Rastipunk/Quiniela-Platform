@@ -259,8 +259,8 @@
       "minutes": "minutos antes",
       "save": "Salvar alteração",
       "saving": "Salvando…",
-      "confirm": "Alterar este tempo enviará e-mail a TODOS os jogadores do bolão. Continuar?",
-      "warningNote": "Alterar notifica por e-mail todos os jogadores do bolão (transparência anti-trapaça)."
+      "confirm": "Alterar este tempo enviará e-mail a TODOS os jogadores do bolão. NÃO reabrirá jogos já fechados de fases ativas (os palpites já estão visíveis). Continuar?",
+      "warningNote": "Alterar notifica por e-mail todos os jogadores. Não afeta jogos já fechados de fases ativas: os palpites já estão visíveis e não reabrem (anti-trapaça)."
     },
     "extraTime": {
       "title": "Medição do Resultado",

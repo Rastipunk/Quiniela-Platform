@@ -226,6 +226,8 @@ export async function updatePoolSettings(
   // Deadline change (anti-cheat — ADR-085): validate range, capture the OLD
   // value so we can tell whether it actually changed and notify players.
   let deadlineChange: { from: number; to: number } | null = null;
+  // `undefined` = leave the lock floor untouched; a Date = raise it.
+  let newLockFloor: Date | undefined = undefined;
   if (deadlineMinutesBeforeKickoff !== undefined) {
     // Allowlist-gated rollout (the acting host's email) — off until released.
     const actor = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
@@ -235,10 +237,29 @@ export async function updatePoolSettings(
     if (!Number.isInteger(deadlineMinutesBeforeKickoff) || deadlineMinutesBeforeKickoff < 0 || deadlineMinutesBeforeKickoff > 1440) {
       throw new ServiceError("INVALID_DEADLINE", 400, { message: "deadlineMinutesBeforeKickoff must be an integer in [0, 1440]" });
     }
-    const cur = await prisma.pool.findUnique({ where: { id: poolId }, select: { deadlineMinutesBeforeKickoff: true } });
+    const cur = await prisma.pool.findUnique({
+      where: { id: poolId },
+      select: {
+        deadlineMinutesBeforeKickoff: true, predictionLockFloorUtc: true,
+        fixtureSnapshot: true, tournamentInstance: { select: { dataJson: true } },
+      },
+    });
     if (!cur) throw new ServiceError("NOT_FOUND", 404);
-    if (cur.deadlineMinutesBeforeKickoff !== deadlineMinutesBeforeKickoff) {
-      deadlineChange = { from: cur.deadlineMinutesBeforeKickoff, to: deadlineMinutesBeforeKickoff };
+    const oldMin = cur.deadlineMinutesBeforeKickoff;
+    if (oldMin !== deadlineMinutesBeforeKickoff) {
+      deadlineChange = { from: oldMin, to: deadlineMinutesBeforeKickoff };
+      // A REDUCTION moves deadlines LATER and could reopen matches whose
+      // predictions are already visible. Instead of blocking the host, we RAISE
+      // an anti-cheat ratchet so those already-revealed matches stay locked while
+      // not-yet-revealed (and gated-unreleased) matches still get the new window.
+      if (deadlineMinutesBeforeKickoff < oldMin) {
+        newLockFloor = await computeReductionLockFloor(
+          poolId,
+          cur.fixtureSnapshot ?? cur.tournamentInstance.dataJson,
+          oldMin,
+          cur.predictionLockFloorUtc,
+        );
+      }
     }
   }
 
@@ -326,6 +347,7 @@ export async function updatePoolSettings(
       ...(caprichoSanMin !== undefined ? { caprichoSanMin } : {}),
       ...(caprichoSanMax !== undefined ? { caprichoSanMax } : {}),
       ...(deadlineChange ? { deadlineMinutesBeforeKickoff: deadlineChange.to } : {}),
+      ...(newLockFloor !== undefined ? { predictionLockFloorUtc: newLockFloor } : {}),
     },
   });
 
@@ -355,6 +377,52 @@ export async function updatePoolSettings(
     },
     deadlineChanged: !!deadlineChange,
   };
+}
+
+/**
+ * Compute the anti-cheat lock floor after a deadline REDUCTION (ADR-085).
+ * A match is "revealed" when its deadline (under the OLD setting) has passed AND
+ * its phase has at least one prediction in this pool (so players have seen each
+ * other's picks). Gated-unreleased knockout phases carry no predictions, so a
+ * "born closed" round can still be reopened — they are excluded. The floor is
+ * the LATEST kickoff among revealed matches; any match kicking off at/before it
+ * stays locked. Monotonic: never lowers an existing floor.
+ */
+export async function computeReductionLockFloor(
+  poolId: string,
+  fixtureData: unknown,
+  oldMin: number,
+  existingFloor: Date | null,
+): Promise<Date | undefined> {
+  const matches = extractMatches(fixtureData);
+  const phases = extractPhases(fixtureData);
+  const matchPhaseById = new Map(matches.map((m) => [m.id, m.phaseId]));
+
+  const [scorePreds, structPreds, groupPreds] = await Promise.all([
+    prisma.prediction.findMany({ where: { poolId }, select: { matchId: true }, distinct: ["matchId"] }),
+    prisma.structuralPrediction.findMany({ where: { poolId }, select: { phaseId: true }, distinct: ["phaseId"] }),
+    prisma.groupStandingsPrediction.findMany({ where: { poolId }, select: { phaseId: true }, distinct: ["phaseId"] }),
+  ]);
+
+  // Phases that carry at least one (revealable) prediction.
+  const phasesWithPicks = new Set<string>();
+  for (const p of scorePreds) { const ph = matchPhaseById.get(p.matchId); if (ph) phasesWithPicks.add(ph); }
+  for (const p of structPreds) phasesWithPicks.add(p.phaseId);
+  // Group-standings predictions reveal group order; flag every GROUP-type phase.
+  if (groupPreds.length > 0) for (const ph of phases) if (ph.type === "GROUP") phasesWithPicks.add(ph.id);
+
+  const nowMs = Date.now();
+  const MIN = 60_000;
+  let maxRevealedKickoff = existingFloor ? new Date(existingFloor).getTime() : Number.NEGATIVE_INFINITY;
+  for (const m of matches) {
+    if (!m.kickoffUtc || !phasesWithPicks.has(m.phaseId)) continue;
+    const k = new Date(m.kickoffUtc).getTime();
+    if (Number.isNaN(k)) continue;
+    const revealedUnderOld = nowMs >= k - oldMin * MIN;
+    if (revealedUnderOld && k > maxRevealedKickoff) maxRevealedKickoff = k;
+  }
+  if (maxRevealedKickoff === Number.NEGATIVE_INFINITY) return existingFloor ?? undefined;
+  return new Date(maxRevealedKickoff);
 }
 
 /**
@@ -1548,7 +1616,10 @@ export async function getPlayerSummary(
       groups: detail.groups.map((g) => {
         const kickoff = earliestKickoffByGroup.get(`${g.phaseId}::${g.groupId}`);
         const deadline = kickoff ? new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000) : null;
-        const isPredictionVisible = isViewingSelf || (deadline ? now >= deadline : true);
+        // ADR-085: a floored (already-revealed) unit stays visible even after a
+        // deadline reduction that would otherwise re-hide it.
+        const floored = !!(kickoff && pool.predictionLockFloorUtc && kickoff.getTime() <= pool.predictionLockFloorUtc.getTime());
+        const isPredictionVisible = isViewingSelf || floored || (deadline ? now >= deadline : true);
         return {
           phaseId: g.phaseId,
           phaseName: phaseNameById.get(g.phaseId) ?? g.phaseId,
@@ -1568,7 +1639,8 @@ export async function getPlayerSummary(
         const fixtureMatch = matchById.get(km.matchId);
         const kickoff = knockoutKickoffByMatch.get(km.matchId);
         const deadline = kickoff ? new Date(kickoff.getTime() - deadlineMinutes * 60 * 1000) : null;
-        const isPredictionVisible = isViewingSelf || (deadline ? now >= deadline : true);
+        const floored = !!(kickoff && pool.predictionLockFloorUtc && kickoff.getTime() <= pool.predictionLockFloorUtc.getTime());
+        const isPredictionVisible = isViewingSelf || floored || (deadline ? now >= deadline : true);
         const home = fixtureMatch ? teamById.get(fixtureMatch.homeTeamId) : null;
         const away = fixtureMatch ? teamById.get(fixtureMatch.awayTeamId) : null;
         return {
@@ -1758,7 +1830,7 @@ export async function getPoolNotifications(
       }
     }
 
-    const groupLocks = buildGroupLockTimes(matches, deadlineMinutes);
+    const groupLocks = buildGroupLockTimes(matches, deadlineMinutes, pool.predictionLockFloorUtc);
 
     for (const phaseConfig of structuralConfigs) {
       const sp = phaseConfig.structuralPicks!;

@@ -41,6 +41,23 @@ export function buildPhaseTakesMatchPicks(
   };
 }
 
+/**
+ * A match is "floor-locked" when the host REDUCED the prediction deadline after
+ * this match's predictions were already revealed (ADR-085 anti-cheat ratchet).
+ * `Pool.predictionLockFloorUtc` is the kickoff high-water mark: any match
+ * kicking off at/before it stays locked even if the new deadline would reopen it.
+ * Treated identically to "deadline already passed" everywhere it is checked.
+ */
+export function isKickoffFloorLocked(
+  kickoffUtc: string | null | undefined,
+  lockFloorUtc: Date | string | null | undefined,
+): boolean {
+  if (!lockFloorUtc || !kickoffUtc) return false;
+  const k = new Date(kickoffUtc).getTime();
+  const f = new Date(lockFloorUtc).getTime();
+  return !Number.isNaN(k) && !Number.isNaN(f) && k <= f;
+}
+
 export interface GroupLockInfo {
   /**
    * Epoch ms after which the group's standings pick is locked.
@@ -64,6 +81,9 @@ export interface GroupLockInfo {
 export function buildGroupLockTimes(
   matches: Array<Pick<FixtureMatch, "groupId" | "kickoffUtc">>,
   deadlineMinutesBeforeKickoff: number,
+  /** ADR-085 ratchet: a group whose earliest kickoff is at/before this stays
+   *  permanently locked (its standings were already revealed). */
+  lockFloorUtc?: Date | string | null,
 ): Map<string, GroupLockInfo> {
   const earliestByGroup = new Map<string, number>();
   const groupsSeen = new Set<string>();
@@ -78,18 +98,20 @@ export function buildGroupLockTimes(
     }
   }
   const bufferMs = deadlineMinutesBeforeKickoff * 60_000;
+  const floorMs = lockFloorUtc ? new Date(lockFloorUtc).getTime() : NaN;
   const lockTimes = new Map<string, GroupLockInfo>();
   for (const groupId of groupsSeen) {
     const earliest = earliestByGroup.get(groupId);
-    lockTimes.set(
-      groupId,
-      earliest === undefined
-        ? { lockTimeMs: Number.POSITIVE_INFINITY, firstKickoffUtc: null }
-        : {
-            lockTimeMs: earliest - bufferMs,
-            firstKickoffUtc: new Date(earliest).toISOString(),
-          },
-    );
+    if (earliest === undefined) {
+      lockTimes.set(groupId, { lockTimeMs: Number.POSITIVE_INFINITY, firstKickoffUtc: null });
+      continue;
+    }
+    // Floored group → already revealed → permanently locked.
+    const floored = !Number.isNaN(floorMs) && earliest <= floorMs;
+    lockTimes.set(groupId, {
+      lockTimeMs: floored ? Number.NEGATIVE_INFINITY : earliest - bufferMs,
+      firstKickoffUtc: new Date(earliest).toISOString(),
+    });
   }
   return lockTimes;
 }

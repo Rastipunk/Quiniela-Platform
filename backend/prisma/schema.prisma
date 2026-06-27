@@ -482,6 +482,13 @@ model Pool {
   // Esto permite que cada pool tenga su propio estado de avance independiente
   fixtureSnapshot Json?
 
+  // Anti-cheat ratchet (ADR-085): cuando el host REDUCE el cierre de predicciones,
+  // los partidos ya revelados (deadline pasado + fase con predicciones) NO se
+  // reabren. Este es el kickoff máximo de esos partidos: cualquier partido cuyo
+  // kickoff sea <= a este valor queda bloqueado aunque el nuevo deadline lo abriría.
+  // Monotónico (solo sube). null = nunca se redujo el cierre.
+  predictionLockFloorUtc DateTime?
+
   // Comentario en español: campos para pools corporativas (opcionales)
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])

@@ -23,7 +23,7 @@ import { scoreMatchPick } from "../lib/scoringAdvanced";
 import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
-import { outcomeFromScore } from "../lib/poolHelpers";
+import { outcomeFromScore, isKickoffFloorLocked } from "../lib/poolHelpers";
 import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool, isBarRaceEnabledForPool, isExtraTimeConfigEnabled, isDeadlineConfigEnabled } from "../lib/featureFlags";
 import { getKnockoutScorePhases, computeExtraTimeWindow } from "../lib/extraTimeConfig";
 import { FINAL_RESULT_SOURCES } from "../lib/constants";
@@ -177,7 +177,10 @@ export async function getPoolOverview(
   const matchCards = matches.map((m) => {
     const kickoff = new Date(m.kickoffUtc);
     const deadlineUtc = new Date(kickoff.getTime() - pool.deadlineMinutesBeforeKickoff * 60_000);
-    const isLocked = now.getTime() >= deadlineUtc.getTime();
+    // ADR-085: a floored (already-revealed) match stays locked even if a host
+    // later reduced the deadline that would otherwise reopen it.
+    const isLocked = now.getTime() >= deadlineUtc.getTime()
+      || isKickoffFloorLocked(m.kickoffUtc, pool.predictionLockFloorUtc);
     const homeTeam = teamById.get(m.homeTeamId);
     const awayTeam = teamById.get(m.awayTeamId);
     const myPick = myPickByMatchId.get(m.id) ?? null;
