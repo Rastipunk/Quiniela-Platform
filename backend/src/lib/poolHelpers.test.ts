@@ -6,6 +6,7 @@ import {
   buildGroupLockTimes,
   partitionGroupPicksByLock,
   mergeGroupPicks,
+  isKickoffFloorLocked,
 } from "./poolHelpers";
 
 describe("poolHelpers", () => {
@@ -151,12 +152,43 @@ describe("poolHelpers", () => {
     });
   });
 
+  // ── isKickoffFloorLocked (ADR-085 anti-reopen ratchet) ────
+
+  describe("isKickoffFloorLocked", () => {
+    const floor = "2026-06-28T02:00:00.000Z";
+    it("returns false when there is no floor", () => {
+      expect(isKickoffFloorLocked("2026-06-28T01:00:00.000Z", null)).toBe(false);
+      expect(isKickoffFloorLocked("2026-06-28T01:00:00.000Z", undefined)).toBe(false);
+    });
+    it("locks a match kicking off AT or BEFORE the floor (already revealed)", () => {
+      expect(isKickoffFloorLocked("2026-06-28T01:00:00.000Z", floor)).toBe(true); // before
+      expect(isKickoffFloorLocked("2026-06-28T02:00:00.000Z", floor)).toBe(true); // exactly at
+    });
+    it("does NOT lock a match kicking off AFTER the floor (e.g. a born-closed R32)", () => {
+      expect(isKickoffFloorLocked("2026-06-28T19:00:00.000Z", floor)).toBe(false);
+    });
+    it("returns false for missing/unparseable kickoff", () => {
+      expect(isKickoffFloorLocked(null, floor)).toBe(false);
+      expect(isKickoffFloorLocked("not-a-date", floor)).toBe(false);
+    });
+  });
+
   // ── buildGroupLockTimes ───────────────────────────────────
 
   describe("buildGroupLockTimes", () => {
     const DEADLINE_MINUTES = 10;
     const T0 = Date.parse("2026-06-11T18:00:00.000Z");
     const iso = (offsetMin: number) => new Date(T0 + offsetMin * 60_000).toISOString();
+
+    it("permanently locks a group whose earliest kickoff is at/before the floor", () => {
+      const locks = buildGroupLockTimes(
+        [{ groupId: "A", kickoffUtc: iso(0) }, { groupId: "B", kickoffUtc: iso(600) }],
+        DEADLINE_MINUTES,
+        iso(60), // floor between A (revealed) and B (future)
+      );
+      expect(locks.get("A")!.lockTimeMs).toBe(Number.NEGATIVE_INFINITY); // floored → always locked
+      expect(locks.get("B")!.lockTimeMs).toBe(T0 + 600 * 60_000 - DEADLINE_MINUTES * 60_000); // normal
+    });
 
     it("locks a group at its EARLIEST kickoff minus the deadline buffer", () => {
       const locks = buildGroupLockTimes(
