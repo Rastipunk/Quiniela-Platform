@@ -485,6 +485,27 @@ export function NavBar() {
                         {"\u26BD"} {t("matchMonitor")}
                       </Link>
                       <Link
+                        href="/admin/fases"
+                        onClick={() => setShowUserMenu(false)}
+                        style={{
+                          display: "block",
+                          padding: "0.75rem 1rem",
+                          color: colors.textDark,
+                          textDecoration: "none",
+                          borderBottom: "1px solid #eee",
+                          minHeight: TOUCH_TARGET.minimum,
+                          lineHeight: `${TOUCH_TARGET.minimum - 24}px`,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = colors.bgLight;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "white";
+                        }}
+                      >
+                        {"\uD83D\uDDC2\uFE0F"} {t("phaseManager")}
+                      </Link>
+                      <Link
                         href="/admin/feedback"
                         onClick={() => setShowUserMenu(false)}
                         style={{
@@ -905,6 +926,25 @@ export function NavBar() {
                     }}
                   >
                     {"\u26BD"} {t("matchMonitor")}
+                  </Link>
+                  <Link
+                    href="/admin/fases"
+                    onClick={() => setShowMobileMenu(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      padding: "1rem",
+                      color: "#a78bfa",
+                      textDecoration: "none",
+                      fontSize: "1rem",
+                      minHeight: TOUCH_TARGET.comfortable,
+                      borderLeft: "3px solid #a78bfa",
+                      background: "rgba(167, 139, 250, 0.1)",
+                      ...mobileInteractiveStyles.tapHighlight,
+                    }}
+                  >
+                    {"\uD83D\uDDC2\uFE0F"} {t("phaseManager")}
                   </Link>
                   <Link
                     href="/admin/feedback"

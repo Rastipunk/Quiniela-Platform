@@ -151,6 +151,7 @@ export const routing = defineRouting({
     "/admin/settings/email": "/admin/settings/email",
     "/admin/analytics": "/admin/analytics",
     "/admin/monitor": "/admin/monitor",
+    "/admin/fases": "/admin/fases",
     "/admin/ventas/cotizaciones": "/admin/ventas/cotizaciones",
     "/admin/ventas/cotizaciones/nueva": "/admin/ventas/cotizaciones/nueva",
     "/admin/ventas/cotizaciones/[id]": "/admin/ventas/cotizaciones/[id]",
