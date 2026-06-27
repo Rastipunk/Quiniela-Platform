@@ -363,6 +363,12 @@ model TournamentInstance {
   // FIFA-computed bracket in the admin panel and at publish time.
   knockoutBracketOverrides Json @default("{}")
 
+  // Canary "test release": map phaseId → [poolId, ...]. A phase that is NOT in
+  // releasedKnockoutPhases is still OPEN for predictions in these specific
+  // pools, so the admin can release a round to ONE pool (e.g. their own), verify
+  // the bracket + email end-to-end, then release to everyone. ADR-084.
+  knockoutPhaseTestPools Json @default("{}")
+
   // =========================================================================
   // AUTO RESULTS - Configuración de fuente de resultados automáticos
   // =========================================================================

@@ -47,6 +47,7 @@ import {
   saveKnockoutBracketOverrides,
   setKnockoutReleaseGate,
   setKnockoutPhaseReleased,
+  testReleaseKnockoutPhase,
   sendPhaseSummaryTestToSelf,
 } from "../services/knockoutBracketAdmin";
 import { sendPhaseSummaryBroadcast } from "../services/phaseSummaryBroadcast";
@@ -251,6 +252,27 @@ adminInstancesRouter.post("/instances/:instanceId/knockout-phases/:phaseId/relea
     return handleServiceError(res, err);
   }
 });
+
+// POST /admin/instances/:instanceId/knockout-phases/:phaseId/test-release —
+// canary: open the phase for ONE pool, propagate its bracket, email its members.
+const testReleaseSchema = z.object({ poolId: z.string().min(1) });
+adminInstancesRouter.post(
+  "/instances/:instanceId/knockout-phases/:phaseId/test-release",
+  async (req, res) => {
+    const parsed = testReleaseSchema.safeParse(req.body);
+    if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
+    try {
+      const result = await testReleaseKnockoutPhase(
+        req.params.instanceId,
+        req.params.phaseId,
+        parsed.data.poolId,
+      );
+      return sendData(res, result as unknown as Record<string, unknown>);
+    } catch (err) {
+      return handleServiceError(res, err);
+    }
+  },
+);
 
 // POST /admin/phase-summary-test — send the phase-summary email PREVIEW to the
 // requesting admin's own email. Optional body: { locale, poolId } lets the admin

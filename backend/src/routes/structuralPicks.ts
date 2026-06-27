@@ -104,6 +104,22 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
     });
   }
 
+  // Admin knockout-release gate (ADR-084): when enabled, a knockout phase the
+  // admin hasn't released is closed to predictions — this MUST also cover
+  // estratega "who advances" structural picks, not only score picks. A canary
+  // test-release opens the phase for specific pools before the global release.
+  if (pool.tournamentInstance.knockoutReleaseGateEnabled && phase.type !== "GROUP") {
+    const released = (pool.tournamentInstance.releasedKnockoutPhases as string[] | null) ?? [];
+    const testPools = (pool.tournamentInstance.knockoutPhaseTestPools as Record<string, string[]> | null) ?? {};
+    const testOpenForThisPool = (testPools[phaseId] ?? []).includes(poolId);
+    if (!released.includes(phaseId) && !testOpenForThisPool) {
+      return sendConflict(res, "PHASE_NOT_RELEASED", {
+        message: "Knockout phase not yet released by the admin",
+        phaseId,
+      });
+    }
+  }
+
   // Per-match deadline filter for knockout winner picks. Each match
   // has its own kickoff, so a single phase-level lock would
   // unnecessarily freeze later matches when only the earliest one

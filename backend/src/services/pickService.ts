@@ -239,7 +239,10 @@ export async function upsertPick(
     const phase = extractPhases(fixtureData).find((p) => p.id === match.phaseId);
     const isKnockout = phase ? phase.type !== "GROUP" : match.phaseId !== "group_stage";
     const released = (pool.tournamentInstance.releasedKnockoutPhases as string[] | null) ?? [];
-    if (isKnockout && !released.includes(match.phaseId)) {
+    // Canary: a phase can be test-released to specific pools before the global release.
+    const testPools = (pool.tournamentInstance.knockoutPhaseTestPools as Record<string, string[]> | null) ?? {};
+    const testOpenForThisPool = (testPools[match.phaseId] ?? []).includes(pool.id);
+    if (isKnockout && !released.includes(match.phaseId) && !testOpenForThisPool) {
       throw new ServiceError("PHASE_NOT_RELEASED", 409, {
         message: "Knockout phase not yet released by the admin",
         phaseId: match.phaseId,

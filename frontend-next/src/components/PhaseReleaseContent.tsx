@@ -24,7 +24,7 @@ interface BMatch {
 }
 interface BPhase {
   phaseId: string; name: string; order: number;
-  groupStageFinalized: boolean; released: boolean; matches: BMatch[];
+  groupStageFinalized: boolean; released: boolean; testPoolIds?: string[]; matches: BMatch[];
 }
 interface Preview {
   instanceId: string; instanceName: string; gateEnabled: boolean;
@@ -72,6 +72,7 @@ export default function PhaseReleaseContent() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [testInputs, setTestInputs] = useState<Record<string, string>>({});
 
   // Load instances + default-select the first ACTIVE non-test one (the WC).
   useEffect(() => {
@@ -140,6 +141,27 @@ export default function PhaseReleaseContent() {
       });
       if (!res.ok) { setError(`Acción falló (HTTP ${res.status})`); return; }
       setMsg(phase.released ? `🔒 ${phase.name} re-bloqueada.` : `🟢 ${phase.name} liberada — los jugadores ya pueden predecir.`);
+      await loadBrackets(data.instanceId);
+    } finally { setBusy(null); }
+  };
+
+  const testRelease = async (phase: BPhase) => {
+    if (!data) return;
+    const poolId = (testInputs[phase.phaseId] ?? "").trim();
+    if (!poolId) { setError("Pega el ID de la pool de prueba primero."); return; }
+    if (!window.confirm(`¿Liberar "${phase.name}" SOLO a la pool ${poolId}?\n\nSe abrirán las predicciones para esa pool y se enviará el correo de resumen a sus miembros (correos reales).`)) return;
+    setBusy(`test-${phase.phaseId}`); setMsg(null); setError(null);
+    try {
+      const res = await adminFetch(`/admin/instances/${data.instanceId}/knockout-phases/${encodeURIComponent(phase.phaseId)}/test-release`, {
+        method: "POST", body: JSON.stringify({ poolId }),
+      });
+      if (!res.ok) { setError(`Liberación de prueba falló (HTTP ${res.status})`); return; }
+      const r = await res.json();
+      if (r.pendingTeams) {
+        setMsg(`⚠️ ${phase.name}: la pool "${r.poolName}" quedó habilitada, pero los equipos aún están por definir (fase de grupos incompleta). El bracket se completará al terminar los grupos.`);
+      } else {
+        setMsg(`🧪 ${phase.name} liberada SOLO a "${r.poolName}". Bracket propagado: ${r.poolsPropagated}. Correos: ${r.emailsSent} enviados${r.emailsFailed ? `, ${r.emailsFailed} fallidos` : ""}.`);
+      }
       await loadBrackets(data.instanceId);
     } finally { setBusy(null); }
   };
@@ -253,10 +275,27 @@ export default function PhaseReleaseContent() {
                   </button>
                   <button onClick={() => toggleRelease(phase)} disabled={busy === `rel-${phase.phaseId}`}
                     style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: phase.released ? colors.textMuted : colors.brand, color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
-                    {phase.released ? "Re-bloquear" : "Liberar ronda"}
+                    {phase.released ? "Re-bloquear" : "Liberar a TODOS"}
                   </button>
                 </div>
               </div>
+
+              {/* Canary: test-release this phase to a single pool before the global release. */}
+              {!phase.released && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "8px 14px", background: "#fffdf5", borderBottom: `1px solid ${colors.borderLighter}` }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>🧪 Prueba a 1 pool:</span>
+                  <input value={testInputs[phase.phaseId] ?? ""} onChange={(e) => setTestInputs((s) => ({ ...s, [phase.phaseId]: e.target.value }))}
+                    placeholder="ID de la pool (p.ej. Polla Coronada)"
+                    style={{ padding: "6px 8px", borderRadius: 8, border: `1px solid ${colors.borderMedium}`, fontSize: 12, minWidth: 260 }} />
+                  <button onClick={() => testRelease(phase)} disabled={busy === `test-${phase.phaseId}`}
+                    style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #f59e0b", background: "#fff7ed", color: "#92400e", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
+                    {busy === `test-${phase.phaseId}` ? "Liberando…" : "Liberar solo a esta pool"}
+                  </button>
+                  {(phase.testPoolIds ?? []).length > 0 && (
+                    <span style={{ fontSize: 11, color: "#166534", fontWeight: 700 }}>✓ En prueba: {(phase.testPoolIds ?? []).length} pool(s)</span>
+                  )}
+                </div>
+              )}
               <div style={{ padding: 6 }}>
                 {phase.matches.map((m) => {
                   const { date, time } = isoToParts(kickoffOf(m));

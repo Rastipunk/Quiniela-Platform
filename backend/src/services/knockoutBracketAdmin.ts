@@ -50,8 +50,10 @@ export interface BracketPhase {
   order: number;
   /** Group stage fully finalized → round_of_32 teams are final, not provisional. */
   groupStageFinalized: boolean;
-  /** Admin has released this phase for predictions. */
+  /** Admin has released this phase for predictions (globally, all pools). */
   released: boolean;
+  /** Pools this phase was test-released to (canary), before any global release. */
+  testPoolIds: string[];
   matches: BracketMatch[];
 }
 
@@ -75,6 +77,7 @@ export async function getKnockoutBracketPreview(instanceId: string): Promise<Kno
     select: {
       id: true, name: true, dataJson: true,
       knockoutReleaseGateEnabled: true, releasedKnockoutPhases: true, knockoutBracketOverrides: true,
+      knockoutPhaseTestPools: true,
     },
   });
   if (!instance) throw new ServiceError("NOT_FOUND", 404);
@@ -82,6 +85,7 @@ export async function getKnockoutBracketPreview(instanceId: string): Promise<Kno
   const data = instance.dataJson;
   const releasedPhases = new Set((instance.releasedKnockoutPhases as string[] | null) ?? []);
   const overrides = (instance.knockoutBracketOverrides as Record<string, BracketOverride> | null) ?? {};
+  const testPoolsByPhase = (instance.knockoutPhaseTestPools as Record<string, string[]> | null) ?? {};
   const phases = extractPhases(data);
   const matches = extractMatches(data);
   const teams = extractTeams(data);
@@ -149,6 +153,7 @@ export async function getKnockoutBracketPreview(instanceId: string): Promise<Kno
       order: phase.order,
       groupStageFinalized,
       released: releasedPhases.has(phase.id),
+      testPoolIds: testPoolsByPhase[phase.id] ?? [],
       matches: phaseMatches.map((m) => {
         const r = resolvedById.get(m.id) ?? { homeTeamId: m.homeTeamId, awayTeamId: m.awayTeamId };
         // Admin overrides win over the FIFA-computed values.
@@ -361,6 +366,7 @@ export async function setKnockoutReleaseGate(
 export async function propagateBracketToPools(
   instanceId: string,
   phaseId: string,
+  onlyPoolIds?: string[],
 ): Promise<{ poolsUpdated: number; matches: number; pending: boolean }> {
   const preview = await getKnockoutBracketPreview(instanceId);
   const phase = preview.phases.find((p) => p.phaseId === phaseId);
@@ -379,7 +385,11 @@ export async function propagateBracketToPools(
   const overrides = (instance?.knockoutBracketOverrides as Record<string, BracketOverride> | null) ?? {};
 
   const pools = await prisma.pool.findMany({
-    where: { tournamentInstanceId: instanceId, status: { not: "ARCHIVED" } },
+    where: {
+      tournamentInstanceId: instanceId,
+      status: { not: "ARCHIVED" },
+      ...(onlyPoolIds ? { id: { in: onlyPoolIds } } : {}),
+    },
     select: { id: true, fixtureSnapshot: true },
   });
 
@@ -433,7 +443,7 @@ export async function setKnockoutPhaseReleased(
 ): Promise<{ phaseId: string; released: boolean; gateEnabled: boolean; poolsPropagated: number; broadcastStarted: boolean }> {
   const instance = await prisma.tournamentInstance.findUnique({
     where: { id: instanceId },
-    select: { dataJson: true, releasedKnockoutPhases: true, knockoutReleaseGateEnabled: true },
+    select: { dataJson: true, releasedKnockoutPhases: true, knockoutReleaseGateEnabled: true, knockoutPhaseTestPools: true },
   });
   if (!instance) throw new ServiceError("NOT_FOUND", 404);
 
@@ -446,9 +456,17 @@ export async function setKnockoutPhaseReleased(
   if (released) current.add(phaseId);
   else current.delete(phaseId);
 
+  // On a global release, the per-pool test allowlist for this phase is redundant
+  // (everyone is open now) — clear it so the panel state stays clean.
+  const testMap = (instance.knockoutPhaseTestPools as Record<string, string[]> | null) ?? {};
+  if (released && testMap[phaseId]) delete testMap[phaseId];
+
   await prisma.tournamentInstance.update({
     where: { id: instanceId },
-    data: { releasedKnockoutPhases: [...current] as Prisma.InputJsonValue },
+    data: {
+      releasedKnockoutPhases: [...current] as Prisma.InputJsonValue,
+      knockoutPhaseTestPools: testMap as Prisma.InputJsonValue,
+    },
   });
 
   const gateEnabled = instance.knockoutReleaseGateEnabled;
@@ -469,4 +487,82 @@ export async function setKnockoutPhaseReleased(
   }
 
   return { phaseId, released, gateEnabled, poolsPropagated, broadcastStarted };
+}
+
+/**
+ * Canary "test release": open a knockout phase for ONE pool only, propagate the
+ * reviewed bracket into it, and send the phase-summary email to its members —
+ * without releasing the phase to everyone. Lets the admin verify the whole flow
+ * (bracket + open predictions + email) on a single (own) pool before the global
+ * release. Idempotent: the pool gets marked emailed, so the later global release
+ * skips it (no double email).
+ */
+export async function testReleaseKnockoutPhase(
+  instanceId: string,
+  phaseId: string,
+  poolId: string,
+): Promise<{
+  phaseId: string;
+  poolId: string;
+  poolName: string;
+  gateEnabled: boolean;
+  poolsPropagated: number;
+  emailsSent: number;
+  emailsFailed: number;
+  pendingTeams: boolean;
+}> {
+  const instance = await prisma.tournamentInstance.findUnique({
+    where: { id: instanceId },
+    select: { dataJson: true, knockoutReleaseGateEnabled: true, knockoutPhaseTestPools: true },
+  });
+  if (!instance) throw new ServiceError("NOT_FOUND", 404);
+
+  const phase = extractPhases(instance.dataJson).find((p) => p.id === phaseId);
+  if (!phase || phase.type === "GROUP") throw new ServiceError("INVALID_PHASE", 400, { phaseId });
+
+  const pool = await prisma.pool.findFirst({
+    where: { id: poolId, tournamentInstanceId: instanceId },
+    select: { id: true, name: true, status: true },
+  });
+  if (!pool) throw new ServiceError("POOL_NOT_IN_INSTANCE", 400, { poolId });
+  if (pool.status !== "ACTIVE") throw new ServiceError("POOL_NOT_ACTIVE", 400, { poolId, status: pool.status });
+
+  // Propagate the bracket into this pool first. If the teams aren't resolved yet
+  // (group stage incomplete), do NOT open the phase or email — a canary with
+  // placeholder teams would send a premature "you can now predict" email whose
+  // matches are still "por definir". Report back so the admin waits.
+  const prop = await propagateBracketToPools(instanceId, phaseId, [poolId]).catch((err) => {
+    console.error(`[TestRelease] propagate failed instance=${instanceId} phase=${phaseId} pool=${poolId}:`, err);
+    return null;
+  });
+  if (!prop || prop.pending) {
+    return {
+      phaseId, poolId, poolName: pool.name,
+      gateEnabled: instance.knockoutReleaseGateEnabled,
+      poolsPropagated: 0, emailsSent: 0, emailsFailed: 0, pendingTeams: true,
+    };
+  }
+
+  // Teams resolved → open the phase for this pool and email its members.
+  const testMap = (instance.knockoutPhaseTestPools as Record<string, string[]> | null) ?? {};
+  const set = new Set(testMap[phaseId] ?? []);
+  set.add(poolId);
+  testMap[phaseId] = [...set];
+  await prisma.tournamentInstance.update({
+    where: { id: instanceId },
+    data: { knockoutPhaseTestPools: testMap as Prisma.InputJsonValue },
+  });
+
+  const bc = await sendPhaseSummaryBroadcast(instanceId, phaseId, { onlyPoolIds: [poolId] });
+
+  return {
+    phaseId,
+    poolId,
+    poolName: pool.name,
+    gateEnabled: instance.knockoutReleaseGateEnabled,
+    poolsPropagated: prop.poolsUpdated,
+    emailsSent: bc.emailsSent,
+    emailsFailed: bc.emailsFailed,
+    pendingTeams: false,
+  };
 }
