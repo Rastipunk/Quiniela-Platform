@@ -232,7 +232,11 @@ export const PHASE_DISPLAY_NAMES: Record<string, Record<string, string>> = {
   round_of_16: { es: "Octavos de Final", en: "Round of 16", pt: "Oitavas de Final" },
   quarter_finals: { es: "Cuartos de Final", en: "Quarter Finals", pt: "Quartas de Final" },
   semi_finals: { es: "Semifinales", en: "Semi Finals", pt: "Semifinais" },
+  // Some instances (e.g. World Cup 2026) name the last phase "finals" (plural);
+  // others "final". Keep both so phase-summary emails localize either id.
+  finals: { es: "Final", en: "Final", pt: "Final" },
   final: { es: "Final", en: "Final", pt: "Final" },
+  third_place: { es: "Tercer Puesto", en: "Third Place", pt: "Terceiro Lugar" },
 };
 
 // ── Placeholder team prefixes (block picks) ─────────────────

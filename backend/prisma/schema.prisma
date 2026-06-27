@@ -490,6 +490,11 @@ model Pool {
 
   poolFullNotifiedAt DateTime?
 
+  // Comentario en español: idempotencia del correo de resumen de fase (ADR-084).
+  // Array de phaseIds para los que YA se envió el correo de resumen al liberar
+  // la fase. Evita reenvíos si el admin re-libera la misma fase.
+  phaseSummaryEmailedPhases Json @default("[]")
+
   // Comentario en español: timestamp del último envío del email de "capacidad casi llena"
   // (cuando se cruza el umbral configurable, default 95%). Se limpia al expandir capacidad
   // para que la alerta vuelva a dispararse si vuelve a llenarse.

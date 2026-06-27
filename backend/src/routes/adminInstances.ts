@@ -49,6 +49,7 @@ import {
   setKnockoutPhaseReleased,
   sendPhaseSummaryTestToSelf,
 } from "../services/knockoutBracketAdmin";
+import { sendPhaseSummaryBroadcast } from "../services/phaseSummaryBroadcast";
 
 export const adminInstancesRouter = Router();
 
@@ -252,15 +253,55 @@ adminInstancesRouter.post("/instances/:instanceId/knockout-phases/:phaseId/relea
 });
 
 // POST /admin/phase-summary-test — send the phase-summary email PREVIEW to the
-// requesting admin's own email (computed from a pool they belong to).
+// requesting admin's own email. Optional body: { locale, poolId } lets the admin
+// preview a specific locale and/or any pool's email (e.g. an estratega pool).
+const phaseSummaryTestSchema = z.object({
+  locale: z.enum(["es", "en", "pt"]).optional(),
+  poolId: z.string().optional(),
+});
 adminInstancesRouter.post("/phase-summary-test", async (req, res) => {
+  const parsed = phaseSummaryTestSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
   try {
-    const result = await sendPhaseSummaryTestToSelf(req.auth!.userId);
+    const result = await sendPhaseSummaryTestToSelf(
+      req.auth!.userId,
+      parsed.data.locale,
+      parsed.data.poolId,
+    );
     return sendOk(res, result);
   } catch (err) {
     return handleServiceError(res, err);
   }
 });
+
+// POST /admin/instances/:instanceId/knockout-phases/:phaseId/broadcast-summary —
+// manually run the phase-summary broadcast for a phase. SAFE for rehearsal:
+// dryRun computes + returns samples without sending; restrictToEmail sends only
+// to one address; force ignores the per-pool idempotency marker. With no options
+// it performs the real broadcast to all players (same as releasing the phase).
+const broadcastSchema = z.object({
+  dryRun: z.boolean().optional(),
+  force: z.boolean().optional(),
+  restrictToEmail: z.string().email().optional(),
+  onlyPoolIds: z.array(z.string()).optional(),
+});
+adminInstancesRouter.post(
+  "/instances/:instanceId/knockout-phases/:phaseId/broadcast-summary",
+  async (req, res) => {
+    const parsed = broadcastSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
+    try {
+      const result = await sendPhaseSummaryBroadcast(
+        req.params.instanceId,
+        req.params.phaseId,
+        parsed.data,
+      );
+      return sendData(res, result as unknown as Record<string, unknown>);
+    } catch (err) {
+      return handleServiceError(res, err);
+    }
+  },
+);
 
 // ========== TOURNAMENT ADVANCEMENT ENDPOINTS ==========
 
