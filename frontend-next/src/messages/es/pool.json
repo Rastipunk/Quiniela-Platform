@@ -184,6 +184,13 @@
     "ack": "Entendido"
   },
 
+  "deadlineBanner": {
+    "title": "¿Necesitas dar más tiempo a tus jugadores?",
+    "body": "Ahora puedes ajustar cuándo se cierran las predicciones antes de cada partido. Si tu pool cierra con mucha anticipación, redúcelo desde Administración para que tus jugadores alcancen a pronosticar las eliminatorias. Al cambiarlo se notificará por correo a todos los jugadores.",
+    "cta": "Ir a Administración",
+    "ack": "Entendido"
+  },
+
   "nav": {
     "openMenu": "Abrir menú de secciones",
     "closeMenu": "Cerrar menú",

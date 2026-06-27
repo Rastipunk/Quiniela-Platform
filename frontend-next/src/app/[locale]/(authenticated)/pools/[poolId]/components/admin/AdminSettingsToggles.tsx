@@ -249,7 +249,9 @@ export function AdminSettingsToggles({
         </label>
       </div>
 
-      {/* Prediction Deadline — editable; changing it emails ALL players (anti-cheat). */}
+      {/* Prediction Deadline — editable; changing it emails ALL players (anti-cheat).
+          Allowlist-gated (ADR-085) — shown only to enabled hosts during rollout. */}
+      {overview.deadlineConfig?.canEdit && (
       <div style={adminSectionStyle}>
         <h4 style={adminHeadingStyle}>
           ⏰ {t("admin.deadline.title")}
@@ -285,6 +287,7 @@ export function AdminSettingsToggles({
           ⚠️ {t("admin.deadline.warningNote")}
         </div>
       </div>
+      )}
 
       {/* Extra Time Configuration (legacy live toggle). Hidden for users on the
           v2 flow (overview.extraTime.enabled) — they get the dedicated

@@ -24,7 +24,7 @@ import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
-import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool, isBarRaceEnabledForPool, isExtraTimeConfigEnabled } from "../lib/featureFlags";
+import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool, isBarRaceEnabledForPool, isExtraTimeConfigEnabled, isDeadlineConfigEnabled } from "../lib/featureFlags";
 import { getKnockoutScorePhases, computeExtraTimeWindow } from "../lib/extraTimeConfig";
 import { FINAL_RESULT_SOURCES } from "../lib/constants";
 import { getOrComputeLeaderboard } from "./poolLeaderboardCache";
@@ -777,10 +777,26 @@ export async function getPoolOverview(
     }
   }
 
+  // 7b) Host-editable prediction deadline (ADR-085): allowlist-gated rollout
+  // (set the env to the owner's email to self-test, then "*"). `canEdit` drives
+  // the settings card; `needsBanner` the one-time host announcement.
+  let deadlineConfig: { canEdit: boolean; needsBanner: boolean } = { canEdit: false, needsBanner: false };
+  if (!publicMode && isPoolAdmin(myMembership.role)) {
+    const rawAllow = (process.env.DEADLINE_CONFIG_ALLOWLIST ?? "").trim();
+    let flagOn = rawAllow === "*";
+    if (!flagOn && rawAllow !== "") {
+      const viewerEmail = (await prisma.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email ?? null;
+      flagOn = isDeadlineConfigEnabled(viewerEmail);
+    }
+    const acked = !!(myMembership as { deadlineConfigBannerAckAt?: Date | null }).deadlineConfigBannerAckAt;
+    deadlineConfig = { canEdit: flagOn, needsBanner: flagOn && !acked };
+  }
+
   // 8) Final response
   const includeEmails = isPoolAdmin(myMembership.role);
   return {
     extraTime,
+    deadlineConfig,
     nowUtc: now.toISOString(),
     pool: {
       id: pool.id,

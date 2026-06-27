@@ -184,6 +184,13 @@
     "ack": "Got it"
   },
 
+  "deadlineBanner": {
+    "title": "Need to give your players more time?",
+    "body": "You can now adjust when predictions close before each match. If your pool closes too early, lower it from the Admin tab so your players can still predict the knockouts. Changing it emails all players.",
+    "cta": "Go to Admin",
+    "ack": "Got it"
+  },
+
   "nav": {
     "openMenu": "Open sections menu",
     "closeMenu": "Close menu",

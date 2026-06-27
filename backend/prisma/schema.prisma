@@ -600,6 +600,10 @@ model PoolMember {
   // acknowledged. Mirrors User.localePromptCompletedAt's one-time-prompt pattern.
   extraTimeBannerAckAt DateTime?
 
+  // One-time ack of the "you can now edit the prediction deadline" host banner
+  // (ADR-085). null = not yet dismissed.
+  deadlineConfigBannerAckAt DateTime?
+
   @@unique([poolId, userId])
   @@index([userId])
   @@index([status])

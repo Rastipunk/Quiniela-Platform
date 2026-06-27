@@ -23,6 +23,7 @@ import {
   updatePoolScoringConfig,
   updatePhaseExtraTime,
   ackExtraTimeBanner,
+  ackDeadlineBanner,
   setPhaselock,
   archivePool,
   unarchivePool,
@@ -214,6 +215,16 @@ poolAdminRouter.patch("/:poolId/phases/:phaseId/extra-time", async (req, res) =>
 poolAdminRouter.post("/:poolId/extra-time-banner/ack", async (req, res) => {
   try {
     const result = await ackExtraTimeBanner(req.auth!.userId, req.params.poolId);
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /pools/:poolId/deadline-banner/ack — dismiss the deadline-config host banner (ADR-085).
+poolAdminRouter.post("/:poolId/deadline-banner/ack", async (req, res) => {
+  try {
+    const result = await ackDeadlineBanner(req.auth!.userId, req.params.poolId);
     return sendOk(res, result);
   } catch (err) {
     return handleServiceError(res, err);

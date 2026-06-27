@@ -37,6 +37,7 @@ import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName, getTournament
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
 import { ExtraTimeHostBanner } from "./components/ExtraTimeHostBanner";
+import { DeadlineConfigHostBanner } from "./components/DeadlineConfigHostBanner";
 import { PoolSectionHeader } from "./components/PoolSectionHeader";
 import { PoolCapacityTab } from "./components/PoolCapacityTab";
 import { PoolBrandingTab } from "./components/PoolBrandingTab";
@@ -114,6 +115,7 @@ export default function PoolPage() {
   const [showSplash, setShowSplash] = useState(false);
   const [showCapacityPopup, setShowCapacityPopup] = useState(false);
   const [extraTimeBannerDismissed, setExtraTimeBannerDismissed] = useState(false);
+  const [deadlineBannerDismissed, setDeadlineBannerDismissed] = useState(false);
 
   // Pending members
   const [pendingMembers, setPendingMembers] = useState<Array<{ id: string; userId: string; user: { displayName: string; email: string } }>>([]);
@@ -651,6 +653,19 @@ export default function PoolPage() {
           token={token}
           isMobile={isMobile}
           onAck={() => setExtraTimeBannerDismissed(true)}
+          onGoToConfig={() => setActiveTab("admin")}
+        />
+      )}
+
+      {/* Deadline-config host announcement (ADR-085) — gated + acked in DB.
+          Shown after the extra-time banner so they don't overlap. */}
+      {overview?.deadlineConfig?.needsBanner && !deadlineBannerDismissed
+        && !(overview?.extraTime?.needsBanner && !extraTimeBannerDismissed) && token && (
+        <DeadlineConfigHostBanner
+          poolId={poolId}
+          token={token}
+          isMobile={isMobile}
+          onAck={() => setDeadlineBannerDismissed(true)}
           onGoToConfig={() => setActiveTab("admin")}
         />
       )}

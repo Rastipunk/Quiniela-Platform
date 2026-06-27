@@ -298,4 +298,6 @@ export interface PoolOverview {
   matches: PoolMatchCard[];
   leaderboard: PoolLeaderboard;
   extraTime?: PoolExtraTimeConfig;
+  /** Host-editable prediction deadline (ADR-085): allowlist-gated. */
+  deadlineConfig?: { canEdit: boolean; needsBanner: boolean };
 }

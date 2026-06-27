@@ -294,6 +294,11 @@ export async function ackExtraTimeBanner(token: string, poolId: string): Promise
   return requestJson(`/pools/${poolId}/extra-time-banner/ack`, { method: "POST" });
 }
 
+// Dismiss the deadline-config host banner (one-time ack, persisted in DB).
+export async function ackDeadlineBanner(token: string, poolId: string): Promise<{ ok: true }> {
+  return requestJson(`/pools/${poolId}/deadline-banner/ack`, { method: "POST" });
+}
+
 // Member management
 export async function promoteMemberToCoAdmin(token: string, poolId: string, memberId: string): Promise<any> {
   return requestJson<any>(`/pools/${poolId}/members/${memberId}/promote`, { method: "POST" });

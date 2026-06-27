@@ -184,6 +184,13 @@
     "ack": "Entendi"
   },
 
+  "deadlineBanner": {
+    "title": "Precisa dar mais tempo aos jogadores?",
+    "body": "Agora você pode ajustar quando os palpites fecham antes de cada jogo. Se o seu bolão fecha cedo demais, reduza isso na Administração para que os jogadores consigam palpitar nas eliminatórias. Ao alterar, todos os jogadores são notificados por e-mail.",
+    "cta": "Ir para Administração",
+    "ack": "Entendi"
+  },
+
   "nav": {
     "openMenu": "Abrir menu de seções",
     "closeMenu": "Fechar menu",

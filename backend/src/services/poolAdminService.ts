@@ -45,7 +45,7 @@ import type { PhasePickConfig } from "../types/pickConfig";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { ServiceError, type AuditContext } from "./authService";
-import { isExtraTimeConfigEnabled } from "../lib/featureFlags";
+import { isExtraTimeConfigEnabled, isDeadlineConfigEnabled } from "../lib/featureFlags";
 import { getKnockoutScorePhases, computeExtraTimeWindow } from "../lib/extraTimeConfig";
 import { FINAL_RESULT_SOURCES, resolveUserLocale } from "../lib/constants";
 import { invalidatePoolLeaderboard } from "./poolLeaderboardCache";
@@ -227,6 +227,11 @@ export async function updatePoolSettings(
   // value so we can tell whether it actually changed and notify players.
   let deadlineChange: { from: number; to: number } | null = null;
   if (deadlineMinutesBeforeKickoff !== undefined) {
+    // Allowlist-gated rollout (the acting host's email) — off until released.
+    const actor = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (!isDeadlineConfigEnabled(actor?.email)) {
+      throw new ServiceError("FEATURE_NOT_AVAILABLE", 403, { message: "Deadline editing not enabled for this account yet" });
+    }
     if (!Number.isInteger(deadlineMinutesBeforeKickoff) || deadlineMinutesBeforeKickoff < 0 || deadlineMinutesBeforeKickoff > 1440) {
       throw new ServiceError("INVALID_DEADLINE", 400, { message: "deadlineMinutesBeforeKickoff must be an integer in [0, 1440]" });
     }
@@ -482,6 +487,19 @@ export async function updatePhaseExtraTime(
   }));
 
   return { phaseId, includeExtraTime, changed: true };
+}
+
+/** Mark the deadline-config host banner as acknowledged for this member (ADR-085). */
+export async function ackDeadlineBanner(
+  userId: string,
+  poolId: string,
+): Promise<{ ok: true }> {
+  const updated = await prisma.poolMember.updateMany({
+    where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
+    data: { deadlineConfigBannerAckAt: new Date() },
+  });
+  if (updated.count === 0) throw new ServiceError("NOT_FOUND", 404);
+  return { ok: true };
 }
 
 /** Mark the knockout extra-time host banner as acknowledged for this member. */

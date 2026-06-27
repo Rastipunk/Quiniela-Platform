@@ -72,6 +72,17 @@ export function isExtraTimeConfigEnabled(email: string | null | undefined): bool
   return emailInAllowlist(process.env.EXTRA_TIME_CONFIG_ALLOWLIST, email);
 }
 
+/**
+ * Host-editable prediction deadline + its announcement banner (ADR-085).
+ * Gates BOTH the deadline-editing card/endpoint AND the host banner, scoped by
+ * the VIEWING/ACTING user's email via `DEADLINE_CONFIG_ALLOWLIST`
+ * ("" off / "*" all / csv of emails). Read at call time — set it to the owner's
+ * email to self-test, then "*" to release to all hosts. No redeploy needed.
+ */
+export function isDeadlineConfigEnabled(email: string | null | undefined): boolean {
+  return emailInAllowlist(process.env.DEADLINE_CONFIG_ALLOWLIST, email);
+}
+
 /** Shared allowlist semantics: ""→none, "*"→all, else case-insensitive match. */
 function emailInAllowlist(raw: string | undefined, email: string | null | undefined): boolean {
   const v = (raw ?? "").trim();
