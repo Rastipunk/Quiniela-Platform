@@ -54,6 +54,15 @@ function partsToIso(date: string, time: string): string | undefined {
   const iso = new Date(`${date}T${time}:00.000Z`);
   return Number.isNaN(iso.getTime()) ? undefined : iso.toISOString();
 }
+function fmtCol(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: "America/Bogota", weekday: "short", day: "2-digit", month: "short",
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  }).format(d);
+}
 
 export default function PhaseReleaseContent() {
   const [instances, setInstances] = useState<InstanceRow[] | null>(null);
@@ -245,6 +254,11 @@ export default function PhaseReleaseContent() {
                       <input type="time" value={time} onChange={(e) => setEdit(m.matchId, { kickoffUtc: partsToIso(date, e.target.value) })}
                         style={{ padding: "6px 8px", borderRadius: 8, border: `1px solid ${colors.borderMedium}`, fontSize: 13 }} />
                       <span style={{ fontSize: 11, color: colors.textMuted }}>UTC</span>
+                      {kickoffOf(m) && (
+                        <span style={{ fontSize: 12, color: colors.brand, fontWeight: 600, whiteSpace: "nowrap" }}>
+                          🇨🇴 {fmtCol(kickoffOf(m))}
+                        </span>
+                      )}
                     </div>
                   );
                 })}

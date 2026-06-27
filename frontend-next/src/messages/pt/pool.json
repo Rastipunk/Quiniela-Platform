@@ -88,6 +88,20 @@
     "COMPLETED": "COMPLETA"
   },
 
+  "phaseRelease": {
+    "active": "Ativa",
+    "open": "Aberta",
+    "confirming": "Confirmando",
+    "pending": "Pendente",
+    "finalized": "Finalizada",
+    "pendingTitle": "Fase pendente · Times a definir",
+    "pendingMsg": "Os times desta fase serão definidos automaticamente quando os jogos da fase anterior terminarem. Por enquanto você pode ver os jogos programados com placeholders (ex.: «Vencedor Grupo A», «3º melhor terceiro»).",
+    "confirmingTitle": "Confirmando chaveamento",
+    "confirmingMsg": "Em alguns minutos abriremos esta fase.",
+    "finalizedTitle": "Fase finalizada",
+    "finalizedMsg": "Todos os jogos desta fase já terminaram."
+  },
+
   "placeholders": {
     "winner": "Vencedor {ref}",
     "winnerGroup": "Vencedor Grupo {group}",

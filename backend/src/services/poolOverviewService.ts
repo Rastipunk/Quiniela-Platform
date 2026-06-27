@@ -838,6 +838,12 @@ export async function getPoolOverview(
       templateVersionId: pool.tournamentInstance.templateVersionId,
       templateKey: pool.tournamentInstance.template?.key ?? null,
       dataJson: pool.fixtureSnapshot ?? pool.tournamentInstance.dataJson,
+      // Admin knockout-release gate (ADR-084): drives the player-facing phase
+      // state (Pendiente / Confirmando / Abierta / Finalizada).
+      knockoutRelease: {
+        gateEnabled: pool.tournamentInstance.knockoutReleaseGateEnabled,
+        releasedPhases: (pool.tournamentInstance.releasedKnockoutPhases as string[] | null) ?? [],
+      },
     },
     permissions: {
       canManageResults: isPoolAdmin(myMembership.role),

@@ -70,6 +70,8 @@ export interface PoolTournamentInstance {
   templateVersionId: string;
   templateKey: string | null;
   dataJson: PoolFixtureData;
+  /** Admin knockout-release gate (ADR-084) — drives the player-facing phase state. */
+  knockoutRelease?: { gateEnabled: boolean; releasedPhases: string[] };
 }
 
 export interface PoolFixtureData {

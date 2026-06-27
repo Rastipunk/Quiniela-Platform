@@ -88,6 +88,20 @@
     "COMPLETED": "COMPLETED"
   },
 
+  "phaseRelease": {
+    "active": "Active",
+    "open": "Open",
+    "confirming": "Confirming",
+    "pending": "Pending",
+    "finalized": "Finished",
+    "pendingTitle": "Phase pending · Teams to be determined",
+    "pendingMsg": "The teams for this phase will be set automatically once the previous phase's matches finish. For now you can see the scheduled matches with placeholders (e.g. \"Group A Winner\", \"3rd best third-place\").",
+    "confirmingTitle": "Confirming brackets",
+    "confirmingMsg": "We'll be opening this phase in a few minutes.",
+    "finalizedTitle": "Phase finished",
+    "finalizedMsg": "All matches in this phase have finished."
+  },
+
   "placeholders": {
     "winner": "Winner {ref}",
     "winnerGroup": "Winner Group {group}",

@@ -1,14 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { manualAdvancePhase, lockPhase } from "@/lib/api";
+import { manualAdvancePhase } from "@/lib/api";
 import type { PoolOverview } from "@/lib/api";
 import type { PhaseData } from "../poolTypes";
-import { formatPhaseFullName } from "../poolHelpers";
+import { formatPhaseFullName, derivePhaseState, type PhaseUiState } from "../poolHelpers";
 import { useIsMobile, TOUCH_TARGET } from "@/hooks/useIsMobile";
 import {
   colors, fontSize, fontWeight, radii, spacing,
-  adminSectionStyle, adminHeadingStyle, badgeStyle,
+  adminSectionStyle, adminHeadingStyle,
 } from "@/lib/theme";
 
 export interface PhaseStatusPanelProps {
@@ -47,13 +47,16 @@ export function PhaseStatusPanel({
           const totalMatches = phaseMatches.length;
           const progress = totalMatches > 0 ? (completedMatches / totalMatches) * 100 : 0;
 
-          const statusColorMap = {
-            PENDING: { bg: colors.warningBg, border: colors.warning, text: colors.warningDark, icon: "🔒" },
-            ACTIVE: { bg: colors.successBg, border: colors.success, text: colors.successDark, icon: "⚽" },
-            COMPLETED: { bg: colors.infoBg, border: colors.info, text: colors.infoDark, icon: "✅" }
+          const st = derivePhaseState(phase.id, overview.matches, overview.tournamentInstance.knockoutRelease);
+          const stateMap: Record<PhaseUiState, { label: string; bg: string; border: string; text: string; icon: string }> = {
+            GROUP_ACTIVE: { label: t("phaseRelease.active"), bg: colors.successBg, border: colors.success, text: colors.successDark, icon: "⚽" },
+            OPEN: { label: t("phaseRelease.open"), bg: colors.successBg, border: colors.success, text: colors.successDark, icon: "🟢" },
+            CONFIRMING: { label: t("phaseRelease.confirming"), bg: colors.warningBg, border: colors.warning, text: colors.warningDark, icon: "⏳" },
+            PENDING: { label: t("phaseRelease.pending"), bg: colors.warningBg, border: colors.warning, text: colors.warningDark, icon: "🔒" },
+            FINALIZED: { label: t("phaseRelease.finalized"), bg: colors.infoBg, border: colors.info, text: colors.infoDark, icon: "✅" },
           };
-
-          const sc = statusColorMap[status as keyof typeof statusColorMap];
+          const meta = stateMap[st];
+          const sc = meta;
 
           return (
             <div
@@ -76,13 +79,8 @@ export function PhaseStatusPanel({
                   wraps instead of forcing horizontal overflow. */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 20 }}>{sc.icon}</span>
+                  <span style={{ fontSize: 20 }}>{meta.icon}</span>
                   <span style={{ fontWeight: fontWeight.bold, fontSize: fontSize.lg, color: colors.textDark }}>{formatPhaseFullName(phase.id, t)}</span>
-                  <span style={badgeStyle(sc.border, sc.bg, sc.text)}>
-                    {status === "PENDING" && t("phaseStatus.PENDING")}
-                    {status === "ACTIVE" && t("phaseStatus.ACTIVE")}
-                    {status === "COMPLETED" && t("phaseStatus.COMPLETED")}
-                  </span>
                 </div>
                 <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
                   {t("admin.phasePanel.matchesProgress", { completed: completedMatches, total: totalMatches, percent: progress.toFixed(0) })}
@@ -149,49 +147,24 @@ export function PhaseStatusPanel({
                     ✓ {t("admin.phasePanel.alreadyAdvanced")}
                   </span>
                 )}
-                {/* Lock/unlock must be available BEFORE the phase
-                    finishes — that's the whole point of locking
-                    (freeze picks while preparing errata results,
-                    block edits during a known incident). The old
-                    UI only showed this button on COMPLETED phases,
-                    where locking has no practical effect because
-                    the kickoff deadlines have already passed. */}
-                <button
-                  disabled={busyKey === `lock:${phase.id}`}
-                  onClick={async () => {
-                    if (!token || !poolId) return;
-                    const isCurrentlyLocked = (overview.pool.lockedPhases || []).includes(phase.id);
-                    setBusyKey(`lock:${phase.id}`);
-                    setError(null);
-                    try {
-                      await lockPhase(token, poolId, phase.id, !isCurrentlyLocked);
-                      await reload();
-                      alert(isCurrentlyLocked ? `✅ ${t("admin.phasePanel.phaseUnlocked")}` : `🔒 ${t("admin.phasePanel.phaseLocked")}`);
-                    } catch (err: any) {
-                      setError(friendlyError(err));
-                    } finally {
-                      setBusyKey(null);
-                    }
-                  }}
+                {/* Phase state INDICATOR (ADR-084) — informational, not a button.
+                    Apertura/bloqueo se controla desde el Gestor de fases (admin). */}
+                <span
                   style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
                     padding: "8px 16px",
                     borderRadius: radii.lg,
-                    border: `1px solid ${(overview.pool.lockedPhases || []).includes(phase.id) ? colors.success : colors.warning}`,
-                    background: busyKey === `lock:${phase.id}` ? colors.disabled : ((overview.pool.lockedPhases || []).includes(phase.id) ? colors.success : colors.warning),
-                    color: colors.white,
-                    cursor: busyKey === `lock:${phase.id}` ? "wait" : "pointer",
+                    border: `1px solid ${meta.border}`,
+                    background: meta.bg,
+                    color: meta.text,
                     fontSize: fontSize.md,
-                    fontWeight: fontWeight.semibold,
+                    fontWeight: fontWeight.bold,
                     whiteSpace: "nowrap",
-                    ...(isMobile ? { flex: 1, minHeight: TOUCH_TARGET.minimum } : {})
+                    ...(isMobile ? { flex: 1 } : {}),
                   }}
                 >
-                  {busyKey === `lock:${phase.id}`
-                    ? `⏳ ${t("admin.phasePanel.processing")}`
-                    : (overview.pool.lockedPhases || []).includes(phase.id)
-                      ? `🔓 ${t("admin.phasePanel.unlockButton")}`
-                      : `🔒 ${t("admin.phasePanel.lockButton")}`}
-                </button>
+                  {meta.icon} {meta.label}
+                </span>
               </div>
             </div>
           );

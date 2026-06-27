@@ -8,7 +8,7 @@ import { StructuralPicksManager } from "@/components/StructuralPicksManager";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { getMatchPicks, getPredictionStatus, setScoringOverride, type MatchPicksResponse, type PoolNotifications } from "@/lib/api";
 import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
-import { formatPhaseName, formatPhaseFullName, isPlaceholder } from "./poolHelpers";
+import { formatPhaseName, formatPhaseFullName, isPlaceholder, derivePhaseState } from "./poolHelpers";
 import { MatchCard } from "./MatchCard";
 import { PendingPicksBanner } from "./PendingPicksBanner";
 import { MatchPicksModal, type MatchPicksModalData } from "./MatchPicksModal";
@@ -493,6 +493,23 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
           </div>
         </details>
       )}
+
+      {/* Phase-state banner (ADR-084): equipos por definir / confirmando / finalizada */}
+      {activePhase && (() => {
+        const st = derivePhaseState(activePhase, overview.matches, overview.tournamentInstance.knockoutRelease);
+        if (st !== "PENDING" && st !== "CONFIRMING" && st !== "FINALIZED") return null;
+        const c = st === "FINALIZED"
+          ? { bg: colors.infoBg, border: colors.info, fg: colors.infoDark, icon: "✅", title: t("phaseRelease.finalizedTitle"), msg: t("phaseRelease.finalizedMsg") }
+          : st === "CONFIRMING"
+            ? { bg: colors.warningBg, border: colors.warning, fg: colors.warningDark, icon: "⏳", title: t("phaseRelease.confirmingTitle"), msg: t("phaseRelease.confirmingMsg") }
+            : { bg: colors.warningBg, border: colors.warning, fg: colors.warningDark, icon: "🔒", title: t("phaseRelease.pendingTitle"), msg: t("phaseRelease.pendingMsg") };
+        return (
+          <div style={{ marginTop: 12, padding: "14px 16px", background: c.bg, border: `1px solid ${c.border}`, borderRadius: radii.lg }}>
+            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4, color: c.fg }}>{c.icon} {c.title}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, color: colors.textMuted }}>{c.msg}</div>
+          </div>
+        );
+      })()}
 
       {/* Tab Content: Partidos - Structural Picks Manager (SIMPLE preset) */}
       {requiresStructuralPicks && activePhaseData && activePhaseConfig && (

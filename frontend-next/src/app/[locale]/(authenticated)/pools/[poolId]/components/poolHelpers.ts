@@ -170,6 +170,48 @@ export function isPlaceholder(teamId: string) {
   return teamId === "t_TBD" || teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
 }
 
+/**
+ * Player-facing phase state (ADR-084 knockout-release gate):
+ *  - GROUP_ACTIVE: group stage in progress
+ *  - PENDING:   knockout phase whose teams aren't determined yet (placeholders)
+ *  - CONFIRMING: teams known, admin gate ON but not released yet ("en unos minutos")
+ *  - OPEN:      released (or gate OFF) → predictions open
+ *  - FINALIZED: every match of the phase finished
+ */
+export type PhaseUiState = "GROUP_ACTIVE" | "PENDING" | "CONFIRMING" | "OPEN" | "FINALIZED";
+
+interface PhaseStateMatch {
+  phaseId?: string;
+  homeTeam?: { id?: string } | null;
+  awayTeam?: { id?: string } | null;
+  result?: unknown;
+  isLive?: boolean;
+}
+
+export function derivePhaseState(
+  phaseId: string,
+  matches: PhaseStateMatch[],
+  knockoutRelease?: { gateEnabled: boolean; releasedPhases: string[] },
+): PhaseUiState {
+  const isKnockout = phaseId !== "group_stage";
+  const phaseMatches = matches.filter((m) => m.phaseId === phaseId);
+  if (phaseMatches.length === 0) return isKnockout ? "PENDING" : "GROUP_ACTIVE";
+
+  const allFinalized = phaseMatches.every((m) => !!m.result && !m.isLive);
+  if (allFinalized) return "FINALIZED";
+  if (!isKnockout) return "GROUP_ACTIVE";
+
+  const hasPlaceholder = phaseMatches.some(
+    (m) => isPlaceholder(m.homeTeam?.id ?? "") || isPlaceholder(m.awayTeam?.id ?? ""),
+  );
+  if (hasPlaceholder) return "PENDING";
+
+  const gateEnabled = !!knockoutRelease?.gateEnabled;
+  const released = knockoutRelease?.releasedPhases?.includes(phaseId) ?? false;
+  if (gateEnabled && !released) return "CONFIRMING";
+  return "OPEN";
+}
+
 export function getPlaceholderName(teamId: string, t: ReturnType<typeof useTranslations<"pool">>): string {
   if (teamId.startsWith("W_")) {
     const ref = teamId.replace("W_", "");
