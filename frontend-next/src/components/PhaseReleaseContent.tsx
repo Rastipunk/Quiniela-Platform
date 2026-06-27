@@ -162,7 +162,7 @@ export default function PhaseReleaseContent() {
       const res = await adminFetch(`/admin/phase-summary-test`, { method: "POST", body: "{}" });
       if (!res.ok) { setError(`Envío falló (HTTP ${res.status})`); return; }
       const r = await res.json();
-      setMsg(r.sent ? `📧 Correos de prueba enviados a tu correo (resumen + apertura · pool: ${r.poolName}).` : `❌ No se enviaron: ${r.error ?? "error"}`);
+      setMsg(r.sent ? `📧 Correo de resumen enviado a tu correo (pool: ${r.poolName}).` : `❌ No se envió: ${r.error ?? "error"}`);
     } catch {
       setError("Error de red al enviar el correo de prueba.");
     } finally { setBusy(null); }
@@ -198,7 +198,7 @@ export default function PhaseReleaseContent() {
 
       <button onClick={sendSummaryTest} disabled={busy === "summary"}
         style={{ marginBottom: 16, padding: "8px 14px", borderRadius: 8, border: `1px solid ${colors.brand}`, background: "#fff", color: colors.brand, fontWeight: 700, cursor: busy === "summary" ? "wait" : "pointer", fontSize: 13 }}>
-        {busy === "summary" ? "Enviando…" : "📧 Enviarme los correos de prueba (resumen + apertura)"}
+        {busy === "summary" ? "Enviando…" : "📧 Enviarme el correo de resumen de prueba"}
       </button>
 
       {instances && instances.length > 1 && (

@@ -22,7 +22,7 @@ import { extractPhases, extractMatches, extractTeams } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES, FINAL_RESULT_SOURCES } from "../lib/constants";
 import { getPoolOverview } from "./poolOverviewService";
 import { calculateMaxPointsForPool } from "../lib/scoringAdvanced";
-import { sendPhaseSummaryEmail, sendPhaseReleaseEmail } from "../lib/email";
+import { sendPhaseSummaryEmail } from "../lib/email";
 import type { PhasePickConfig } from "../types/pickConfig";
 
 function isPlaceholderTeamId(id: string): boolean {
@@ -291,25 +291,7 @@ export async function sendPhaseSummaryTestToSelf(userId: string): Promise<{ sent
     structural: mine.structuralStats as { positionsCorrect: number; positionsTotal: number; perfectGroups: number; totalGroups: number } | undefined,
     locale: user.locale ?? "es",
   });
-
-  // Also send the "phase open" email (#2) so both designs can be validated.
-  let releaseOk = true;
-  let releaseErr: string | undefined;
-  if (nextPhaseName) {
-    const rel = await sendPhaseReleaseEmail({
-      to: user.email,
-      userId,
-      memberName: user.displayName ?? "Jugador",
-      poolName: ov.pool.name,
-      poolId: membership.poolId,
-      phaseName: nextPhaseName,
-      locale: user.locale ?? "es",
-    });
-    releaseOk = rel.success;
-    releaseErr = rel.error;
-  }
-
-  return { sent: res.success && releaseOk, poolName: ov.pool.name, error: res.error ?? releaseErr };
+  return { sent: res.success, poolName: ov.pool.name, error: res.error };
 }
 
 /** Turn the admin knockout-release gate on/off for an instance (opt-in). */

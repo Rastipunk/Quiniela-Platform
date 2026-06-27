@@ -1945,13 +1945,13 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
     statsScore: (perfect: number, partial: number) => string;
     statsStructural: (s: NonNullable<PhaseSummaryEmailParams["structural"]>) => string;
     possibleLine: (got: number, total: number, pct: number) => string;
-    encourage: string; finalNote: string; cta: string; preheader: string; pts: string;
+    encourage: string; finalNote: string; cta: string; ctaFinal: string; preheader: string; pts: string;
   }> = {
     es: {
       heading: `📊 Así vas en ${safePool}`,
       greeting: `Hola ${safeMember},`,
       intro: `Terminó ${escapeHtml(p.phaseName)}. Este es tu resumen:`,
-      release: (next) => `⏱️ En los próximos 15 minutos abriremos <strong>${next}</strong> para que sigas con todas tus predicciones.`,
+      release: (next) => `🟢 ¡Ya puedes hacer tus predicciones de <strong>${next}</strong>! Entra y pronostica antes de que arranquen los partidos.`,
       tournamentOver: "🏆 ¡Esta fue la última fase del torneo! Gracias por jugar hasta el final.",
       podiumTitle: "El podio va así:",
       youLabel: "Tú",
@@ -1963,15 +1963,16 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       possibleLine: (got, total, pc) => `Has conseguido <strong>${got}</strong> de ${total} puntos posibles (<strong>${pc}%</strong>).`,
       encourage: "¡Lo mejor viene ahora! Las eliminatorias reparten más puntos: cualquiera puede dar el salto. 🚀",
       finalNote: "Revisa la tabla final y comparte tu resultado. ¡Nos vemos en el próximo torneo! 🙌",
-      cta: "Ver mi posición",
-      preheader: `Tu resumen en "${safePool}" — la siguiente fase abre pronto.`,
+      cta: "Hacer mis predicciones",
+      ctaFinal: "Ver la tabla final",
+      preheader: `Tu resumen en "${safePool}" — ¡ya puedes predecir la siguiente fase!`,
       pts: "pts",
     },
     en: {
       heading: `📊 How you're doing in ${safePool}`,
       greeting: `Hi ${safeMember},`,
       intro: `${escapeHtml(p.phaseName)} is over. Here's your recap:`,
-      release: (next) => `⏱️ In the next 15 minutes we'll open <strong>${next}</strong> so you can keep making all your predictions.`,
+      release: (next) => `🟢 You can now make your predictions for <strong>${next}</strong>! Jump in and pick before the matches kick off.`,
       tournamentOver: "🏆 That was the final phase of the tournament! Thanks for playing to the end.",
       podiumTitle: "The podium so far:",
       youLabel: "You",
@@ -1983,15 +1984,16 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       possibleLine: (got, total, pc) => `You've earned <strong>${got}</strong> of ${total} possible points (<strong>${pc}%</strong>).`,
       encourage: "The best is yet to come! Knockouts award more points — anyone can make the leap. 🚀",
       finalNote: "Check the final table and share your result. See you in the next tournament! 🙌",
-      cta: "See my position",
-      preheader: `Your recap in "${safePool}" — the next phase opens soon.`,
+      cta: "Make my predictions",
+      ctaFinal: "See the final table",
+      preheader: `Your recap in "${safePool}" — you can now predict the next phase!`,
       pts: "pts",
     },
     pt: {
       heading: `📊 Como você vai em ${safePool}`,
       greeting: `Olá ${safeMember},`,
       intro: `${escapeHtml(p.phaseName)} terminou. Este é o seu resumo:`,
-      release: (next) => `⏱️ Nos próximos 15 minutos abriremos <strong>${next}</strong> para você continuar com todos os seus palpites.`,
+      release: (next) => `🟢 Você já pode fazer seus palpites de <strong>${next}</strong>! Entre e palpite antes dos jogos começarem.`,
       tournamentOver: "🏆 Essa foi a última fase do torneio! Obrigado por jogar até o fim.",
       podiumTitle: "O pódio está assim:",
       youLabel: "Você",
@@ -2003,8 +2005,9 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       possibleLine: (got, total, pc) => `Você conquistou <strong>${got}</strong> de ${total} pontos possíveis (<strong>${pc}%</strong>).`,
       encourage: "O melhor vem agora! As eliminatórias dão mais pontos — qualquer um pode dar o salto. 🚀",
       finalNote: "Veja a tabela final e compartilhe seu resultado. Até o próximo torneio! 🙌",
-      cta: "Ver minha posição",
-      preheader: `Seu resumo em "${safePool}" — a próxima fase abre em breve.`,
+      cta: "Fazer meus palpites",
+      ctaFinal: "Ver a tabela final",
+      preheader: `Seu resumo em "${safePool}" — você já pode palpitar na próxima fase!`,
       pts: "pts",
     },
   };
@@ -2029,13 +2032,24 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
   const hasNext = !!p.nextPhaseName;
   const bannerText = hasNext ? t.release(escapeHtml(p.nextPhaseName!)) : t.tournamentOver;
   const closeText = hasNext ? t.encourage : t.finalNote;
+  // Prominent, marked banner: green call-to-predict when the next phase is open,
+  // gold "tournament over" otherwise.
+  const bannerBg = hasNext ? "#ECFDF5" : "#FFFBEB";
+  const bannerBorder = hasNext ? "#10B981" : "#F59E0B";
+  const bannerFg = hasNext ? "#065F46" : "#92400E";
+  const prominentBanner = `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;">
+      <tr><td style="background:${bannerBg};border:2px solid ${bannerBorder};border-radius:12px;padding:18px 20px;">
+        <p style="margin:0;font-size:17px;font-weight:800;color:${bannerFg};line-height:1.5;">${bannerText}</p>
+      </td></tr>
+    </table>`;
 
   const content = `
     ${getHeading(t.heading)}
     ${getParagraph(t.greeting)}
     ${getParagraph(t.intro)}
 
-    ${getHighlightBox(`<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.primaryColor};line-height:1.5;">${bannerText}</p>`)}
+    ${prominentBanner}
 
     ${getParagraph(`${t.rankLine(p.rank, p.totalMembers)} ${isLeader ? t.leaderLine : t.behindLine(p.pointsBehindLeader)}`)}
     ${statsLine ? getParagraph(statsLine) : ""}
@@ -2045,65 +2059,9 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F9FAFB;border-radius:10px;">${podiumHtml}</table>
 
     <p style="margin:22px 0 0;font-size:15px;line-height:1.6;color:${BRAND.textColor};">${closeText}</p>
-    ${getButton(t.cta, poolUrl, true)}
+    ${getButton(hasNext ? t.cta : t.ctaFinal, poolUrl, true)}
   `;
 
-  return getEmailWrapper(content, t.preheader, p.locale ?? "es");
-}
-
-// =========================================================================
-// TEMPLATE: PHASE RELEASE ("the round is open — predict now")
-// =========================================================================
-
-export interface PhaseReleaseEmailParams {
-  memberName: string;
-  poolName: string;
-  poolId: string;
-  phaseName: string; // the phase just opened, e.g. "los Dieciseisavos de Final"
-  locale?: string;
-}
-
-export function getPhaseReleaseTemplate(p: PhaseReleaseEmailParams): string {
-  const safeMember = escapeHtml(p.memberName);
-  const safePool = escapeHtml(p.poolName);
-  const safePhase = escapeHtml(p.phaseName);
-
-  const i18n: Record<string, { heading: string; greeting: string; body: string; note: string; cta: string; preheader: string }> = {
-    es: {
-      heading: `🟢 ¡${safePhase} ya está abierta!`,
-      greeting: `Hola ${safeMember},`,
-      body: `Ya están confirmados los cruces de <strong>${safePhase}</strong> en <strong>"${safePool}"</strong>. ¡Las predicciones están abiertas! Entra y haz tus pronósticos.`,
-      note: "Recuerda: cada partido cierra unos minutos antes de su inicio, así que no lo dejes para última hora.",
-      cta: "Hacer mis predicciones",
-      preheader: `${safePhase} está abierta en "${safePool}" — haz tus predicciones.`,
-    },
-    en: {
-      heading: `🟢 ${safePhase} is now open!`,
-      greeting: `Hi ${safeMember},`,
-      body: `The matchups for <strong>${safePhase}</strong> in <strong>"${safePool}"</strong> are confirmed. Predictions are open — jump in and make your picks!`,
-      note: "Remember: each match closes a few minutes before kickoff, so don't leave it to the last minute.",
-      cta: "Make my predictions",
-      preheader: `${safePhase} is open in "${safePool}" — make your predictions.`,
-    },
-    pt: {
-      heading: `🟢 ${safePhase} já está aberta!`,
-      greeting: `Olá ${safeMember},`,
-      body: `Os confrontos de <strong>${safePhase}</strong> em <strong>"${safePool}"</strong> estão confirmados. Os palpites estão abertos — entre e faça suas escolhas!`,
-      note: "Lembre-se: cada jogo fecha alguns minutos antes do início, então não deixe para a última hora.",
-      cta: "Fazer meus palpites",
-      preheader: `${safePhase} está aberta em "${safePool}" — faça seus palpites.`,
-    },
-  };
-  const t = i18n[p.locale ?? "es"] ?? i18n.es!;
-  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${p.poolId}`, emailUtm("phase_release"));
-
-  const content = `
-    ${getHeading(t.heading)}
-    ${getParagraph(t.greeting)}
-    ${getParagraph(t.body)}
-    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mutedColor};">${t.note}</p>
-    ${getButton(t.cta, poolUrl, true)}
-  `;
   return getEmailWrapper(content, t.preheader, p.locale ?? "es");
 }
 
