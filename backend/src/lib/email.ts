@@ -25,6 +25,8 @@ import {
   getNewMemberTemplate,
   getPasswordChangedTemplate,
   getMemberRemovedTemplate,
+  getPhaseSummaryTemplate,
+  type PhaseSummaryEmailParams,
   getCorporateInquiryConfirmationTemplate,
   getCorporateCheckinTemplate,
   getCorporateActivationTemplate,
@@ -1392,6 +1394,41 @@ export async function sendResultOverrideNotification(params: {
     return { success: true };
   } catch (err) {
     console.error("❌ Exception override notification:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// PHASE SUMMARY (standings recap + "next phase in 15 min")
+// =========================================================================
+
+export async function sendPhaseSummaryEmail(
+  params: PhaseSummaryEmailParams & { to: string; userId: string },
+): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+
+  const loc = params.locale || DEFAULT_LOCALE;
+  const subjects: Record<string, string> = {
+    es: `📊 Tu resumen en "${params.poolName}" — abre la siguiente fase`,
+    en: `📊 Your recap in "${params.poolName}" — next phase opening`,
+    pt: `📊 Seu resumo em "${params.poolName}" — próxima fase abrindo`,
+  };
+
+  try {
+    const { error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
+      html: getPhaseSummaryTemplate(params),
+    });
+    if (error) {
+      console.error("❌ Error phase summary email:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Exception phase summary email:", err);
     return { success: false, error: String(err) };
   }
 }

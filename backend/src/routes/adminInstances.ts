@@ -47,6 +47,7 @@ import {
   saveKnockoutBracketOverrides,
   setKnockoutReleaseGate,
   setKnockoutPhaseReleased,
+  sendPhaseSummaryTestToSelf,
 } from "../services/knockoutBracketAdmin";
 
 export const adminInstancesRouter = Router();
@@ -244,6 +245,17 @@ adminInstancesRouter.post("/instances/:instanceId/knockout-phases/:phaseId/relea
   if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
   try {
     const result = await setKnockoutPhaseReleased(req.params.instanceId, req.params.phaseId, parsed.data.released);
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /admin/phase-summary-test — send the phase-summary email PREVIEW to the
+// requesting admin's own email (computed from a pool they belong to).
+adminInstancesRouter.post("/phase-summary-test", async (req, res) => {
+  try {
+    const result = await sendPhaseSummaryTestToSelf(req.auth!.userId);
     return sendOk(res, result);
   } catch (err) {
     return handleServiceError(res, err);

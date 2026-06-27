@@ -1906,6 +1906,140 @@ export function getMemberRemovedTemplate({ displayName, poolName, reason, type, 
 }
 
 // =========================================================================
+// TEMPLATE: PHASE SUMMARY (standings recap + "next phase in 15 min")
+// =========================================================================
+
+export interface PhaseSummaryEmailParams {
+  memberName: string;
+  poolName: string;
+  poolId: string;
+  phaseName: string; // e.g. "la fase de grupos"
+  rank: number;
+  totalMembers: number;
+  points: number;
+  pointsBehindLeader: number; // 0 when the member is the leader
+  totalPossible: number; // 0 → hide the "of X possible" line
+  podium: Array<{ name: string; points: number; isViewer: boolean }>;
+  /** "score" pools show perfect/partial scorelines; "structural" show positions/groups. */
+  mode: "score" | "structural";
+  score?: { perfect: number; partial: number };
+  structural?: { positionsCorrect: number; positionsTotal: number; perfectGroups: number; totalGroups: number };
+  locale?: string;
+}
+
+export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
+  const safeMember = escapeHtml(p.memberName);
+  const safePool = escapeHtml(p.poolName);
+  const isLeader = p.rank === 1;
+  const pct = p.totalPossible > 0 ? Math.round((p.points / p.totalPossible) * 100) : 0;
+  const MEDAL = ["🥇", "🥈", "🥉"];
+
+  const i18n: Record<string, {
+    heading: string; greeting: string; intro: string;
+    release: string; podiumTitle: string; youLabel: string;
+    rankLine: (r: number, t: number) => string;
+    leaderLine: string; behindLine: (n: number) => string;
+    statsScore: (perfect: number, partial: number) => string;
+    statsStructural: (s: NonNullable<PhaseSummaryEmailParams["structural"]>) => string;
+    possibleLine: (got: number, total: number, pct: number) => string;
+    encourage: string; cta: string; preheader: string; pts: string;
+  }> = {
+    es: {
+      heading: `📊 Así vas en ${safePool}`,
+      greeting: `Hola ${safeMember},`,
+      intro: `Terminó ${escapeHtml(p.phaseName)}. Este es tu resumen:`,
+      release: "⏱️ En los próximos 15 minutos abriremos la siguiente fase del torneo para que sigas con todas tus predicciones.",
+      podiumTitle: "El podio va así:",
+      youLabel: "Tú",
+      rankLine: (r, t) => `Vas en la <strong>posición ${r}</strong> de ${t}.`,
+      leaderLine: "¡Vas de líder! 🏆 No te dejes alcanzar.",
+      behindLine: (n) => `Estás a <strong>${n} ${n === 1 ? "punto" : "puntos"}</strong> del primer lugar — todo por jugarse.`,
+      statsScore: (perfect, partial) => `Llevas <strong>${perfect}</strong> ${perfect === 1 ? "marcador exacto" : "marcadores exactos"} y <strong>${partial}</strong> ${partial === 1 ? "parcial" : "parciales"}.`,
+      statsStructural: (s) => `Acertaste <strong>${s.positionsCorrect}/${s.positionsTotal}</strong> posiciones y <strong>${s.perfectGroups}/${s.totalGroups}</strong> grupos perfectos.`,
+      possibleLine: (got, total, pc) => `Has conseguido <strong>${got}</strong> de ${total} puntos posibles (<strong>${pc}%</strong>).`,
+      encourage: "¡Lo mejor viene ahora! Las eliminatorias reparten más puntos: cualquiera puede dar el salto. 🚀",
+      cta: "Ver mi posición",
+      preheader: `Tu resumen en "${safePool}" — la siguiente fase abre pronto.`,
+      pts: "pts",
+    },
+    en: {
+      heading: `📊 How you're doing in ${safePool}`,
+      greeting: `Hi ${safeMember},`,
+      intro: `${escapeHtml(p.phaseName)} is over. Here's your recap:`,
+      release: "⏱️ In the next 15 minutes we'll open the next phase so you can keep making all your predictions.",
+      podiumTitle: "The podium so far:",
+      youLabel: "You",
+      rankLine: (r, t) => `You're in <strong>position ${r}</strong> of ${t}.`,
+      leaderLine: "You're in the lead! 🏆 Don't let them catch you.",
+      behindLine: (n) => `You're <strong>${n} ${n === 1 ? "point" : "points"}</strong> behind first place — all to play for.`,
+      statsScore: (perfect, partial) => `You have <strong>${perfect}</strong> exact ${perfect === 1 ? "scoreline" : "scorelines"} and <strong>${partial}</strong> ${partial === 1 ? "partial" : "partials"}.`,
+      statsStructural: (s) => `You got <strong>${s.positionsCorrect}/${s.positionsTotal}</strong> positions and <strong>${s.perfectGroups}/${s.totalGroups}</strong> perfect groups.`,
+      possibleLine: (got, total, pc) => `You've earned <strong>${got}</strong> of ${total} possible points (<strong>${pc}%</strong>).`,
+      encourage: "The best is yet to come! Knockouts award more points — anyone can make the leap. 🚀",
+      cta: "See my position",
+      preheader: `Your recap in "${safePool}" — the next phase opens soon.`,
+      pts: "pts",
+    },
+    pt: {
+      heading: `📊 Como você vai em ${safePool}`,
+      greeting: `Olá ${safeMember},`,
+      intro: `${escapeHtml(p.phaseName)} terminou. Este é o seu resumo:`,
+      release: "⏱️ Nos próximos 15 minutos abriremos a próxima fase para você continuar com todos os seus palpites.",
+      podiumTitle: "O pódio está assim:",
+      youLabel: "Você",
+      rankLine: (r, t) => `Você está na <strong>posição ${r}</strong> de ${t}.`,
+      leaderLine: "Você está na liderança! 🏆 Não deixe alcançarem você.",
+      behindLine: (n) => `Você está a <strong>${n} ${n === 1 ? "ponto" : "pontos"}</strong> do primeiro lugar — tudo em aberto.`,
+      statsScore: (perfect, partial) => `Você tem <strong>${perfect}</strong> ${perfect === 1 ? "placar exato" : "placares exatos"} e <strong>${partial}</strong> ${partial === 1 ? "parcial" : "parciais"}.`,
+      statsStructural: (s) => `Você acertou <strong>${s.positionsCorrect}/${s.positionsTotal}</strong> posições e <strong>${s.perfectGroups}/${s.totalGroups}</strong> grupos perfeitos.`,
+      possibleLine: (got, total, pc) => `Você conquistou <strong>${got}</strong> de ${total} pontos possíveis (<strong>${pc}%</strong>).`,
+      encourage: "O melhor vem agora! As eliminatórias dão mais pontos — qualquer um pode dar o salto. 🚀",
+      cta: "Ver minha posição",
+      preheader: `Seu resumo em "${safePool}" — a próxima fase abre em breve.`,
+      pts: "pts",
+    },
+  };
+  const t = i18n[p.locale ?? "es"] ?? i18n.es!;
+
+  const podiumHtml = p.podium.slice(0, 3).map((row, i) => `
+    <tr>
+      <td style="padding:8px 10px;font-size:20px;width:36px;">${MEDAL[i]}</td>
+      <td style="padding:8px 10px;font-size:15px;color:${BRAND.textColor};font-weight:${row.isViewer ? 800 : 600};">
+        ${escapeHtml(row.name)}${row.isViewer ? ` <span style="font-size:12px;color:${BRAND.primaryColor};">(${t.youLabel})</span>` : ""}
+      </td>
+      <td style="padding:8px 10px;font-size:15px;color:${BRAND.primaryColor};font-weight:800;text-align:right;white-space:nowrap;">${row.points} ${t.pts}</td>
+    </tr>`).join("");
+
+  const statsLine = p.mode === "structural" && p.structural
+    ? t.statsStructural(p.structural)
+    : p.score
+      ? t.statsScore(p.score.perfect, p.score.partial)
+      : "";
+
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${p.poolId}`, emailUtm("phase_summary"));
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.intro)}
+
+    ${getHighlightBox(`<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.primaryColor};line-height:1.5;">${t.release}</p>`)}
+
+    ${getParagraph(`${t.rankLine(p.rank, p.totalMembers)} ${isLeader ? t.leaderLine : t.behindLine(p.pointsBehindLeader)}`)}
+    ${statsLine ? getParagraph(statsLine) : ""}
+    ${p.totalPossible > 0 ? getParagraph(t.possibleLine(p.points, p.totalPossible, pct)) : ""}
+
+    <p style="margin:24px 0 8px;font-size:14px;font-weight:700;color:${BRAND.textColor};">${t.podiumTitle}</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F9FAFB;border-radius:10px;">${podiumHtml}</table>
+
+    <p style="margin:22px 0 0;font-size:15px;line-height:1.6;color:${BRAND.textColor};">${t.encourage}</p>
+    ${getButton(t.cta, poolUrl, true)}
+  `;
+
+  return getEmailWrapper(content, t.preheader, p.locale ?? "es");
+}
+
+// =========================================================================
 // TEMPLATE: NEW MEMBER DIGEST (daily summary for hosts)
 // =========================================================================
 

@@ -156,6 +156,18 @@ export default function PhaseReleaseContent() {
     } finally { setBusy(null); }
   };
 
+  const sendSummaryTest = async () => {
+    setBusy("summary"); setMsg(null); setError(null);
+    try {
+      const res = await adminFetch(`/admin/phase-summary-test`, { method: "POST", body: "{}" });
+      if (!res.ok) { setError(`Envío falló (HTTP ${res.status})`); return; }
+      const r = await res.json();
+      setMsg(r.sent ? `📧 Correo de resumen enviado a tu correo (pool: ${r.poolName}).` : `❌ No se envió: ${r.error ?? "error"}`);
+    } catch {
+      setError("Error de red al enviar el correo de prueba.");
+    } finally { setBusy(null); }
+  };
+
   const teams = (data?.teams ?? []).slice().sort((a, b) =>
     (a.groupId ?? "").localeCompare(b.groupId ?? "") || a.name.localeCompare(b.name));
 
@@ -180,9 +192,14 @@ export default function PhaseReleaseContent() {
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: 20 }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, color: colors.brand, marginBottom: 4 }}>🗂️ Desbloqueo de fases</h1>
-      <p style={{ color: colors.textMuted, fontSize: 14, marginBottom: 16 }}>
+      <p style={{ color: colors.textMuted, fontSize: 14, marginBottom: 12 }}>
         Revisa los brackets calculados (reglas FIFA), edítalos si hace falta y libera cada ronda cuando estés conforme.
       </p>
+
+      <button onClick={sendSummaryTest} disabled={busy === "summary"}
+        style={{ marginBottom: 16, padding: "8px 14px", borderRadius: 8, border: `1px solid ${colors.brand}`, background: "#fff", color: colors.brand, fontWeight: 700, cursor: busy === "summary" ? "wait" : "pointer", fontSize: 13 }}>
+        {busy === "summary" ? "Enviando…" : "📧 Enviarme un correo de resumen de prueba"}
+      </button>
 
       {instances && instances.length > 1 && (
         <select value={instanceId} onChange={(e) => setInstanceId(e.target.value)}

@@ -20,6 +20,10 @@ import { calculateAllGroupStandings } from "./instanceAdvancement";
 import { determineQualifiers, resolvePlaceholders } from "./tournamentAdvancement";
 import { extractPhases, extractMatches, extractTeams } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES, FINAL_RESULT_SOURCES } from "../lib/constants";
+import { getPoolOverview } from "./poolOverviewService";
+import { calculateMaxPointsForPool } from "../lib/scoringAdvanced";
+import { sendPhaseSummaryEmail } from "../lib/email";
+import type { PhasePickConfig } from "../types/pickConfig";
 
 function isPlaceholderTeamId(id: string): boolean {
   return PLACEHOLDER_TEAM_PREFIXES.some((p) => id === p || id.startsWith(p));
@@ -226,6 +230,62 @@ export async function saveKnockoutBracketOverrides(
     data: { knockoutBracketOverrides: merged as Prisma.InputJsonValue },
   });
   return { saved: Object.keys(merged).length };
+}
+
+/**
+ * Send a PREVIEW of the phase-summary email to the requesting admin (their own
+ * email), computed from a pool they belong to. Lets the admin see the real email
+ * before the broadcast. Adapts to the pool's scoring mode (score vs structural).
+ */
+export async function sendPhaseSummaryTestToSelf(userId: string): Promise<{ sent: boolean; poolName?: string; error?: string }> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, displayName: true, locale: true } });
+  if (!user) throw new ServiceError("NOT_FOUND", 404);
+
+  const membership = await prisma.poolMember.findFirst({
+    where: { userId, status: "ACTIVE" },
+    select: { poolId: true },
+    orderBy: { joinedAtUtc: "asc" },
+  });
+  if (!membership) throw new ServiceError("NO_POOL", 400, { message: "No eres miembro activo de ninguna pool" });
+
+  const ov = (await getPoolOverview(userId, membership.poolId, false)) as unknown as {
+    pool: { name: string; pickTypesConfig: unknown };
+    matches: Array<{ phaseId: string; result: unknown }>;
+    leaderboard: {
+      presetMode: string;
+      rows: Array<{ userId: string; rank: number; displayName: string; points: number; perfectCount?: number; partialCount?: number; structuralStats?: unknown }>;
+    };
+  };
+  const rows = ov.leaderboard.rows;
+  const mine = rows.find((r) => r.userId === userId) ?? rows[0];
+  if (!mine) throw new ServiceError("NO_DATA", 400, { message: "La pool aún no tiene leaderboard" });
+  const leader = rows.find((r) => r.rank === 1) ?? rows[0]!;
+  const podium = rows.slice(0, 3).map((r) => ({ name: r.displayName, points: r.points, isViewer: r.userId === userId }));
+
+  const countByPhase = new Map<string, number>();
+  for (const m of ov.matches) if (m.result) countByPhase.set(m.phaseId, (countByPhase.get(m.phaseId) ?? 0) + 1);
+  const totalPossible = calculateMaxPointsForPool((ov.pool.pickTypesConfig ?? []) as PhasePickConfig[], countByPhase);
+  const mode = ov.leaderboard.presetMode === "STRUCTURAL" ? "structural" : "score";
+
+  const res = await sendPhaseSummaryEmail({
+    to: user.email,
+    userId,
+    memberName: user.displayName ?? "Jugador",
+    poolName: ov.pool.name,
+    poolId: membership.poolId,
+    phaseName: "la fase de grupos",
+    rank: mine.rank,
+    totalMembers: rows.length,
+    points: mine.points,
+    pointsBehindLeader: Math.max(0, leader.points - mine.points),
+    totalPossible,
+    podium,
+    mode,
+    score: { perfect: mine.perfectCount ?? 0, partial: mine.partialCount ?? 0 },
+    structural: mine.structuralStats as { positionsCorrect: number; positionsTotal: number; perfectGroups: number; totalGroups: number } | undefined,
+    locale: user.locale ?? "es",
+  });
+  return { sent: res.success, poolName: ov.pool.name, error: res.error };
 }
 
 /** Turn the admin knockout-release gate on/off for an instance (opt-in). */

@@ -435,29 +435,7 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
         ) : null;
       })()}
 
-      {/* Phase Status Banner (for pending phases) */}
-      {activePhase && getPhaseStatus(activePhase) === "PENDING" && (
-        <div style={{
-          marginTop: 14,
-          padding: 16,
-          background: colors.warningBg,
-          border: "1px solid #ffeeba",
-          borderRadius: 12,
-          display: "flex",
-          alignItems: "start",
-          gap: 12
-        }}>
-          <span style={{ fontSize: 24 }}>⏳</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, color: colors.warningDark, marginBottom: 4 }}>
-              {t("pendingPhase.title")}
-            </div>
-            <div style={{ fontSize: 13, color: colors.warningDark, lineHeight: 1.6 }}>
-              {t("pendingPhase.description")}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Pending-phase banner consolidated into the ADR-084 phase-state banner below. */}
 
       {/* Invite section moved to pool page header */}
 
