@@ -164,8 +164,8 @@
     "windowClosedGeneric": "A janela de mudanças está fechada para este bolão."
   },
   "extraTimeBanner": {
-    "title": "Placares nas fases eliminatórias",
-    "body": "Seu bolão considera apenas os 90 minutos + acréscimos para os placares das fases eliminatórias (sem prorrogação nem pênaltis). Se quiser mudar isto, você tem até o último jogo da fase de grupos terminar, na área de Configurações.",
+    "title": "Importante!",
+    "body": "Você tem até o último jogo da fase de grupos terminar para definir como os placares são pontuados nas fases eliminatórias: apenas até o minuto 90 (+ acréscimos), ou também a prorrogação? Confira se está como você quer na área de Configurações.",
     "cta": "Ir para configurações",
     "ack": "Entendi"
   },

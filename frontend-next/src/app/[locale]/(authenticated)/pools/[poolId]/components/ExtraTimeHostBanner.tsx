@@ -67,7 +67,7 @@ export function ExtraTimeHostBanner({
         boxShadow: "0 24px 70px rgba(0,0,0,0.45)", overflow: "hidden",
       }}>
         <div style={{ background: colors.brandGradient, color: colors.white, padding: isMobile ? "18px 18px" : "22px 24px" }}>
-          <div style={{ fontSize: 30, marginBottom: 6 }}>⏱️</div>
+          <div style={{ fontSize: 30, marginBottom: 6 }}>⚠️</div>
           <div style={{ fontSize: isMobile ? 17 : 19, fontWeight: 800, lineHeight: 1.3 }}>
             {t("extraTimeBanner.title")}
           </div>

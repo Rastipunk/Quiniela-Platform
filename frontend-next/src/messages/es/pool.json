@@ -164,8 +164,8 @@
     "windowClosedGeneric": "La ventana de cambios está cerrada para esta polla."
   },
   "extraTimeBanner": {
-    "title": "Marcadores en fases de eliminación",
-    "body": "Tu polla considera únicamente los 90 minutos + tiempo de reposición para los marcadores de las fases de eliminación (sin tiempo extra ni penales). Si quieres cambiar esto, tienes hasta antes de que finalice el último partido de la fase de grupos, en la zona de Configuración.",
+    "title": "¡Importante!",
+    "body": "Tienes hasta que finalice el último partido de la fase de grupos para definir cómo se califican los marcadores de las fases de eliminación: ¿solo hasta el minuto 90 (+ reposición), o también el tiempo extra? Asegúrate de dejarlo como lo deseas en la zona de Configuración.",
     "cta": "Ir a configuración",
     "ack": "Entendido"
   },

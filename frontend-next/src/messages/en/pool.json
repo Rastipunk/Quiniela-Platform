@@ -164,8 +164,8 @@
     "windowClosedGeneric": "The change window is closed for this pool."
   },
   "extraTimeBanner": {
-    "title": "Scorelines in knockout rounds",
-    "body": "Your pool only considers 90 minutes + stoppage time for knockout-round scorelines (no extra time, no penalties). If you want to change this, you have until the last group-stage match ends, in the Settings area.",
+    "title": "Important!",
+    "body": "You have until the last group-stage match ends to set how scorelines are graded in the knockout rounds: only up to minute 90 (+ stoppage), or also extra time? Make sure it's set the way you want in the Settings area.",
     "cta": "Go to settings",
     "ack": "Got it"
   },
