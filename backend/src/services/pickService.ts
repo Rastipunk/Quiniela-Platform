@@ -11,7 +11,7 @@
 import { prisma } from "../db";
 import { writeAuditEvent } from "../lib/audit";
 import { canMakePicks } from "./poolStateMachine";
-import { extractMatches } from "../lib/fixture";
+import { extractMatches, extractPhases } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES } from "../lib/constants";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { ServiceError, type AuditContext } from "./authService";
@@ -229,6 +229,22 @@ export async function upsertPick(
       message: "Phase is locked by the host",
       phaseId: match.phaseId,
     });
+  }
+
+  // Admin knockout-release gate (ADR-084): when enabled for the instance, a
+  // knockout phase the admin hasn't released yet is closed to predictions
+  // (instance-level; hosts cannot bypass). Default-off → other tournaments
+  // are unaffected.
+  if (pool.tournamentInstance.knockoutReleaseGateEnabled && match.phaseId) {
+    const phase = extractPhases(fixtureData).find((p) => p.id === match.phaseId);
+    const isKnockout = phase ? phase.type !== "GROUP" : match.phaseId !== "group_stage";
+    const released = (pool.tournamentInstance.releasedKnockoutPhases as string[] | null) ?? [];
+    if (isKnockout && !released.includes(match.phaseId)) {
+      throw new ServiceError("PHASE_NOT_RELEASED", 409, {
+        message: "Knockout phase not yet released by the admin",
+        phaseId: match.phaseId,
+      });
+    }
   }
 
   const deadlineUtc = computeDeadlineUtc(match.kickoffUtc, pool.deadlineMinutesBeforeKickoff);

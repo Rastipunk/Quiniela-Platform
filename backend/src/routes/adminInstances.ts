@@ -42,6 +42,12 @@ import {
   getGlobalSyncStatus,
   updateR16Draw,
 } from "../services/adminInstanceService";
+import {
+  getKnockoutBracketPreview,
+  saveKnockoutBracketOverrides,
+  setKnockoutReleaseGate,
+  setKnockoutPhaseReleased,
+} from "../services/knockoutBracketAdmin";
 
 export const adminInstancesRouter = Router();
 
@@ -179,6 +185,66 @@ adminInstancesRouter.get("/instances/:instanceId", async (req, res) => {
   try {
     const result = await getInstance(req.params.instanceId);
     return sendData(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// ========== KNOCKOUT PHASE RELEASE PANEL (ADR-084) ==========
+
+// GET /admin/instances/:instanceId/knockout-brackets — computed FIFA bracket + admin edits.
+adminInstancesRouter.get("/instances/:instanceId/knockout-brackets", async (req, res) => {
+  try {
+    const result = await getKnockoutBracketPreview(req.params.instanceId);
+    return sendData(res, result as unknown as Record<string, unknown>);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /admin/instances/:instanceId/knockout-brackets/overrides — save team/date/time edits.
+const overrideSchema = z.object({
+  overrides: z.record(
+    z.string(),
+    z.object({
+      homeTeamId: z.string().optional(),
+      awayTeamId: z.string().optional(),
+      kickoffUtc: z.string().optional(),
+    }),
+  ),
+});
+adminInstancesRouter.post("/instances/:instanceId/knockout-brackets/overrides", async (req, res) => {
+  const parsed = overrideSchema.safeParse(req.body);
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
+  try {
+    const result = await saveKnockoutBracketOverrides(req.params.instanceId, parsed.data.overrides);
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /admin/instances/:instanceId/knockout-gate — master opt-in toggle.
+const gateSchema = z.object({ enabled: z.boolean() });
+adminInstancesRouter.post("/instances/:instanceId/knockout-gate", async (req, res) => {
+  const parsed = gateSchema.safeParse(req.body);
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
+  try {
+    const result = await setKnockoutReleaseGate(req.params.instanceId, parsed.data.enabled);
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /admin/instances/:instanceId/knockout-phases/:phaseId/release — release/relock a phase.
+const releaseSchema = z.object({ released: z.boolean() });
+adminInstancesRouter.post("/instances/:instanceId/knockout-phases/:phaseId/release", async (req, res) => {
+  const parsed = releaseSchema.safeParse(req.body);
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
+  try {
+    const result = await setKnockoutPhaseReleased(req.params.instanceId, req.params.phaseId, parsed.data.released);
+    return sendOk(res, result);
   } catch (err) {
     return handleServiceError(res, err);
   }

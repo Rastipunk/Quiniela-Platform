@@ -344,6 +344,26 @@ model TournamentInstance {
   dataJson Json
 
   // =========================================================================
+  // KNOCKOUT PHASE RELEASE (admin-gated, ADR-084)
+  // =========================================================================
+
+  // Master opt-in for the admin knockout-release gate. When false (default),
+  // knockout predictions behave exactly as before (no gate) — so other
+  // tournaments are unaffected. The admin turns this ON for the World Cup.
+  knockoutReleaseGateEnabled Boolean @default(false)
+
+  // Phases the admin has RELEASED for predictions (array of phaseId strings,
+  // e.g. ["round_of_32"]). When the gate is enabled, a knockout phase NOT in
+  // this list blocks players from predicting its matches (instance-level gate;
+  // hosts cannot bypass).
+  releasedKnockoutPhases Json @default("[]")
+
+  // Admin edits to the computed knockout bracket, keyed by matchId →
+  // { homeTeamId?, awayTeamId?, kickoffUtc? }. Applied on top of the
+  // FIFA-computed bracket in the admin panel and at publish time.
+  knockoutBracketOverrides Json @default("{}")
+
+  // =========================================================================
   // AUTO RESULTS - Configuración de fuente de resultados automáticos
   // =========================================================================
 
