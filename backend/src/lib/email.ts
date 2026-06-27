@@ -27,6 +27,8 @@ import {
   getMemberRemovedTemplate,
   getPhaseSummaryTemplate,
   type PhaseSummaryEmailParams,
+  getPhaseReleaseTemplate,
+  type PhaseReleaseEmailParams,
   getCorporateInquiryConfirmationTemplate,
   getCorporateCheckinTemplate,
   getCorporateActivationTemplate,
@@ -1429,6 +1431,35 @@ export async function sendPhaseSummaryEmail(
     return { success: true };
   } catch (err) {
     console.error("❌ Exception phase summary email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+export async function sendPhaseReleaseEmail(
+  params: PhaseReleaseEmailParams & { to: string; userId: string },
+): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+  const loc = params.locale || DEFAULT_LOCALE;
+  const subjects: Record<string, string> = {
+    es: `🟢 ${params.phaseName} ya está abierta en "${params.poolName}"`,
+    en: `🟢 ${params.phaseName} is open in "${params.poolName}"`,
+    pt: `🟢 ${params.phaseName} já está aberta em "${params.poolName}"`,
+  };
+  try {
+    const { error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
+      html: getPhaseReleaseTemplate(params),
+    });
+    if (error) {
+      console.error("❌ Error phase release email:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    console.error("❌ Exception phase release email:", err);
     return { success: false, error: String(err) };
   }
 }

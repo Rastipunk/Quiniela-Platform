@@ -22,7 +22,7 @@ import { extractPhases, extractMatches, extractTeams } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES, FINAL_RESULT_SOURCES } from "../lib/constants";
 import { getPoolOverview } from "./poolOverviewService";
 import { calculateMaxPointsForPool } from "../lib/scoringAdvanced";
-import { sendPhaseSummaryEmail } from "../lib/email";
+import { sendPhaseSummaryEmail, sendPhaseReleaseEmail } from "../lib/email";
 import type { PhasePickConfig } from "../types/pickConfig";
 
 function isPlaceholderTeamId(id: string): boolean {
@@ -251,11 +251,16 @@ export async function sendPhaseSummaryTestToSelf(userId: string): Promise<{ sent
   const ov = (await getPoolOverview(userId, membership.poolId, false)) as unknown as {
     pool: { name: string; pickTypesConfig: unknown };
     matches: Array<{ phaseId: string; result: unknown }>;
+    tournamentInstance: { dataJson: unknown };
     leaderboard: {
       presetMode: string;
       rows: Array<{ userId: string; rank: number; displayName: string; points: number; perfectCount?: number; partialCount?: number; structuralStats?: unknown }>;
     };
   };
+  // Next phase after the group stage (for the "we'll open X in 15 min" line).
+  const orderedPhases = extractPhases(ov.tournamentInstance.dataJson).sort((a, b) => a.order - b.order);
+  const groupIdx = orderedPhases.findIndex((p) => p.id === "group_stage");
+  const nextPhaseName = groupIdx >= 0 && orderedPhases[groupIdx + 1] ? orderedPhases[groupIdx + 1]!.name : null;
   const rows = ov.leaderboard.rows;
   const mine = rows.find((r) => r.userId === userId) ?? rows[0];
   if (!mine) throw new ServiceError("NO_DATA", 400, { message: "La pool aún no tiene leaderboard" });
@@ -274,6 +279,7 @@ export async function sendPhaseSummaryTestToSelf(userId: string): Promise<{ sent
     poolName: ov.pool.name,
     poolId: membership.poolId,
     phaseName: "la fase de grupos",
+    nextPhaseName,
     rank: mine.rank,
     totalMembers: rows.length,
     points: mine.points,
@@ -285,7 +291,25 @@ export async function sendPhaseSummaryTestToSelf(userId: string): Promise<{ sent
     structural: mine.structuralStats as { positionsCorrect: number; positionsTotal: number; perfectGroups: number; totalGroups: number } | undefined,
     locale: user.locale ?? "es",
   });
-  return { sent: res.success, poolName: ov.pool.name, error: res.error };
+
+  // Also send the "phase open" email (#2) so both designs can be validated.
+  let releaseOk = true;
+  let releaseErr: string | undefined;
+  if (nextPhaseName) {
+    const rel = await sendPhaseReleaseEmail({
+      to: user.email,
+      userId,
+      memberName: user.displayName ?? "Jugador",
+      poolName: ov.pool.name,
+      poolId: membership.poolId,
+      phaseName: nextPhaseName,
+      locale: user.locale ?? "es",
+    });
+    releaseOk = rel.success;
+    releaseErr = rel.error;
+  }
+
+  return { sent: res.success && releaseOk, poolName: ov.pool.name, error: res.error ?? releaseErr };
 }
 
 /** Turn the admin knockout-release gate on/off for an instance (opt-in). */

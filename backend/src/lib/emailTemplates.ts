@@ -1913,7 +1913,9 @@ export interface PhaseSummaryEmailParams {
   memberName: string;
   poolName: string;
   poolId: string;
-  phaseName: string; // e.g. "la fase de grupos"
+  phaseName: string; // the phase that just ended, e.g. "la fase de grupos"
+  /** The phase about to open. null/undefined → this was the FINAL (no next phase). */
+  nextPhaseName?: string | null;
   rank: number;
   totalMembers: number;
   points: number;
@@ -1936,19 +1938,21 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
 
   const i18n: Record<string, {
     heading: string; greeting: string; intro: string;
-    release: string; podiumTitle: string; youLabel: string;
+    release: (nextPhase: string) => string; tournamentOver: string;
+    podiumTitle: string; youLabel: string;
     rankLine: (r: number, t: number) => string;
     leaderLine: string; behindLine: (n: number) => string;
     statsScore: (perfect: number, partial: number) => string;
     statsStructural: (s: NonNullable<PhaseSummaryEmailParams["structural"]>) => string;
     possibleLine: (got: number, total: number, pct: number) => string;
-    encourage: string; cta: string; preheader: string; pts: string;
+    encourage: string; finalNote: string; cta: string; preheader: string; pts: string;
   }> = {
     es: {
       heading: `📊 Así vas en ${safePool}`,
       greeting: `Hola ${safeMember},`,
       intro: `Terminó ${escapeHtml(p.phaseName)}. Este es tu resumen:`,
-      release: "⏱️ En los próximos 15 minutos abriremos la siguiente fase del torneo para que sigas con todas tus predicciones.",
+      release: (next) => `⏱️ En los próximos 15 minutos abriremos <strong>${next}</strong> para que sigas con todas tus predicciones.`,
+      tournamentOver: "🏆 ¡Esta fue la última fase del torneo! Gracias por jugar hasta el final.",
       podiumTitle: "El podio va así:",
       youLabel: "Tú",
       rankLine: (r, t) => `Vas en la <strong>posición ${r}</strong> de ${t}.`,
@@ -1958,6 +1962,7 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       statsStructural: (s) => `Acertaste <strong>${s.positionsCorrect}/${s.positionsTotal}</strong> posiciones y <strong>${s.perfectGroups}/${s.totalGroups}</strong> grupos perfectos.`,
       possibleLine: (got, total, pc) => `Has conseguido <strong>${got}</strong> de ${total} puntos posibles (<strong>${pc}%</strong>).`,
       encourage: "¡Lo mejor viene ahora! Las eliminatorias reparten más puntos: cualquiera puede dar el salto. 🚀",
+      finalNote: "Revisa la tabla final y comparte tu resultado. ¡Nos vemos en el próximo torneo! 🙌",
       cta: "Ver mi posición",
       preheader: `Tu resumen en "${safePool}" — la siguiente fase abre pronto.`,
       pts: "pts",
@@ -1966,7 +1971,8 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       heading: `📊 How you're doing in ${safePool}`,
       greeting: `Hi ${safeMember},`,
       intro: `${escapeHtml(p.phaseName)} is over. Here's your recap:`,
-      release: "⏱️ In the next 15 minutes we'll open the next phase so you can keep making all your predictions.",
+      release: (next) => `⏱️ In the next 15 minutes we'll open <strong>${next}</strong> so you can keep making all your predictions.`,
+      tournamentOver: "🏆 That was the final phase of the tournament! Thanks for playing to the end.",
       podiumTitle: "The podium so far:",
       youLabel: "You",
       rankLine: (r, t) => `You're in <strong>position ${r}</strong> of ${t}.`,
@@ -1976,6 +1982,7 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       statsStructural: (s) => `You got <strong>${s.positionsCorrect}/${s.positionsTotal}</strong> positions and <strong>${s.perfectGroups}/${s.totalGroups}</strong> perfect groups.`,
       possibleLine: (got, total, pc) => `You've earned <strong>${got}</strong> of ${total} possible points (<strong>${pc}%</strong>).`,
       encourage: "The best is yet to come! Knockouts award more points — anyone can make the leap. 🚀",
+      finalNote: "Check the final table and share your result. See you in the next tournament! 🙌",
       cta: "See my position",
       preheader: `Your recap in "${safePool}" — the next phase opens soon.`,
       pts: "pts",
@@ -1984,7 +1991,8 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       heading: `📊 Como você vai em ${safePool}`,
       greeting: `Olá ${safeMember},`,
       intro: `${escapeHtml(p.phaseName)} terminou. Este é o seu resumo:`,
-      release: "⏱️ Nos próximos 15 minutos abriremos a próxima fase para você continuar com todos os seus palpites.",
+      release: (next) => `⏱️ Nos próximos 15 minutos abriremos <strong>${next}</strong> para você continuar com todos os seus palpites.`,
+      tournamentOver: "🏆 Essa foi a última fase do torneio! Obrigado por jogar até o fim.",
       podiumTitle: "O pódio está assim:",
       youLabel: "Você",
       rankLine: (r, t) => `Você está na <strong>posição ${r}</strong> de ${t}.`,
@@ -1994,6 +2002,7 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       statsStructural: (s) => `Você acertou <strong>${s.positionsCorrect}/${s.positionsTotal}</strong> posições e <strong>${s.perfectGroups}/${s.totalGroups}</strong> grupos perfeitos.`,
       possibleLine: (got, total, pc) => `Você conquistou <strong>${got}</strong> de ${total} pontos possíveis (<strong>${pc}%</strong>).`,
       encourage: "O melhor vem agora! As eliminatórias dão mais pontos — qualquer um pode dar o salto. 🚀",
+      finalNote: "Veja a tabela final e compartilhe seu resultado. Até o próximo torneio! 🙌",
       cta: "Ver minha posição",
       preheader: `Seu resumo em "${safePool}" — a próxima fase abre em breve.`,
       pts: "pts",
@@ -2017,13 +2026,16 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
       : "";
 
   const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${p.poolId}`, emailUtm("phase_summary"));
+  const hasNext = !!p.nextPhaseName;
+  const bannerText = hasNext ? t.release(escapeHtml(p.nextPhaseName!)) : t.tournamentOver;
+  const closeText = hasNext ? t.encourage : t.finalNote;
 
   const content = `
     ${getHeading(t.heading)}
     ${getParagraph(t.greeting)}
     ${getParagraph(t.intro)}
 
-    ${getHighlightBox(`<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.primaryColor};line-height:1.5;">${t.release}</p>`)}
+    ${getHighlightBox(`<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.primaryColor};line-height:1.5;">${bannerText}</p>`)}
 
     ${getParagraph(`${t.rankLine(p.rank, p.totalMembers)} ${isLeader ? t.leaderLine : t.behindLine(p.pointsBehindLeader)}`)}
     ${statsLine ? getParagraph(statsLine) : ""}
@@ -2032,10 +2044,66 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
     <p style="margin:24px 0 8px;font-size:14px;font-weight:700;color:${BRAND.textColor};">${t.podiumTitle}</p>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F9FAFB;border-radius:10px;">${podiumHtml}</table>
 
-    <p style="margin:22px 0 0;font-size:15px;line-height:1.6;color:${BRAND.textColor};">${t.encourage}</p>
+    <p style="margin:22px 0 0;font-size:15px;line-height:1.6;color:${BRAND.textColor};">${closeText}</p>
     ${getButton(t.cta, poolUrl, true)}
   `;
 
+  return getEmailWrapper(content, t.preheader, p.locale ?? "es");
+}
+
+// =========================================================================
+// TEMPLATE: PHASE RELEASE ("the round is open — predict now")
+// =========================================================================
+
+export interface PhaseReleaseEmailParams {
+  memberName: string;
+  poolName: string;
+  poolId: string;
+  phaseName: string; // the phase just opened, e.g. "los Dieciseisavos de Final"
+  locale?: string;
+}
+
+export function getPhaseReleaseTemplate(p: PhaseReleaseEmailParams): string {
+  const safeMember = escapeHtml(p.memberName);
+  const safePool = escapeHtml(p.poolName);
+  const safePhase = escapeHtml(p.phaseName);
+
+  const i18n: Record<string, { heading: string; greeting: string; body: string; note: string; cta: string; preheader: string }> = {
+    es: {
+      heading: `🟢 ¡${safePhase} ya está abierta!`,
+      greeting: `Hola ${safeMember},`,
+      body: `Ya están confirmados los cruces de <strong>${safePhase}</strong> en <strong>"${safePool}"</strong>. ¡Las predicciones están abiertas! Entra y haz tus pronósticos.`,
+      note: "Recuerda: cada partido cierra unos minutos antes de su inicio, así que no lo dejes para última hora.",
+      cta: "Hacer mis predicciones",
+      preheader: `${safePhase} está abierta en "${safePool}" — haz tus predicciones.`,
+    },
+    en: {
+      heading: `🟢 ${safePhase} is now open!`,
+      greeting: `Hi ${safeMember},`,
+      body: `The matchups for <strong>${safePhase}</strong> in <strong>"${safePool}"</strong> are confirmed. Predictions are open — jump in and make your picks!`,
+      note: "Remember: each match closes a few minutes before kickoff, so don't leave it to the last minute.",
+      cta: "Make my predictions",
+      preheader: `${safePhase} is open in "${safePool}" — make your predictions.`,
+    },
+    pt: {
+      heading: `🟢 ${safePhase} já está aberta!`,
+      greeting: `Olá ${safeMember},`,
+      body: `Os confrontos de <strong>${safePhase}</strong> em <strong>"${safePool}"</strong> estão confirmados. Os palpites estão abertos — entre e faça suas escolhas!`,
+      note: "Lembre-se: cada jogo fecha alguns minutos antes do início, então não deixe para a última hora.",
+      cta: "Fazer meus palpites",
+      preheader: `${safePhase} está aberta em "${safePool}" — faça seus palpites.`,
+    },
+  };
+  const t = i18n[p.locale ?? "es"] ?? i18n.es!;
+  const poolUrl = appendUtm(`${BRAND.baseUrl}/pools/${p.poolId}`, emailUtm("phase_release"));
+
+  const content = `
+    ${getHeading(t.heading)}
+    ${getParagraph(t.greeting)}
+    ${getParagraph(t.body)}
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.mutedColor};">${t.note}</p>
+    ${getButton(t.cta, poolUrl, true)}
+  `;
   return getEmailWrapper(content, t.preheader, p.locale ?? "es");
 }
 
