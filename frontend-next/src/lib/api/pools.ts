@@ -238,7 +238,7 @@ export async function sendPoolInviteEmail(
 }
 
 // Pool Admin / Host actions
-export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean; requireApproval?: boolean; extraTimePhases?: string[]; caprichoSanEnabled?: boolean; caprichoSanMin?: number; caprichoSanMax?: number }): Promise<any> {
+export async function updatePoolSettings(token: string, poolId: string, settings: { autoAdvanceEnabled?: boolean; requireApproval?: boolean; extraTimePhases?: string[]; caprichoSanEnabled?: boolean; caprichoSanMin?: number; caprichoSanMax?: number; deadlineMinutesBeforeKickoff?: number }): Promise<any> {
   return requestJson<any>(`/pools/${poolId}/settings`, { method: "PATCH", body: JSON.stringify(settings) });
 }
 

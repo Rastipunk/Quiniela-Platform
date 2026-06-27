@@ -7,6 +7,7 @@ import { Resend } from "resend";
 import { prisma } from "../db";
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE, resolveUserLocale, type SupportedLocale } from "./constants";
 import { BRAND } from "./brand";
+import { escapeHtml } from "./htmlSafe";
 import { generateUnsubscribeToken, buildUnsubscribeUrl } from "./unsubscribe";
 import { appendUtm, emailUtm } from "./utm";
 import { buildActivationUrl } from "./activationUrl";
@@ -1429,6 +1430,170 @@ export async function sendPhaseSummaryEmail(
     return { success: true };
   } catch (err) {
     console.error("❌ Exception phase summary email:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
+// DEADLINE CHANGED NOTIFICATION (anti-cheat transparency — ADR-085)
+// =========================================================================
+
+/** Localize a "minutes before kickoff" value into a human label. */
+function deadlineLabel(min: number, loc: string): string {
+  const units: Record<string, { min: string; mins: string; hour: string; hours: string; atKickoff: string }> = {
+    es: { min: "minuto", mins: "minutos", hour: "hora", hours: "horas", atKickoff: "al inicio del partido" },
+    en: { min: "minute", mins: "minutes", hour: "hour", hours: "hours", atKickoff: "at kickoff" },
+    pt: { min: "minuto", mins: "minutos", hour: "hora", hours: "horas", atKickoff: "no início do jogo" },
+  };
+  const u = units[loc] ?? units.es!;
+  if (min <= 0) return u.atKickoff;
+  if (min % 60 === 0) { const h = min / 60; return `${h} ${h === 1 ? u.hour : u.hours}`; }
+  return `${min} ${min === 1 ? u.min : u.mins}`;
+}
+
+export async function sendDeadlineChangedEmail(params: {
+  to: string;
+  userId: string;
+  memberName: string;
+  poolName: string;
+  poolId: string;
+  hostName: string;
+  oldMinutes: number;
+  newMinutes: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+  const loc = params.locale || DEFAULT_LOCALE;
+  const oldL = deadlineLabel(params.oldMinutes, loc);
+  const newL = deadlineLabel(params.newMinutes, loc);
+  const moreTime = params.newMinutes < params.oldMinutes;
+
+  const subjects: Record<string, string> = {
+    es: `⏱️ Cambió el cierre de predicciones en "${escapeHtml(params.poolName)}"`,
+    en: `⏱️ Prediction deadline changed in "${escapeHtml(params.poolName)}"`,
+    pt: `⏱️ O prazo de palpites mudou em "${escapeHtml(params.poolName)}"`,
+  };
+  const t: Record<string, { heading: string; body: string; change: string; note: string; cta: string }> = {
+    es: {
+      heading: "Cambió el tiempo de cierre de predicciones",
+      body: `El organizador <strong>${escapeHtml(params.hostName)}</strong> modificó cuándo se cierran las predicciones en <strong>"${escapeHtml(params.poolName)}"</strong>.`,
+      change: `Ahora cierran <strong>${newL}</strong> antes de cada partido (antes: ${oldL}).`,
+      note: moreTime ? "Tienes más tiempo para pronosticar. ¡Aprovéchalo!" : "Asegúrate de poner tus pronósticos con tiempo.",
+      cta: "Ver la pool",
+    },
+    en: {
+      heading: "Prediction deadline changed",
+      body: `The organizer <strong>${escapeHtml(params.hostName)}</strong> changed when predictions close in <strong>"${escapeHtml(params.poolName)}"</strong>.`,
+      change: `They now close <strong>${newL}</strong> before each match (was: ${oldL}).`,
+      note: moreTime ? "You have more time to predict — make the most of it!" : "Make sure you submit your predictions in time.",
+      cta: "View pool",
+    },
+    pt: {
+      heading: "O prazo de palpites mudou",
+      body: `O organizador <strong>${escapeHtml(params.hostName)}</strong> alterou quando os palpites fecham em <strong>"${escapeHtml(params.poolName)}"</strong>.`,
+      change: `Agora fecham <strong>${newL}</strong> antes de cada jogo (antes: ${oldL}).`,
+      note: moreTime ? "Você tem mais tempo para palpitar — aproveite!" : "Garanta seus palpites com antecedência.",
+      cta: "Ver bolão",
+    },
+  };
+  const c = t[loc] ?? t.es!;
+  const poolUrl = appendUtm(`${FRONTEND_URL}/pools/${params.poolId}`, emailUtm("deadline_changed"));
+
+  try {
+    const { error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="padding:20px;background:${BRAND.gradient};border-radius:12px 12px 0 0;text-align:center;">
+            <span style="font-size:40px;">⏱️</span>
+          </div>
+          <div style="padding:24px;background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+            <h2 style="color:${BRAND.text};margin:0 0 16px;font-size:18px;">${c.heading}</h2>
+            <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 12px;">${c.body}</p>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px 14px;margin:0 0 14px;color:#075985;font-size:15px;">${c.change}</div>
+            <p style="color:${BRAND.textMuted};font-size:14px;line-height:1.6;margin:0 0 18px;">${c.note}</p>
+            <a href="${poolUrl}" style="display:inline-block;background:${BRAND.primary};color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-weight:700;font-size:14px;">${c.cta}</a>
+          </div>
+        </div>`,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Announce to a HOST that they can now extend the prediction window — sent to
+ * hosts whose deadline is large enough that a freshly-released knockout phase
+ * could open already (near) closed. ADR-085.
+ */
+export async function sendDeadlineOptionEmail(params: {
+  to: string;
+  userId: string;
+  hostName: string;
+  poolName: string;
+  poolId: string;
+  deadlineMinutes: number;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+  const loc = params.locale || DEFAULT_LOCALE;
+  const dl = deadlineLabel(params.deadlineMinutes, loc);
+
+  const subjects: Record<string, string> = {
+    es: `⏱️ ¿Dar más tiempo a tus jugadores en "${escapeHtml(params.poolName)}"?`,
+    en: `⏱️ Give your players more time in "${escapeHtml(params.poolName)}"?`,
+    pt: `⏱️ Dar mais tempo aos jogadores em "${escapeHtml(params.poolName)}"?`,
+  };
+  const t: Record<string, { heading: string; body: string; tip: string; cta: string }> = {
+    es: {
+      heading: "Ya puedes ajustar el cierre de predicciones",
+      body: `Tu pool <strong>"${escapeHtml(params.poolName)}"</strong> cierra las predicciones <strong>${dl}</strong> antes de cada partido. Con las eliminatorias acercándose, ese tiempo puede dejar a tus jugadores con poco margen para pronosticar.`,
+      tip: "¿Necesitas dar más tiempo para que pongan sus marcadores? Ya puedes modificar este parámetro desde la Administración de tu pool (pestaña Administrar → Cierre de Predicciones).",
+      cta: "Ajustar mi pool",
+    },
+    en: {
+      heading: "You can now adjust the prediction deadline",
+      body: `Your pool <strong>"${escapeHtml(params.poolName)}"</strong> closes predictions <strong>${dl}</strong> before each match. With the knockouts approaching, that can leave your players little time to predict.`,
+      tip: "Need to give them more time to submit their scores? You can now change this from your pool's Admin tab (Manage → Prediction Deadline).",
+      cta: "Adjust my pool",
+    },
+    pt: {
+      heading: "Você já pode ajustar o prazo de palpites",
+      body: `Seu bolão <strong>"${escapeHtml(params.poolName)}"</strong> fecha os palpites <strong>${dl}</strong> antes de cada jogo. Com as eliminatórias chegando, isso pode deixar pouco tempo para os jogadores palpitarem.`,
+      tip: "Precisa dar mais tempo para enviarem seus placares? Já pode alterar isso na Administração do seu bolão (Gerenciar → Prazo de Palpites).",
+      cta: "Ajustar meu bolão",
+    },
+  };
+  const c = t[loc] ?? t.es!;
+  const poolUrl = appendUtm(`${FRONTEND_URL}/pools/${params.poolId}`, emailUtm("deadline_option"));
+
+  try {
+    const { error } = await resilientSend(ready, {
+      to: params.to,
+      subject: subjects[loc] ?? subjects.es!,
+      headers: getUnsubscribeHeaders(params.userId),
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <div style="padding:20px;background:${BRAND.gradient};border-radius:12px 12px 0 0;text-align:center;">
+            <span style="font-size:40px;">⏱️</span>
+          </div>
+          <div style="padding:24px;background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+            <h2 style="color:${BRAND.text};margin:0 0 16px;font-size:18px;">${c.heading}</h2>
+            <p style="color:${BRAND.text};font-size:15px;line-height:1.6;margin:0 0 12px;">${c.body}</p>
+            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 14px;margin:0 0 18px;color:#9a3412;font-size:14px;line-height:1.6;">${c.tip}</div>
+            <a href="${poolUrl}" style="display:inline-block;background:${BRAND.primary};color:#fff;text-decoration:none;padding:11px 22px;border-radius:8px;font-weight:700;font-size:14px;">${c.cta}</a>
+          </div>
+        </div>`,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) {
     return { success: false, error: String(err) };
   }
 }

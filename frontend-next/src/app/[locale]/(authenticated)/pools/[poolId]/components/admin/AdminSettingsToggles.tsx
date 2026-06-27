@@ -38,6 +38,30 @@ export function AdminSettingsToggles({
     Number.isInteger(caprichoMin) && Number.isInteger(caprichoMax) &&
     caprichoMin >= 0 && caprichoMax <= 9 && caprichoMin <= caprichoMax;
 
+  // Prediction deadline (minutes before kickoff). Editing notifies every player.
+  const currentDeadline = overview.pool.deadlineMinutesBeforeKickoff ?? 10;
+  const DEADLINE_OPTIONS = [10, 30, 60, 180, 360, 720, 1440];
+  const [deadlineSel, setDeadlineSel] = useState<number>(currentDeadline);
+  const deadlineDirty = deadlineSel !== currentDeadline;
+  const deadlineLabel = (min: number) => {
+    if (min % 60 === 0) { const h = min / 60; return `${h} ${h === 1 ? t("admin.deadline.hour") : t("admin.deadline.hours")}`; }
+    return `${min} ${t("admin.deadline.minutes")}`;
+  };
+  const saveDeadline = async () => {
+    if (!deadlineDirty || busyKey === "deadline" || !token || !poolId) return;
+    if (!window.confirm(t("admin.deadline.confirm"))) return;
+    setBusyKey("deadline");
+    setError(null);
+    try {
+      await updatePoolSettings(token, poolId, { deadlineMinutesBeforeKickoff: deadlineSel });
+      await reload();
+    } catch (err: any) {
+      setError(friendlyError(err));
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   return (
     <>
       {/* Capricho San (gifted feature) — FIRST card by owner request:
@@ -223,6 +247,43 @@ export function AdminSettingsToggles({
             </div>
           </div>
         </label>
+      </div>
+
+      {/* Prediction Deadline — editable; changing it emails ALL players (anti-cheat). */}
+      <div style={adminSectionStyle}>
+        <h4 style={adminHeadingStyle}>
+          ⏰ {t("admin.deadline.title")}
+        </h4>
+        <div style={{ fontSize: fontSize.base, lineHeight: 1.8, color: colors.textMuted, marginBottom: spacing.md }}>
+          {t("admin.deadline.description")}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: spacing.md, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderDark}` }}>
+          <label style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
+            {t("admin.deadline.label")}{" "}
+            <select
+              value={deadlineSel}
+              disabled={busyKey === "deadline"}
+              onChange={(e) => setDeadlineSel(parseInt(e.target.value, 10))}
+              style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${colors.borderDark}`, fontSize: fontSize.md, fontWeight: fontWeight.semibold }}
+            >
+              {DEADLINE_OPTIONS.map((o) => (
+                <option key={o} value={o}>{deadlineLabel(o)}</option>
+              ))}
+            </select>
+          </label>
+          {deadlineDirty && (
+            <button
+              onClick={saveDeadline}
+              disabled={busyKey === "deadline"}
+              style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: colors.brand, color: colors.white, fontWeight: fontWeight.semibold, cursor: busyKey === "deadline" ? "wait" : "pointer", fontSize: fontSize.sm }}
+            >
+              {busyKey === "deadline" ? t("admin.deadline.saving") : t("admin.deadline.save")}
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: fontSize.xs, color: colors.errorAlt, marginTop: 8, fontWeight: fontWeight.semibold }}>
+          ⚠️ {t("admin.deadline.warningNote")}
+        </div>
       </div>
 
       {/* Extra Time Configuration (legacy live toggle). Hidden for users on the

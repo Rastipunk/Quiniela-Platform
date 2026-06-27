@@ -47,8 +47,9 @@ import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { ServiceError, type AuditContext } from "./authService";
 import { isExtraTimeConfigEnabled } from "../lib/featureFlags";
 import { getKnockoutScorePhases, computeExtraTimeWindow } from "../lib/extraTimeConfig";
-import { FINAL_RESULT_SOURCES } from "../lib/constants";
+import { FINAL_RESULT_SOURCES, resolveUserLocale } from "../lib/constants";
 import { invalidatePoolLeaderboard } from "./poolLeaderboardCache";
+import { batchSendEmails, sendDeadlineChangedEmail } from "../lib/email";
 
 // ─── Scoring Override ────────────────────────────────────────
 
@@ -205,6 +206,7 @@ export async function updatePoolSettings(
     caprichoSanEnabled?: boolean;
     caprichoSanMin?: number;
     caprichoSanMax?: number;
+    deadlineMinutesBeforeKickoff?: number;
   },
   ctx: AuditContext,
 ) {
@@ -218,7 +220,22 @@ export async function updatePoolSettings(
   const {
     autoAdvanceEnabled, requireApproval, extraTimePhases,
     caprichoSanEnabled, caprichoSanMin, caprichoSanMax,
+    deadlineMinutesBeforeKickoff,
   } = changes;
+
+  // Deadline change (anti-cheat — ADR-085): validate range, capture the OLD
+  // value so we can tell whether it actually changed and notify players.
+  let deadlineChange: { from: number; to: number } | null = null;
+  if (deadlineMinutesBeforeKickoff !== undefined) {
+    if (!Number.isInteger(deadlineMinutesBeforeKickoff) || deadlineMinutesBeforeKickoff < 0 || deadlineMinutesBeforeKickoff > 1440) {
+      throw new ServiceError("INVALID_DEADLINE", 400, { message: "deadlineMinutesBeforeKickoff must be an integer in [0, 1440]" });
+    }
+    const cur = await prisma.pool.findUnique({ where: { id: poolId }, select: { deadlineMinutesBeforeKickoff: true } });
+    if (!cur) throw new ServiceError("NOT_FOUND", 404);
+    if (cur.deadlineMinutesBeforeKickoff !== deadlineMinutesBeforeKickoff) {
+      deadlineChange = { from: cur.deadlineMinutesBeforeKickoff, to: deadlineMinutesBeforeKickoff };
+    }
+  }
 
   // Capricho San (ADR-075) is a gifted feature: its settings only exist
   // for env-allowlisted pools. Reject silently-impossible writes.
@@ -303,6 +320,7 @@ export async function updatePoolSettings(
       ...(caprichoSanEnabled !== undefined ? { caprichoSanEnabled } : {}),
       ...(caprichoSanMin !== undefined ? { caprichoSanMin } : {}),
       ...(caprichoSanMax !== undefined ? { caprichoSanMax } : {}),
+      ...(deadlineChange ? { deadlineMinutesBeforeKickoff: deadlineChange.to } : {}),
     },
   });
 
@@ -313,6 +331,12 @@ export async function updatePoolSettings(
     dataJson: { changes },
   }));
 
+  // A deadline change moves when EVERY player's predictions close — notify all
+  // active members for transparency (anti-cheat). Fire-and-forget, bounded.
+  if (deadlineChange) {
+    fireAndForget("notify:deadline-changed", notifyPoolDeadlineChanged(poolId, userId, deadlineChange));
+  }
+
   return {
     pool: {
       id: updatedPool.id,
@@ -322,8 +346,47 @@ export async function updatePoolSettings(
       caprichoSanEnabled: updatedPool.caprichoSanEnabled,
       caprichoSanMin: updatedPool.caprichoSanMin,
       caprichoSanMax: updatedPool.caprichoSanMax,
+      deadlineMinutesBeforeKickoff: updatedPool.deadlineMinutesBeforeKickoff,
     },
+    deadlineChanged: !!deadlineChange,
   };
+}
+
+/**
+ * Email every active member (who accepts notifications) that the host changed
+ * the prediction deadline. Bounded fan-out (deadline changes are pool-scoped, so
+ * member counts are small, but we cap concurrency to stay polite to Resend).
+ */
+async function notifyPoolDeadlineChanged(
+  poolId: string,
+  actorUserId: string,
+  change: { from: number; to: number },
+): Promise<void> {
+  const [pool, host, members] = await Promise.all([
+    prisma.pool.findUnique({ where: { id: poolId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: actorUserId }, select: { displayName: true } }),
+    prisma.poolMember.findMany({
+      where: { poolId, status: "ACTIVE", user: { emailNotificationsEnabled: true } },
+      select: { userId: true, user: { select: { email: true, displayName: true, locale: true, country: true } } },
+    }),
+  ]);
+  if (!pool || members.length === 0) return;
+  const hostName = host?.displayName ?? "El organizador";
+
+  const { sent, failed } = await batchSendEmails(members, (m) =>
+    sendDeadlineChangedEmail({
+      to: m.user.email,
+      userId: m.userId,
+      memberName: m.user.displayName ?? "Jugador",
+      poolName: pool.name,
+      poolId,
+      hostName,
+      oldMinutes: change.from,
+      newMinutes: change.to,
+      locale: resolveUserLocale(m.user),
+    }),
+  );
+  console.log(`📧 [DeadlineChanged] pool=${poolId} ${change.from}→${change.to}min: ${sent} sent, ${failed} failed`);
 }
 
 // ─── Knockout extra-time scoring (v2) ────────────────────────

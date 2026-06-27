@@ -5294,4 +5294,23 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-085: Host-editable prediction deadline + anti-cheat player notification
+
+**Date:** 2026-06-27 | **Status:** Accepted (core tested to owner; broad announcement gated pending authorization)
+
+**Context:** With the knockout-release gate (ADR-084), a phase opens only when the admin releases it — often close to the first knockout kickoff. A pool whose `deadlineMinutesBeforeKickoff` is large (e.g. 24 h) would then have the round "born closed": predictions lock before players ever get to make them. Of 457 active World Cup pools, 383 use ≤10 min (safe), but **16 use > 60 min** (14 at 24 h) — those need a way to give players more time. `deadlineMinutesBeforeKickoff` was set only at pool creation and was NOT editable afterwards.
+
+**Decision:**
+- **Editable deadline.** `updatePoolSettings` (owner-only) now accepts `deadlineMinutesBeforeKickoff` (integer, 0–1440, mirrors creation). It is NOT scoring config, so the DRAFT-only immutability (invariant 3) does not apply — hosts can adjust it on ACTIVE pools. Changing it only affects FUTURE locks (the deadline is computed live as `kickoff − minutes`); reducing it reopens an about-to-lock round, and a host can never reopen a match whose kickoff already passed. Surfaced in `AdminSettingsToggles` (Manage tab) as a preset selector (10 m / 30 m / 1 h / 3 h / 6 h / 12 h / 24 h).
+- **Anti-cheat transparency.** Because the deadline governs WHEN every player's predictions close, any change emails ALL active members (`sendDeadlineChangedEmail`, es/en/pt: old → new, "you have more time"/"submit in time"), and the host sees a confirm warning before saving. No mandatory reason (the warning + email provide the accountability) — lighter than result overrides. Bounded fan-out via `batchSendEmails`, respects `emailNotificationsEnabled`; audit `POOL_SETTINGS_UPDATED`.
+- **Announcement to hosts.** Two channels: (a) a one-time email (`sendDeadlineOptionEmail`, es/en/pt) to the **16 at-risk hosts** (deadline > 60 min) — highest reach, since the first R32 match is imminent; (b) an in-app banner shown to ALL hosts on entry ("¿Necesitas dar más tiempo…? Ya puedes modificarlo desde Administración"), dismissable, gated OFF until authorized.
+- **Test-first rollout.** Both emails were sent to the owner (juan.k) in all three locales for review BEFORE any blast to real users; the at-risk blast and the all-hosts banner go out only after explicit authorization (standing workflow rule).
+
+**Consequences:**
+- ✅ Hosts can rescue an about-to-lock knockout round; players are always told when the deadline moves (no silent lock-out / no silent reopen for cheating).
+- ✅ No migration for the core (the column already existed). The all-hosts banner adds `PoolMember.deadlineConfigBannerAckAt` + a feature flag (pending).
+- ⚠️ A host could also INCREASE the deadline (close earlier); the mandatory email-everyone makes that visible to all players.
+
+---
+
 **END OF DOCUMENT**

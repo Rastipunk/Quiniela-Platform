@@ -243,6 +243,18 @@
       "requiredDesc": "Os jogadores precisarão da sua aprovação para entrar",
       "directDesc": "Os jogadores podem entrar diretamente com o código de convite"
     },
+    "deadline": {
+      "title": "Prazo de Palpites",
+      "description": "Quanto tempo antes do início de cada jogo os palpites fecham. Precisa dar mais tempo aos jogadores para uma nova fase? Reduza este valor.",
+      "label": "Fechar palpites",
+      "hour": "hora antes",
+      "hours": "horas antes",
+      "minutes": "minutos antes",
+      "save": "Salvar alteração",
+      "saving": "Salvando…",
+      "confirm": "Alterar este tempo enviará e-mail a TODOS os jogadores do bolão. Continuar?",
+      "warningNote": "Alterar notifica por e-mail todos os jogadores do bolão (transparência anti-trapaça)."
+    },
     "extraTime": {
       "title": "Medição do Resultado",
       "description": "Escolha se os palpites são avaliados pelo placar aos 90 minutos ou incluindo a prorrogação. Os pênaltis nunca são contados.",

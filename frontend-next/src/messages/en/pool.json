@@ -243,6 +243,18 @@
       "requiredDesc": "Players will need your approval to join",
       "directDesc": "Players can join directly with the invite code"
     },
+    "deadline": {
+      "title": "Prediction Deadline",
+      "description": "How long before each match kicks off predictions close. Need to give players more time for a new phase? Lower this value.",
+      "label": "Close predictions",
+      "hour": "hour before",
+      "hours": "hours before",
+      "minutes": "minutes before",
+      "save": "Save change",
+      "saving": "Saving…",
+      "confirm": "Changing this time will email ALL players in the pool. Continue?",
+      "warningNote": "Changing it emails every player in the pool (anti-cheat transparency)."
+    },
     "extraTime": {
       "title": "Result Measurement",
       "description": "Choose whether picks are scored against the 90-minute result or including extra time. Penalties are never counted.",

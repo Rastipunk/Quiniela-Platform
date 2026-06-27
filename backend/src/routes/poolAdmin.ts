@@ -84,6 +84,9 @@ const updatePoolSettingsSchema = z.object({
   caprichoSanEnabled: z.boolean().optional(),
   caprichoSanMin: z.number().int().min(CAPRICHO_SAN_RANGE.MIN).max(CAPRICHO_SAN_RANGE.MAX).optional(),
   caprichoSanMax: z.number().int().min(CAPRICHO_SAN_RANGE.MIN).max(CAPRICHO_SAN_RANGE.MAX).optional(),
+  // Prediction deadline (minutes before kickoff). Editing it notifies all
+  // players by email (anti-cheat — ADR-085). Range mirrors pool creation.
+  deadlineMinutesBeforeKickoff: z.number().int().min(0).max(1440).optional(),
 }).refine(
   (d) => d.caprichoSanMin === undefined || d.caprichoSanMax === undefined || d.caprichoSanMin <= d.caprichoSanMax,
   { message: "caprichoSanMin must be <= caprichoSanMax" },

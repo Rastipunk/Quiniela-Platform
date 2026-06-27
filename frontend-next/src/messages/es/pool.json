@@ -243,6 +243,18 @@
       "requiredDesc": "Los jugadores deberán esperar tu aprobación para unirse",
       "directDesc": "Los jugadores pueden unirse directamente con el código de invitación"
     },
+    "deadline": {
+      "title": "Cierre de Predicciones",
+      "description": "Cuánto antes del inicio de cada partido se cierran las predicciones. ¿Necesitas dar más tiempo a tus jugadores para una fase nueva? Reduce este valor.",
+      "label": "Cerrar predicciones",
+      "hour": "hora antes",
+      "hours": "horas antes",
+      "minutes": "minutos antes",
+      "save": "Guardar cambio",
+      "saving": "Guardando…",
+      "confirm": "Al cambiar este tiempo se notificará por correo a TODOS los jugadores de la pool. ¿Continuar?",
+      "warningNote": "Cambiarlo notifica por correo a todos los jugadores de la pool (transparencia anti-trampas)."
+    },
     "extraTime": {
       "title": "Medición del Resultado",
       "description": "Elige si los pronósticos se evalúan con el marcador al minuto 90 o incluyendo el tiempo extra. Los penales nunca se cuentan.",
