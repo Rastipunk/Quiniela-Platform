@@ -70,6 +70,18 @@ export function MatchCard({
   const awayIsPlaceholder = isPlaceholder(m.awayTeam?.id || "");
   const hasAnyPlaceholder = homeIsPlaceholder || awayIsPlaceholder;
 
+  // Per-match scoring legend (extra-time config v2): on KNOCKOUT matches that
+  // grade a scoreline ("marcador"), spell out which result counts — 90'+stoppage
+  // only (default) or end of extra time. `overview.extraTime.phases` is the
+  // backend-authoritative list of those knockout phases (group phases excluded).
+  const scoringLegend: "reg" | "et" | null = (() => {
+    const et = overview.extraTime;
+    if (!et?.enabled) return null;
+    const phase = et.phases.find((p) => p.phaseId === m.phaseId);
+    if (!phase) return null;
+    return phase.includeExtraTime ? "et" : "reg";
+  })();
+
   // Resolve display names via the `teams` catalog (FIFA code → locale).
   // Falls back to dataJson `team.name` (Spanish) and finally to the
   // team id. See I18N_AUDIT F-5.
@@ -247,6 +259,19 @@ export function MatchCard({
           {t("matchCard.deadline")}: {fmtUtc(m.deadlineUtc, userTimezone, locale)}
         </div>
       </div>
+
+      {/* Scoring legend (extra-time config v2): which result counts for the marcador */}
+      {scoringLegend && (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 6,
+          padding: "7px 10px", marginBottom: 10,
+          background: colors.bgLighter, border: `1px solid ${colors.borderLight}`,
+          borderRadius: 8, fontSize: 12, lineHeight: 1.45, color: colors.textMuted,
+        }}>
+          <span aria-hidden style={{ flexShrink: 0 }}>⏱️</span>
+          <span>{scoringLegend === "et" ? t("matchCard.scoringLegendExtraTime") : t("matchCard.scoringLegend90")}</span>
+        </div>
+      )}
 
       {/* Scoring disabled banner */}
       {m.scoringEnabled === false && (

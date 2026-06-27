@@ -5245,4 +5245,25 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-083: Knockout extra-time scoring config v2 — per-phase toggle, group-stage deadline, per-match legend
+
+**Date:** 2026-06-27 | **Status:** Accepted (flag-gated rollout)
+
+**Context:** Score predictions ("marcadores") in knockout phases are graded on the minute-90 result by default (`goals90` = 90' + stoppage; penalties never count — ADR-068). The per-phase `includeExtraTime` flag (in `Pool.pickTypesConfig`) already existed, exposed via a legacy "live toggle" in `AdminSettingsToggles` that saved immediately and locked per-phase at `<48 h` before kickoff or once a phase had results. Hosts had no clear communication of the rule, and players had none. The owner wanted: (1) a clear per-match legend so players see the rule where they predict; (2) a host config with a per-phase toggle + per-phase Save; (3) an edit window that closes when the group stage finishes; (4) a one-time blocking host banner. Rolled out to one host first.
+
+**Decision:**
+- **Edit window** closes at the earlier of (a) every group-stage match being *finalized* (`currentVersion.source ∈ FINAL_RESULT_SOURCES` = API_CONFIRMED / HOST_OVERRIDE / HOST_MANUAL) or (b) the first knockout kickoff (hard backstop). Pure helper `computeExtraTimeWindow` (`lib/extraTimeConfig.ts`). **Safe by construction:** the window always closes before any knockout result exists, so a flip is forward-looking and can never re-grade a played match.
+- **Endpoint** `PATCH /pools/:id/phases/:phaseId/extra-time` (`updatePhaseExtraTime`): admin-only, flag-gated, validates the phase is a knockout scoreline phase + the window is open (409 `WINDOW_CLOSED`), persists `includeExtraTime` for that phase, writes audit `EXTRA_TIME_CONFIG_CHANGED`, and invalidates the leaderboard cache (the ADR-079 fingerprint does not track `pickTypesConfig`).
+- **No player emails.** Communication is a **per-match legend** on knockout scoreline matches (`MatchCard`), text adapting to the phase's `includeExtraTime` (90'+stoppage vs end of extra time). `overview.extraTime.phases` is the backend-authoritative list (group phases excluded).
+- **Blocking host banner**, acknowledged once per (host, pool) via `PoolMember.extraTimeBannerAckAt` (mirrors `User.localePromptCompletedAt`); shown only while the window is open and not acked.
+- **Rollout gate** `EXTRA_TIME_CONFIG_ALLOWLIST` (acting/viewing user's email). Gated users get the new section + legend + banner; everyone else keeps the legacy `AdminSettingsToggles` extra-time toggle untouched (hidden only for gated users). One env flip (`*`) opens it to all.
+
+**Consequences:**
+- ✅ Players see the scoring rule on each knockout match; hosts get a clear per-phase config with an honest deadline.
+- ✅ Reversible rollout; no behaviour change for non-gated pools.
+- ✅ One migration (`PoolMember.extraTimeBannerAckAt`). No change to the scoring engine.
+- ⚠️ The legacy live toggle remains in the codebase until the flag is `*`, after which it (and `extraTimePhases` in `updatePoolSettings`) should be removed (TECH_DEBT).
+
+---
+
 **END OF DOCUMENT**

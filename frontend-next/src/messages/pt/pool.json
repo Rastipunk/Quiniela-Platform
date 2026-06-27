@@ -140,6 +140,32 @@
     "publicMetaDescription": "Veja como vai a Copa do Mundo 2026 no Picks4All.com 🏆",
     "badgeNew": "Novo"
   },
+  "extraTimeConfig": {
+    "title": "Placares nas fases eliminatórias",
+    "intro": "Escolha como os placares são pontuados quando um jogo eliminatório vai para a prorrogação.",
+    "helpToggle": "O que significa isto?",
+    "helpIntro": "Nas fases eliminatórias um jogo pode estar empatado aos 90 minutos e ser decidido na prorrogação ou nos pênaltis. Seu bolão decide qual resultado conta para os PLACARES:",
+    "helpReg": "Apenas 90 minutos (padrão): conta o placar no minuto 90 + acréscimos. Um gol aos 90+5' (acréscimos) CONTA; um gol no minuto 105' (prorrogação) NÃO.",
+    "helpRegExample": "Ex.: uma semifinal está 1-1 aos 90+5'. Na prorrogação termina 2-1 → para os placares conta 1-1.",
+    "helpET": "Incluir prorrogação: conta o placar ao final da prorrogação (os pênaltis nunca contam).",
+    "helpETExample": "Mesmo exemplo → conta 2-1.",
+    "helpNote": "Em ambos os casos, quem avança é sempre decidido pelo resultado final, incluindo os pênaltis.",
+    "phaseLabel90": "Conta o placar aos 90' + acréscimos",
+    "phaseLabelET": "Conta o placar ao final da prorrogação",
+    "save": "Salvar",
+    "saving": "Salvando…",
+    "saveError": "Não foi possível salvar. Tente novamente.",
+    "deadlineNote": "Você pode mudar isto até o último jogo da fase de grupos terminar.",
+    "windowClosedGroup": "A janela de mudanças fechou: a fase de grupos já terminou.",
+    "windowClosedKnockout": "A janela de mudanças fechou: as eliminatórias já começaram.",
+    "windowClosedGeneric": "A janela de mudanças está fechada para este bolão."
+  },
+  "extraTimeBanner": {
+    "title": "Placares nas fases eliminatórias",
+    "body": "Seu bolão considera apenas os 90 minutos + acréscimos para os placares das fases eliminatórias (sem prorrogação nem pênaltis). Se quiser mudar isto, você tem até o último jogo da fase de grupos terminar, na área de Configurações.",
+    "cta": "Ir para configurações",
+    "ack": "Entendi"
+  },
 
   "nav": {
     "openMenu": "Abrir menu de seções",
@@ -442,6 +468,8 @@
     "groupMatchLabel": "Grupo {group} - Rodada {matchday}",
     "kickoff": "Início",
     "deadline": "Encerramento dos palpites",
+    "scoringLegend90": "Conta apenas o placar até o minuto 90 + acréscimos (sem prorrogação nem pênaltis).",
+    "scoringLegendExtraTime": "Conta o placar ao final da prorrogação (sem pênaltis).",
     "pendingTitle": "Jogo Pendente",
     "pendingDesc": "Este jogo será habilitado quando os times participantes forem definidos.",
     "viewBreakdown": "Ver detalhamento",

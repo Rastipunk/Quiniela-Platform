@@ -56,6 +56,22 @@ export function isBarRaceEnabledForPool(poolId: string | null | undefined): bool
   return emailInAllowlist(process.env.BAR_RACE_ALLOWLIST, poolId);
 }
 
+/**
+ * Knockout extra-time scoring config v2 (per-phase toggle + "save per phase" +
+ * end-of-group-stage deadline + blocking host banner; no email — each match
+ * shows a per-match scoring legend instead). Rollout scoped by the
+ * VIEWING/ACTING user's email via
+ * `EXTRA_TIME_CONFIG_ALLOWLIST` ("" off / "*" all / csv of emails).
+ *
+ * Users OUTSIDE the allowlist keep the legacy live extra-time toggle in
+ * `AdminSettingsToggles` untouched — this gate selects which UI + endpoint a
+ * host gets, so the migration to v2 is reversible with one env change.
+ * Read at call time so flipping the env needs no redeploy.
+ */
+export function isExtraTimeConfigEnabled(email: string | null | undefined): boolean {
+  return emailInAllowlist(process.env.EXTRA_TIME_CONFIG_ALLOWLIST, email);
+}
+
 /** Shared allowlist semantics: ""→none, "*"→all, else case-insensitive match. */
 function emailInAllowlist(raw: string | undefined, email: string | null | undefined): boolean {
   const v = (raw ?? "").trim();

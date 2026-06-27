@@ -7,6 +7,7 @@ import { archivePool } from "@/lib/api";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
 import { AdminSettingsToggles } from "./admin/AdminSettingsToggles";
+import { ExtraTimeConfigSection } from "./admin/ExtraTimeConfigSection";
 import { ManageRulesPanel } from "./admin/ManageRulesPanel";
 import { PhaseStatusPanel } from "./admin/PhaseStatusPanel";
 
@@ -57,6 +58,13 @@ export function PoolAdminTab({
         poolId={poolId} token={token} overview={overview} phases={phases}
         busyKey={busyKey} setBusyKey={setBusyKey} setError={setError}
         friendlyError={friendlyError} reload={reload}
+      />
+
+      {/* Knockout extra-time scoring (v2). Renders only for gated score-pools
+          (overview.extraTime.enabled && isScorePool); replaces the legacy
+          extra-time toggle hidden in AdminSettingsToggles. */}
+      <ExtraTimeConfigSection
+        poolId={poolId} token={token} overview={overview} reload={reload}
       />
 
       {/* Host-only — edit scoring rules. Editor opens only in DRAFT;

@@ -275,6 +275,25 @@ export async function updatePoolScoringConfig(
   );
 }
 
+// Knockout extra-time scoring (v2): flip includeExtraTime for ONE phase, live.
+// Backend enforces the edit window + emails all members on a real change.
+export async function updatePhaseExtraTime(
+  token: string,
+  poolId: string,
+  phaseId: string,
+  includeExtraTime: boolean,
+): Promise<{ phaseId: string; includeExtraTime: boolean; changed: boolean }> {
+  return requestJson(
+    `/pools/${poolId}/phases/${encodeURIComponent(phaseId)}/extra-time`,
+    { method: "PATCH", body: JSON.stringify({ includeExtraTime }) },
+  );
+}
+
+// Dismiss the knockout extra-time host banner (one-time ack, persisted in DB).
+export async function ackExtraTimeBanner(token: string, poolId: string): Promise<{ ok: true }> {
+  return requestJson(`/pools/${poolId}/extra-time-banner/ack`, { method: "POST" });
+}
+
 // Member management
 export async function promoteMemberToCoAdmin(token: string, poolId: string, memberId: string): Promise<any> {
   return requestJson<any>(`/pools/${poolId}/members/${memberId}/promote`, { method: "POST" });

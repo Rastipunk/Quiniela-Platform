@@ -14,6 +14,7 @@ import { isPoolAdmin } from "../lib/roles";
 import {
   extractMatches,
   extractTeams,
+  extractPhases,
   typed,
   type PickJson,
   type StructuralPickJson,
@@ -23,7 +24,9 @@ import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
 import { outcomeFromScore } from "../lib/poolHelpers";
-import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool, isBarRaceEnabledForPool } from "../lib/featureFlags";
+import { isPredictionStatusEnabled, isLeaderboardDeltaEnabledForPool, isBarRaceEnabledForPool, isExtraTimeConfigEnabled } from "../lib/featureFlags";
+import { getKnockoutScorePhases, computeExtraTimeWindow } from "../lib/extraTimeConfig";
+import { FINAL_RESULT_SOURCES } from "../lib/constants";
 import { getOrComputeLeaderboard } from "./poolLeaderboardCache";
 import type { PoolMemberRole } from "@prisma/client";
 import { computeLastStep } from "./poolMatchDelta";
@@ -725,9 +728,59 @@ export async function getPoolOverview(
     ? await computeLeaderboardBundle()
     : await getOrComputeLeaderboard(poolId, leaderboardFingerprint, computeLeaderboardBundle);
 
+  // 7b) Knockout extra-time config (v2) — gated by the VIEWING user's email so
+  // it ships to one host first. Computed from already-loaded data; the heavy
+  // path (and the extra user lookup) is skipped entirely for everyone else.
+  type ExtraTimeBlock = {
+    enabled: boolean;
+    isScorePool: boolean;
+    windowOpen: boolean;
+    windowReason: string;
+    needsBanner: boolean;
+    phases: Array<{ phaseId: string; phaseName: string; includeExtraTime: boolean }>;
+  };
+  let extraTime: ExtraTimeBlock = {
+    enabled: false, isScorePool: false, windowOpen: false, windowReason: "OPEN", needsBanner: false, phases: [],
+  };
+  if (!publicMode) {
+    // Avoid an extra user lookup on this hot endpoint unless the allowlist is a
+    // specific list: ""→off and "*"→all both resolve without the viewer's email.
+    const rawAllowlist = (process.env.EXTRA_TIME_CONFIG_ALLOWLIST ?? "").trim();
+    let flagOn = rawAllowlist === "*";
+    if (!flagOn && rawAllowlist !== "") {
+      const viewerEmail = (await prisma.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email ?? null;
+      flagOn = isExtraTimeConfigEnabled(viewerEmail);
+    }
+    if (flagOn) {
+      const etPhases = extractPhases(snapshot);
+      const koScorePhases = getKnockoutScorePhases(etPhases, pool.pickTypesConfig as PhasePickConfig[] | null);
+      if (koScorePhases.length > 0) {
+        const finalizedMatchIds = new Set(
+          results
+            .filter((r) => r.currentVersion && FINAL_RESULT_SOURCES.has(r.currentVersion.source))
+            .map((r) => r.matchId),
+        );
+        const win = computeExtraTimeWindow({ phases: etPhases, matches, finalizedMatchIds, now: now.getTime() });
+        const isHost = isPoolAdmin(myMembership.role);
+        const acked = !!(myMembership as { extraTimeBannerAckAt?: Date | null }).extraTimeBannerAckAt;
+        extraTime = {
+          enabled: true,
+          isScorePool: true,
+          windowOpen: win.open,
+          windowReason: win.reason,
+          needsBanner: isHost && win.open && !acked,
+          phases: koScorePhases,
+        };
+      } else {
+        extraTime = { ...extraTime, enabled: true };
+      }
+    }
+  }
+
   // 8) Final response
   const includeEmails = isPoolAdmin(myMembership.role);
   return {
+    extraTime,
     nowUtc: now.toISOString(),
     pool: {
       id: pool.id,

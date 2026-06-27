@@ -21,6 +21,8 @@ import {
   advancePhase,
   updatePoolSettings,
   updatePoolScoringConfig,
+  updatePhaseExtraTime,
+  ackExtraTimeBanner,
   setPhaselock,
   archivePool,
   unarchivePool,
@@ -177,6 +179,38 @@ poolAdminRouter.patch("/:poolId/scoring-config", async (req, res) => {
       parsed.data.pickTypesConfig,
       auditCtx(req),
     );
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// PATCH /pools/:poolId/phases/:phaseId/extra-time — knockout extra-time v2.
+// Gated (acting user's email). Window-enforced. No email — players see a
+// per-match scoring legend instead.
+const extraTimeBodySchema = z.object({ includeExtraTime: z.boolean() });
+poolAdminRouter.patch("/:poolId/phases/:phaseId/extra-time", async (req, res) => {
+  const parsed = extraTimeBodySchema.safeParse(req.body);
+  if (!parsed.success) return sendBadRequest(res, "VALIDATION_ERROR");
+
+  try {
+    const result = await updatePhaseExtraTime(
+      req.auth!.userId,
+      req.params.poolId,
+      req.params.phaseId,
+      parsed.data.includeExtraTime,
+      auditCtx(req),
+    );
+    return sendOk(res, result);
+  } catch (err) {
+    return handleServiceError(res, err);
+  }
+});
+
+// POST /pools/:poolId/extra-time-banner/ack — dismiss the host banner (v2).
+poolAdminRouter.post("/:poolId/extra-time-banner/ack", async (req, res) => {
+  try {
+    const result = await ackExtraTimeBanner(req.auth!.userId, req.params.poolId);
     return sendOk(res, result);
   } catch (err) {
     return handleServiceError(res, err);

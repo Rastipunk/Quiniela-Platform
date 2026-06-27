@@ -565,6 +565,10 @@ model PoolMember {
   banReason      String? // Razón de la expulsión (obligatoria)
   banExpiresAt   DateTime? // null = permanente, fecha = temporal
 
+  // One-time ack of the knockout extra-time host banner (v2). null = not yet
+  // acknowledged. Mirrors User.localePromptCompletedAt's one-time-prompt pattern.
+  extraTimeBannerAckAt DateTime?
+
   @@unique([poolId, userId])
   @@index([userId])
   @@index([status])

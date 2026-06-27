@@ -36,6 +36,7 @@ const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m =>
 import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName, getTournamentName } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
+import { ExtraTimeHostBanner } from "./components/ExtraTimeHostBanner";
 import { PoolSectionHeader } from "./components/PoolSectionHeader";
 import { PoolCapacityTab } from "./components/PoolCapacityTab";
 import { PoolBrandingTab } from "./components/PoolBrandingTab";
@@ -112,6 +113,7 @@ export default function PoolPage() {
   // ── UI state ──
   const [showSplash, setShowSplash] = useState(false);
   const [showCapacityPopup, setShowCapacityPopup] = useState(false);
+  const [extraTimeBannerDismissed, setExtraTimeBannerDismissed] = useState(false);
 
   // Pending members
   const [pendingMembers, setPendingMembers] = useState<Array<{ id: string; userId: string; user: { displayName: string; email: string } }>>([]);
@@ -641,6 +643,17 @@ export default function PoolPage() {
           </div>
         );
       })()}
+
+      {/* Knockout extra-time host banner (v2) — blocking, gated + acked in DB */}
+      {overview?.extraTime?.needsBanner && !extraTimeBannerDismissed && token && (
+        <ExtraTimeHostBanner
+          poolId={poolId}
+          token={token}
+          isMobile={isMobile}
+          onAck={() => setExtraTimeBannerDismissed(true)}
+          onGoToConfig={() => setActiveTab("admin")}
+        />
+      )}
 
       {overview && (
         <>

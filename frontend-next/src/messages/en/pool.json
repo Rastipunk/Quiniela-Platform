@@ -140,6 +140,32 @@
     "publicMetaDescription": "See how the 2026 World Cup is going on Picks4All.com 🏆",
     "badgeNew": "New"
   },
+  "extraTimeConfig": {
+    "title": "Scorelines in knockout rounds",
+    "intro": "Choose how scorelines are graded when a knockout match goes to extra time.",
+    "helpToggle": "What does this mean?",
+    "helpIntro": "In knockout rounds a match can be level at 90 minutes and be decided in extra time or penalties. Your pool decides which result counts for SCORELINES:",
+    "helpReg": "Regulation only (default): the score at minute 90 + stoppage time counts. A goal at 90+5' (stoppage) DOES count; a goal at minute 105' (extra time) does NOT.",
+    "helpRegExample": "E.g. a semifinal is 1-1 at 90+5'. In extra time it ends 2-1 → scorelines count 1-1.",
+    "helpET": "Include extra time: the score at the end of extra time counts (penalties never count).",
+    "helpETExample": "Same example → it counts 2-1.",
+    "helpNote": "Either way, who advances is always decided by the final result, including penalties.",
+    "phaseLabel90": "Counts the score at 90' + stoppage",
+    "phaseLabelET": "Counts the score at the end of extra time",
+    "save": "Save",
+    "saving": "Saving…",
+    "saveError": "Couldn't save. Please try again.",
+    "deadlineNote": "You can change this until the last group-stage match ends.",
+    "windowClosedGroup": "The change window is closed: the group stage has ended.",
+    "windowClosedKnockout": "The change window is closed: the knockout rounds have started.",
+    "windowClosedGeneric": "The change window is closed for this pool."
+  },
+  "extraTimeBanner": {
+    "title": "Scorelines in knockout rounds",
+    "body": "Your pool only considers 90 minutes + stoppage time for knockout-round scorelines (no extra time, no penalties). If you want to change this, you have until the last group-stage match ends, in the Settings area.",
+    "cta": "Go to settings",
+    "ack": "Got it"
+  },
 
   "nav": {
     "openMenu": "Open sections menu",
@@ -442,6 +468,8 @@
     "groupMatchLabel": "Group {group} - Matchday {matchday}",
     "kickoff": "Kickoff",
     "deadline": "Picks close",
+    "scoringLegend90": "Only the score through minute 90 + stoppage time counts (no extra time, no penalties).",
+    "scoringLegendExtraTime": "The score at the end of extra time counts (no penalties).",
     "pendingTitle": "Pending Match",
     "pendingDesc": "This match will be enabled when the participating teams are determined.",
     "viewBreakdown": "View breakdown",

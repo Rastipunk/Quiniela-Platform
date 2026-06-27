@@ -225,8 +225,10 @@ export function AdminSettingsToggles({
         </label>
       </div>
 
-      {/* Extra Time Configuration */}
-      {overview.pool.pickTypesConfig && (() => {
+      {/* Extra Time Configuration (legacy live toggle). Hidden for users on the
+          v2 flow (overview.extraTime.enabled) — they get the dedicated
+          ExtraTimeConfigSection with per-phase save + end-of-group deadline. */}
+      {!overview.extraTime?.enabled && overview.pool.pickTypesConfig && (() => {
         const ptc = overview.pool.pickTypesConfig!;
         const scoringPhases = ptc.filter((pc) => pc.requiresScore);
         if (scoringPhases.length === 0) return null;

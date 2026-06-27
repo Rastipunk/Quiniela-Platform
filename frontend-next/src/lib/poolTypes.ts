@@ -265,6 +265,27 @@ export interface PhasePickConfigItem {
 
 // ─── Main type ───────────────────────────────────────────────
 
+/** Knockout extra-time scoring config (v2) — gated by the viewing user's email. */
+export interface PoolExtraTimePhase {
+  phaseId: string;
+  phaseName: string;
+  includeExtraTime: boolean;
+}
+export interface PoolExtraTimeConfig {
+  /** Feature gate for the viewing user (EXTRA_TIME_CONFIG_ALLOWLIST). */
+  enabled: boolean;
+  /** Pool grades scorelines in at least one knockout phase. */
+  isScorePool: boolean;
+  /** Edit window still open (group stage not yet fully decided). */
+  windowOpen: boolean;
+  /** OPEN | GROUP_STAGE_FINALIZED | KNOCKOUT_STARTED | NO_GROUP_MATCHES. */
+  windowReason: string;
+  /** Host should see the blocking banner (host + window open + not acked). */
+  needsBanner: boolean;
+  /** Knockout scoreline phases with their current includeExtraTime value. */
+  phases: PoolExtraTimePhase[];
+}
+
 export interface PoolOverview {
   nowUtc: string;
   pool: PoolInfo;
@@ -274,4 +295,5 @@ export interface PoolOverview {
   permissions: PoolPermissions;
   matches: PoolMatchCard[];
   leaderboard: PoolLeaderboard;
+  extraTime?: PoolExtraTimeConfig;
 }

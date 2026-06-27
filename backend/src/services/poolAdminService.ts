@@ -45,6 +45,10 @@ import type { PhasePickConfig } from "../types/pickConfig";
 import { fireAndForget } from "../lib/asyncHelpers";
 import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { ServiceError, type AuditContext } from "./authService";
+import { isExtraTimeConfigEnabled } from "../lib/featureFlags";
+import { getKnockoutScorePhases, computeExtraTimeWindow } from "../lib/extraTimeConfig";
+import { FINAL_RESULT_SOURCES } from "../lib/constants";
+import { invalidatePoolLeaderboard } from "./poolLeaderboardCache";
 
 // ─── Scoring Override ────────────────────────────────────────
 
@@ -320,6 +324,114 @@ export async function updatePoolSettings(
       caprichoSanMax: updatedPool.caprichoSanMax,
     },
   };
+}
+
+// ─── Knockout extra-time scoring (v2) ────────────────────────
+
+/**
+ * Flip `includeExtraTime` for ONE knockout phase, live, while the edit window
+ * is open (the group stage is not yet fully decided — see computeExtraTimeWindow).
+ * Players are NOT emailed; instead each match shows a per-match legend (frontend)
+ * describing its scoring rule. Gated by the acting user's email
+ * (EXTRA_TIME_CONFIG_ALLOWLIST) so it ships to one host first.
+ *
+ * Safe by construction: the window closes before any knockout match is played,
+ * so the flip is always forward-looking and never re-grades a played match.
+ */
+export async function updatePhaseExtraTime(
+  userId: string,
+  poolId: string,
+  phaseId: string,
+  includeExtraTime: boolean,
+  ctx: AuditContext,
+): Promise<{ phaseId: string; includeExtraTime: boolean; changed: boolean }> {
+  const actor = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!isExtraTimeConfigEnabled(actor?.email)) {
+    throw new ServiceError("FORBIDDEN", 403, { message: "Feature not enabled" });
+  }
+
+  const isAdmin = await requirePoolAdmin(userId, poolId);
+  if (!isAdmin) throw new ServiceError("FORBIDDEN", 403);
+
+  const pool = await prisma.pool.findUnique({
+    where: { id: poolId },
+    select: {
+      id: true,
+      name: true,
+      pickTypesConfig: true,
+      fixtureSnapshot: true,
+      tournamentInstance: { select: { dataJson: true } },
+    },
+  });
+  if (!pool) throw new ServiceError("NOT_FOUND", 404);
+
+  const phaseConfigs = pool.pickTypesConfig as PhasePickConfig[] | null;
+  if (!Array.isArray(phaseConfigs)) throw new ServiceError("NO_PICK_CONFIG", 400);
+
+  const snapshot = pool.fixtureSnapshot ?? pool.tournamentInstance?.dataJson;
+  const phases = extractPhases(snapshot);
+  const matches = extractMatches(snapshot);
+
+  // The phase must be a knockout phase that grades marcadores.
+  const target = getKnockoutScorePhases(phases, phaseConfigs).find((p) => p.phaseId === phaseId);
+  if (!target) throw new ServiceError("INVALID_PHASE", 400, { message: "Not a knockout scoreline phase" });
+
+  // No-op when unchanged → idempotent success (no write), regardless of window.
+  if (target.includeExtraTime === includeExtraTime) {
+    return { phaseId, includeExtraTime, changed: false };
+  }
+
+  // The edit window must still be open.
+  const results = await prisma.poolMatchResult.findMany({
+    where: { poolId },
+    select: { matchId: true, currentVersion: { select: { source: true } } },
+  });
+  const finalizedMatchIds = new Set(
+    results
+      .filter((r) => r.currentVersion && FINAL_RESULT_SOURCES.has(r.currentVersion.source))
+      .map((r) => r.matchId),
+  );
+  const window = computeExtraTimeWindow({ phases, matches, finalizedMatchIds, now: Date.now() });
+  if (!window.open) throw new ServiceError("WINDOW_CLOSED", 409, { reason: window.reason });
+
+  const updatedConfig = phaseConfigs.map((pc) =>
+    pc.phaseId === phaseId ? { ...pc, includeExtraTime } : pc,
+  );
+  await prisma.pool.update({
+    where: { id: poolId },
+    data: { pickTypesConfig: updatedConfig as Prisma.InputJsonValue },
+  });
+  // The leaderboard fingerprint (ADR-079) does not track pickTypesConfig, so
+  // drop the cached bundle explicitly. (No knockout result exists yet while the
+  // window is open, so this is defensive — there is nothing to re-grade today.)
+  invalidatePoolLeaderboard(poolId);
+
+  fireAndForget("audit:extra-time", writeAuditEvent({
+    action: "EXTRA_TIME_CONFIG_CHANGED",
+    actorUserId: userId,
+    poolId,
+    ip: ctx.ip ?? null,
+    userAgent: ctx.userAgent ?? null,
+    dataJson: { phaseId, phaseName: target.phaseName, from: target.includeExtraTime, to: includeExtraTime },
+  }));
+
+  return { phaseId, includeExtraTime, changed: true };
+}
+
+/** Mark the knockout extra-time host banner as acknowledged for this member. */
+export async function ackExtraTimeBanner(
+  userId: string,
+  poolId: string,
+): Promise<{ ok: true }> {
+  const updated = await prisma.poolMember.updateMany({
+    where: { poolId, userId, status: { in: ["ACTIVE", "LEFT"] } },
+    data: { extraTimeBannerAckAt: new Date() },
+  });
+  if (updated.count === 0) throw new ServiceError("NOT_FOUND", 404);
+  return { ok: true };
 }
 
 // ─── Update Scoring Config (Administrar reglas) ──────────────
