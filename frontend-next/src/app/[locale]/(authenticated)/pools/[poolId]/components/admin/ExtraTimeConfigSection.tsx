@@ -93,19 +93,38 @@ export function ExtraTimeConfigSection({
       >
         ❔ {t("extraTimeConfig.helpToggle")}
       </button>
-      {showHelp && (
-        <div style={{
-          background: colors.bgLighter, border: `1px solid ${colors.borderLight}`, borderRadius: radii.lg,
-          padding: 14, marginBottom: 12, fontSize: fontSize.sm, lineHeight: 1.65, color: colors.textDark,
-        }}>
-          <p style={{ margin: "0 0 10px" }}>{t("extraTimeConfig.helpIntro")}</p>
-          <p style={{ margin: "0 0 4px", fontWeight: fontWeight.semibold }}>{t("extraTimeConfig.helpReg")}</p>
-          <p style={{ margin: "0 0 10px", color: colors.textMuted, fontStyle: "italic" }}>{t("extraTimeConfig.helpRegExample")}</p>
-          <p style={{ margin: "0 0 4px", fontWeight: fontWeight.semibold }}>{t("extraTimeConfig.helpET")}</p>
-          <p style={{ margin: "0 0 10px", color: colors.textMuted, fontStyle: "italic" }}>{t("extraTimeConfig.helpETExample")}</p>
-          <p style={{ margin: 0, color: colors.textMuted }}>{t("extraTimeConfig.helpNote")}</p>
-        </div>
-      )}
+      {showHelp && (() => {
+        // Presentational accent colours for the two explainer cards (UI only).
+        const REG_ACCENT = "#0ea5e9"; // sky — "only 90'"
+        const ET_ACCENT = "#d97706"; // amber — "extra time"
+        const card = (accent: string, title: string, body: string, example: string, badge?: string) => (
+          <div style={{ flex: "1 1 220px", minWidth: 0, background: colors.white, borderRadius: radii.lg, border: `1px solid ${colors.borderLight}`, borderLeft: `4px solid ${accent}`, padding: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: fontWeight.bold, fontSize: fontSize.md, color: colors.textDark }}>{title}</span>
+              {badge && (
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.4, color: accent, background: `${accent}1a`, padding: "2px 7px", borderRadius: 999 }}>{badge}</span>
+              )}
+            </div>
+            <p style={{ margin: "0 0 10px", fontSize: fontSize.sm, lineHeight: 1.5, color: colors.textMuted }}>{body}</p>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 6, background: colors.bgLighter, borderRadius: 8, padding: "8px 10px" }}>
+              <span aria-hidden style={{ flexShrink: 0 }}>💡</span>
+              <span style={{ fontSize: 12, lineHeight: 1.5, color: colors.textDark }}>{example}</span>
+            </div>
+          </div>
+        );
+        return (
+          <div style={{ background: colors.bgLighter, border: `1px solid ${colors.borderLight}`, borderRadius: radii.lg, padding: 14, marginBottom: 12 }}>
+            <p style={{ margin: "0 0 12px", fontSize: fontSize.sm, lineHeight: 1.6, color: colors.textDark }}>{t("extraTimeConfig.helpIntro")}</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {card(REG_ACCENT, t("extraTimeConfig.helpRegTitle"), t("extraTimeConfig.helpRegBody"), t("extraTimeConfig.helpRegExample"), t("extraTimeConfig.helpRegBadge"))}
+              {card(ET_ACCENT, t("extraTimeConfig.helpETTitle"), t("extraTimeConfig.helpETBody"), t("extraTimeConfig.helpETExample"))}
+            </div>
+            <p style={{ margin: "12px 0 0", fontSize: 12, color: colors.textMuted, display: "flex", gap: 6, alignItems: "flex-start" }}>
+              <span aria-hidden>ℹ️</span><span>{t("extraTimeConfig.helpNote")}</span>
+            </p>
+          </div>
+        );
+      })()}
 
       {!windowOpen && (
         <div style={{
