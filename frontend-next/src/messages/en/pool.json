@@ -700,7 +700,7 @@
     "banSuccess": "{name} has been permanently banned",
     "banError": "Error banning member",
     "cancel": "Cancel",
-    "revertConfirm": "Removing {name} will leave no active players in the pool. The pool will revert to draft, all predictions will be deleted, and you'll be able to edit the rules. Continue?",
+    "revertConfirm": "🛑 WAIT! {name} is the LAST active player. Removing them reverts the pool to DRAFT and PERMANENTLY DELETES ALL predictions from ALL players (including already-played phases). THIS CANNOT BE UNDONE.\n\nJust wanted to change the EXTRA TIME rule? DON'T do this. Close this and use the Extra Time switch (the «Result Measurement» section) in Admin: it changes that rule WITHOUT deleting any prediction.\n\nDo you really want to delete EVERYTHING and revert to draft?",
     "revertSuccess": "{name} was removed. The pool reverted to draft and you can now edit the rules."
   },
 

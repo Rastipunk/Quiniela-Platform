@@ -700,7 +700,7 @@
     "banSuccess": "{name} ha sido baneado permanentemente",
     "banError": "Error al banear miembro",
     "cancel": "Cancelar",
-    "revertConfirm": "Al remover a {name} ya no quedarán jugadores activos en la pool. La pool volverá a borrador, todas las predicciones se eliminarán y podrás editar las reglas. ¿Continuar?",
+    "revertConfirm": "🛑 ¡ESPERA! {name} es el ÚLTIMO jugador activo. Si lo remueves, la pool volverá a BORRADOR y se BORRARÁN DE FORMA PERMANENTE TODAS las predicciones de TODOS los jugadores (incluidas las de fases ya jugadas). ESTO NO SE PUEDE DESHACER.\n\n¿Solo querías cambiar la regla de TIEMPO EXTRA? NO hagas esto. Cierra esto y usa el interruptor de Tiempo Extra (sección «Medición del Resultado») en Administración: cambia esa regla SIN borrar ninguna predicción.\n\n¿De verdad quieres borrar TODO y volver a borrador?",
     "revertSuccess": "{name} fue removido. La pool volvió a borrador y puedes editar las reglas."
   },
 

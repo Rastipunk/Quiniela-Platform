@@ -700,7 +700,7 @@
     "banSuccess": "{name} foi banido permanentemente",
     "banError": "Erro ao banir membro",
     "cancel": "Cancelar",
-    "revertConfirm": "Ao remover {name} não restarão jogadores ativos no bolão. O bolão voltará para rascunho, todas as previsões serão apagadas e você poderá editar as regras. Continuar?",
+    "revertConfirm": "🛑 ESPERE! {name} é o ÚLTIMO jogador ativo. Removê-lo faz o bolão voltar para RASCUNHO e APAGA PERMANENTEMENTE TODOS os palpites de TODOS os jogadores (incluindo fases já jogadas). ISSO NÃO PODE SER DESFEITO.\n\nSó queria mudar a regra de PRORROGAÇÃO? NÃO faça isso. Feche e use o interruptor de Tempo Extra (seção «Medição do Resultado») na Administração: muda essa regra SEM apagar nenhum palpite.\n\nVocê realmente quer apagar TUDO e voltar para rascunho?",
     "revertSuccess": "{name} foi removido. O bolão voltou para rascunho e você pode editar as regras."
   },
 
