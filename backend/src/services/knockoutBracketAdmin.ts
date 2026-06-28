@@ -428,6 +428,56 @@ export async function propagateBracketToPools(
 }
 
 /**
+ * Propagate the reviewed bracket of a knockout phase into the INSTANCE template
+ * (`instance.dataJson`). New pools copy `instance.dataJson` at creation
+ * (`routes/pools.ts`, `corporateService.ts`), so without this a pool created
+ * after release would inherit the raw auto-resolved bracket — whose best-thirds
+ * allocation can be wrong (ADR-084 incident). Making the admin RELEASE the
+ * source of truth for the instance guarantees new pools are born correct.
+ * Same rules as `propagateBracketToPools` (fill non-placeholder team slots;
+ * apply explicit kickoff overrides only).
+ */
+export async function propagateBracketToInstance(
+  instanceId: string,
+  phaseId: string,
+): Promise<{ updated: boolean; matches: number; pending: boolean }> {
+  const preview = await getKnockoutBracketPreview(instanceId);
+  const phase = preview.phases.find((p) => p.phaseId === phaseId);
+  if (!phase) throw new ServiceError("INVALID_PHASE", 400, { phaseId });
+  const resolvedById = new Map(phase.matches.map((m) => [m.matchId, m]));
+  const anyResolved = phase.matches.some((m) => !m.homePending || !m.awayPending);
+  if (!anyResolved) return { updated: false, matches: phase.matches.length, pending: true };
+
+  const instance = await prisma.tournamentInstance.findUnique({
+    where: { id: instanceId },
+    select: { dataJson: true, knockoutBracketOverrides: true },
+  });
+  if (!instance) throw new ServiceError("NOT_FOUND", 404);
+  const overrides = (instance.knockoutBracketOverrides as Record<string, BracketOverride> | null) ?? {};
+  const data = JSON.parse(JSON.stringify(instance.dataJson)) as { matches?: Array<Record<string, unknown>> };
+  if (!Array.isArray(data.matches)) return { updated: false, matches: phase.matches.length, pending: false };
+
+  let changed = false;
+  for (const m of data.matches) {
+    if (m.phaseId !== phaseId) continue;
+    const r = resolvedById.get(m.id as string);
+    if (r) {
+      if (!r.homePending && m.homeTeamId !== r.homeId) { m.homeTeamId = r.homeId; changed = true; }
+      if (!r.awayPending && m.awayTeamId !== r.awayId) { m.awayTeamId = r.awayId; changed = true; }
+    }
+    const ov = overrides[m.id as string];
+    if (ov?.kickoffUtc && m.kickoffUtc !== ov.kickoffUtc) { m.kickoffUtc = ov.kickoffUtc; changed = true; }
+  }
+  if (changed) {
+    await prisma.tournamentInstance.update({
+      where: { id: instanceId },
+      data: { dataJson: data as Prisma.InputJsonValue },
+    });
+  }
+  return { updated: changed, matches: phase.matches.length, pending: false };
+}
+
+/**
  * Release (or re-lock) a knockout phase for predictions.
  *
  * On RELEASE (released=true) AND when the instance gate is enabled, this is the
@@ -475,6 +525,12 @@ export async function setKnockoutPhaseReleased(
 
   // Only act on a fresh release (false→true) while the gate is enabled.
   if (released && !wasReleased && gateEnabled) {
+    // The released bracket is the SINGLE SOURCE OF TRUTH. Bake it into the
+    // instance template FIRST so any pool created from now on is born correct
+    // (pool creation copies instance.dataJson), then propagate to existing pools.
+    await propagateBracketToInstance(instanceId, phaseId).catch((err) => {
+      console.error(`[KnockoutRelease] instance propagate failed instance=${instanceId} phase=${phaseId}:`, err);
+    });
     // Propagate synchronously: teams/dates must be correct before predictions open.
     const prop = await propagateBracketToPools(instanceId, phaseId).catch((err) => {
       console.error(`[KnockoutRelease] propagate failed instance=${instanceId} phase=${phaseId}:`, err);

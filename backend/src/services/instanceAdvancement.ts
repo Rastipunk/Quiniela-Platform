@@ -7,6 +7,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { generateSyntheticFixtureId } from "../lib/syntheticFixtureId";
+import { getNextPhaseId } from "../lib/fixture";
 import {
   calculateGroupStandings,
   determineQualifiers,
@@ -54,6 +55,23 @@ type MatchResult = {
   publishedBy: string;
   version: number;
 };
+
+/**
+ * ADR-084: once the admin has RELEASED a knockout phase (gate enabled), its
+ * bracket is admin-authoritative — reviewed + corrected in the Gestor de Fases.
+ * Auto-advance must NEVER overwrite a released phase: the automatic best-thirds
+ * resolution (`resolvePlaceholders`) can be wrong for the WC R32 allocation, and
+ * a post-release advance would clobber the admin's corrected teams. Guards every
+ * write path into a released phase.
+ */
+function isKnockoutPhaseReleased(
+  instance: { knockoutReleaseGateEnabled?: boolean; releasedKnockoutPhases?: unknown } | null | undefined,
+  phaseId: string,
+): boolean {
+  if (!instance?.knockoutReleaseGateEnabled) return false;
+  const released = (instance.releasedKnockoutPhases as string[] | null) ?? [];
+  return released.includes(phaseId);
+}
 
 /**
  * Valida que todos los partidos de la fase de grupos tengan resultados publicados.
@@ -496,22 +514,32 @@ export async function advanceToRoundOf32(instanceId: string, poolId?: string): P
     matches: updatedMatches,
   };
 
-  // 7. Persistir cambios SOLO en el fixtureSnapshot del pool (NO en la instance)
-  await prisma.pool.update({
-    where: { id: poolId },
-    data: {
-      fixtureSnapshot: updatedData as Prisma.InputJsonValue,
-    },
-  });
+  // ADR-084 guard: if round_of_32 is already RELEASED, the admin's reviewed
+  // bracket is authoritative — do NOT overwrite it (nor its scraper mappings)
+  // with the auto-resolution, which can mis-allocate best-thirds.
+  if (isKnockoutPhaseReleased(pool.tournamentInstance, "round_of_32")) {
+    console.log(
+      `[advanceToRoundOf32] round_of_32 RELEASED for instance ${pool.tournamentInstanceId} — ` +
+        `pool ${poolId} bracket is admin-authoritative; skipping auto-overwrite.`,
+    );
+  } else {
+    // 7. Persistir cambios SOLO en el fixtureSnapshot del pool (NO en la instance)
+    await prisma.pool.update({
+      where: { id: poolId },
+      data: {
+        fixtureSnapshot: updatedData as Prisma.InputJsonValue,
+      },
+    });
 
-  // 8. Register resolved fixtures with the scraper pipeline (mappings + instance.dataJson).
-  //    Idempotent: safe to run across multiple pools of the same instance.
-  await persistResolvedKnockoutFixtures(
-    pool.tournamentInstanceId,
-    data,
-    updatedMatches,
-    resolvedMatches,
-  );
+    // 8. Register resolved fixtures with the scraper pipeline (mappings + instance.dataJson).
+    //    Idempotent: safe to run across multiple pools of the same instance.
+    await persistResolvedKnockoutFixtures(
+      pool.tournamentInstanceId,
+      data,
+      updatedMatches,
+      resolvedMatches,
+    );
+  }
 
   return {
     standings: allStandings,
@@ -700,22 +728,30 @@ export async function advanceKnockoutPhase(
     matches: updatedMatches,
   };
 
-  // 9. Persistir cambios SOLO en el fixtureSnapshot del pool (NO en la instance)
-  await prisma.pool.update({
-    where: { id: poolId },
-    data: {
-      fixtureSnapshot: updatedData as Prisma.InputJsonValue,
-    },
-  });
+  // ADR-084 guard: never overwrite a phase the admin has already RELEASED.
+  if (isKnockoutPhaseReleased(pool.tournamentInstance, nextPhaseId)) {
+    console.log(
+      `[advanceKnockoutPhase] ${nextPhaseId} RELEASED for instance ${pool.tournamentInstanceId} — ` +
+        `pool ${poolId} bracket is admin-authoritative; skipping auto-overwrite.`,
+    );
+  } else {
+    // 9. Persistir cambios SOLO en el fixtureSnapshot del pool (NO en la instance)
+    await prisma.pool.update({
+      where: { id: poolId },
+      data: {
+        fixtureSnapshot: updatedData as Prisma.InputJsonValue,
+      },
+    });
 
-  // 10. Register resolved fixtures with the scraper pipeline (mappings + instance.dataJson).
-  //     Idempotent: safe to run across multiple pools of the same instance.
-  await persistResolvedKnockoutFixtures(
-    pool.tournamentInstanceId,
-    data,
-    updatedMatches,
-    resolvedMatches,
-  );
+    // 10. Register resolved fixtures with the scraper pipeline (mappings + instance.dataJson).
+    //     Idempotent: safe to run across multiple pools of the same instance.
+    await persistResolvedKnockoutFixtures(
+      pool.tournamentInstanceId,
+      data,
+      updatedMatches,
+      resolvedMatches,
+    );
+  }
 
   return { resolvedMatches };
 }
@@ -1019,6 +1055,19 @@ export async function validateCanAutoAdvance(
   }
 
   const data = instance.dataJson as TemplateData;
+
+  // ADR-084: if the phase we'd advance INTO is already RELEASED by the admin,
+  // its bracket is authoritative — don't auto-advance (would clobber the
+  // admin-reviewed teams). Early-exit so the timer path doesn't even try.
+  const nextPhaseId = getNextPhaseId(instance.dataJson, phaseId);
+  if (nextPhaseId && isKnockoutPhaseReleased(instance, nextPhaseId)) {
+    return {
+      canAdvance: false,
+      blockType: "DISABLED",
+      reason: `La fase ${nextPhaseId} ya fue liberada por el admin (bracket autoritativo)`,
+    };
+  }
+
   const phaseMatches = data.matches.filter((m) => m.phaseId === phaseId);
 
   if (phaseMatches.length === 0) {

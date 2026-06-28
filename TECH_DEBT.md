@@ -171,6 +171,31 @@ None are introduced by recent doc or pruning work; they were failing before and 
 
 ---
 
+## 🎯 `resolvePlaceholders` best-thirds allocation (ADR-084)
+
+`tournamentAdvancement.resolvePlaceholders` assigns the 8 qualifying
+third-place teams to R32 slots **by rank** (`3rd_POOL_n → bestThirds[n-1]`).
+The FIFA 48-team format instead assigns thirds to slots via a fixed
+**group-combination table** (which 8 of the 12 groups' thirds qualify →
+which slot each goes to). So the *automatic* R32 best-thirds matchups are
+wrong (2026-06-28: produced "Colombia vs Iran" instead of "Colombia vs
+Ghana"). `determineQualifiers` is correct (it picks the right 8 thirds);
+only the slot allocation is wrong, and it only affects R32 (R16+ use
+winner-based `W_<matchId>` placeholders).
+
+**Not a correctness risk anymore** — the admin reviews/edits the bracket in
+the Gestor de Fases, and a release is now the single source of truth
+(writes the reviewed bracket to `instance.dataJson` + every pool, and
+auto-advance is guarded from overwriting a released phase — ADR-084). So
+the bug only affects the auto DRAFT the admin reviews.
+
+**Fix:** implement the official FIFA "third-placed teams allocation" table
+(C(12,8)=495 combinations, or the published lookup) so the auto draft is
+already correct and needs no manual override. Verify against a known real
+bracket before shipping.
+
+---
+
 **Review cadence:** re-evaluate this list in the first retro after the
 World Cup final (2026-07-19). Items that are still irrelevant then can
 be deleted; items that have become urgent can be promoted to active
