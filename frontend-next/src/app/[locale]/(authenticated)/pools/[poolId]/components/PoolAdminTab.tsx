@@ -4,7 +4,6 @@ import { colors } from "@/lib/theme";
 
 import { useTranslations } from "next-intl";
 import { archivePool } from "@/lib/api";
-import { NotificationBanner } from "@/components/NotificationBanner";
 import type { PoolTabBaseProps, PhaseData } from "./poolTypes";
 import { AdminSettingsToggles } from "./admin/AdminSettingsToggles";
 import { ExtraTimeConfigSection } from "./admin/ExtraTimeConfigSection";
@@ -32,27 +31,9 @@ export function PoolAdminTab({
     <div style={{ marginTop: 14, padding: 20, border: "1px solid #ddd", borderRadius: 14, background: colors.white }}>
       <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, marginBottom: 16 }}>⚙️ {t("admin.title")}</h3>
 
-      {/* Notification banner — only phase-advancement signals belong here.
-          Pending-approval was moved to the Players tab where the host
-          actually does member management. */}
-      {notifications && (tabBadges.admin > 0) && (() => {
-        const bannerItems: { icon: string; message: string }[] = [];
-
-        if (notifications.phasesReadyToAdvance.length > 0) {
-          bannerItems.push({
-            icon: "🚀",
-            message: notifications.phasesReadyToAdvance.length > 1
-              ? t("admin.notifications.phasesReadyPlural", { count: notifications.phasesReadyToAdvance.length })
-              : t("admin.notifications.phasesReady", { count: notifications.phasesReadyToAdvance.length })
-          });
-        }
-
-        return bannerItems.length > 0 ? (
-          <div style={{ marginBottom: 16 }}>
-            <NotificationBanner items={bannerItems} />
-          </div>
-        ) : null;
-      })()}
+      {/* Phase-advancement notifications retired (ADR-084): advancement is
+          automatic and release is admin-controlled via the Gestor de fases, so
+          the host has no manual advance action to be notified about. */}
 
       <AdminSettingsToggles
         poolId={poolId} token={token} overview={overview} phases={phases}

@@ -130,9 +130,11 @@ export function calculateTabBadges(notifications: PoolNotifications | null) {
     // que ir al tab Admin sólo para aprobar a alguien).
     jugadores: notifications.pendingJoins,
 
-    // Tab Admin: fases listas para avanzar (lo de aprobar miembros
-    // vive ahora en Jugadores).
-    admin: notifications.phasesReadyToAdvance.length,
+    // Tab Admin: sin badges. El avance de fases es automático + controlado por
+    // el Gestor de fases (ADR-084), así que ya NO se notifica al host "fase lista
+    // para avanzar" (no hay acción manual que tomar). Aprobar miembros vive en
+    // Jugadores.
+    admin: 0,
   };
 }
 
