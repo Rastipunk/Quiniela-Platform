@@ -110,10 +110,13 @@ export function MemberManagement({
                   borderRadius: 8,
                   border: "1px solid #dee2e6",
                   display: "flex",
+                  // Mobile: stack the info over the actions (like the buttonless
+                  // host card) so the name/email/role never truncate to fit the
+                  // buttons inline. Desktop keeps the side-by-side row.
+                  flexDirection: isMobile ? "column" : "row",
                   justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  flexWrap: isMobile ? "wrap" : undefined,
+                  alignItems: isMobile ? "stretch" : "center",
+                  gap: isMobile ? 10 : 12,
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -153,7 +156,7 @@ export function MemberManagement({
                 </div>
 
                 {!isHost && (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", width: isMobile ? "100%" : undefined }}>
                     {isPlayer && (
                       <button
                         disabled={busyKey === `promote:${member.userId}`}
@@ -178,6 +181,7 @@ export function MemberManagement({
                           background: busyKey === `promote:${member.userId}` ? colors.disabled : colors.success,
                           color: colors.white, cursor: busyKey === `promote:${member.userId}` ? "wait" : "pointer",
                           fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                          flex: isMobile ? 1 : undefined,
                           minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
                         }}
                       >
@@ -209,6 +213,7 @@ export function MemberManagement({
                           background: busyKey === `demote:${member.userId}` ? colors.disabled : colors.errorAlt,
                           color: colors.white, cursor: busyKey === `demote:${member.userId}` ? "wait" : "pointer",
                           fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                          flex: isMobile ? 1 : undefined,
                           minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
                         }}
                       >
@@ -222,6 +227,7 @@ export function MemberManagement({
                         padding: "6px 12px", borderRadius: 6, border: "1px solid #ffc107",
                         background: colors.white, color: colors.warning, cursor: "pointer",
                         fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                        flex: isMobile ? 1 : undefined,
                         minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
                       }}
                     >
@@ -234,6 +240,7 @@ export function MemberManagement({
                         padding: "6px 12px", borderRadius: 6, border: "1px solid #dc3545",
                         background: colors.white, color: colors.errorAlt, cursor: "pointer",
                         fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+                        flex: isMobile ? 1 : undefined,
                         minHeight: isMobile ? TOUCH_TARGET.minimum : undefined,
                       }}
                     >
