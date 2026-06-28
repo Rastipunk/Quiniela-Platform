@@ -74,12 +74,7 @@ export function PoolAdminTab({
         setError={setError} friendlyError={friendlyError} reload={reload}
       />
 
-      <PhaseStatusPanel
-        poolId={poolId} token={token} overview={overview} phases={phases}
-        getPhaseStatus={getPhaseStatus} hasPhaseAdvanced={hasPhaseAdvanced}
-        nextPhaseMap={nextPhaseMap} busyKey={busyKey} setBusyKey={setBusyKey}
-        setError={setError} friendlyError={friendlyError} reload={reload}
-      />
+      <PhaseStatusPanel overview={overview} phases={phases} />
 
       {/* Archive Pool Section */}
       {overview.pool.status === "COMPLETED" && (

@@ -1,36 +1,29 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { manualAdvancePhase } from "@/lib/api";
 import type { PoolOverview } from "@/lib/api";
 import type { PhaseData } from "../poolTypes";
 import { formatPhaseFullName, derivePhaseState, type PhaseUiState } from "../poolHelpers";
-import { useIsMobile, TOUCH_TARGET } from "@/hooks/useIsMobile";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import {
-  colors, fontSize, fontWeight, radii, spacing,
+  colors, fontSize, fontWeight, radii,
   adminSectionStyle, adminHeadingStyle,
 } from "@/lib/theme";
 
+// A match counts as "con resultado" only when its result is FINAL — provisional
+// scraper scores (a match still live / pending ≥3-source confirmation) must NOT
+// inflate the progress to 100% (mirrors backend FINAL_RESULT_SOURCES).
+const FINAL_RESULT_SOURCES = new Set(["API_CONFIRMED", "HOST_OVERRIDE", "HOST_MANUAL"]);
+
 export interface PhaseStatusPanelProps {
-  poolId: string;
-  token: string;
   overview: PoolOverview;
   phases: PhaseData[];
-  getPhaseStatus: (phaseId: string) => string;
-  hasPhaseAdvanced: (phaseId: string) => boolean;
-  nextPhaseMap: Record<string, string | null>;
-  busyKey: string | null;
-  setBusyKey: (key: string | null) => void;
-  setError: (error: string | null) => void;
-  friendlyError: (e: any) => string;
-  reload: () => Promise<void>;
 }
 
-export function PhaseStatusPanel({
-  poolId, token, overview, phases,
-  getPhaseStatus, hasPhaseAdvanced, nextPhaseMap,
-  busyKey, setBusyKey, setError, friendlyError, reload,
-}: PhaseStatusPanelProps) {
+// Read-only phase status (ADR-084). Advancement is automatic (auto-advance) and
+// release is controlled by the admin "Gestor de fases" — hosts no longer advance
+// phases manually, so this panel only SHOWS state, it does not act.
+export function PhaseStatusPanel({ overview, phases }: PhaseStatusPanelProps) {
   const t = useTranslations("pool");
   const isMobile = useIsMobile();
 
@@ -41,9 +34,11 @@ export function PhaseStatusPanel({
       </h4>
       <div style={{ display: "grid", gap: 10 }}>
         {phases.map((phase: any) => {
-          const status = getPhaseStatus(phase.id);
           const phaseMatches = overview.matches.filter((m: any) => m.phaseId === phase.id);
-          const completedMatches = phaseMatches.filter((m: any) => m.result).length;
+          // Count only FINALIZED matches — provisional/live results don't count.
+          const completedMatches = phaseMatches.filter(
+            (m: any) => m.resultSource && FINAL_RESULT_SOURCES.has(m.resultSource),
+          ).length;
           const totalMatches = phaseMatches.length;
           const progress = totalMatches > 0 ? (completedMatches / totalMatches) * 100 : 0;
 
@@ -56,7 +51,6 @@ export function PhaseStatusPanel({
             FINALIZED: { label: t("phaseRelease.finalized"), bg: colors.infoBg, border: colors.info, text: colors.infoDark, icon: "✅" },
           };
           const meta = stateMap[st];
-          const sc = meta;
 
           return (
             <div
@@ -65,18 +59,14 @@ export function PhaseStatusPanel({
                 padding: 14,
                 background: colors.white,
                 borderRadius: radii.lg,
-                border: `2px solid ${sc.border}`,
+                border: `2px solid ${meta.border}`,
                 display: "flex",
-                // Mobile: stack info over actions so the action buttons
-                // never overflow the viewport. Desktop: side-by-side.
                 flexDirection: isMobile ? "column" : "row",
                 justifyContent: "space-between",
                 alignItems: isMobile ? "stretch" : "center",
-                gap: 12
+                gap: 12,
               }}
             >
-              {/* minWidth:0 lets this flex child shrink so the title row
-                  wraps instead of forcing horizontal overflow. */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 20 }}>{meta.icon}</span>
@@ -85,70 +75,20 @@ export function PhaseStatusPanel({
                 <div style={{ fontSize: fontSize.sm, color: colors.textMuted }}>
                   {t("admin.phasePanel.matchesProgress", { completed: completedMatches, total: totalMatches, percent: progress.toFixed(0) })}
                 </div>
-                {status !== "PENDING" && (
+                {st !== "PENDING" && (
                   <div style={{ marginTop: 6, background: colors.borderLighter, borderRadius: radii.sm, height: 6, overflow: "hidden" }}>
                     <div style={{
                       height: "100%",
                       width: `${progress}%`,
-                      background: status === "COMPLETED" ? colors.info : colors.success,
-                      transition: "width 0.3s"
+                      background: st === "FINALIZED" ? colors.info : colors.success,
+                      transition: "width 0.3s",
                     }} />
                   </div>
                 )}
               </div>
+              {/* Phase state INDICATOR (ADR-084) — informational, not a button.
+                  Apertura/bloqueo se controla desde el Gestor de fases (admin). */}
               <div style={{ display: "flex", gap: 8, alignItems: "center", ...(isMobile ? { width: "100%" } : {}) }}>
-                {/* Advance is only meaningful once every match in the
-                    phase has a result — keep it gated to COMPLETED. */}
-                {status === "COMPLETED" && !hasPhaseAdvanced(phase.id) && nextPhaseMap[phase.id] && (
-                  <button
-                    disabled={busyKey === `advance:${phase.id}`}
-                    onClick={async () => {
-                      if (!token || !poolId) return;
-                      setBusyKey(`advance:${phase.id}`);
-                      setError(null);
-                      try {
-                        const result = await manualAdvancePhase(token, poolId, phase.id);
-                        await reload();
-                        alert(`✅ ${t("admin.phasePanel.advanceSuccess")}: ${result.message || ''}`);
-                      } catch (err: any) {
-                        setError(friendlyError(err));
-                      } finally {
-                        setBusyKey(null);
-                      }
-                    }}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: radii.lg,
-                      border: `1px solid ${colors.blue}`,
-                      background: busyKey === `advance:${phase.id}` ? colors.disabled : colors.blue,
-                      color: colors.white,
-                      cursor: busyKey === `advance:${phase.id}` ? "wait" : "pointer",
-                      fontSize: fontSize.md,
-                      fontWeight: fontWeight.semibold,
-                      whiteSpace: "nowrap",
-                      ...(isMobile ? { flex: 1, minHeight: TOUCH_TARGET.minimum } : {})
-                    }}
-                  >
-                    {busyKey === `advance:${phase.id}` ? `⏳ ${t("admin.phasePanel.advancing")}` : `🚀 ${t("admin.phasePanel.advanceButton")}`}
-                  </button>
-                )}
-                {status === "COMPLETED" && hasPhaseAdvanced(phase.id) && (
-                  <span style={{
-                    padding: "6px 12px",
-                    borderRadius: radii.lg,
-                    background: colors.successBg,
-                    border: `1px solid ${colors.success}`,
-                    color: colors.successDark,
-                    fontSize: fontSize.md,
-                    fontWeight: fontWeight.semibold,
-                    whiteSpace: "nowrap",
-                    ...(isMobile ? { flex: 1, textAlign: "center" as const } : {})
-                  }}>
-                    ✓ {t("admin.phasePanel.alreadyAdvanced")}
-                  </span>
-                )}
-                {/* Phase state INDICATOR (ADR-084) — informational, not a button.
-                    Apertura/bloqueo se controla desde el Gestor de fases (admin). */}
                 <span
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
