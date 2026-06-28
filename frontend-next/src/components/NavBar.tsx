@@ -695,7 +695,7 @@ export function NavBar() {
                 borderBottom: "1px solid rgba(255,255,255,0.1)",
               }}
             >
-              <span style={{ fontWeight: fw.bold, fontSize: "1.1rem" }}>{t("menu")}</span>
+              <span style={{ fontWeight: fw.bold, fontSize: "1.1rem", color: "#fff" }}>{t("menu")}</span>
               <button
                 onClick={() => setShowMobileMenu(false)}
                 aria-label={t("closeMenu")}
@@ -731,10 +731,10 @@ export function NavBar() {
                   {profile?.displayName?.charAt(0).toUpperCase() || "U"}
                 </div>
                 <div>
-                  <div style={{ fontWeight: fw.bold, marginBottom: "0.25rem" }}>
+                  <div style={{ fontWeight: fw.bold, marginBottom: "0.25rem", color: "#fff" }}>
                     {profile?.displayName || "Usuario"}
                   </div>
-                  <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>
+                  <div style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.7)" }}>
                     @{profile?.username || "usuario"}
                   </div>
                 </div>
