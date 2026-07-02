@@ -12,8 +12,8 @@
     "whatIsQuiniela": "¿Qué es una Quiniela?",
     "myProfile": "Mi Perfil",
     "adminPanel": "Panel Admin",
-  "matchMonitor": "Monitor de Partidos",
-  "phaseManager": "Gestor de fases",
+    "matchMonitor": "Monitor de Partidos",
+    "phaseManager": "Gestor de fases",
     "viewFeedback": "Ver Feedback",
     "viewAnalytics": "Analítica",
     "salesManagement": "Gestión de Ventas",
@@ -284,13 +284,15 @@
     "ctaNameWorldCup": "Crear mi polla del Mundial gratis"
   },
   "whatsNew": {
-    "title": "Mantén tu sesión abierta",
-    "subtitle": "Ya no tienes que volver a ingresar cada vez",
-    "item1Title": "Marca la casilla al iniciar sesión",
-    "item1Desc": "Cuando inicies sesión, deja activada esta opción y seguirás dentro la próxima vez que entres — sin volver a escribir tu contraseña.",
-    "item1Example": "Mantener sesión abierta en este dispositivo",
-    "item2Title": "Tus dispositivos, bajo control",
-    "item2Desc": "Desde tu perfil puedes ver en qué dispositivos tienes la sesión abierta y cerrarla en los que quieras.",
+    "title": "¡Arrancan las eliminatorias!",
+    "subtitle": "Así funciona de aquí a la final",
+    "item1Title": "Las fases se desbloquean solas",
+    "item1Desc": "A medida que se completan las llaves, los cruces de la siguiente fase se van definiendo y se habilitan para predecir desde el momento en que se deciden — sin esperar a que termine toda la ronda.",
+    "item2Title": "Guíate por las pestañas de cada fase",
+    "item2Fin": "Finalizada",
+    "item2Live": "En juego",
+    "item2Open": "Abierta para predecir",
+    "item2Locked": "Por definirse",
     "dismiss": "¡Entendido!"
   },
   "pool": {

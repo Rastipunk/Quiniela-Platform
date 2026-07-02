@@ -16,21 +16,20 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { getUserProfile } from "@/lib/api/user";
 import { getToken } from "@/lib/auth";
 
-const WHATS_NEW_VERSION = "2026-06-25.1";
+const WHATS_NEW_VERSION = "2026-07-02.1";
 const STORAGE_KEY = "quiniela.whatsNewVersion";
 
 /** Staged rollout: when non-null, ONLY these accounts see the modal.
  *  Set to null to release the announcement to every user.
- *  2026-06-25 (persistent sessions, ADR-081): reviewed in prod by the owner,
- *  now RELEASED to everyone (TEST_EMAILS = null), in lockstep with flipping
- *  PERSISTENT_SESSIONS_ALLOWLIST = "*". Each device sees it once (localStorage)
- *  until WHATS_NEW_EXPIRES_AT. */
+ *  2026-07-02 (progressive knockout opening, ADR-087): released to everyone
+ *  by explicit owner instruction — announces that upcoming phases unlock
+ *  per-matchup as brackets complete + the phase-tab color legend. */
 const TEST_EMAILS: string[] | null = null;
 
 /** Hard cutoff: after this instant the announcement never shows again for
- *  anyone, regardless of dismissal. One-week window so latecomers still catch
- *  it: 2026-07-02 19:00 UTC (2:00 PM Colombia). (Device clock — fine here.) */
-const WHATS_NEW_EXPIRES_AT = new Date("2026-07-02T19:00:00Z").getTime();
+ *  anyone, regardless of dismissal. Runs through the QF kickoff — by then
+ *  the tabs themselves have told the story. (Device clock — fine here.) */
+const WHATS_NEW_EXPIRES_AT = new Date("2026-07-10T00:00:00Z").getTime();
 
 export function WhatsNewModal() {
   const t = useTranslations("whatsNew");
@@ -123,7 +122,7 @@ export function WhatsNewModal() {
         <div style={{ padding: isMobile ? 20 : 26, overflowY: "auto", flex: 1, minHeight: 0 }}>
           {/* Items */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Item 1: keep me signed in — with a checked-checkbox example */}
+            {/* Item 1: phases unlock progressively (ADR-087) */}
             <div
               style={{
                 display: "flex",
@@ -135,7 +134,7 @@ export function WhatsNewModal() {
                 padding: 16,
               }}
             >
-              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>🔓</div>
+              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>⚡</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, color: "#111827", marginBottom: 3 }}>
                   {t("item1Title")}
@@ -143,33 +142,10 @@ export function WhatsNewModal() {
                 <div style={{ fontSize: "0.86rem", color: "#4b5563", lineHeight: 1.5 }}>
                   {t("item1Desc")}
                 </div>
-                {/* Example of the checkbox as it appears at login (checked) */}
-                <div
-                  style={{
-                    marginTop: 10,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background: colors.white,
-                    border: "1px solid #c7d2fe",
-                    borderRadius: 8,
-                    padding: "10px 12px",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked
-                    readOnly
-                    style={{ width: 18, height: 18, minWidth: 18, accentColor: "#4f46e5", cursor: "default" }}
-                  />
-                  <span style={{ fontSize: "0.86rem", color: "#111827", fontWeight: 500 }}>
-                    {t("item1Example")}
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Item 2: manage your devices */}
+            {/* Item 2: phase-tab color legend (matches PoolMatchesTab states) */}
             <div
               style={{
                 display: "flex",
@@ -181,13 +157,37 @@ export function WhatsNewModal() {
                 padding: 16,
               }}
             >
-              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>📱</div>
-              <div>
-                <div style={{ fontWeight: 700, color: "#111827", marginBottom: 3 }}>
+              <div style={{ fontSize: "1.6rem", flexShrink: 0 }}>🗂️</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, color: "#111827", marginBottom: 8 }}>
                   {t("item2Title")}
                 </div>
-                <div style={{ fontSize: "0.86rem", color: "#4b5563", lineHeight: 1.5 }}>
-                  {t("item2Desc")}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {([
+                    { icon: "✅", label: t("item2Fin"), bg: "#fef9c3", fg: "#854d0e" },
+                    { icon: "⚽", label: t("item2Live"), bg: "#dcfce7", fg: "#166534" },
+                    { icon: "✏️", label: t("item2Open"), bg: "#dbeafe", fg: "#1e40af" },
+                    { icon: "🔒", label: t("item2Locked"), bg: "#f3f4f6", fg: "#6b7280" },
+                  ] as const).map((chip) => (
+                    <div
+                      key={chip.label}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        background: chip.bg,
+                        color: chip.fg,
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        width: "fit-content",
+                      }}
+                    >
+                      <span>{chip.icon}</span>
+                      <span>{chip.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

@@ -12,8 +12,8 @@
     "whatIsQuiniela": "What is a Sports Pool?",
     "myProfile": "My Profile",
     "adminPanel": "Admin Panel",
-  "matchMonitor": "Match Monitor",
-  "phaseManager": "Phase Manager",
+    "matchMonitor": "Match Monitor",
+    "phaseManager": "Phase Manager",
     "viewFeedback": "View Feedback",
     "viewAnalytics": "Analytics",
     "salesManagement": "Sales Management",
@@ -284,13 +284,15 @@
     "ctaNameWorldCup": "Create Free Pool"
   },
   "whatsNew": {
-    "title": "Stay signed in",
-    "subtitle": "No more logging in every time",
-    "item1Title": "Check the box when you sign in",
-    "item1Desc": "When you log in, leave this option on and you'll stay signed in next time — no need to type your password again.",
-    "item1Example": "Keep me signed in on this device",
-    "item2Title": "Your devices, in your control",
-    "item2Desc": "From your profile you can see where you're signed in and sign out of any device you want.",
+    "title": "The knockouts are here!",
+    "subtitle": "How it works from now to the final",
+    "item1Title": "Phases unlock on their own",
+    "item1Desc": "As brackets complete, next-round matchups get decided and open for predictions the moment they're set — no waiting for the whole round to finish.",
+    "item2Title": "Follow each phase's tab",
+    "item2Fin": "Finished",
+    "item2Live": "In play",
+    "item2Open": "Open for picks",
+    "item2Locked": "To be decided",
     "dismiss": "Got it!"
   },
   "pool": {

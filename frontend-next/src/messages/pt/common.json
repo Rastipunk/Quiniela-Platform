@@ -12,8 +12,8 @@
     "whatIsQuiniela": "O que é uma Penca?",
     "myProfile": "Meu Perfil",
     "adminPanel": "Painel Admin",
-  "matchMonitor": "Monitor de Partidas",
-  "phaseManager": "Gerenciador de fases",
+    "matchMonitor": "Monitor de Partidas",
+    "phaseManager": "Gerenciador de fases",
     "viewFeedback": "Ver Feedback",
     "viewAnalytics": "Analítica",
     "salesManagement": "Gestão de Vendas",
@@ -284,13 +284,15 @@
     "ctaNameWorldCup": "Criar Penca Grátis"
   },
   "whatsNew": {
-    "title": "Mantenha sua sessão aberta",
-    "subtitle": "Não precisa mais entrar toda vez",
-    "item1Title": "Marque a caixa ao entrar",
-    "item1Desc": "Ao fazer login, deixe esta opção ativada e você continuará conectado na próxima vez — sem digitar a senha de novo.",
-    "item1Example": "Manter sessão aberta neste dispositivo",
-    "item2Title": "Seus dispositivos sob controle",
-    "item2Desc": "No seu perfil você pode ver em quais dispositivos está conectado e encerrar a sessão nos que quiser.",
+    "title": "Chegou o mata-mata!",
+    "subtitle": "Como funciona daqui até a final",
+    "item1Title": "As fases se desbloqueiam sozinhas",
+    "item1Desc": "À medida que as chaves se completam, os confrontos da próxima fase vão sendo definidos e liberados para palpites no momento em que se decidem — sem esperar a rodada inteira terminar.",
+    "item2Title": "Acompanhe as abas de cada fase",
+    "item2Fin": "Finalizada",
+    "item2Live": "Em jogo",
+    "item2Open": "Aberta para palpites",
+    "item2Locked": "A definir",
     "dismiss": "Entendi!"
   },
   "pool": {
