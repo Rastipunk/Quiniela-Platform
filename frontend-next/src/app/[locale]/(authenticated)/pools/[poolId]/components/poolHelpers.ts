@@ -216,6 +216,32 @@ export function derivePhaseState(
   return "OPEN";
 }
 
+/**
+ * Visual state for the phase TAB strip (ADR-087 follow-up):
+ *  - FINALIZED: every match has a final result (✅ green)
+ *  - LIVE:      phase open and at least one match already has a result /
+ *               is in play (⚽ amber — "the round we're playing")
+ *  - OPEN:      predictions open, nothing played yet (✏️ blue, NO padlock —
+ *               progressive phases with some slots unresolved still count)
+ *  - LOCKED:    not yet released / teams unknown (🔒 gray)
+ */
+export type PhaseTabState = "FINALIZED" | "LIVE" | "OPEN" | "LOCKED";
+
+export function derivePhaseTabState(
+  phaseId: string,
+  matches: PhaseStateMatch[],
+  knockoutRelease?: { gateEnabled: boolean; releasedPhases: string[] },
+): PhaseTabState {
+  const st = derivePhaseState(phaseId, matches, knockoutRelease);
+  if (st === "FINALIZED") return "FINALIZED";
+  if (st === "PENDING" || st === "CONFIRMING") return "LOCKED";
+  // OPEN / GROUP_ACTIVE: split by whether the round actually started.
+  const anyStarted = matches.some(
+    (m) => m.phaseId === phaseId && (!!m.result || !!m.isLive),
+  );
+  return anyStarted ? "LIVE" : "OPEN";
+}
+
 export function getPlaceholderName(teamId: string, t: ReturnType<typeof useTranslations<"pool">>): string {
   if (teamId.startsWith("W_")) {
     const ref = teamId.replace("W_", "");

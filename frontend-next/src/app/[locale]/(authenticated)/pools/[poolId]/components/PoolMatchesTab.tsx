@@ -8,7 +8,7 @@ import { StructuralPicksManager } from "@/components/StructuralPicksManager";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { getMatchPicks, getPredictionStatus, setScoringOverride, type MatchPicksResponse, type PoolNotifications } from "@/lib/api";
 import type { PoolOverview, PoolMatchCard, PoolFixturePhase, PhasePickConfigItem } from "@/lib/poolTypes";
-import { formatPhaseName, formatPhaseFullName, isPlaceholder, derivePhaseState } from "./poolHelpers";
+import { formatPhaseName, formatPhaseFullName, isPlaceholder, derivePhaseState, derivePhaseTabState } from "./poolHelpers";
 import { MatchCard } from "./MatchCard";
 import { PendingPicksBanner } from "./PendingPicksBanner";
 import { MatchPicksModal, type MatchPicksModalData } from "./MatchPicksModal";
@@ -308,10 +308,24 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
           border: `1px solid ${colors.borderLight}`,
         }}>
           {phases.map((phase: any) => {
-            const status = getPhaseStatus(phase.id);
             const matchCount = overview.matches.filter((m: any) => m.phaseId === phase.id).length;
             const isActive = activePhase === phase.id;
-            const isLocked = status === "PENDING";
+            // Tab state colors (ADR-087 follow-up): ✅ finalizada / ⚽ en juego /
+            // ✏️ abierta para predecir (sin candado) / 🔒 aún no liberada.
+            const tabState = derivePhaseTabState(
+              phase.id,
+              overview.matches,
+              overview.tournamentInstance.knockoutRelease,
+            );
+            const stateUi =
+              tabState === "FINALIZED"
+                ? { icon: "✅", bg: colors.successBgLight, fg: colors.successAlt }
+                : tabState === "LIVE"
+                  ? { icon: "⚽", bg: colors.warningBg, fg: colors.warningDark }
+                  : tabState === "OPEN"
+                    ? { icon: "✏️", bg: colors.infoBg, fg: colors.infoDark }
+                    : { icon: "🔒", bg: "transparent", fg: colors.textLight };
+            const isLockedTab = tabState === "LOCKED";
 
             return (
               <button
@@ -319,10 +333,10 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                 onClick={() => setActivePhase(phase.id)}
                 style={{
                   padding: "6px 12px",
-                  border: "none",
+                  border: isActive ? `1px solid ${stateUi.fg}` : "1px solid transparent",
                   borderRadius: radii.md,
-                  background: isActive ? colors.white : "transparent",
-                  color: isActive ? colors.brand : isLocked ? colors.textLight : colors.textMuted,
+                  background: isActive ? colors.white : stateUi.bg,
+                  color: isActive ? colors.brand : stateUi.fg,
                   fontWeight: isActive ? 700 : 500,
                   fontSize: 12,
                   cursor: "pointer",
@@ -332,13 +346,13 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
                   gap: 4,
                   transition: "all 0.15s",
                   boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
-                  opacity: isLocked ? 0.6 : 1,
+                  opacity: isLockedTab && !isActive ? 0.65 : 1,
                   flexShrink: 0,
                 }}
               >
+                <span style={{ fontSize: 11 }}>{stateUi.icon}</span>
                 <span>{formatPhaseName(phase.id, t)}</span>
                 <span style={{ fontSize: 10, opacity: 0.7 }}>({matchCount})</span>
-                {isLocked && <span style={{ fontSize: 10 }}>🔒</span>}
               </button>
             );
           })}
