@@ -20,6 +20,7 @@ import {
   type StructuralPickJson,
 } from "../lib/fixture";
 import { scoreMatchPick } from "../lib/scoringAdvanced";
+import { isPlaceholderTeamId } from "../lib/constants";
 import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { rankLeaderboardRows } from "../lib/leaderboardRanking";
 import { computeStructuralBreakdown, summarizeStructural, type StructuralStatsSummary } from "./structuralScoring";
@@ -512,6 +513,21 @@ export async function getPoolOverview(
     ),
   });
 
+  // Denominator for the stats tab's "predicted / predictable" (ADR-088):
+  // matches a member can actually predict — score phases with real teams.
+  // Pools without pickTypesConfig grade every phase as score (legacy).
+  const statsConfigs = pool.pickTypesConfig as PhasePickConfig[] | null;
+  const scoreablePredictableIds = new Set(
+    matches
+      .filter((match) => {
+        const cfg = statsConfigs?.find((p) => p.phaseId === match.phaseId);
+        const isScorePhase = cfg ? Boolean(cfg.requiresScore && cfg.matchPicks) : true;
+        if (!isScorePhase) return false;
+        return !isPlaceholderTeamId(match.homeTeamId) && !isPlaceholderTeamId(match.awayTeamId);
+      })
+      .map((match) => match.id),
+  );
+
   const leaderboardRows = members.map((m) => {
     let points = 0;
     let scoredMatches = 0;
@@ -523,6 +539,14 @@ export async function getPoolOverview(
 
     const byMatch = predsByUserMatch.get(m.userId) ?? new Map<string, PickJson>();
     const breakdown: Array<Record<string, unknown>> = [];
+
+    // Stats-tab aggregates (ADR-088) — tallied inside this SAME cached
+    // scoring pass: zero extra queries, zero extra recomputes.
+    const criteria: Record<string, { hits: number; graded: number }> = {};
+    let exactScorelines = 0;
+    let gradedMaxPoints = 0;
+    let predictedCount = 0;
+    for (const id of scoreablePredictableIds) if (byMatch.has(id)) predictedCount++;
 
     for (const match of matches) {
       const pick = byMatch.get(match.id);
@@ -582,6 +606,19 @@ export async function getPoolOverview(
               if (maxForMatch > 0 && advancedResult.totalPoints >= maxForMatch) perfectCount++;
               else if (advancedResult.totalPoints > 0) partialCount++;
 
+              gradedMaxPoints += maxForMatch;
+              for (const ev of advancedResult.evaluations) {
+                const st = (criteria[ev.matchPickType] ??= { hits: 0, graded: 0 });
+                st.graded += 1;
+                if (ev.matched) st.hits += 1;
+              }
+              if (
+                pick.homeGoals === resultForScoring.homeGoals &&
+                pick.awayGoals === resultForScoring.awayGoals
+              ) {
+                exactScorelines += 1;
+              }
+
               if (leaderboardVerbose) {
                 breakdown.push({
                   matchId: match.id,
@@ -613,6 +650,9 @@ export async function getPoolOverview(
 
       if (legacyMaxPerMatch > 0 && scored.totalPoints >= legacyMaxPerMatch) perfectCount++;
       else if (scored.totalPoints > 0) partialCount++;
+
+      gradedMaxPoints += legacyMaxPerMatch;
+      if (scored.exactScoreBonus > 0) exactScorelines += 1;
 
       if (leaderboardVerbose) {
         breakdown.push({
@@ -684,6 +724,15 @@ export async function getPoolOverview(
       structuralStats,
       pointsByPhase,
       scoredMatches,
+      // Stats tab (ADR-088): per-criterion tallies aligned with THIS pool's
+      // scoring config (a criterion only counts in phases where enabled).
+      stats: {
+        predicted: predictedCount,
+        predictable: scoreablePredictableIds.size,
+        exactScorelines,
+        gradedMaxPoints,
+        criteria,
+      },
       joinedAtUtc: m.joinedAtUtc,
       // Points this member earned in the most recent match(es) — for the
       // standings "puntos ganados / posiciones movidas" columns.
@@ -914,6 +963,7 @@ export async function getPoolOverview(
         structuralStats: r.structuralStats,
         pointsByPhase: r.pointsByPhase,
         scoredMatches: r.scoredMatches,
+        stats: r.stats,
         joinedAtUtc: r.joinedAtUtc,
         // Last-match delta: points gained + positions climbed (+) / dropped (−).
         lastGainPoints: r.lastGainPoints,

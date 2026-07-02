@@ -13,6 +13,7 @@ import { usePoolNotifications, calculateTabBadges, hasUrgentDeadlines } from "@/
 import { ScoringBreakdownModal } from "@/components/ScoringBreakdownModal";
 import { PlayerSummary } from "@/components/PlayerSummary";
 import { PoolPlayersTab } from "./components/PoolPlayersTab";
+import { PoolStatsTab } from "./components/PoolStatsTab";
 import { ShareButtons } from "@/components/ShareButtons";
 import { getPendingMembers } from "@/lib/api";
 import { useLiveRefresh } from "@/hooks/useLiveRefresh";
@@ -44,7 +45,7 @@ import { PoolBrandingTab } from "./components/PoolBrandingTab";
 import { usePublishPoolNav } from "@/components/pool/PoolNav";
 import { colors, radii, fontSize, fontWeight, shadows, spacing, zIndex } from "@/lib/theme";
 
-const VALID_TABS = ["partidos", "leaderboard", "resumen", "reglas", "jugadores", "capacidad", "personalizacion", "admin"] as const;
+const VALID_TABS = ["partidos", "leaderboard", "estadisticas", "resumen", "reglas", "jugadores", "capacidad", "personalizacion", "admin"] as const;
 type PoolTab = typeof VALID_TABS[number];
 
 export default function PoolPage() {
@@ -861,6 +862,10 @@ export default function PoolPage() {
                   hasPhaseAdvanced={hasPhaseAdvanced} nextPhaseMap={nextPhaseMap}
                   notifications={notifications} tabBadges={tabBadges}
                 />
+              )}
+
+              {activeTab === "estadisticas" && (
+                <PoolStatsTab overview={overview} poolId={poolId!} isMobile={isMobile} />
               )}
 
               {activeTab === "resumen" && (

@@ -115,7 +115,8 @@
     "admin": "Administración",
     "players": "Jugadores",
     "capacity": "Capacidad",
-    "branding": "Personalización"
+    "branding": "Personalización",
+    "stats": "Estadísticas"
   },
   "lastMatch": {
     "gained": "Puntos",
@@ -1135,5 +1136,19 @@
     "serverErrorDesc": "Tuvimos un problema temporal en nuestros servidores. Reintenta en unos segundos.",
     "tryAgain": "Reintentar",
     "goHome": "Ir al inicio"
+  },
+  "statsTab": {
+    "title": "Estadísticas",
+    "sortHint": "Toca una columna para ordenar",
+    "colRank": "Posición",
+    "colPlayer": "Jugador",
+    "colPoints": "Puntos",
+    "colPredicted": "Predicciones hechas",
+    "colExact": "Marcadores exactos",
+    "colEffectiveness": "Efectividad (pts logrados vs posibles)",
+    "colPositions": "Posiciones acertadas",
+    "colPerfectGroups": "Grupos perfectos",
+    "colWinners": "Clasificados acertados",
+    "youMark": "(tú)"
   }
 }

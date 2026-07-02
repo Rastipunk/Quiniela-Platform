@@ -115,7 +115,8 @@
     "admin": "Admin",
     "players": "Players",
     "capacity": "Capacity",
-    "branding": "Branding"
+    "branding": "Branding",
+    "stats": "Stats"
   },
   "lastMatch": {
     "gained": "Points",
@@ -1135,5 +1136,19 @@
     "serverErrorDesc": "We had a temporary problem on our servers. Please retry in a few seconds.",
     "tryAgain": "Try again",
     "goHome": "Go to homepage"
+  },
+  "statsTab": {
+    "title": "Stats",
+    "sortHint": "Tap a column to sort",
+    "colRank": "Rank",
+    "colPlayer": "Player",
+    "colPoints": "Points",
+    "colPredicted": "Predictions made",
+    "colExact": "Exact scores",
+    "colEffectiveness": "Effectiveness (pts earned vs possible)",
+    "colPositions": "Positions hit",
+    "colPerfectGroups": "Perfect groups",
+    "colWinners": "Qualifiers hit",
+    "youMark": "(you)"
   }
 }

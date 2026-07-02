@@ -219,6 +219,15 @@ export interface LeaderboardRow {
   /** Tiebreaker 2: matches/groups hit with >0 but < max. */
   partialCount?: number;
   structuralStats?: LeaderboardStructuralStats;
+  /** Stats tab (ADR-088): per-criterion tallies aligned with the pool's
+   *  scoring config — a criterion only counts phases where it's enabled. */
+  stats?: {
+    predicted: number;
+    predictable: number;
+    exactScorelines: number;
+    gradedMaxPoints: number;
+    criteria: Record<string, { hits: number; graded: number }>;
+  };
   pointsByPhase: Record<string, number>;
   scoredMatches: number;
   joinedAtUtc: string;

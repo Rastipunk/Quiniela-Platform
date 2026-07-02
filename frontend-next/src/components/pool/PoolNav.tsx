@@ -33,6 +33,7 @@ import { trackEvent } from "@/lib/analytics";
 export type PoolNavTab =
   | "partidos"
   | "leaderboard"
+  | "estadisticas"
   | "resumen"
   | "reglas"
   | "jugadores"
@@ -43,6 +44,7 @@ export type PoolNavTab =
 const VALID_TABS: ReadonlySet<PoolNavTab> = new Set([
   "partidos",
   "leaderboard",
+  "estadisticas",
   "resumen",
   "reglas",
   "jugadores",
@@ -60,6 +62,7 @@ interface NavItem {
 const PLAYER_ITEMS: ReadonlyArray<NavItem> = [
   { key: "partidos", icon: "⚽", labelKey: "tabs.matches" },
   { key: "leaderboard", icon: "📊", labelKey: "tabs.leaderboard" },
+  { key: "estadisticas", icon: "🎯", labelKey: "tabs.stats" },
   { key: "resumen", icon: "📈", labelKey: "tabs.summary" },
   { key: "reglas", icon: "📋", labelKey: "tabs.rules" },
 ];
