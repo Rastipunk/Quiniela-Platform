@@ -20,6 +20,7 @@ import { calculateAllGroupStandings } from "./instanceAdvancement";
 import { determineQualifiers, resolvePlaceholders } from "./tournamentAdvancement";
 import { extractPhases, extractMatches, extractTeams } from "../lib/fixture";
 import { PLACEHOLDER_TEAM_PREFIXES, FINAL_RESULT_SOURCES } from "../lib/constants";
+import { ensureKnockoutSyncPlumbing } from "./matchSyncInit";
 import { getPoolOverview } from "./poolOverviewService";
 import { calculateMaxPointsForPool } from "../lib/scoringAdvanced";
 import { sendPhaseSummaryEmail } from "../lib/email";
@@ -454,7 +455,10 @@ export async function propagateBracketToInstance(
   });
   if (!instance) throw new ServiceError("NOT_FOUND", 404);
   const overrides = (instance.knockoutBracketOverrides as Record<string, BracketOverride> | null) ?? {};
-  const data = JSON.parse(JSON.stringify(instance.dataJson)) as { matches?: Array<Record<string, unknown>> };
+  const data = JSON.parse(JSON.stringify(instance.dataJson)) as {
+    matches?: Array<Record<string, unknown>>;
+    teams?: Array<{ id: string; apiFootballId?: number }>;
+  };
   if (!Array.isArray(data.matches)) return { updated: false, matches: phase.matches.length, pending: false };
 
   let changed = false;
@@ -473,6 +477,35 @@ export async function propagateBracketToInstance(
       where: { id: instanceId },
       data: { dataJson: data as Prisma.InputJsonValue },
     });
+  }
+
+  // A2/A3 (ADR-086): the released bracket is the single source of truth —
+  // make the sync plumbing mirror it too. Runs even when dataJson didn't
+  // change: sync rows can be missing (or mapping teamIds stale from the
+  // predicted bracket) independently of the template being up to date.
+  const teams = Array.isArray(data.teams) ? data.teams : [];
+  const teamApiId = (id: unknown): number | null =>
+    teams.find((t) => t.id === id)?.apiFootballId ?? null;
+  const fullyResolved = data.matches
+    .filter((m) => m.phaseId === phaseId)
+    .filter((m) => {
+      const r = resolvedById.get(m.id as string);
+      return r && !r.homePending && !r.awayPending;
+    })
+    .map((m) => ({
+      internalMatchId: m.id as string,
+      kickoffUtc: (m.kickoffUtc as string | undefined) ?? null,
+      apiFootballHomeTeamId: teamApiId(m.homeTeamId),
+      apiFootballAwayTeamId: teamApiId(m.awayTeamId),
+    }));
+  if (fullyResolved.length > 0) {
+    const plumbing = await ensureKnockoutSyncPlumbing(instanceId, fullyResolved);
+    if (plumbing.syncRowsCreated > 0 || plumbing.mappingsRepaired > 0) {
+      console.log(
+        `[propagateBracketToInstance] instance=${instanceId} phase=${phaseId} ` +
+          `syncRowsCreated=${plumbing.syncRowsCreated} mappingsRepaired=${plumbing.mappingsRepaired}`,
+      );
+    }
   }
   return { updated: changed, matches: phase.matches.length, pending: false };
 }

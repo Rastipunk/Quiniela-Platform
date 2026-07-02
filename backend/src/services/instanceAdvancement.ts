@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { generateSyntheticFixtureId } from "../lib/syntheticFixtureId";
 import { getNextPhaseId } from "../lib/fixture";
+import { ensureKnockoutSyncPlumbing } from "./matchSyncInit";
 import {
   calculateGroupStandings,
   determineQualifiers,
@@ -440,6 +441,31 @@ async function persistResolvedKnockoutFixtures(
     where: { id: instanceId },
     data: { dataJson: updatedData as Prisma.InputJsonValue },
   });
+
+  // A2/A3 (ADR-086): every resolved fixture must have its MatchSyncState row
+  // (track/stale/live-minute plumbing all start from it) and mapping teamIds
+  // that mirror the canonical bracket — this was the root of the missing R32
+  // sync rows (2026-06-28) and the corrupt predicted-bracket teamIds.
+  const plumbing = await ensureKnockoutSyncPlumbing(
+    instanceId,
+    resolvedMatches.map((rm) => {
+      const match = updatedMatches.find((m) => m.id === rm.matchId);
+      return {
+        internalMatchId: rm.matchId,
+        kickoffUtc: match?.kickoffUtc ?? null,
+        apiFootballHomeTeamId:
+          data.teams.find((t) => t.id === rm.homeTeamId)?.apiFootballId ?? null,
+        apiFootballAwayTeamId:
+          data.teams.find((t) => t.id === rm.awayTeamId)?.apiFootballId ?? null,
+      };
+    }),
+  );
+  if (plumbing.syncRowsCreated > 0 || plumbing.mappingsRepaired > 0) {
+    console.log(
+      `[persistResolvedKnockoutFixtures] instance=${instanceId} ` +
+        `syncRowsCreated=${plumbing.syncRowsCreated} mappingsRepaired=${plumbing.mappingsRepaired}`,
+    );
+  }
 }
 
 /**
