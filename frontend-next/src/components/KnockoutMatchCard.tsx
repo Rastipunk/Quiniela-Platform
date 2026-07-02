@@ -47,6 +47,9 @@ type KnockoutMatchCardProps = {
   token: string;
   isHost: boolean;
   isLocked: boolean;
+  /** ADR-087 progressive knockout: the matchup isn't decided yet (placeholder
+   *  slots) — picks disabled with a hint instead of the deadline label. */
+  pending?: boolean;
   /**
    * Real match result from PoolMatchResult.currentVersion (populated by
    * the scraper). When present we show the score; when missing the
@@ -88,6 +91,7 @@ export function KnockoutMatchCard({
   token,
   isHost,
   isLocked,
+  pending,
   existingResult,
   publishedWinnerId,
   existingPick,
@@ -109,7 +113,7 @@ export function KnockoutMatchCard({
     [kickoffUtc, deadlineMinutesBeforeKickoff],
   );
   const deadlinePassed = useDeadlinePassed(lockTimeMs);
-  const picksLocked = isLocked || deadlinePassed;
+  const picksLocked = isLocked || deadlinePassed || !!pending;
   const lockTimeFormatted = Number.isFinite(lockTimeMs)
     ? formatMatchDateTime(new Date(lockTimeMs).toISOString(), resolveDisplayTimezone(userTimezone), locale)
     : null;
@@ -265,7 +269,21 @@ export function KnockoutMatchCard({
           </div>
 
           {/* Match lock time — visible BEFORE the save fails (ADR-070) */}
-          {lockTimeFormatted && !deadlinePassed && (
+          {pending && (
+            <div style={{
+              fontSize: isMobile ? 13 : 12,
+              fontWeight: 600,
+              color: "#6b7280",
+              background: "#f3f4f6",
+              border: "1px solid #e5e7eb",
+              borderRadius: 6,
+              padding: "0.5rem 0.65rem",
+              marginBottom: "0.75rem",
+            }}>
+              ⏳ {t("knockoutCard.pendingPick")}
+            </div>
+          )}
+          {lockTimeFormatted && !deadlinePassed && !pending && (
             <div style={{
               fontSize: isMobile ? 12 : 11,
               color: colors.textLighter,

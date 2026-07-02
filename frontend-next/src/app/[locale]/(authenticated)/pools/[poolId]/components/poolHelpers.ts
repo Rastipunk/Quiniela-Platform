@@ -204,11 +204,15 @@ export function derivePhaseState(
   const hasPlaceholder = phaseMatches.some(
     (m) => isPlaceholder(m.homeTeam?.id ?? "") || isPlaceholder(m.awayTeam?.id ?? ""),
   );
-  if (hasPlaceholder) return "PENDING";
 
   const gateEnabled = !!knockoutRelease?.gateEnabled;
   const released = knockoutRelease?.releasedPhases?.includes(phaseId) ?? false;
-  if (gateEnabled && !released) return "CONFIRMING";
+  // Progressive opening (ADR-087): a RELEASED phase is OPEN even while some
+  // slots are still placeholders — each match card gates itself (pending
+  // banner / disabled pick) and new matchups light up as feeders finish.
+  if (gateEnabled && released) return "OPEN";
+  if (hasPlaceholder) return "PENDING";
+  if (gateEnabled) return "CONFIRMING";
   return "OPEN";
 }
 
@@ -233,4 +237,39 @@ export function getPlaceholderName(teamId: string, t: ReturnType<typeof useTrans
     return t("placeholders.bestThird", { rank });
   }
   return teamId;
+}
+
+/**
+ * Rich placeholder label (ADR-087): "Ganador de Espana vs Austria" instead of
+ * "Ganador R32_11". W_/L_ placeholders reference a feeder match (m_<ref>);
+ * when that feeder's teams are already real we name them. Falls back to
+ * getPlaceholderName (short ref / group form) while the feeder itself is
+ * still undecided.
+ */
+export function getPlaceholderDisplay(
+  teamId: string,
+  t: ReturnType<typeof useTranslations<"pool">>,
+  tTeams: ReturnType<typeof useTranslations<"teams">>,
+  allMatches:
+    | Array<{
+        id: string;
+        homeTeam?: { id?: string; name?: string | null } | null;
+        awayTeam?: { id?: string; name?: string | null } | null;
+      }>
+    | undefined,
+): string {
+  const prefix = teamId.startsWith("W_") ? "W_" : teamId.startsWith("L_") ? "L_" : null;
+  if (prefix && allMatches) {
+    const ref = teamId.slice(prefix.length);
+    const feeder = allMatches.find((m) => m.id === `m_${ref}`);
+    const home = feeder?.homeTeam;
+    const away = feeder?.awayTeam;
+    if (home?.id && away?.id && !isPlaceholder(home.id) && !isPlaceholder(away.id)) {
+      return t(prefix === "W_" ? "placeholders.winnerOfMatch" : "placeholders.loserOfMatch", {
+        home: getTeamName({ id: home.id, name: home.name, code: (home as { code?: string | null }).code }, tTeams),
+        away: getTeamName({ id: away.id, name: away.name, code: (away as { code?: string | null }).code }, tTeams),
+      });
+    }
+  }
+  return getPlaceholderName(teamId, t);
 }

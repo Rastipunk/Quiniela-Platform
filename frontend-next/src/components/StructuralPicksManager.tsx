@@ -9,6 +9,10 @@ import { colors } from "@/lib/theme";
 import { GroupStandingsCard } from "./GroupStandingsCard";
 import { KnockoutMatchCard } from "./KnockoutMatchCard";
 import {
+  isPlaceholder,
+  getPlaceholderDisplay,
+} from "@/app/[locale]/(authenticated)/pools/[poolId]/components/poolHelpers";
+import {
   upsertStructuralPick,
   getStructuralPick,
   publishStructuralResult,
@@ -257,7 +261,27 @@ export function StructuralPicksManager({
 
   // Extraer grupos y partidos del tournament data
   const groups = useMemo(() => extractGroups(tournamentData, phaseId), [tournamentData, phaseId]);
-  const matches = useMemo(() => extractMatches(tournamentData, phaseId), [tournamentData, phaseId]);
+  const tTeams = useTranslations("teams");
+  const matches = useMemo(() => {
+    const raw = extractMatches(tournamentData, phaseId);
+    // Rich placeholder labels (ADR-087): a W_/L_ slot renders as
+    // "Ganador de X vs Y" (feeder teams) instead of the hardcoded "TBD".
+    const teamById = new Map<string, { id: string; name?: string; code?: string }>(
+      ((tournamentData?.teams ?? []) as Array<{ id: string; name?: string; code?: string }>).map((tm) => [tm.id, tm]),
+    );
+    const allForCtx = ((tournamentData?.matches ?? []) as Array<{ id: string; homeTeamId: string; awayTeamId: string }>).map(
+      (m) => ({
+        id: m.id,
+        homeTeam: teamById.get(m.homeTeamId) ?? { id: m.homeTeamId },
+        awayTeam: teamById.get(m.awayTeamId) ?? { id: m.awayTeamId },
+      }),
+    );
+    const enrich = (team: { id: string; name: string }) =>
+      isPlaceholder(team.id)
+        ? { ...team, name: getPlaceholderDisplay(team.id, t, tTeams, allForCtx) }
+        : team;
+    return raw.map((m) => ({ ...m, homeTeam: enrich(m.homeTeam), awayTeam: enrich(m.awayTeam) }));
+  }, [tournamentData, phaseId, t, tTeams]);
 
   if (loading) {
     return (
@@ -360,6 +384,7 @@ export function StructuralPicksManager({
                 matchId={match.id}
                 homeTeam={match.homeTeam}
                 awayTeam={match.awayTeam}
+                pending={isPlaceholder(match.homeTeam.id) || isPlaceholder(match.awayTeam.id)}
                 kickoffUtc={match.kickoffUtc}
                 token={token}
                 isHost={isHost}
@@ -515,8 +540,10 @@ function extractMatches(tournamentData: any, phaseId: string): Match[] {
 
       return {
         id: m.id,
-        homeTeam: homeTeam || { id: m.homeTeamId, name: "TBD" },
-        awayTeam: awayTeam || { id: m.awayTeamId, name: "TBD" },
+        // Placeholder slots fall through with the raw id; the render memo
+        // replaces the name with the rich "Ganador de X vs Y" label (ADR-087).
+        homeTeam: homeTeam || { id: m.homeTeamId, name: m.homeTeamId },
+        awayTeam: awayTeam || { id: m.awayTeamId, name: m.awayTeamId },
         kickoffUtc: m.kickoffUtc,
       };
     });

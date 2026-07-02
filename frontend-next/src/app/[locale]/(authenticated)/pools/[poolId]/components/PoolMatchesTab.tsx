@@ -475,6 +475,21 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
       {/* Phase-state banner (ADR-084): equipos por definir / confirmando / finalizada */}
       {activePhase && (() => {
         const st = derivePhaseState(activePhase, overview.matches, overview.tournamentInstance.knockoutRelease);
+        // ADR-087 progressive opening: a released phase with matchups still
+        // being decided gets an informative banner (not a blocking one).
+        const hasPendingSlots = overview.matches.some(
+          (m) =>
+            m.phaseId === activePhase &&
+            (isPlaceholder(m.homeTeam?.id ?? "") || isPlaceholder(m.awayTeam?.id ?? "")),
+        );
+        if (st === "OPEN" && hasPendingSlots) {
+          return (
+            <div style={{ marginTop: 12, padding: "14px 16px", background: colors.infoBg, border: `1px solid ${colors.info}`, borderRadius: radii.lg }}>
+              <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4, color: colors.infoDark }}>⚡ {t("phaseRelease.progressiveTitle")}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: colors.textMuted }}>{t("phaseRelease.progressiveMsg")}</div>
+            </div>
+          );
+        }
         if (st !== "PENDING" && st !== "CONFIRMING" && st !== "FINALIZED") return null;
         const c = st === "FINALIZED"
           ? { bg: colors.infoBg, border: colors.info, fg: colors.infoDark, icon: "✅", title: t("phaseRelease.finalizedTitle"), msg: t("phaseRelease.finalizedMsg") }

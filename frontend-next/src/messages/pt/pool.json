@@ -26,13 +26,11 @@
   "scoringDisableReason": "Motivo (opcional)",
   "scoringDisabledBadge": "Excluído",
   "scoringDisabledByHost": "O anfitrião excluiu este jogo da pontuação",
-
   "uclIncidentBanner": {
     "title": "Atualização importante sobre a pontuação",
     "body": "Devido a problemas técnicos na terça-feira, 10 de março, habilitamos a opção para que o anfitrião possa excluir jogos da pontuação. Se você acredita que algum jogo não deveria contar, comunique ao anfitrião do seu pool. Os problemas já foram resolvidos e tudo deve funcionar corretamente daqui em diante.",
     "thanks": "Agradecemos sua paciência e feedback enquanto continuamos melhorando esta plataforma."
   },
-
   "phases": {
     "group_stage": "Grupos",
     "round_of_32": "R32",
@@ -73,7 +71,6 @@
     "sf_leg1": "Semifinais - Ida",
     "sf_leg2": "Semifinais - Volta"
   },
-
   "status": {
     "DRAFT": "Rascunho",
     "ACTIVE": "Em andamento",
@@ -81,13 +78,11 @@
     "ARCHIVED": "Arquivado",
     "UNKNOWN": "Desconhecido"
   },
-
   "phaseStatus": {
     "PENDING": "PENDENTE",
     "ACTIVE": "ATIVA",
     "COMPLETED": "COMPLETA"
   },
-
   "phaseRelease": {
     "active": "Ativa",
     "open": "Aberta",
@@ -99,17 +94,19 @@
     "confirmingTitle": "Confirmando chaveamento",
     "confirmingMsg": "Em alguns minutos abriremos esta fase.",
     "finalizedTitle": "Fase finalizada",
-    "finalizedMsg": "Todos os jogos desta fase já terminaram."
+    "finalizedMsg": "Todos os jogos desta fase já terminaram.",
+    "progressiveTitle": "Fase em andamento · Confrontos a definir",
+    "progressiveMsg": "Os confrontos são liberados automaticamente à medida que os jogos da fase anterior terminam. Você já pode palpitar nos que estão definidos!"
   },
-
   "placeholders": {
     "winner": "Vencedor {ref}",
     "winnerGroup": "Vencedor Grupo {group}",
     "runnerUp": "2º Grupo {group}",
     "loser": "Perdedor {ref}",
-    "bestThird": "{rank}º Melhor 3º"
+    "bestThird": "{rank}º Melhor 3º",
+    "winnerOfMatch": "Vencedor de {home} vs {away}",
+    "loserOfMatch": "Perdedor de {home} vs {away}"
   },
-
   "tabs": {
     "matches": "Jogos",
     "leaderboard": "Classificação",
@@ -120,7 +117,6 @@
     "capacity": "Capacidade",
     "branding": "Personalização"
   },
-
   "lastMatch": {
     "gained": "Pontos",
     "moved": "Posições",
@@ -134,7 +130,6 @@
     "downloadPdf": "Baixar PDF",
     "printedAt": "Gerado em {date}"
   },
-
   "barRace": {
     "title": "Evolução",
     "openButton": "Ver a evolução de {pool}",
@@ -183,14 +178,12 @@
     "cta": "Ir para configurações",
     "ack": "Entendi"
   },
-
   "deadlineBanner": {
     "title": "Precisa dar mais tempo aos jogadores?",
     "body": "Agora você pode ajustar quando os palpites fecham antes de cada jogo. Se o seu bolão fecha cedo demais, reduza isso na Administração para que os jogadores consigam palpitar nas eliminatórias. Ao alterar, todos os jogadores são notificados por e-mail.",
     "cta": "Ir para Administração",
     "ack": "Entendi"
   },
-
   "nav": {
     "openMenu": "Abrir menu de seções",
     "closeMenu": "Fechar menu",
@@ -198,7 +191,6 @@
     "playerGroup": "Seu pool",
     "hostGroup": "Gerenciar"
   },
-
   "branding": {
     "futureOnlyNote": "Emails já enviados não são alterados. Novos envios e reenvios usarão o design e texto atualizados.",
     "saveChanges": "Salvar alterações",
@@ -208,7 +200,6 @@
     "saveError": "Não foi possível salvar. Tente novamente.",
     "noChanges": "Sem alterações pendentes"
   },
-
   "admin": {
     "title": "Painel de Administração do Host",
     "capacity": {
@@ -427,7 +418,6 @@
     "codeInvites": {
       "title": "Convidar com link compartilhável",
       "subtitle": "Gere um link para que os membros entrem sem você precisar digitar cada e-mail.",
-
       "disclaimerTitle": "Antes de gerar um link",
       "disclaimerBullet1": "Qualquer pessoa com o link pode entrar — incluindo gente fora da sua empresa se for encaminhado.",
       "disclaimerBullet2": "Cada pessoa que entra <b>ocupa uma vaga</b> da capacidade da pool ({current}/{max}).",
@@ -435,7 +425,6 @@
       "disclaimerBullet4": "Você pode revogar o link a qualquer momento, mas quem já entrou permanece (use Expulsar se precisar removê-los).",
       "disclaimerBullet5": "<b>Recomendamos convidar por e-mail</b> (acima): um método mais controlado, onde cada convite fica vinculado a uma pessoa específica.",
       "adminLinkLabel": "Ir para Administração",
-
       "activeListTitle": "Links ativos",
       "empty": "Você ainda não criou nenhum link.",
       "usesLabel": "{uses, plural, one {# uso} other {# usos}} de {max}",
@@ -450,7 +439,6 @@
       "revokeConfirm": "Revogar este link? Ele deixará de funcionar, mas quem já entrou permanece.",
       "revokeSuccess": "Link revogado",
       "revokeFailed": "Não conseguimos revogar o link. Tente novamente.",
-
       "generateButton": "Gerar novo link",
       "generating": "Gerando...",
       "formMaxUses": "Vagas disponíveis no link",
@@ -476,7 +464,6 @@
       "loadFailed": "Não conseguimos carregar os links existentes."
     }
   },
-
   "filters": {
     "title": "Filtros",
     "searchPlaceholder": "Buscar por time / grupo / rodada...",
@@ -491,12 +478,10 @@
     "others": "Outros",
     "matchesCount": "{count, plural, one {# jogo} other {# jogos}}"
   },
-
   "pendingPhase": {
     "title": "Fase Pendente - Times a Definir",
     "description": "Os times desta fase serão determinados automaticamente quando os jogos da fase anterior forem completados. Por enquanto, você pode ver os jogos programados com marcadores (ex: \"Vencedor Grupo A\", \"Melhor 3º\")."
   },
-
   "matchCard": {
     "locked": "BLOQUEADO",
     "open": "ABERTO",
@@ -511,7 +496,6 @@
     "viewBreakdown": "Ver detalhamento",
     "viewOtherPicks": "Ver palpites de outros"
   },
-
   "pick": {
     "myPick": "Meu Palpite",
     "noPick": "Sem palpite (prazo encerrado)",
@@ -525,7 +509,6 @@
     "draw": "Empate",
     "awayWin": "Vitória Visitante"
   },
-
   "result": {
     "title": "Resultado",
     "noResultHost": "Publicado automaticamente ao final da partida",
@@ -560,7 +543,6 @@
     "final": "Final",
     "liveTickerLabel": "Atualizando em tempo real"
   },
-
   "leaderboard": {
     "title": "Classificação Geral",
     "pos": "Pos",
@@ -586,19 +568,16 @@
     "tiedShort": "empate",
     "tieAtTopNote": "Há um empate no primeiro lugar. Os jogadores compartilham a posição e o desempate final é decidido pela organização."
   },
-
   "players": {
     "title": "Gestão de Jogadores",
     "searchPlaceholder": "Buscar por nome...",
     "noResults": "Nenhum jogador encontrado"
   },
-
   "pagination": {
     "page": "Página {current} de {total}",
     "prev": "Anterior",
     "next": "Próximo"
   },
-
   "pdf": {
     "download": "PDF",
     "generating": "Gerando…",
@@ -619,7 +598,6 @@
     "footerCounts": "{players} jogadores · {matches} jogos",
     "randomFootnote": "* Placar atribuído ao acaso (Capricho San) — sem palpite antes do prazo"
   },
-
   "matchSort": {
     "byGroups": "Por grupos",
     "byDate": "Por data",
@@ -629,7 +607,6 @@
     "allFinishedHidden": "Todos os jogos desta fase já terminaram ({count}).",
     "noMatches": "Nenhum jogo corresponde aos filtros."
   },
-
   "pendingPicks": {
     "title": "Falta 1 palpite que fecha nas próximas 24 horas",
     "titlePlural": "Faltam {count} palpites que fecham nas próximas 24 horas",
@@ -640,7 +617,6 @@
     "focusChip": "Mostrando apenas seu jogo pendente",
     "showAllMatches": "Ver todos os jogos"
   },
-
   "matchPicks": {
     "title": "Palpites",
     "loading": "Carregando palpites...",
@@ -655,7 +631,6 @@
     "randomPick": "Aleatório",
     "randomPickTooltip": "Este placar foi atribuído ao acaso pelo Capricho San porque o jogador não palpitou antes do prazo"
   },
-
   "predictionStatus": {
     "badge": "{count}/{total} palpites",
     "title": "Status dos palpites",
@@ -672,11 +647,9 @@
     "empty": "Nenhum jogador corresponde ao filtro",
     "filterLabel": "Filtro"
   },
-
   "playerSummary": {
     "title": "Resumo de {name}"
   },
-
   "expulsion": {
     "kickTitle": "Expulsar {name}",
     "kickWarning": "<strong>Expulsão simples:</strong> O jogador será removido do pool mas <strong>poderá solicitar acesso novamente</strong> mais tarde usando um código de convite.",
@@ -703,7 +676,6 @@
     "revertConfirm": "🛑 ESPERE! {name} é o ÚLTIMO jogador ativo. Removê-lo faz o bolão voltar para RASCUNHO e APAGA PERMANENTEMENTE TODOS os palpites de TODOS os jogadores (incluindo fases já jogadas). ISSO NÃO PODE SER DESFEITO.\n\nSó queria mudar a regra de PRORROGAÇÃO? NÃO faça isso. Feche e use o interruptor de Tempo Extra (seção «Medição do Resultado») na Administração: muda essa regra SEM apagar nenhum palpite.\n\nVocê realmente quer apagar TUDO e voltar para rascunho?",
     "revertSuccess": "{name} foi removido. O bolão voltou para rascunho e você pode editar as regras."
   },
-
   "rules": {
     "title": "Regras do Pool",
     "scoring": {
@@ -738,7 +710,6 @@
       "description": "Descrição"
     }
   },
-
   "notifications": {
     "urgentPicks": "Você tem {count} jogo sem palpite que fecha nas próximas horas ({details}).",
     "urgentPicksPlural": "Você tem {count} jogos sem palpite que fecham nas próximas horas ({details}).",
@@ -750,11 +721,9 @@
     "pendingResults": "{count} jogo disputado sem resultado publicado.",
     "pendingResultsPlural": "{count} jogos disputados sem resultado publicado."
   },
-
   "breakdown": {
     "phaseTitle": "Detalhamento - {name}"
   },
-
   "configNoRules": "Nenhuma configuração de regras disponível para este pool.",
   "rulesHeader": "Regras de Pontuação",
   "rulesSubheader": "Este pool tem configuração personalizada por fase. Leia cada fase com atenção para entender como ganhar pontos.",
@@ -766,7 +735,6 @@
   "deadlineInfo": "Prazo",
   "deadlineMinutes": "{minutes} min antes do início",
   "timezoneInfo": "Fuso horário: {timezone}",
-
   "pickTypeNames": {
     "EXACT_SCORE": "Placar exato",
     "GOAL_DIFFERENCE": "Diferença de gols",
@@ -792,7 +760,6 @@
     "perfectGroupBonus": "Bônus por grupo perfeito",
     "advancingTeams": "Times que avançam"
   },
-
   "rulesDisplay": {
     "howToEarnPoints": "Como ganhar pontos",
     "noScores": "Sem placares",
@@ -823,7 +790,6 @@
     "deadlineNote": "Os palpites são bloqueados conforme o prazo configurado para este pool: <strong>{minutes} minutos antes do início de cada jogo</strong>.",
     "tiebreakerNote": "<strong>Em caso de empate de pontos</strong>, a posição é decidida por: (1) maior número de jogos com acerto perfeito, depois (2) maior número de jogos com acerto parcial. Se o empate continuar, os jogadores compartilham a posição e o desempate final é decidido pela organização."
   },
-
   "scoringBreakdown": {
     "defaultTitle": "Detalhamento da Pontuação",
     "loading": "Carregando detalhamento...",
@@ -851,7 +817,6 @@
     "pendingResult": "Aguardando resultado",
     "noHits": "Sem acertos"
   },
-
   "structuralManager": {
     "loading": "Carregando...",
     "error": "Erro",
@@ -874,7 +839,6 @@
     "pickSaved": "Previsão salva com sucesso",
     "errorSaving": "Erro ao salvar"
   },
-
   "playerSummaryView": {
     "loadingSummary": "Carregando resumo...",
     "errorPrefix": "Erro: {message}",
@@ -919,7 +883,6 @@
     "noKnockoutMatches": "Sem partidas nesta fase",
     "noStructuralPhases": "Este bolão ainda não tem fases com palpites estruturais"
   },
-
   "mobileLeaderboard": {
     "leader": "Líder",
     "emptyState": "Ainda não há dados na classificação",
@@ -1016,10 +979,9 @@
     "playButton": "Vamos jogar!",
     "players": "jogadores",
     "byCompany": "por {company}",
-    "tournamentInfo": "{tournament} \u00b7 {count} jogadores"
+    "tournamentInfo": "{tournament} · {count} jogadores"
   },
   "retiredBanner": "Você saiu deste pool. Pode ver os resultados mas não pode fazer palpites.",
-
   "groupStandings": {
     "loading": "Carregando...",
     "errorLoading": "Erro ao carregar dados",
@@ -1095,7 +1057,6 @@
     "overrideSuccess": "Classificação atualizada e notificação enviada",
     "errorOverride": "Erro ao sobrescrever a classificação"
   },
-
   "knockoutCard": {
     "selectTeam": "Selecione um time",
     "pickSaved": "Previsão salva",
@@ -1136,9 +1097,9 @@
     "overridePostAdvanceWarning": "Esta fase já avançou. Alterar o vencedor pode mudar o chaveamento: os confrontos seguintes serão recalculados e todos serão notificados.",
     "overrideSaveBtn": "Salvar e notificar",
     "overrideSuccess": "Vencedor atualizado e notificação enviada",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "pendingPick": "Liberado quando o confronto for definido"
   },
-
   "join": {
     "joining": "Entrando no bolão...",
     "joiningDesc": "Processando seu convite.",

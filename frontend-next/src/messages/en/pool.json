@@ -26,13 +26,11 @@
   "scoringDisableReason": "Reason (optional)",
   "scoringDisabledBadge": "Excluded",
   "scoringDisabledByHost": "The host excluded this match from scoring",
-
   "uclIncidentBanner": {
     "title": "Important scoring update",
     "body": "Due to technical issues on Tuesday, March 10th, we have enabled an option for the host to exclude matches from scoring. If you believe a match shouldn't count, let your pool host know. The issues have been resolved and everything should work correctly from now on.",
     "thanks": "We appreciate your patience and feedback as we continue improving this platform."
   },
-
   "phases": {
     "group_stage": "Groups",
     "round_of_32": "R32",
@@ -73,7 +71,6 @@
     "sf_leg1": "Semi-finals - 1st Leg",
     "sf_leg2": "Semi-finals - 2nd Leg"
   },
-
   "status": {
     "DRAFT": "Draft",
     "ACTIVE": "Active",
@@ -81,13 +78,11 @@
     "ARCHIVED": "Archived",
     "UNKNOWN": "Unknown"
   },
-
   "phaseStatus": {
     "PENDING": "PENDING",
     "ACTIVE": "ACTIVE",
     "COMPLETED": "COMPLETED"
   },
-
   "phaseRelease": {
     "active": "Active",
     "open": "Open",
@@ -99,17 +94,19 @@
     "confirmingTitle": "Confirming brackets",
     "confirmingMsg": "We'll be opening this phase in a few minutes.",
     "finalizedTitle": "Phase finished",
-    "finalizedMsg": "All matches in this phase have finished."
+    "finalizedMsg": "All matches in this phase have finished.",
+    "progressiveTitle": "Phase in progress · Matchups being decided",
+    "progressiveMsg": "Matchups open automatically as the previous round's games finish. You can already predict the ones that are decided!"
   },
-
   "placeholders": {
     "winner": "Winner {ref}",
     "winnerGroup": "Winner Group {group}",
     "runnerUp": "Runner-up Group {group}",
     "loser": "Loser {ref}",
-    "bestThird": "{rank} Best 3rd"
+    "bestThird": "{rank} Best 3rd",
+    "winnerOfMatch": "Winner of {home} vs {away}",
+    "loserOfMatch": "Loser of {home} vs {away}"
   },
-
   "tabs": {
     "matches": "Matches",
     "leaderboard": "Leaderboard",
@@ -120,7 +117,6 @@
     "capacity": "Capacity",
     "branding": "Branding"
   },
-
   "lastMatch": {
     "gained": "Points",
     "moved": "Positions",
@@ -134,7 +130,6 @@
     "downloadPdf": "Download PDF",
     "printedAt": "Generated on {date}"
   },
-
   "barRace": {
     "title": "Evolution",
     "openButton": "See {pool}'s evolution",
@@ -183,14 +178,12 @@
     "cta": "Go to settings",
     "ack": "Got it"
   },
-
   "deadlineBanner": {
     "title": "Need to give your players more time?",
     "body": "You can now adjust when predictions close before each match. If your pool closes too early, lower it from the Admin tab so your players can still predict the knockouts. Changing it emails all players.",
     "cta": "Go to Admin",
     "ack": "Got it"
   },
-
   "nav": {
     "openMenu": "Open sections menu",
     "closeMenu": "Close menu",
@@ -198,7 +191,6 @@
     "playerGroup": "Your pool",
     "hostGroup": "Manage"
   },
-
   "branding": {
     "futureOnlyNote": "Already-sent emails aren't changed. New sends and resends will use the updated design and copy.",
     "saveChanges": "Save changes",
@@ -208,7 +200,6 @@
     "saveError": "We couldn't save your changes. Please try again.",
     "noChanges": "No pending changes"
   },
-
   "admin": {
     "title": "Host Admin Panel",
     "capacity": {
@@ -427,7 +418,6 @@
     "codeInvites": {
       "title": "Share an invite link",
       "subtitle": "Generate a link so members can join without you typing each email.",
-
       "disclaimerTitle": "Before you generate a link",
       "disclaimerBullet1": "Anyone with the link can join — including people outside your company if it gets forwarded.",
       "disclaimerBullet2": "Every joiner <b>takes a slot</b> from the pool's capacity ({current}/{max}).",
@@ -435,7 +425,6 @@
       "disclaimerBullet4": "You can revoke the link anytime, but already-joined members stay (use Expulsar to remove them).",
       "disclaimerBullet5": "<b>We recommend email invites</b> (above): a more controlled method where each invitation is bound to a specific person.",
       "adminLinkLabel": "Go to Administración",
-
       "activeListTitle": "Active links",
       "empty": "You haven't created any links yet.",
       "usesLabel": "{uses, plural, one {# use} other {# uses}} of {max}",
@@ -450,7 +439,6 @@
       "revokeConfirm": "Revoke this link? It will stop working, but already-joined members stay.",
       "revokeSuccess": "Link revoked",
       "revokeFailed": "We couldn't revoke the link. Try again.",
-
       "generateButton": "Generate a new link",
       "generating": "Generating...",
       "formMaxUses": "Available slots for the link",
@@ -476,7 +464,6 @@
       "loadFailed": "We couldn't load the existing links."
     }
   },
-
   "filters": {
     "title": "Filters",
     "searchPlaceholder": "Search by team / group / roundLabel...",
@@ -491,12 +478,10 @@
     "others": "Others",
     "matchesCount": "{count, plural, one {# match} other {# matches}}"
   },
-
   "pendingPhase": {
     "title": "Pending Phase - Teams To Be Determined",
     "description": "The teams in this phase will be determined automatically when the matches in the previous phase are completed. For now, you can see the scheduled matches with placeholders (e.g.: \"Winner Group A\", \"Best 3rd\")."
   },
-
   "matchCard": {
     "locked": "LOCKED",
     "open": "OPEN",
@@ -511,7 +496,6 @@
     "viewBreakdown": "View breakdown",
     "viewOtherPicks": "View others' picks"
   },
-
   "pick": {
     "myPick": "My Pick",
     "noPick": "No pick made (deadline passed)",
@@ -525,7 +509,6 @@
     "draw": "Draw",
     "awayWin": "Away Win"
   },
-
   "result": {
     "title": "Result",
     "noResultHost": "Published automatically when the match ends",
@@ -560,7 +543,6 @@
     "final": "Final",
     "liveTickerLabel": "Updating in real time"
   },
-
   "leaderboard": {
     "title": "Overall Standings",
     "pos": "Pos",
@@ -586,19 +568,16 @@
     "tiedShort": "tie",
     "tieAtTopNote": "There is a tie for first place. The players share the position and the final tiebreak is decided by the organization."
   },
-
   "players": {
     "title": "Player Management",
     "searchPlaceholder": "Search by name...",
     "noResults": "No players found"
   },
-
   "pagination": {
     "page": "Page {current} of {total}",
     "prev": "Previous",
     "next": "Next"
   },
-
   "pdf": {
     "download": "PDF",
     "generating": "Generating…",
@@ -619,7 +598,6 @@
     "footerCounts": "{players} players · {matches} matches",
     "randomFootnote": "* Randomly assigned score (Capricho San) — no pick before the deadline"
   },
-
   "matchSort": {
     "byGroups": "By group",
     "byDate": "By date",
@@ -629,7 +607,6 @@
     "allFinishedHidden": "All matches in this phase are finished ({count}).",
     "noMatches": "No matches match the current filters."
   },
-
   "pendingPicks": {
     "title": "You're missing 1 pick that closes in the next 24 hours",
     "titlePlural": "You're missing {count} picks that close in the next 24 hours",
@@ -640,7 +617,6 @@
     "focusChip": "Showing only your pending match",
     "showAllMatches": "Show all matches"
   },
-
   "matchPicks": {
     "title": "Picks",
     "loading": "Loading picks...",
@@ -655,7 +631,6 @@
     "randomPick": "Random",
     "randomPickTooltip": "This score was randomly assigned by Capricho San because the player didn't pick before the deadline"
   },
-
   "predictionStatus": {
     "badge": "{count}/{total} predictions",
     "title": "Prediction status",
@@ -672,11 +647,9 @@
     "empty": "No players match the filter",
     "filterLabel": "Filter"
   },
-
   "playerSummary": {
     "title": "{name}'s Summary"
   },
-
   "expulsion": {
     "kickTitle": "Kick {name}",
     "kickWarning": "<strong>Simple kick:</strong> The player will be removed from the pool but <strong>will be able to request access again</strong> later using an invite code.",
@@ -703,7 +676,6 @@
     "revertConfirm": "🛑 WAIT! {name} is the LAST active player. Removing them reverts the pool to DRAFT and PERMANENTLY DELETES ALL predictions from ALL players (including already-played phases). THIS CANNOT BE UNDONE.\n\nJust wanted to change the EXTRA TIME rule? DON'T do this. Close this and use the Extra Time switch (the «Result Measurement» section) in Admin: it changes that rule WITHOUT deleting any prediction.\n\nDo you really want to delete EVERYTHING and revert to draft?",
     "revertSuccess": "{name} was removed. The pool reverted to draft and you can now edit the rules."
   },
-
   "rules": {
     "title": "Pool Rules",
     "scoring": {
@@ -738,7 +710,6 @@
       "description": "Description"
     }
   },
-
   "notifications": {
     "urgentPicks": "You have {count} match without a pick closing in the next few hours ({details}).",
     "urgentPicksPlural": "You have {count} matches without picks closing in the next few hours ({details}).",
@@ -750,11 +721,9 @@
     "pendingResults": "{count} played match without a published result.",
     "pendingResultsPlural": "{count} played matches without published results."
   },
-
   "breakdown": {
     "phaseTitle": "Breakdown - {name}"
   },
-
   "configNoRules": "No scoring configuration available for this pool.",
   "rulesHeader": "Scoring Rules",
   "rulesSubheader": "This pool has custom configuration per phase. Read each phase carefully to understand how to earn points.",
@@ -766,7 +735,6 @@
   "deadlineInfo": "Deadline",
   "deadlineMinutes": "{minutes} min before kickoff",
   "timezoneInfo": "Time zone: {timezone}",
-
   "pickTypeNames": {
     "EXACT_SCORE": "Exact score",
     "GOAL_DIFFERENCE": "Goal difference",
@@ -792,7 +760,6 @@
     "perfectGroupBonus": "Perfect group bonus",
     "advancingTeams": "Advancing teams"
   },
-
   "rulesDisplay": {
     "howToEarnPoints": "How to earn points",
     "noScores": "No scores",
@@ -823,7 +790,6 @@
     "deadlineNote": "Picks are locked based on the deadline configured for this pool: <strong>{minutes} minutes before each match starts</strong>.",
     "tiebreakerNote": "<strong>In case of a points tie</strong>, the position is decided by: (1) more matches with a perfect hit, then (2) more matches with a partial hit. If the tie persists, the players share the position and the final tiebreak is decided by the organization."
   },
-
   "scoringBreakdown": {
     "defaultTitle": "Scoring Breakdown",
     "loading": "Loading breakdown...",
@@ -851,7 +817,6 @@
     "pendingResult": "Pending result",
     "noHits": "No hits"
   },
-
   "structuralManager": {
     "loading": "Loading...",
     "error": "Error",
@@ -874,7 +839,6 @@
     "pickSaved": "Prediction saved successfully",
     "errorSaving": "Error saving"
   },
-
   "playerSummaryView": {
     "loadingSummary": "Loading summary...",
     "errorPrefix": "Error: {message}",
@@ -919,7 +883,6 @@
     "noKnockoutMatches": "No matches in this phase",
     "noStructuralPhases": "This pool has no structural-pick phases yet"
   },
-
   "mobileLeaderboard": {
     "leader": "Leader",
     "emptyState": "No leaderboard data yet",
@@ -1016,10 +979,9 @@
     "playButton": "Let's play!",
     "players": "players",
     "byCompany": "by {company}",
-    "tournamentInfo": "{tournament} \u00b7 {count} players"
+    "tournamentInfo": "{tournament} · {count} players"
   },
   "retiredBanner": "You left this pool. You can view results but cannot make predictions.",
-
   "groupStandings": {
     "loading": "Loading...",
     "errorLoading": "Error loading data",
@@ -1095,7 +1057,6 @@
     "overrideSuccess": "Standings updated and notification sent",
     "errorOverride": "Error overriding standings"
   },
-
   "knockoutCard": {
     "selectTeam": "Select a team",
     "pickSaved": "Prediction saved",
@@ -1136,9 +1097,9 @@
     "overridePostAdvanceWarning": "This phase has already advanced. Changing the winner may shift the bracket: downstream matchups will be recomputed and everyone will be notified.",
     "overrideSaveBtn": "Save and notify",
     "overrideSuccess": "Winner updated and notification sent",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "pendingPick": "Opens once the matchup is decided"
   },
-
   "join": {
     "joining": "Joining the pool...",
     "joiningDesc": "Processing your invitation.",

@@ -5,7 +5,7 @@ import { getTeamFlag } from "@/data/teamFlags";
 import { TOUCH_TARGET, mobileInteractiveStyles } from "@/hooks/useIsMobile";
 import { computeLockTimeMs, useDeadlinePassed } from "@/hooks/useDeadlineLock";
 import type { PoolOverview, PoolMatchCard } from "@/lib/poolTypes";
-import { fmtUtc, isPlaceholder, getPlaceholderName, getMatchLabel, getTeamName } from "./poolHelpers";
+import { fmtUtc, isPlaceholder, getPlaceholderDisplay, getMatchLabel, getTeamName } from "./poolHelpers";
 import { colors } from "@/lib/theme";
 import { PickSection } from "./PickComponents";
 import { ResultSection } from "./ResultComponents";
@@ -111,7 +111,7 @@ export function MatchCard({
                   <span style={{ fontSize: 14 }}>🔒</span>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 500, color: colors.textMuted, fontStyle: "italic" }}>
-                  {getPlaceholderName(m.homeTeam.id, t)}
+                  {getPlaceholderDisplay(m.homeTeam.id, t, tTeams, overview.matches)}
                 </span>
               </>
             ) : (
@@ -146,7 +146,7 @@ export function MatchCard({
             {awayIsPlaceholder ? (
               <>
                 <span style={{ fontSize: 14, fontWeight: 500, color: colors.textMuted, fontStyle: "italic" }}>
-                  {getPlaceholderName(m.awayTeam.id, t)}
+                  {getPlaceholderDisplay(m.awayTeam.id, t, tTeams, overview.matches)}
                 </span>
                 <div style={{ width: 32, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: colors.borderLighter, borderRadius: 2, border: "1px solid #ced4da" }}>
                   <span style={{ fontSize: 14 }}>🔒</span>
