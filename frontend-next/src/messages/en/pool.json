@@ -95,7 +95,7 @@
     "confirmingMsg": "We'll be opening this phase in a few minutes.",
     "finalizedTitle": "Phase finished",
     "finalizedMsg": "All matches in this phase have finished.",
-    "progressiveTitle": "Phase in progress · Matchups being decided",
+    "progressiveTitle": "Phase under construction · Matchups being decided",
     "progressiveMsg": "Matchups open automatically as the previous round's games finish. You can already predict the ones that are decided!"
   },
   "placeholders": {

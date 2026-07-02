@@ -95,7 +95,7 @@
     "confirmingMsg": "Em alguns minutos abriremos esta fase.",
     "finalizedTitle": "Fase finalizada",
     "finalizedMsg": "Todos os jogos desta fase já terminaram.",
-    "progressiveTitle": "Fase em andamento · Confrontos a definir",
+    "progressiveTitle": "Fase em construção · Confrontos a definir",
     "progressiveMsg": "Os confrontos são liberados automaticamente à medida que os jogos da fase anterior terminam. Você já pode palpitar nos que estão definidos!"
   },
   "placeholders": {

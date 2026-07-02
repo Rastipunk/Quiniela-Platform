@@ -95,7 +95,7 @@
     "confirmingMsg": "En unos minutos estaremos abriendo esta fase.",
     "finalizedTitle": "Fase finalizada",
     "finalizedMsg": "Todos los partidos de esta fase ya finalizaron.",
-    "progressiveTitle": "Fase en curso · Cruces por definirse",
+    "progressiveTitle": "Fase en construcción · Cruces por definirse",
     "progressiveMsg": "Los cruces se habilitan automáticamente a medida que terminan los partidos de la fase anterior. ¡Ya puedes predecir los que están definidos!"
   },
   "placeholders": {
