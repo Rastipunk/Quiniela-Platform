@@ -1913,7 +1913,14 @@ export interface PhaseSummaryEmailParams {
   memberName: string;
   poolName: string;
   poolId: string;
-  phaseName: string; // the phase that just ended, e.g. "la fase de grupos"
+  phaseName: string; // the previous phase, e.g. "la fase de grupos"
+  /**
+   * Whether `phaseName` actually FINISHED. Progressive releases (ADR-087)
+   * open the next phase MID-ROUND — claiming "Terminó X" then is false
+   * (errata incident, 2026-07-02). When false the intro says the next
+   * phase is opening instead.
+   */
+  phaseEnded?: boolean;
   /** The phase about to open. null/undefined → this was the FINAL (no next phase). */
   nextPhaseName?: string | null;
   rank: number;
@@ -1950,7 +1957,9 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
     es: {
       heading: `📊 Así vas en ${safePool}`,
       greeting: `Hola ${safeMember},`,
-      intro: `Terminó ${escapeHtml(p.phaseName)}. Este es tu resumen:`,
+      intro: p.phaseEnded === false
+        ? `¡Se está abriendo la siguiente fase! Así vas hasta ahora:`
+        : `Terminó ${escapeHtml(p.phaseName)}. Este es tu resumen:`,
       release: (next) => `🟢 ¡Ya puedes hacer tus predicciones de <strong>${next}</strong>! Entra y pronostica antes de que arranquen los partidos.`,
       tournamentOver: "🏆 ¡Esta fue la última fase del torneo! Gracias por jugar hasta el final.",
       podiumTitle: "El podio va así:",
@@ -1971,7 +1980,9 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
     en: {
       heading: `📊 How you're doing in ${safePool}`,
       greeting: `Hi ${safeMember},`,
-      intro: `${escapeHtml(p.phaseName)} is over. Here's your recap:`,
+      intro: p.phaseEnded === false
+        ? `The next phase is opening! Here's how you're doing so far:`
+        : `${escapeHtml(p.phaseName)} is over. Here's your recap:`,
       release: (next) => `🟢 You can now make your predictions for <strong>${next}</strong>! Jump in and pick before the matches kick off.`,
       tournamentOver: "🏆 That was the final phase of the tournament! Thanks for playing to the end.",
       podiumTitle: "The podium so far:",
@@ -1992,7 +2003,9 @@ export function getPhaseSummaryTemplate(p: PhaseSummaryEmailParams): string {
     pt: {
       heading: `📊 Como você vai em ${safePool}`,
       greeting: `Olá ${safeMember},`,
-      intro: `${escapeHtml(p.phaseName)} terminou. Este é o seu resumo:`,
+      intro: p.phaseEnded === false
+        ? `A próxima fase está abrindo! Veja como você está até agora:`
+        : `${escapeHtml(p.phaseName)} terminou. Este é o seu resumo:`,
       release: (next) => `🟢 Você já pode fazer seus palpites de <strong>${next}</strong>! Entre e palpite antes dos jogos começarem.`,
       tournamentOver: "🏆 Essa foi a última fase do torneio! Obrigado por jogar até o fim.",
       podiumTitle: "O pódio está assim:",

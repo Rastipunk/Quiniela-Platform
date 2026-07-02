@@ -189,6 +189,13 @@ export async function sendPhaseSummaryBroadcast(
 
         const countByPhase = new Map<string, number>();
         for (const m of ov.matches) if (m.result) countByPhase.set(m.phaseId, (countByPhase.get(m.phaseId) ?? 0) + 1);
+        // Progressive releases (ADR-087) fire MID-ROUND: only claim the
+        // previous phase "ended" when every one of its matches has a result.
+        const endedPhaseMatches = endedPhase
+          ? ov.matches.filter((m) => m.phaseId === endedPhase.id)
+          : [];
+        const endedPhaseReallyEnded =
+          endedPhaseMatches.length > 0 && endedPhaseMatches.every((m) => !!m.result);
         const totalPossible = calculateMaxPointsForPool(
           (ov.pool.pickTypesConfig ?? []) as PhasePickConfig[],
           countByPhase,
@@ -214,6 +221,7 @@ export async function sendPhaseSummaryBroadcast(
             poolName: ov.pool.name,
             poolId: pool.id,
             phaseName: localizedPhaseName(endedPhase?.id, endedPhase?.name, loc),
+            phaseEnded: endedPhaseReallyEnded,
             nextPhaseName: localizedPhaseName(releasedPhase.id, releasedPhase.name, loc),
             rank: item.row.rank,
             totalMembers: rows.length,
