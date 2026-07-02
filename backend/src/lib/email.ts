@@ -1435,6 +1435,90 @@ export async function sendPhaseSummaryEmail(
 }
 
 // =========================================================================
+// PHASE SUMMARY ERRATA (2026-07-02) — one-time correction broadcast
+// =========================================================================
+
+/**
+ * Errata for the R16-opening summary whose intro wrongly claimed the Round
+ * of 32 had ENDED (progressive release fires mid-round by design; the copy
+ * didn't account for it). Owner-ordered broadcast: clarify it was automated,
+ * the round is still running, and the real news — Round of 16 predictions
+ * are already open, matchups enabling as they get decided.
+ */
+export async function sendPhaseErrataEmail(params: {
+  to: string;
+  userId: string;
+  memberName: string;
+  locale?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const ready = getReadyClient();
+  if (!ready) return { success: false, error: "Email service not configured" };
+  const loc = params.locale || DEFAULT_LOCALE;
+  const name = escapeHtml(params.memberName || "");
+
+  const copy: Record<string, { subject: string; heading: string; body: string }> = {
+    es: {
+      subject: "Fe de erratas: Dieciseisavos aún no termina — pero ya puedes predecir Octavos ✏️",
+      heading: "Una aclaración rápida",
+      body:
+        `<p>Hola ${name},</p>` +
+        `<p>Hace un momento te llegó un <strong>correo automático</strong> de resumen que decía que ` +
+        `«Terminó Dieciseisavos de Final». <strong>Fue un error de redacción del correo</strong>: la ronda de ` +
+        `Dieciseisavos <strong>aún no termina</strong> — quedan partidos por jugar y esos puntos siguen en juego.</p>` +
+        `<p>Lo que sí queríamos contarte (la noticia real 🎉): <strong>los Octavos de Final ya están abiertos</strong>. ` +
+        `Los cruces que ya se definieron se pueden predecir <strong>desde ya</strong>, y los demás se habilitarán ` +
+        `automáticamente apenas se definan.</p>` +
+        `<p>Disculpa la confusión — ¡gracias por jugar!</p>`,
+    },
+    en: {
+      subject: "Correction: the Round of 32 isn't over yet — but Round of 16 picks are open ✏️",
+      heading: "A quick clarification",
+      body:
+        `<p>Hi ${name},</p>` +
+        `<p>You just received an <strong>automated recap email</strong> saying the "Round of 32 is over". ` +
+        `<strong>That wording was wrong</strong>: the Round of 32 is <strong>still being played</strong> — ` +
+        `matches (and points) remain in play.</p>` +
+        `<p>The real news 🎉: <strong>the Round of 16 is already open</strong>. Matchups that are decided can be ` +
+        `predicted <strong>right now</strong>, and the rest will unlock automatically as they get decided.</p>` +
+        `<p>Sorry for the confusion — thanks for playing!</p>`,
+    },
+    pt: {
+      subject: "Errata: a fase de 32 ainda não terminou — mas as Oitavas já estão abertas ✏️",
+      heading: "Um esclarecimento rápido",
+      body:
+        `<p>Olá ${name},</p>` +
+        `<p>Você acabou de receber um <strong>e-mail automático</strong> de resumo dizendo que a fase de 32 ` +
+        `havia terminado. <strong>Foi um erro de redação do e-mail</strong>: a fase de 32 ` +
+        `<strong>ainda não terminou</strong> — há jogos por disputar e esses pontos seguem em jogo.</p>` +
+        `<p>A notícia real 🎉: <strong>as Oitavas de Final já estão abertas</strong>. Os confrontos definidos já ` +
+        `podem ser palpitados <strong>agora mesmo</strong>, e os demais serão liberados automaticamente ` +
+        `assim que forem definidos.</p>` +
+        `<p>Desculpe a confusão — obrigado por jogar!</p>`,
+    },
+  };
+  const c = copy[loc] ?? copy.es!;
+  const html =
+    `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;line-height:1.6;">` +
+    `<h2 style="color:#1E0B84;margin:0 0 16px;">${c.heading}</h2>` +
+    c.body +
+    `<p style="margin-top:24px;color:#6b7280;font-size:13px;">— Picks4All</p>` +
+    `</div>`;
+
+  try {
+    const { error } = await resilientSend(ready, {
+      to: params.to,
+      subject: c.subject,
+      headers: getUnsubscribeHeaders(params.userId),
+      html,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+// =========================================================================
 // DEADLINE CHANGED NOTIFICATION (anti-cheat transparency — ADR-085)
 // =========================================================================
 
