@@ -319,9 +319,9 @@ export function PoolMatchesTab(props: PoolMatchesTabProps) {
             );
             const stateUi =
               tabState === "FINALIZED"
-                ? { icon: "✅", bg: colors.successBgLight, fg: colors.successAlt }
+                ? { icon: "✅", bg: colors.warningBg, fg: colors.warningDark }
                 : tabState === "LIVE"
-                  ? { icon: "⚽", bg: colors.warningBg, fg: colors.warningDark }
+                  ? { icon: "⚽", bg: colors.successBgLight, fg: colors.successAlt }
                   : tabState === "OPEN"
                     ? { icon: "✏️", bg: colors.infoBg, fg: colors.infoDark }
                     : { icon: "🔒", bg: "transparent", fg: colors.textLight };

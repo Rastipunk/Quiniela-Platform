@@ -33,7 +33,7 @@ const PoolLeaderboardTab = dynamic(() => import("./components/PoolLeaderboardTab
 const PoolRulesTab = dynamic(() => import("./components/PoolRulesTab").then(m => ({ default: m.PoolRulesTab })), {
   loading: () => <div style={{ padding: 20, textAlign: "center", color: colors.textLight }}>Loading...</div>,
 });
-import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName, getTournamentName } from "./components/poolHelpers";
+import { norm, isPlaceholder, getPoolStatusBadge, formatPhaseName, getTournamentName, derivePhaseTabState } from "./components/poolHelpers";
 import type { BreakdownModalData, PlayerSummaryModalData } from "./components/poolTypes";
 import { PoolNavDrawer } from "./components/PoolNavDrawer";
 import { ExtraTimeHostBanner } from "./components/ExtraTimeHostBanner";
@@ -270,10 +270,17 @@ export default function PoolPage() {
   }, [overview]);
 
   useEffect(() => {
-    if (phases.length > 0 && !activePhase) {
-      setActivePhase(phases[0].id);
+    if (phases.length > 0 && !activePhase && overview) {
+      // Default tab = the phase being PLAYED (⚽); else the first one open
+      // for predictions; else the first not-yet-finalized; else the first.
+      const stateOf = (phaseId: string) =>
+        derivePhaseTabState(phaseId, overview.matches, overview.tournamentInstance.knockoutRelease);
+      const live = phases.find((p) => stateOf(p.id) === "LIVE");
+      const open = phases.find((p) => stateOf(p.id) === "OPEN");
+      const notDone = phases.find((p) => stateOf(p.id) !== "FINALIZED");
+      setActivePhase((live ?? open ?? notDone ?? phases[0]).id);
     }
-  }, [phases, activePhase, setActivePhase]);
+  }, [phases, activePhase, setActivePhase, overview]);
 
   const getPhaseStatus = (phaseId: string) => {
     if (!overview) return "PENDING";
