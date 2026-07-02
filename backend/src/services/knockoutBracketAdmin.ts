@@ -597,6 +597,16 @@ export async function setKnockoutPhaseReleased(
   instanceId: string,
   phaseId: string,
   released: boolean,
+  opts?: {
+    /**
+     * Fan out the phase-summary email on a fresh release. Defaults TRUE for
+     * the admin panel (explicit human action). The progressive resolver
+     * passes FALSE — owner policy (2026-07-02): opening a phase is SILENT
+     * (the tab states tell the story); the only player email is the
+     * completion recap when a phase ENDS.
+     */
+    broadcast?: boolean;
+  },
 ): Promise<{ phaseId: string; released: boolean; gateEnabled: boolean; poolsPropagated: number; broadcastStarted: boolean }> {
   const instance = await prisma.tournamentInstance.findUnique({
     where: { id: instanceId },
@@ -644,9 +654,12 @@ export async function setKnockoutPhaseReleased(
       return null;
     });
     poolsPropagated = prop?.poolsUpdated ?? 0;
-    // Fan out the phase-summary email in the background (bounded + idempotent).
-    fireAndForget("phaseSummaryBroadcast", sendPhaseSummaryBroadcast(instanceId, phaseId));
-    broadcastStarted = true;
+    // Fan out the phase-summary email in the background (bounded + idempotent)
+    // — unless the caller asked for a silent release (progressive opening).
+    if (opts?.broadcast !== false) {
+      fireAndForget("phaseSummaryBroadcast", sendPhaseSummaryBroadcast(instanceId, phaseId));
+      broadcastStarted = true;
+    }
   }
 
   return { phaseId, released, gateEnabled, poolsPropagated, broadcastStarted };

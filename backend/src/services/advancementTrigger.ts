@@ -314,7 +314,7 @@ export function cancelPendingAdvancement(poolId: string, phaseId: string): boole
   return false;
 }
 
-async function sendPhaseCompletionNotifications(
+export async function sendPhaseCompletionNotifications(
   poolId: string,
   completedPhaseId: string,
   poolName: string,

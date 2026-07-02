@@ -5355,7 +5355,7 @@ human checkpoint for the rare, high-stakes write.
 **Consequences:**
 - ✅ round_of_16 released same day with 5/8 matchups resolved (Paraguay–Francia, Canadá–Marruecos, Brasil–Noruega, México–Inglaterra, USA–Bélgica — matching external sources); 465/465 pools verified (teams + kickoffs), 5 sync rows + 5 mappings created; the remaining slots resolve automatically as R32 finishes.
 - ✅ QF/SF/finals (incl. m_3RD) open automatically with zero manual steps; every resolved fixture is born wired to the scores pipeline.
-- ⚠️ The auto-release broadcast email fires unattended from now on (owner-approved automation; template was owner-reviewed at the R32 release).
+- ⚠️ AMENDED same day (owner policy after the errata incident): the auto-release is **SILENT** — no phase-summary broadcast on opening (`setKnockoutPhaseReleased(..., {broadcast:false})`); the tab states (✅/⚽/✏️/🔒) announce the opening. The ONLY player email of the progressive flow is the **completion recap** (`sendPhaseCompletionNotifications`, "Terminó la fase + tu resumen + top 10"), fired instance-level by the resolver when every match of a phase reaches a FINAL result — once per (instance, phase) via the `PHASE_COMPLETION_RECAP_SENT` audit marker; the FINAL phase sends none (pool-completion emails own the tournament end). The legacy per-pool completion email stays blocked by the release guard, so exactly one recap per member.
 - ⚠️ Manual catch-up scripts must AWAIT `sendPhaseSummaryBroadcast` (fire-and-forget dies with an ephemeral process — bit us once; in-server hooks are unaffected).
 
 ---
