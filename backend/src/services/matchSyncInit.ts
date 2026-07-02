@@ -20,6 +20,7 @@
 
 import { prisma } from "../db";
 import { MATCH_SYNC } from "../lib/constants";
+import { generateSyntheticFixtureId } from "../lib/syntheticFixtureId";
 
 export interface ResolvedFixtureSync {
   internalMatchId: string;
@@ -82,7 +83,12 @@ export async function ensureKnockoutSyncPlumbing(
       });
     }
 
-    // A2 — mapping teamIds must mirror the canonical bracket.
+    // A2 — mapping must exist (the scraper tracking + live polling both
+    // start from `MatchExternalMapping`; without it the match is invisible
+    // to the whole scores pipeline) and its teamIds must mirror the
+    // canonical bracket. Created with the deterministic synthetic fixture
+    // id — same scheme the legacy advancement path used, so re-running is
+    // idempotent and the id round-trips through /track → /scores/live.
     const mapping = await prisma.matchExternalMapping.findUnique({
       where: {
         tournamentInstanceId_internalMatchId: {
@@ -92,10 +98,20 @@ export async function ensureKnockoutSyncPlumbing(
       },
       select: { id: true, apiFootballHomeTeamId: true, apiFootballAwayTeamId: true },
     });
-    if (
-      mapping &&
-      (mapping.apiFootballHomeTeamId !== f.apiFootballHomeTeamId ||
-        mapping.apiFootballAwayTeamId !== f.apiFootballAwayTeamId)
+    if (!mapping) {
+      await prisma.matchExternalMapping.create({
+        data: {
+          tournamentInstanceId,
+          internalMatchId: f.internalMatchId,
+          apiFootballFixtureId: generateSyntheticFixtureId(tournamentInstanceId, f.internalMatchId),
+          apiFootballHomeTeamId: f.apiFootballHomeTeamId,
+          apiFootballAwayTeamId: f.apiFootballAwayTeamId,
+        },
+      });
+      mappingsRepaired++;
+    } else if (
+      mapping.apiFootballHomeTeamId !== f.apiFootballHomeTeamId ||
+      mapping.apiFootballAwayTeamId !== f.apiFootballAwayTeamId
     ) {
       await prisma.matchExternalMapping.update({
         where: { id: mapping.id },
