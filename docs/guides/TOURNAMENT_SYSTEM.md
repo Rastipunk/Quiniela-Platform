@@ -509,3 +509,18 @@ When `smartSyncJob` finds a finished fixture:
 4. New `PoolMatchResultVersion` created with source `HOST_OVERRIDE`.
 5. Email notification sent to ALL active pool members informing them of the override and its reason.
 6. SmartSync will not overwrite `HOST_OVERRIDE` results.
+
+## Progressive knockout opening (ADR-087)
+
+From `round_of_16` on, phases open PER MATCH: when a knockout match reaches a
+FINAL result (scraper finalization or admin master override),
+`progressiveKnockout.onKnockoutMatchFinalized` resolves the dependent W_/L_
+slot(s) at instance level (majority-of-FINAL-results winner via
+`lib/knockoutOutcome.ts`), propagates to every pool's `fixtureSnapshot`,
+creates the scores plumbing (`MatchExternalMapping` + `MatchSyncState` via
+`ensureKnockoutSyncPlumbing`), and auto-releases the phase (ADR-084 gate +
+one-time phase-summary broadcast) on its first resolved match. Unresolved
+matchups stay placeholder and are un-pickable per match (`MATCH_PENDING`,
+score AND structural). group_stage → round_of_32 keeps the manual admin
+review (best-thirds allocation risk). The third-place match (`m_3RD`) lives
+inside the `finals` phase and resolves off `L_SF_1`/`L_SF_2` automatically.

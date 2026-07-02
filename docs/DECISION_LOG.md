@@ -5338,4 +5338,26 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-087: Progressive per-match knockout opening + third-place coverage
+
+**Date:** 2026-07-02 | **Status:** Accepted (live: round_of_16 released progressively same day)
+
+**Context:** From round_of_16 on, the bracket is fully deterministic — every slot is "winner (W_) / loser (L_) of match X" — yet the advancement machinery only acted when an ENTIRE phase finished (`checkAndTriggerAdvancement` requires phase completeness; `advanceKnockoutPhase` throws on partials), and the ADR-084 release was manual. Players had to wait days after the first matchups were known. The owner requested automatic, coherent per-match opening with guaranteed scores-sync wiring, external verification of all remaining kickoff dates/times, and a "tercero y cuarto" phase. Diagnosis (PROGRESSIVE-KNOCKOUT-PLAN-2026-07-02.md, everything verified against prod/code/≥2 external sources): all 16 remaining kickoffs in `instance.dataJson` matched Yahoo/CBS/NBC/SI/FIFA exactly; the third-place match ALREADY existed (`m_3RD`, `L_SF_1 vs L_SF_2`, inside the `finals` phase) with full coverage — all 465 pools' `finals` config grades both matches, `resolveKnockoutPlaceholders` handles `L_`, and FIFA 2026 regulations give the bronze final extra time like any knockout, so the shared phase config is semantically right. Two real gaps: estratega structural picks had NO placeholder validation (UI showed hardcoded "TBD" and let players pick it), and `fixtureTrackingJob`'s local placeholder check was missing `L_` (an unresolved m_3RD would have been sent to the scraper as team "L_SF_1").
+
+**Decision:**
+- **Preview chains knockout resolution.** `getKnockoutBracketPreview` derives each finished knockout match's winner/loser and feeds `resolveKnockoutPlaceholders` walking phases in order, so W_/L_ slots resolve the moment their feeder ends. Winner side = **strict majority of FINAL results across ACTIVE pools** (`lib/knockoutOutcome.ts`, pure) — a pool-specific HOST_OVERRIDE (seen in prod: one test pool 2-2/pens vs 464× 2-1) can never steer the instance bracket. Admin overrides keep precedence; undecidable (tie, no pens, or no majority) stays placeholder.
+- **`progressiveKnockout.onKnockoutMatchFinalized`** (hooked at scraper finalization + admin master override): first resolved match of a phase → full `setKnockoutPhaseReleased` flow (bake bracket into instance + pools, open the ADR-084 gate, one-time phase-summary broadcast); later matches → `propagateBracketToInstance/Pools` (idempotent slot fill). Per-instance serialization; admin alert on failure. Gate-enabled instances only; group→R32 keeps the ADR-084 manual review (best-thirds risk); legacy per-pool advancement stays for gate-off instances and is doubly blocked on released phases.
+- **`ensureKnockoutSyncPlumbing` now UPSERTS mappings** (creates with deterministic synthetic fixture id when missing — post-release verification caught the 5 resolved R16 matches with sync rows but NO `MatchExternalMapping`, invisible to the whole scores pipeline) plus the `MatchSyncState` row per resolved fixture.
+- **Per-match prediction gating everywhere:** score picks already had `MATCH_PENDING`; structural picks now mirror it (reject placeholder matches AND a winnerId not in the match). Frontend: `derivePhaseState` treats a RELEASED phase as OPEN with per-card gating; placeholders render as "Ganador de {home} vs {away}" / "Perdedor de Semifinal X" (`getPlaceholderDisplay`, es/en/pt); estratega pick buttons disable with a hint on pending matchups; informative "cruces por definirse" banner.
+- **Third place:** NOT split into its own phase — it already flows end-to-end inside `finals`; splitting would mutate 465 ACTIVE pools' `pickTypesConfig` (invariant 3) and touch ~15 hardcoded phase lists mid-tournament for zero player value.
+- **Placeholder checks unified** to canonical `isPlaceholderTeamId` (constants.ts) — fixes the `L_` gap in fixture tracking.
+
+**Consequences:**
+- ✅ round_of_16 released same day with 5/8 matchups resolved (Paraguay–Francia, Canadá–Marruecos, Brasil–Noruega, México–Inglaterra, USA–Bélgica — matching external sources); 465/465 pools verified (teams + kickoffs), 5 sync rows + 5 mappings created; the remaining slots resolve automatically as R32 finishes.
+- ✅ QF/SF/finals (incl. m_3RD) open automatically with zero manual steps; every resolved fixture is born wired to the scores pipeline.
+- ⚠️ The auto-release broadcast email fires unattended from now on (owner-approved automation; template was owner-reviewed at the R32 release).
+- ⚠️ Manual catch-up scripts must AWAIT `sendPhaseSummaryBroadcast` (fire-and-forget dies with an ephemeral process — bit us once; in-server hooks are unaffected).
+
+---
+
 **END OF DOCUMENT**
