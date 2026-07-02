@@ -14,50 +14,11 @@ import type { TimelineEvent } from "./client";
 
 const ET_STATUSES = new Set(["ET", "BT", "P", "PEN", "AET"]);
 
-/** Terminal API-Football status codes (match is over and won't resume). */
-const TERMINAL_STATUSES = new Set(["FT", "AET", "PEN", "ABD"]);
-
-/**
- * How many independent sources confirmed the terminal (match-over)
- * milestone — used to gate finalization (MIN_CONFIRMATIONS_TO_FINALIZE).
- *
- * Takes the STRONGER of two confirmation signals:
- *  - `confirmedBy.length` of the timeline's terminal milestone: the sources
- *    that confirmed the terminal phase AT THE INSTANT it was first reached.
- *    The scraper's timeline is append-only and never rewritten, so this
- *    freezes whichever (possibly few) sources crossed to FT in that exact
- *    consensus cycle — it can badly undercount the real confirmation level.
- *  - `sourcesAgreeing`: sources agreeing on the (terminal) score in the
- *    LATEST live cycle.
- *
- * Why the max: preferring the frozen snapshot alone deadlocked USA–Paraguay
- * on 2026-06-13 — 4 sources agreed live on the FT 4-1, but the frozen FT
- * milestone had only 2 (onefootball, livescore crossed to FINISHED first),
- * so 2 < 3 → grace period never armed → never finalized, sitting as
- * SCRAPER_PROVISIONAL for 17h with no automatic fallback to recover it.
- * Taking the max is safe: this is only consulted once the consensus status
- * is already terminal, so a high live agreement on that terminal score is a
- * legitimate confirmation of the result. When the timeline is absent or has
- * no terminal entry (legacy scraper), it degrades to `sourcesAgreeing`.
- *
- * @param timeline          the match timeline (may be undefined/empty)
- * @param sourcesAgreeing   live consensus count for the terminal score
- */
-export function terminalConfirmationCount(
-  timeline: TimelineEvent[] | undefined,
-  sourcesAgreeing: number,
-): number {
-  if (timeline && timeline.length > 0) {
-    // Last terminal milestone in the (monotonic, oldest→newest) timeline.
-    for (let i = timeline.length - 1; i >= 0; i--) {
-      const entry = timeline[i];
-      if (entry && TERMINAL_STATUSES.has(entry.status)) {
-        return Math.max(entry.confirmedBy.length, sourcesAgreeing);
-      }
-    }
-  }
-  return sourcesAgreeing;
-}
+// NOTE (ADR-086): `terminalConfirmationCount` used to live here. It counted
+// SCORE agreement (`sourcesAgreeing`) as FINISH confirmation via Math.max,
+// which auto-finalized the false Argentina–Argelia FT (2026-06-17). The
+// finalization decision now lives in finalizationGate.ts and trusts the
+// scraper's consensus `confidence` — source counting is the scraper's job.
 
 export interface NinetyMinuteScore {
   homeGoals90: number | null;

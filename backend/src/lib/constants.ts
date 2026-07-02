@@ -67,15 +67,22 @@ export const SCORES = {
    */
   FALLBACK_DELAY_MS: envInt("SCORES_FALLBACK_DELAY_MS", 30 * 60_000), // 30 min
   /**
-   * Minimum independent sources that must confirm the terminal milestone
-   * (timeline confirmedBy[]) before the scraper finalizes a result to
-   * API_CONFIRMED. Below this we keep polling; if the threshold is never
-   * reached the ONLY backstops are the stale-detector alert and a manual
-   * host override (no automatic fallback — see banner above). Falls back
-   * to live sourcesAgreeing when the terminal milestone has no timeline
-   * entry.
+   * Anti-deadlock SLOW path of the finalization gate (ADR-086): a terminal
+   * status with confidence MEDIUM (below the HIGH fast path) may still
+   * finalize once this much time has passed since the scheduled kickoff —
+   * with a one-time R9 admin alert so a human glances at it. Sits between
+   * the estimated end of an ET+pens match (~150 min) and the stale alert
+   * (STALE_THRESHOLD_MS, 210 min).
    */
-  MIN_CONFIRMATIONS_TO_FINALIZE: envInt("SCORES_MIN_CONFIRMATIONS", 3),
+  SLOW_PATH_AFTER_MS: envInt("SCORES_SLOW_PATH_AFTER_MS", 150 * 60_000), // 150 min
+  /**
+   * R14 (ADR-086): a tracked match whose kickoff passed this long ago but
+   * that the live feed hasn't reported (or only below MIN_CONFIDENCE, so
+   * nothing was processed) is "feed-silent" → one-time admin alert.
+   */
+  FEED_SILENT_AFTER_KICKOFF_MS: envInt("SCORES_FEED_SILENT_AFTER_KICKOFF_MS", 15 * 60_000),
+  /** R14: how stale lastCheckedAtUtc must be to count as silent. */
+  FEED_SILENT_STALE_MS: envInt("SCORES_FEED_SILENT_STALE_MS", 10 * 60_000),
   /**
    * Minimum match-minute before a FT/AET/PEN terminal status may finalize.
    * Guards against a single rogue source reporting a premature terminal

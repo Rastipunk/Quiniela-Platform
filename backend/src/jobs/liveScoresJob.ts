@@ -13,10 +13,18 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { getScoresServiceClient, LiveScore } from "../services/scoresService";
 import { recordHeartbeat } from "../lib/cronHeartbeat";
+import { deriveNinetyMinuteScore } from "../services/scoresService/timeline";
 import {
-  deriveNinetyMinuteScore,
-  terminalConfirmationCount,
-} from "../services/scoresService/timeline";
+  decideFinalization,
+  isFinalizedButFeedLive,
+  detectIncoherences,
+} from "../services/scoresService/finalizationGate";
+import {
+  alertSlowPathFinalize,
+  alertFinalizedButFeedLive,
+  alertKickoffDrift,
+  alertIncoherences,
+} from "../services/scoresService/gateAlerts";
 import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification } from "../lib/email";
 import { fireAndForget } from "../lib/asyncHelpers";
@@ -25,7 +33,10 @@ import { SCORES } from "../lib/constants";
 import { checkAndTriggerAdvancement } from "../services/advancementTrigger";
 import { transitionToCompleted } from "../services/poolStateMachine";
 import { autoPublishStructuralResults } from "../services/structuralAutoPublish";
-import { detectAndAlertStaleMatches } from "../services/scoresService/staleDetector";
+import {
+  detectAndAlertStaleMatches,
+  detectAndAlertSilentMatches,
+} from "../services/scoresService/staleDetector";
 
 // ============================================================================
 // Configuration
@@ -191,16 +202,62 @@ async function processLiveScore(
     },
   });
 
-  // Real-time drift detection: compare actualKickoffUtc (from sources) with our registered kickoff
+  // R13 (ADR-086): kickoff drift — sources observe a kickoff far from our
+  // registered one (likely a reschedule). One-time admin alert + warn.
   if (score.actualKickoffUtc && entry.kickoffUtc) {
     const ours = new Date(entry.kickoffUtc).getTime();
     const observed = new Date(score.actualKickoffUtc).getTime();
     const driftMs = Math.abs(observed - ours);
-    // Alert if drift > 30 minutes — likely a reschedule
     if (driftMs > 30 * 60_000) {
       console.warn(
         `[LiveScoresJob] Kickoff drift detected for ${entry.internalMatchId}: ` +
           `ours=${entry.kickoffUtc} observed=${score.actualKickoffUtc} diff=${Math.round(driftMs / 60_000)}min`
+      );
+      fireAndForget(
+        "LiveScoresJob:kickoff-drift-alert",
+        alertKickoffDrift(
+          entry,
+          entry.kickoffUtc,
+          score.actualKickoffUtc,
+          Math.round(driftMs / 60_000),
+        ),
+      );
+    }
+  }
+
+  // R11 (ADR-086): lifecycle says COMPLETED but the feed reports the match
+  // live again — the class of both false-terminal incidents (Argentina,
+  // Inglaterra–Congo). ALERT-ONLY: an already-published result is human
+  // territory; nothing is reverted automatically.
+  if (isFinalizedButFeedLive(syncState?.syncStatus, score.status)) {
+    fireAndForget(
+      "LiveScoresJob:finalized-but-live-alert",
+      alertFinalizedButFeedLive(entry, score),
+    );
+  }
+
+  // R2–R6 class (ADR-086): feed incoherences vs the previous payload —
+  // score regression (may be a legit VAR call), penalties on a non-tied
+  // score, goals90 above the full score. One alert per match+type.
+  {
+    const prevPayload = syncState?.lastLiveDataJson as
+      | { homeGoals?: number; awayGoals?: number }
+      | null;
+    const prev =
+      prevPayload &&
+      typeof prevPayload.homeGoals === "number" &&
+      typeof prevPayload.awayGoals === "number"
+        ? { homeGoals: prevPayload.homeGoals, awayGoals: prevPayload.awayGoals }
+        : null;
+    const incoherences = detectIncoherences({
+      prev,
+      score,
+      goals90: deriveNinetyMinuteScore(score.timeline, score.status),
+    });
+    if (incoherences.length > 0) {
+      fireAndForget(
+        "LiveScoresJob:incoherence-alert",
+        alertIncoherences(entry, score, incoherences),
       );
     }
   }
@@ -212,39 +269,29 @@ async function processLiveScore(
   let shouldFinalize = false;
 
   if (isFinished) {
-    // Require enough independent sources to have confirmed the terminal
-    // milestone before we treat the match as finalizable. Below the
-    // threshold we keep polling. ⚠️ If it never reaches the threshold the
-    // ONLY backstops are the stale-detector ALERT (email at 210 min) and a
-    // manual HOST_OVERRIDE — there is NO automatic fallback: API-Football
-    // is no longer used and smartSync is inert (isAvailable() === false).
-    const confirmations = terminalConfirmationCount(
-      score.timeline,
-      score.sourcesAgreeing,
-    );
-    // Plausibility guard (Argentina–Argelia, 2026-06-17): one rogue source
-    // reported FT at minute 17 while 3 sources trivially agreed on the
-    // still-0-0 score, so terminalConfirmationCount's max() saw 3 and
-    // finalized a live match. A real terminal status only happens late —
-    // require the match to have plausibly run before finalizing. ABD is
-    // exempt (legitimate early abandonment). Use the feed's elapsed when
-    // present, else wall-clock since scheduled kickoff (unspoofable).
+    // Finalization gate (ADR-086): trust the scraper's consensus
+    // `confidence` + our plausibility floor — NEVER count sources here
+    // (the scraper's terminal gate owns that since a9c85d2). FAST =
+    // plausible + HIGH/VERY_HIGH; SLOW = plausible + MEDIUM + long past
+    // kickoff (anti-deadlock, R9 alert on finalize); WAIT = hold in
+    // AWAITING_FINISH. ⚠️ If it never leaves WAIT the ONLY backstops are
+    // the stale-detector ALERT (210 min) and a manual HOST_OVERRIDE —
+    // there is NO automatic fallback (API-Football is dead).
     const minutesSinceKickoff =
       (now.getTime() - new Date(entry.kickoffUtc).getTime()) / 60_000;
-    const elapsedPlausible =
-      score.status === "ABD" ||
-      (score.elapsed != null
-        ? score.elapsed >= SCORES.MIN_ELAPSED_FOR_TERMINAL
-        : minutesSinceKickoff >= SCORES.MIN_ELAPSED_FOR_TERMINAL);
-    const enoughConfirmations =
-      confirmations >= SCORES.MIN_CONFIRMATIONS_TO_FINALIZE && elapsedPlausible;
+    const decision = decideFinalization({
+      status: score.status,
+      elapsed: score.elapsed,
+      minutesSinceKickoff,
+      confidence: score.confidence,
+    });
 
-    if (!enoughConfirmations) {
-      // Terminal status but not yet enough confirmations (or implausibly
-      // early) — hold in AWAITING_FINISH without arming the grace period.
+    if (decision === "WAIT") {
+      // Terminal status but not trustworthy yet (weak confidence or
+      // implausibly early) — hold without arming the grace period.
       newSyncStatus = "AWAITING_FINISH";
     } else if (!syncState?.graceEndUtc) {
-      // FT detected (and confirmed) for the first time → start grace period
+      // Trusted terminal detected for the first time → start grace period
       newSyncStatus = "AWAITING_FINISH";
       newGraceEndUtc = new Date(now.getTime() + SCORES.GRACE_PERIOD_MS);
     } else if (now.getTime() >= syncState.graceEndUtc.getTime()) {
@@ -252,6 +299,13 @@ async function processLiveScore(
       newSyncStatus = "COMPLETED";
       newCompletedAtUtc = now;
       shouldFinalize = true;
+      if (decision === "SLOW") {
+        // R9: finalized on the weaker path — a human should glance at it.
+        fireAndForget(
+          "LiveScoresJob:slow-path-alert",
+          alertSlowPathFinalize(entry, score, minutesSinceKickoff),
+        );
+      }
     } else {
       // Still within grace period — keep polling
       newSyncStatus = "AWAITING_FINISH";
@@ -701,6 +755,16 @@ async function pollLiveScores(): Promise<void> {
       detectAndAlertStaleMatches().then((n) => {
         if (n > 0) {
           console.warn(`[LiveScoresJob] Stale-match alert sent for ${n} match(es)`);
+        }
+      }),
+    );
+    // R14 (ADR-086): tracked matches whose kickoff passed but the feed has
+    // been silent (absent or below MIN_CONFIDENCE) — same cadence.
+    fireAndForget(
+      "LiveScoresJob:silent-scan",
+      detectAndAlertSilentMatches().then((n) => {
+        if (n > 0) {
+          console.warn(`[LiveScoresJob] Feed-silent alert sent for ${n} match(es)`);
         }
       }),
     );

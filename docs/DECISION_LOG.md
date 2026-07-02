@@ -5318,4 +5318,24 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-086: Confidence-based finalization gate + feed-health alerts + knockout sync bootstrap
+
+**Date:** 2026-07-02 | **Status:** Accepted (post-mortem hardening, Inglaterra–Congo 2026-07-01)
+
+**Context:** Two false-terminal incidents from the same root: a single rogue source (365scores) flipped a live match to FT and the scraper's monotonic store froze it — Argentina–Argelia (2026-06-17, minute 17: the backend **auto-finalized** a false result to 409 pools because `terminalConfirmationCount` counted SCORE agreement via `Math.max(confirmedBy, sourcesAgreeing)` as FINISH confirmation) and Inglaterra–Congo (2026-07-01, minute 47: the emergency guard `MIN_ELAPSED_FOR_TERMINAL=80` held, but the display froze at "FINISHED 0-1" for 52 min while England won 2-1; recovery was a manual master override). The scraper deployed its own terminal gate (≥2 sources relative minimum, minute ≥80, 2-cycle hysteresis — picks4all-scores `a9c85d2`). The redesign the owner approved on 06-17 had never been implemented ("plan quedó solo en documento"). Two adjacent data bugs surfaced in the same audit: knockout `MatchExternalMapping` rows kept PREDICTED-bracket teamIds (5 corrupt rows; benign only because the scraper matches by name), and knockout matches got NO `MatchSyncState` row (R32's were created by hand on 06-28), blinding trackStatusChecker/staleDetector/live-minute display.
+
+**Decision:**
+- **Finalization gate (`finalizationGate.ts`, pure):** the backend NEVER counts sources — it trusts the scraper's consensus `confidence` + its own plausibility floor. FAST = terminal + minute plausible (≥`SCORES_MIN_ELAPSED_FOR_TERMINAL` 80, ABD exempt, wall-clock fallback) + confidence HIGH/VERY_HIGH. SLOW (anti-deadlock) = plausible + confidence MEDIUM + ≥`SCORES_SLOW_PATH_AFTER_MS` (150 min) since kickoff → finalizes with a one-time **R9** admin alert. Else WAIT (`AWAITING_FINISH`). `terminalConfirmationCount` + `SCORES_MIN_CONFIRMATIONS` are deleted. Grace period (5 min) unchanged.
+- **Feed-health alerts (all one-time, audit-idempotent, ALERT-ONLY — nothing auto-reverts):** **R11** `FINALIZED_BUT_FEED_LIVE` (lifecycle COMPLETED but feed reports the match live — the exact incident class); **R13** `KICKOFF_DRIFT_DETECTED` (sources observe kickoff ≠ registered by >30 min; was only a console.warn); **R14** `MATCH_FEED_SILENT` (tracked match, kickoff ≥15 min ago, live poll hasn't processed it in ≥10 min — catches absent-from-scraper AND stuck-below-MIN_CONFIDENCE, hours before the 210-min stale alarm); **R2–R6 class** `SCORE_INCOHERENCE_DETECTED` (score regression / penalties on non-tied / goals90 > full; may be legit VAR — hence alert-only).
+- **Knockout sync bootstrap (`matchSyncInit.ensureKnockoutSyncPlumbing`):** both resolution paths — `persistResolvedKnockoutFixtures` (auto-advance) and `propagateBracketToInstance` (admin release, runs even when dataJson is already correct) — now guarantee every resolved fixture has a PENDING `MatchSyncState` row (kickoff + check timings; lifecycle never clobbered) and mapping teamIds mirroring the canonical bracket. The 5 corrupt R32 mappings were repaired in production.
+
+**Consequences:**
+- ✅ A false terminal can no longer auto-finalize (needs scraper-gate consensus AND plausible minute AND high confidence), and when one slips through as COMPLETED, R11 alerts within one poll cycle instead of a human noticing by chance.
+- ✅ A legitimate FT with weak consensus finalizes at latest via the SLOW path (150 min) instead of deadlocking as SCRAPER_PROVISIONAL forever (USA–Paraguay 17h case class).
+- ✅ R16+ knockouts are born with sync rows + correct mapping teamIds — no more hand-patching per round.
+- ⚠️ Residual E2 scenario (false FT at minute ≥80 on a tied knockout heading to ET): the scraper's hysteresis + source minimum are the primary defense; R11 is the backend's tripwire. Watch matches with extra time.
+- ⚠️ Reversion of a falsely-COMPLETED match stays MANUAL by owner decision (R11 alert links the evidence).
+
+---
+
 **END OF DOCUMENT**

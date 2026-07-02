@@ -61,14 +61,17 @@ Picks4All Backend
   - Publishes `SCRAPER_PROVISIONAL` result to all pools via `PoolMatchResultVersion`
   - Skips if `API_CONFIRMED` or `HOST_OVERRIDE` already exists
 
-### 3. Match End: Confirmation Gate + Grace Period (5 minutes)
+### 3. Match End: Finalization Gate (ADR-086) + Grace Period (5 minutes)
 - When scraper reports a terminal status (`FT`/`AET`/`PEN`/`ABD`):
-  - **Confirmation gate:** the terminal milestone in `timeline[]` must be
-    confirmed by ≥ `SCORES_MIN_CONFIRMATIONS` (default 3) independent
-    sources before the grace period is armed. Below the threshold the
-    match stays `AWAITING_FINISH` and keeps polling (the API-Football
-    fallback + stale detector are the backstops). When `timeline[]` is
-    absent (legacy feed), the live `sourcesAgreeing` count is used.
+  - **Finalization gate** (`finalizationGate.ts`): the backend trusts the
+    scraper's consensus `confidence` — it never counts sources (that is the
+    scraper terminal gate's job). FAST path = minute plausible
+    (≥ `SCORES_MIN_ELAPSED_FOR_TERMINAL`, ABD exempt) + confidence
+    HIGH/VERY_HIGH. SLOW path (anti-deadlock) = plausible + confidence
+    MEDIUM + ≥ `SCORES_SLOW_PATH_AFTER_MS` since kickoff → finalizes with a
+    one-time R9 admin alert. Anything else stays `AWAITING_FINISH` (the
+    stale + feed-silent detectors are the backstops — there is NO
+    API-Football fallback).
   - Once confirmed: sets `graceEndUtc = now + 5min`, `syncStatus = AWAITING_FINISH`
   - Continues polling during grace period
   - If score changes during grace → resets grace timer
@@ -162,7 +165,9 @@ PENDING → IN_PROGRESS → AWAITING_FINISH → COMPLETED
 | `SCORES_TRACK_WINDOW_HOURS` | 24 | Hours ahead to register fixtures |
 | `SCORES_GRACE_PERIOD_MS` | 300000 | Grace period after FT (5 min) |
 | `SCORES_FALLBACK_DELAY_MS` | 1800000 | Delay before API-Football fallback (30 min) |
-| `SCORES_MIN_CONFIRMATIONS` | 3 | Min sources confirming the terminal milestone to finalize |
+| `SCORES_SLOW_PATH_AFTER_MS` | 9000000 | SLOW path: MEDIUM confidence may finalize this long after kickoff (150 min) |
+| `SCORES_FEED_SILENT_AFTER_KICKOFF_MS` | 900000 | R14 feed-silent alert: min after kickoff (15 min) |
+| `SCORES_FEED_SILENT_STALE_MS` | 600000 | R14: staleness of lastCheckedAtUtc to count as silent (10 min) |
 | `SCORES_STALE_THRESHOLD_MS` | 12600000 | Age after kickoff a non-finalized match is "stale" (210 min) |
 | `SCORES_STALE_SCAN_INTERVAL_MS` | 300000 | Stale-detector scan cadence (5 min) |
 | `FIXTURE_TRACKING_CRON` | `0 * * * *` | Fixture registration cron schedule |

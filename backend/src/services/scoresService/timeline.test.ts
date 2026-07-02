@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  deriveNinetyMinuteScore,
-  terminalConfirmationCount,
-} from "./timeline";
+import { deriveNinetyMinuteScore } from "./timeline";
 import type { TimelineEvent } from "./client";
 
 // Helper to build a timeline milestone with sensible defaults.
@@ -92,53 +89,9 @@ describe("deriveNinetyMinuteScore", () => {
       });
     });
 
-    it("counts confirmations of the terminal milestone, ignoring earlier ones", () => {
-      const timeline = [
-        ev({ status: "2H", confirmedBy: ["a", "b"] }),
-        ev({ status: "ET", confirmedBy: ["a", "b", "c", "d"] }),
-        ev({ status: "PEN", confirmedBy: ["a", "b", "c"] }),
-      ];
-      // Should use the PEN (terminal) entry → 3, not ET's 4.
-      expect(terminalConfirmationCount(timeline, 0)).toBe(3);
-    });
-
-    it("uses the last terminal milestone when several terminals exist", () => {
-      const timeline = [
-        ev({ status: "FT", confirmedBy: ["a", "b"] }),
-        ev({ status: "AET", confirmedBy: ["a", "b", "c", "d", "e"] }),
-      ];
-      expect(terminalConfirmationCount(timeline, 0)).toBe(5);
-    });
-
-    // Regression — USA–Paraguay 2026-06-13. The FT milestone froze with only
-    // 2 sources (onefootball, livescore crossed to FINISHED first) while 4
-    // sources agreed live on the FT 4-1. The old code returned 2 < 3 and the
-    // match never finalized. Must now use the live count (4) so it finalizes.
-    it("prefers live sourcesAgreeing when it beats the frozen terminal milestone", () => {
-      const timeline = [
-        ev({ status: "HT", confirmedBy: ["onefootball", "livescore"] }),
-        ev({ status: "2H", confirmedBy: ["espn", "livescore"] }),
-        ev({ status: "FT", confirmedBy: ["onefootball", "livescore"] }),
-      ];
-      expect(terminalConfirmationCount(timeline, 4)).toBe(4);
-    });
-
-    it("keeps the frozen milestone count when it beats live sourcesAgreeing", () => {
-      const timeline = [ev({ status: "FT", confirmedBy: ["a", "b", "c", "d"] })];
-      // A late-arriving cycle where fewer sources currently agree must not
-      // drop a strongly-confirmed terminal milestone below its real level.
-      expect(terminalConfirmationCount(timeline, 2)).toBe(4);
-    });
-
-    it("falls back to sourcesAgreeing when there is no terminal milestone", () => {
-      const timeline = [ev({ status: "2H", confirmedBy: ["a", "b"] })];
-      expect(terminalConfirmationCount(timeline, 4)).toBe(4);
-    });
-
-    it("falls back to sourcesAgreeing when the timeline is absent (legacy)", () => {
-      expect(terminalConfirmationCount(undefined, 2)).toBe(2);
-      expect(terminalConfirmationCount([], 6)).toBe(6);
-    });
+    // NOTE (ADR-086): terminalConfirmationCount tests removed with the
+    // function itself — finalization now trusts consensus confidence via
+    // finalizationGate.ts (see finalizationGate.test.ts).
 
     it("falls back to null/null when ET was reached but the ET milestone is missing", () => {
       // Incomplete feed: terminal says PEN but no ET milestone exists. We do
