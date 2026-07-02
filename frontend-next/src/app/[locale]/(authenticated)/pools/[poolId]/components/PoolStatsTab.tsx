@@ -255,7 +255,7 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
       {/* Legend ABOVE the table — with hundreds of rows the old below-table
           spot was unreachable on mobile. Collapsible to stay compact. */}
       <details style={{ margin: "6px 2px 8px" }}>
-        <summary style={{ fontSize: 12, fontWeight: 700, color: colors.brand, cursor: "pointer", userSelect: "none", padding: "6px 0", minHeight: 32 }}>
+        <summary style={{ fontSize: 13, fontWeight: 700, color: colors.brand, cursor: "pointer", userSelect: "none", padding: "8px 0", minHeight: 44, display: "flex", alignItems: "center", gap: 6, textDecoration: "underline", textUnderlineOffset: 3 }}>
           ℹ️ {t("statsTab.legend")}
         </summary>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", padding: "6px 2px 2px", fontSize: 12, color: colors.textMuted }}>
