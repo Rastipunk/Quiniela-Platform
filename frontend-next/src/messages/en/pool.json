@@ -1149,6 +1149,8 @@
     "colPositions": "Positions hit",
     "colPerfectGroups": "Perfect groups",
     "colWinners": "Qualifiers hit",
-    "youMark": "(you)"
+    "youMark": "(you)",
+    "legend": "Legend",
+    "searchPlaceholder": "Search player…"
   }
 }

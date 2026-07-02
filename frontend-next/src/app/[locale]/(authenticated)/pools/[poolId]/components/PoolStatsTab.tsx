@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { colors, radii } from "@/lib/theme";
+import { norm } from "./poolHelpers";
 import type { PoolOverview, LeaderboardRow } from "@/lib/poolTypes";
 import { PlayerSummary } from "@/components/PlayerSummary";
 import type { PlayerSummaryModalData } from "./poolTypes";
@@ -54,6 +55,7 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
   const t = useTranslations("pool");
   const [sortKey, setSortKey] = useState<string>("rank");
   const [sortDesc, setSortDesc] = useState(false);
+  const [search, setSearch] = useState("");
   const [playerModal, setPlayerModal] = useState<PlayerSummaryModalData | null>(null);
 
   const rows = overview.leaderboard?.rows ?? [];
@@ -170,7 +172,8 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
   }, [showScore, showStructural, enabledCriteria, t]);
 
   const sorted = useMemo(() => {
-    const list = [...rows];
+    const q = norm(search.trim());
+    const list = q ? rows.filter((r) => norm(r.displayName).includes(q)) : [...rows];
     if (sortKey === "rank") {
       list.sort((a, b) => (sortDesc ? b.rank - a.rank : a.rank - b.rank));
     } else {
@@ -182,7 +185,7 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
       }
     }
     return list;
-  }, [rows, columns, sortKey, sortDesc]);
+  }, [rows, columns, sortKey, sortDesc, search]);
 
   const onSort = (key: string) => {
     if (sortKey === key) setSortDesc(!sortDesc);
@@ -195,11 +198,18 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
 
   const arrow = (key: string) => (sortKey === key ? (sortDesc ? " ▼" : " ▲") : "");
 
+  // Frozen-left offsets: rank column at 0, player right after it. Kept as
+  // a constant so header + body cells stay aligned.
+  const RANK_W = isMobile ? 36 : 44;
+
+  // Layering (mobile overlap bug): body sticky-left cells (z1) < sticky-top
+  // headers (z3) < corner cells sticky BOTH ways (z4). Every sticky cell
+  // gets a SOLID background so nothing shows through while scrolling.
   const headerCell = (
     key: string,
     content: string,
     title: string,
-    sticky = false,
+    stickyLeft: number | null = null,
   ) => (
     <th
       key={key}
@@ -212,12 +222,15 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
         color: sortKey === key ? colors.brand : colors.textMuted,
         cursor: "pointer",
         whiteSpace: "nowrap",
-        textAlign: sticky ? "left" : "center",
+        textAlign: stickyLeft !== null ? "left" : "center",
         userSelect: "none",
-        position: sticky ? "sticky" : undefined,
-        left: sticky ? 0 : undefined,
+        position: "sticky",
+        top: 0,
+        left: stickyLeft ?? undefined,
         background: colors.bgLight,
-        zIndex: sticky ? 2 : 1,
+        zIndex: stickyLeft !== null ? 4 : 3,
+        minWidth: key === "rank" ? RANK_W : undefined,
+        boxShadow: "inset 0 -1px 0 " + colors.borderLight,
       }}
     >
       {content}
@@ -227,25 +240,60 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "14px 2px 4px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "14px 2px 4px", flexWrap: "wrap" }}>
         <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>🎯 {t("statsTab.title")}</h3>
         <span style={{ fontSize: 12, color: colors.textLight }}>{t("statsTab.sortHint")}</span>
       </div>
 
+      {/* Legend ABOVE the table — with hundreds of rows the old below-table
+          spot was unreachable on mobile. Collapsible to stay compact. */}
+      <details style={{ margin: "6px 2px 8px" }}>
+        <summary style={{ fontSize: 12, fontWeight: 700, color: colors.brand, cursor: "pointer", userSelect: "none", padding: "6px 0", minHeight: 32 }}>
+          ℹ️ {t("statsTab.legend")}
+        </summary>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", padding: "6px 2px 2px", fontSize: 12, color: colors.textMuted }}>
+          {columns.map((c) => (
+            <span key={c.key} style={{ whiteSpace: "nowrap" }}>
+              {c.icon} {c.label}
+            </span>
+          ))}
+        </div>
+      </details>
+
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t("statsTab.searchPlaceholder")}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "10px 14px",
+          minHeight: 44,
+          fontSize: 14,
+          border: `1px solid ${colors.borderLight}`,
+          borderRadius: radii.md,
+          marginBottom: 8,
+          background: colors.white,
+        }}
+      />
+
       <div
         style={{
-          marginTop: 8,
           border: `1px solid ${colors.borderLight}`,
           borderRadius: radii.lg,
-          overflowX: "auto",
+          // Own viewport: hundreds of players scroll INSIDE the table with
+          // the header row frozen on top and rank+name frozen on the left.
+          maxHeight: "min(70vh, 640px)",
+          overflow: "auto",
           background: colors.white,
         }}
       >
         <table style={{ borderCollapse: "collapse", width: "100%", minWidth: isMobile ? 520 : 720 }}>
           <thead>
             <tr style={{ background: colors.bgLight }}>
-              {headerCell("rank", "#", t("statsTab.colRank"))}
-              {headerCell("player", t("statsTab.colPlayer"), t("statsTab.colPlayer"), true)}
+              {headerCell("rank", "#", t("statsTab.colRank"), 0)}
+              {headerCell("player", t("statsTab.colPlayer"), t("statsTab.colPlayer"), RANK_W)}
               {columns.map((c) => headerCell(c.key, c.icon, c.label))}
             </tr>
           </thead>
@@ -262,7 +310,20 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
                     cursor: "pointer",
                   }}
                 >
-                  <td style={{ padding: isMobile ? "12px 8px" : "10px 12px", fontSize: 12, textAlign: "center", color: colors.textMuted, fontWeight: 700 }}>
+                  <td
+                    style={{
+                      padding: isMobile ? "12px 8px" : "10px 12px",
+                      fontSize: 12,
+                      textAlign: "center",
+                      color: colors.textMuted,
+                      fontWeight: 700,
+                      position: "sticky",
+                      left: 0,
+                      minWidth: RANK_W,
+                      background: isMe ? "#eef2ff" : colors.white,
+                      zIndex: 1,
+                    }}
+                  >
                     {r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : r.rank}
                   </td>
                   <td
@@ -276,9 +337,10 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       position: "sticky",
-                      left: 0,
+                      left: RANK_W,
                       background: isMe ? "#eef2ff" : colors.white,
                       zIndex: 1,
+                      boxShadow: "inset -1px 0 0 " + colors.borderLighter,
                     }}
                   >
                     {r.displayName}
@@ -304,15 +366,6 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
             })}
           </tbody>
         </table>
-      </div>
-
-      {/* Legend: icon → full criterion name */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "10px 2px 0", fontSize: 11, color: colors.textMuted }}>
-        {columns.map((c) => (
-          <span key={c.key} style={{ whiteSpace: "nowrap" }}>
-            {c.icon} {c.label}
-          </span>
-        ))}
       </div>
 
       {/* Player summary modal — same sheet the leaderboard opens. */}
