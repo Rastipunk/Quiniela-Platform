@@ -17,9 +17,14 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { ServiceError } from "./authService";
 import { calculateAllGroupStandings } from "./instanceAdvancement";
-import { determineQualifiers, resolvePlaceholders } from "./tournamentAdvancement";
+import {
+  determineQualifiers,
+  resolvePlaceholders,
+  resolveKnockoutPlaceholders,
+} from "./tournamentAdvancement";
+import { deriveMajorityOutcome, type FinalResultRow } from "../lib/knockoutOutcome";
 import { extractPhases, extractMatches, extractTeams } from "../lib/fixture";
-import { PLACEHOLDER_TEAM_PREFIXES, FINAL_RESULT_SOURCES } from "../lib/constants";
+import { FINAL_RESULT_SOURCES, isPlaceholderTeamId } from "../lib/constants";
 import { ensureKnockoutSyncPlumbing } from "./matchSyncInit";
 import { getPoolOverview } from "./poolOverviewService";
 import { calculateMaxPointsForPool } from "../lib/scoringAdvanced";
@@ -29,9 +34,7 @@ import { createLimiter, fireAndForget } from "../lib/asyncHelpers";
 import { sendPhaseSummaryBroadcast, localizedPhaseName } from "./phaseSummaryBroadcast";
 import type { PhasePickConfig } from "../types/pickConfig";
 
-function isPlaceholderTeamId(id: string): boolean {
-  return PLACEHOLDER_TEAM_PREFIXES.some((p) => id === p || id.startsWith(p));
-}
+// Placeholder check: canonical helper from lib/constants (ADR-087).
 
 export interface BracketMatch {
   matchId: string;
@@ -138,13 +141,73 @@ export async function getKnockoutBracketPreview(instanceId: string): Promise<Kno
     .filter((p) => p.type !== "GROUP")
     .sort((a, b) => a.order - b.order);
 
+  // Progressive knockout→knockout resolution (ADR-087): each finished
+  // knockout match contributes its winner AND loser (m_3RD feeds off L_SF_*)
+  // to later phases, so W_/L_ slots resolve per match as soon as their feeder
+  // finishes. The winner side comes from the strict MAJORITY of FINAL results
+  // across ACTIVE pools (deriveMajorityOutcome) — a pool-specific host
+  // override can never steer the instance bracket.
+  const koMatchIds = matches
+    .filter((m) => koPhases.some((p) => p.id === m.phaseId))
+    .map((m) => m.id);
+  const outcomeByMatch = new Map<string, "HOME" | "AWAY">();
+  if (koMatchIds.length > 0) {
+    const koRows = await prisma.poolMatchResult.findMany({
+      where: {
+        matchId: { in: koMatchIds },
+        pool: { tournamentInstanceId: instanceId, status: "ACTIVE" },
+      },
+      select: {
+        matchId: true,
+        currentVersion: {
+          select: {
+            source: true,
+            homeGoals: true,
+            awayGoals: true,
+            homePenalties: true,
+            awayPenalties: true,
+          },
+        },
+      },
+    });
+    const rowsByMatch = new Map<string, FinalResultRow[]>();
+    for (const r of koRows) {
+      if (!r.currentVersion) continue;
+      const list = rowsByMatch.get(r.matchId) ?? [];
+      list.push(r.currentVersion);
+      rowsByMatch.set(r.matchId, list);
+    }
+    for (const [matchId, rows] of rowsByMatch) {
+      const side = deriveMajorityOutcome(rows);
+      if (side) outcomeByMatch.set(matchId, side);
+    }
+  }
+
+  // Accumulates matchId → {winnerId, loserId} while walking phases in order,
+  // so phase N+1 resolves off phase N's freshly-computed teams.
+  const knockoutResults = new Map<string, { winnerId: string; loserId: string }>();
+
   const bracketPhases: BracketPhase[] = koPhases.map((phase) => {
     const phaseMatches = matches.filter((m) => m.phaseId === phase.id);
-    const resolved = resolvePlaceholders(
+    const groupResolved = resolvePlaceholders(
       phaseMatches.map((m) => ({ id: m.id, homeTeamId: m.homeTeamId, awayTeamId: m.awayTeamId })),
       winners,
       runnersUp,
       bestThirds,
+    );
+    const groupById = new Map(groupResolved.map((r) => [r.matchId, r]));
+    // Second pass: knockout feeders (W_<matchId> / L_<matchId>) from the
+    // accumulated results of the phases already walked.
+    const resolved = resolveKnockoutPlaceholders(
+      phaseMatches.map((m) => {
+        const g = groupById.get(m.id);
+        return {
+          id: m.id,
+          homeTeamId: g?.homeTeamId ?? m.homeTeamId,
+          awayTeamId: g?.awayTeamId ?? m.awayTeamId,
+        };
+      }),
+      knockoutResults,
     );
     const resolvedById = new Map(resolved.map((r) => [r.matchId, r]));
 
@@ -162,6 +225,17 @@ export async function getKnockoutBracketPreview(instanceId: string): Promise<Kno
         const homeId = ov.homeTeamId ?? r.homeTeamId;
         const awayId = ov.awayTeamId ?? r.awayTeamId;
         const kickoffUtc = ov.kickoffUtc ?? m.kickoffUtc ?? null;
+        // Record this match's winner/loser for later phases — only when its
+        // teams are real (a majority outcome can't map to placeholder slots).
+        const side = outcomeByMatch.get(m.id);
+        if (side && !isPlaceholderTeamId(homeId) && !isPlaceholderTeamId(awayId)) {
+          knockoutResults.set(
+            m.id,
+            side === "HOME"
+              ? { winnerId: homeId, loserId: awayId }
+              : { winnerId: awayId, loserId: homeId },
+          );
+        }
         return {
           matchId: m.id,
           phaseId: m.phaseId,

@@ -20,6 +20,7 @@ import { createLimiter } from "../lib/asyncHelpers";
 import { autoPublishStructuralResults } from "./structuralAutoPublish";
 import { checkAndTriggerAdvancement } from "./advancementTrigger";
 import { transitionToCompleted } from "./poolStateMachine";
+import { onKnockoutMatchFinalized } from "./progressiveKnockout";
 
 /** Monitor window relative to now: covers the operational match day. */
 const WINDOW_BEFORE_HOURS = 12;
@@ -424,6 +425,18 @@ export async function applyMasterOverride(
       }),
     ),
   );
+
+  // Progressive knockout opening (ADR-087): an admin master override is a
+  // FINAL result too — resolve/open the dependent next-phase slot(s), same
+  // hook the scraper finalization path fires.
+  if (updatedPoolIds.length > 0) {
+    onKnockoutMatchFinalized(input.instanceId, input.matchId).catch((err) =>
+      console.error(
+        "[MasterOverride] progressive knockout hook failed:",
+        err instanceof Error ? err.message : String(err),
+      ),
+    );
+  }
 
   await writeAuditEvent({
     actorUserId: input.actorUserId,

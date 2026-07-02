@@ -254,3 +254,13 @@ export const PLACEHOLDER_TEAM_PREFIXES = [
   "L_",
   "3rd_",
 ] as const;
+
+/**
+ * Canonical placeholder check — the ONLY implementation (ADR-087 unified the
+ * divergent local copies; the fixtureTrackingJob one was missing `L_` and
+ * would have sent the third-place match to the scraper with "L_SF_1" as a
+ * team name). `t_TBD` matches exactly; the rest are prefixes.
+ */
+export function isPlaceholderTeamId(teamId: string): boolean {
+  return PLACEHOLDER_TEAM_PREFIXES.some((p) => teamId === p || teamId.startsWith(p));
+}

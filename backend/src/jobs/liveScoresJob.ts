@@ -37,6 +37,7 @@ import {
   detectAndAlertStaleMatches,
   detectAndAlertSilentMatches,
 } from "../services/scoresService/staleDetector";
+import { onKnockoutMatchFinalized } from "../services/progressiveKnockout";
 
 // ============================================================================
 // Configuration
@@ -399,6 +400,17 @@ async function processLiveScore(
         error instanceof Error ? error.message : String(error)
       );
     }
+  }
+
+  // Progressive knockout opening (ADR-087): a finalized knockout match
+  // resolves its dependent next-phase slot(s) at instance level and opens
+  // them for predictions. Once per match (this function is per-match), a
+  // cheap no-op for group stage / gate-off instances.
+  if (shouldFinalize) {
+    fireAndForget(
+      "LiveScoresJob:progressive-knockout",
+      onKnockoutMatchFinalized(entry.tournamentInstanceId, entry.internalMatchId),
+    );
   }
 }
 

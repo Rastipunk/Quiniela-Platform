@@ -10,7 +10,7 @@
 
 import { prisma } from "../db";
 import { sendDeadlineReminderEmail, isEmailEnabled } from "../lib/email";
-import { resolveUserLocale } from "../lib/constants";
+import { resolveUserLocale, isPlaceholderTeamId } from "../lib/constants";
 import { buildPhaseTakesMatchPicks, buildGroupLockTimes } from "../lib/poolHelpers";
 import { typed, type StructuralPickJson } from "../lib/fixture";
 import type { PhasePickConfig } from "../types/pickConfig";
@@ -140,15 +140,10 @@ function groupReminderKey(phaseId: string, groupId: string): string {
   return `group:${phaseId}:${groupId}`;
 }
 
-/** Placeholder teams (W_A, RU_B, L_x, 3rd_*) cannot be picked yet. */
+/** Placeholder teams cannot be picked yet — canonical check (ADR-087). */
 function isPlaceholderTeam(teamId: string | undefined): boolean {
   if (!teamId) return false;
-  return (
-    teamId.startsWith("W_") ||
-    teamId.startsWith("RU_") ||
-    teamId.startsWith("L_") ||
-    teamId.startsWith("3rd_")
-  );
+  return isPlaceholderTeamId(teamId);
 }
 
 /**

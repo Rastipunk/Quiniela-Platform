@@ -16,6 +16,7 @@ import { prisma } from "../db";
 import { getScoresServiceClient, TrackFixture } from "../services/scoresService";
 import { sendAdminNotification } from "../lib/email";
 import { recordHeartbeat } from "../lib/cronHeartbeat";
+import { isPlaceholderTeamId } from "../lib/constants";
 
 // ============================================================================
 // Configuration
@@ -30,10 +31,9 @@ const envInt = (key: string, fallback: number): number =>
 /** How many hours ahead to look for upcoming matches */
 const SCORES_TRACK_WINDOW_HOURS = envInt("SCORES_TRACK_WINDOW_HOURS", 24);
 
-/** Unresolved knockout team placeholders (see tournamentAdvancement). */
-function isPlaceholderTeamId(id: string): boolean {
-  return id.startsWith("W_") || id.startsWith("RU_") || id.startsWith("3rd_");
-}
+// Placeholder check unified to the canonical helper (ADR-087) — the local
+// copy was missing `L_`/`t_TBD` and would have sent the third-place match to
+// the scraper with "L_SF_1" as a team name.
 
 // ============================================================================
 // Job State

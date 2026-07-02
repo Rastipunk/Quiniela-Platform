@@ -15,7 +15,7 @@
  */
 
 import { prisma } from "../db";
-import { ADVANCEMENT, PHASE_DISPLAY_NAMES, resolveUserLocale, FINAL_RESULT_SOURCES } from "../lib/constants";
+import { ADVANCEMENT, PHASE_DISPLAY_NAMES, resolveUserLocale, FINAL_RESULT_SOURCES, isPlaceholderTeamId } from "../lib/constants";
 import { advanceToRoundOf32, advanceKnockoutPhase } from "./instanceAdvancement";
 import { writeAuditEvent } from "../lib/audit";
 import { sendAdminNotification, sendPhaseCompletionSummaryEmail, batchSendEmails } from "../lib/email";
@@ -387,7 +387,6 @@ async function sendPhaseCompletionNotifications(
   }
 }
 
-const PLACEHOLDER_PREFIXES = ["t_TBD", "W_", "L_", "RU_", "3rd_POOL_"];
-function isPlaceholder(teamId: string): boolean {
-  return PLACEHOLDER_PREFIXES.some((p) => teamId === "t_TBD" || teamId.startsWith(p));
-}
+// Placeholder check unified to the canonical helper (ADR-087); the local
+// list used the narrower `3rd_POOL_` prefix.
+const isPlaceholder = (teamId: string): boolean => isPlaceholderTeamId(teamId);

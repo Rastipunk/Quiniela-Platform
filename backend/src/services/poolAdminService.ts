@@ -47,7 +47,7 @@ import { isCaprichoSanPool } from "../lib/caprichoSan";
 import { ServiceError, type AuditContext } from "./authService";
 import { isExtraTimeConfigEnabled, isDeadlineConfigEnabled } from "../lib/featureFlags";
 import { getKnockoutScorePhases, computeExtraTimeWindow } from "../lib/extraTimeConfig";
-import { FINAL_RESULT_SOURCES, resolveUserLocale } from "../lib/constants";
+import { FINAL_RESULT_SOURCES, resolveUserLocale, isPlaceholderTeamId } from "../lib/constants";
 import { invalidatePoolLeaderboard } from "./poolLeaderboardCache";
 import { batchSendEmails, sendDeadlineChangedEmail } from "../lib/email";
 
@@ -1736,9 +1736,8 @@ export async function getPoolNotifications(
 
   const deadlineMinutes = pool.deadlineMinutesBeforeKickoff;
 
-  const isPlaceholder = (teamId: string) => {
-    return teamId.startsWith("W_") || teamId.startsWith("RU_") || teamId.startsWith("L_") || teamId.startsWith("3rd_");
-  };
+  // Canonical placeholder check (ADR-087).
+  const isPlaceholder = (teamId: string) => isPlaceholderTeamId(teamId);
 
   // Banner window: a pending unit becomes "urgent" when its deadline
   // is less than this many hours away (reminder emails use a wider,

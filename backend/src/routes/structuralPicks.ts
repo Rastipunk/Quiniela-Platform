@@ -7,6 +7,7 @@ import { Prisma } from "@prisma/client";
 import { canMakePicks } from "../services/poolStateMachine";
 import { extractMatches, extractPhases, typed, type StructuralPickJson } from "../lib/fixture";
 import { buildGroupLockTimes, partitionGroupPicksByLock, mergeGroupPicks, isKickoffFloorLocked } from "../lib/poolHelpers";
+import { isPlaceholderTeamId } from "../lib/constants";
 import { sendData, sendBadRequest, sendForbidden, sendNotFound, sendConflict } from "../lib/apiResponse";
 
 export const structuralPicksRouter = Router();
@@ -130,6 +131,7 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
   const phaseMatches = allMatches.filter((m) => m.phaseId === phaseId);
   const lockBufferMs = pool.deadlineMinutesBeforeKickoff * 60_000;
   const lockedMatchIds: string[] = [];
+  const pendingMatchIds: string[] = [];
   let validIncomingMatches: { matchId: string; winnerId: string }[] = [];
   if ("matches" in parsed.data) {
     for (const incoming of parsed.data.matches) {
@@ -138,6 +140,20 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
         // Unknown matchId — drop. Could be a stale UI sending a
         // fixture that no longer matches the snapshot.
         lockedMatchIds.push(incoming.matchId);
+        continue;
+      }
+      // Progressive knockout (ADR-087): a match whose slots are still
+      // placeholders (W_/L_ unresolved) is not pickable — mirror of
+      // pickService's MATCH_PENDING guard for score picks. Also reject a
+      // winnerId that isn't one of the match's real teams (the old UI let
+      // players "pick TBD").
+      if (
+        isPlaceholderTeamId(fixtureMatch.homeTeamId) ||
+        isPlaceholderTeamId(fixtureMatch.awayTeamId) ||
+        (incoming.winnerId !== fixtureMatch.homeTeamId &&
+          incoming.winnerId !== fixtureMatch.awayTeamId)
+      ) {
+        pendingMatchIds.push(incoming.matchId);
         continue;
       }
       const lockTime =
@@ -150,13 +166,20 @@ structuralPicksRouter.put("/:poolId/structural-picks/:phaseId", async (req, res)
       }
       validIncomingMatches.push(incoming);
     }
-    // If the user attempted to update at least one match and every
-    // single one is locked, surface a clear 409 instead of silently
-    // saving an empty update.
+    // If the user attempted to update at least one match and every single
+    // one was dropped, surface a clear 409 instead of silently saving an
+    // empty update — "unresolved teams" beats "locked" for the message.
     if (parsed.data.matches.length > 0 && validIncomingMatches.length === 0) {
+      if (pendingMatchIds.length > 0 && lockedMatchIds.length === 0) {
+        return sendConflict(res, "MATCH_PENDING", {
+          message: "Submitted matches don't have resolved teams yet",
+          pendingMatchIds,
+        });
+      }
       return sendConflict(res, "DEADLINE_PASSED", {
         message: "All submitted matches are past their lock time",
         lockedMatchIds,
+        pendingMatchIds,
       });
     }
   }
