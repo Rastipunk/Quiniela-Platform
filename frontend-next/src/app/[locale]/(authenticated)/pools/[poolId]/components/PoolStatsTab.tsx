@@ -171,6 +171,13 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
     return cols;
   }, [showScore, showStructural, enabledCriteria, t]);
 
+  // Viewer's own row — pinned to the bottom edge of the table viewport so
+  // it is ALWAYS visible in big pools, regardless of scroll/sort/search.
+  const myRow = useMemo(
+    () => rows.find((r) => r.userId === myUserId) ?? null,
+    [rows, myUserId],
+  );
+
   const sorted = useMemo(() => {
     const q = norm(search.trim());
     const list = q ? rows.filter((r) => norm(r.displayName).includes(q)) : [...rows];
@@ -365,6 +372,70 @@ export function PoolStatsTab({ overview, poolId, isMobile }: PoolStatsTabProps) 
               );
             })}
           </tbody>
+          {myRow && (
+            <tfoot>
+              <tr>
+                <td
+                  style={{
+                    padding: isMobile ? "12px 8px" : "10px 12px",
+                    fontSize: 12,
+                    textAlign: "center",
+                    fontWeight: 800,
+                    color: colors.brand,
+                    position: "sticky",
+                    bottom: 0,
+                    left: 0,
+                    minWidth: RANK_W,
+                    background: "#e0e7ff",
+                    zIndex: 4,
+                    boxShadow: "inset 0 2px 0 " + colors.brand,
+                  }}
+                >
+                  {myRow.rank <= 3 ? ["🥇", "🥈", "🥉"][myRow.rank - 1] : myRow.rank}
+                </td>
+                <td
+                  style={{
+                    padding: isMobile ? "12px 8px" : "10px 12px",
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: colors.brand,
+                    whiteSpace: "nowrap",
+                    maxWidth: isMobile ? 120 : 200,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    position: "sticky",
+                    bottom: 0,
+                    left: RANK_W,
+                    background: "#e0e7ff",
+                    zIndex: 4,
+                    boxShadow: "inset 0 2px 0 " + colors.brand + ", inset -1px 0 0 " + colors.borderLighter,
+                  }}
+                >
+                  {myRow.displayName} {t("statsTab.youMark")}
+                </td>
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    style={{
+                      padding: isMobile ? "12px 8px" : "10px 12px",
+                      fontSize: 13,
+                      textAlign: "center",
+                      fontWeight: 800,
+                      color: colors.brand,
+                      whiteSpace: "nowrap",
+                      position: "sticky",
+                      bottom: 0,
+                      background: "#e0e7ff",
+                      zIndex: 3,
+                      boxShadow: "inset 0 2px 0 " + colors.brand,
+                    }}
+                  >
+                    {c.render(myRow)}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
