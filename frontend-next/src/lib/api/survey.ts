@@ -41,3 +41,38 @@ export async function submitSurveyDetails(
 ): Promise<{ ok: boolean; updated?: boolean }> {
   return requestJson("/survey/details", { method: "POST", body: JSON.stringify(body) });
 }
+
+// ── Admin summary (ADR-089) ──
+
+export type AdminSurveySummary = {
+  total: number;
+  hosts: number;
+  corporateHosts: number;
+  players: number;
+  averages: {
+    overallScore: number | null;
+    recommendScore: number | null;
+    otherTournamentsScore: number | null;
+  };
+  hostDimensionAverages: {
+    hostCreateScore: number | null;
+    hostInviteScore: number | null;
+    hostLiveResultsScore: number | null;
+    hostRulesScore: number | null;
+    hostSupportScore: number | null;
+  };
+  recommend: { promoters: number; passives: number; detractors: number; npsLike: number };
+  consent: { shareableComments: number };
+  latestComments: Array<{
+    comment: string | null;
+    shareConsent: boolean;
+    isHost: boolean;
+    isCorporateHost: boolean;
+    createdAtUtc: string;
+    user: { displayName: string };
+  }>;
+};
+
+export async function getAdminSurveySummary(): Promise<AdminSurveySummary> {
+  return requestJson<AdminSurveySummary>("/admin/survey/summary", { method: "GET" });
+}
