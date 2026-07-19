@@ -10,3 +10,4 @@ export * from "./scoring";
 export * from "./corporate";
 export * from "./admin";
 export * from "./sales";
+export * from "./survey";

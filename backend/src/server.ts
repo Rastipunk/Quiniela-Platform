@@ -14,6 +14,7 @@ import { meRouter } from "./routes/me";
 import { catalogRouter } from "./routes/catalog";
 import { userProfileRouter } from "./routes/userProfile";
 import { pickPresetsRouter } from "./routes/pickPresets";
+import { surveyRouter } from "./routes/survey";
 import { legalRouter } from "./routes/legal";
 import { feedbackRouter } from "./routes/feedback";
 import { corporateRouter } from "./routes/corporate";
@@ -297,6 +298,7 @@ app.use("/users", userProfileRouter);
 app.use("/catalog", catalogRouter);
 app.use("/public", publicRouter); // no auth — shareable read-only artifacts (Evolución link)
 app.use("/pick-presets", pickPresetsRouter);
+app.use("/survey", surveyRouter); // post-World-Cup survey (ADR-089)
 app.use("/legal", legalRouter);
 app.use("/feedback", express.json({ limit: "2mb" }), feedbackRouter);
 app.use("/corporate", corporateRouter);

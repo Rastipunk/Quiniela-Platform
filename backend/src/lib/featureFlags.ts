@@ -83,6 +83,39 @@ export function isDeadlineConfigEnabled(email: string | null | undefined): boole
   return emailInAllowlist(process.env.DEADLINE_CONFIG_ALLOWLIST, email);
 }
 
+/**
+ * Post-World-Cup platform survey (ADR-089). Window + allowlist, all read at
+ * call time (no redeploy to open/close):
+ *   - `SURVEY_ALLOWLIST`  — "" off / "*" all / csv of emails (staged preview)
+ *   - `SURVEY_OPENS_AT`   — ISO-8601 UTC instant (final whistle + 1 min)
+ *   - `SURVEY_CLOSES_AT`  — ISO-8601 UTC instant (opens + 5 days per owner)
+ * Fail-closed: a missing or unparseable date keeps the survey closed.
+ */
+export function isSurveyAllowlisted(email: string | null | undefined): boolean {
+  return emailInAllowlist(process.env.SURVEY_ALLOWLIST, email);
+}
+
+export function getSurveyWindow(): { opensAt: Date | null; closesAt: Date | null } {
+  const parse = (raw: string | undefined): Date | null => {
+    const v = (raw ?? "").trim();
+    if (v === "") return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  return {
+    opensAt: parse(process.env.SURVEY_OPENS_AT),
+    closesAt: parse(process.env.SURVEY_CLOSES_AT),
+  };
+}
+
+export function isSurveyOpenFor(email: string | null | undefined): boolean {
+  if (!isSurveyAllowlisted(email)) return false;
+  const { opensAt, closesAt } = getSurveyWindow();
+  if (!opensAt || !closesAt) return false; // fail-closed
+  const now = Date.now();
+  return now >= opensAt.getTime() && now <= closesAt.getTime();
+}
+
 /** Shared allowlist semantics: ""→none, "*"→all, else case-insensitive match. */
 function emailInAllowlist(raw: string | undefined, email: string | null | undefined): boolean {
   const v = (raw ?? "").trim();

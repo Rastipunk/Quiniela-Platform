@@ -4,6 +4,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
 import { WhatsNewModal } from "@/components/WhatsNewModal";
+import { PostWorldCupSurveyModal } from "@/components/PostWorldCupSurveyModal";
 import { PoolNavRootProvider } from "@/components/pool/PoolNav";
 import { LocalePreferenceGate } from "@/components/LocalePreferenceGate";
 
@@ -21,6 +22,7 @@ export function AuthenticatedLayoutClient({
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
           <NavBar />
           <WhatsNewModal />
+          <PostWorldCupSurveyModal />
           <main id="main-content" style={{ flex: 1 }}>{children}</main>
           <Footer />
         </div>
