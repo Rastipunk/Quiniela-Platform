@@ -150,6 +150,7 @@ export const routing = defineRouting({
     "/admin/feedback": "/admin/feedback",
     "/admin/settings/email": "/admin/settings/email",
     "/admin/analytics": "/admin/analytics",
+    "/admin/survey": "/admin/survey",
     "/admin/monitor": "/admin/monitor",
     "/admin/fases": "/admin/fases",
     "/admin/ventas/cotizaciones": "/admin/ventas/cotizaciones",

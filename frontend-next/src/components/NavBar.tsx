@@ -548,6 +548,27 @@ export function NavBar() {
                         {"\uD83D\uDCCA"} {t("viewAnalytics")}
                       </Link>
                       <Link
+                        href="/admin/survey"
+                        onClick={() => setShowUserMenu(false)}
+                        style={{
+                          display: "block",
+                          padding: "0.75rem 1rem",
+                          color: colors.textDark,
+                          textDecoration: "none",
+                          borderBottom: "1px solid #eee",
+                          minHeight: TOUCH_TARGET.minimum,
+                          lineHeight: `${TOUCH_TARGET.minimum - 24}px`,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = colors.bgLight;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "white";
+                        }}
+                      >
+                        {"\uD83D\uDCDD"} {t("viewSurvey")}
+                      </Link>
+                      <Link
                         href="/admin/ventas/cotizaciones"
                         onClick={() => setShowUserMenu(false)}
                         style={{
@@ -983,6 +1004,25 @@ export function NavBar() {
                     }}
                   >
                     {"\uD83D\uDCCA"} {t("viewAnalytics")}
+                  </Link>
+                  <Link
+                    href="/admin/survey"
+                    onClick={() => setShowMobileMenu(false)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.75rem",
+                      padding: "1rem",
+                      color: "#a78bfa",
+                      textDecoration: "none",
+                      fontSize: "1rem",
+                      minHeight: TOUCH_TARGET.comfortable,
+                      borderLeft: "3px solid #a78bfa",
+                      background: "rgba(167, 139, 250, 0.1)",
+                      ...mobileInteractiveStyles.tapHighlight,
+                    }}
+                  >
+                    {"\uD83D\uDCDD"} {t("viewSurvey")}
                   </Link>
                   <Link
                     href="/admin/ventas/cotizaciones"
