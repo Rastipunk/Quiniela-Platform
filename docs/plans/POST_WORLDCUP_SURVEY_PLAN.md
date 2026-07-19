@@ -1,9 +1,9 @@
 # Plan — Encuesta post-Mundial (opinión de plataforma, variante Host)
 
-> **Estado:** PLAN v2 — decisiones del owner incorporadas (2026-07-19). Pendiente GO final.
+> **Estado:** PLAN v3 — decisiones del owner incorporadas (2026-07-19). Pendiente GO final.
 > **Objetivo:** modal de encuesta activo desde 1 min después del fin del Mundial y
-> durante 5 días: opinión general (1-10) + probabilidad de recomendar (NPS 0-10),
-> opinión abierta y consentimiento de compartir (todos), y bloque enriquecido para Hosts.
+> durante 5 días. **Todas las escalas son 1–10.** Opinión abierta y consentimiento
+> de compartir para todos; bloque de 5 dimensiones para Hosts.
 
 ---
 
@@ -13,75 +13,75 @@
 
 | Necesidad | ¿Existe? | Evidencia |
 |---|---|---|
-| Esqueleto de modal bloqueante app-wide (overlay, header degradado, body scrolleable, footer fijo, cierre no-atrapante) | ✅ | `WhatsNewModal.tsx` — patrón completo, incluidas las lecciones de mobile |
-| Punto de montaje global autenticado | ✅ | `AuthenticatedLayoutClient.tsx` (1 línea junto a `WhatsNewModal`) |
-| Rollout staged sin redeploy | ✅ | `lib/featureFlags.ts` — helper compartido `emailInAllowlist`, lectura runtime |
+| Esqueleto de modal bloqueante app-wide (overlay, header degradado, body scrolleable, footer fijo, cierre no-atrapante) | ✅ | `WhatsNewModal.tsx` |
+| Punto de montaje global autenticado | ✅ | `AuthenticatedLayoutClient.tsx` (1 línea) |
+| Rollout staged sin redeploy | ✅ | `lib/featureFlags.ts` (`emailInAllowlist`, lectura runtime) |
 | Migraciones aditivas de bajo riesgo | ✅ | Patrón probado (`AnalyticsDashboardSnapshot`) |
 | Rate limiting para el POST | ✅ | `middleware/rateLimit.ts` |
 | i18n es/en/pt | ✅ | `messages/{es,en,pt}/common.json` |
-| Detección de Host | ⚠️ construir (trivial) | Query `EXISTS PoolMember WHERE userId AND role IN (HOST, CORPORATE_HOST)` — **CO_ADMIN excluido por decisión del owner** |
-| Persistencia de respuestas | ⚠️ construir | El feedback actual es solo-email → se crea modelo `SurveyResponse` |
-| Señal "el Mundial terminó" | ✅ decidido | Env vars manuales (§3) |
-
-**Conclusión:** 1 migración aditiva + 3 endpoints + 1 componente + i18n. Solo **una línea** de código compartido se toca (el mount).
+| Detección de Host | ⚠️ construir (trivial) | `EXISTS PoolMember WHERE userId AND role IN (HOST, CORPORATE_HOST)` — **CO_ADMIN excluido (decidido)** |
+| Persistencia de respuestas | ⚠️ construir | Feedback actual es solo-email → modelo `SurveyResponse` nuevo |
+| Señal "el Mundial terminó" | ✅ decidido | Env vars (§3) |
 
 ---
 
-## 2. Qué verá cada caso (DECIDIDO por el owner)
+## 2. Qué verá cada caso (v3 — todas las escalas 1–10)
 
-### Caso A — Jugador (sin rol HOST/CORPORATE_HOST en ningún pool)
+### Pantalla 1 — IGUAL para Jugador y Host (3 preguntas obligatorias, 1–10)
 
-**Pantalla 1 (2 preguntas obligatorias):**
-> **⚽ ¡Gracias por vivir el Mundial con Picks4All!**
-> Tu opinión nos ayuda a construir la plataforma que todos quisiéramos tener.
-- "**¿Cómo calificas tu experiencia en Picks4All?**" → botones **1–10**
-- "**¿Qué tan probable es que recomiendes Picks4All a un amigo?**" → **0–10** (NPS)
-- **Enviar** (se habilita al responder ambas) · ✕ / "Ahora no" cierran
+| # | Pregunta | Escala |
+|---|---|---|
+| 1 | **¿Cómo calificas tu experiencia en Picks4All?** | 1–10 |
+| 2 | **¿Qué tan probable es que recomiendes Picks4All a un amigo?** | 1–10 |
+| 3 | **¿Qué tan probable es que uses Picks4All en otros torneos** (ligas, Champions, Copa América…)? | 1–10 |
 
-**Pantalla 2 (expansión, opcional):**
+- Encabezado según variante:
+  - Jugador: *"⚽ ¡Gracias por vivir el Mundial con Picks4All! Tu opinión nos ayuda a construir la plataforma que todos quisiéramos tener."*
+  - Host: *"🧡 ¡Gracias por hostear en Picks4All! Los hosts son el corazón de la plataforma. Tu opinión vale doble."*
+- **Enviar** se habilita al responder las 3 · ✕ / "Ahora no" cierran (solo esa sesión).
+- Los 3 puntajes se **persisten al primer Enviar** (no se pierden si abandona la pantalla 2).
+
+### Pantalla 2 — Jugador (expansión, opcional)
+
 - **Opinión abierta** (textarea): "¿Quieres contarnos algo más?"
 - ☐ **Consentimiento:** "Autorizo a Picks4All a compartir mi opinión como parte de los logros de la plataforma" (desmarcado por defecto)
 - **Enviar** / **Omitir** → gracias
 
-### Caso B — Host (rol HOST o CORPORATE_HOST en ≥1 pool; CO_ADMIN NO cuenta)
+### Pantalla 2 — Host (expansión, opcional)
 
-**Pantalla 1: idéntica a la del jugador** (mismas 2 escalas, comparabilidad) con encabezado propio:
-> **🧡 ¡Gracias por hostear en Picks4All!**
-> Los hosts son el corazón de la plataforma. Tu opinión vale doble.
-
-**Pantalla 2 (expansión, opcional) — las 5 dimensiones definidas por el owner, 1–5 c/u:**
-1. **Facilidad de crear** tu pool
-2. **Facilidad de invitar** jugadores
+**Las 5 dimensiones definidas por el owner, ahora 1–10 cada una:**
+1. Facilidad de **crear** tu pool
+2. Facilidad de **invitar** jugadores
 3. **Resultados en vivo**
 4. **Claridad de las reglas**
 5. **Soporte** recibido
 
-… más lo común a todos:
+… más lo común:
 - **Opinión abierta** (textarea): "¿Qué te faltó o qué mejorarías?"
-- ☐ **Consentimiento** de compartir (mismo texto que jugadores)
+- ☐ **Consentimiento** de compartir (mismo texto)
 - **Enviar** / **Omitir** → gracias
 
-> Nota: el consentimiento aplica a **todos** (decisión final del owner — inicialmente se pidió solo corporate, luego se extendió a todos). Se registra igualmente si el host es corporativo (`isCorporateHost`) para poder priorizar esos testimonios.
+> El consentimiento aplica a **todos**; se registra `isCorporateHost` para poder priorizar testimonios corporativos.
 
-### Reglas de aparición (DECIDIDO)
+### Reglas de aparición (DECIDIDO, sin cambios de v2)
 
-- **Ventana:** desde `SURVEY_OPENS_AT` (fin de la final + 1 min) durante **5 días**.
-- **Frecuencia:** aparece **en CADA apertura de la app** mientras no hayan respondido. El cierre (✕ / "Ahora no") vale **solo para esa sesión** (estado en memoria, sin localStorage) — al volver a abrir, reaparece. Sin límite de apariciones dentro de los 5 días (decisión deliberada del owner, prioriza volumen de respuestas).
-- **Responder → nunca más** (registro en DB por `userId @unique`, cross-device).
-- **Caso "viendo la final con la app abierta":** fetch de elegibilidad al montar + check de reloj cada 60 s → si la ventana se abre en mitad de la sesión, el modal aparece sin recargar.
-- **Fail-closed:** si el fetch de estado falla, no aparece (cero impacto).
+- Ventana: `SURVEY_OPENS_AT` (fin de la final + 1 min) durante **5 días**.
+- Aparece **en cada apertura de la app** mientras no respondan; el cierre vale solo para esa sesión (memoria, sin localStorage).
+- Responder → nunca más (DB `userId @unique`, cross-device).
+- Sesión abierta durante la final: check de reloj cada 60 s → aparece sin recargar.
+- Fail-closed si el fetch de estado falla.
 
 ---
 
-## 3. Trigger "fin del Mundial" (DECIDIDO)
+## 3. Trigger (DECIDIDO)
 
-Env vars runtime (sin redeploy): `SURVEY_OPENS_AT` (ISO UTC = fin real + 1 min), `SURVEY_CLOSES_AT` (= opens + **5 días**), `SURVEY_ALLOWLIST` ("" off / email / "*"). Kill-switch: allowlist a `""`.
+`SURVEY_OPENS_AT` (ISO UTC), `SURVEY_CLOSES_AT` (= opens + 5 días), `SURVEY_ALLOWLIST` ("" off / email / "*"). Runtime, sin redeploy. Kill-switch: allowlist `""`.
 
 ---
 
 ## 4. Diseño técnico
 
-### Modelo `SurveyResponse` (migración aditiva, columnas tipadas)
+### Modelo `SurveyResponse` (migración aditiva)
 
 ```prisma
 model SurveyResponse {
@@ -89,12 +89,13 @@ model SurveyResponse {
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id])
   isHost          Boolean            // rol HOST o CORPORATE_HOST en ≥1 pool
-  isCorporateHost Boolean            // rol CORPORATE_HOST en ≥1 pool
+  isCorporateHost Boolean
   overallScore    Int                // 1-10
-  npsScore        Int                // 0-10
-  comment         String?            // opinión abierta (todos)
-  shareConsent    Boolean  @default(false) // autoriza compartir como logro
-  // Bloque host (null para jugadores) — 1-5 cada uno:
+  recommendScore  Int                // 1-10 (probabilidad de recomendar)
+  otherTournamentsScore Int          // 1-10 (usaría la app en otros torneos)
+  comment         String?
+  shareConsent    Boolean  @default(false)
+  // Bloque host (null para jugadores) — 1-10 cada uno:
   hostCreateScore      Int?
   hostInviteScore      Int?
   hostLiveResultsScore Int?
@@ -107,20 +108,18 @@ model SurveyResponse {
 ```
 
 ### Endpoints
-- **`GET /survey/status`** (auth): `{ open, opensAtUtc, alreadySubmitted, isHost }`. `open` = ventana + allowlist. `isHost` = EXISTS PoolMember rol HOST/CORPORATE_HOST.
-- **`POST /survey`** (auth + rate-limit + Zod): guarda `overallScore` + `npsScore` + snapshot `isHost`/`isCorporateHost`. Primera escritura crea; scores inmutables después.
-- **`POST /survey/details`** (auth + Zod, solo dentro de ventana): añade `comment`, `shareConsent` y el bloque host (5 scores) a la fila propia. Idempotente.
-- **`GET /admin/survey/summary`** (requireAdmin, JSON): n, promedio general, NPS calculado, split host/jugador/corporate, promedios de las 5 dimensiones host, % de consentimiento, últimos 20 comentarios (marcando cuáles tienen `shareConsent=true` — la lista de testimonios utilizables).
-- **Flags:** `isSurveyOpenFor(email)` en `featureFlags.ts` (ventana + allowlist compartida).
-- **Sin emails por respuesta.**
-- Tests: ventana/allowlist, Zod (rangos 1-10/0-10/1-5), unicidad, cálculo isHost (CO_ADMIN debe dar false), corporate flag, idempotencia de details.
+- **`GET /survey/status`** (auth): `{ open, opensAtUtc, alreadySubmitted, isHost }`.
+- **`POST /survey`** (auth + rate-limit + Zod): los **3 scores** de pantalla 1 + snapshot `isHost`/`isCorporateHost`. Crea la fila; scores inmutables.
+- **`POST /survey/details`** (auth + Zod, dentro de ventana): `comment`, `shareConsent`, bloque host (5 scores 1-10). Idempotente.
+- **`GET /admin/survey/summary`** (requireAdmin, JSON): n, promedios de los 3 scores, **métrica de recomendación** (con escala 1-10: promotores 9-10, pasivos 7-8, detractores ≤6), promedio "otros torneos" (proxy de retención), split jugador/host/corporate, promedios de las 5 dimensiones host, % consentimiento + comentarios compartibles (banco de testimonios).
+- **Flags:** `isSurveyOpenFor(email)` en `featureFlags.ts`.
+- Sin emails por respuesta.
+- Tests: ventana/allowlist, Zod (rangos 1-10), unicidad, isHost (CO_ADMIN → false), corporate flag, idempotencia.
 
 ### Frontend
-- **`PostWorldCupSurveyModal.tsx`** (nuevo, esqueleto WhatsNew): pantalla-1 → pantalla-2 → gracias; variante host por `isHost`; dismiss en memoria (sin localStorage — reaparece en la próxima apertura, por diseño).
-- **`lib/api/survey.ts`**: `getSurveyStatus`, `submitSurvey`, `submitSurveyDetails`.
-- **Montaje:** 1 línea en `AuthenticatedLayoutClient`.
-- **i18n:** bloque `survey.*` en es/en/pt.
-- Escalas con `TOUCH_TARGET.minimum`; sin overflow a 360px; checkbox de consentimiento con texto completo visible.
+- **`PostWorldCupSurveyModal.tsx`** (nuevo, esqueleto WhatsNew): pantalla-1 (3 escalas) → pantalla-2 (variante) → gracias; dismiss en memoria.
+- Fila de botones 1–10 responsive: en 360px se parte en dos filas de 5 (touch 44px) — verificado en QA mobile.
+- **`lib/api/survey.ts`** + montaje 1 línea + i18n `survey.*` es/en/pt.
 
 ### Qué NO se toca
 Ningún flujo existente. Deploy con allowlist vacía = inerte.
@@ -130,34 +129,36 @@ Ningún flujo existente. Deploy con allowlist vacía = inerte.
 ## 5. Rollout
 
 1. Deploy `SURVEY_ALLOWLIST=""` → invisible.
-2. `SURVEY_ALLOWLIST=juan.k.chacon9729@gmail.com` + ventana abierta → tú ves la variante **Host** (hosteas); la variante Jugador se revisa con cuenta de prueba (`seed:test-accounts`).
-3. GO → `SURVEY_ALLOWLIST=*` + `SURVEY_OPENS_AT` real + `SURVEY_CLOSES_AT` (+5 días).
-4. Kill-switch: allowlist `""`.
+2. Allowlist = owner → preview (variante Host la ves tú; Jugador con cuenta de prueba).
+3. GO → `*` + ventana real (+5 días).
+4. Kill-switch: `""`.
 
 ## 6. Riesgos y mitigaciones
 
 | Riesgo | Mitigación |
 |---|---|
-| Romper algo existente | 1 línea en código compartido; resto archivos nuevos; migración aditiva; flag off default |
-| Modal que atrapa | Cierre siempre funcional (estado primero), footer fijo, body scrolleable, ✕ 44px |
-| Fatiga por reaparición en cada apertura | Decisión deliberada del owner (ventana corta de 5 días); el cierre por sesión evita re-pops dentro de la misma visita |
+| Romper algo existente | 1 línea compartida; resto nuevo; migración aditiva; flag off |
+| Modal que atrapa | Cierre siempre funcional, footer fijo, ✕ 44px |
+| 3 escalas + reaparición diaria = fricción | Decisión del owner (ventana 5 días); responder toma ~10 segundos |
 | Doble respuesta / spam | `userId @unique` + rate limit + Zod |
-| Perder scores si abandonan la expansión | Scores persisten en el primer Enviar |
-| Validez del consentimiento | Checkbox desmarcado por defecto, texto explícito, almacenado con timestamp |
+| Perder scores | Persisten al primer Enviar |
+| Validez del consentimiento | Desmarcado por defecto, texto explícito, timestamp |
 
-## 7. Decisiones cerradas / abiertas
+## 7. Decisiones
 
 | Tema | Estado |
 |---|---|
-| CO_ADMIN como host | ❌ NO cuenta (decidido) |
-| Frecuencia | Cada apertura × 5 días hasta responder (decidido) |
-| Dimensiones host | Crear · Invitar · Resultados en vivo · Claridad de reglas · Soporte (decidido) |
-| Consentimiento de compartir | Para TODOS, desmarcado por defecto (decidido) |
-| Opinión abierta | Para TODOS (decidido) |
-| Resumen admin JSON v1 | Incluido (propuesto, sin objeción) |
-| Copy exacto | Propuesta en §2 — ajustable en el preview visual |
+| Escalas | **Todas 1–10** (v3) |
+| Pantalla 1 | 3 preguntas para todos: experiencia + recomendar + otros torneos (v3) |
+| CO_ADMIN como host | ❌ NO (decidido) |
+| Frecuencia | Cada apertura × 5 días (decidido) |
+| Dimensiones host | Crear · Invitar · Resultados en vivo · Claridad de reglas · Soporte — 1–10 (v3) |
+| Consentimiento | TODOS, desmarcado por defecto (decidido) |
+| Opinión abierta | TODOS (decidido) |
+| Resumen admin | Incluido |
+| Copy | Ajustable en preview |
 
 ## 8. Archivos a tocar
 
-**Backend:** `prisma/schema.prisma` + migración · `lib/featureFlags.ts` · `routes/survey.ts` (nuevo) · `server.ts` (mount) · `routes/admin.ts` (summary) · tests · `docs/DECISION_LOG.md` (ADR) · `docs/guides/DEPLOYMENT.md` (3 env vars).
+**Backend:** `prisma/schema.prisma` + migración · `lib/featureFlags.ts` · `routes/survey.ts` (nuevo) · `server.ts` (mount) · `routes/admin.ts` (summary) · tests · ADR · DEPLOYMENT.md (3 env vars).
 **Frontend:** `components/PostWorldCupSurveyModal.tsx` (nuevo) · `lib/api/survey.ts` (nuevo) · `AuthenticatedLayoutClient.tsx` (+1 línea) · `messages/{es,en,pt}/common.json`.
