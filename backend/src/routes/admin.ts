@@ -36,6 +36,7 @@ import { adminCorporateRouter } from "./adminCorporate";
 import { analyticsHealthRouter } from "./analyticsHealth";
 import { adminAnalyticsDashboardRouter } from "./adminAnalyticsDashboard";
 import { adminSalesRouter } from "./adminSales";
+import { surveyAdminRouter } from "./survey";
 import { adminQueryRouter } from "./adminQuery";
 
 export const adminRouter = Router();
@@ -60,6 +61,7 @@ adminRouter.use("/corporate", adminCorporateRouter);
 adminRouter.use("/analytics", analyticsHealthRouter);
 adminRouter.use("/analytics", adminAnalyticsDashboardRouter);
 adminRouter.use("/sales", adminSalesRouter);
+adminRouter.use("/survey", surveyAdminRouter); // ADR-089 summary
 
 // ─── Helpers ─────────────────────────────────────────────────
 

@@ -5360,4 +5360,25 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-089: Post-World-Cup platform survey (tap-only, host variant, share consent)
+
+**Date:** 2026-07-19 | **Status:** Accepted
+
+**Context:** The owner wants structured platform feedback captured in the days right after the World Cup final, when engagement peaks — maximizing volume by making answering effortless (tap-only, no typing required), with richer input from hosts (the platform's key users) and reusable testimonials.
+
+**Decision:**
+- Blocking-but-dismissible modal mounted app-wide (`AuthenticatedLayoutClient`), skeleton borrowed from `WhatsNewModal`. Shows on EVERY app open while the window is open and the user hasn't answered; dismissal is session-only (in-memory, no localStorage) by explicit owner decision. A 60-second clock check flips it visible for sessions already open when the window opens.
+- **Window + staged rollout via env (runtime-read, fail-closed):** `SURVEY_OPENS_AT` (final whistle + 1 min), `SURVEY_CLOSES_AT` (+5 days), `SURVEY_ALLOWLIST` ("" off / owner preview / "*").
+- **Screen 1 (mandatory, identical for everyone):** three 1-10 tap scales — overall experience, likelihood to recommend, likelihood to use for other tournaments. All scales are 1-10 by owner decision (recommend is therefore not canonical 0-10 NPS; buckets adapted: promoters 9-10, passives 7-8, detractors 1-6). Scores persist immediately on submit.
+- **Screen 2 (optional):** open comment + share-consent checkbox for everyone (consent = may quote the opinion as a platform achievement; unchecked by default). Hosts additionally get five 1-10 dimensions: create, invite, live results, rules clarity, support. "Host" = role HOST or CORPORATE_HOST in ≥1 pool — CO_ADMIN excluded (owner decision). `isCorporateHost` recorded to prioritize corporate testimonials.
+- **Data:** new `SurveyResponse` model, one row per user (`userId @unique` = cross-device never-ask-again; scores immutable, details appendable within the window). Host fields server-stripped for non-hosts. No per-response emails; `GET /admin/survey/summary` returns volumes, averages, recommend buckets, host-dimension averages, consent rate and the latest comments (testimonial bank).
+
+**Consequences:**
+- ✅ Answering takes ~10 seconds, tap-only — optimized for response volume
+- ✅ Deploy is inert (allowlist empty); open/close/kill needs no redeploy
+- ✅ One shared-code line touched (the mount); additive migration; fail-closed status fetch
+- ⚠️ Reappearing every app open for 5 days is deliberately assertive — accepted by the owner for a short window
+
+---
+
 **END OF DOCUMENT**

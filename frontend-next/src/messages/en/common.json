@@ -295,6 +295,49 @@
     "item2Locked": "To be decided",
     "dismiss": "Got it!"
   },
+  "survey": {
+    "player": {
+      "title": "Thanks for living the World Cup with Picks4All!",
+      "subtitle": "Your opinion helps us build the platform we'd all want. It takes 10 seconds."
+    },
+    "host": {
+      "title": "Thanks for hosting on Picks4All!",
+      "subtitle": "Hosts are the heart of the platform. Your opinion counts double."
+    },
+    "q": {
+      "overall": "How would you rate your Picks4All experience?",
+      "recommend": "How likely are you to recommend Picks4All to a friend?",
+      "otherTournaments": "How likely are you to use Picks4All for other tournaments (leagues, Champions, Copa América…)?"
+    },
+    "scaleLow": "1 · Poor",
+    "scaleHigh": "10 · Excellent",
+    "scaleUnlikely": "1 · Not likely",
+    "scaleVeryLikely": "10 · Very likely",
+    "send": "Send",
+    "sending": "Sending…",
+    "notNow": "Not now",
+    "error": "We couldn't save your answer. Please try again.",
+    "details": {
+      "hostTitle": "Your experience as a host (optional)",
+      "commentLabel": "Anything else you'd like to tell us? (optional)",
+      "commentPlaceholder": "What you liked most, what you'd improve…",
+      "consent": "I authorize Picks4All to share my opinion as part of the platform's achievements.",
+      "send": "Send",
+      "skip": "Skip"
+    },
+    "dims": {
+      "create": "Ease of creating your pool",
+      "invite": "Ease of inviting players",
+      "liveResults": "Live results",
+      "rules": "Clarity of the rules",
+      "support": "Support received"
+    },
+    "thanks": {
+      "title": "Thank you so much!",
+      "body": "Your feedback helps us improve Picks4All for the next tournaments.",
+      "close": "Close"
+    }
+  },
   "pool": {
     "scoringEnabled": "Scoring on",
     "scoringDisabled": "Scoring off",

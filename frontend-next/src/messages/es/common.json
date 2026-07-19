@@ -295,6 +295,49 @@
     "item2Locked": "Por definirse",
     "dismiss": "¡Entendido!"
   },
+  "survey": {
+    "player": {
+      "title": "¡Gracias por vivir el Mundial con Picks4All!",
+      "subtitle": "Tu opinión nos ayuda a construir la plataforma que todos quisiéramos tener. Toma 10 segundos."
+    },
+    "host": {
+      "title": "¡Gracias por hostear en Picks4All!",
+      "subtitle": "Los hosts son el corazón de la plataforma. Tu opinión vale doble."
+    },
+    "q": {
+      "overall": "¿Cómo calificas tu experiencia en Picks4All?",
+      "recommend": "¿Qué tan probable es que recomiendes Picks4All a un amigo?",
+      "otherTournaments": "¿Qué tan probable es que uses Picks4All en otros torneos (ligas, Champions, Copa América…)?"
+    },
+    "scaleLow": "1 · Mala",
+    "scaleHigh": "10 · Excelente",
+    "scaleUnlikely": "1 · Nada probable",
+    "scaleVeryLikely": "10 · Muy probable",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "notNow": "Ahora no",
+    "error": "No pudimos guardar tu respuesta. Inténtalo de nuevo.",
+    "details": {
+      "hostTitle": "Tu experiencia como host (opcional)",
+      "commentLabel": "¿Quieres contarnos algo más? (opcional)",
+      "commentPlaceholder": "Lo que más te gustó, lo que mejorarías…",
+      "consent": "Autorizo a Picks4All a compartir mi opinión como parte de los logros de la plataforma.",
+      "send": "Enviar",
+      "skip": "Omitir"
+    },
+    "dims": {
+      "create": "Facilidad para crear tu pool",
+      "invite": "Facilidad para invitar jugadores",
+      "liveResults": "Resultados en vivo",
+      "rules": "Claridad de las reglas",
+      "support": "Soporte recibido"
+    },
+    "thanks": {
+      "title": "¡Mil gracias!",
+      "body": "Tu opinión nos ayuda a mejorar Picks4All para los próximos torneos.",
+      "close": "Cerrar"
+    }
+  },
   "pool": {
     "scoringEnabled": "Puntúa",
     "scoringDisabled": "No puntúa",

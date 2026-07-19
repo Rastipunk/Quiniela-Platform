@@ -209,6 +209,9 @@ All rate limit values are configurable via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PREDICTION_STATUS_HOST_ALLOWLIST` | Gradual rollout for the per-match prediction-status feature (ADR-077). `""`/unset → off everywhere; `*` → on for all pools; comma-separated emails → on only for pools whose creator's email is listed. | `""` (off) |
+| `SURVEY_ALLOWLIST` | Post-World-Cup survey rollout (ADR-089). `""`/unset → off; `*` → everyone; csv of emails → preview. Read at runtime. | `""` (off) |
+| `SURVEY_OPENS_AT` | ISO-8601 UTC instant the survey opens (final whistle + 1 min). Missing/unparseable → survey stays closed (fail-closed). | unset |
+| `SURVEY_CLOSES_AT` | ISO-8601 UTC instant the survey closes (opens + 5 days per owner decision). | unset |
 
 #### Performance — Caching (Optional)
 

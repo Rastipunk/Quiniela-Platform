@@ -178,6 +178,7 @@ model User {
   poolPayments              PoolPayment[]
   brandingAuditEntries      OrganizationBrandingAudit[]
   sessions                  Session[]
+  surveyResponse            SurveyResponse?
 
   // Sales documents (issued by ADMIN users only; see SALES_AUDIT.md).
   // Back-references for the FKs on Quote.createdByUserId and the two
@@ -954,6 +955,41 @@ model AnalyticsDashboardSnapshot {
   generatedAtUtc  DateTime
   buildDurationMs Int      @default(0)
   updatedAt       DateTime @updatedAt
+}
+
+/// Post-World-Cup platform survey (ADR-089). One response per user
+/// (`userId @unique` = cross-device "never ask again"). All scales are 1-10
+/// by owner decision. Host block (5 dimensions) is null for players.
+/// `shareConsent` = user authorised quoting their comment as a platform
+/// testimonial (unchecked by default; offered to everyone).
+model SurveyResponse {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  isHost          Boolean // HOST or CORPORATE_HOST in ≥1 pool (CO_ADMIN excluded)
+  isCorporateHost Boolean
+
+  overallScore          Int // 1-10
+  recommendScore        Int // 1-10
+  otherTournamentsScore Int // 1-10 — would use the app for other tournaments
+
+  comment      String?
+  shareConsent Boolean @default(false)
+
+  // Host-only dimensions (1-10 each; null for players / unanswered)
+  hostCreateScore      Int?
+  hostInviteScore      Int?
+  hostLiveResultsScore Int?
+  hostRulesScore       Int?
+  hostSupportScore     Int?
+
+  locale String?
+
+  createdAtUtc DateTime @default(now())
+  updatedAtUtc DateTime @updatedAt
+
+  @@index([isHost])
 }
 
 // =========================================================================
