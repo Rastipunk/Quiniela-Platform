@@ -319,6 +319,20 @@ Background sweeps that close the payment and sales-document observability loops.
 | `WELCOME_FALLBACK_CRON` | Cron schedule for the deferred welcome-email safety net. | `15 * * * *` |
 | `WELCOME_FALLBACK_HOURS` | Account age (hours) after which the fallback ships the welcome email. | `24` |
 
+#### Data Retention (optional — see ADR-090)
+
+Windows for the daily `dataRetentionJob` sweep. Final results, picks and functional audit markers are never purged regardless of these values.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATA_RETENTION_CRON` | Cron schedule for the retention sweep. | `15 8 * * *` |
+| `RETENTION_AUDIT_EVENT_DAYS` | `AuditEvent` rows older than this are deleted (functional markers excluded). | `90` |
+| `RETENTION_RESULT_HISTORY_DAYS` | Superseded `PoolMatchResultVersion` rows (and `externalDataJson`) older than this are purged on non-ACTIVE pools. | `30` |
+| `RETENTION_DEADLINE_REMINDER_LOG_DAYS` | `DeadlineReminderLog` rows older than this are deleted. | `30` |
+| `RETENTION_RECONCILER_NOOP_DAYS` | `RECONCILER_NOOP` payment events older than this are deleted. | `30` |
+| `RETENTION_DEAD_SESSION_GRACE_DAYS` | Days after a `Session` expires / is revoked before its row is deleted. | `1` |
+| `RETENTION_SWEEP_TX_TIMEOUT_MS` | Transaction timeout for one sweep. | `300000` |
+
 #### Railway-Injected
 
 | Variable | Description |
@@ -469,6 +483,7 @@ Thirteen background jobs run automatically (all started in `server.ts`, configur
 | MP Reconciler (`mpPaymentReconcileJob`) | `MP_RECONCILE_CRON` (default `*/30 * * * *`) | Mercado Pago equivalent — sweeps stale MP rows (batch `MP_RECONCILE_BATCH_SIZE`, default 50) and auto-completes `approved` payments via `markPaymentCompleted`. Advisory lock `82636506`. |
 | AccountReceivable Expiry (`accountReceivableExpiryJob`) | `CC_EXPIRY_CRON` (default `5 * * * *`) | Flips PENDING `AccountReceivable` (cuenta de cobro) rows past `validUntil` to EXPIRED (batch `CC_EXPIRY_BATCH_SIZE`, default 100). Advisory lock `82636504`. |
 | Welcome Email Fallback (`welcomeEmailFallbackJob`) | `WELCOME_FALLBACK_CRON` (default `15 * * * *`) | Ships the welcome email `WELCOME_FALLBACK_HOURS` (default 24) after signup for users who never completed the `LocalePreferenceModal` handoff. Advisory lock `82636505`. |
+| Data Retention (`dataRetentionJob`) | `DATA_RETENTION_CRON` (default `15 8 * * *`) | Purges operational history past its window: old `AuditEvent` rows (functional markers excluded), superseded result versions of non-ACTIVE pools, `DeadlineReminderLog`, `RECONCILER_NOOP` events and dead sessions. Advisory lock `82636507`. See ADR-090. |
 
 `resultSyncJob.ts` is **not** a scheduled job — its `start`/`stop`/`triggerManual` exports were removed as dead code. Only `getJobStatus()` survives, consumed by the admin instance UI. SmartSync + Live Scores are the active sync mechanisms.
 

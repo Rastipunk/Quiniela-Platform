@@ -395,8 +395,8 @@ Higher-priority sources are NEVER overwritten by lower-priority ones.
 
 ### 5.3 Version Immutability
 
-1. Once created, `PoolMatchResultVersion` records are **immutable** (no UPDATEs).
-2. All versions are retained (full history).
+1. Once created, the scoring fields of a `PoolMatchResultVersion` are **immutable** (no UPDATEs).
+2. While a pool is ACTIVE every version is retained. Once the pool is no longer ACTIVE, superseded versions older than `RETENTION_RESULT_HISTORY_DAYS` (default 30) are purged and the write-only `externalDataJson` snapshot is nulled — the **current** version is never deleted (ADR-090).
 3. Only `currentVersion` is used for scoring.
 4. `currentVersionId` always points to the latest version.
 5. Version numbering: auto-increment per result (1, 2, 3...).

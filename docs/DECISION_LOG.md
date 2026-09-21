@@ -5381,4 +5381,28 @@ human checkpoint for the rare, high-stakes write.
 
 ---
 
+## ADR-090: Data retention — purge operational history, keep final results
+
+**Date:** 2026-09-21 | **Status:** Accepted (one-off cleanup applied to prod the same day: 1,299 MB → 265 MB)
+
+> ADR-088 (per-player stats tab) is referenced in code but has no entry in this log.
+
+**Context:** Two months after the World Cup the production database was 1.3 GB, 94% of it in five tables that nobody reads: `AuditEvent` (1.07M rows / 530 MB — 522k `PREDICTION_UPSERTED`, 209k `RESULT_SYNCED_FROM_SCRAPER`, 256k logins), `PoolMatchResultVersion` (261k rows / 282 MB, 210k of them superseded live-score snapshots, each carrying the raw scraper payload in `externalDataJson`), `DeadlineReminderLog` (302k / 140 MB), `Session` (125k rows, 99% expired — nothing ever deleted them) and index bloat on `Prediction`. Nothing had a retention policy, so every tournament would only add to it. The owner confirmed the claims window for the hosted pools had closed and that no history is needed — only what a player needs to review a finished pool.
+
+**Decision:**
+- **What is never purged:** `Prediction` / structural / group picks, the **current** version of every `PoolMatchResult`, structural and group results, payments and sales documents. The leaderboard is computed from picks + current versions (`poolLeaderboardCache`), so these are the "final results".
+- **`dataRetentionJob`** (daily, advisory lock `82636507`) → `dataRetentionService.runDataRetentionSweep`, windows in `DATA_RETENTION` (`lib/constants.ts`, env-overridable): `AuditEvent` > 90 days; superseded result versions + `externalDataJson` > 30 days **only on pools that are not ACTIVE**; `DeadlineReminderLog` > 30 days; `RECONCILER_NOOP` payment events > 30 days; sessions expired/revoked > 1 day.
+- **Functional audit markers are state, not history** (`FUNCTIONAL_AUDIT_ACTIONS`): the one-time alert/email idempotency markers (`PHASE_COMPLETION_RECAP_SENT`, `MATCH_STALE_DETECTED`, `MATCH_FEED_SILENT`, `KNOCKOUT_WINNER_UNDECIDABLE`, `GOALS90_MISSING_AT_FINALIZE`, the four gate alerts) and `POOL_STATUS_CHANGED` (read by `transitionFromArchived`). They are excluded from every purge — deleting the recap marker would re-send the phase recap to every member.
+- **Result-version immutability is narrowed, not dropped:** scoring fields are still never updated and ACTIVE pools keep full history. The current version always has the highest `versionNumber`, so pruning older rows cannot disturb next-version numbering.
+- **Rejected:** dropping the "redundant" `[poolId]` / `[poolId,userId]` / `[resultId]` indexes — after `VACUUM FULL` they are ~3 MB each (B-tree deduplication), not worth a schema migration. Converting text UUID keys to native `uuid` (the remaining bulk of `Prediction`'s 79 MB of indexes) — too invasive for ~60 MB.
+
+**Consequences:**
+- ✅ Prod went from 1,299 MB to 265 MB (`Prediction` is now 175 of those). Verified by checksum over all 51,044 current result versions and unchanged pick counts before/after. A full `pg_dump` was taken first.
+- ✅ Growth is now bounded by the retention windows instead of accumulating per tournament.
+- ⚠️ `AuditEvent` is no longer a permanent record: investigations must happen within `RETENTION_AUDIT_EVENT_DAYS`. Raise the env var before a tournament if a longer window is wanted.
+- ⚠️ The HOST_OVERRIDE email shows the previous score from the prior version; on a non-ACTIVE pool older than the window it falls back to "N/A".
+- ⚠️ Any new code that reads an `AuditEvent` back as state MUST add its action to `FUNCTIONAL_AUDIT_ACTIONS`.
+
+---
+
 **END OF DOCUMENT**

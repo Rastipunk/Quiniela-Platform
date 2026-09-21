@@ -8,6 +8,16 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [Unreleased]
 
+### Infra — Política de retención de datos (ADR-090) (2026-09-21)
+
+#### Added
+- **`dataRetentionJob`** (diario, 08:15 UTC): purga el historial operativo vencido — `AuditEvent` > 90 días, versiones de resultado no vigentes (y su `externalDataJson`) > 30 días en pools que ya no están ACTIVE, `DeadlineReminderLog` > 30 días, eventos `RECONCILER_NOOP` > 30 días y sesiones expiradas/revocadas. Ventanas configurables por env (`RETENTION_*`).
+- **Nunca se purga:** picks, la versión vigente de cada resultado, resultados estructurales/de grupos, pagos, ni los marcadores funcionales de auditoría (`FUNCTIONAL_AUDIT_ACTIONS` — idempotencia de alertas/correos y `POOL_STATUS_CHANGED`).
+
+#### Changed
+- Limpieza única en producción: la base pasó de **1.299 MB a 265 MB** (backup completo previo; checksum de los 51.044 resultados vigentes y conteo de picks idénticos antes/después).
+- La inmutabilidad de versiones de resultado se acota: los campos de puntuación siguen sin actualizarse y las pools ACTIVE conservan todo el historial; el historial se poda solo cuando la pool deja de estar ACTIVE.
+
 ### Auth — Sesiones persistentes "Mantener sesión abierta" + panel de dispositivos (ADR-081) (2026-06-25)
 
 #### Added

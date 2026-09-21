@@ -415,7 +415,7 @@ async function processLiveScore(
 }
 
 /** Audit action / once-per-match idempotency key for the goals90 gap alert. */
-const GOALS90_MISSING_ACTION = "GOALS90_MISSING_AT_FINALIZE";
+export const GOALS90_MISSING_ACTION = "GOALS90_MISSING_AT_FINALIZE";
 
 /**
  * One-time admin alert: an AET/PEN match is finalizing but the timeline

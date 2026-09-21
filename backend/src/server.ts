@@ -47,6 +47,7 @@ import {
   stopWelcomeEmailFallbackJob,
 } from "./jobs/welcomeEmailFallbackJob";
 import { startCaprichoSanJob, stopCaprichoSanJob } from "./jobs/caprichoSanJob";
+import { startDataRetentionJob, stopDataRetentionJob } from "./jobs/dataRetentionJob";
 import { prisma } from "./db";
 
 const app = express();
@@ -364,6 +365,7 @@ const server = app.listen(PORT, () => {
   startAccountReceivableExpiryJob();
   startWelcomeEmailFallbackJob();
   startCaprichoSanJob();
+  startDataRetentionJob();
   // Restore the persisted admin dashboard snapshot into memory so the view
   // survives deploys. Recompute is MANUAL (POST /dashboard/rebuild) — boot
   // does NOT recompute (except a one-time seed on a brand-new install).
@@ -412,6 +414,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   stopAccountReceivableExpiryJob();
   stopWelcomeEmailFallbackJob();
   stopCaprichoSanJob();
+  stopDataRetentionJob();
   stopPlatformHealthJob();
   stopEventLoopMonitor();
   await disconnectReadonlyDb();

@@ -41,7 +41,7 @@ import { fireAndForget } from "../lib/asyncHelpers";
 import { sendAdminNotification } from "../lib/email";
 
 /** Audit action / once-per-match idempotency key for undecidable knockouts. */
-const KNOCKOUT_UNDECIDABLE_ACTION = "KNOCKOUT_WINNER_UNDECIDABLE";
+export const KNOCKOUT_UNDECIDABLE_ACTION = "KNOCKOUT_WINNER_UNDECIDABLE";
 
 /**
  * A result source is authoritative (the match is officially over) when it

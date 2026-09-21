@@ -125,6 +125,28 @@ export const FINAL_RESULT_SOURCES: ReadonlySet<string> = new Set([
   "HOST_MANUAL",
 ]);
 
+// ── Data retention (ADR-090) ────────────────────────────────
+// Windows after which operational history is purged by dataRetentionJob.
+// Final results, picks and functional audit markers are never touched.
+export const DATA_RETENTION = {
+  /** Audit trail window — long enough to investigate any player/host claim
+   *  about a tournament that just ended. */
+  AUDIT_EVENT_DAYS: envInt("RETENTION_AUDIT_EVENT_DAYS", 90),
+  /** Superseded result versions (+ the raw scraper snapshot) are kept this
+   *  long after being written, and only ever pruned on non-ACTIVE pools. */
+  RESULT_HISTORY_DAYS: envInt("RETENTION_RESULT_HISTORY_DAYS", 30),
+  /** Reminder send-log. Only guards against double-sending for a match whose
+   *  deadline is still ahead, so rows go stale right after kickoff. */
+  DEADLINE_REMINDER_LOG_DAYS: envInt("RETENTION_DEADLINE_REMINDER_LOG_DAYS", 30),
+  /** RECONCILER_NOOP payment events ("checked, nothing to do"). */
+  RECONCILER_NOOP_DAYS: envInt("RETENTION_RECONCILER_NOOP_DAYS", 30),
+  /** Grace after a session expires / is revoked before its row is deleted. */
+  DEAD_SESSION_GRACE_DAYS: envInt("RETENTION_DEAD_SESSION_GRACE_DAYS", 1),
+  /** Ceiling for one sweep's transaction — a first run over a large backlog
+   *  takes seconds, far above Prisma's 5s interactive-tx default. */
+  SWEEP_TX_TIMEOUT_MS: envInt("RETENTION_SWEEP_TX_TIMEOUT_MS", 5 * MS.MINUTE),
+} as const;
+
 // ── Capacity warnings ───────────────────────────────────────
 // Default percentage of maxParticipants at which the host receives the
 // "near full" email. Can be overridden per pool via Pool.capacityWarningThresholdPct.

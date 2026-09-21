@@ -182,7 +182,7 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 | Admin routes | `routes/admin.ts`, `routes/adminAnalyticsDashboard.ts`, `routes/adminInstances.ts`, `routes/adminTemplates.ts`, `routes/adminCorporate.ts`, `routes/adminSettings.ts`, `routes/adminSales.ts` |
 | Sales | `routes/adminSales.ts` (quotes + cuentas de cobro), `routes/salesRedemption.ts` (public CC redemption), `services/sales/quoteService.ts`, `services/sales/accountReceivableService.ts`, `services/sales/documentCounterService.ts` |
 | Activation links | `lib/activationUrl.ts` (locale-correct activation/welcome URLs) |
-| Boot crons (started in `server.ts`) | `jobs/liveScoresJob.ts`, `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/fixtureVerificationJob.ts`, `jobs/newMemberDigestJob.ts`, `jobs/capiRetryJob.ts`, `jobs/trackStatusCheckerJob.ts`, `jobs/paymentReconcileJob.ts` (Polar reconciler), `jobs/mpPaymentReconcileJob.ts` (MP reconciler), `jobs/accountReceivableExpiryJob.ts` (sales CC expiry sweep), `jobs/welcomeEmailFallbackJob.ts` (24h welcome-email safety net) |
+| Boot crons (started in `server.ts`) | `jobs/liveScoresJob.ts`, `jobs/smartSyncJob.ts`, `jobs/phaseSyncJob.ts`, `jobs/deadlineReminderJob.ts`, `jobs/fixtureTrackingJob.ts`, `jobs/fixtureVerificationJob.ts`, `jobs/newMemberDigestJob.ts`, `jobs/capiRetryJob.ts`, `jobs/trackStatusCheckerJob.ts`, `jobs/paymentReconcileJob.ts` (Polar reconciler), `jobs/mpPaymentReconcileJob.ts` (MP reconciler), `jobs/accountReceivableExpiryJob.ts` (sales CC expiry sweep), `jobs/welcomeEmailFallbackJob.ts` (24h welcome-email safety net), `jobs/dataRetentionJob.ts` (daily history purge → `services/dataRetentionService.ts`, ADR-090) |
 | Admin-triggered sync | `jobs/resultSyncJob.ts` (not a boot cron; invoked via `services/adminInstanceService.ts`) |
 
 ### Frontend (`frontend-next/src/`)
@@ -207,7 +207,7 @@ CHANGELOG.md                  # Version history (Keep a Changelog format)
 ## 6) Critical Invariants (NEVER break)
 
 1. **Deadline enforcement:** User cannot edit picks if `isLocked=true` (kickoff - deadline minutes reached).
-2. **Result versioning:** Every result change creates a new version. Corrections require `reason`. All versions are immutable.
+2. **Result versioning:** Every result change creates a new version. Corrections require `reason`. Scoring fields of a version are never updated. The CURRENT version is never deleted; superseded versions are purged by `dataRetentionJob` only once the pool is no longer ACTIVE (ADR-090). Any `AuditEvent` action that code reads back as state must be listed in `FUNCTIONAL_AUDIT_ACTIONS` (`services/dataRetentionService.ts`) or the retention sweep will delete it.
 3. **Pool rules immutability:** Scoring configuration cannot change while the pool has ACTIVE members other than HOST/CORPORATE_HOST. The host edits rules via the "Administrar reglas" panel in DRAFT state (canEditScoringConfig). When the last PLAYER/CO_ADMIN is removed (kick / ban / voluntary leave) the pool auto-reverts ACTIVE → DRAFT, all player predictions are deleted, but PoolMatchResults and overrides are preserved (revertPoolToDraft). Kick/ban require explicit confirmation (409 REVERT_PENDING_CONFIRMATION) before triggering the revert. See ADR-049.
 4. **Leave pool:** Only PLAYER can leave (not HOST/CORPORATE_HOST). Status → LEFT, points preserved, read-only mode.
 5. **Template immutability:** Published TournamentTemplateVersions are frozen snapshots.
